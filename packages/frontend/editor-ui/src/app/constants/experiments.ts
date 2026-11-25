@@ -255,6 +255,10 @@ export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
 	},
 );
 
+export const AGENT_SETUP_HEADER_EXPERIMENT = createExperiment('136_agent_setup_header');
+/** A/B test. The `variant` arm shows agent triggers first and restyles the trigger section. */
+export const AGENT_TRIGGER_REDESIGN_EXPERIMENT = createExperiment('143_agent_trigger_redesign');
+
 /** Per-instance rollout of custom MCP servers. Only `test` turns the feature on. */
 export const CUSTOM_MCP_SERVERS_EXPERIMENT = createExperiment(CUSTOM_MCP_SERVERS_FLAG, {
 	control: 'control',
@@ -262,6 +266,8 @@ export const CUSTOM_MCP_SERVERS_EXPERIMENT = createExperiment(CUSTOM_MCP_SERVERS
 });
 
 export const EXPERIMENTS_TO_TRACK = [
+	AGENT_SETUP_HEADER_EXPERIMENT.name,
+	AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
 	CUSTOM_MCP_SERVERS_EXPERIMENT.name,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,

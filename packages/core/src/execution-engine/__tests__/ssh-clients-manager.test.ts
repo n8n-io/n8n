@@ -185,6 +185,26 @@ describe('cleanup', () => {
 			// ASSERT 1
 			expect(endSpy).toHaveBeenCalledTimes(1);
 		});
+
+		test("updateLastUsed on a cleaned-up client does not delay the replacement's idle cleanup", async () => {
+			// ARRANGE
+			const cleanedUpAbortController = new AbortController();
+			const cleanedUpClient = await sshClientsManager.getClient(
+				credentials,
+				cleanedUpAbortController,
+			);
+			cleanedUpAbortController.abort();
+			const replacementAbortController = new AbortController();
+			await sshClientsManager.getClient(credentials, replacementAbortController);
+			vi.advanceTimersByTime((idleTimeout - 1) * 1000);
+
+			// ACT
+			sshClientsManager.updateLastUsed(cleanedUpClient);
+			vi.advanceTimersByTime(idleTimeout * 1000);
+
+			// ASSERT
+			expect(replacementAbortController.signal.aborted).toBe(true);
+		});
 	});
 });
 
@@ -285,6 +305,29 @@ describe('abort controller', () => {
 		expect(secondAbortController.signal.aborted).toBe(true);
 		expect(endSpy).toHaveBeenCalledTimes(1);
 	});
+});
+
+describe('replacement client', () => {
+	test.each(['end', 'close', 'error'])(
+		'ignores a late `%s` from a client that was already cleaned up',
+		async (event) => {
+			// ARRANGE
+			const cleanedUpAbortController = new AbortController();
+			const cleanedUpClient = await sshClientsManager.getClient(
+				credentials,
+				cleanedUpAbortController,
+			);
+			cleanedUpAbortController.abort();
+			const replacementAbortController = new AbortController();
+			await sshClientsManager.getClient(credentials, replacementAbortController);
+
+			// ACT
+			cleanedUpClient.emit(event, new Error());
+
+			// ASSERT
+			expect(replacementAbortController.signal.aborted).toBe(false);
+		},
+	);
 });
 
 describe('SSHClientsConfig', () => {

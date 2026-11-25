@@ -3,15 +3,17 @@ import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 
+import { LedgerCheckBypass, unknownOutcomeRow } from '../../../__tests__/ledger-check-bypass';
 import { ledgerRow } from '../../../__tests__/ledger-rows';
 import { ExecutionLedgerRepository } from '../execution-ledger.repository';
 
 describe('ExecutionLedgerRepository', () => {
 	let repository: ExecutionLedgerRepository;
 	let txRunner: TransactionRunner;
+	let bypass: LedgerCheckBypass;
 
 	const claim = async (limit: number) =>
-		await txRunner.run({}, async (ctx) => await repository.claimBatch(limit, ctx));
+		await txRunner.run({}, async (ctx) => (await repository.claimBatch(limit, ctx)).rows);
 
 	const appendMany = async (count: number) => {
 		for (let i = 0; i < count; i++) {
@@ -26,10 +28,15 @@ describe('ExecutionLedgerRepository', () => {
 		await testDb.init();
 		repository = Container.get(ExecutionLedgerRepository);
 		txRunner = Container.get(TransactionRunner);
+		bypass = new LedgerCheckBypass();
 	});
 
 	beforeEach(async () => {
 		await testDb.truncate(['ExecutionLedgerEntity']);
+	});
+
+	afterEach(async () => {
+		await bypass.restore();
 	});
 
 	afterAll(async () => {
@@ -105,6 +112,44 @@ describe('ExecutionLedgerRepository', () => {
 		).rejects.toThrow('execution insert failed');
 
 		expect(await claim(10)).toEqual([]);
+	});
+
+	it('returns a row with an unknown outcome as unreadable and the others as rows', async () => {
+		await repository.append(ledgerRow({ executionId: 'exec-0' }), {});
+		await bypass.insert(unknownOutcomeRow({ executionId: 'exec-1' }));
+		await repository.append(ledgerRow({ executionId: 'exec-2' }), {});
+
+		const batch = await txRunner.run({}, async (ctx) => await repository.claimBatch(10, ctx));
+
+		expect(batch.rows.map((r) => r.executionId)).toEqual(['exec-0', 'exec-2']);
+		expect(batch.unreadable).toHaveLength(1);
+		expect(batch.unreadable[0]).toMatchObject({
+			executionId: 'exec-1',
+			outcome: 'unknown_outcome',
+		});
+	});
+
+	it('removes the unreadable row from the ledger when the claim commits', async () => {
+		await bypass.insert(unknownOutcomeRow());
+		await repository.append(ledgerRow(), {});
+		await txRunner.run({}, async (ctx) => await repository.claimBatch(10, ctx));
+
+		expect(await claim(10)).toEqual([]);
+		expect((await repository.getBacklogStats()).oldestOccurredAt).toBeNull();
+	});
+
+	it('puts the unreadable row back when the claim rolls back', async () => {
+		await bypass.insert(unknownOutcomeRow({ executionId: 'exec-1' }));
+
+		await expect(
+			txRunner.run({}, async (ctx) => {
+				await repository.claimBatch(10, ctx);
+				throw new Error('fold failed');
+			}),
+		).rejects.toThrow('fold failed');
+
+		const batch = await txRunner.run({}, async (ctx) => await repository.claimBatch(10, ctx));
+		expect(batch.unreadable.map((r) => r.executionId)).toEqual(['exec-1']);
 	});
 
 	it('requires a transaction to claim', async () => {

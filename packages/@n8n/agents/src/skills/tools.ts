@@ -27,6 +27,9 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'other',
 ];
 
+/** The header of a loaded skill is outside the output cap, so it names only the first files. */
+const LISTED_LINKED_FILES_MAX = 50;
+
 export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
@@ -62,6 +65,14 @@ const skillLoadInputWithFilesSchema = skillLoadBaseInputSchema
 			.string()
 			.optional()
 			.describe('Optional linked file path relative to the skill directory.'),
+		offset: z
+			.number()
+			.int()
+			.min(0)
+			.optional()
+			.describe(
+				'Byte offset into a linked file. Pass the offset from a truncation note to read the next part.',
+			),
 	})
 	.refine(({ skillId, name }) => skillId !== undefined || name !== undefined, {
 		message: 'Either skillId or name is required.',
@@ -119,13 +130,13 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 	const loadFile = source.loadFile;
 	return new Tool(SKILL_LOAD_TOOL_NAME)
 		.description(
-			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
+			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles. A long linked file comes in parts: pass the offset from the truncation note to read the next part.',
 		)
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadResultSchema)
 		.handler(
-			async ({ skillId, name, filePath }) =>
-				await loadSkill(source, { skillId, name, filePath, loadFile }),
+			async ({ skillId, name, filePath, offset }) =>
+				await loadSkill(source, { skillId, name, filePath, offset, loadFile }),
 		)
 		.build();
 }
@@ -136,6 +147,7 @@ async function loadSkill(
 		skillId?: string;
 		name?: string;
 		filePath?: string;
+		offset?: number;
 		loadFile?: NonNullable<RuntimeSkillSource['loadFile']>;
 	},
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
@@ -164,7 +176,7 @@ async function loadSkill(
 
 	const loadMainSkill = isMainSkillFilePath(filePath);
 	if (!loadMainSkill) {
-		const linkedFilePath = filePath ?? '';
+		const linkedFilePath = (filePath ?? '').replace(/^(\.\/)+/, '');
 		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, linkedFilePath);
 		if (!linkedFile) {
 			return {
@@ -220,7 +232,7 @@ async function loadSkill(
 			hash: skillEntry.hash,
 			category: skillEntry.category,
 			filePath: linkedFile.path,
-			content: cap(file.content),
+			content: capFilePart(file.content, input.offset),
 			bytes: file.bytes ?? linkedFile.bytes,
 			sha256: file.sha256 ?? linkedFile.sha256,
 		};
@@ -271,7 +283,11 @@ export function formatLoadedSkill(
 			: []),
 		...(linkedFilePaths.length > 0
 			? [
-					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
+					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.slice(0, LISTED_LINKED_FILES_MAX).map(envelopeValue).join(', ')}${
+						linkedFilePaths.length > LISTED_LINKED_FILES_MAX
+							? `, and ${linkedFilePaths.length - LISTED_LINKED_FILES_MAX} more files. To load one of them, pass the relative path that the instructions give.`
+							: ''
+					}]`,
 				]
 			: []),
 	];
@@ -367,6 +383,24 @@ export function isMainSkillFilePath(filePath?: string): boolean {
 
 function envelopeValue(value: string): string {
 	return JSON.stringify(value);
+}
+
+const isContinuationByte = (byte: number | undefined) =>
+	byte !== undefined && (byte & 0xc0) === 0x80;
+
+/**
+ * One part of a linked file, from a byte offset. A part ends on a character boundary, and its
+ * note gives the offset of the next part, so a model can read a file of any stored size.
+ */
+function capFilePart(content: string, offset = 0): string {
+	const bytes = Buffer.from(scrubSecretsInText(content), 'utf8');
+	let start = Math.min(offset, bytes.byteLength);
+	while (isContinuationByte(bytes[start])) start += 1;
+	let end = Math.min(start + RUNTIME_SKILL_MAX_OUTPUT_BYTES, bytes.byteLength);
+	while (end > start && isContinuationByte(bytes[end])) end -= 1;
+	const part = bytes.subarray(start, end).toString('utf8');
+	if (end === bytes.byteLength) return part;
+	return `${part}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB. To read the next part, call load_skill with the same filePath and offset ${end} ...]`;
 }
 
 function cap(content: string): string {

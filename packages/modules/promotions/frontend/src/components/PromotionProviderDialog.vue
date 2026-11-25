@@ -42,6 +42,8 @@ import {
 const props = defineProps<{
 	open: boolean;
 	providerId?: string;
+	/** The environment that is being edited. It does not count as another user of the provider. */
+	environmentId?: string;
 	type?: PromotionProviderType;
 }>();
 
@@ -97,8 +99,13 @@ const storedPublicKey = computed(() => {
 	return config && 'publicKey' in config ? config.publicKey : null;
 });
 
-const isInUse = computed(() => usedBy.value.length > 0);
-const usedByNames = computed(() => [...new Set(usedBy.value.map(({ name }) => name))].join(', '));
+const otherEnvironments = computed(() =>
+	usedBy.value.filter(({ id }) => id !== props.environmentId),
+);
+const isInUse = computed(() => otherEnvironments.value.length > 0);
+const usedByNames = computed(() =>
+	[...new Set(otherEnvironments.value.map(({ name }) => name))].join(', '),
+);
 
 const hasUsername = computed(() => form.username.trim().length > 0);
 const hasPassword = computed(() => form.password.length > 0);
@@ -297,18 +304,17 @@ async function submit() {
 					data-test-id="promotion-provider-form-step"
 					@submit.prevent="submit"
 				>
-					<N8nNotice
+					<N8nText
 						v-if="isEdit && isInUse"
-						theme="warning"
+						color="text-base"
 						data-test-id="promotion-provider-in-use"
 					>
-						{{ i18n.baseText('settings.promotions.provider.inUse.warning') }}
 						{{
-							i18n.baseText('settings.promotions.provider.inUse.connections', {
+							i18n.baseText('settings.promotions.provider.inUse.description', {
 								interpolate: { names: usedByNames },
 							})
 						}}
-					</N8nNotice>
+					</N8nText>
 
 					<N8nInputLabel
 						input-name="promotion-provider-name"
@@ -442,10 +448,26 @@ async function submit() {
 								:aria-required="!isEdit || hasHostUrlChange"
 								type="password"
 								autocomplete="new-password"
-								:placeholder="isEdit && !hasHostUrlChange ? '••••••••' : undefined"
+								:placeholder="isEdit && !hasHostUrlChange ? '••••••••••••' : undefined"
 								:disabled="isLoading || isSubmitting"
 								data-test-id="promotion-provider-password-input"
 							/>
+							<N8nText
+								v-if="isEdit && capabilities.hasHostApi && hasHostUrlChange"
+								size="small"
+								:class="$style.hint"
+								color="text-base"
+							>
+								{{ i18n.baseText('settings.promotions.provider.form.accessToken.urlChangeHint') }}
+							</N8nText>
+							<N8nText
+								v-if="capabilities.hasHostApi && !isEdit"
+								size="small"
+								:class="$style.hint"
+								color="text-base"
+							>
+								{{ i18n.baseText('settings.promotions.provider.form.accessToken.hint') }}
+							</N8nText>
 						</N8nInputLabel>
 
 						<N8nText
@@ -454,23 +476,6 @@ async function submit() {
 							color="danger"
 						>
 							{{ i18n.baseText('settings.promotions.provider.form.credentials.required') }}
-						</N8nText>
-
-						<N8nText
-							v-if="isEdit && (!capabilities.hasHostApi || hasHostUrlChange)"
-							size="small"
-							:color="capabilities.hasHostApi ? 'text-base' : 'text-light'"
-						>
-							{{
-								i18n.baseText(
-									capabilities.hasHostApi
-										? 'settings.promotions.provider.form.accessToken.urlChangeHint'
-										: 'settings.promotions.provider.form.credentials.keepHint',
-								)
-							}}
-						</N8nText>
-						<N8nText v-if="capabilities.hasHostApi" size="small" color="text-base">
-							{{ i18n.baseText('settings.promotions.provider.form.accessToken.hint') }}
 						</N8nText>
 					</template>
 

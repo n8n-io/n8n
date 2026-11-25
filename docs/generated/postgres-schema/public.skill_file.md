@@ -6,6 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | content | text |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| isBinary | boolean | false | false |  |  | Content holds Base64 instead of UTF-8 text |
 | path | varchar(512) |  | false |  |  | Relative path, references/*.md in v1 |
 | skillVersionId | uuid |  | false |  | [public.skill_version](public.skill_version.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -18,6 +19,7 @@
 | PK_160721f9e4c22026c16138af2a1 | PRIMARY KEY | PRIMARY KEY ("skillVersionId", path) |
 | skill_file_content_not_null | n | NOT NULL content |
 | skill_file_createdAt_not_null | n | NOT NULL "createdAt" |
+| skill_file_isBinary_not_null | n | NOT NULL "isBinary" |
 | skill_file_path_not_null | n | NOT NULL path |
 | skill_file_skillVersionId_not_null | n | NOT NULL "skillVersionId" |
 | skill_file_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -38,6 +40,7 @@ erDiagram
 "public.skill_file" {
   text content
   timestamp_3__with_time_zone createdAt
+  boolean isBinary
   varchar_512_ path
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt

@@ -167,6 +167,12 @@ const hoveredStatus = computed(() => {
 	const summary = hoveredSummary.value;
 	if (!summary) return undefined;
 	if (summary.type === 'workflow') {
+		if (summary.isArchived) {
+			return {
+				label: i18n.baseText('workflows.item.archived'),
+				published: false,
+			};
+		}
 		return {
 			label: i18n.baseText(
 				summary.published ? 'workflows.published' : 'instanceAi.previewTabBar.draft',

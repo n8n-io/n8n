@@ -8,6 +8,7 @@ import {
 
 import { MfaService } from '@/mfa/mfa.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 @Service()
 export class SecurityPolicyInstanceSettingsLoader {
@@ -15,6 +16,7 @@ export class SecurityPolicyInstanceSettingsLoader {
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly securitySettingsService: SecuritySettingsService,
 		private readonly mfaService: MfaService,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
@@ -26,6 +28,8 @@ export class SecurityPolicyInstanceSettingsLoader {
 			mfaEnforcedEnabled,
 			personalSpacePublishingEnabled,
 			personalSpaceSharingEnabled,
+			workflowReviewsEnabled,
+			workflowReviewsAlwaysRequired,
 		} = this.instanceSettingsLoaderConfig;
 
 		if (!securityPolicyManagedByEnv) {
@@ -48,6 +52,22 @@ export class SecurityPolicyInstanceSettingsLoader {
 			PERSONAL_SPACE_SHARING_SETTING,
 			personalSpaceSharingEnabled,
 		);
+
+		const { before, after } = await this.workflowReviewPolicyService.update({
+			enabled: workflowReviewsEnabled,
+			alwaysRequired: workflowReviewsAlwaysRequired,
+		});
+
+		if (before.enabled && !after.enabled) {
+			this.logger.warn(
+				'Workflow reviews were turned off because N8N_WORKFLOW_REVIEWS_ENABLED is not true',
+			);
+		}
+		if (before.alwaysRequired && !after.alwaysRequired) {
+			this.logger.warn(
+				'Required workflow reviews were turned off because N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED is not true',
+			);
+		}
 
 		return 'created';
 	}

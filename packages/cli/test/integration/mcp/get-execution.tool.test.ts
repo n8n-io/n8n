@@ -61,6 +61,8 @@ const runExecutionData = (): IRunExecutionData => ({
 	},
 });
 
+const MAX_DATA_SIZE_BYTES = 1024 * 1024;
+
 const callTool = async (user: User, workflowId: string, executionId: string) => {
 	const tool = createGetExecutionTool(
 		user,
@@ -68,6 +70,7 @@ const callTool = async (user: User, workflowId: string, executionId: string) => 
 		Container.get(WorkflowFinderService),
 		telemetry,
 		Container.get(ExecutionRedactionServiceProxy),
+		MAX_DATA_SIZE_BYTES,
 	);
 
 	return await tool.handler(
@@ -147,5 +150,52 @@ describe('get_workflow_execution applies the workflow redaction policy', () => {
 
 		expect(itemOf(result)?.json).toEqual({ secret: SECRET });
 		expect(redactionInfoOf(result)).toBeUndefined();
+	});
+});
+
+describe('get_workflow_execution applies the display size limit', () => {
+	let owner: User;
+
+	beforeEach(async () => {
+		await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow', 'User']);
+		owner = await createOwner();
+	});
+
+	test('does not load execution data that is larger than the limit', async () => {
+		const workflow = await createWorkflow({ settings: { availableInMCP: true } }, owner);
+		const execution = await createExecution(
+			{
+				status: 'success',
+				data: stringify(runExecutionData()),
+				jsonSizeBytes: MAX_DATA_SIZE_BYTES + 1,
+			},
+			workflow,
+		);
+
+		const result = await callTool(owner, workflow.id, execution.id);
+
+		expect(result.structuredContent).toMatchObject({
+			execution: { id: execution.id, status: 'success' },
+			data: null,
+			dataTooLargeToDisplay: true,
+		});
+		expect(JSON.stringify(result.structuredContent)).not.toContain(SECRET);
+	});
+
+	test('loads execution data that is within the limit', async () => {
+		const workflow = await createWorkflow({ settings: { availableInMCP: true } }, owner);
+		const execution = await createExecution(
+			{
+				status: 'success',
+				data: stringify(runExecutionData()),
+				jsonSizeBytes: MAX_DATA_SIZE_BYTES - 1,
+			},
+			workflow,
+		);
+
+		const result = await callTool(owner, workflow.id, execution.id);
+
+		expect(itemOf(result)?.json).toEqual({ secret: SECRET });
+		expect(result.structuredContent).not.toHaveProperty('dataTooLargeToDisplay');
 	});
 });

@@ -324,7 +324,12 @@ export class McpServer {
 		return this.getTransport(sessionId) !== undefined;
 	}
 
-	handleWorkerResponse(sessionId: string, messageId: string, result: unknown): void {
+	handleWorkerResponse(
+		sessionId: string,
+		messageId: string,
+		result: unknown,
+		toolName?: string,
+	): void {
 		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 		const pending = this.pendingResponses[callId];
 
@@ -365,6 +370,7 @@ export class McpServer {
 					const formattedResult = MessageFormatter.formatToolResult(
 						result,
 						MessageFormatter.isErrorResult(result),
+						this.findSessionTool(sessionId, toolName)?.metadata?.isFromToolkit === true,
 					);
 					const response: JSONRPCMessage = {
 						jsonrpc: '2.0',
@@ -461,6 +467,10 @@ export class McpServer {
 
 	getTools(sessionId: string): Tool[] | undefined {
 		return this.sessionManager.getTools(sessionId);
+	}
+
+	private findSessionTool(sessionId: string, toolName: string | undefined): Tool | undefined {
+		return this.getTools(sessionId)?.find((tool) => tool.name === toolName);
 	}
 
 	getPendingCallsManager(): PendingCallsManager {
@@ -631,8 +641,7 @@ export class McpServer {
 						? request.params.arguments
 						: {};
 
-				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
-				const requestedTool = tools.find((tool) => tool.name === toolName);
+				const requestedTool = this.findSessionTool(extra.sessionId, toolName);
 				if (!requestedTool) {
 					throw new OperationalError('Tool not found');
 				}
