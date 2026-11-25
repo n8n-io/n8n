@@ -194,7 +194,8 @@ jobs:
 
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [pr-policy, changes, check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
+    needs:
+      [pr-policy, changes, check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
     # Validate the guard even when unrelated label events skip the expensive checks.
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
