@@ -137,6 +137,16 @@ vi.mock('n8n-core', async () => ({
 	}),
 }));
 
+// The re-entry guard only needs the metadata key from this module; mocking it
+// keeps the heavy callable-workflow import graph out of this suite.
+vi.mock('@/modules/agents/tools/workflow-guardrail-check', () => ({
+	GUARDRAIL_CHECK_FOR_KEY: 'guardrailCheckFor',
+}));
+
+// A deep mock would invent an abort signal without listeners.
+const mockExecuteOptions = (options: Partial<ExecuteWorkflowOptions> = {}) =>
+	mock<ExecuteWorkflowOptions>({ abortSignal: undefined, ...options });
+
 describe('WorkflowExecuteAdditionalData', () => {
 	const variablesService = mockInstance(VariablesService);
 	variablesService.getAllCached.mockResolvedValue([]);
@@ -3171,6 +3181,44 @@ describe('WorkflowExecuteAdditionalData', () => {
 				undefined,
 				executionSandboxScope,
 			);
+		});
+
+		it('refuses to re-enter the agent a guardrail check execution is guarding', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+				getRunExecutionData: vi.fn().mockResolvedValue({
+					resultData: { metadata: { guardrailCheckFor: AGENT_ID } },
+				} as unknown as IRunExecutionData),
+			});
+
+			await expect(
+				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'trigger'),
+			).rejects.toThrow('guardrail check');
+			expect(agentWorkflowExecutionService.executeForWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('allows messaging another agent from a guardrail check execution', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+				getRunExecutionData: vi.fn().mockResolvedValue({
+					resultData: { metadata: { guardrailCheckFor: 'other-agent' } },
+				} as unknown as IRunExecutionData),
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'trigger',
+			);
+
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledTimes(1);
 		});
 	});
 

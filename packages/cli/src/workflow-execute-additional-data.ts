@@ -524,6 +524,24 @@ export async function executeAgent(
 					}),
 				};
 
+	// A guardrail check execution must not re-enter the agent it guards: the
+	// nested turn would run the same check workflow again before its tool
+	// calls, without bound. Best-effort — an unreadable execution record
+	// allows the call.
+	if (additionalData.getRunExecutionData) {
+		const { GUARDRAIL_CHECK_FOR_KEY } = await import(
+			'@/modules/agents/tools/workflow-guardrail-check.js'
+		);
+		const runData = await Promise.resolve(additionalData.getRunExecutionData(executionId)).catch(
+			() => undefined,
+		);
+		if (runData?.resultData?.metadata?.[GUARDRAIL_CHECK_FOR_KEY] === source.agentId) {
+			throw new UserError(
+				'This agent is already running this workflow as a guardrail check. Remove the "Message an Agent" call to this agent from the guardrail check workflow.',
+			);
+		}
+	}
+
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
 		message,
