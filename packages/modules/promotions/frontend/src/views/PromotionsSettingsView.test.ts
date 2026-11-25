@@ -22,6 +22,10 @@ const api = vi.hoisted(() => ({
 	deleteProviderIfUnused: vi.fn<typeof PromotionsApi.deleteProviderIfUnused>(),
 	connectPromotionCheckout: vi.fn<typeof PromotionsApi.connectPromotionCheckout>(),
 	fetchMissingPromotionProjects: vi.fn<typeof PromotionsApi.fetchMissingPromotionProjects>(),
+	getPromotionProjectEnvironmentsSettings:
+		vi.fn<typeof PromotionsApi.getPromotionProjectEnvironmentsSettings>(),
+	updatePromotionProjectEnvironmentsSettings:
+		vi.fn<typeof PromotionsApi.updatePromotionProjectEnvironmentsSettings>(),
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
@@ -39,6 +43,7 @@ const environmentsSettings = {
 
 const mockConfirm = vi.fn();
 const showMessage = vi.fn();
+const showError = vi.fn();
 
 vi.mock('@n8n/design-system', async () => ({
 	...(await vi.importActual<object>('@n8n/design-system')),
@@ -46,7 +51,7 @@ vi.mock('@n8n/design-system', async () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage }),
+	useToast: () => ({ showError, showMessage }),
 }));
 
 vi.mock('vue-router', async () => ({
@@ -406,5 +411,71 @@ describe('PromotionsSettingsView', () => {
 
 		expect(environmentsSettings.setProtected).toHaveBeenCalled();
 		expect(toggle).toBeChecked();
+	});
+
+	describe('project environments setting', () => {
+		beforeEach(() => {
+			api.fetchPromotionEnvironments.mockResolvedValue([]);
+		});
+
+		it('turns project environments on for a user who manages environments', async () => {
+			useRBACStore().setGlobalScopes([
+				...PROMOTIONS_SETTINGS_SCOPES,
+				'promotions:manageEnvironments',
+			]);
+			api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: false });
+			api.updatePromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true });
+			renderView();
+
+			const toggle = await screen.findByRole('switch', { name: 'Project environments' });
+			await waitFor(() => expect(toggle).toBeEnabled());
+			expect(toggle).not.toBeChecked();
+			await userEvent.click(toggle);
+
+			expect(api.updatePromotionProjectEnvironmentsSettings).toHaveBeenCalledWith(
+				expect.anything(),
+				{ enabled: true },
+			);
+			await waitFor(() => expect(toggle).toBeChecked());
+		});
+
+		it('shows the stored value and an error when saving fails', async () => {
+			useRBACStore().setGlobalScopes([
+				...PROMOTIONS_SETTINGS_SCOPES,
+				'promotions:manageEnvironments',
+			]);
+			api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true });
+			api.updatePromotionProjectEnvironmentsSettings.mockRejectedValue(new Error('Request failed'));
+			renderView();
+
+			const toggle = await screen.findByRole('switch', { name: 'Project environments' });
+			await waitFor(() => expect(toggle).toBeChecked());
+			await waitFor(() => expect(toggle).toBeEnabled());
+			await userEvent.click(toggle);
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(
+					expect.anything(),
+					"Couldn't update the project environments setting",
+					expect.anything(),
+				),
+			);
+			expect(api.updatePromotionProjectEnvironmentsSettings).toHaveBeenCalledWith(
+				expect.anything(),
+				{ enabled: false },
+			);
+			expect(toggle).toBeChecked();
+		});
+
+		it('hides the setting from a user who cannot manage environments', async () => {
+			useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES]);
+			renderView();
+
+			await screen.findByRole('switch', { name: 'Protected instance' });
+			expect(
+				screen.queryByRole('switch', { name: 'Project environments' }),
+			).not.toBeInTheDocument();
+			expect(api.getPromotionProjectEnvironmentsSettings).not.toHaveBeenCalled();
+		});
 	});
 });

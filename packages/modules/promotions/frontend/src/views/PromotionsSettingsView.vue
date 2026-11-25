@@ -36,6 +36,7 @@ import { useRouter } from 'vue-router';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import PromotionProjectAccessRows from '../components/PromotionProjectAccessRows.vue';
+import PromotionProjectEnvironmentsRow from '../components/PromotionProjectEnvironmentsRow.vue';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
@@ -63,6 +64,7 @@ const settingsStore = useSettingsStore();
 const showProjectAccess =
 	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE.length > 0 &&
 	useRBACStore().hasScope('securitySettings:manage');
+const showProjectEnvironments = useRBACStore().hasScope('promotions:manageEnvironments');
 const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
@@ -282,6 +284,7 @@ async function remove(environment: PromotionEnvironment) {
 						/>
 					</template>
 				</N8nSettingsRow>
+				<PromotionProjectEnvironmentsRow v-if="showProjectEnvironments" />
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
 		<N8nSettingsSection
