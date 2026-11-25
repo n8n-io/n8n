@@ -85,6 +85,19 @@ describe('CreateMcpServerDialog', () => {
 	});
 
 	it.each([
+		['abc!!', 'abc-', '/mcp-servers/abc'],
+		['!!!', '', '/mcp-servers/marketing-tools'],
+	])('shows in the slug field only what the slug keeps from %j', async (typed, field, url) => {
+		setUp();
+		await renderDialog();
+
+		await userEvent.type(screen.getByTestId('create-mcp-server-slug'), typed);
+
+		expect(screen.getByTestId('create-mcp-server-slug')).toHaveValue(field);
+		expect(screen.getByTestId('create-mcp-server-url')).toHaveTextContent(url);
+	});
+
+	it.each([
 		['taken', 'This URL is already taken.'],
 		['reserved', 'A deleted server used this URL. It stays reserved, so pick another one.'],
 	] as const)('marks a slug that is %s and blocks the create', async (reason, message) => {
