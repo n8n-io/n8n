@@ -2,6 +2,8 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
@@ -549,6 +551,23 @@ describe('SimulationSessionService', () => {
 		const second = await service.openForDraftRun(openInput);
 		expect(second).not.toBe(first);
 		expect(backend.openWorld).toHaveBeenCalledTimes(3);
+	});
+
+	it('resets the chat when another main relays a reset', () => {
+		const handlers = Container.get(PubSubMetadata)
+			.getHandlers()
+			.filter(
+				({ eventName, eventHandlerClass }) =>
+					eventName === 'reset-agent-test-run' &&
+					eventHandlerClass.name === 'SimulationSessionService',
+			);
+
+		expect(handlers).toEqual([
+			expect.objectContaining({
+				methodName: 'resetForTestChat',
+				filter: { instanceType: 'main' },
+			}),
+		]);
 	});
 
 	it('does nothing when the reset chat has no session', () => {

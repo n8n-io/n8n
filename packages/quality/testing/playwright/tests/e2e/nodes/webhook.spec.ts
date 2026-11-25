@@ -17,7 +17,7 @@ test.describe(
 			await n8n.start.fromBlankCanvas();
 		});
 
-		test('should listen for all HTTP methods (GET, POST, DELETE, HEAD, PATCH, PUT)', async ({
+		test('should listen for all HTTP methods (GET, POST, DELETE, HEAD, PATCH, PUT) @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.addNode('Webhook');
@@ -37,7 +37,28 @@ test.describe(
 			}
 		});
 
-		test('should listen for a GET request and respond with Respond to Webhook node', async ({
+		test('should show the progress of a test run as it happens @engine:v2', async ({ n8n }) => {
+			await n8n.canvas.addNode('Webhook');
+			await n8n.ndv.setupHelper.webhook({ httpMethod: 'GET' });
+			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
+			await n8n.ndv.close();
+			await addEditFieldsNode(n8n);
+			await n8n.canvas.logsPanel.open();
+
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
+			const response = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`);
+			expect(response.ok()).toBe(true);
+
+			const entries = n8n.canvas.logsPanel.getLogEntries();
+			await expect(entries.nth(0)).toContainText('Webhook');
+			await expect(entries.nth(1)).toContainText('Edit Fields');
+			await expect(
+				n8n.canvas.logsPanel.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
+			).toBeVisible();
+		});
+
+		test('should listen for a GET request and respond with Respond to Webhook node @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.addNode('Webhook');
@@ -59,7 +80,7 @@ test.describe(
 			expect(responseData.MyValue).toBe(1234);
 		});
 
-		test('should listen for a GET request and respond with custom status code 201', async ({
+		test('should listen for a GET request and respond with custom status code 201 @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.addNode('Webhook');
@@ -77,7 +98,9 @@ test.describe(
 			expect(response.status()).toBe(201);
 		});
 
-		test('should listen for a GET request and respond with last node', async ({ n8n }) => {
+		test('should listen for a GET request and respond with last node @engine:v2', async ({
+			n8n,
+		}) => {
 			await n8n.canvas.addNode('Webhook');
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
@@ -99,7 +122,7 @@ test.describe(
 			expect(responseData.MyValue).toBe(1234);
 		});
 
-		test('should listen for a GET request and respond with last node binary data', async ({
+		test('should listen for a GET request and respond with last node binary data @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.addNode('Webhook');
@@ -131,7 +154,9 @@ test.describe(
 			expect('data' in responseData).toBe(true);
 		});
 
-		test('should listen for a GET request and respond with an empty body', async ({ n8n }) => {
+		test('should listen for a GET request and respond with an empty body @engine:v2', async ({
+			n8n,
+		}) => {
 			await n8n.canvas.addNode('Webhook');
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
@@ -149,7 +174,9 @@ test.describe(
 			expect(responseData).toBe('');
 		});
 
-		test('should listen for a GET request with Basic Authentication', async ({ n8n }) => {
+		test('should listen for a GET request with Basic Authentication @engine:v2', async ({
+			n8n,
+		}) => {
 			const credentialName = `test-${nanoid()}`;
 			const user = `test-${nanoid()}`;
 			const password = `test-${nanoid()}`;
@@ -189,7 +216,9 @@ test.describe(
 			expect(successResponse.ok()).toBe(true);
 		});
 
-		test('should listen for a GET request with Header Authentication', async ({ n8n }) => {
+		test('should listen for a GET request with Header Authentication @engine:v2', async ({
+			n8n,
+		}) => {
 			const credentialName = `test-${nanoid()}`;
 			// Keep the header NAME underscore-free: proxies commonly drop request headers
 			// with underscores in the name (the multi-main CI stack's Caddy LB does), and
@@ -240,7 +269,9 @@ test.describe(
 			expect(successResponse.ok()).toBe(true);
 		});
 
-		test('CAT-1253-bug-cant-run-workflow-when-unconnected-nodes-have-errors', async ({ n8n }) => {
+		test('CAT-1253-bug-cant-run-workflow-when-unconnected-nodes-have-errors @engine:v2', async ({
+			n8n,
+		}) => {
 			// Add Webhook node
 			await n8n.canvas.addNode('Webhook');
 			await n8n.ndv.setupHelper.webhook({

@@ -8,12 +8,18 @@ const {
 	modelValue,
 	label,
 	disabled = false,
+	loading = false,
 } = defineProps<{
 	/** `undefined` while the access of the type is not loaded. */
 	modelValue: PolicyAction | undefined;
 	/** The name of the type, for the accessible label. */
 	label: string;
 	disabled?: boolean;
+	/**
+	 * Shows a spinner, for example while a change waits for a check. The select stays enabled,
+	 * because a disabled select loses the focus.
+	 */
+	loading?: boolean;
 }>();
 
 const emit = defineEmits<{ 'update:modelValue': [action: PolicyAction] }>();
@@ -37,6 +43,8 @@ const options = computed<PolicyAction[]>(() =>
 	modelValue === 'delegate' ? ['allow', 'deny', 'delegate'] : ['allow', 'deny'],
 );
 
+const valueIcon = computed(() => (modelValue ? ACCESS_ICON[modelValue] : undefined));
+
 function onChange(value: unknown) {
 	const action = policyActionSchema.safeParse(value);
 	if (action.success && action.data !== modelValue) emit('update:modelValue', action.data);
@@ -56,10 +64,18 @@ function onChange(value: unknown) {
 		data-test-id="type-access-select"
 		@update:model-value="onChange"
 	>
-		<template v-if="modelValue && ACCESS_ICON[modelValue]" #prefix>
+		<template v-if="loading || valueIcon" #prefix>
 			<N8nIcon
-				:icon="ACCESS_ICON[modelValue].icon"
-				:color="ACCESS_ICON[modelValue].color"
+				v-if="loading"
+				icon="loader-circle"
+				size="small"
+				spin
+				data-test-id="type-access-select-loading"
+			/>
+			<N8nIcon
+				v-else-if="valueIcon"
+				:icon="valueIcon.icon"
+				:color="valueIcon.color"
 				size="small"
 				data-test-id="type-access-select-icon"
 			/>

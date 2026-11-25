@@ -17,6 +17,12 @@
 		"POST /agents": {
 			"status": "gap"
 		},
+		"POST /agents/{agentId}/archive": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/unarchive": {
+			"status": "gap"
+		},
 		"PUT /agents/{agentId}": {
 			"status": "gap"
 		},
@@ -267,6 +273,12 @@
 			"status": "gap"
 		},
 		"POST /source-control/push": {
+			"status": "gap"
+		},
+		"GET /promotions/settings": {
+			"status": "gap"
+		},
+		"PUT /promotions/settings": {
 			"status": "gap"
 		},
 		"GET /promotions/providers": {

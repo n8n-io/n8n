@@ -989,3 +989,226 @@ describe('PUT /agents/:agentId', () => {
 		expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
 	});
 });
+
+describe('agent archive public API', () => {
+	let agentRepository: AgentRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	const createAgent = async (projectId: string, id: string) =>
+		await createTestAgent({
+			id,
+			name: 'My Agent',
+			projectId,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+	describe('POST /agents/:agentId/archive', () => {
+		test('should archive the agent and return it', async () => {
+			const member: User = await createMemberWithApiKey();
+			const personalProject: Project = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(member.id);
+			const agent = await createAgent(personalProject.id, 'agent-to-archive');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-to-archive/archive');
+
+			expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+			expect(response.body).toMatchObject({
+				id: agent.id,
+				name: agent.name,
+				projectId: personalProject.id,
+				isArchived: true,
+			});
+			for (const field of builderOnlyFields) {
+				expect(response.body).not.toHaveProperty(field);
+			}
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(true);
+		});
+
+		test('should return 200 when the agent is already archived', async () => {
+			const member = await createMemberWithApiKey();
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(member.id);
+			const agent = await createAgent(personalProject.id, 'agent-archived-twice');
+			const client = testServer.publicApiAgentFor(member);
+
+			const first = await client.post('/agents/agent-archived-twice/archive');
+			expect(first.statusCode, JSON.stringify(first.body)).toBe(200);
+
+			const second = await client.post('/agents/agent-archived-twice/archive');
+
+			expect(second.statusCode, JSON.stringify(second.body)).toBe(200);
+			expect(second.body.isArchived).toBe(true);
+			expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(true);
+		});
+
+		test('should return 404 when the agent does not exist', async () => {
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/agents/missing-agent/archive');
+
+			expect(response.statusCode).toBe(404);
+		});
+
+		test('should return 403 when the API key lacks the agent:delete scope', async () => {
+			const member = await createMemberWithApiKey({ scopes: ['agent:read'] });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(member.id);
+			const agent = await createAgent(personalProject.id, 'agent-kept');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-kept/archive');
+
+			expect(response.statusCode).toBe(403);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(false);
+		});
+
+		test('should return 403 when the user lacks the agent:delete project permission', async () => {
+			const owner = await createOwnerWithApiKey();
+			const member = await createMemberWithApiKey();
+			const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+				roleType: 'project',
+				displayName: 'Agent Reader',
+				description: 'Can read agents but not delete them',
+			});
+
+			const teamProject = await createTeamProject('Test Project', owner);
+			await linkUserToProject(member, teamProject, customRole.slug);
+			const agent = await createAgent(teamProject.id, 'agent-kept');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-kept/archive');
+
+			expect(response.statusCode).toBe(403);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(false);
+		});
+
+		test('should return 403 when the agent belongs to a project the user cannot access', async () => {
+			const owner = await createOwnerWithApiKey();
+			const member = await createMemberWithApiKey();
+			const teamProject = await createTeamProject('Other Project', owner);
+			const agent = await createAgent(teamProject.id, 'agent-kept');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-kept/archive');
+
+			expect(response.statusCode).toBe(403);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(false);
+		});
+	});
+
+	describe('POST /agents/:agentId/unarchive', () => {
+		test('should restore an archived agent', async () => {
+			const member: User = await createMemberWithApiKey();
+			const personalProject: Project = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(member.id);
+			const agent = await createAgent(personalProject.id, 'agent-to-restore');
+			const client = testServer.publicApiAgentFor(member);
+
+			const archived = await client.post('/agents/agent-to-restore/archive');
+			expect(archived.statusCode, JSON.stringify(archived.body)).toBe(200);
+
+			const response = await client.post('/agents/agent-to-restore/unarchive');
+
+			expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.isArchived).toBe(false);
+			expect(response.body.id).toBe(agent.id);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(false);
+		});
+
+		test('should return 400 when the agent is not archived', async () => {
+			const member = await createMemberWithApiKey();
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(member.id);
+			const agent = await createAgent(personalProject.id, 'agent-live');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-live/unarchive');
+
+			expect(response.statusCode).toBe(400);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(false);
+		});
+
+		test('should return 404 when the agent does not exist', async () => {
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/agents/missing-agent/unarchive');
+
+			expect(response.statusCode).toBe(404);
+		});
+
+		test('should return 403 when the API key lacks the agent:delete scope', async () => {
+			const owner = await createOwnerWithApiKey();
+			const member = await createMemberWithApiKey({ scopes: ['agent:read'] });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(member.id);
+			const agent = await createAgent(personalProject.id, 'agent-kept');
+			const archived = await testServer.publicApiAgentFor(owner).post('/agents/agent-kept/archive');
+			expect(archived.statusCode, JSON.stringify(archived.body)).toBe(200);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-kept/unarchive');
+
+			expect(response.statusCode).toBe(403);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(true);
+		});
+
+		test('should return 403 when the user lacks the agent:delete project permission', async () => {
+			const owner = await createOwnerWithApiKey();
+			const member = await createMemberWithApiKey();
+			const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+				roleType: 'project',
+				displayName: 'Agent Reader',
+				description: 'Can read agents but not delete them',
+			});
+
+			const teamProject = await createTeamProject('Test Project Unarchive', owner);
+			await linkUserToProject(member, teamProject, customRole.slug);
+			const agent = await createAgent(teamProject.id, 'agent-kept');
+			const archived = await testServer.publicApiAgentFor(owner).post('/agents/agent-kept/archive');
+			expect(archived.statusCode, JSON.stringify(archived.body)).toBe(200);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/agents/agent-kept/unarchive');
+
+			expect(response.statusCode).toBe(403);
+			expect((await agentRepository.findById(agent.id))?.isArchived).toBe(true);
+		});
+	});
+});

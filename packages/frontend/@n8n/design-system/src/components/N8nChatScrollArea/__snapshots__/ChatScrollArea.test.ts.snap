@@ -4,7 +4,7 @@ exports[`N8nChatScrollArea > should match the snapshot 1`] = `
 "<div class="chatScrollArea" style="--chat--input--height: 0px;" data-test-id="chat-scroll-area">
   <div class="viewport" tabindex="0" role="region" aria-label="Messages" data-test-id="chat-scroll-area-viewport">
     <div class="sentinel" aria-hidden="true"></div>
-    <div>
+    <div class="content">
       <p>First message</p>
     </div>
     <div class="spacer" aria-hidden="true"></div>
