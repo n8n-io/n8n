@@ -254,4 +254,9 @@ export const MCP_SERVER_ACTION_SCOPES = {
 	updateTool: 'mcpServer:update',
 	draftTool: 'mcpServer:update',
 	removeTool: 'mcpServer:update',
+	listConnections: 'mcpServer:read',
+	// Block, restore access, and remove change who can use the server.
+	blockPerson: 'mcpServer:update',
+	restoreAccess: 'mcpServer:update',
+	removePerson: 'mcpServer:update',
 } as const satisfies Record<string, Scope>;

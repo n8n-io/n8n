@@ -1,4 +1,4 @@
-import { BlockMcpServerUserDto } from '@n8n/api-types';
+import { BlockMcpServerUserDto, MCP_SERVER_ACTION_SCOPES } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Post, ProjectScope, RestController } from '@n8n/decorators';
 
@@ -17,14 +17,14 @@ export class McpServerAccessController {
 	) {}
 
 	@Get('/connections')
-	@ProjectScope('mcpServer:read')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.listConnections)
 	async list(req: ServerRequest) {
 		await this.flagGate.assertEnabled(req.user);
 		return await this.access.list(req.params.projectId, req.params.serverId);
 	}
 
 	@Post('/blocks')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.blockPerson)
 	async block(req: ServerRequest, _res: unknown, @Body dto: BlockMcpServerUserDto) {
 		await this.flagGate.assertEnabled(req.user);
 		return await this.access.block(req.params.projectId, req.params.serverId, dto.userId, {
@@ -34,7 +34,7 @@ export class McpServerAccessController {
 	}
 
 	@Delete('/blocks/:userId')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.restoreAccess)
 	async restore(req: PersonRequest) {
 		await this.flagGate.assertEnabled(req.user);
 		await this.access.restore(req.params.projectId, req.params.serverId, req.params.userId, {
@@ -45,7 +45,7 @@ export class McpServerAccessController {
 
 	/** Works only for a blocked person. */
 	@Delete('/connections/:userId')
-	@ProjectScope('mcpServer:update')
+	@ProjectScope(MCP_SERVER_ACTION_SCOPES.removePerson)
 	async remove(req: PersonRequest) {
 		await this.flagGate.assertEnabled(req.user);
 		await this.access.remove(req.params.projectId, req.params.serverId, req.params.userId);
