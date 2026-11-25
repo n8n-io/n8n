@@ -30,6 +30,7 @@ describe('KnowledgeRetrievalService', () => {
 		vi.clearAllMocks();
 		fileRepository.hasFilesForAgent.mockResolvedValue(false);
 		collectionSourceService.hasCollections.mockResolvedValue(false);
+		collectionSourceService.hasCollectionFiles.mockResolvedValue(false);
 	});
 
 	it('answers that the scope has files from the file repository, without a collection check', async () => {
@@ -61,12 +62,23 @@ describe('KnowledgeRetrievalService', () => {
 		expect(sandboxProviderProxy.warm).toHaveBeenCalledExactlyOnceWith(scope);
 	});
 
-	it('warms the sandbox when the scope has a collection and no files of its own', async () => {
+	it('warms the sandbox when the scope has a collection with files and no files of its own', async () => {
 		collectionSourceService.hasCollections.mockResolvedValue(true);
+		collectionSourceService.hasCollectionFiles.mockResolvedValue(true);
 
 		await service.warmSandbox(scope);
 
 		expect(sandboxProviderProxy.warm).toHaveBeenCalledExactlyOnceWith(scope);
+		expect(collectionSourceService.hasCollectionFiles).toHaveBeenCalledWith(scope);
+	});
+
+	it('does not warm the sandbox of a scope whose only collection is empty, although it has the tools', async () => {
+		collectionSourceService.hasCollections.mockResolvedValue(true);
+
+		await expect(service.hasFiles(scope)).resolves.toBe(true);
+		await service.warmSandbox(scope);
+
+		expect(sandboxProviderProxy.warm).not.toHaveBeenCalled();
 	});
 
 	it('does not warm the sandbox of a scope without files', async () => {

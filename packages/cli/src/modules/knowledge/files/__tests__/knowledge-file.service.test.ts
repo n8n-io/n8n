@@ -202,7 +202,7 @@ describe('KnowledgeFileService', () => {
 		mirrorService = mock<KnowledgeMirrorService>();
 		sandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
 		collectionSourceService = mock<KnowledgeCollectionSourceService>();
-		collectionSourceService.hasCollections.mockResolvedValue(false);
+		collectionSourceService.hasCollectionFiles.mockResolvedValue(false);
 		logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		service = makeService();
@@ -813,14 +813,14 @@ describe('KnowledgeFileService', () => {
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
-		expect(collectionSourceService.hasCollections).toHaveBeenCalledWith(scope);
+		expect(collectionSourceService.hasCollectionFiles).toHaveBeenCalledWith(scope);
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
 	});
 
-	it('keeps the sandbox after the final file is deleted when the scope still has a collection', async () => {
+	it('keeps the sandbox after the final file is deleted when a collection of the scope has files', async () => {
 		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
-		collectionSourceService.hasCollections.mockResolvedValue(true);
+		collectionSourceService.hasCollectionFiles.mockResolvedValue(true);
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
@@ -829,6 +829,16 @@ describe('KnowledgeFileService', () => {
 			scope,
 			expect.any(Function),
 		);
+	});
+
+	it('destroys the sandbox after the final file is deleted when the collections of the scope are empty', async () => {
+		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
+		collectionSourceService.hasCollections.mockResolvedValue(true);
+
+		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
+
+		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
+		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
 	});
 
 	it('deletes the file and its blob', async () => {

@@ -49,6 +49,19 @@ export class KnowledgeCollectionSourceService {
 		return await this.collectionRepository.hasUsableByAgent(scope.agentId, scope.projectId, {});
 	}
 
+	/**
+	 * Whether a collection that the scope can search has a file, so there is
+	 * something to mirror. The sandbox lifecycle asks this; the tools ask
+	 * `hasCollections`, because an empty collection still gets the tools.
+	 */
+	async hasCollectionFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
+		if (!(await this.availabilityService.isCollectionsEnabled())) {
+			return false;
+		}
+
+		return await this.collectionRepository.hasUsableFileByAgent(scope.agentId, scope.projectId, {});
+	}
+
 	async load(scope: KnowledgeConsumerScope): Promise<KnowledgeCollectionSource> {
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			return EMPTY_SOURCE;

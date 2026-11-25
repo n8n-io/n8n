@@ -97,6 +97,31 @@ describe('KnowledgeCollectionSourceService', () => {
 		});
 	});
 
+	describe('hasCollectionFiles', () => {
+		it('asks the repository for a file in a usable collection of the scope', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.hasUsableFileByAgent.mockResolvedValue(true);
+
+			await expect(service.hasCollectionFiles(scope)).resolves.toBe(true);
+
+			expect(collectionRepository.hasUsableFileByAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				{},
+			);
+		});
+
+		it('is false without a repository call while collections are off', async () => {
+			const { service, collectionRepository } = makeService({
+				availabilityService: makeKnowledgeAvailabilityService({ collectionsFlag: false }),
+			});
+
+			await expect(service.hasCollectionFiles(scope)).resolves.toBe(false);
+
+			expect(collectionRepository.hasUsableFileByAgent).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('load', () => {
 		it('returns the collections of the scope with their files under one directory each', async () => {
 			const { service, collectionRepository, fileRepository } = makeService();

@@ -87,6 +87,17 @@ export class KnowledgeCollectionRepository {
 		return await this.usableByAgentQuery(agentId, projectId, ctx).getExists();
 	}
 
+	/** Whether a shared collection that the agent can search has a file. Same rule as `findUsableByAgent`. */
+	async hasUsableFileByAgent(
+		agentId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.usableByAgentQuery(agentId, projectId, ctx)
+			.innerJoin(KnowledgeFile, 'file', 'file.knowledgeCollectionId = collection.id')
+			.getExists();
+	}
+
 	private usableByAgentQuery(agentId: string, projectId: string, ctx: OperationContext) {
 		return this.table
 			.managerFor(ctx)

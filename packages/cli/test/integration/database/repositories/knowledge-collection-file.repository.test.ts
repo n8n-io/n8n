@@ -171,6 +171,33 @@ describe('Knowledge collection repositories', () => {
 				expect(await collectionRepo.hasUsableByAgent(agent.id, projectId, {})).toBe(false);
 			});
 		});
+
+		describe('hasUsableFileByAgent', () => {
+			it('is true only when a linked collection of the project has a file', async () => {
+				const agent = await createAgent({ projectId });
+				const emptyId = await createCollection({ name: 'Empty' });
+				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: emptyId });
+				const unlinkedId = await createCollection({ name: 'Not linked' });
+				await fileRepo.saveUploadedFile(fileParams(unlinkedId, 'unlinked.txt'), {});
+
+				expect(await collectionRepo.hasUsableByAgent(agent.id, projectId, {})).toBe(true);
+				expect(await collectionRepo.hasUsableFileByAgent(agent.id, projectId, {})).toBe(false);
+
+				await fileRepo.saveUploadedFile(fileParams(emptyId, 'first.txt'), {});
+
+				expect(await collectionRepo.hasUsableFileByAgent(agent.id, projectId, {})).toBe(true);
+			});
+
+			it('ignores the file of a linked collection that another project owns', async () => {
+				const agent = await createAgent({ projectId });
+				const otherProjectId = (await createTeamProject()).id;
+				const foreignId = await createCollection({ projectId: otherProjectId });
+				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: foreignId });
+				await fileRepo.saveUploadedFile(fileParams(foreignId, 'foreign.txt'), {});
+
+				expect(await collectionRepo.hasUsableFileByAgent(agent.id, projectId, {})).toBe(false);
+			});
+		});
 	});
 
 	describe('KnowledgeCollectionFileRepository', () => {

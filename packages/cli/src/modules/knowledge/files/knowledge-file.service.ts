@@ -52,8 +52,8 @@ export type KnowledgeWriteRunner = <T>(write: (ctx: OperationContext) => Promise
  * Upload, listing and deletion of the knowledge files of one consumer scope.
  * An upload or a delete also refreshes the sandbox mirror of the scope, and
  * the delete of the last file removes the sandbox, unless the scope still has
- * a collection to search. The caller owns the availability and ownership
- * checks.
+ * a file to search in a collection. The caller owns the availability and
+ * ownership checks.
  */
 @Service()
 export class KnowledgeFileService {
@@ -135,11 +135,13 @@ export class KnowledgeFileService {
 				});
 			});
 
-		// The mirror of an agent that still searches a collection stays, without the deleted file.
-		const hasKnowledgeLeft =
+		// The sandbox follows the files to mirror: it stays, without the deleted file, while the
+		// agent has a file of its own or a file in a collection it searches. An empty collection
+		// keeps the tools attached, but needs no sandbox.
+		const hasFilesToMirror =
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
-			(await this.collectionSourceService.hasCollections(scope));
-		if (hasKnowledgeLeft) {
+			(await this.collectionSourceService.hasCollectionFiles(scope));
+		if (hasFilesToMirror) {
 			this.scheduleMirrorSync(scope, writeFence);
 		} else {
 			await this.sandboxProviderProxy.destroy(scope);
