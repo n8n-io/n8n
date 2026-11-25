@@ -2598,6 +2598,7 @@ const instanceAiPermissionsSchema = z.object({
 	createSkill: instanceAiPermissionModeSchema,
 	updateSkill: instanceAiPermissionModeSchema,
 	deleteSkill: instanceAiPermissionModeSchema,
+	deleteMcpServer: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2632,6 +2633,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	createSkill: 'require_approval',
 	updateSkill: 'require_approval',
 	deleteSkill: 'require_approval',
+	deleteMcpServer: 'require_approval',
 };
 
 /**
@@ -2666,6 +2668,8 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'createSkill',
 	'updateSkill',
 	'deleteSkill',
+	// Source control does not carry custom MCP servers.
+	'deleteMcpServer',
 ]);
 
 /** Returns a copy of permissions with all write operations set to 'blocked',

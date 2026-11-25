@@ -28,6 +28,12 @@ import type {
 	AppBuildResponse,
 	AppListResponse,
 	AppResponse,
+	McpServerDetailResponse,
+	McpServerResponse,
+	McpServerToolCandidate,
+	McpServerToolDraftField,
+	McpServerToolDraftResponse,
+	McpServerToolResponse,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
@@ -1376,6 +1382,55 @@ export interface InstanceAiAppService {
 	exportSdk(): Promise<Buffer>;
 }
 
+// ── Custom MCP servers ──────────────────────────────────────────────────────
+
+/**
+ * One server of a project. Without `projectId`, the adapter uses the project of the
+ * conversation, or else the personal project of the user.
+ */
+export interface CustomMcpServerRef {
+	serverId: string;
+	projectId?: string;
+}
+
+/**
+ * The builder actions on custom MCP servers. The adapter calls the same module services as the
+ * REST API, with the same project scopes, and marks each event with the source "assistant".
+ */
+export interface InstanceAiCustomMcpServerService {
+	/** The servers of one project, or of every project that the user can list. */
+	list(projectId?: string): Promise<McpServerResponse[]>;
+	/** One server with its tools. */
+	get(ref: CustomMcpServerRef): Promise<McpServerDetailResponse>;
+	create(input: {
+		projectId?: string;
+		name: string;
+		/** Without a slug, the adapter makes one from the name. */
+		slug?: string;
+		description?: string;
+	}): Promise<McpServerResponse>;
+	update(
+		ref: CustomMcpServerRef,
+		changes: { name?: string; description?: string },
+	): Promise<McpServerResponse>;
+	delete(ref: CustomMcpServerRef): Promise<void>;
+	/** Every workflow of the project, with the reason when it cannot be a tool. */
+	listToolCandidates(ref: CustomMcpServerRef): Promise<McpServerToolCandidate[]>;
+	addTools(ref: CustomMcpServerRef, workflowIds: string[]): Promise<McpServerToolResponse[]>;
+	updateTool(
+		ref: CustomMcpServerRef,
+		toolId: string,
+		changes: { toolName?: string; description?: string },
+	): Promise<McpServerToolResponse>;
+	/** "Generate": an AI draft of one field, or of both fields without `field`. */
+	generateTool(
+		ref: CustomMcpServerRef,
+		toolId: string,
+		field?: McpServerToolDraftField,
+	): Promise<McpServerToolDraftResponse>;
+	removeTool(ref: CustomMcpServerRef, toolId: string): Promise<void>;
+}
+
 // ── Evaluation configs (config-based evals) ──────────────────────────────────
 
 /** Preset LLM-judge metrics supported by config-based evals — mirrors
@@ -1878,6 +1933,8 @@ export interface InstanceAiContext {
 	agentFeedbackService?: InstanceAiAgentFeedbackService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
+	/** Present when custom MCP servers are on for the user; its absence hides the tool. */
+	customMcpServerService?: InstanceAiCustomMcpServerService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

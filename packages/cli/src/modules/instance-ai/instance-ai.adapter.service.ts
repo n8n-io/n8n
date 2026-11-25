@@ -27,6 +27,8 @@ import {
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -61,6 +63,7 @@ import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiAppService,
+	InstanceAiCustomMcpServerService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -215,6 +218,7 @@ import {
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
+import { InstanceAiCustomMcpServersAdapterService } from './instance-ai-custom-mcp-servers.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
@@ -460,6 +464,8 @@ export interface InstanceAiFeatureFlags {
 	assistantSkillsEnabled: boolean;
 	skillSourcesEnabled?: boolean;
 	preferencesNoteVariant?: string;
+	/** Custom MCP servers: only the variant `test` of the flag turns them on. */
+	customMcpServersEnabled: boolean;
 }
 
 const AGENT_FEEDBACK_SUMMARY_MAX_LENGTH = 1000;
@@ -613,6 +619,8 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			skillSourcesEnabled?: boolean;
+			/** Falsy → the custom MCP servers service and tool are not wired. */
+			customMcpServersEnabled?: boolean;
 			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
@@ -645,6 +653,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			customMcpServersEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage,
@@ -743,6 +752,9 @@ export class InstanceAiAdapterService {
 				skillSourcesEnabled,
 			),
 			appService: this.createAppAdapter(user, projectId, threadId),
+			...(customMcpServersEnabled === true
+				? { customMcpServerService: this.createCustomMcpServerAdapter(user, projectId, threadId) }
+				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
@@ -901,6 +913,7 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
+			customMcpServersEnabled: flags[CUSTOM_MCP_SERVERS_FLAG] === CUSTOM_MCP_SERVERS_FLAG_VARIANT,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
@@ -3883,6 +3896,18 @@ export class InstanceAiAdapterService {
 				return await sources.exportSdk();
 			},
 		};
+	}
+
+	private createCustomMcpServerAdapter(
+		user: User,
+		projectId?: string,
+		threadId?: string,
+	): InstanceAiCustomMcpServerService | undefined {
+		const access = this.createProjectScopeHelpers(user, projectId);
+		return Container.get(InstanceAiCustomMcpServersAdapterService).createService(user, {
+			threadId,
+			access,
+		});
 	}
 
 	private createDataTableAdapter(user: User, boundProjectId?: string): InstanceAiDataTableService {

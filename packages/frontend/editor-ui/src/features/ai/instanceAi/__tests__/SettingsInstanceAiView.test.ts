@@ -55,12 +55,14 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 const {
 	cloudBrowserExperimentMock,
 	contextSkillsEnabledMock,
+	customMcpServersEnabledMock,
 	confirmMock,
 	testSavedCredentialMock,
 	toastMock,
 } = vi.hoisted(() => ({
 	cloudBrowserExperimentMock: vi.fn(),
 	contextSkillsEnabledMock: vi.fn(() => true),
+	customMcpServersEnabledMock: vi.fn(() => false),
 	confirmMock: vi.fn(),
 	testSavedCredentialMock: vi.fn(),
 	toastMock: { showMessage: vi.fn(), showError: vi.fn() },
@@ -88,6 +90,10 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 vi.mock('@/features/settings/context/context.utils', () => ({
 	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
+}));
+
+vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
+	customMcpServersEnabled: () => customMcpServersEnabledMock(),
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
@@ -132,6 +138,7 @@ describe('SettingsInstanceAiView', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		customMcpServersEnabledMock.mockReturnValue(false);
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
 		cloudBrowserExperimentMock.mockReturnValue({ isEnabled: ref(true) });
@@ -1287,6 +1294,31 @@ describe('SettingsInstanceAiView', () => {
 			const { queryByTestId } = renderComponent();
 
 			expect(queryByTestId('n8n-agent-permission-group-skills')).toBeNull();
+		});
+
+		it('shows the delete permission of custom MCP servers while the module and the flag are on', () => {
+			customMcpServersEnabledMock.mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name) => name === 'mcp-servers',
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-customMcpServers').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it.each([
+			{ name: 'the flag is off', flag: false, module: true },
+			{ name: 'the module is off', flag: true, module: false },
+		])('hides the custom MCP servers group when $name', ({ flag, module }) => {
+			customMcpServersEnabledMock.mockReturnValue(flag);
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(module);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-group-customMcpServers')).toBeNull();
 		});
 
 		it('summarises the untouched Preferences group as the default', () => {

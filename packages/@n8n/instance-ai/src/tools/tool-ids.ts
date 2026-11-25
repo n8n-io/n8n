@@ -67,6 +67,8 @@ export const DOMAIN_TOOL_IDS = {
 	VIEW_FILE: 'view-file',
 	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
+	// Builds the custom MCP servers of a project. `mcp-servers` connects third-party servers.
+	CUSTOM_MCP_SERVERS: 'custom-mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',

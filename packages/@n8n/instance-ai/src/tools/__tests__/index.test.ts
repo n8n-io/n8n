@@ -474,6 +474,15 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('skills')).toBeDefined();
 	});
 
+	it('gates the custom MCP servers tool on the host-wired customMcpServerService', () => {
+		expect(createOrchestratorDomainTools(makeContext()).get('custom-mcp-servers')).toBeUndefined();
+
+		const enabled = makeContext({
+			customMcpServerService: {} as InstanceAiContext['customMcpServerService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('custom-mcp-servers')).toBeDefined();
+	});
+
 	it.each([
 		['the current Instance AI runtime', {}],
 		['the Assistant agent', { storedFiles: { read: vi.fn() } }],

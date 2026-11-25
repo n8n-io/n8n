@@ -69,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
 	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
@@ -1935,6 +1936,12 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
+vi.mock('@n8n/backend-module-mcp-servers', () => ({
+	CustomMcpServersFlagGate: class {},
+	McpServersService: class {},
+	McpServerToolsService: class {},
+}));
+
 vi.mock('@n8n/backend-module-apps', () => ({
 	AppsService: class {},
 	AppSourceArchiveService: class {},
@@ -2013,6 +2020,13 @@ import {
 	AppSourceArchiveService,
 	renderBindingTypes,
 } from '@n8n/backend-module-apps';
+
+import {
+	CustomMcpServersFlagGate,
+	McpServersService,
+	McpServerToolsService,
+} from '@n8n/backend-module-mcp-servers';
+import { InstanceAiCustomMcpServersAdapterService } from '../instance-ai-custom-mcp-servers.adapter';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 
@@ -2582,6 +2596,7 @@ function createDataTableAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
 	projectId?: string;
 	threadId?: string;
+	customMcpServersEnabled?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2666,6 +2681,7 @@ function createDataTableAdapterForTests(overrides?: {
 	const context = service.createContext(mockUser, {
 		projectId: overrides?.projectId,
 		threadId: overrides?.threadId,
+		customMcpServersEnabled: overrides?.customMcpServersEnabled,
 	});
 	const adapter = context.dataTableService;
 
@@ -8591,6 +8607,7 @@ describe('resolveExperimentGates', () => {
 			approvalModesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
+			customMcpServersEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -8729,6 +8746,7 @@ describe('resolveExperimentGates', () => {
 			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
+			customMcpServersEnabled: false,
 		});
 	});
 
@@ -8763,6 +8781,18 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it.each([
+		['test', true],
+		['control', false],
+		[true, false],
+	])('opens the custom MCP servers gate only on the variant test (%s)', async (value, enabled) => {
+		stubContainer({ [CUSTOM_MCP_SERVERS_FLAG]: value });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			customMcpServersEnabled: enabled,
+		});
+	});
+
 	it('opens the approval modes gate only on a boolean true', async () => {
 		stubContainer({ ...allEnabled, [INSTANCE_AI_APPROVAL_MODES_FLAG]: 'variant' });
 
@@ -8787,6 +8817,7 @@ describe('resolveExperimentGates', () => {
 			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
+			customMcpServersEnabled: false,
 		});
 	});
 
@@ -8807,6 +8838,7 @@ describe('resolveExperimentGates', () => {
 			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
+			customMcpServersEnabled: false,
 		});
 	});
 });
@@ -10096,6 +10128,80 @@ describe('createContext — skill service wiring', () => {
 		service.createContext(mockUser, { threadId: 'thread-1', skillSourcesEnabled: true });
 
 		expect(createService).toHaveBeenCalledWith(mockUser, false, true);
+	});
+});
+
+describe('createContext: customMcpServerService', () => {
+	function mockMcpServersModule(active: boolean) {
+		const servers = mock<McpServersService>();
+		const registry = { isActive: (name: string) => active && name === 'mcp-servers' };
+		const get = Container.get.bind(Container);
+		vi.spyOn(Container, 'get').mockImplementation(((token: Parameters<typeof get>[0]) => {
+			if (token === InstanceAiCustomMcpServersAdapterService) {
+				return new InstanceAiCustomMcpServersAdapterService(registry as unknown as ModuleRegistry);
+			}
+			if (token === McpServersService) return servers;
+			if (token === McpServerToolsService) return mock<McpServerToolsService>();
+			if (token === CustomMcpServersFlagGate) return { assertEnabled: async () => {} };
+			return get(token);
+		}) as typeof get);
+		return { servers };
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{ name: 'the flag is off', enabled: false, active: true },
+		{ name: 'the module is inactive', enabled: true, active: false },
+	])('omits the service when $name', ({ enabled, active }) => {
+		mockMcpServersModule(active);
+
+		const { context } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			customMcpServersEnabled: enabled,
+		});
+
+		expect(context.customMcpServerService).toBeUndefined();
+	});
+
+	it('creates a server in the bound project with the create scope and the Assistant source', async () => {
+		const { servers } = mockMcpServersModule(true);
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+			customMcpServersEnabled: true,
+		});
+
+		await context.customMcpServerService?.create({ name: 'Marketing Tools' });
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['mcpServer:create'], false, {
+			projectId: 'project-1',
+		});
+		expect(servers.create).toHaveBeenCalledWith(
+			'project-1',
+			{ name: 'Marketing Tools', slug: 'marketing-tools', description: '' },
+			{ userId: 'user-1', source: 'assistant', threadId: 'thread-1' },
+		);
+	});
+
+	it('refuses a write to another project of a bound conversation', async () => {
+		const { servers } = mockMcpServersModule(true);
+		const { context } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			customMcpServersEnabled: true,
+		});
+
+		await expect(
+			context.customMcpServerService?.create({ projectId: 'project-2', name: 'Marketing Tools' }),
+		).rejects.toThrow();
+		expect(servers.create).not.toHaveBeenCalled();
 	});
 });
 

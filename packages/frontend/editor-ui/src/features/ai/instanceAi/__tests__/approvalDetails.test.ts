@@ -109,6 +109,27 @@ describe('approval details', () => {
 		});
 	});
 
+	describe('custom MCP servers', () => {
+		it('names the server when the Assistant asks to delete it', () => {
+			expect(
+				formatApprovalTitle({
+					toolName: 'custom-mcp-servers',
+					args: { action: 'delete', serverId: 'server-1' },
+					resourceName: 'Marketing Tools',
+				}),
+			).toBe('Assistant wants to delete the MCP server Marketing Tools');
+		});
+
+		it('asks to add tools when no server name is known', () => {
+			expect(
+				formatApprovalTitle({
+					toolName: 'custom-mcp-servers',
+					args: { action: 'add-tools', serverId: 'server-1' },
+				}),
+			).toBe('Allow n8n Assistant to add tools?');
+		});
+	});
+
 	describe('data table changes', () => {
 		const addEmail = { action: 'add-column', column: 'email', columnType: 'string' } as const;
 		const renameNote = { action: 'rename-column', column: 'note', newName: 'comment' } as const;
