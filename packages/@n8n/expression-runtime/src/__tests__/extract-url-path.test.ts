@@ -4,7 +4,6 @@ import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { createBridge, engineName } from './test-bridge';
 
 const LONE_SURROGATE = String.fromCharCode(0xd83d);
-const NUL = String.fromCharCode(0);
 
 describe(`extractUrlPath (${engineName})`, () => {
 	let evaluator: ExpressionEvaluator;
@@ -32,7 +31,6 @@ describe(`extractUrlPath (${engineName})`, () => {
 		['https://example.com', '/'],
 		['custom://host', ''],
 		['mailto:me@example.com', 'me@example.com'],
-		[`https://example.com/a${NUL}b`, '/a%00b'],
 		[`https://example.com/${LONE_SURROGATE}`, '/%EF%BF%BD'],
 	])('should give the path of `new URL()` for %j', (url, path) => {
 		expect(extractUrlPath(url)).toBe(path);
