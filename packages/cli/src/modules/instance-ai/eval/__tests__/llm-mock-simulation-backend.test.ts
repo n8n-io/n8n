@@ -206,7 +206,7 @@ describe('LlmMockSimulationBackend', () => {
 				{ status: 200 },
 			),
 		);
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({ testChatId: 'chat-1', ownerId: 'user-1', agent, firstMessage: 'hi' });
 
 		const reply = await world.handleRequest(
 			{ protocol: 'mcp', server: 'linear', method: 'POST', body: { method: 'tools/call' } },
@@ -228,7 +228,7 @@ describe('LlmMockSimulationBackend', () => {
 				{ status: 200 },
 			),
 		);
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({ testChatId: 'chat-1', ownerId: 'user-1', agent, firstMessage: 'hi' });
 
 		const reply = await world.handleRequest(
 			{ protocol: 'mcp', server: 'linear', method: 'POST', body: { method: 'tools/call' } },
@@ -240,7 +240,7 @@ describe('LlmMockSimulationBackend', () => {
 
 	it('does not ask the mock when the run is already stopped', async () => {
 		const { backend, httpMock, mcpFetch, webSearch } = setup();
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({ testChatId: 'chat-1', ownerId: 'user-1', agent, firstMessage: 'hi' });
 		const controller = new AbortController();
 		controller.abort();
 
@@ -261,7 +261,7 @@ describe('LlmMockSimulationBackend', () => {
 	it('stops waiting for a generation when the run stops', async () => {
 		const { backend, httpMock } = setup();
 		httpMock.mockReturnValue(new Promise(() => {}));
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({ testChatId: 'chat-1', ownerId: 'user-1', agent, firstMessage: 'hi' });
 		const controller = new AbortController();
 
 		const reply = world.handleRequest(
