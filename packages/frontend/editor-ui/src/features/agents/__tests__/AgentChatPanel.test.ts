@@ -477,7 +477,7 @@ describe('AgentChatPanel', () => {
 			channel: AgentChatChannel;
 			centerEmptyState: boolean;
 			newSession: boolean;
-			clientContext: () => Record<string, unknown> | undefined;
+			clientContext: (message: { text: string }) => Record<string, unknown> | undefined;
 			placeholder: string;
 			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;

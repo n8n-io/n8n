@@ -281,7 +281,23 @@ function insertText(text: string): void {
 	instance.commands.focus();
 }
 
-defineExpose({ focus, getElement, insertToken, removeEmptyTrigger, dismissTrigger, insertText });
+/** Where the `@` of the open query is on screen, so a menu can open next to it. */
+function getTriggerRect(): DOMRect | undefined {
+	const instance = editor.value;
+	if (!instance || !activeTrigger) return undefined;
+	const { left, top, bottom } = instance.view.coordsAtPos(activeTrigger.from);
+	return new DOMRect(left, top, 0, bottom - top);
+}
+
+defineExpose({
+	focus,
+	getElement,
+	insertToken,
+	removeEmptyTrigger,
+	dismissTrigger,
+	insertText,
+	getTriggerRect,
+});
 </script>
 
 <template>

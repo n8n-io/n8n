@@ -337,6 +337,7 @@ function getTokenEditor() {
 		removeEmptyTrigger: tokenEditor.removeEmptyTrigger,
 		dismissTrigger: tokenEditor.dismissTrigger,
 		insertText: tokenEditor.insertText,
+		getTriggerRect: tokenEditor.getTriggerRect,
 	};
 }
 

@@ -6,7 +6,7 @@ import { useToast } from '@n8n/composables/useToast';
 import type { ChatInputTokenQueryEnd } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ChatToken } from '@n8n/utils/chat-tokens';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
 import type {
@@ -41,6 +41,14 @@ interface TokenEditor {
 	insertToken: (token: ChatToken) => void;
 	removeEmptyTrigger: () => boolean;
 	dismissTrigger: () => void;
+	getTriggerRect: () => DOMRect | undefined;
+}
+
+/** A place on screen that the picker opens next to, such as the typed `@`. */
+export interface MentionMenuAnchor {
+	getBoundingClientRect: () => DOMRect;
+	/** The menu follows this element when it scrolls. */
+	contextElement?: Element;
 }
 
 /** The parts of the chat panel that the mentions use. */
@@ -65,8 +73,13 @@ interface MentionPicker {
  * carries, for the client context of the message.
  */
 export function useAssistantAgentMentions(options: {
-	threadId: string;
-	projectId: () => string;
+	/** No thread yet on the empty view. */
+	threadId: MaybeRefOrGetter<string | undefined>;
+	projectId: () => string | undefined;
+	/** A host gate on top of the feature flag, for example while an agent is picked. */
+	enabled?: () => boolean;
+	/** The composer text, when the host keeps it. */
+	draft?: Ref<string>;
 	panel: () => MentionPanel | null | undefined;
 	picker: () => MentionPicker | null | undefined;
 	/** The thread's workflow tabs, which the picker lists first with their nodes. */
@@ -80,21 +93,39 @@ export function useAssistantAgentMentions(options: {
 	const toast = useToast();
 	const telemetry = useAssistantAtMentionsTelemetry({ threadId: options.threadId });
 	const isFlagEnabled = useIsAssistantAtMentionsEnabled();
+	const isEnabled = computed(() => isFlagEnabled.value && (options.enabled?.() ?? true));
 	const availability = useAssistantMentionAvailability({
-		enabled: isFlagEnabled,
+		enabled: isEnabled,
 		projectId: options.projectId,
 		artifacts: options.artifacts,
 	});
 	const canUseMentions = computed(
-		() => isFlagEnabled.value && availability.isAvailable.value && !options.isBlocked(),
+		() => isEnabled.value && availability.isAvailable.value && !options.isBlocked(),
 	);
 
 	/** The composer text. The host binds it to the panel draft. */
-	const draft = ref('');
+	const draft = options.draft ?? ref('');
 	const menuOpen = ref(false);
 	const query = ref('');
 	// How the current open started, so the outcome reports the source the open reported.
 	let openSource: AssistantMentionTriggerSource | undefined;
+
+	/**
+	 * A typed open shows the picker at the `@`, where the user writes. A button
+	 * open has no anchor, and the host places the picker. The last place stays
+	 * while the `@` leaves the text, so the menu does not jump as it closes.
+	 */
+	const menuAnchor = ref<MentionMenuAnchor>();
+	function anchorAtTrigger(): MentionMenuAnchor {
+		let last = new DOMRect();
+		return {
+			contextElement: options.panel()?.getInputElement(),
+			getBoundingClientRect: () => {
+				last = options.panel()?.getTokenEditor()?.getTriggerRect() ?? last;
+				return last;
+			},
+		};
+	}
 
 	/**
 	 * Every pick of this composer, by token target. A pick stays here after its
@@ -112,6 +143,7 @@ export function useAssistantAgentMentions(options: {
 	function markOpened(source: AssistantMentionTriggerSource): void {
 		if (openSource !== undefined) return;
 		openSource = source;
+		menuAnchor.value = source === 'typed' ? anchorAtTrigger() : undefined;
 		menuOpen.value = true;
 		telemetry.trackPickerOpened(source);
 	}
@@ -282,11 +314,12 @@ export function useAssistantAgentMentions(options: {
 	});
 
 	return {
-		isEnabled: isFlagEnabled,
+		isEnabled,
 		canUseMentions,
 		tokenOptions,
 		draft,
 		menuOpen,
+		menuAnchor,
 		query,
 		handleTokenQuery,
 		handleMenuOpenChange,

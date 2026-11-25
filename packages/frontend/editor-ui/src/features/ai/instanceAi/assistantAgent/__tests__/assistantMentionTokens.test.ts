@@ -1,4 +1,7 @@
-import type { AssistantMentionItem } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import type {
+	AssistantMentionItem,
+	AssistantWorkflowMentionItem,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
 import {
 	isMentionedInline,
@@ -7,7 +10,7 @@ import {
 	type PickedMention,
 } from '../assistantMentionTokens';
 
-const workflowItem: AssistantMentionItem = {
+const workflowItem: AssistantWorkflowMentionItem = {
 	key: 'workflow:wf-1:wf-1',
 	kind: 'workflow',
 	source: 'workflows',

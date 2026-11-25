@@ -1,4 +1,8 @@
-import type { InstanceAiNodesAttachment, InstanceAiResourceAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiAttachment,
+	InstanceAiNodesAttachment,
+	InstanceAiResourceAttachment,
+} from '@n8n/api-types';
 import {
 	formatChatResourceHref,
 	listChatTokens,
@@ -80,6 +84,26 @@ export function mentionAttachmentsOf(
 		attachments.push(copy);
 	}
 	return attachments;
+}
+
+function resourceKey(attachment: InstanceAiAttachment): string | undefined {
+	if (attachment.type === 'workflow' || attachment.type === 'agent') {
+		return `${attachment.type}:${attachment.id}`;
+	}
+	if (attachment.type === 'nodes') return `nodes:${attachment.workflowId}`;
+	return undefined;
+}
+
+/**
+ * The attachments whose resource is not in `existing`. The empty view sends the
+ * attachments of its mentions with the message, so the thread view must not add them again.
+ */
+export function withoutAttachedResources(
+	attachments: readonly InstanceAiResourceAttachment[],
+	existing: readonly InstanceAiAttachment[],
+): InstanceAiResourceAttachment[] {
+	const keys = new Set(existing.map(resourceKey));
+	return attachments.filter((attachment) => !keys.has(resourceKey(attachment)));
 }
 
 /** True when a token in the text points to the resource of the attachment. */

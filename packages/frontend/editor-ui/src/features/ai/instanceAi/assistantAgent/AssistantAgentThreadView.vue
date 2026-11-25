@@ -137,7 +137,7 @@ import {
 	readMessageReferences,
 	toMentionComposerAttachment,
 } from './assistantMentionAttachments';
-import { isMentionedInline } from './assistantMentionTokens';
+import { isMentionedInline, withoutAttachedResources } from './assistantMentionTokens';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -257,7 +257,9 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 function clientContext(message?: { text: string }): Record<string, unknown> {
 	const attachments = [
 		...pendingReferences,
-		...(message ? mentions.attachmentsFor(message.text) : []),
+		...(message
+			? withoutAttachedResources(mentions.attachmentsFor(message.text), pendingReferences)
+			: []),
 	];
 	return {
 		timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -627,12 +629,8 @@ const mentions = useAssistantAgentMentions({
 	reservedAttachmentCount: () => pendingReferences.length,
 	isBlocked: () => panel.value?.isSubmitting ?? true,
 });
-// The picker opens over the whole composer, like the menu of the current runtime.
 const mentionInput = computed(() =>
 	mentions.menuOpen.value ? panel.value?.getInputElement() : null,
-);
-const mentionReference = computed(
-	() => mentionInput.value?.closest<HTMLElement>('[data-testid="chat-input"]') ?? null,
 );
 
 watch(
@@ -1173,7 +1171,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:artifacts="mentionArtifacts"
 								:active-workflow-id="mentionActiveWorkflowId"
 								:input-element="mentionInput"
-								:reference="mentionReference"
+								:reference="mentions.menuAnchor.value"
 								:disabled="!mentions.canUseMentions.value"
 								@update:model-value="mentions.handleMenuOpenChange"
 								@select="mentions.handleSelect"

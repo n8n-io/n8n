@@ -14,7 +14,15 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useDebounceFn, useElementSize } from '@vueuse/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	ref,
+	useTemplateRef,
+	watch,
+	type ComponentPublicInstance,
+} from 'vue';
 
 import { DEBOUNCE_TIME } from '@/app/constants';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -59,7 +67,8 @@ const props = withDefaults(
 		excludedKeys?: readonly string[];
 		excludedWorkflowIds?: readonly string[];
 		inputElement?: HTMLElement | null;
-		reference?: HTMLElement | null;
+		/** The element the menu opens over, at its width, or a place such as the typed `@`. */
+		reference?: HTMLElement | { getBoundingClientRect: () => DOMRect } | null;
 		disabled?: boolean;
 	}>(),
 	{
@@ -90,7 +99,32 @@ const settingsStore = useSettingsStore();
 // Read once: the providers are fixed for the life of the picker.
 const includesAgents = settingsStore.isAgentsEnabled;
 const dropdownRef = ref<DropdownMenuExposed>();
-const referenceElement = computed(() => props.reference);
+const referenceElement = computed(() =>
+	props.reference instanceof HTMLElement ? props.reference : null,
+);
+const triggerButton = useTemplateRef<ComponentPublicInstance>('triggerButton');
+
+function currentAnchor(): Element | { getBoundingClientRect: () => DOMRect } | undefined {
+	if (props.reference) return props.reference;
+	const button: unknown = triggerButton.value?.$el;
+	return button instanceof Element ? button : undefined;
+}
+
+/**
+ * reka-ui forwards a menu prop only when the first render set it, so a reference that
+ * arrives later is lost. The menu always gets this anchor instead. It follows the
+ * `reference` while there is one, for example the typed `@`, and else the button.
+ */
+const menuAnchor = {
+	getBoundingClientRect: () => currentAnchor()?.getBoundingClientRect() ?? new DOMRect(),
+	get contextElement(): Element | undefined {
+		const anchor = currentAnchor();
+		if (anchor instanceof Element) return anchor;
+		return anchor && 'contextElement' in anchor && anchor.contextElement instanceof Element
+			? anchor.contextElement
+			: undefined;
+	},
+};
 const { width: referenceWidth } = useElementSize(referenceElement);
 const menuWidth = computed(() =>
 	referenceWidth.value > 0 ? `${referenceWidth.value}px` : undefined,
@@ -470,7 +504,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 		:model-value="modelValue"
 		:items="menuItems"
 		:external-focus-target="inputElement"
-		:reference="reference ?? undefined"
+		:reference="menuAnchor"
 		:width="menuWidth"
 		:extra-popper-class="$style.menuContent"
 		:disabled="disabled"
@@ -502,6 +536,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 		<template #trigger>
 			<N8nTooltip as-child :content="buttonLabel" placement="top">
 				<N8nIconButton
+					ref="triggerButton"
 					icon="at-sign"
 					variant="ghost"
 					size="medium"

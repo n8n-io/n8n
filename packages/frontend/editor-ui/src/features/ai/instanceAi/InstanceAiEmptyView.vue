@@ -943,6 +943,7 @@ async function handleWorkflowPreviewExampleUse(
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
+						:inline-mentions="settingsStore.newThreadsUseAssistantAgent"
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
@@ -1022,6 +1023,7 @@ async function handleWorkflowPreviewExampleUse(
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
+						:inline-mentions="settingsStore.newThreadsUseAssistantAgent"
 						:accepted-mime-types="composerAcceptedMimeTypes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)

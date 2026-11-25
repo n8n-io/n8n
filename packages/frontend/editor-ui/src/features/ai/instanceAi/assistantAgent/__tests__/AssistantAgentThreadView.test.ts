@@ -188,6 +188,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				},
 				removeEmptyTrigger: () => false,
 				dismissTrigger: () => {},
+				getTriggerRect: () => new DOMRect(40, 300, 0, 20),
 			};
 			expose({
 				sendMessageFromOutside,
@@ -2777,6 +2778,27 @@ describe('AssistantAgentThreadView', () => {
 			await userEvent.click(getByTestId('mention-picker-stub'));
 			await flushPromises();
 		}
+
+		it('opens the picker at the typed @, and at its button for a button open', async () => {
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			const onTokenQuery = panelProps.current.onTokenQuery as (query?: string) => void;
+			const onMenuOpenChange = () =>
+				mentionPickerProps.current?.['onUpdate:modelValue'] as (open: boolean) => void;
+
+			onTokenQuery('ord');
+			await flushPromises();
+			const anchor = mentionPickerProps.current?.reference as {
+				getBoundingClientRect: () => DOMRect;
+			};
+			expect(mentionPickerProps.current?.['model-value']).toBe(true);
+			expect(anchor.getBoundingClientRect()).toEqual(new DOMRect(40, 300, 0, 20));
+
+			onMenuOpenChange()(false);
+			onMenuOpenChange()(true);
+			await flushPromises();
+			expect(mentionPickerProps.current?.reference).toBeUndefined();
+		});
 
 		it('hides the picker when mentions are off', async () => {
 			mentionsEnabled.current = false;

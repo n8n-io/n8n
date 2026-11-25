@@ -11,6 +11,7 @@ import type { ContextChip } from '../../instanceAi.contextChip';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -788,5 +789,51 @@ describe('InstanceAiInput — staged element attachment', () => {
 		const [message, attachments] = emitted().submit[0] as [string, unknown[]];
 		expect(message).toBe('remove this');
 		expect(attachments).toEqual([expect.objectContaining({ type: 'element', appId: 'app-1' })]);
+	});
+});
+
+describe('InstanceAiInput — inline mentions', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockReturnValue(true);
+		// jsdom has no layout, and the rich editor measures the caret to scroll it into view.
+		const rect = new DOMRect();
+		const rects = Object.assign([rect], { item: () => rect }) as unknown as DOMRectList;
+		Range.prototype.getClientRects ??= () => rects;
+		Range.prototype.getBoundingClientRect ??= () => rect;
+		vi.spyOn(Range.prototype, 'getClientRects').mockReturnValue(rects);
+		vi.spyOn(Range.prototype, 'getBoundingClientRect').mockReturnValue(rect);
+		vi.spyOn(Element.prototype, 'getClientRects').mockReturnValue(rects);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('keeps a picked mention in the text and sends what it points to', async () => {
+		const { container, emitted, findByTestId, getByTestId, queryByTestId } = renderMentionsInput({
+			props: { inlineMentions: true },
+		});
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+
+		await userEvent.click(getByTestId('mention-picker-select'));
+
+		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments, restoreDraft, , , mentionCounts, workflowIds] = emitted()
+			.submit[0] as [string, unknown[], () => boolean, unknown, unknown, unknown, string[]];
+		expect(message).toBe('[@Orders](n8n-resource://workflow/w1)');
+		expect(attachments).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
+		expect(mentionCounts).toEqual(expect.objectContaining({ workflow: 1, total: 1 }));
+		expect(workflowIds).toEqual(['w1']);
+
+		// A refused send puts the token back in the text, not as a staged chip.
+		expect(restoreDraft()).toBe(true);
+		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 	});
 });
