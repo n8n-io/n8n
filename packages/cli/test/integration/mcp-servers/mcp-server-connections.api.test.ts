@@ -438,3 +438,83 @@ describe('a failed refresh token delete', () => {
 		expect(eventsNamed('mcp-server-deleted')).toHaveLength(1);
 	});
 });
+
+describe('the guards of the access routes', () => {
+	// Each route as [method, path suffix, body], for one server id.
+	const routes = (userId: string) =>
+		[
+			['get', '/connections', undefined],
+			['post', '/blocks', { userId }],
+			['delete', `/blocks/${userId}`, undefined],
+			['delete', `/connections/${userId}`, undefined],
+		] as const;
+
+	async function call(
+		method: 'get' | 'post' | 'delete',
+		path: string,
+		body: object | undefined,
+	): Promise<number> {
+		const request = ownerAgent[method](path);
+		const response = body ? await request.send(body) : await request;
+		return response.statusCode;
+	}
+
+	async function expectAllNotFound(serverId: string, userId = tom.id) {
+		for (const [method, suffix, body] of routes(userId)) {
+			expect(await call(method, `${serverPath(serverId)}${suffix}`, body)).toBe(404);
+		}
+	}
+
+	it('answers 404 on the write routes when the flag is off, with no row change', async () => {
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
+		setFlag(false);
+
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: maya.id }).expect(404);
+		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(404);
+		await ownerAgent.delete(`${serverPath()}/connections/${tom.id}`).expect(404);
+
+		expect(await blockRows()).toEqual([
+			expect.objectContaining({ serverId: server.id, userId: tom.id }),
+		]);
+	});
+
+	it('answers 404 for a server id that is not a UUID', async () => {
+		await expectAllNotFound('not-a-uuid');
+
+		expect(await blockRows()).toEqual([]);
+	});
+
+	it('answers 404 for a user id that is not a UUID', async () => {
+		await ownerAgent.delete(`${serverPath()}/blocks/not-a-uuid`).expect(404);
+		await ownerAgent.delete(`${serverPath()}/connections/not-a-uuid`).expect(404);
+	});
+
+	it('answers 404 for a server of another project, with no row change', async () => {
+		const billing = await createTeamProject('Billing', owner);
+		const elsewhere = (
+			await ownerAgent
+				.post(`/projects/${billing.id}/mcp-servers`)
+				.send({ name: 'Billing desk', slug: 'billing-desk' })
+				.expect(200)
+		).body.data as { id: string; slug: string };
+		await addConnection(tom, CURSOR, 'Cursor', new Date(), new Date(), elsewhere.id);
+		await addRefreshToken(tom, resourceUrl(elsewhere.slug), 'tom-billing-desk');
+
+		await expectAllNotFound(elsewhere.id);
+
+		expect(await blockRows()).toEqual([]);
+		expect(await connectionRows()).toHaveLength(1);
+		expect(await refreshTokens()).toEqual(['tom-billing-desk']);
+	});
+
+	it('answers 404 for a deleted server, with no row change', async () => {
+		const deleted = await createServer('old-desk');
+		await ownerAgent.delete(serverPath(deleted.id)).expect(200);
+		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-support-desk');
+
+		await expectAllNotFound(deleted.id);
+
+		expect(await blockRows()).toEqual([]);
+		expect(await refreshTokens()).toEqual(['tom-support-desk']);
+	});
+});
