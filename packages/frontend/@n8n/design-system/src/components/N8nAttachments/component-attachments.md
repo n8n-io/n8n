@@ -14,7 +14,7 @@ Reusable presentation for files and images. Feature components prepare data, man
 - Feature components own file selection, validation, conversion, uploads, state updates, and action handling.
 - Feature components create and release object URLs. They also resolve server URLs and decide how to handle unavailable files.
 - Neither component imports Instance AI or Agents types, stores, or services.
-- Resource references use the shared AI `ChatResource` component, not an attachment component. Generic context labels are not automatically resource references.
+- A resource that the user attaches to a message, such as a workflow, shows as an attachment with the `icon` prop. Resource links in text use the shared AI `ChatResource` component. Generic context labels are not automatically resource references.
 - This extraction does not change API payloads or stored messages.
 
 ## N8nAttachment
@@ -28,12 +28,13 @@ Reusable presentation for files and images. Feature components prepare data, man
 | Prop | Type | Purpose |
 | --- | --- | --- |
 | `fileName` | `string` | Required file name. Supplies the visible label and image alternative text. |
-| `mimeType` | `string` | Required MIME type. Selects file or image presentation. |
+| `mimeType` | `string` | MIME type. Selects file or image presentation. Not needed with `icon`. |
 | `sizeBytes` | `number` | Optional file size in bytes. Omit the size label when absent. Zero is a valid size. |
 | `src` | `string` | Optional image preview URL. |
 | `isRemovable` | `boolean` | Shows a remove control when true. Default: `true`. |
 | `href` | `string` | Optional file URL. Opens in a new tab unless `download` is supplied. |
 | `download` | `string` | Optional file name for a native download link. |
+| `icon` | `IconName` | Optional icon that replaces the file type icon. |
 
 **Events**
 
@@ -110,12 +111,12 @@ Paths below are relative to `packages/frontend/editor-ui/src/features/`.
 
 | Consumer | Responsibility after extraction |
 | --- | --- |
-| `ai/instanceAi/components/AttachmentPreview.vue` | Adapt file and image data to `N8nAttachment`. Route resource references through `ChatResource`. |
+| `ai/instanceAi/components/AttachmentPreview.vue` | Adapt files, images, and attached resources to `N8nAttachment`. |
 | `ai/instanceAi/components/InstanceAiInput.vue` | Use the group for draft files. Retain selection, validation, and removal logic. |
 | `ai/instanceAi/components/InstanceAiMessage.vue` | Display sent files and resource references through their respective presentation components. |
 | `ai/instanceAi/components/InstanceAiResourceChip.vue` | Replace with, or migrate into, shared `ChatResource`. |
 | `ai/instanceAi/components/NodeChip.vue` and `NodesAttachmentChips.vue` | Use `ChatResource` for presentation. Retain node lookup, grouping, expansion, and selection updates. |
-| `agents/components/AgentChatPanel.vue` | Use attachment components for draft files and `ChatResource` for references. Remove presentation imports from Instance AI. |
+| `agents/components/AgentChatPanel.vue` | Use attachment components for draft files and attached resources. Remove presentation imports from Instance AI. |
 | `agents/components/AgentChatMessageAttachments.vue` | Use both attachment components. Retain URL resolution and unavailable-file handling. |
 
 Agent Build mode embeds the Instance AI conversation and receives its presentation changes through that integration. Keep the existing Instance AI and Agents logic split.
