@@ -312,6 +312,64 @@ describe('NextCloud Node: file update', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	it('keeps the spaces of a path, so a name that ends with a space finds its own file', async () => {
+		const { files, request } = fakeNextcloud({
+			'docs/report ': {},
+			'docs/report': { content: 'other' },
+		});
+
+		const output = await run(
+			buildExecuteFunctions(
+				{ file: byPath('/docs/report '), newContent: 'text', fileContent: 'new text' },
+				request,
+			),
+		);
+
+		expect(files.get('docs/report ')?.content).toBe('new text');
+		expect(files.get('docs/report')?.content).toBe('other');
+		expect(output[0][0].json).toMatchObject({ path: '/docs/report ' });
+	});
+
+	it('trims a file ID', async () => {
+		const { files, request } = fakeNextcloud();
+
+		await run(
+			buildExecuteFunctions(
+				{ file: byId(' 42 '), newContent: 'text', fileContent: 'new text' },
+				request,
+			),
+		);
+
+		expect(files.get('docs/notes.txt')?.content).toBe('new text');
+	});
+
+	it.each(['/docs/../notes.txt', '/./docs/notes.txt'])(
+		'rejects the dot segments in the path "%s" before any request',
+		async (path) => {
+			const { request } = fakeNextcloud();
+
+			await expect(
+				run(
+					buildExecuteFunctions(
+						{ file: byPath(path), newContent: 'text', fileContent: 'new text' },
+						request,
+					),
+				),
+			).rejects.toThrow('Invalid identifier');
+			expect(request).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['..', '.'])('rejects the new name "%s" before the MOVE', async (newFileName) => {
+		const { files, request, calls } = fakeNextcloud();
+
+		await expect(
+			run(buildExecuteFunctions({ file: byPath('/docs/notes.txt'), newFileName }, request)),
+		).rejects.toThrow('Invalid identifier');
+		expect(calls().map((options) => options.method)).toEqual(['PROPFIND']);
+		expect([...files.keys()]).toEqual(['docs/notes.txt']);
+	});
+
 	it('never creates a missing file: the PROPFIND lookup fails and no PUT is sent', async () => {
 		const { files, request, calls } = fakeNextcloud();
 
