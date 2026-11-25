@@ -1,0 +1,14 @@
+packages/cli/src/binary-data/__tests__/binary-data-access.service.test.ts
+  h_52a137d26d774c 312-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68ef41cd42e64d10d571ed9d60865e199e7538aa",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
