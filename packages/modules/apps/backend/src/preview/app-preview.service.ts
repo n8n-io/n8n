@@ -1,6 +1,5 @@
 import { appSchema, appVersionSchema, type AppPreviewResponse } from '@n8n/api-types';
 import { CacheService, JwtService } from '@n8n/backend-services';
-import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import type { SecurityContext } from '@n8n/permissions';
@@ -19,7 +18,12 @@ import { assertBuiltVersion } from '../versions/assert-built-version';
 const CODE_PREFIX = 'apps-preview:';
 const CODE_TTL_MS = 60_000;
 
-const grantSchema = z.object({ userId: z.string(), appId: z.string(), versionId: z.string() });
+const grantSchema = z.object({
+	appId: z.string(),
+	authorizeUrl: z.string(),
+	state: z.string(),
+	nonce: z.string(),
+});
 type PreviewGrant = z.infer<typeof grantSchema>;
 
 const versionClaimsSchema = z.object({
@@ -38,9 +42,8 @@ export interface AppPreviewAdmission {
 }
 
 /**
- * The editor opens a preview with a one-time code. The code exchange signs the editor in to
- * the preview host with an n8n OAuth token. A second signed cookie holds the previewed
- * version and is bound to that token, so the session does not depend on server-side state.
+ * Signs the editor user in to the preview host with the same OAuth flow as a published app.
+ * A second signed cookie holds the previewed version and is bound to the session token.
  */
 @Service()
 export class AppPreviewService {
@@ -49,7 +52,6 @@ export class AppPreviewService {
 		private readonly versions: AppVersionRepository,
 		private readonly hosts: AppHostService,
 		private readonly auth: AppAuthService,
-		private readonly flow: OAuth2FlowProxy,
 		private readonly cache: CacheService,
 		private readonly jwt: JwtService,
 	) {}
@@ -72,16 +74,19 @@ export class AppPreviewService {
 		if (!origin) throw new BadRequestError('Use a valid app namespace before previewing this app.');
 		assertBuiltVersion(await this.versions.findVersionById(versionId), appId);
 
+		const signIn = await this.auth.startSignIn(app, 'preview', { userId, versionId });
 		const code = randomBytes(32).toString('hex');
-		const grant: PreviewGrant = { userId, appId, versionId };
+		const grant: PreviewGrant = { appId, ...signIn };
 		await this.cache.set(this.codeKey(code), JSON.stringify(grant), CODE_TTL_MS);
 		const url = new URL('/_n8n/preview', origin);
 		url.searchParams.set('code', code);
-		return { url: url.toString() };
+		return { url: url.toString(), authorizeUrl: signIn.authorizeUrl };
 	}
 
+	/** In a frame, only sets the flow cookie. The editor then opens the authorize URL itself. */
 	async exchange(req: Request, res: Response): Promise<void> {
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+		this.assertNotFromPreviewHost(req);
 		const namespace = this.hosts.previewNamespace(req);
 		if (!namespace) throw new NotFoundError('App not found.');
 		const code = typeof req.query.code === 'string' ? req.query.code : '';
@@ -89,21 +94,36 @@ export class AppPreviewService {
 		const app = grant ? await this.apps.findByNamespace(namespace) : null;
 		if (!grant || !app || app.id !== grant.appId) throw this.invalidLink();
 
-		// The code proves the editor's n8n session, so the token is issued without a redirect.
-		const issued = await this.flow.issue(this.hosts.callbackUrl(app, 'preview'), grant.userId);
-		if (!issued.valid) throw this.invalidLink();
+		this.auth.setFlowCookie(res, 'preview', grant);
+		if (req.get('sec-fetch-dest') === 'iframe') {
+			res.type('html').end();
+			return;
+		}
+		res.redirect(grant.authorizeUrl);
+	}
+
+	async complete(req: Request, res: Response, appId: string): Promise<void> {
+		this.assertNotFromPreviewHost(req);
+		const { app, token, expiresIn, userId, metadata } = await this.auth.finishSignIn(
+			req,
+			res,
+			appId,
+			'preview',
+		);
+		// The browser's n8n user must be the user who opened the preview.
+		if (metadata.userId !== userId || !metadata.versionId) throw this.invalidLink();
 
 		const cookieOptions = {
 			...embeddedAppCookieOptions(this.hosts.baseUrl),
-			maxAge: issued.expiresIn * 1000,
+			maxAge: expiresIn * 1000,
 		};
 		const claims: PreviewVersionClaims = {
 			appId: app.id,
-			versionId: grant.versionId,
-			tokenHash: this.hash(issued.token),
+			versionId: metadata.versionId,
+			tokenHash: this.hash(token),
 		};
-		const versionToken = this.jwt.sign('appPreview', claims, { expiresIn: issued.expiresIn });
-		res.cookie(this.sessionCookieName(), issued.token, cookieOptions);
+		const versionToken = this.jwt.sign('appPreview', claims, { expiresIn });
+		res.cookie(this.sessionCookieName(), token, cookieOptions);
 		res.cookie(this.versionCookieName(), versionToken, cookieOptions);
 		res.redirect('/');
 	}
@@ -143,6 +163,11 @@ export class AppPreviewService {
 			security: admitted.security,
 			token: admitted.token,
 		};
+	}
+
+	/** App code on the preview host must not start or finish a sign-in. */
+	private assertNotFromPreviewHost(req: Request) {
+		if (req.get('sec-fetch-site') === 'same-origin') throw this.invalidLink();
 	}
 
 	private invalidLink() {

@@ -183,6 +183,62 @@ describe('AppAuthService', () => {
 
 			expect(admission.admitBearer).toHaveBeenCalledTimes(2);
 		});
+
+		it('signs in against the preview resource with cookies that work in a frame', async () => {
+			const { service, app, req, res, flow, resources, admission } = setup({ host: 'preview' });
+			const embedded = {
+				httpOnly: true,
+				secure: true,
+				sameSite: 'none',
+				partitioned: true,
+				path: '/',
+			};
+
+			const signIn = await service.startSignIn(app, 'preview', { userId: 'user', versionId: 'v1' });
+			service.setFlowCookie(res, 'preview', signIn);
+
+			expect(signIn).toMatchObject({ authorizeUrl: `${issuer}/oauth/authorize?state=${state}` });
+			expect(flow.begin).toHaveBeenCalledWith(
+				previewCallbackUrl,
+				expect.objectContaining({ appId, userId: 'user', versionId: 'v1' }),
+			);
+			expect(res.cookie).toHaveBeenCalledWith(flowCookieName, signIn.nonce, {
+				...embedded,
+				maxAge: 300_000,
+			});
+
+			req.cookies = { [flowCookieName]: signIn.nonce };
+			const signedIn = await service.finishSignIn(req, res, appId, 'preview');
+
+			expect(signedIn).toMatchObject({
+				app,
+				token: 'app-token',
+				expiresIn: 3600,
+				userId: 'user',
+				metadata: { userId: 'user', versionId: 'v1' },
+			});
+			expect(res.clearCookie).toHaveBeenCalledWith(flowCookieName, embedded);
+			expect(flow.complete).toHaveBeenCalledWith(
+				'code',
+				state,
+				expect.objectContaining({ url: previewCallbackUrl }),
+			);
+			expect(resources.forApp).toHaveBeenCalledWith(app, { kind: 'preview' });
+			expect(admission.admitBearer).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ url: previewCallbackUrl }),
+				'app-token',
+			);
+		});
+
+		it('does not finish a preview sign-in on the published host', async () => {
+			const { service, req, res, flow } = setup();
+
+			await expect(service.finishSignIn(req, res, appId, 'preview')).rejects.toThrow(
+				'App not found',
+			);
+			expect(flow.complete).not.toHaveBeenCalled();
+		});
 	});
 
 	it('seals a preview visitor with the preview grant', async () => {

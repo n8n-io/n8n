@@ -67,7 +67,9 @@ describe('AppProtectedResource', () => {
 		await expect(registry.getByResourceUrl(mainUrl)).resolves.toBeUndefined();
 		expect(apps.findById).not.toHaveBeenCalled();
 
-		expect((await registry.getByResourceUrl(url))?.getResourceUrl()).toBe(url);
+		const descriptor = await registry.getByResourceUrl(url);
+		expect(descriptor?.getResourceUrl()).toBe(url);
+		expect(descriptor?.skipConsent).toBe(false);
 		expect(apps.findById).toHaveBeenCalledExactlyOnceWith(id);
 	});
 
@@ -187,6 +189,7 @@ describe('AppProtectedResource', () => {
 			const descriptor = await registry.getByResourceUrl(previewUrl);
 
 			expect(descriptor?.id).toBe(`app-preview:${id}`);
+			expect(descriptor?.skipConsent).toBe(true);
 			expect(descriptor?.getAudiences()).toEqual([previewUrl]);
 			expect(descriptor?.getGrant?.()).toEqual({
 				audiences: [previewUrl],

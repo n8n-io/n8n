@@ -69,9 +69,10 @@ const latestFetch = useLatestFetch();
 
 const { head, latestBuilt, building } = props.versions;
 
-type Preview = { version: AppVersionResponse; url: string };
+type Preview = { version: AppVersionResponse; url: string; authorizeUrl: string };
 
 const preview = ref<Preview | null>(null);
+const frameSrc = ref<string>();
 const granting = ref(false);
 const grantFailed = ref(false);
 const screenSize = ref<ScreenSize>('desktop');
@@ -112,6 +113,7 @@ async function grant(versionId: string) {
 function showPreview(next: Preview | null) {
 	clearTimeout(refreshTimer);
 	preview.value = next;
+	frameSrc.value = next?.url;
 	if (next) refreshTimer = setTimeout(async () => await show(true), GRANT_REFRESH_MS);
 }
 
@@ -126,9 +128,9 @@ async function show(force = false) {
 	}
 	granting.value = true;
 	try {
-		const { url } = await grant(version.id);
+		const { url, authorizeUrl } = await grant(version.id);
 		if (!isLatest()) return;
-		showPreview({ version, url });
+		showPreview({ version, url, authorizeUrl });
 		grantFailed.value = false;
 	} catch (error) {
 		if (!isLatest()) return;
@@ -172,6 +174,12 @@ function setInspecting(value: boolean) {
 }
 
 function onFrameLoad() {
+	// The first load only prepares the sign-in. The editor opens the sign-in itself, because a
+	// browser can drop the n8n session cookie when the preview host redirects the frame.
+	if (preview.value && frameSrc.value === preview.value.url) {
+		frameSrc.value = preview.value.authorizeUrl;
+		return;
+	}
 	if (inspecting.value) postInspectCommand('inspect:enable');
 }
 
@@ -299,7 +307,7 @@ onBeforeUnmount(() => {
 				v-else-if="preview"
 				:key="preview.url"
 				ref="frame"
-				:src="preview.url"
+				:src="frameSrc"
 				:title="i18n.baseText('apps.preview.frameTitle', { interpolate: { name: app.name } })"
 				:style="{ width: SCREEN_WIDTHS[screenSize], colorScheme: theme }"
 				:class="$style.frame"

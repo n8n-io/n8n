@@ -42,6 +42,8 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 			surface: 'apps',
 			displayName: app.name,
 			isFirstParty: true,
+			// The editor opens the preview for a user who is signed in to n8n already.
+			skipConsent: preview,
 			uiHints: { icon: 'grid-2x2', consentType: 'app' },
 			scopes: [],
 			getResourceUrl: () => url,
