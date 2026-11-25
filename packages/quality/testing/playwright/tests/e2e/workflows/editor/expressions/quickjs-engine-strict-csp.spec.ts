@@ -38,6 +38,11 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
+		test.skip(
+			Boolean(process.env.N8N_BASE_URL && process.env.N8N_EDITOR_URL),
+			'backend-served page only: the Vite dev server does not enforce the backend CSP',
+		);
+
 		test.beforeEach(async ({ n8n }) => {
 			// Local runs connect to an attached server whose env this harness does not set.
 			// Container runs in CI always apply `test.use()` above and never skip here.
