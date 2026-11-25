@@ -371,6 +371,15 @@ export class CreateAgentPublicDto extends Z.class(
 	{ strict: true },
 ) {}
 
+export class PublishAgentPublicDto extends Z.class(
+	{
+		versionId: z.string().min(1).optional().openapi({
+			description: 'The saved version to publish. Omit this field to publish the current draft.',
+		}),
+	},
+	{ strict: true },
+) {}
+
 export class MoveAgentDto extends Z.class({
 	parentFolderId: z.string().min(1).max(36).nullable(),
 }) {}
