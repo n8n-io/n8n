@@ -22,6 +22,14 @@ export function guardrailKindLabelKey(kind: AgentToolGuardrailKind): BaseTextKey
 	return `agents.builder.guardrails.kind.${kind}` as BaseTextKey;
 }
 
+export function guardrailDisplayName(
+	{ id, name, kind }: AgentToolGuardrailConfig,
+	i18n: { baseText: (key: BaseTextKey) => string },
+): string {
+	const customName = name?.trim();
+	return customName && customName !== id ? customName : i18n.baseText(guardrailKindLabelKey(kind));
+}
+
 /** The i18n key holding a PII entity's display label. */
 export function piiEntityLabelKey(entity: ToolGuardrailPiiEntity): BaseTextKey {
 	return `agents.builder.guardrails.pii.entity.${entity}` as BaseTextKey;

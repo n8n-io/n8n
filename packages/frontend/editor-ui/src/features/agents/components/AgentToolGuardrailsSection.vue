@@ -4,18 +4,15 @@ import type {
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, toValue, withDefaults, type MaybeRefOrGetter } from 'vue';
 
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import type { AgentJsonToolRef } from '../types';
-import {
-	guardrailKindLabelKey,
-	guardrailNamesTool,
-	TOOL_GUARDRAIL_KINDS,
-} from '../utils/guardrails';
+import { guardrailDisplayName, guardrailNamesTool } from '../utils/guardrails';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentGuardrailAddMenu from './AgentGuardrailAddMenu.vue';
 
 /**
  * What the host needs to open the guardrail modal that replaces this one.
@@ -77,24 +74,15 @@ const guardrailIssueMessages = computed(() =>
 	groupIssueMessages('guardrail', (issue) => issue.capability.id),
 );
 
-const addItems = computed(() =>
-	TOOL_GUARDRAIL_KINDS.map((kind) => ({
-		id: kind,
-		label: i18n.baseText(guardrailKindLabelKey(kind)),
-		testId: `agent-tool-guardrails-add-${kind}`,
-	})),
-);
-
-const addLabel = computed(() => i18n.baseText('agents.builder.guardrails.add'));
 const hasChips = computed(() => toolGuardrails.value.length + wildcardGuardrails.value.length > 0);
 
 function issueReasons(guardrail: AgentToolGuardrailConfig): string[] {
 	return guardrailIssueMessages.value.get(guardrail.id) ?? [];
 }
 
-function onAddSelect(kind: string) {
+function onAddSelect(kind: AgentToolGuardrailKind) {
 	if (isDisabled.value) return;
-	emit('open-guardrail', { guardrail: null, kind: kind as AgentToolGuardrailKind });
+	emit('open-guardrail', { guardrail: null, kind });
 }
 
 function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
@@ -122,7 +110,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 						@click="onOpenGuardrail(guardrail)"
 					>
 						<span :class="$style.chipLabel">
-							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
+							<span :class="$style.chipName">{{ guardrailDisplayName(guardrail, i18n) }}</span>
 						</span>
 					</AgentChipButton>
 				</div>
@@ -135,7 +123,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 						@click="onOpenGuardrail(guardrail)"
 					>
 						<span :class="$style.chipLabel">
-							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
+							<span :class="$style.chipName">{{ guardrailDisplayName(guardrail, i18n) }}</span>
 							<span :class="$style.chipMeta">
 								· {{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
 							</span>
@@ -143,43 +131,12 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 					</AgentChipButton>
 				</div>
 
-				<N8nDropdownMenu
-					:items="addItems"
-					placement="bottom-start"
-					data-testid="agent-tool-guardrails-add-menu"
+				<AgentGuardrailAddMenu
+					test-id="agent-tool-guardrails-add"
+					:icon-only="hasChips"
+					:disabled="isDisabled"
 					@select="onAddSelect"
-				>
-					<template #trigger>
-						<N8nTooltip v-if="hasChips" as-child :content="addLabel" placement="top">
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								icon-only
-								:disabled="isDisabled"
-								:aria-label="addLabel"
-								data-testid="agent-tool-guardrails-add"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-							</N8nButton>
-						</N8nTooltip>
-						<N8nButton
-							v-else
-							:class="$style.emptyAddButton"
-							variant="ghost"
-							size="medium"
-							:disabled="isDisabled"
-							:aria-label="addLabel"
-							data-testid="agent-tool-guardrails-add"
-						>
-							<template #icon>
-								<N8nIcon icon="plus" :size="16" />
-							</template>
-							{{ addLabel }}
-						</N8nButton>
-					</template>
-				</N8nDropdownMenu>
+				/>
 			</div>
 		</div>
 	</div>
@@ -252,16 +209,5 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--normal);
 	white-space: nowrap;
-}
-
-.emptyAddButton {
-	--button--color: var(--text-color--subtler);
-	margin-left: calc(-1 * var(--spacing--xs));
-	margin-top: calc(-1 * var(--spacing--4xs));
-
-	&:hover {
-		--button--color: var(--text-color);
-		background-color: transparent;
-	}
 }
 </style>

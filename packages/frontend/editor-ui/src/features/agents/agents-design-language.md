@@ -368,6 +368,8 @@ Picker steps can keep a minimum height for their result list.
 Use one tab bar in tool forms that support either guardrails or approval. Open
 Parameters by default and keep Advanced settings in that tab. Include tabs
 provided by the tool, such as Settings. Put Guardrails last.
+Use the localized guardrail type as the default pill label. Keep custom names.
+Anchor the add guardrail menu to the button when it has a tooltip.
 Put guardrails above approval in the Guardrails tab. Keep the approval toggle
 and its destination selector together. Keep form edits when users switch tabs.
 Return to Guardrails after a guardrail edit. Keep MCP configuration on one page.

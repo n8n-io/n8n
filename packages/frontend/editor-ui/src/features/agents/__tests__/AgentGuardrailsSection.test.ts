@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { N8nDropdownMenu } from '@n8n/design-system';
 
 import AgentGuardrailsSection from '../components/AgentGuardrailsSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
@@ -302,13 +303,31 @@ describe('AgentGuardrailsSection', () => {
 		expect(addMenuItem('customRegex')).toBeNull();
 	});
 
-	it('opens the add menu from the tooltip-wrapped button beside the chips', async () => {
+	it('anchors the add menu to the tooltip-wrapped button beside the chips', async () => {
 		const wrapper = mountSection();
 
+		const button = wrapper.get('[data-testid="agent-guardrails-add"]').element;
 		await openAddMenu(wrapper);
 
+		expect(wrapper.getComponent(N8nDropdownMenu).props('reference')).toBe(button);
 		expect(document.querySelector('[role="menu"]')).not.toBeNull();
 	});
+
+	it.each([undefined, 'pii_39rkvx'])(
+		'uses the guardrail type when the stored name is %s',
+		(name) => {
+			const wrapper = mountSection({
+				config: config([{ ...PII_GUARDRAIL, id: 'pii_39rkvx', name }]),
+			});
+
+			expect(wrapper.get('[data-testid="agent-guardrails-chip"]').text()).toContain(
+				'PII detection',
+			);
+			expect(wrapper.get('[data-testid="agent-guardrails-chip"]').text()).not.toContain(
+				'pii_39rkvx',
+			);
+		},
+	);
 
 	it('opens the modal in create mode with the picked kind', async () => {
 		const wrapper = mountSection();

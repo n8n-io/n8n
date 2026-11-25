@@ -4,7 +4,7 @@ import type {
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
@@ -18,13 +18,13 @@ import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import {
 	configuredToolGuardrails,
-	guardrailKindLabelKey,
+	guardrailDisplayName,
 	guardrailRefMatchesTool,
-	TOOL_GUARDRAIL_KINDS,
 	withToolGuardrails,
 } from '../utils/guardrails';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentGuardrailAddMenu from './AgentGuardrailAddMenu.vue';
 import AgentGuardrailModal from './AgentGuardrailModal.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentPanelDisclosure from './AgentPanelDisclosure.vue';
@@ -65,16 +65,6 @@ const modalOpen = ref(false);
 /** The entry being edited, or null in create mode. */
 const editingGuardrail = ref<AgentToolGuardrailConfig | null>(null);
 const createKind = ref<AgentToolGuardrailKind>('keywords');
-
-const addItems = computed(() =>
-	TOOL_GUARDRAIL_KINDS.map((kind) => ({
-		id: kind,
-		label: i18n.baseText(guardrailKindLabelKey(kind)),
-		testId: `agent-guardrails-add-${kind}`,
-	})),
-);
-
-const addLabel = computed(() => i18n.baseText('agents.builder.guardrails.add'));
 
 /** One icon per covered-tool kind on a guardrail chip. */
 interface GuardrailToolIconGroup {
@@ -139,9 +129,9 @@ function toolIconGroups(guardrail: AgentToolGuardrailConfig): GuardrailToolIconG
 	return [...groups.values()];
 }
 
-function onAddSelect(kind: string) {
+function onAddSelect(kind: AgentToolGuardrailKind) {
 	if (props.disabled) return;
-	createKind.value = kind as AgentToolGuardrailKind;
+	createKind.value = kind;
 	editingGuardrail.value = null;
 	modalOpen.value = true;
 }
@@ -194,7 +184,7 @@ function onModalRemove() {
 							@click="onOpenGuardrail(guardrail)"
 						>
 							<span :class="$style.chipLabel">
-								<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
+								<span :class="$style.chipName">{{ guardrailDisplayName(guardrail, i18n) }}</span>
 								<span :class="$style.chipMeta">
 									<span aria-hidden="true">·</span>
 									<template v-if="guardrail.tools">
@@ -231,43 +221,12 @@ function onModalRemove() {
 					</AgentItemContextMenu>
 				</div>
 
-				<N8nDropdownMenu
-					:items="addItems"
-					placement="bottom-start"
-					data-testid="agent-guardrails-add-menu"
+				<AgentGuardrailAddMenu
+					test-id="agent-guardrails-add"
+					:icon-only="guardrails.length > 0"
+					:disabled="disabled"
 					@select="onAddSelect"
-				>
-					<template #trigger>
-						<N8nTooltip v-if="guardrails.length > 0" as-child :content="addLabel" placement="top">
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								icon-only
-								:aria-label="addLabel"
-								:disabled="disabled"
-								data-testid="agent-guardrails-add"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-							</N8nButton>
-						</N8nTooltip>
-						<N8nButton
-							v-else
-							:class="$style.emptyAddButton"
-							variant="ghost"
-							size="medium"
-							:aria-label="addLabel"
-							:disabled="disabled"
-							data-testid="agent-guardrails-add"
-						>
-							<template #icon>
-								<N8nIcon icon="plus" :size="16" />
-							</template>
-							{{ addLabel }}
-						</N8nButton>
-					</template>
-				</N8nDropdownMenu>
+				/>
 			</div>
 		</AgentPanelDisclosure>
 
@@ -375,17 +334,6 @@ function onModalRemove() {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 	line-height: 1;
-}
-
-.emptyAddButton {
-	--button--color: var(--text-color--subtler);
-	margin-left: calc(-1 * var(--spacing--xs));
-	margin-top: calc(-1 * var(--spacing--4xs));
-
-	&:hover {
-		--button--color: var(--text-color);
-		background-color: transparent;
-	}
 }
 
 .divided {
