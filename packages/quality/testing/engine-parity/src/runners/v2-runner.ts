@@ -80,8 +80,13 @@ export class V2Runner implements EngineRunner {
 	}
 
 	async stop(): Promise<void> {
-		await this.engine.stop();
-		await this.container?.stop();
+		if (!this.container) return;
+		try {
+			await this.engine.stop();
+		} finally {
+			await this.container.stop();
+			this.container = undefined;
+		}
 	}
 
 	async run(parityCase: ParityCase): Promise<RawOutcome> {

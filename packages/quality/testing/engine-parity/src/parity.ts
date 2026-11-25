@@ -102,6 +102,7 @@ export async function checkCase(
 		result.failures.length > 0 ? 'fail' : result.findings.length > 0 ? 'finding' : 'pass';
 
 	if (isNew && report) {
+		if (result.raw.v1.kind === 'ran' && result.raw.v2.kind === 'ran') report.recordRan();
 		for (const diff of result.failures) report.recordFailure(diffSignature(diff, parityCase), diff);
 		for (const diff of result.warnings) report.recordWarning(diffSignature(diff, parityCase), diff);
 		for (const finding of result.findings) {

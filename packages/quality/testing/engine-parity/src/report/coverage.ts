@@ -47,7 +47,7 @@ export class CoverageReport {
 		if (this.seen.has(key)) return false;
 		this.seen.add(key);
 		this.cases += 1;
-		for (const irNode of parityCase.ir.nodes) {
+		for (const irNode of [...parityCase.ir.triggers, ...parityCase.ir.nodes]) {
 			this.nodes[irNode.catalogId] = (this.nodes[irNode.catalogId] ?? 0) + 1;
 			this.combinators[irNode.via] = (this.combinators[irNode.via] ?? 0) + 1;
 		}
@@ -56,10 +56,13 @@ export class CoverageReport {
 			for (const code of new Set(discardCodes)) {
 				this.discardReasons[code] = (this.discardReasons[code] ?? 0) + 1;
 			}
-		} else {
-			this.ran += 1;
 		}
 		return true;
+	}
+
+	/** Call once for each new case that ran to the end on both engines. */
+	recordRan() {
+		this.ran += 1;
 	}
 
 	private add(

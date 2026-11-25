@@ -583,7 +583,8 @@ jobs:
 
   # Engine parity: generated workflows run on engine v1 and engine v2 in one
   # process, with a fixed seed. Runs when engine code changes or when the PR
-  # carries the `force-engine-parity` label. Not in `required-checks` yet: a
+  # carries the `force-engine-parity` label. The label takes effect on the
+  # next push, like `force-engine-e2e`. Not in `required-checks` yet: a
   # failure uploads repro files, and the engine team triages them.
   engine-parity:
     name: Engine parity

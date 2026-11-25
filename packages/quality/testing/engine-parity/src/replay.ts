@@ -18,21 +18,21 @@ import { startExpressionEngine, stopExpressionEngine } from './runners/expressio
 import { V1Runner } from './runners/v1-runner';
 import { V2Runner } from './runners/v2-runner';
 
-async function main(file: string | undefined): Promise<number> {
-	if (!file) {
-		process.stderr.write('Usage: pnpm parity:replay <repro file>\n');
-		return 2;
-	}
+function write(stream: NodeJS.WriteStream, text: string): Promise<void> {
+	return new Promise((done) => stream.write(text, () => done()));
+}
+
+async function replay(file: string): Promise<number> {
 	const repro = readRepro(resolve(process.env.INIT_CWD ?? process.cwd(), file));
 	const parityCase = reproCase(repro);
 	// Fails on an unknown rule set: other rules can change the verdict.
 	const [rules] = selectRuleSets(repro.rules);
 	const runners = { v1: new V1Runner(), v2: new V2Runner() };
 
-	await startExpressionEngine();
-	await runners.v1.start();
-	await runners.v2.start();
 	try {
+		await startExpressionEngine();
+		await runners.v1.start();
+		await runners.v2.start();
 		const result = await checkCase(parityCase, runners, rules);
 		const lines = [
 			`Repro: ${repro.signature} (rule set ${repro.rules}, seed ${repro.seed}, path ${repro.path})`,
@@ -46,24 +46,34 @@ async function main(file: string | undefined): Promise<number> {
 			...result.findings.map((finding) => `FIND ${findingSignature(finding)}: ${finding.message}`),
 			...result.known.map((id) => `KNOWN ${id}`),
 		];
-		process.stdout.write(`${lines.join('\n')}\n`);
+		await write(process.stdout, `${lines.join('\n')}\n`);
 		// The same verdict as the parity run: refusals and timeouts fail it too.
 		const failed = result.failures.length > 0 || result.findings.some(findingFailsRun);
 		return failed ? 1 : 0;
 	} finally {
-		await runners.v2.stop();
-		await runners.v1.stop();
-		await stopExpressionEngine();
+		// Also after a failed start: the Postgres container must not keep running.
+		await Promise.allSettled([runners.v2.stop(), runners.v1.stop()]);
+		await stopExpressionEngine().catch(() => undefined);
+	}
+}
+
+async function main(file: string | undefined): Promise<number> {
+	try {
+		if (!file) {
+			await write(process.stderr, 'Usage: pnpm parity:replay <repro file>\n');
+			return 2;
+		}
+		return await replay(file);
+	} catch (error) {
+		await write(
+			process.stderr,
+			`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+		);
+		return 1;
+	} finally {
 		removeTestUserFolder();
 	}
 }
 
-main(process.argv[2]).then(
-	(code) => process.exit(code),
-	(error: unknown) => {
-		process.stderr.write(
-			`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
-		);
-		process.exit(1);
-	},
-);
+// Open handles can keep the process alive, so exit when the output is written.
+void main(process.argv[2]).then((code) => process.exit(code));
