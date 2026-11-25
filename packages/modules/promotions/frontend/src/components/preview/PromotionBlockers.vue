@@ -97,6 +97,16 @@ type HardConflict = Exclude<
 >;
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
+	if (conflict.kind === 'skill')
+		return {
+			key: `skill:${conflict.id}`,
+			status: status('conflict'),
+			detail: conflict.reason,
+			icon: resourceIcon('skill'),
+			name: conflict.id,
+			type: 'skill',
+			usedBy: [],
+		};
 	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
 	const row = {
 		key: `conflict:${index}`,

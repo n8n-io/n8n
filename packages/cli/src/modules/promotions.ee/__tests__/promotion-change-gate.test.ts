@@ -1,3 +1,5 @@
+import { SkillService, SkillAccessService, SkillsGate } from '@/modules/skills';
+import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import type { Role, Scope as DbScope, SharedWorkflowRepository, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
@@ -45,10 +47,20 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	const reviewGate = mock<PromotionReviewGateService>();
 
 	const service = new PromotionChangeService(
+		new PromotionSkillSelectionService(
+			mock<SkillsGate>({ isEnabled: false }),
+			mock<SkillService>(),
+			mock<SkillAccessService>(),
+		),
 		promotionsService,
 		mock<N8nPackagesService>(),
 		mock<ApplyPreviewService>(),
 		new PromotePreviewService(
+			new PromotionSkillSelectionService(
+				mock<SkillsGate>({ isEnabled: false }),
+				mock<SkillService>(),
+				mock<SkillAccessService>(),
+			),
 			mock<N8nPackagesService>(),
 			mock<SharedWorkflowRepository>(),
 			reviewGate,

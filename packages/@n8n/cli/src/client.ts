@@ -135,6 +135,7 @@ export interface PromotionExpectedSource {
  * only the project.
  */
 export interface PromotionSelection {
+	skillIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
 }

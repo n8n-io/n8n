@@ -150,13 +150,14 @@ export function usePromotionOperation(
 
 	async function promote(
 		id: string,
-		{ workflowIds, folderIds, credentialIds, commitMessage }: OperationRequest,
+		{ workflowIds, folderIds, credentialIds, skillIds, commitMessage }: OperationRequest,
 	) {
 		// Promote what the page shows. A project or branch that changed since is reported, not pushed.
 		const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
 			workflowIds,
 			folderIds,
 			credentialIds,
+			skillIds,
 			...(commitMessage && { commitMessage }),
 			expectedPreviewRevision: preview.value?.revision,
 		});
@@ -184,6 +185,7 @@ export function usePromotionOperation(
 		// Apply what the page shows. A branch or an instance that changed since is reported, not applied.
 		const expected = {
 			workflowIds: request.workflowIds,
+			skillIds: request.skillIds,
 			folderIds: request.folderIds,
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,

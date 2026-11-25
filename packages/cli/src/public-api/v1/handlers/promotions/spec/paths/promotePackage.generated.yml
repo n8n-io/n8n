@@ -47,6 +47,9 @@ responses:
             counts:
               type: object
               properties:
+                skills:
+                  type: integer
+                  minimum: 0
                 workflows:
                   type: integer
                   minimum: 0

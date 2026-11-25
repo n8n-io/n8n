@@ -502,6 +502,156 @@ oneOf:
       type:
         type: string
         enum:
+          - skill
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+            pattern: ^[A-Za-z0-9_-]+$
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          skill:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 128
+              description:
+                type: string
+                minLength: 1
+                maxLength: 1024
+              instructions:
+                type: string
+                maxLength: 65536
+              references:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                      minLength: 1
+                      maxLength: 512
+                    content:
+                      type: string
+                    isBinary:
+                      type: boolean
+                      enum:
+                        - true
+                  required:
+                    - path
+                    - content
+                  additionalProperties: false
+                maxItems: 500
+            required:
+              - name
+              - description
+              - instructions
+            additionalProperties: false
+          frontmatter:
+            type: object
+            nullable: true
+            additionalProperties: {}
+        required:
+          - id
+          - scope
+          - skill
+          - frontmatter
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+            pattern: ^[A-Za-z0-9_-]+$
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          skill:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 128
+              description:
+                type: string
+                minLength: 1
+                maxLength: 1024
+              instructions:
+                type: string
+                maxLength: 65536
+              references:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                      minLength: 1
+                      maxLength: 512
+                    content:
+                      type: string
+                    isBinary:
+                      type: boolean
+                      enum:
+                        - true
+                  required:
+                    - path
+                    - content
+                  additionalProperties: false
+                maxItems: 500
+            required:
+              - name
+              - description
+              - instructions
+            additionalProperties: false
+          frontmatter:
+            type: object
+            nullable: true
+            additionalProperties: {}
+        required:
+          - id
+          - scope
+          - skill
+          - frontmatter
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
           - credential
       before:
         type: object

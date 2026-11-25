@@ -238,8 +238,8 @@ instructions, and supported reference files.
 Standalone selections use package format 2. This destination also reads format
 1. Older destinations reject format 2. Skills must be available on the
 destination. Unsupported formats and files fail validation before writes.
-The current file format supports Markdown reference files under `references/`.
-It does not carry arbitrary paths or binary files.
+Supported files keep their paths within the Skill folder. Text files use UTF-8.
+Binary files use Base64 and retain their binary marker.
 
 The import plans Agent dependencies with their Agent. It leaves dependencies
 of skipped Agents unchanged unless they are also selected independently.

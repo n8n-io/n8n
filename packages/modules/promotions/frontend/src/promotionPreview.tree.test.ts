@@ -10,6 +10,16 @@ const outline = (items: PreviewTreeItem[]): Outline[] =>
 	items.map((item) => (item.children ? { [item.id]: outline(item.children) } : item.id));
 
 describe('promotion preview tree', () => {
+	it('groups project Skills separately from instance Skills', () => {
+		const resources = [
+			resource({ key: 'skill:project-guide', parentKey: 'project:p1', name: 'Project guide' }),
+			resource({ key: 'skill:instance-guide', name: 'Instance guide' }),
+		];
+		expect(outline(buildPreviewTree({ resources }, labels))).toEqual([
+			{ 'group:skill': ['skill:project-guide'] },
+			{ 'group:instanceSkill': ['skill:instance-guide'] },
+		]);
+	});
 	it('should place workflows in their project and folders, and each dependency once under its type', () => {
 		expect(outline(tree)).toEqual([
 			{

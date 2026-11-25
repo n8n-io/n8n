@@ -29,6 +29,12 @@ requestBody:
               type: string
               minLength: 1
               maxLength: 36
+          skillIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 36
           folderIds:
             type: array
             items:
@@ -69,6 +75,9 @@ responses:
                 counts:
                   type: object
                   properties:
+                    skills:
+                      type: integer
+                      minimum: 0
                     workflows:
                       type: integer
                       minimum: 0

@@ -24,13 +24,16 @@ export type InstancePackage = {
 export function instancePromotionExportRequest({
 	user,
 	projectIds,
+	includeSkills,
 }: {
 	user: User;
 	projectIds: string[];
+	includeSkills?: boolean;
 }): ExportPackageRequest {
 	return {
 		user,
 		projectIds,
+		...(includeSkills ? { includeSkills: projectIds.length > 0, includeInstanceSkills: true } : {}),
 		includeAgents: false,
 		includeVariableValues: true,
 		includeTags: true,
@@ -50,10 +53,12 @@ export async function exportInstancePackage(
 	{
 		keepContent,
 		credentialIds,
+		includeSkills,
 	}: {
 		keepContent?: (path: string) => boolean;
 		/** Credentials of the exported projects to write although no workflow uses them. */
 		credentialIds?: string[];
+		includeSkills?: boolean;
 	} = {},
 ): Promise<InstancePackage> {
 	const writer = new HashingPackageWriter();
@@ -62,6 +67,9 @@ export async function exportInstancePackage(
 		{
 			user,
 			projectIds,
+			...(includeSkills
+				? { includeSkills: projectIds.length > 0, includeInstanceSkills: true }
+				: {}),
 			projectCredentialIds: credentialIds,
 			includeAgents: false,
 			includeArchived: true,

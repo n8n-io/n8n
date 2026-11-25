@@ -8,6 +8,7 @@ import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { projectHolding } from './branch-placement';
+import { PromotionSkillSelectionService } from './promotion-skill-selection.service';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { exportInstancePackage } from './instance-package';
@@ -31,6 +32,7 @@ import type { BranchPackage, PromotionOperationInput } from './promotions.types'
 @Service()
 export class PromotePreviewService {
 	constructor(
+		private readonly skillSelection: PromotionSkillSelectionService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly reviewGate: PromotionReviewGateService,
@@ -77,6 +79,7 @@ export class PromotePreviewService {
 		// select them.
 		const visibleCredentialIds = new Set(selectableCredentialIds);
 		const instance = await exportInstancePackage(this.packagesService, user, [projectId], {
+			includeSkills: this.skillSelection.enabled,
 			credentialIds: selectableCredentialIds,
 		});
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list

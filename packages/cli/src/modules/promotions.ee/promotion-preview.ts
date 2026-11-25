@@ -69,6 +69,7 @@ const RESOURCE_TYPES = {
 	projects: 'project',
 	folders: 'folder',
 	workflows: 'workflow',
+	skills: 'skill',
 	credentials: 'credential',
 	dataTables: 'dataTable',
 	variables: 'variable',
@@ -79,6 +80,7 @@ const TYPE_ORDER: PromotionResourceType[] = [
 	'project',
 	'folder',
 	'workflow',
+	'skill',
 	'credential',
 	'dataTable',
 	'variable',
@@ -155,6 +157,9 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 	for (const workflow of (manifest.workflows ?? []).filter(inProject)) {
 		add('workflows', workflow, resourceKey('workflow', workflow.id));
 	}
+	for (const skill of (manifest.skills ?? []).filter(inProject)) {
+		add('skills', skill, resourceKey('skill', skill.id));
+	}
 
 	// A credential in the project's folder belongs to the project, whether or not a workflow uses it.
 	if (side.ownedCredentials) {
@@ -195,6 +200,22 @@ export function indexProjects(
 ): Map<string, SideResource> {
 	const index = new Map<string, SideResource>();
 	if (!side.manifest) return index;
+	for (const entry of side.manifest.skills ?? []) {
+		if (!entry.target.startsWith('skills/')) continue;
+		const key = resourceKey('skill', entry.id);
+		const path = packagePath('skills', entry.target);
+		index.set(key, {
+			key,
+			type: 'skill',
+			id: entry.id,
+			name: entry.name,
+			target: entry.target,
+			parentKey: null,
+			path,
+			blobSha: side.blobByPath.get(path) ?? null,
+			isArchived: false,
+		});
+	}
 	for (const projectId of projectIds) {
 		const scoped = { ...side, manifest: scopeManifestToProject(side.manifest, projectId) };
 		for (const [key, resource] of indexSide(scoped, projectId)) index.set(key, resource);
@@ -282,10 +303,11 @@ function applyOperationRules(
 	if (removals?.has(resource.key)) return { ...withoutChanges, change: 'deleted' };
 	if (change === 'deleted') {
 		// Neither direction deletes dependencies. Their files and rows stay.
-		if (type !== 'workflow' && type !== 'project' && type !== 'folder') return null;
+		if (type !== 'workflow' && type !== 'skill' && type !== 'project' && type !== 'folder')
+			return null;
 		// Projects and folders stay too. They remain as context for the deleted workflows inside them.
 		// When the plan lists the removals, a workflow that it keeps stays too.
-		if (type !== 'workflow' || removals) return unchanged();
+		if ((type !== 'workflow' && type !== 'skill') || removals) return unchanged();
 	}
 
 	if (direction === 'promote') return resource;
@@ -310,6 +332,9 @@ function applyOperationRules(
 	return {
 		...withoutChanges,
 		change: plannedChange.change,
+		...(plannedChange.followingAgentCount !== undefined
+			? { followingAgentCount: plannedChange.followingAgentCount }
+			: {}),
 		...(previousName !== undefined ? { previousName } : {}),
 		...(plannedChange.previousId !== undefined ? { previousId: plannedChange.previousId } : {}),
 	};
@@ -324,7 +349,7 @@ function isSelectable(
 	{ type, change, parentKey }: PromotionResource,
 	direction: PromotionDirection,
 ): boolean {
-	if (type === 'workflow') return true;
+	if (type === 'workflow' || type === 'skill') return true;
 	const changed = change === 'added' || change === 'modified';
 	// `parentKey` is set only when the credential sits in the folder of a project or a folder in it.
 	if (type === 'credential') return direction === 'promote' && changed && parentKey !== null;
@@ -467,6 +492,14 @@ export function buildPreview({
 		const after = desiredIndex.get(key);
 		const current = after ?? before;
 		if (!current) continue;
+		// Missing collections in legacy packages or with Skills off do not describe removals.
+		if (current.type === 'skill' && operation && desired.manifest?.skills === undefined) continue;
+		if (
+			current.type === 'skill' &&
+			operation?.direction === 'apply' &&
+			desired.manifest?.packageFormatVersion !== '2'
+		)
+			continue;
 		const compared = compareResource(current, before, after);
 		const resource = operation ? applyOperationRules(compared, { ...operation, before }) : compared;
 		if (resource)

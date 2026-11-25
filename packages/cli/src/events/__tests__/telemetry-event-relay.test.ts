@@ -6168,8 +6168,11 @@ describe('TelemetryEventRelay', () => {
 					dataTables: 0,
 					variables: 4,
 					tags: 5,
+					skills: 2,
 				},
 				selectedWorkflowCount: 3,
+				selectedSkillCount: 2,
+				requestedResourceTypes: ['workflow', 'skill'],
 				openedReview: false,
 			});
 
@@ -6188,6 +6191,9 @@ describe('TelemetryEventRelay', () => {
 				variable_count: 4,
 				tag_count: 5,
 				selected_workflow_count: 3,
+				skill_count: 2,
+				selected_skill_count: 2,
+				requested_resource_types: ['workflow', 'skill'],
 				opened_review: false,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -6227,6 +6233,7 @@ describe('TelemetryEventRelay', () => {
 				scope: 'instance',
 				outcome: 'applied',
 				durationMs: 2000,
+				skillsChanged: 0,
 				workflowsChanged: 6,
 				workflowsFailedToPublish: 1,
 			});
@@ -6239,6 +6246,7 @@ describe('TelemetryEventRelay', () => {
 				outcome: 'applied',
 				failure_kind: undefined,
 				duration_ms: 2000,
+				skills_changed: 0,
 				workflows_changed: 6,
 				workflows_failed_to_publish: 1,
 			};

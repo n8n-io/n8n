@@ -275,6 +275,25 @@ properties:
             kind:
               type: string
               enum:
+                - skill
+            code:
+              type: string
+              enum:
+                - skill-conflict
+            id:
+              type: string
+            reason:
+              type: string
+          required:
+            - kind
+            - code
+            - id
+            - reason
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
                 - credential
             sourceId:
               type: string

@@ -17,6 +17,7 @@ export type OperationSelection = {
 	folderIds: string[];
 	/** Credentials that the project owns. Only Promote sends them. */
 	credentialIds: string[];
+	skillIds?: string[];
 };
 
 /**
@@ -30,8 +31,10 @@ export function toOperationRequest(
 	const workflowIds = new Set<string>();
 	const folderIds = new Set<string>();
 	const credentialIds = new Set<string>();
+	const skillIds = new Set<string>();
 	for (const key of selected) {
 		const resource = graph.resources.get(key);
+		if (resource?.type === 'skill' && resource.selectable) skillIds.add(resource.id);
 		if (resource?.type === 'workflow') workflowIds.add(resource.id);
 		if (resource?.type === 'folder') folderIds.add(resource.id);
 		// Other credentials come with the workflows that use them.
@@ -41,6 +44,7 @@ export function toOperationRequest(
 		workflowIds: [...workflowIds].sort(),
 		folderIds: [...folderIds].sort(),
 		credentialIds: [...credentialIds].sort(),
+		...(skillIds.size ? { skillIds: [...skillIds].sort() } : {}),
 	};
 }
 
@@ -149,6 +153,12 @@ export function listBlockers(
 				kind: 'conflict',
 				resourceKey: `project:${conflict.project.id}`,
 				workflowKeys: conflict.workflows.map(({ id }) => workflowKey(id)),
+			});
+		} else if (conflict.kind === 'skill') {
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: `skill:${conflict.id}`,
+				workflowKeys: [`skill:${conflict.id}`],
 			});
 		} else if (conflict.kind === 'credential') {
 			blockers.push({

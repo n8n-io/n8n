@@ -8,6 +8,7 @@ import type {
 	PromotionResourceType,
 } from '@n8n/api-types';
 import {
+	serializedSkillSchema,
 	serializedCredentialSchema,
 	serializedDataTableSchema,
 	serializedFolderSchema,
@@ -29,10 +30,10 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
+import { PromotionSkillSelectionService } from './promotion-skill-selection.service';
 import { PACKAGE_SUBFOLDER } from './constants';
 import {
 	blobsByPath,
-	indexSide,
 	indexProjects,
 	resourceKey,
 	type SideIndex,
@@ -64,6 +65,7 @@ export type DetailSide = { content: string | null; blobSha: string | null };
 @Service()
 export class PromotionChangeService {
 	constructor(
+		private readonly skillSelection: PromotionSkillSelectionService,
 		private readonly promotionsService: PromotionsService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly applyPreviewService: ApplyPreviewService,
@@ -105,7 +107,9 @@ export class PromotionChangeService {
 		}
 		const [files, instance] = await Promise.all([
 			this.promotionsService.readApplyPackageAtCommit(projectId, branch.commitSha),
-			exportInstancePackage(this.packagesService, user, [projectId]),
+			exportInstancePackage(this.packagesService, user, [projectId], {
+				includeSkills: this.skillSelection.enabled,
+			}),
 		]);
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
 		return {
@@ -164,9 +168,11 @@ export class PromotionChangeService {
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
 			exportInstancePackage(this.packagesService, user, [projectId], {
+				includeSkills: this.skillSelection.enabled,
 				// Keep the content of the requested resources only. Variables match by name, not by ID.
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
+					path.endsWith('/skill.json') ||
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
 				// Promote lists the project's own credentials, so their details need them in the export.
 				// Only the requested credentials need an export, because the content of the others is dropped.
@@ -176,18 +182,18 @@ export class PromotionChangeService {
 		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
 		const ownedCredentials = direction === 'promote';
 		const visibleCredentialIds = new Set(selectableCredentialIds);
-		const branchIndex = indexSide(
+		const branchIndex = indexProjects(
 			{ manifest: branchManifest, blobByPath: new Map(), ownedCredentials, visibleCredentialIds },
-			projectId,
+			[projectId],
 		);
-		const instanceIndex = indexSide(
+		const instanceIndex = indexProjects(
 			{
 				manifest: instance.manifest,
 				blobByPath: blobsByPath(instance.files),
 				ownedCredentials,
 				visibleCredentialIds,
 			},
-			projectId,
+			[projectId],
 		);
 		// A resource can disappear after the summary, for example when a local workflow is deleted.
 		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
@@ -228,9 +234,11 @@ export class PromotionChangeService {
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
 			exportInstancePackage(this.packagesService, user, teamProjectIds, {
+				includeSkills: this.skillSelection.enabled,
 				// Keep the content of the requested resources only. Variables match by name, not by ID.
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
+					path.endsWith('/skill.json') ||
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
 			}),
 		]);
@@ -423,6 +431,8 @@ export function toDetail({
 			return { type, ...parseSides(serializedProjectSchema) };
 		case 'folder':
 			return { type, ...parseSides(serializedFolderSchema) };
+		case 'skill':
+			return { type, ...parseSides(serializedSkillSchema) };
 		case 'workflow':
 			return { type, ...parseSides(serializedWorkflowSchema) };
 		case 'credential':

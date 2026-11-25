@@ -272,6 +272,8 @@ export interface ExportPackageRequest {
 	skillIds?: string[];
 	/** Include every Skill owned by the selected projects. */
 	includeSkills?: boolean;
+	/** Export every instance Skill, including when there are no projects. */
+	includeInstanceSkills?: boolean;
 	/** The caller's operation context. Audit events read the login of a service account from it. */
 	ctx?: OperationContext;
 	agentIds?: string[];

@@ -34,6 +34,49 @@ A scope lets the key start the operation. The role of the key owner still
 decides what the operation can read and write. For example, the change details
 show variable values only when that role can list variables.
 
+## Skills
+
+Standalone Skills require package format v2 on a destination with Skills support.
+Skill history and published version pins do not travel. See the
+[package transfer rules](package.md#skills).
+
+Promote includes the latest saved version of each project and instance skill when
+Skills are available. Apply preserves each skill ID and scope. Changed content
+creates a new version. Identical content creates no version. Following agent
+drafts use the new version. Published version pins stay unchanged.
+
+Use `--skill` to select a skill without a workflow:
+
+```bash
+n8n-cli promotion-environment promote-selection project-1 --skill skill_guide
+n8n-cli promotion-environment apply-selection project-1 --skill skill_guide
+```
+
+Repeat `--skill` for more than one skill. A project selection can include that
+project's skills and instance skills. Unselected skills stay unchanged.
+`apply-selection-continue` accepts the same selection. The API uses `skillIds`.
+
+Read the preview before applying. It shows content changes, removals, conflicts,
+and the number of following agent drafts affected by each change. Use
+`--expected-preview-revision` to apply only that reviewed state.
+
+The key needs `skill:read` to preview or promote skills. Apply also checks the
+key's `skill:create`, `skill:update`, or `skill:delete` scope for each planned
+write. The key owner's skill permissions still apply. Authorized Apply can write
+to a protected instance. Ordinary skill edits and package imports stay protected.
+
+Synced skills travel as snapshots. Source connections and credentials do not
+travel. Apply refuses to overwrite a skill that the destination still syncs.
+A skill cannot be removed while a consumer uses it. Resolve the reported
+conflict or remove that skill from the selection.
+
+Packages with no standalone Skills collection do not remove local skills.
+An instance Promote stops if Skills are unavailable and the branch already
+contains skills. This keeps the branch's skills intact.
+
+A project with Skills cannot be deleted by Apply. Move or explicitly delete its
+Skills first. This keeps Skill permissions and consumer checks active.
+
 ## Setup example: Git over SSH
 
 ```bash

@@ -39,6 +39,7 @@ type ProjectWideCode = 'project-conflict' | 'check-not-run' | 'import-blocked';
 /** What Apply does to a resource, where the import plan decides it rather than the file comparison. */
 export type PlannedChange = {
 	change: PromotionResourceChange;
+	followingAgentCount?: number;
 	/** The name on this instance, which Apply keeps. */
 	name?: string;
 	previousName?: string;
@@ -51,6 +52,19 @@ export type PlannedChange = {
  */
 export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChange> {
 	const changes = new Map<string, PlannedChange>();
+	for (const skill of plan.skillPlan?.outcomes ?? []) {
+		changes.set(resourceKey('skill', skill.sourceSkillId), {
+			change:
+				skill.status === 'created'
+					? 'added'
+					: skill.status === 'updated'
+						? 'modified'
+						: skill.status === 'deleted'
+							? 'deleted'
+							: 'unchanged',
+			followingAgentCount: skill.followingAgentCount,
+		});
+	}
 	for (const item of plan.projectPlan.items) {
 		if (item.action === 'skip') {
 			changes.set(resourceKey('project', item.sourceProjectId), {
@@ -286,6 +300,8 @@ function describeIssue(
 	const ofWorkflow = (id: string) => consumersOfIds([{ kind: 'workflow', id }]);
 
 	switch (issue.type) {
+		case 'skill-conflict':
+			return { kind: 'skill', code: 'skill-conflict', id: issue.skillId, reason: issue.message };
 		case 'project-conflict': {
 			if (issue.kind !== 'not-team') {
 				return projectConflict('project-conflict', issue.kind, issue.sourceProjectId);
@@ -397,10 +413,7 @@ function addCredentialRules(
 	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
-	const issuesById = new Map<
-		string,
-		Array<Extract<BlockingIssue, { type: 'credential-unresolved' }>>
-	>();
+	const issuesById = new Map<string, Extract<BlockingIssue, { type: 'credential-unresolved' }>[]>();
 	for (const issue of plan.issues) {
 		if (issue.type !== 'credential-unresolved') continue;
 		issuesById.set(issue.sourceId, [...(issuesById.get(issue.sourceId) ?? []), issue]);
@@ -523,7 +536,7 @@ function addVariableRules(
 	handled: Set<BlockingIssue>,
 ): void {
 	// Scopes of each matched variable, by consumer project.
-	const matched = new Map<string, Map<string, ReadonlyArray<'project' | 'global'>>>();
+	const matched = new Map<string, Map<string, readonly ('project' | 'global')[]>>();
 	for (const { project, plan: scope } of plan.scopes) {
 		matched.set(
 			project.id,

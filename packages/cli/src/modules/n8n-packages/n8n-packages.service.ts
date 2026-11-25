@@ -401,7 +401,10 @@ export class N8nPackagesService {
 			throw new BadRequestError('includeSkills requires at least one project ID.');
 		}
 		const exportProjectSkills = request.includeSkills && request.projectIds?.length;
-		const hasSkillSelection = selectedSkillIds.length > 0 || Boolean(exportProjectSkills);
+		const hasSkillSelection =
+			selectedSkillIds.length > 0 ||
+			Boolean(exportProjectSkills) ||
+			request.includeInstanceSkills === true;
 		if (hasSkillSelection) {
 			const { SkillService, SkillsGate } = await import('../skills/index.js');
 			if (!Container.get(SkillsGate).isEnabled) {
@@ -413,6 +416,8 @@ export class N8nPackagesService {
 				selectedSkillIds.push(
 					...(await Container.get(SkillService).findIdsInProjects(request.projectIds ?? [])),
 				);
+			if (request.includeInstanceSkills)
+				selectedSkillIds.push(...(await Container.get(SkillService).findInstanceIds()));
 			const { SkillExporter } = await import('./entities/skill/skill.exporter.js');
 			standaloneEntries = await Container.get(SkillExporter).export({
 				user: request.user,

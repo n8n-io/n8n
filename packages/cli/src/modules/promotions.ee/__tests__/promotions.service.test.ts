@@ -1,6 +1,8 @@
+import { SkillService, SkillAccessService, SkillsGate } from '@/modules/skills';
+import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
 import type {
@@ -41,7 +43,6 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { Publisher } from '@n8n/backend-services';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -207,6 +208,12 @@ describe('PromotionsService', () => {
 		environmentLock = new PromotionEnvironmentLockService(Container.get(LockService));
 		// Real, so that the move checks read the repository and folder mocks above.
 		applyPreviewService = new ApplyPreviewService(
+			mock<SkillService>({ runPromotion: async (run) => await run() }),
+			new PromotionSkillSelectionService(
+				mock<SkillsGate>({ isEnabled: false }),
+				mock<SkillService>({ findIdsInProjects: async () => [] }),
+				mock<SkillAccessService>(),
+			),
 			n8nPackagesService,
 			inventoryReader,
 			mock(),
@@ -217,6 +224,12 @@ describe('PromotionsService', () => {
 			globalConfig,
 		);
 		service = new PromotionsService(
+			mock<SkillService>({ runPromotion: async (run) => await run() }),
+			new PromotionSkillSelectionService(
+				mock<SkillsGate>({ isEnabled: false }),
+				mock<SkillService>({ findIdsInProjects: async () => [] }),
+				mock<SkillAccessService>(),
+			),
 			resolver,
 			providersService,
 			workingDirectory,
@@ -1893,7 +1906,7 @@ describe('PromotionsService', () => {
 			});
 
 			const snapshot = JSON.parse(await readExported('manifest.json')) as {
-				workflows: Array<{ id: string }>;
+				workflows: { id: string }[];
 			};
 			expect(snapshot.workflows.map((w) => w.id).sort()).toEqual(['w1', 'w2']);
 		});
@@ -2212,6 +2225,8 @@ describe('PromotionsService', () => {
 				projectId: 'p1',
 				selectedWorkflowCount: 1,
 				selectedFolderCount: 0,
+				selectedSkillCount: 0,
+				requestedResourceTypes: ['workflow'],
 				outcome: 'preview_changed',
 				durationMs: expect.any(Number),
 			});
@@ -2379,6 +2394,7 @@ describe('PromotionsService', () => {
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 					pathspecs: [
 						'n8n/projects/',
+						'n8n/skills/',
 						'n8n/credentials/',
 						'n8n/data-tables/',
 						'n8n/variables/',
@@ -2628,6 +2644,7 @@ describe('PromotionsService', () => {
 		const importResult = () =>
 			({
 				package: { sourceN8nVersion: '1.0.0', sourceId: 'src' },
+				counts: { agents: { created: 0, updated: 0, skipped: 0 } },
 				projects: [
 					{ status: 'created', localId: 'p1' },
 					{ status: 'updated', localId: 'p2' },
@@ -2658,7 +2675,7 @@ describe('PromotionsService', () => {
 				tags: { matched: [], created: ['t1'], renamed: ['t2'], reconciled: [], skipped: [] },
 			}) as unknown as Awaited<ReturnType<N8nPackagesService['applyPackagePlan']>>;
 
-		const plan = mock<PackageImportPlan>();
+		const plan = mock<PackageImportPlan>({ skillPlan: undefined });
 		const packageInventory = {
 			projects: [mock<InventoryProject>({ id: 'p1' }), mock<InventoryProject>({ id: 'p2' })],
 			workflows: [],
@@ -2716,7 +2733,7 @@ describe('PromotionsService', () => {
 				mock<InventoryWorkflow>({ id: 'wa1', name: 'Invoices', projectId });
 			const inventoryWith = (
 				workflows: InventoryWorkflow[],
-				folders: Array<{ projectId: string; folder: { id: string; name: string } }> = [],
+				folders: { projectId: string; folder: { id: string; name: string } }[] = [],
 				projects = [alpha, beta],
 			) => ({
 				projects,
@@ -3087,6 +3104,39 @@ describe('PromotionsService', () => {
 			expect(projectService.deleteProject).not.toHaveBeenCalled();
 		});
 
+		it('reports saved Skills if project reconciliation fails', async () => {
+			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2', 'p3']);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([
+				{ id: 'p3', name: 'Gamma' },
+			] as never);
+			n8nPackagesService.applyPackagePlan.mockResolvedValueOnce({
+				...importResult(),
+				skills: [
+					{
+						sourceSkillId: 's1',
+						localId: 's1',
+						name: 'Guide',
+						projectId: null,
+						status: 'updated',
+						followingAgentCount: 0,
+					},
+				],
+			});
+			projectService.deleteProject.mockRejectedValueOnce(new BadRequestError('Project changed'));
+			await expect(
+				service.continueApply(ENVIRONMENT_ID, actor, {
+					...request,
+					confirmDestructiveChanges: true,
+				}),
+			).rejects.toMatchObject({
+				meta: { counts: { skills: { updated: 1 } } },
+			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-applied',
+				expect.objectContaining({ outcome: 'failed', skillsChanged: 1 }),
+			);
+		});
+
 		it('explains that the branch holds no package to import', async () => {
 			gitService.readTreeAtCommit.mockResolvedValueOnce(new Map());
 			await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toThrow(
@@ -3241,6 +3291,8 @@ describe('PromotionsService', () => {
 						environmentId: ENVIRONMENT_ID,
 						scope: 'project',
 						projectId: 'p1',
+						selectedSkillCount: 0,
+						requestedResourceTypes: ['workflow'],
 						outcome: 'preview_changed',
 						durationMs: expect.any(Number),
 					});

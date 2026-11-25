@@ -145,6 +145,101 @@ describe('WorkingCopyUpdater', () => {
 		return await overlaySelection(staging.manifest, selection(overrides));
 	};
 
+	it('updates and renames selected Skills while preserving other Skills and version 2', async () => {
+		const old = { id: 'skill_one', name: 'Old', target: 'projects/alpha/skills/old-skill_one' };
+		const renamed = { ...old, name: 'New', target: 'projects/alpha/skills/new-skill_one' };
+		const kept = { id: 'skill_two', name: 'Shared', target: 'skills/shared-skill_two' };
+		const file = (id: string, name: string, scope = 'project') =>
+			JSON.stringify({
+				id,
+				scope,
+				skill: {
+					name,
+					description: 'Guide',
+					instructions: 'Read the guide.',
+					references: [{ path: 'references/guide.md', content: '# Guide' }],
+				},
+				frontmatter: { license: 'MIT' },
+			});
+		const keptContent = file(kept.id, kept.name, 'instance');
+		await apply(
+			{
+				manifest: makeManifest({
+					packageFormatVersion: '2',
+					projects: [alpha],
+					skills: [old, kept],
+					selectedSkillIds: [old.id, kept.id],
+				}),
+				files: {
+					'projects/alpha/project.json': projectFile,
+					[`${old.target}/skill.json`]: file(old.id, old.name),
+					[`${kept.target}/skill.json`]: keptContent,
+				},
+			},
+			{
+				manifest: makeManifest({
+					packageFormatVersion: '2',
+					projects: [alpha],
+					skills: [renamed],
+					selectedSkillIds: [old.id],
+				}),
+				files: {
+					'projects/alpha/project.json': projectFile,
+					[`${renamed.target}/skill.json`]: file(renamed.id, renamed.name),
+				},
+			},
+			{ skillIds: [old.id] },
+		);
+		await expectAbsent(old.target);
+		expect(await readExported(`${kept.target}/skill.json`)).toBe(keptContent);
+		const written = await readWrittenManifest();
+		expect(written.packageFormatVersion).toBe('2');
+		expect(written.selectedSkillIds).toEqual(expect.arrayContaining([old.id, kept.id]));
+		expect(written.skills).toEqual(expect.arrayContaining([renamed, kept]));
+	});
+
+	it('deletes only the selected Skill and retains an explicit empty collection', async () => {
+		const entry = { id: 'skill_one', name: 'Guide', target: 'skills/guide-skill_one' };
+		await apply(
+			{
+				manifest: makeManifest({
+					packageFormatVersion: '2',
+					skills: [entry],
+					selectedSkillIds: [entry.id],
+				}),
+				files: {
+					[`${entry.target}/skill.json`]: JSON.stringify({
+						id: entry.id,
+						skill: { name: entry.name },
+					}),
+				},
+			},
+			{
+				manifest: makeManifest({ projects: [alpha] }),
+				files: { 'projects/alpha/project.json': projectFile },
+			},
+			{ deletedSkillIds: [entry.id] },
+		);
+		await expectAbsent(entry.target);
+		expect(await readWrittenManifest()).toMatchObject({
+			packageFormatVersion: '2',
+			skills: [],
+			selectedSkillIds: [],
+		});
+	});
+
+	it('refuses Skill selections that belong to another project on the branch', async () => {
+		const entry = { id: 'skill_other', name: 'Other', target: 'projects/other/skills/other' };
+		await writeTree(exportFolder, {
+			'projects/other/project.json': JSON.stringify({ id: 'other', name: 'Other' }),
+			[`${entry.target}/skill.json`]: JSON.stringify({ id: entry.id, skill: { name: entry.name } }),
+		});
+		await expect(
+			updater.assertSelectionFitsBranch(exportFolder, selection({ deletedSkillIds: [entry.id] })),
+		).rejects.toThrow('another project');
+		expect(await readExported(`${entry.target}/skill.json`)).toContain(entry.id);
+	});
+
 	beforeEach(async () => {
 		root = await mkdtemp(path.join(tmpdir(), 'n8n-working-copy-'));
 		exportFolder = path.join(root, 'repository', 'n8n');

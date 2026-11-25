@@ -32,8 +32,18 @@ const absentText = (side: DetailSide) =>
 	);
 
 // Exported expressions are JSON, so they show as a line diff.
-const columnChanges = computed(() => props.changes.filter((change) => change.field !== 'data'));
-const dataChange = computed(() => props.changes.find((change) => change.field === 'data'));
+const isDiff = (change: FieldChange) =>
+	['data', 'instructions', 'frontmatter', 'file'].includes(change.field);
+const columnChanges = computed(() => props.changes.filter((change) => !isDiff(change)));
+const dataChanges = computed(() => props.changes.filter(isDiff));
+
+const displayValue = (change: FieldChange, side: DetailSide) => {
+	const value = change[side];
+	if (change.field === 'scope' && (value === 'project' || value === 'instance')) {
+		return i18n.baseText(`promotions.preview.skill.scope.${value}`);
+	}
+	return value ?? i18n.baseText('promotions.preview.field.empty');
+};
 
 // A single name change needs no field label.
 const showFieldLabels = computed(
@@ -71,19 +81,33 @@ const sides = computed(() =>
 							:color="change[column.side] === undefined ? 'text-light' : 'text-dark'"
 							:class="$style.value"
 						>
-							{{ change[column.side] ?? i18n.baseText('promotions.preview.field.empty') }}
+							{{ displayValue(change, column.side) }}
 						</N8nText>
 					</div>
 				</template>
 			</div>
 		</div>
-		<div v-if="dataChange" :class="$style.data" data-test-id="promotion-preview-data-diff">
+		<div
+			v-for="dataChange in dataChanges"
+			:key="dataChange.label ?? dataChange.field"
+			:class="$style.data"
+			data-test-id="promotion-preview-data-diff"
+		>
 			<N8nText step="2xs" bold color="text-base">
-				{{ i18n.baseText('promotions.preview.field.data') }}
+				{{ dataChange.label ?? i18n.baseText(`promotions.preview.field.${dataChange.field}`) }}
 			</N8nText>
+			<N8nText v-if="dataChange.binary" step="xs">{{
+				i18n.baseText(
+					dataChange.before === undefined
+						? 'promotions.preview.skill.binaryAdded'
+						: dataChange.after === undefined
+							? 'promotions.preview.skill.binaryRemoved'
+							: 'promotions.preview.skill.binaryChanged',
+				)
+			}}</N8nText>
 			<component
 				:is="CodeDiff"
-				v-if="CodeDiff"
+				v-else-if="CodeDiff"
 				:old-string="dataChange.before ?? ''"
 				:new-string="dataChange.after ?? ''"
 			/>

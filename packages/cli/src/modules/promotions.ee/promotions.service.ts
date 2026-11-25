@@ -41,7 +41,13 @@ import {
 	PackageDirectoryInventoryReader,
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import {
+	assertPackageImportApiKeyScopes,
+	assertSharedSkillWritesAllowed,
+} from '@/modules/n8n-packages/engine/import-gates';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
+import { throwWithSkillResults } from '@/modules/n8n-packages/engine/package-skill-plan';
+import { SkillService } from '@/modules/skills';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { manifestEntrySchema } from '@/modules/n8n-packages/spec/manifest.schema';
@@ -57,6 +63,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
+import { PromotionSkillSelectionService } from './promotion-skill-selection.service';
+import { readLeftoverManifest } from './import-manifest-bridge';
 import { projectHolding } from './branch-placement';
 import { crossProjectMoves, describePromotedMoves } from './cross-project-moves';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
@@ -121,6 +129,8 @@ type ApplyHead = {
 	identity: { environmentId: string; git: { commitSha: string; branchName: string } };
 };
 
+type PromotionOperationContext = OperationContext & { skillApiKeyScopes?: string[] };
+
 type ApplyTip = {
 	status: 'current';
 	identity: ApplyHead['identity'];
@@ -146,6 +156,8 @@ function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean 
 @Service()
 export class PromotionsService {
 	constructor(
+		private readonly skills: SkillService,
+		private readonly skillSelection: PromotionSkillSelectionService,
 		private readonly resolver: PromotionEnvironmentResolver,
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
@@ -236,6 +248,7 @@ export class PromotionsService {
 		environmentId: string,
 		actor: User,
 		request: PromotePackageDto,
+		skillApiKeyScopes?: string[],
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		return await this.trackPromote(
@@ -246,7 +259,8 @@ export class PromotionsService {
 				await this.withEnvironmentLock(
 					input,
 					async () => await this.resolver.resolveForEnvironment(environmentId, 'promote'),
-					async (current, signal) => await this.promoteResolved(current, actor, request, signal),
+					async (current, signal) =>
+						await this.promoteResolved(current, actor, request, signal, skillApiKeyScopes),
 				),
 		);
 	}
@@ -256,6 +270,7 @@ export class PromotionsService {
 		actor: User,
 		request: PromotePackageDto,
 		signal: AbortSignal,
+		skillApiKeyScopes?: string[],
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
 		await this.ensureCheckout(input, signal);
@@ -273,6 +288,15 @@ export class PromotionsService {
 			target?.baseCommitSha,
 		);
 
+		if (
+			!this.skillSelection.enabled &&
+			(await readLeftoverManifest(packageFolder))?.skills !== undefined
+		) {
+			throw new BadRequestError(
+				'Skills are unavailable. Enable Skills before replacing this package.',
+			);
+		}
+
 		// The instance environment covers every team project, including projects with
 		// their own environment. Personal projects stay out of scope.
 		const projectIds = await this.projectRepository.findTeamProjectIds();
@@ -288,10 +312,16 @@ export class PromotionsService {
 		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				instancePromotionExportRequest({ user: actor, projectIds }),
+				instancePromotionExportRequest({
+					user: actor,
+					projectIds,
+					includeSkills: this.skillSelection.enabled,
+				}),
 				{ targetDir: stagingFolder },
 			);
 
+			if (exportResult.counts.skills)
+				assertPackageImportApiKeyScopes(skillApiKeyScopes, ['skill:read']);
 			// The lease can expire during the long export. Check before the package changes,
 			// because another operation can own the folder after that.
 			throwIfLockLost(signal);
@@ -312,6 +342,7 @@ export class PromotionsService {
 				buildInstancePromotionCommitMessage({
 					projectCount: projectIds.length,
 					workflowCount: exportResult.counts.workflows,
+					skillCount: exportResult.counts.skills,
 				});
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
@@ -517,6 +548,7 @@ export class PromotionsService {
 					projectWorkflowIds: selection.workflowIds,
 					projectFolderIds: selection.folderIds,
 					projectCredentialIds: selection.credentialIds,
+					skillIds: selection.skillIds,
 					includeAgents: false,
 					includeVariableValues: true,
 					includeTags: true,
@@ -645,6 +677,7 @@ export class PromotionsService {
 		projectId: string,
 		actor: User,
 		request: PromoteRequest,
+		skillApiKeyScopes?: string[],
 	): Promise<PromoteSelectionResultDto> {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -659,6 +692,8 @@ export class PromotionsService {
 			actor,
 			{
 				projectId,
+				selectedSkillCount: request.skillIds?.length ?? 0,
+				requestedResourceTypes: requestedResourceTypes(request),
 				selectedWorkflowCount: workflowIds.length,
 				selectedFolderCount: folderIds.length,
 			},
@@ -667,6 +702,8 @@ export class PromotionsService {
 					input,
 					async () => await this.resolver.resolveForProject(projectId, 'promote'),
 					async (current, signal): Promise<PromoteSelectionResultDto> => {
+						if (request.skillIds?.length)
+							assertPackageImportApiKeyScopes(skillApiKeyScopes, ['skill:read']);
 						// Promote what the page shows. When the project or its branch changed after the
 						// preview, stop and write nothing. This is a check, not a lock. It runs before the
 						// selection is read, so a selected folder that moved away gives this result too.
@@ -696,7 +733,11 @@ export class PromotionsService {
 							current,
 							actor,
 							{ commitMessage: request.commitMessage },
-							{ ...selection, credentialIds },
+							{
+								...selection,
+								credentialIds,
+								...(await this.skillSelection.forPromote(actor, projectId, request.skillIds ?? [])),
+							},
 							movedTo,
 							signal,
 						);
@@ -733,7 +774,15 @@ export class PromotionsService {
 			projectId,
 			selectedWorkflowCount,
 			selectedFolderCount,
-		}: { projectId?: string; selectedWorkflowCount?: number; selectedFolderCount?: number },
+			selectedSkillCount,
+			requestedResourceTypes,
+		}: {
+			projectId?: string;
+			selectedWorkflowCount?: number;
+			selectedFolderCount?: number;
+			selectedSkillCount?: number;
+			requestedResourceTypes?: RelayEventMap['promotion-promoted']['requestedResourceTypes'];
+		},
 		run: () => Promise<T>,
 	): Promise<T> {
 		return await observePromotion(run, (observed) =>
@@ -744,6 +793,8 @@ export class PromotionsService {
 				projectId,
 				selectedWorkflowCount,
 				selectedFolderCount,
+				selectedSkillCount,
+				requestedResourceTypes,
 				durationMs: observed.durationMs,
 				...promotedOutcome(observed),
 			}),
@@ -753,18 +804,30 @@ export class PromotionsService {
 	private async trackApply(
 		input: PromotionOperationInput,
 		actor: User,
-		{ projectId }: { projectId?: string },
+		{
+			projectId,
+			selectedSkillCount,
+			requestedResourceTypes,
+		}: {
+			projectId?: string;
+			selectedSkillCount?: number;
+			requestedResourceTypes?: RelayEventMap['promotion-applied']['requestedResourceTypes'];
+		},
 		run: () => Promise<ApplyPackageResultDto>,
 	): Promise<ApplyPackageResultDto> {
-		return await observePromotion(run, (observed) =>
-			this.eventService.emit('promotion-applied', {
-				user: actor,
-				environmentId: input.environmentId,
-				scope: projectId ? 'project' : 'instance',
-				projectId,
-				durationMs: observed.durationMs,
-				...appliedOutcome(observed),
-			}),
+		return await observePromotion(
+			async () => await this.skills.runPromotion(run),
+			(observed) =>
+				this.eventService.emit('promotion-applied', {
+					selectedSkillCount,
+					requestedResourceTypes,
+					user: actor,
+					environmentId: input.environmentId,
+					scope: projectId ? 'project' : 'instance',
+					projectId,
+					durationMs: observed.durationMs,
+					...appliedOutcome(observed),
+				}),
 		);
 	}
 
@@ -825,7 +888,7 @@ export class PromotionsService {
 		actor: User,
 		request: ApplyPackageDto = {},
 		publicApi: PublicApiCaller = false,
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(environmentId, actor, publicApi, request, ctx);
 	}
@@ -835,7 +898,7 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplyPackageDto,
 		publicApi: PublicApiCaller = false,
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(
 			environmentId,
@@ -890,7 +953,7 @@ export class PromotionsService {
 		actor: User,
 		request: ApplySelectionDto,
 		publicApi: PublicApiCaller = false,
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		return await this.applySelectionFromSource(
 			projectId,
@@ -910,7 +973,7 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplySelectionDto,
 		publicApi: PublicApiCaller = false,
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		return await this.applySelectionFromSource(
 			projectId,
@@ -1019,13 +1082,17 @@ export class PromotionsService {
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
 		},
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		return await this.trackApply(
 			input,
 			actor,
-			{ projectId },
+			{
+				projectId,
+				selectedSkillCount: selection.skillIds.length,
+				requestedResourceTypes: requestedResourceTypes(selection),
+			},
 			async () =>
 				await this.withEnvironmentLock(
 					input,
@@ -1057,7 +1124,7 @@ export class PromotionsService {
 		confirmDestructiveChanges: boolean,
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		await this.ensureCheckout(input, signal);
 
@@ -1073,7 +1140,9 @@ export class PromotionsService {
 					user: actor,
 					projectId,
 					files,
-					instance: await exportInstancePackage(this.n8nPackagesService, actor, [projectId]),
+					instance: await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
+						includeSkills: this.skillSelection.enabled,
+					}),
 				}),
 		);
 		if (previewChanged) return previewChanged;
@@ -1086,6 +1155,14 @@ export class PromotionsService {
 			projectId,
 			requested,
 			new Set(moves.workflows.map(({ id }) => id)),
+		);
+		Object.assign(
+			selection,
+			await this.skillSelection.forApply(
+				await reader.readManifest(),
+				[projectId],
+				requested.skillIds,
+			),
 		);
 		const plan = await this.n8nPackagesService.planPackageSelection(
 			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
@@ -1114,6 +1191,11 @@ export class PromotionsService {
 			confirmDestructiveChanges,
 		});
 		throwIfLockLost(signal);
+		if (plan.skillPlan) {
+			assertSharedSkillWritesAllowed(ctx.skillApiKeyScopes, [plan.skillPlan.writes]);
+			if (plan.skillPlan.removals.length)
+				assertPackageImportApiKeyScopes(ctx.skillApiKeyScopes, ['skill:delete']);
+		}
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 
 		return {
@@ -1132,7 +1214,7 @@ export class PromotionsService {
 		actor: User,
 		publicApi: PublicApiCaller,
 		request: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		return await this.trackApply(
@@ -1159,7 +1241,7 @@ export class PromotionsService {
 			confirmDestructiveChanges = false,
 		}: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
 		signal: AbortSignal,
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
 		await this.ensureCheckout(input, signal);
@@ -1180,7 +1262,14 @@ export class PromotionsService {
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		const plan = await this.n8nPackagesService.planPackage(
-			{ ...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges),
+				ctx,
+				...(await this.instanceSkillImportRequest(
+					reader,
+					inventory.projects.map(({ id }) => id),
+				)),
+			},
 			reader,
 			'enforce',
 		);
@@ -1197,6 +1286,11 @@ export class PromotionsService {
 			confirmDestructiveChanges,
 		});
 		throwIfLockLost(signal);
+		if (plan.skillPlan) {
+			assertSharedSkillWritesAllowed(ctx.skillApiKeyScopes, [plan.skillPlan.writes]);
+			if (plan.skillPlan.removals.length)
+				assertPackageImportApiKeyScopes(ctx.skillApiKeyScopes, ['skill:delete']);
+		}
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 		const importedProjectIds = result.projects.map((project) => project.localId);
 		const confirmedProjectIds = check.conflicts.flatMap((conflict) =>
@@ -1208,7 +1302,7 @@ export class PromotionsService {
 			importedProjectIds,
 			confirmedProjectIds,
 			ctx,
-		);
+		).catch((error: unknown) => throwWithSkillResults(error, result.skills ?? []));
 
 		return {
 			status: 'applied',
@@ -1672,11 +1766,18 @@ export class PromotionsService {
 		const onBranch = new Map((branch.state.workflows ?? []).map((w) => [w.id, w.name]));
 		const exported = new Map((staging.workflows ?? []).map((w) => [w.id, w.name]));
 		const pushed = selection.workflowIds.map((id) => ({ id, name: exported.get(id) ?? id }));
+		const exportedSkills = new Map((staging.skills ?? []).map((s) => [s.id, s.name]));
+		const branchSkills = new Map((branch.state.skills ?? []).map((s) => [s.id, s.name]));
 		const exportedFolders = new Map((staging.folders ?? []).map((f) => [f.id, f.name]));
 		const exportedCredentials = new Map((staging.credentials ?? []).map((c) => [c.id, c.name]));
 
 		return buildSelectionPromotionCommitMessage({
 			projectName,
+			skills: (selection.skillIds ?? []).map((id) => ({ id, name: exportedSkills.get(id) ?? id })),
+			removedSkills: (selection.deletedSkillIds ?? []).map((id) => ({
+				id,
+				name: branchSkills.get(id) ?? id,
+			})),
 			added: pushed.filter(({ id }) => !onBranch.has(id)),
 			updated: pushed.filter(({ id }) => onBranch.has(id)),
 			removed: selection.deletedWorkflowIds.map((id) => ({ id, name: onBranch.get(id) ?? id })),
@@ -1765,7 +1866,7 @@ export class PromotionsService {
 		publicApi: PublicApiCaller,
 		importedProjectIds: string[],
 		confirmedProjectIds: string[],
-		ctx: OperationContext = {},
+		ctx: PromotionOperationContext = {},
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
 		const confirmed = new Set(confirmedProjectIds);
@@ -1775,6 +1876,9 @@ export class PromotionsService {
 		);
 
 		for (const projectId of removedProjectIds) {
+			if ((await this.skillSelection.projectDeletionConflicts([projectId])).length) {
+				throw new BadRequestError('Move or delete the Skills before deleting their project.');
+			}
 			await this.projectService.deleteProject(actor, projectId, { publicApi }, ctx);
 		}
 
@@ -1790,6 +1894,14 @@ export class PromotionsService {
 		return { name, email: user.email ?? GIT_DEFAULT_COMMIT_EMAIL };
 	}
 
+	private async instanceSkillImportRequest(reader: GitCommitPackageReader, projectIds: string[]) {
+		const { selectedSkillIds: skillIds, deletedSkillIds } = await this.skillSelection.forApply(
+			await reader.readManifest(),
+			projectIds,
+		);
+		return { skillIds, deletedSkillIds };
+	}
+
 	private toApplyCounts({
 		importResult,
 		projectReconciliation,
@@ -1797,13 +1909,14 @@ export class PromotionsService {
 		importResult: ImportResult;
 		projectReconciliation: ProjectReconciliationResult;
 	}): Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'] {
-		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
+		const tally = <S extends string>(rows: { status: S }[], statuses: readonly S[]) => {
 			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
 			for (const { status } of rows) counts[status] += 1;
 			return counts;
 		};
 
 		return {
+			...(importResult.counts.skills ? { skills: importResult.counts.skills } : {}),
 			projects: {
 				...tally(importResult.projects, ['created', 'updated', 'skipped'] as const),
 				deleted: projectReconciliation.deletedProjectIds.length,
@@ -1867,10 +1980,14 @@ async function pathExists(target: string): Promise<boolean> {
 }
 
 /** What a project Apply selects. The project details always come along. */
-type ApplySelection = { workflowIds: string[]; folderIds: string[] };
+type ApplySelection = { workflowIds: string[]; folderIds: string[]; skillIds: string[] };
 
 function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
-	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
+	return {
+		workflowIds: request.workflowIds ?? [],
+		folderIds: request.folderIds ?? [],
+		skillIds: request.skillIds ?? [],
+	};
 }
 
 function promotedOutcome(
@@ -1901,15 +2018,22 @@ function appliedOutcome(
 	| 'workflowsFailedToPublish'
 	| 'foldersChanged'
 	| 'projectsChanged'
+	| 'skillsChanged'
 > {
-	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
+	if (!observed.ok)
+		return {
+			outcome: 'failed',
+			failureKind: observed.failureKind,
+			...(observed.skillsChanged !== undefined ? { skillsChanged: observed.skillsChanged } : {}),
+		};
 	const { result } = observed;
 	if (result.status === 'blocked') return { outcome: 'blocked' };
 	if (result.status === 'source-changed') return { outcome: 'source_changed' };
 	if (result.status === 'preview-changed') return { outcome: 'preview_changed' };
-	const { workflows, folders, projects } = result.counts;
+	const { workflows, folders, projects, skills } = result.counts;
 	return {
 		outcome: 'applied',
+		...(skills ? { skillsChanged: skills.created + skills.updated + skills.deleted } : {}),
 		workflowsChanged:
 			workflows.created + workflows.updated + workflows.archived + workflows.deleted,
 		workflowsFailedToPublish: workflows.publishing.failed,
@@ -1937,9 +2061,9 @@ const branchPlacementsSchema = z.object({
 });
 
 type BranchPlacements = {
-	projects: Array<{ id: string; name: string }>;
-	workflows: Array<{ id: string; name: string; projectId: string; projectName: string }>;
-	folders: Array<{ projectId: string; folder: { id: string; name: string } }>;
+	projects: { id: string; name: string }[];
+	workflows: { id: string; name: string; projectId: string; projectName: string }[];
+	folders: { projectId: string; folder: { id: string; name: string } }[];
 };
 
 /**
@@ -2005,4 +2129,18 @@ function blockingCheck(
 			...otherConflicts,
 		],
 	};
+}
+
+function requestedResourceTypes(request: {
+	workflowIds?: string[];
+	folderIds?: string[];
+	credentialIds?: string[];
+	skillIds?: string[];
+}): NonNullable<RelayEventMap['promotion-promoted']['requestedResourceTypes']> {
+	const types: NonNullable<RelayEventMap['promotion-promoted']['requestedResourceTypes']> = [];
+	if (request.workflowIds?.length) types.push('workflow');
+	if (request.folderIds?.length) types.push('folder');
+	if (request.credentialIds?.length) types.push('credential');
+	if (request.skillIds?.length) types.push('skill');
+	return types;
 }

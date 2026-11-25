@@ -172,6 +172,12 @@ const crossProjectMoveSchema = z.object({
  * The other conflicts need a package or target correction before creation can proceed.
  */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
+	z.object({
+		kind: z.literal('skill'),
+		code: z.literal('skill-conflict'),
+		id: z.string(),
+		reason: z.string(),
+	}),
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
 	credentialConflictSchema.extend({ code: z.literal('unknown-type') }),
