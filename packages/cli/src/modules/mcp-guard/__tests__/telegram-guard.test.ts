@@ -17,6 +17,16 @@ vi.mock('../network', () => ({
 	sendToNetwork: vi.fn(async () => new Response('{"ok":true,"result":{}}')),
 }));
 
+// What the hydration model gets. The model is faked, so a test can read its input.
+const planInputs: string[] = [];
+vi.mock('../hydration-llm', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../hydration-llm')>()),
+	createPlanLlm: () => async (request: { instructions: string; prompt: string }) => {
+		planInputs.push(`${request.instructions}\n${request.prompt}`);
+		return '{"overlay":{}}';
+	},
+}));
+
 // A real-looking bot token. It must never show up in a log, an error or a gym request.
 const TOKEN = '8123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
 const TENANT_TOKEN = '7000000001:AAtenantTokenOfTheGymXXXXXXXXXXXXXXXXXX';
@@ -258,6 +268,7 @@ describe('a bot token never leaves the guard', () => {
 
 	beforeEach(() => {
 		logs.length = 0;
+		planInputs.length = 0;
 		gymRequests = [];
 		vi.mocked(sendToNetwork).mockClear();
 		const sink = (text: string) => {
@@ -299,7 +310,7 @@ describe('a bot token never leaves the guard', () => {
 		expect(res.status).toBe(200);
 		// The chat of the write is looked up with a real read. The write itself stays away.
 		const paths = vi.mocked(sendToNetwork).mock.calls.map(([req]) => req.url.pathname);
-		expect(paths.every((path) => path.endsWith('/getChat'))).toBe(true);
+		expect(paths).toEqual([`/bot${TOKEN}/getChat`]);
 		expect(gymRequests.length).toBeGreaterThan(0);
 		const last = gymRequests[gymRequests.length - 1];
 		expect(last.url).toBe(`/bot${TENANT_TOKEN}/sendMessage`);
@@ -341,6 +352,42 @@ describe('a bot token never leaves the guard', () => {
 			`/file/bot${TENANT_TOKEN}/photos/file_1.jpg`,
 		);
 		expect(logs.join('\n')).not.toContain(TOKEN);
+	});
+
+	it('keeps the token out of what the hydration model gets, for a read and for a write', async () => {
+		const run = await setup();
+
+		await run.router.handle(call('POST', `/bot${TOKEN}/getChat`, { chat_id: 5 }));
+		const afterRead = planInputs.length;
+		await run.router.handle(call('POST', `/bot${TOKEN}/sendMessage`, { chat_id: 6, text: 'x' }));
+
+		// Both hydrations ran, so the model input was seen for a read and for a write.
+		expect(afterRead).toBeGreaterThan(0);
+		expect(planInputs.length).toBeGreaterThan(afterRead);
+		for (const input of planInputs) expect(input).not.toContain(TOKEN);
+	});
+
+	it('gives each request its own token for the real read, also when two requests run together', async () => {
+		const OTHER = '8999999999:AAotherBotTokenOfAnotherAgentXXXXXXXXXXXX';
+		vi.mocked(sendToNetwork).mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			return new Response('{"ok":true,"result":{}}');
+		});
+		const run = await setup();
+
+		await Promise.all([
+			run.router.handle(call('POST', `/bot${TOKEN}/getChat`, { chat_id: 5 })),
+			run.router.handle(call('POST', `/bot${OTHER}/getChat`, { chat_id: 6 })),
+		]);
+
+		const paths = vi
+			.mocked(sendToNetwork)
+			.mock.calls.map(([req]) => req.url.pathname)
+			.sort();
+		expect(paths).toEqual([`/bot${TOKEN}/getChat`, `/bot${OTHER}/getChat`].sort());
+		vi.mocked(sendToNetwork).mockImplementation(
+			async () => new Response('{"ok":true,"result":{}}'),
+		);
 	});
 
 	it('keeps the token out of the logs when the real read and the hydration of a write fail', async () => {
