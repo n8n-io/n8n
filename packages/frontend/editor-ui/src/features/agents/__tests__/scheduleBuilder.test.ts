@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCron, parseCron, type ScheduleParts } from '../utils/scheduleBuilder';
+import {
+	buildCron,
+	formatTimeOfDay,
+	parseCron,
+	summarizeSchedule,
+	weekdayLabel,
+	type ScheduleParts,
+} from '../utils/scheduleBuilder';
 
 const base: ScheduleParts = {
 	frequency: 'daily',
@@ -56,5 +63,44 @@ describe('scheduleBuilder', () => {
 			expect(parseCron('not a cron')).toBeNull();
 			expect(parseCron('0 9 1 * 1')).toBeNull(); // both dom and dow set
 		});
+	});
+});
+
+describe('summarizeSchedule', () => {
+	const time = formatTimeOfDay(9, 30);
+
+	it.each([
+		{ cron: '0 * * * *', expected: { key: 'agents.builder.triggers.schedule.hourly' } },
+		{
+			cron: '15 * * * *',
+			expected: {
+				key: 'agents.builder.triggers.schedule.hourlyAtMinute',
+				values: { minute: '15' },
+			},
+		},
+		{
+			cron: '30 9 * * *',
+			expected: { key: 'agents.builder.triggers.schedule.daily', values: { time } },
+		},
+		{
+			cron: '30 9 * * 1',
+			expected: {
+				key: 'agents.builder.triggers.schedule.weekly',
+				values: { day: weekdayLabel(1), time },
+			},
+		},
+		{
+			cron: '30 9 5 * *',
+			expected: {
+				key: 'agents.builder.triggers.schedule.monthly',
+				values: { day: '5', time },
+			},
+		},
+	])('summarizes $cron', ({ cron, expected }) => {
+		expect(summarizeSchedule(cron)).toEqual(expected);
+	});
+
+	it('returns null for a custom cron', () => {
+		expect(summarizeSchedule('*/5 9-17 * * 1-5')).toBeNull();
 	});
 });

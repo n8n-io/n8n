@@ -135,6 +135,46 @@ export function weekdayLabel(dayOfWeek: number, format: 'long' | 'short' = 'long
 	);
 }
 
+/** Text keys and values that describe a cron in plain words, e.g. "Every Monday at 9:00 AM". */
+export type ScheduleSummary =
+	| { key: 'agents.builder.triggers.schedule.hourly' }
+	| { key: 'agents.builder.triggers.schedule.hourlyAtMinute'; values: { minute: string } }
+	| { key: 'agents.builder.triggers.schedule.daily'; values: { time: string } }
+	| { key: 'agents.builder.triggers.schedule.weekly'; values: { day: string; time: string } }
+	| { key: 'agents.builder.triggers.schedule.monthly'; values: { day: string; time: string } };
+
+/**
+ * Summarizes a cron that the schedule builder supports. Returns null for a
+ * custom cron, so the caller can use `describeSchedule` instead.
+ */
+export function summarizeSchedule(cronExpression: string): ScheduleSummary | null {
+	const parts = parseCron(cronExpression);
+	if (!parts) return null;
+
+	const time = formatTimeOfDay(parts.hour, parts.minute);
+	switch (parts.frequency) {
+		case 'hourly':
+			return parts.minute === 0
+				? { key: 'agents.builder.triggers.schedule.hourly' }
+				: {
+						key: 'agents.builder.triggers.schedule.hourlyAtMinute',
+						values: { minute: String(parts.minute) },
+					};
+		case 'daily':
+			return { key: 'agents.builder.triggers.schedule.daily', values: { time } };
+		case 'weekly':
+			return {
+				key: 'agents.builder.triggers.schedule.weekly',
+				values: { day: weekdayLabel(parts.dayOfWeek), time },
+			};
+		case 'monthly':
+			return {
+				key: 'agents.builder.triggers.schedule.monthly',
+				values: { day: String(parts.dayOfMonth), time },
+			};
+	}
+}
+
 /** Localized time-of-day, e.g. "9:00 AM". */
 export function formatTimeOfDay(hour: number, minute: number): string {
 	return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(
