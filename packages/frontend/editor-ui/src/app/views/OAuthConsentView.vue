@@ -220,6 +220,8 @@ const loadDetails = async (flow: string) => {
 	} catch (err) {
 		if (!isActive || flow !== flowId.value) return;
 		shownFlowId.value = flow;
+		// The refusal screen already says why, so a toast would repeat it.
+		if (serverRefusal.value) return;
 		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
 };
@@ -263,8 +265,13 @@ watch(
 					/>
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
-				     with a slow muted spinner badge. Decorative. -->
-				<span :class="$style.connector" aria-hidden="true">
+				     with a slow muted spinner badge. Decorative. It stops on an error, because
+				     no connection is pending then. -->
+				<span
+					:class="[$style.connector, { [$style.stopped]: error }]"
+					aria-hidden="true"
+					data-test-id="consent-connector"
+				>
 					<svg viewBox="0 0 64 8" preserveAspectRatio="none">
 						<line
 							:class="$style['connector-line']"
@@ -278,7 +285,7 @@ watch(
 							stroke-dasharray="2 5"
 						/>
 					</svg>
-					<span :class="$style.badge">
+					<span v-if="!error" :class="$style.badge" data-test-id="consent-connector-spinner">
 						<N8nIcon :class="$style['badge-spinner']" icon="loader-circle" size="large" />
 					</span>
 				</span>
@@ -628,6 +635,10 @@ watch(
 	to {
 		transform: rotate(360deg);
 	}
+}
+
+.stopped .connector-line {
+	animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
