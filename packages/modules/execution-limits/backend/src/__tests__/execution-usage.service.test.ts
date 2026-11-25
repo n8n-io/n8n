@@ -8,7 +8,7 @@ import type { ExecutionUsage, UsageTotals } from '../execution-usage';
 const TOTALS: UsageTotals = {
 	startedCount: 7,
 	blockedCount: 2,
-	lastFoldAt: new Date('2026-11-19T10:00:00.000Z'),
+	lastCountedAt: new Date('2026-11-19T10:00:00.000Z'),
 };
 
 describe('ExecutionUsageService', () => {
@@ -45,7 +45,7 @@ describe('ExecutionUsageService', () => {
 			);
 			expect(repository.sumInstanceUsage).not.toHaveBeenCalled();
 			expect(usage.executions).toBe(5);
-			expect(usage.lastFoldAt).toEqual(TOTALS.lastFoldAt);
+			expect(usage.lastCountedAt).toEqual(TOTALS.lastCountedAt);
 		});
 
 		it('reads only the instance table for an instance scope', async () => {

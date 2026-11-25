@@ -18,8 +18,8 @@ const LIMITS: LimitedScopes = {
 	limitedProjectIds: new Set(['p1', 'p2']),
 };
 
-const totals = (startedCount: number, blockedCount = 0, lastFoldAt: Date | null = null) =>
-	({ startedCount, blockedCount, lastFoldAt }) satisfies UsageTotals;
+const totals = (startedCount: number, blockedCount = 0, lastCountedAt: Date | null = null) =>
+	({ startedCount, blockedCount, lastCountedAt }) satisfies UsageTotals;
 
 const INSTANCE: UsageScope = { type: 'instance' };
 const PROJECT: UsageScope = { type: 'project', projectId: 'p1' };
@@ -75,7 +75,7 @@ describe('ExecutionUsageCache', () => {
 			const usage = cache.read(INSTANCE, NOW);
 
 			expect(usage?.executions).toBe(92);
-			expect(usage?.lastFoldAt).toEqual(new Date('2026-11-20T09:00:00.000Z'));
+			expect(usage?.lastCountedAt).toEqual(new Date('2026-11-20T09:00:00.000Z'));
 			expect(usage?.period.firstDay).toBe(FIRST_DAY);
 		});
 
@@ -275,7 +275,7 @@ describe('ExecutionUsageCache', () => {
 			const usage = cache.read({ type: 'project', projectId: 'p2' }, NOW);
 
 			expect(usage?.executions).toBe(0);
-			expect(usage?.lastFoldAt).toBeNull();
+			expect(usage?.lastCountedAt).toBeNull();
 		});
 
 		it('returns null for a project that got its limit after the load', () => {

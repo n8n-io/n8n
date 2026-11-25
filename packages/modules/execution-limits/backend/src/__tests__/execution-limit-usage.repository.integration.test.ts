@@ -253,7 +253,7 @@ describe('ExecutionLimitUsageRepository reads', () => {
 
 				expect(cached).toEqual(stored);
 				expect(cached?.executions).toBe(executions);
-				expect(cached?.lastFoldAt).toBeInstanceOf(Date);
+				expect(cached?.lastCountedAt).toBeInstanceOf(Date);
 			}
 		});
 	});
