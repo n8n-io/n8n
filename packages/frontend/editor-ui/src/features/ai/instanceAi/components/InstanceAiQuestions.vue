@@ -12,6 +12,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import type { InstanceAiQuestion } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { questionDrafts } from '@/features/ai/instanceAi/questionDrafts';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
@@ -36,6 +37,8 @@ interface Props {
 	questions: QuestionItem[];
 	introMessage?: string;
 	disabled?: boolean;
+	/** Set it when the host can replace the open card with a new instance. See `questionDrafts`. */
+	draftKey?: string;
 }
 
 const props = defineProps<Props>();
@@ -45,9 +48,10 @@ const emit = defineEmits<{
 	submit: [answers: QuestionAnswer[]];
 }>();
 
-const currentIndex = ref(0);
+const draft = props.draftKey ? questionDrafts.get(props.draftKey) : undefined;
+const currentIndex = ref(draft?.currentIndex ?? 0);
 const isSubmitted = ref(false);
-const answers = ref<Map<string, QuestionAnswer>>(new Map());
+const answers = ref<Map<string, QuestionAnswer>>(draft?.answers ?? new Map());
 const highlightedIndex = ref(-1);
 const selectedIndex = ref<number | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
@@ -188,11 +192,20 @@ function onSingleSelectAndAdvance(option: string) {
 	}, 250);
 }
 
-// The chat can replace the card during the delay. Advance at once then, so the answer is sent.
 onBeforeUnmount(() => {
-	if (!advanceTimer) return;
-	clearTimeout(advanceTimer);
-	goToNextInternal();
+	// The host can replace the card during the delay. Advance at once, so the answer is kept.
+	if (advanceTimer) {
+		clearTimeout(advanceTimer);
+		goToNextInternal();
+	}
+	if (!props.draftKey) return;
+	if (isSubmitted.value) questionDrafts.delete(props.draftKey);
+	else {
+		questionDrafts.set(props.draftKey, {
+			currentIndex: currentIndex.value,
+			answers: answers.value,
+		});
+	}
 });
 
 function onMultiToggle(option: string, checked: boolean) {

@@ -1489,6 +1489,51 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(String(fetchMock.mock.calls[1][0])).toContain('/resume');
 	});
 
+	it('sends only the first of two resumes that wait for the same turn to end', async () => {
+		const suspended = (toolCallId: string): AgentSseEvent => ({
+			type: 'tool-call-suspended',
+			payload: {
+				toolCallId,
+				runId: 'run-1',
+				toolName: 'calculator',
+				input: { type: 'approval', toolName: 'calculator', args: {} },
+			},
+		});
+		let closeTurn = () => {};
+		const fetchMock = vi
+			.fn()
+			.mockImplementationOnce(async (_url: string, init: RequestInit) => {
+				const turn = makeControllableSseResponse(
+					[suspended('tc-1'), suspended('tc-2')],
+					init.signal ?? null,
+				);
+				closeTurn = turn.close;
+				return turn.response;
+			})
+			.mockImplementationOnce(async () => makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		void hook.sendMessage('hi');
+		await vi.waitFor(() => expect(hook.messages.value.at(-1)?.toolCalls).toHaveLength(2));
+
+		const first = hook.resume({
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { approved: true },
+		});
+		const second = hook.resume({
+			runId: 'run-1',
+			toolCallId: 'tc-2',
+			resumeData: { approved: true },
+		});
+		closeTurn();
+
+		expect(await first).toBe('sent');
+		expect(await second).toBe('busy');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },

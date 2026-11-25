@@ -1972,18 +1972,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 		}
 
+		let taken = false;
 		if (endedTurn) {
 			const target = targetKey();
 			await endedTurn;
 			if (disposed || target !== targetKey()) return 'busy';
+			// Another answer or a stop can take the turn during the wait.
+			taken = isStreaming.value || isCancelling.value;
 		}
 
 		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/resume`;
-		const { outcome } = await postAndConsume(
-			url,
-			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
-			onAccepted,
-		);
+		const outcome = taken
+			? 'busy'
+			: (
+					await postAndConsume(
+						url,
+						{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
+						onAccepted,
+					)
+				).outcome;
 		let reconciled = false;
 		if (outcome === 'failed' || outcome === 'busy') {
 			reconciled = await refreshHistory();
