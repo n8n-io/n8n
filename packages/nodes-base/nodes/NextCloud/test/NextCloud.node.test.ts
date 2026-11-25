@@ -56,6 +56,24 @@ const webDavFolderListResponse = `<?xml version="1.0"?>
   </d:response>
 </d:multistatus>`;
 
+// What Nextcloud answers to the named props of version 1.1: the files also carry oc:fileid and nc:upload_time
+const webDavFolderListWithFileIdResponse = `<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+  <d:response>
+    <d:href>/remote.php/webdav/projects/</d:href>
+    <d:propstat><d:prop><oc:fileid>10</oc:fileid><d:getlastmodified>Mon, 01 Jan 2024</d:getlastmodified><d:resourcetype><d:collection /></d:resourcetype><d:getetag>"folder-etag"</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/webdav/projects/file1.txt</d:href>
+    <d:propstat><d:prop><oc:fileid>11</oc:fileid><d:getlastmodified>Tue, 02 Jan 2024</d:getlastmodified><d:getcontentlength>1024</d:getcontentlength><d:getcontenttype>text/plain</d:getcontenttype><nc:upload_time>1795176000</nc:upload_time><d:resourcetype></d:resourcetype><d:getetag>"file-etag"</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/webdav/projects/archive/</d:href>
+    <d:propstat><d:prop><oc:fileid>12</oc:fileid><d:getlastmodified>Wed, 03 Jan 2024</d:getlastmodified><d:resourcetype><d:collection /></d:resourcetype><d:getetag>"archive-etag"</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+    <d:propstat><d:prop><d:getcontentlength/><d:getcontenttype/><nc:upload_time/></d:prop><d:status>HTTP/1.1 404 Not Found</d:status></d:propstat>
+  </d:response>
+</d:multistatus>`;
+
 const webDavEncodedFolderListResponse = `<?xml version="1.0"?>
 <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
   <d:response>
@@ -433,7 +451,9 @@ describe('NextCloud Node', () => {
 			expect(requestOptions(requestWithAuthentication)).toMatchObject({
 				method: 'PROPFIND',
 				uri: `${webDavUri('/projects')}`,
+				body: '',
 			});
+			expect(requestOptions(requestWithAuthentication).headers).toEqual({});
 			expectWebDavUri(requestOptions(requestWithAuthentication).uri);
 			expect(result).toEqual([
 				[
@@ -445,6 +465,59 @@ describe('NextCloud Node', () => {
 							contentLength: '1024',
 							contentType: 'text/plain',
 							eTag: 'file-etag',
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('asks for every output prop plus the file ID on version 1.1, and keeps every field', async () => {
+			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
+				parameters: { resource: 'folder', operation: 'list', path: '/projects' },
+				typeVersion: 1.1,
+			});
+			requestWithAuthentication.mockResolvedValue(webDavFolderListWithFileIdResponse);
+
+			const result = await executeNode(executeFunctions);
+
+			const options = requestOptions(requestWithAuthentication);
+			expect(options).toMatchObject({ method: 'PROPFIND', uri: webDavUri('/projects') });
+			// No Depth header: Nextcloud then lists the children, as before
+			expect(options.headers).toEqual({ 'Content-Type': 'application/xml' });
+			for (const prop of [
+				'oc:fileid',
+				'd:getlastmodified',
+				'd:getcontentlength',
+				'd:getcontenttype',
+				'nc:upload_time',
+				'd:getetag',
+				'd:resourcetype',
+			]) {
+				expect(String(options.body)).toContain(`<${prop}/>`);
+			}
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							path: '/projects/file1.txt',
+							fileId: '11',
+							lastModified: 'Tue, 02 Jan 2024',
+							contentLength: '1024',
+							contentType: 'text/plain',
+							uploadTime: 'Fri, 20 Nov 2026 12:00:00 GMT',
+							type: 'file',
+							eTag: 'file-etag',
+						},
+						pairedItem: { item: 0 },
+					},
+					{
+						json: {
+							path: '/projects/archive',
+							fileId: '12',
+							lastModified: 'Wed, 03 Jan 2024',
+							type: 'folder',
+							eTag: 'archive-etag',
 						},
 						pairedItem: { item: 0 },
 					},

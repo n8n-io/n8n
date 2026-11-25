@@ -21,6 +21,7 @@ import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
 import {
+	ITEM_PROPFIND_BODY,
 	nextCloudApiRequest,
 	nextCloudCredentialType,
 	nextCloudRootUrl,
@@ -1019,6 +1020,11 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'PROPFIND';
 						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
+						if (nodeVersion >= 1.1) {
+							// Without a body Nextcloud returns its default props, which never include oc:fileid
+							body = ITEM_PROPFIND_BODY;
+							headers['Content-Type'] = 'application/xml';
+						}
 					}
 				}
 

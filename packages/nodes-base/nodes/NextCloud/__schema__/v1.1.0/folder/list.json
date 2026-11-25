@@ -10,6 +10,9 @@
 		"eTag": {
 			"type": "string"
 		},
+		"fileId": {
+			"type": "string"
+		},
 		"lastModified": {
 			"type": "string"
 		},
@@ -17,6 +20,9 @@
 			"type": "string"
 		},
 		"type": {
+			"type": "string"
+		},
+		"uploadTime": {
 			"type": "string"
 		}
 	},
