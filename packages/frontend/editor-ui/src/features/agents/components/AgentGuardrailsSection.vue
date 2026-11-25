@@ -275,6 +275,7 @@ function onModalRemove() {
 			v-if="$slots.approval"
 			:title="i18n.baseText('agents.hitl.title')"
 			:description="i18n.baseText('agents.hitl.description')"
+			:default-open="!!config?.hitlConfigurations?.length"
 			:class="$style.divided"
 			data-testid="agent-approval-disclosure"
 		>

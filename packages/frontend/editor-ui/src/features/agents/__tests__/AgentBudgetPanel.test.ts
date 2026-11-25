@@ -132,6 +132,28 @@ describe('AgentBudgetPanel', () => {
 		wrapper.unmount();
 	});
 
+	it.each([{ monthlyBudgetUsd: 200 }, { sessionCostCapUsd: 5 }])(
+		'opens embedded controls with a saved limit %j',
+		async (limit) => {
+			getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 0 });
+			const wrapper = mount(AgentBudgetPanel, {
+				props: {
+					config: config({ guardrails: { budget: { enabled: true, ...limit } } }),
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					embedded: true,
+				},
+				global: { stubs: { I18nT: true } },
+			});
+			const disclosure = wrapper.get('button[aria-expanded]');
+			expect(disclosure.attributes('aria-expanded')).toBe('true');
+			await disclosure.trigger('click');
+			expect(disclosure.attributes('aria-expanded')).toBe('false');
+			await flushPromises();
+			wrapper.unmount();
+		},
+	);
+
 	it('shows the saved amounts and the alert percent', async () => {
 		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
 		const wrapper = mount(AgentBudgetPanel, {

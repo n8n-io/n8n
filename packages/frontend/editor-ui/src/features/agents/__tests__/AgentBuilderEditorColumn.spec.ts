@@ -272,6 +272,7 @@ async function mountColumn(
 				},
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
+				AgentVectorStoresPanel: true,
 			},
 		},
 	});
@@ -552,6 +553,29 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(trigger.attributes('aria-expanded')).toBe('true');
 		expect(wrapper.find('[data-testid="agent-knowledge-advanced-content"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
+	});
+
+	it('opens Knowledge Advanced when configured vector stores load', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge' });
+		await wrapper.setProps({
+			localConfig: {
+				...wrapper.props('localConfig')!,
+				vectorStores: [
+					{
+						provider: 'pinecone',
+						name: 'product_docs',
+						credential: 'pinecone-cred',
+						useWhen: 'Search for product documentation.',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+						indexName: 'product-docs',
+					},
+				],
+			},
+		});
+		expect(
+			wrapper.get('[data-testid="agent-knowledge-advanced-trigger"]').attributes('aria-expanded'),
+		).toBe('true');
 		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
 	});
 

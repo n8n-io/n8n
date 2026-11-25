@@ -457,6 +457,13 @@ describe('WorkflowToolConfigContent', () => {
 		expect(queryByTestId('agent-workflow-tool-target-unusable')).toBeNull();
 	});
 
+	it('opens Advanced for a workflow configured to return all outputs', () => {
+		const { getByTestId } = renderForm(createRef({ allOutputs: true }));
+
+		expect(getByTestId('agent-workflow-tool-advanced')).toHaveAttribute('aria-expanded', 'true');
+		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
+	});
+
 	describe('workflow input bindings', () => {
 		it('configures an unpublished workflow whose trigger omits default parameters', async () => {
 			setProjectWorkflows([
@@ -476,7 +483,10 @@ describe('WorkflowToolConfigContent', () => {
 			};
 			const view = renderForm(createRef({ inputs }));
 			await view.findByTestId('agent-workflow-tool-target-unpublished');
-			await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+			expect(view.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+				'aria-expanded',
+				'true',
+			);
 			const field = await view.findByTestId('agent-workflow-tool-input-request');
 			expect(within(field).getByRole('textbox')).toHaveValue('Please review this request');
 			await fireEvent.click(view.getByRole('button', { name: 'Save' }));
@@ -536,7 +546,7 @@ describe('WorkflowToolConfigContent', () => {
 			});
 
 			const field = await findByTestId('agent-workflow-tool-input-botName');
-			await fireEvent.click(getByTestId('agent-workflow-tool-advanced'));
+			expect(getByTestId('agent-workflow-tool-advanced')).toHaveAttribute('aria-expanded', 'true');
 			expect(within(field).getByRole('textbox')).toHaveValue('Jarvis');
 		});
 
@@ -644,7 +654,10 @@ describe('WorkflowToolConfigContent', () => {
 			view.unmount();
 			const reopened = renderForm(saved);
 			await reopened.findByTestId('agent-workflow-tool-inputs');
-			await fireEvent.click(reopened.getByTestId('agent-workflow-tool-advanced'));
+			expect(reopened.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+				'aria-expanded',
+				'true',
+			);
 			expect(
 				within(reopened.getByTestId('agent-workflow-tool-input-query')).getByRole('textbox'),
 			).toHaveValue('Input guidance');
@@ -682,7 +695,10 @@ describe('WorkflowToolConfigContent', () => {
 					.fn()
 					.mockRejectedValue(new Error('offline'));
 				const failedLoad = renderForm(createRef({ inputs }));
-				await fireEvent.click(failedLoad.getByTestId('agent-workflow-tool-advanced'));
+				expect(failedLoad.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+					'aria-expanded',
+					'true',
+				);
 				await failedLoad.findByText('agents.toolConfig.workflow.inputs.loadError');
 				await fireEvent.click(failedLoad.getByRole('button', { name: 'Save' }));
 				expect(failedLoad.onConfirm).toHaveBeenCalledWith(expect.objectContaining({ inputs }));

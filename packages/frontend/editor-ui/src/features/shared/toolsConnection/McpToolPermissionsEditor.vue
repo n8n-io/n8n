@@ -33,7 +33,7 @@ const i18n = useI18n();
 const message = useMessage();
 const categories = ref({ ...props.modelValue.categories });
 const toolPermissions = ref({ ...props.modelValue.tools });
-const expandedCategory = ref<McpToolCategory | null>(null);
+const expandedCategories = ref<Partial<Record<McpToolCategory, boolean>>>({});
 
 watch(
 	() => props.modelValue,
@@ -47,7 +47,7 @@ watch(
 watch(
 	() => props.status,
 	(status) => {
-		if (status !== 'connected') expandedCategory.value = null;
+		if (status !== 'connected') expandedCategories.value = {};
 	},
 );
 
@@ -155,6 +155,20 @@ function hasCategoryOverrides(category: McpToolCategory): boolean {
 	);
 }
 
+function isExpanded(category: McpToolCategory): boolean {
+	return (
+		!arePermissionsDisabled.value &&
+		(expandedCategories.value[category] ??
+			(props.actor === 'agent' && hasCategoryOverrides(category)))
+	);
+}
+
+function toggleCategory(category: McpToolCategory) {
+	const expanded = !isExpanded(category);
+	if (props.actor === 'agent') expandedCategories.value[category] = expanded;
+	else expandedCategories.value = { [category]: expanded };
+}
+
 function isCategoryDisabled(tools: McpServerTool[]): boolean {
 	return arePermissionsDisabled.value || tools.length === 0;
 }
@@ -217,17 +231,17 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 						icon-only
 						:disabled="isCategoryDisabled(group.tools)"
 						:aria-label="group.title"
-						:aria-expanded="expandedCategory === group.category"
-						@click="expandedCategory = expandedCategory === group.category ? null : group.category"
+						:aria-expanded="isExpanded(group.category)"
+						@click="toggleCategory(group.category)"
 					>
 						<N8nIcon
-							:icon="expandedCategory === group.category ? 'chevron-up' : 'chevron-down'"
+							:icon="isExpanded(group.category) ? 'chevron-up' : 'chevron-down'"
 							:size="16"
 						/>
 					</N8nButton>
 				</div>
 
-				<div v-if="expandedCategory === group.category" :class="$style.toolList">
+				<div v-if="isExpanded(group.category)" :class="$style.toolList">
 					<div v-for="tool in group.tools" :key="tool.id" :class="$style.toolRow">
 						<div :class="$style.toolSummary">
 							<N8nText size="small">{{ tool.name }}</N8nText>

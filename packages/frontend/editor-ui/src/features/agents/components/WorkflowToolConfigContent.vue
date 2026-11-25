@@ -185,6 +185,15 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	() =>
+		props.initialRef.allOutputs === true || Object.keys(props.initialRef.inputs ?? {}).length > 0,
+	(configured) => {
+		if (configured) advancedExpanded.value = true;
+	},
+	{ immediate: true },
+);
+
 watch([() => props.submitCount, hasInputErrors], ([submitCount, hasErrors]) => {
 	if (submitCount && hasErrors) advancedExpanded.value = true;
 });

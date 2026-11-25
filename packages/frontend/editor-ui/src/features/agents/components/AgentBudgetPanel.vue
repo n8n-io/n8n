@@ -130,6 +130,7 @@ const sessionValue = computed(() => {
 				? {
 						title: i18n.baseText('agents.builder.budget.usage.label'),
 						description: usageDescription,
+						defaultOpen: monthlyBudget !== undefined || sessionCap !== undefined,
 					}
 				: {
 						header: i18n.baseText('agents.builder.budget.title'),

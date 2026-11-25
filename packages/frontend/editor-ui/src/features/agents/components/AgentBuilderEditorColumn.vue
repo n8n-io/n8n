@@ -84,6 +84,14 @@ provideAgentPersonalisation(
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
 
+watch(
+	() => !!props.localConfig?.vectorStores?.length,
+	(configured) => {
+		if (configured) isKnowledgeAdvancedExpanded.value = true;
+	},
+	{ immediate: true },
+);
+
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,

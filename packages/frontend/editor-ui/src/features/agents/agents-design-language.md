@@ -654,7 +654,11 @@ If a surface keeps a resolved card, show the decision without active actions.
 
 Use one card on the Build tab for Guardrails, Approval, and Monthly usage.
 Use full-width dividers between sections and budget rows. Each section expands independently.
-Open Guardrails by default. Start Approval and Monthly usage collapsed.
+Open Guardrails by default. Open Approval when the Agent has an approval.
+Open Monthly usage when a monthly budget or session cap is set. Let users
+collapse configured sections. Open other configuration disclosures when they
+contain saved settings, such as workflow inputs, vector stores, or individual
+MCP tool permissions.
 Show Approval when the module is enabled. Use pills to show the configured
 destinations. Each pill opens its settings.
 
@@ -671,8 +675,8 @@ Show Send to below Require approval while the toggle is on. Use a full-width
 divider between these rows. In workflow tool settings, put Advanced in its own
 section after the other settings. In MCP settings,
 include Send approval to after the tool permissions in the same bordered group.
-Start these sections collapsed. When expanded, show the ordered approvers and an
-Add approver action. Allow attaching an existing approval from the same menu.
+Open these sections when an approver is attached. Start them collapsed when
+empty. When expanded, show the ordered approvers and an Add approver action. Allow attaching an existing approval from the same menu.
 Every selected approver must approve, in the order shown.
 
 In a conversation, ask the requester before contacting configured reviewers.

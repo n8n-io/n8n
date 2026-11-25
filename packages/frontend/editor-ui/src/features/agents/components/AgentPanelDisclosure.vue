@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useId } from 'vue';
+import { ref, useId, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import shared from '../styles/agent-panel.module.scss';
 
@@ -11,6 +11,13 @@ const props = defineProps<{
 
 const open = ref(props.defaultOpen ?? false);
 const contentId = useId();
+
+watch(
+	() => props.defaultOpen,
+	(configured) => {
+		if (configured) open.value = true;
+	},
+);
 </script>
 
 <template>

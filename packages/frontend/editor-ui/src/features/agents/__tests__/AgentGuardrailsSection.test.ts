@@ -402,7 +402,7 @@ describe('AgentGuardrailsSection', () => {
 		expect(updates.config?.guardrails?.tools).toEqual([KEYWORDS_GUARDRAIL]);
 	});
 
-	it('opens Guardrails by default and toggles Approval independently', async () => {
+	it('opens Guardrails by default and opens Approval when an approval loads', async () => {
 		const wrapper = mountSection({}, '<div data-testid="approval-content">Approval content</div>');
 		const guardrails = wrapper.get('[data-testid="agent-guardrails-disclosure"] button');
 		const approval = wrapper.get('[data-testid="agent-approval-disclosure"] button');
@@ -412,7 +412,15 @@ describe('AgentGuardrailsSection', () => {
 		expect(approval.attributes('aria-expanded')).toBe('false');
 		expect(approvalContent.isVisible()).toBe(false);
 
-		await approval.trigger('click');
+		await wrapper.setProps({
+			config: {
+				...wrapper.props('config')!,
+				hitlConfigurations: [
+					{ id: 'approval', name: 'Finance check', method: 'workflow', workflowId: 'wf' },
+				],
+			},
+		});
+		expect(approval.attributes('aria-expanded')).toBe('true');
 		expect(approvalContent.isVisible()).toBe(true);
 		expect(guardrails.attributes('aria-expanded')).toBe('true');
 

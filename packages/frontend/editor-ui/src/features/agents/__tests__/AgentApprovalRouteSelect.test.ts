@@ -45,11 +45,10 @@ function render(modelValue?: AgentApprovalRoute) {
 	return { wrapper, config, saveConfiguration };
 }
 
-it('starts MCP approvers collapsed and lets users attach an existing approval', async () => {
+it('shows saved MCP approvers and lets users attach an existing approval', () => {
 	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
 	expect(wrapper.text()).toContain('Send approval to');
-	expect(wrapper.findComponent(AgentApprovalDestinationMenu).exists()).toBe(false);
-	await wrapper.get('[data-testid="agent-approval-expand"]').trigger('click');
+	expect(wrapper.text()).toContain('Finance data check');
 	const menu = wrapper.getComponent(AgentApprovalDestinationMenu);
 	expect(menu.props('excludeIds')).toEqual(['workflow']);
 	menu.vm.$emit('attach', 'slack');
@@ -71,6 +70,19 @@ it('hides Send to until Require approval is on and starts collapsed each time', 
 	expect(wrapper.get('[data-testid="agent-approval-expand"]').attributes('aria-expanded')).toBe(
 		'false',
 	);
+});
+
+it('shows a saved approver when enabling approval and allows manual collapse', async () => {
+	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
+	await wrapper.setProps({ approvalRequired: false });
+	await wrapper.setProps({ approvalRequired: true });
+	const trigger = wrapper.get('[data-testid="agent-approval-expand"]');
+	expect(trigger.attributes('aria-expanded')).toBe('true');
+	expect(wrapper.text()).toContain('Finance data check');
+
+	await trigger.trigger('click');
+	expect(trigger.attributes('aria-expanded')).toBe('false');
+	expect(wrapper.findComponent(AgentApprovalDestinationMenu).exists()).toBe(false);
 });
 
 it('creates and attaches an approver without opening settings', async () => {

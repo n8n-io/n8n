@@ -93,10 +93,12 @@ function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 	editing.value = undefined;
 }
 watch(
-	() => props.approvalRequired,
-	(value) => {
-		if (!value) expanded.value = false;
+	[() => props.approvalRequired, () => selectedIds.value.length > 0],
+	([required, hasApprovers]) => {
+		if (required === false) expanded.value = false;
+		else if (hasApprovers) expanded.value = true;
 	},
+	{ immediate: true },
 );
 watch(
 	() => props.disabled,
