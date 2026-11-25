@@ -1397,6 +1397,19 @@ describe('InstanceAiChatPanel', () => {
 			} as InstanceAiMessage;
 		}
 
+		/** A tool result as it reaches the editor: the tool declares `untrustedOutput()`. */
+		function untrusted(result: Record<string, unknown>) {
+			return {
+				type: 'content',
+				value: [
+					{
+						type: 'text',
+						text: `<untrusted_data source="tool:custom-mcp-servers">\n${JSON.stringify(result)}\n</untrusted_data>`,
+					},
+				],
+			};
+		}
+
 		function mountServerPanel(runtime = makeThread()) {
 			store.getOrCreateRuntime.mockReturnValue(runtime);
 			store.getThreadMetadata.mockReturnValue(serverMetadata);
@@ -1458,7 +1471,7 @@ describe('InstanceAiChatPanel', () => {
 				serverToolCall(
 					'tc-add',
 					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
-					{ success: true, tools: [] },
+					untrusted({ success: true, serverMutated: true, tools: [] }),
 				),
 			);
 			await flushPromises();
@@ -1472,16 +1485,16 @@ describe('InstanceAiChatPanel', () => {
 			await flushPromises();
 
 			runtime.messages.push(
-				serverToolCall('tc-get', { action: 'get', serverId: SERVER_ID }, { server: {} }),
+				serverToolCall('tc-get', { action: 'get', serverId: SERVER_ID }, untrusted({ server: {} })),
 				serverToolCall(
 					'tc-denied',
 					{ action: 'update', serverId: SERVER_ID, name: 'New' },
-					{ success: false, denied: true },
+					untrusted({ success: false, denied: true }),
 				),
 				serverToolCall(
 					'tc-other',
 					{ action: 'remove-tool', serverId: 'other-server', toolId: 't1' },
-					{ success: true, toolId: 't1' },
+					untrusted({ success: true, serverMutated: true, toolId: 't1' }),
 				),
 			);
 			await flushPromises();
@@ -1495,7 +1508,7 @@ describe('InstanceAiChatPanel', () => {
 				serverToolCall(
 					'tc-old',
 					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
-					{ success: true, server: {} },
+					untrusted({ success: true, serverMutated: true, server: {} }),
 				),
 			);
 			const wrapper = mountServerPanel(runtime);
