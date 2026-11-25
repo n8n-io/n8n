@@ -16,6 +16,7 @@ const data = {
 		payload,
 		error: Object.assign(new Error('from host'), { code: 400 }),
 		boxed: Object('from host') as object,
+		taggedBoxed: Object.assign(Object('from host') as object, { meta: 1 }),
 	},
 };
 
@@ -69,7 +70,8 @@ const probes: Array<{ expression: string; check: (result: unknown) => void }> = 
 		check: (result) => expect(DateTime.isDateTime(result)).toBe(true),
 	},
 	{
-		expression: '{{ [new String("ab"), new Number(-0), new Boolean(true), $json.boxed] }}',
+		expression:
+			'{{ [new String("ab"), new Number(-0), new Boolean(true), $json.boxed, $json.taggedBoxed.meta] }}',
 		check: (result) => {
 			const values = result as Array<{ valueOf(): unknown }>;
 			expect(values[0]).toBeInstanceOf(String);
@@ -80,6 +82,7 @@ const probes: Array<{ expression: string; check: (result: unknown) => void }> = 
 			expect(values[2].valueOf()).toBe(true);
 			expect(values[3]).toBeInstanceOf(String);
 			expect(values[3].valueOf()).toBe('from host');
+			expect(values[4]).toBe(1);
 		},
 	},
 ];

@@ -28,6 +28,38 @@ describe('Expression - boxed primitives (engine parity)', () => {
 	});
 	const expression = workflow.expression;
 
+	const circular = Object('ab') as object & { self?: unknown };
+	circular.self = circular;
+
+	let getterReads = 0;
+	const withGetter = Object('ab') as object;
+	Object.defineProperty(withGetter, 'ok', { value: 1, enumerable: true });
+	Object.defineProperty(withGetter, 'lazy', {
+		get() {
+			getterReads++;
+			return 'computed';
+		},
+		enumerable: true,
+	});
+	Object.defineProperty(withGetter, 'failing', {
+		get() {
+			throw new Error('getter boom');
+		},
+		enumerable: true,
+	});
+
+	const withErrorField = Object.assign(Object('ab') as object, {
+		ok: 2,
+		err: new Error('field boom'),
+	});
+
+	const withHidden = Object.defineProperty(Object(5) as object, 'meta', { value: 1 });
+	const withHiddenAndEnum = Object.defineProperty(
+		Object.assign(Object('ab') as object, { unit: 'kg' }),
+		'secret',
+		{ value: 9 },
+	);
+
 	const item = {
 		json: {
 			s: Object('ab') as object,
@@ -41,6 +73,11 @@ describe('Expression - boxed primitives (engine parity)', () => {
 			arr: [Object('ab') as object, Object(5) as object, Object(true) as object],
 			tagged: Object.assign(Object('ab') as object, { meta: 1, info: { deep: 'x' } }),
 			taggedNumber: Object.assign(Object(5) as object, { unit: 'kg' }),
+			circular,
+			withGetter,
+			withErrorField,
+			withHidden,
+			withHiddenAndEnum,
 			err: Object.assign(new Error('boom'), {
 				s: Object('ab') as object,
 				n: Object(5) as object,
@@ -232,6 +269,45 @@ describe('Expression - boxed primitives (engine parity)', () => {
 					expect(evaluate(`={{ Object.keys(${root}.taggedNumber) }}`, native)).toEqual(['unit']);
 					expect(evaluate(`={{ ${root}.taggedNumber + 1 }}`, native)).toBe(6);
 					expect(evaluate(`={{ ${root}.taggedNumber instanceof Number }}`, native)).toBe(true);
+				},
+			);
+
+			it.each(['$json', '$input.item.json'])(
+				'reads circular, getter-backed, and error-bearing own fields lazily through %s',
+				(root) => {
+					expect(evaluate(`={{ ${root}.circular + "!" }}`, native)).toBe('ab!');
+					expect(evaluate(`={{ ${root}.circular.self + "!" }}`, native)).toBe('ab!');
+					expect(evaluate(`={{ ${root}.circular.self instanceof String }}`, native)).toBe(true);
+
+					getterReads = 0;
+					expect(evaluate(`={{ ${root}.withGetter + "!" }}`, native)).toBe('ab!');
+					expect(evaluate(`={{ ${root}.withGetter.ok }}`, native)).toBe(1);
+					expect(evaluate(`={{ Object.keys(${root}.withGetter) }}`, native)).toEqual([
+						'0',
+						'1',
+						'ok',
+						'lazy',
+						'failing',
+					]);
+					expect(getterReads).toBe(0);
+					expect(evaluate(`={{ ${root}.withGetter.lazy }}`, native)).toBe('computed');
+					expect(getterReads).toBe(1);
+
+					expect(evaluate(`={{ ${root}.withErrorField.ok }}`, native)).toBe(2);
+					expect(evaluate(`={{ ${root}.withErrorField.err instanceof Error }}`, native)).toBe(true);
+					expect(evaluate(`={{ ${root}.withErrorField.err.message }}`, native)).toBe('field boom');
+
+					expect(evaluate(`={{ ${root}.withHidden.meta }}`, native)).toBe(1);
+					expect(evaluate(`={{ ${root}.withHidden + 1 }}`, native)).toBe(6);
+					expect(evaluate(`={{ ${root}.withHidden instanceof Number }}`, native)).toBe(true);
+					expect(evaluate(`={{ Object.keys(${root}.withHidden) }}`, native)).toEqual([]);
+					expect(evaluate(`={{ ${root}.withHiddenAndEnum.secret }}`, native)).toBe(9);
+					expect(evaluate(`={{ ${root}.withHiddenAndEnum.unit }}`, native)).toBe('kg');
+					expect(evaluate(`={{ Object.keys(${root}.withHiddenAndEnum) }}`, native)).toEqual([
+						'0',
+						'1',
+						'unit',
+					]);
 				},
 			);
 

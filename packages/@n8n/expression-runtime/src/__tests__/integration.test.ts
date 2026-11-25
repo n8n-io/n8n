@@ -667,6 +667,109 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 					expect(evaluator.evaluate(`{{ ${root}.s instanceof String }}`, data, caller)).toBe(true);
 				}
 			});
+
+			it('should read circular, getter-backed, and error-bearing own fields on boxed primitives lazily', () => {
+				const selfRef = Object('ab') as object & { self?: unknown };
+				selfRef.self = selfRef;
+
+				const cycleA = Object('a') as object & { other?: unknown };
+				const cycleB = Object(2) as object & { other?: unknown };
+				cycleA.other = cycleB;
+				cycleB.other = cycleA;
+
+				const readLazy = vi.fn(() => 'computed');
+				const withGetters = Object('ab') as object;
+				Object.defineProperty(withGetters, 'ok', { value: 1, enumerable: true });
+				Object.defineProperty(withGetters, 'lazy', { get: readLazy, enumerable: true });
+				Object.defineProperty(withGetters, 'boom', {
+					get() {
+						const err = new Error('getter boom');
+						err.name = 'ExpressionError';
+						throw err;
+					},
+					enumerable: true,
+				});
+
+				const withErrorValue = Object.assign(Object('ab') as object, {
+					ok: 2,
+					err: new Error('field error'),
+				});
+				const withHiddenOnly = Object.defineProperty(Object(5) as object, 'meta', { value: 1 });
+				const withHiddenAndEnum = Object.defineProperty(
+					Object.assign(Object('ab') as object, { visible: 'yes' }),
+					'secret',
+					{ value: 'no' },
+				);
+				const topLevel = Object.assign(Object('top') as object, { tag: 'root' });
+
+				const data = {
+					$json: {
+						selfRef,
+						cycleA,
+						withGetters,
+						withErrorValue,
+						withHiddenOnly,
+						withHiddenAndEnum,
+					},
+					$topBoxed: topLevel,
+				};
+
+				expect(evaluator.evaluate('{{ $json.selfRef + "!" }}', data, caller)).toBe('ab!');
+				expect(evaluator.evaluate('{{ $json.selfRef.self + "!" }}', data, caller)).toBe('ab!');
+				expect(evaluator.evaluate('{{ $json.selfRef.self instanceof String }}', data, caller)).toBe(
+					true,
+				);
+				expect(evaluator.evaluate('{{ $json.cycleA.other + 1 }}', data, caller)).toBe(3);
+				expect(evaluator.evaluate('{{ $json.cycleA.other.other + "!" }}', data, caller)).toBe('a!');
+
+				expect(evaluator.evaluate('{{ $json.withGetters + "!" }}', data, caller)).toBe('ab!');
+				expect(evaluator.evaluate('{{ $json.withGetters.ok }}', data, caller)).toBe(1);
+				expect(evaluator.evaluate('{{ Object.keys($json.withGetters) }}', data, caller)).toEqual([
+					'0',
+					'1',
+					'ok',
+					'lazy',
+					'boom',
+				]);
+				expect(readLazy).not.toHaveBeenCalled();
+
+				expect(
+					evaluator.evaluate(
+						'{{ [$json.withGetters.lazy, $json.withGetters.lazy] }}',
+						data,
+						caller,
+					),
+				).toEqual(['computed', 'computed']);
+				expect(readLazy).toHaveBeenCalledTimes(1);
+
+				expect(() => evaluator.evaluate('{{ $json.withGetters.boom }}', data, caller)).toThrow(
+					'getter boom',
+				);
+
+				expect(evaluator.evaluate('{{ $json.withErrorValue.ok }}', data, caller)).toBe(2);
+				expect(
+					evaluator.evaluate('{{ $json.withErrorValue.err instanceof Error }}', data, caller),
+				).toBe(true);
+				expect(evaluator.evaluate('{{ $json.withErrorValue.err.message }}', data, caller)).toBe(
+					'field error',
+				);
+
+				expect(evaluator.evaluate('{{ $json.withHiddenOnly.meta }}', data, caller)).toBe(1);
+				expect(evaluator.evaluate('{{ $json.withHiddenOnly + 1 }}', data, caller)).toBe(6);
+				expect(evaluator.evaluate('{{ Object.keys($json.withHiddenOnly) }}', data, caller)).toEqual(
+					[],
+				);
+				expect(evaluator.evaluate('{{ $json.withHiddenAndEnum.secret }}', data, caller)).toBe('no');
+				expect(evaluator.evaluate('{{ $json.withHiddenAndEnum.visible }}', data, caller)).toBe(
+					'yes',
+				);
+				expect(
+					evaluator.evaluate('{{ Object.keys($json.withHiddenAndEnum) }}', data, caller),
+				).toEqual(['0', '1', 'visible']);
+
+				expect(evaluator.evaluate('{{ $topBoxed + "!" }}', data, caller)).toBe('top!');
+				expect(evaluator.evaluate('{{ $topBoxed.tag }}', data, caller)).toBe('root');
+			});
 		});
 	});
 

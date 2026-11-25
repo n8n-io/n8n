@@ -111,32 +111,47 @@ export function getArrayElement(
 	return toHostMetadata(arr[index]);
 }
 
-/** The own enumerable keys of a boxed primitive other than the indices of a String. */
-function ownFieldKeysOf(value: object, primitive: string | number | boolean | bigint): string[] {
-	const indexCount = typeof primitive === 'string' ? primitive.length : 0;
-	const keys = Object.keys(value);
-	return keys.length > indexCount ? keys.slice(indexCount) : [];
+/** Own string keys of a boxed primitive other than a String's indices and `length`. */
+function ownFieldsOf(
+	value: object,
+	primitive: string | number | boolean | bigint,
+): { keys: string[]; hiddenKeys: string[] } {
+	const isString = typeof primitive === 'string';
+	const indexCount = isString ? primitive.length : 0;
+	const names = Object.getOwnPropertyNames(value);
+	if (names.length <= (isString ? indexCount + 1 : 0)) {
+		return { keys: [], hiddenKeys: [] };
+	}
+	const keys: string[] = [];
+	const hiddenKeys: string[] = [];
+	for (let i = indexCount; i < names.length; i++) {
+		const key = names[i];
+		if (isString && key === 'length') continue;
+		if (Object.getOwnPropertyDescriptor(value, key)?.enumerable === true) {
+			keys.push(key);
+		} else {
+			hiddenKeys.push(key);
+		}
+	}
+	return { keys, hiddenKeys };
 }
 
 /**
- * Describe a boxed primitive. Without own fields it goes across as it is. With
- * own fields it goes across with the metadata of each field, because a direct
- * transfer copies only the primitive.
+ * Describe a boxed primitive without reading its own fields. Without own fields
+ * it goes across as it is. With own fields it goes across with their key lists,
+ * because a direct transfer copies only the primitive.
  */
 function boxedPrimitiveToHostMetadata(
 	value: object,
 	primitive: string | number | boolean | bigint,
 ): unknown {
-	const keys = ownFieldKeysOf(value, primitive);
-	return keys.length === 0
-		? value
-		: {
-				__isBoxed: true,
-				__value: value,
-				__fields: Object.fromEntries(
-					keys.map((key) => [key, toHostMetadata(Reflect.get(value, key))]),
-				),
-			};
+	const { keys, hiddenKeys } = ownFieldsOf(value, primitive);
+	if (keys.length === 0 && hiddenKeys.length === 0) {
+		return value;
+	}
+	return hiddenKeys.length === 0
+		? { __isBoxed: true, __value: value, __keys: keys }
+		: { __isBoxed: true, __value: value, __keys: keys, __hiddenKeys: hiddenKeys };
 }
 
 /** Describe objects and arrays without reading their contents. */

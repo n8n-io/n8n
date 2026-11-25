@@ -16,6 +16,7 @@ export const {
 	getPrototypeOf,
 	hasOwn,
 	is: sameValue,
+	isExtensible,
 	keys: objectKeys,
 	prototype: objectPrototype,
 } = Object;
