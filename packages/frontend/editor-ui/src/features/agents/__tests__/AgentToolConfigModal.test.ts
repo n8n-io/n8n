@@ -253,7 +253,7 @@ describe('AgentToolConfigModal', () => {
 		vi.spyOn(useNodeTypesStore(), 'loadNodeTypesIfNotLoaded').mockResolvedValue(undefined);
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
-		uiStore.closeModal = vi.fn();
+		vi.spyOn(uiStore, 'closeModal').mockImplementation(() => {});
 	});
 
 	it('renders the shared node-tool settings content', () => {
@@ -700,6 +700,7 @@ describe('AgentToolConfigModal', () => {
 			onUpdateGuardrails: vi.fn(),
 		};
 
+		uiStore.closeModal.mockRestore();
 		const { container, getByRole } = renderModal({ onRemove: vi.fn(), guardrails });
 		await fireEvent.keyDown(getByRole('tab', { name: 'agents.builder.guardrails.title' }), {
 			key: 'Enter',
@@ -713,7 +714,7 @@ describe('AgentToolConfigModal', () => {
 
 		// The tool modal closes and hands over to the guardrail modal with the
 		// wiring and an exit callback.
-		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		expect(uiStore.modalStateById[MODAL_NAME].open).toBe(false);
 		const guardrailState = uiStore.modalStateById[AGENT_GUARDRAIL_MODAL_KEY];
 		expect(guardrailState?.open).toBe(true);
 		const guardrailData = guardrailState?.data as unknown as AgentGuardrailModalData;
@@ -725,7 +726,10 @@ describe('AgentToolConfigModal', () => {
 		// The exit callback reopens the tool modal.
 		guardrailData.onExit();
 		expect(uiStore.modalStateById[MODAL_NAME].open).toBe(true);
-		expect(uiStore.modalStateById[MODAL_NAME].data).toMatchObject({ initialTab: 'guardrails' });
+		expect(uiStore.modalStateById[MODAL_NAME].data).toMatchObject({
+			initialTab: 'guardrails',
+			draftToolRef: { node: { nodeParameters: { edited: true } } },
+		});
 	});
 
 	describe('restricted node types', () => {

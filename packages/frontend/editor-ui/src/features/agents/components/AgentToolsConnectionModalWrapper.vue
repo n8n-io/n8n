@@ -151,9 +151,11 @@ const props = defineProps<{
 		 * jumps back to the config step of this tool instead of the list.
 		 */
 		resumeToolRef?: AgentJsonToolRef;
+		resumeToolDraft?: AgentJsonToolRef;
 		onConfirm: (payload: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
+			renamedTool?: { from: string; to: string };
 		}) => void;
 	};
 }>();
@@ -343,7 +345,11 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 	if (!wiring || !entry) return;
 	uiStore.setModalData({
 		name: props.modalName,
-		data: { ...props.data, resumeToolRef: entry.ref },
+		data: {
+			...props.data,
+			resumeToolRef: entry.ref,
+			resumeToolDraft: configContent.value?.getToolDraft(),
+		},
 	});
 	closeModal();
 	uiStore.openModalWithData({
@@ -353,6 +359,7 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			...(request.kind ? { kind: request.kind } : {}),
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
+			disabled: wiring.disabled,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
 			onExit: () => uiStore.openModal(props.modalName),
 		},
@@ -361,15 +368,15 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 
 /** Consume the stashed ref from a guardrail edit: reopen on that tool's config step. */
 function resumeToolConfigStep() {
-	const { resumeToolRef } = props.data;
+	const { resumeToolRef, resumeToolDraft } = props.data;
 	if (!resumeToolRef) return;
 	// Consume once, so a later manual open starts at the picker.
 	uiStore.setModalData({
 		name: props.modalName,
-		data: { ...props.data, resumeToolRef: undefined },
+		data: { ...props.data, resumeToolRef: undefined, resumeToolDraft: undefined },
 	});
 	const entry = workingToolEntries.value.find((candidate) => candidate.ref === resumeToolRef);
-	if (entry) openConfigForToolEntry(entry, 'guardrails');
+	if (entry) openConfigForToolEntry(entry, 'guardrails', resumeToolDraft);
 }
 
 function updateConfigTitle(value: string) {
@@ -474,10 +481,11 @@ function getExistingMcpServerNames(
 	return servers.filter((server) => server !== exclude).map((server) => server.name);
 }
 
-function commit() {
+function commit(renamedTool?: { from: string; to: string }) {
 	props.data.onConfirm({
 		tools: workingTools.value,
 		mcpServers: workingMcpServers.value,
+		...(renamedTool ? { renamedTool } : {}),
 	});
 }
 
@@ -726,12 +734,17 @@ async function handleCreateWorkflow() {
 	}
 }
 
-function openConfigForToolEntry(entry: WorkingToolEntry, initialTab?: ToolConfigTab) {
+function openConfigForToolEntry(
+	entry: WorkingToolEntry,
+	initialTab?: ToolConfigTab,
+	draftToolRef?: AgentJsonToolRef,
+) {
 	const toolRef = entry.ref;
 	activeConfigEntry = entry;
 	openConfigModal({
 		toolRef,
 		initialTab,
+		draftToolRef,
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
@@ -744,7 +757,11 @@ function openConfigForToolEntry(entry: WorkingToolEntry, initialTab?: ToolConfig
 				e.localId === entry.localId ? { ...e, ref: updatedRef } : e,
 			);
 			toolTelemetry.trackEdited(updatedRef);
-			commit();
+			commit(
+				toolRef.type === 'node' && updatedRef.type === 'node' && toolRef.name !== updatedRef.name
+					? { from: toolRef.name, to: updatedRef.name }
+					: undefined,
+			);
 		},
 		onRemove: () => {
 			workingToolEntries.value = workingToolEntries.value.filter(

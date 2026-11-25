@@ -121,6 +121,7 @@ type ToolsModalData = {
 	onConfirm: (payload: {
 		tools?: AgentJsonConfig['tools'];
 		mcpServers?: AgentJsonMcpServerConfig[];
+		renamedTool?: { from: string; to: string };
 	}) => void;
 };
 
@@ -496,10 +497,18 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 		actions.onOpenAddToolModal();
 		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
-		modalData.onConfirm({ tools: [{ ...nodeTool, name: 'Fetch data' }] });
+		const updated = {
+			...nodeTool,
+			name: 'Fetch data',
+			node: { ...nodeTool.node, nodeParameters: { url: 'https://example.com/updated' } },
+		};
+		modalData.onConfirm({
+			tools: [updated],
+			renamedTool: { from: nodeTool.name, to: updated.name },
+		});
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
-			tools: [{ ...nodeTool, name: 'Fetch data' }],
+			tools: [updated],
 		});
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
 			config: {

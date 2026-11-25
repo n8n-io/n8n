@@ -51,7 +51,7 @@ export type GuardrailModelRun = {
 export type GuardrailModelRunner = (
 	systemPrompt: string,
 	input: string,
-) => Promise<GuardrailModelRun>;
+) => Promise<string | GuardrailModelRun>;
 
 export type LlmGuardrailConfig = {
 	run: GuardrailModelRunner;

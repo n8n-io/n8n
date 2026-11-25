@@ -125,7 +125,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrailDisplayName(guardrail, i18n) }}</span>
 							<span :class="$style.chipMeta">
-								· {{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
+								{{ i18n.baseText('agents.builder.guardrails.chip.allToolsSuffix') }}
 							</span>
 						</span>
 					</AgentChipButton>

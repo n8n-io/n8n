@@ -36,7 +36,7 @@ const anchor = computed(() => {
 		:reference="anchor"
 		:disabled="disabled"
 		placement="bottom-start"
-		:data-testid="`${testId}-menu`"
+		:content-test-id="`${testId}-menu`"
 		@select="emit('select', $event)"
 	>
 		<template #trigger>

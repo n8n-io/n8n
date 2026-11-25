@@ -119,7 +119,7 @@ const recipientCursor = z
 	.object({ channel: z.string().optional(), user: z.string().optional() })
 	.strict();
 
-/** Page each recipient list independently so both destination types remain searchable. */
+/** Page each recipient list independently. An empty cursor marks an unstarted list. */
 export async function listReviewRecipients(
 	cursor: string | undefined,
 	load: (
@@ -147,8 +147,8 @@ export async function listReviewRecipients(
 			return {
 				kind,
 				page: limit
-					? await load(kind, state[kind], limit)
-					: { options: [], nextCursor: state[kind] },
+					? await load(kind, state[kind] || undefined, limit)
+					: { options: [], nextCursor: state[kind] ?? '' },
 			};
 		}),
 	);
@@ -156,7 +156,7 @@ export async function listReviewRecipients(
 	const options: AgentHitlOption[] = [];
 	for (const { kind, page } of pages) {
 		options.push(...page.options.map((option) => ({ ...option, kind })));
-		if (page.nextCursor) next[kind] = page.nextCursor;
+		if (page.nextCursor !== undefined) next[kind] = page.nextCursor;
 	}
 	return { options, nextCursor: Object.keys(next).length ? JSON.stringify(next) : undefined };
 }

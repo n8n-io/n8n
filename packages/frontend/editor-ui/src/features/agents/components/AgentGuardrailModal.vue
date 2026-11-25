@@ -75,7 +75,7 @@ const blockUserinfo = ref(true);
 const allowSubdomains = ref(false);
 const prompt = ref('');
 const threshold = ref<number | undefined>();
-const stage = ref<'before' | 'after'>('before');
+const stage = ref<'before' | 'after' | 'both'>('before');
 const toolScope = ref<'all' | 'selected'>('all');
 const selectedToolKeys = ref<string[]>([]);
 
@@ -133,7 +133,7 @@ watch(
 					threshold.value = guardrail.threshold;
 			}
 		}
-		stage.value = guardrail?.stage ?? 'before';
+		stage.value = guardrail ? (guardrail.stage ?? 'both') : 'before';
 		toolScope.value = guardrail?.tools ? 'selected' : 'all';
 		selectedToolKeys.value = (guardrail?.tools ?? []).map(toolRefKey);
 		// The kind watcher runs as a queued job after this one; clearing the
@@ -211,7 +211,7 @@ const permissivenessOptions = computed(() =>
 );
 
 const stageOptions = computed(() =>
-	(['before', 'after'] as const).map((value) => ({
+	(['before', 'after', 'both'] as const).map((value) => ({
 		value,
 		label: i18n.baseText(`agents.builder.guardrails.trigger.${value}` as BaseTextKey),
 	})),
@@ -242,7 +242,7 @@ function buildConfig(): AgentToolGuardrailConfig | undefined {
 		id:
 			props.guardrail?.id ?? slugifyGuardrailId(name.value, selectedKind.value, props.existingIds),
 		...(name.value.trim() ? { name: name.value.trim() } : {}),
-		stage: stage.value,
+		...(stage.value === 'both' ? {} : { stage: stage.value }),
 		...(toolScope.value === 'selected' ? { tools: selectedTools.value } : {}),
 	};
 

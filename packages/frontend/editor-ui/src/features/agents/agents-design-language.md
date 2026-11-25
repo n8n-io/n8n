@@ -286,7 +286,7 @@ Use selects for longer lists and dynamic resources, regardless of result count.
 
 Use `AgentPillField` for named selections in tool and review modals. Keep the
 label inside the border on the left. Use the same medium label size as modal fields. Put an optional subtitle below
-the label with the section subtitle size and colour. Align the selected pills to the right.
+the label with the section subtitle size and colour. Align the selected pills to the right when the field renders its own label.
 Keep a ghost plus button at the far right. Centre labels vertically beside their controls, including when pills wrap. Centre the plus
 vertically with the pills. Use the large border radius and
 standard spacing tokens. Let pills wrap without clipping their shadows or controls.
@@ -295,7 +295,7 @@ Truncate long names and keep their full name in the title. Keep the removable pi
 The plus opens the options menu directly. Do not nest a select or input inside it. Exclude selected items. Show the item's icon
 and name in the menu and pill. The remove button detaches only that item.
 Keep selection order. Disable adding, editing, and removing under edit locks.
-Label the approval attachment field Which tools require this. Show it when the Agent has attached tools or MCP servers. Keep its changes local until Save.
+Label the approval attachment field Which tools require this. Show it when the Agent has attached tools or MCP servers. When the surrounding row supplies the label, show the pills in the full-width area below it. Keep changes local until Save.
 
 ### Channel behavior settings
 

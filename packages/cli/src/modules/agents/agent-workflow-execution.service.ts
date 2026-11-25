@@ -61,7 +61,7 @@ import {
 	buildAgentTurnMetrics,
 } from './agent-telemetry';
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
-import { withBudgetGuardrail } from './budget-guardrail';
+import { budgetChargeOptions, withBudgetGuardrail } from './budget-guardrail';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
 import { withToolGuardrails } from './tool-guardrails';
 import type { ToolRegistry } from './tool-registry';
@@ -128,6 +128,7 @@ interface WorkflowAgentStreamParams {
 	/** Model instance for the jailbreak/nsfw/topicalAlignment guardrail kinds. */
 	guardrailModel?: LanguageModel;
 	guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
+	guardrailModelId?: string;
 	/** Registry resolving guardrail tool refs to runtime tool names. */
 	toolRegistry?: ToolRegistry;
 	streamObserver?: WorkflowAgentStreamObserver;
@@ -314,6 +315,7 @@ export class AgentWorkflowExecutionService {
 		toolGuardrails?: AgentToolGuardrailConfig[];
 		guardrailModel?: LanguageModel;
 		guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
+		guardrailModelId?: string;
 		toolRegistry?: ToolRegistry;
 		error?: string;
 	}> {
@@ -349,6 +351,7 @@ export class AgentWorkflowExecutionService {
 				toolGuardrails: reconstructed.toolGuardrails,
 				guardrailModel: reconstructed.guardrailModel,
 				guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
+				guardrailModelId: reconstructed.guardrailModelId,
 				toolRegistry: reconstructed.toolRegistry,
 			};
 		} catch (e) {
@@ -385,6 +388,7 @@ export class AgentWorkflowExecutionService {
 		toolGuardrails?: AgentToolGuardrailConfig[];
 		guardrailModel?: LanguageModel;
 		guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
+		guardrailModelId?: string;
 		toolRegistry?: ToolRegistry;
 		error?: string;
 	}> {
@@ -411,6 +415,7 @@ export class AgentWorkflowExecutionService {
 				toolGuardrails: reconstructed.toolGuardrails,
 				guardrailModel: reconstructed.guardrailModel,
 				guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
+				guardrailModelId: reconstructed.guardrailModelId,
 				toolRegistry: reconstructed.toolRegistry,
 			};
 		} catch (e) {
@@ -527,6 +532,7 @@ export class AgentWorkflowExecutionService {
 			toolGuardrails,
 			guardrailModel,
 			guardrailWorkflowContext,
+			guardrailModelId,
 			toolRegistry,
 		} = params;
 		const telemetry = await this.agentRunTracingService.build({
@@ -545,6 +551,15 @@ export class AgentWorkflowExecutionService {
 		const messageContext = recordingParams
 			? await this.integrationMessageContextService.getLatest(threadId)
 			: null;
+		const budgetInput = {
+			budget,
+			sessionId: threadId,
+			// Spend stays on the telemetry id so an inline run still has a
+			// month bucket. The email uses the saved agent the node targets.
+			agentId: telemetryAgentId,
+			...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
+			...(params.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
+		};
 		const options = withBudgetGuardrail(
 			{
 				// The memory store scopes message reads by `resourceId` (the
@@ -574,15 +589,7 @@ export class AgentWorkflowExecutionService {
 				...modelStreamStallOptions(this.aiConfig),
 				...(telemetry ? { telemetry } : {}),
 			},
-			{
-				budget,
-				sessionId: threadId,
-				// Spend stays on the telemetry id so an inline run still has a
-				// month bucket. The email uses the saved agent the node targets.
-				agentId: telemetryAgentId,
-				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
-				...(params.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
-			},
+			budgetInput,
 		);
 		// A workflow-invoked agent runs the same guardrail config a chat run
 		// does: the reconstruction result carries it alongside the registry it
@@ -593,6 +600,8 @@ export class AgentWorkflowExecutionService {
 			toolRegistry,
 			guardrailModel,
 			guardrailWorkflowContext,
+			guardrailModelId,
+			budget: budgetChargeOptions(budgetInput),
 		});
 	}
 
@@ -843,6 +852,7 @@ export class AgentWorkflowExecutionService {
 			toolGuardrails,
 			guardrailModel,
 			guardrailWorkflowContext,
+			guardrailModelId,
 			toolRegistry,
 		} = prepared;
 		// Filled by `beforeFinalize` when the run waits for a human review.
@@ -858,6 +868,7 @@ export class AgentWorkflowExecutionService {
 				toolGuardrails,
 				guardrailModel,
 				guardrailWorkflowContext,
+				guardrailModelId,
 				toolRegistry,
 				recordingParams: { ...recordingParams, agentName: agentInstance.name },
 				...(sandboxScope
@@ -993,6 +1004,7 @@ export class AgentWorkflowExecutionService {
 			toolGuardrails: reconstructed.toolGuardrails,
 			guardrailModel: reconstructed.guardrailModel,
 			guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
+			guardrailModelId: reconstructed.guardrailModelId,
 			toolRegistry: reconstructed.toolRegistry,
 			snapshot,
 			resume: { runId: continuation.runId, toolCallId: call.toolCallId },
@@ -1080,6 +1092,7 @@ export class AgentWorkflowExecutionService {
 			toolGuardrails: compiled.toolGuardrails,
 			guardrailModel: compiled.guardrailModel,
 			guardrailWorkflowContext: compiled.guardrailWorkflowContext,
+			guardrailModelId: compiled.guardrailModelId,
 			toolRegistry: compiled.toolRegistry,
 		};
 	}
@@ -1140,6 +1153,7 @@ export class AgentWorkflowExecutionService {
 			| 'toolGuardrails'
 			| 'guardrailModel'
 			| 'guardrailWorkflowContext'
+			| 'guardrailModelId'
 			| 'toolRegistry'
 			| 'beforeFinalize'
 		>,
@@ -1248,6 +1262,7 @@ export class AgentWorkflowExecutionService {
 				toolGuardrails: compiled.toolGuardrails,
 				guardrailModel: compiled.guardrailModel,
 				guardrailWorkflowContext: compiled.guardrailWorkflowContext,
+				guardrailModelId: compiled.guardrailModelId,
 				toolRegistry: compiled.toolRegistry,
 			});
 			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);

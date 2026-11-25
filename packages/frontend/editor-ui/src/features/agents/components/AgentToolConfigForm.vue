@@ -66,6 +66,7 @@ interface ToolModalData {
 	onRemove?: () => void;
 	kind?: 'tool';
 	initialTab?: ToolConfigTab;
+	draftToolRef?: AgentJsonToolRef;
 	/**
 	 * Tool-guardrails wiring. Present only on hosts whose agent supports
 	 * guardrails, and only for existing node/workflow tools; commits are
@@ -125,6 +126,9 @@ function containsFromAiCall(value: unknown): boolean {
 const isMcpTool = computed(() => isMcpServerModalData(props.data));
 const mcpModalData = computed(() => (isMcpServerModalData(props.data) ? props.data : null));
 const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : props.data));
+const initialToolRef = computed(
+	() => toolModalData.value?.draftToolRef ?? toolModalData.value?.toolRef,
+);
 const toolValidationIssues = computed(() => toValue(toolModalData.value?.validationIssues) ?? []);
 const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
@@ -154,7 +158,7 @@ watch(
 	(data) => {
 		approvalRoute.value = isMcpServerModalData(data)
 			? data.mcpServer.approvalRoute
-			: data.toolRef.approvalRoute;
+			: (data.draftToolRef ?? data.toolRef).approvalRoute;
 	},
 	{ immediate: true },
 );
@@ -167,8 +171,8 @@ const initialNode = computed<INode | null>(() =>
 		? (mcpModalData.value?.initialNode ?? null)
 		: isWorkflowTool.value || isCustomTool.value
 			? null
-			: toolModalData.value
-				? toolRefToNode(toolModalData.value.toolRef)
+			: initialToolRef.value
+				? toolRefToNode(initialToolRef.value)
 				: null,
 );
 
@@ -182,15 +186,12 @@ const restrictedToolName = computed(() =>
 watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
 
 const workflowInitialRef = computed<WorkflowToolRef | null>(() =>
-	isWorkflowTool.value && toolModalData.value?.toolRef.type === 'workflow'
-		? toolModalData.value.toolRef
-		: null,
+	initialToolRef.value?.type === 'workflow' ? initialToolRef.value : null,
 );
 
 const initialName = computed(() => {
 	if (isMcpTool.value) return mcpModalData.value?.mcpServer.name ?? '';
-	const toolName =
-		toolModalData.value?.toolRef.type === 'node' ? toolModalData.value.toolRef.name : undefined;
+	const toolName = initialToolRef.value?.type === 'node' ? initialToolRef.value.name : undefined;
 	return toolName ?? initialNode.value?.name ?? '';
 });
 const nodeName = ref(initialName.value);
@@ -238,7 +239,7 @@ const nodeActiveTab = computed(() =>
 );
 
 watch(
-	() => toolModalData.value?.toolRef,
+	initialToolRef,
 	(toolRef) => {
 		approvalRequired.value = Boolean(toolRef?.requireApproval);
 	},
@@ -333,15 +334,8 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 function confirm(): boolean {
 	submitCount.value += 1;
 	if (!canSave.value) {
-		activeTab.value = 'params';
+		if (activeTab.value === 'guardrails') activeTab.value = 'params';
 		return false;
-	}
-
-	if (isCustomTool.value) {
-		const toolData = toolModalData.value;
-		if (!toolData) return false;
-		toolData.onConfirm(withApprovalRequirement(toolData.toolRef));
-		return true;
 	}
 
 	if (isMcpTool.value) {
@@ -364,12 +358,22 @@ function confirm(): boolean {
 		return true;
 	}
 
-	if (isWorkflowTool.value) {
+	const toolData = toolModalData.value;
+	const updatedTool = getEditedTool();
+	if (!toolData || !updatedTool) return false;
+	toolData.onConfirm(withApprovalRequirement(updatedTool));
+	return true;
+}
+
+function getEditedTool(): AgentJsonToolRef | undefined {
+	const tool = toolModalData.value?.toolRef;
+	if (!tool || tool.type === 'custom') return tool;
+
+	if (tool.type === 'workflow') {
 		const content = workflowContentRef.value;
-		const toolData = toolModalData.value;
-		if (!toolData || !content) return false;
+		if (!content) return;
 		const workflowId = content.getWorkflowId();
-		const updatedRef = updateWorkflowToolRef(toolData.toolRef, {
+		return updateWorkflowToolRef(tool, {
 			name: content.getName(),
 			description: content.getDescription(),
 			allOutputs: content.getAllOutputs(),
@@ -377,16 +381,20 @@ function confirm(): boolean {
 			...(workflowId !== undefined ? { workflowId } : {}),
 			inputs: content.getInputs(),
 		});
-		toolData.onConfirm(withApprovalRequirement(updatedRef));
-		return true;
 	}
 
-	const currentToolNode = nodeContentRef.value?.getNode();
-	const toolData = toolModalData.value;
-	if (!currentToolNode || !toolData) return false;
-	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentToolNode);
-	toolData.onConfirm(withApprovalRequirement(updatedRef));
-	return true;
+	const node = nodeContentRef.value?.getNode();
+	return node ? updateToolRefFromNode(tool, node) : undefined;
+}
+
+function getToolDraft(): AgentJsonToolRef | undefined {
+	const tool = getEditedTool();
+	return (
+		tool && {
+			...withApprovalRequirement(tool),
+			approvalRoute: approvalRoute.value,
+		}
+	);
 }
 
 function remove() {
@@ -418,7 +426,7 @@ credentialListeners.run(() => {
 });
 onBeforeUnmount(() => credentialListeners.stop());
 
-defineExpose({ canSave, confirm, remove, changeTitle });
+defineExpose({ canSave, confirm, getToolDraft, remove, changeTitle });
 </script>
 
 <template>

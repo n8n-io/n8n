@@ -2,6 +2,58 @@ import { mock } from 'vitest-mock-extended';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { slackHitl } from '../../integrations/platforms/slack/slack-hitl';
 import { discordHitl } from '../../integrations/platforms/discord/discord-hitl';
+import { listReviewRecipients } from '../../integrations/channel-hitl';
+
+it('allocates the page limit and resumes an unstarted recipient list', async () => {
+	const load = vi.fn().mockImplementation(async (kind: string) => ({
+		options: [{ id: kind, name: kind }],
+	}));
+	const first = await listReviewRecipients(undefined, load, 1);
+	expect(load.mock.calls).toEqual([['channel', undefined, 1]]);
+	expect(first.options.map((entry) => entry.kind)).toEqual(['channel']);
+	expect(first.nextCursor).toBeDefined();
+
+	const second = await listReviewRecipients(first.nextCursor, load, 1);
+	expect(load.mock.calls).toEqual([
+		['channel', undefined, 1],
+		['user', undefined, 1],
+	]);
+	expect(second.options.map((entry) => entry.kind)).toEqual(['user']);
+	expect(second.nextCursor).toBeUndefined();
+});
+
+it('returns the rest of Discord channels on the next destination page', async () => {
+	const httpClient = mock<HttpRequestClient>();
+	const channels = Array.from({ length: 23 }, (_, index) => ({
+		id: String(index + 1),
+		name: `channel-${index + 1}`,
+		type: 0,
+	}));
+	httpClient.request.mockImplementation(async ({ url }) =>
+		String(url).includes('/channels?') ? channels : [],
+	);
+	const context = {
+		httpClient,
+		credential: { botToken: 'test' },
+		query: {
+			channel: 'discord',
+			credentialId: 'credential',
+			field: 'recipient',
+			guildId: '42',
+			query: '',
+		},
+	} as const;
+	const first = await discordHitl.listOptions(context);
+	const second = await discordHitl.listOptions({
+		...context,
+		query: { ...context.query, cursor: first.nextCursor },
+	});
+	expect(first.options).toHaveLength(10);
+	expect([...first.options, ...second.options].map(({ id }) => id)).toEqual(
+		channels.map(({ id }) => id),
+	);
+	expect(second.nextCursor).toBeUndefined();
+});
 
 it('fills a Slack destination page across sparse provider pages and resumes without skipping matches', async () => {
 	const httpClient = mock<HttpRequestClient>();

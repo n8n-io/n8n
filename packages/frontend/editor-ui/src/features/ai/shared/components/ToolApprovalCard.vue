@@ -108,7 +108,7 @@ function submit(key: string) {
 			</N8nText>
 		</template>
 		<template v-if="input.askReason" #description>
-			<ApprovalAskReason :reason="input.askReason" />
+			<ApprovalAskReason :reason="input.askReason" :description="input.description" />
 		</template>
 	</N8nApprovalCard>
 </template>

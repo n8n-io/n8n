@@ -29,9 +29,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const editing = ref<AgentHitlConfiguration>();
 const modalOpen = ref(false);
+const disabled = computed(() => props.disabled || !props.config);
 const configurations = computed(() => props.config?.hitlConfigurations ?? []);
 function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
-	if (props.disabled) return;
+	if (disabled.value) return;
 	emit('update:config', hitlConfigurationUpdates(props.config, configuration, toolKeys));
 	modalOpen.value = false;
 }
@@ -46,7 +47,10 @@ const context = {
 		return props.isPublished;
 	},
 	getConfig: () => props.config,
-	getCustomToolName: (id: string) => props.customTools?.[id]?.descriptor.name,
+	getCustomToolName: (id: string) =>
+		props.customTools && Object.hasOwn(props.customTools, id)
+			? props.customTools[id]?.descriptor.name
+			: undefined,
 	saveConfiguration: save,
 	ensureAgentPersisted: () => props.ensureAgentPersisted?.() ?? Promise.resolve(),
 	onChannelsChanged: () => emit('agent-changed'),
@@ -59,15 +63,12 @@ watch(
 	},
 );
 // save() ignores a locked agent, so close the modal instead of discarding edits silently.
-watch(
-	() => props.disabled,
-	(disabled) => {
-		if (disabled) modalOpen.value = false;
-	},
-);
+watch(disabled, (disabled) => {
+	if (disabled) modalOpen.value = false;
+});
 
 function remove(id = editing.value?.id) {
-	if (props.disabled || !id) return;
+	if (disabled.value || !id) return;
 	const tools = props.config?.tools?.map((tool) => ({
 		...tool,
 		approvalRoute: updateReviewRoute(tool.approvalRoute, id, false),

@@ -272,7 +272,7 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 					</div>
 				</div>
 			</div>
-			<slot name="after-permissions" />
+			<slot name="after-permissions" :disabled="arePermissionsDisabled" />
 		</div>
 	</div>
 </template>

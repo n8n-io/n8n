@@ -52,7 +52,7 @@ const hasTools = computed(() => hitlToolKeys(props.context.getConfig()).length >
 
 onMounted(async () => {
 	const selected = destination.value;
-	if (selected.method !== 'workflow' || !props.configuration.nameOverridden) return;
+	if (selected.method !== 'workflow') return;
 	try {
 		const [workflow] = await workflowList.searchWorkflows({
 			projectId: props.projectId,

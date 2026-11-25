@@ -208,6 +208,7 @@ const AgentToolConfigFormStub = defineComponent({
 			}
 		});
 		expose({
+			getToolDraft: () => ('toolRef' in props.data ? props.data.toolRef : undefined),
 			confirm: () => {
 				const data = props.data as AgentToolConfigData;
 				const result =

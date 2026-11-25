@@ -143,7 +143,7 @@ function mountForm({
 		global: {
 			stubs: {
 				AgentApprovalRouteSelect: {
-					props: { embedded: Boolean, modelValue: Object },
+					props: { embedded: Boolean, modelValue: Object, disabled: Boolean },
 					template: '<div data-testid="approval-setting"></div>',
 				},
 				McpConnectionStatusCallout: true,
@@ -151,7 +151,7 @@ function mountForm({
 				McpToolPermissionsEditor: {
 					props: ['modelValue', 'status'],
 					template:
-						'<div data-testid="permissions-editor" :data-status="status"><slot name="after-permissions" /></div>',
+						'<div data-testid="permissions-editor" :data-status="status"><slot name="after-permissions" :disabled="status !== \'connected\'" /></div>',
 				},
 			},
 		},
@@ -270,10 +270,11 @@ describe('AgentRegistryMcpConfigForm', () => {
 		);
 	});
 
-	it('disables only the timeout input while the connection is unhealthy', () => {
-		const wrapper = mountForm({ status: 'disconnected' });
+	it('disables timeout and approval settings while the connection is unhealthy', () => {
+		const wrapper = mountForm({ status: 'disconnected', withApprovalContext: true });
 
 		expect(timeoutInput(wrapper).element).toBeDisabled();
+		expect(wrapper.getComponent(AgentApprovalRouteSelect).props('disabled')).toBe(true);
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.label');
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.help');
 	});

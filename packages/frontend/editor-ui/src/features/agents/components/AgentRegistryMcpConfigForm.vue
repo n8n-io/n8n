@@ -192,10 +192,11 @@ defineExpose({
 						data.supportsToolApproval !== false &&
 						approvalDestinationsEnabled
 					"
-					#after-permissions
+					#after-permissions="{ disabled }"
 				>
 					<AgentApprovalRouteSelect
 						v-model="approvalRoute"
+						:disabled="disabled"
 						embedded
 						:tool-key="hitlMcpServerKey(data.mcpServer.name)"
 						:context="data.approvalContext"

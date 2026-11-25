@@ -101,6 +101,7 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 	if (data.kind === 'mcpServer' || data.kind === 'registryMcpServer') return;
 	const wiring = data.guardrails;
 	if (!wiring) return;
+	const draftToolRef = content.value?.getToolDraft();
 	closeDialog();
 	uiStore.openModalWithData({
 		name: AGENT_GUARDRAIL_MODAL_KEY,
@@ -109,11 +110,12 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			...(request.kind ? { kind: request.kind } : {}),
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
+			disabled: wiring.disabled,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
 			onExit: () => {
 				uiStore.setModalData({
 					name: props.modalName,
-					data: { ...data, initialTab: 'guardrails' },
+					data: { ...data, draftToolRef, initialTab: 'guardrails' },
 				});
 				uiStore.openModal(props.modalName);
 			},

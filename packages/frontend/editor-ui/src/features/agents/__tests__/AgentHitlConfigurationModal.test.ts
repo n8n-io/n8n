@@ -266,7 +266,7 @@ it('offers Discord people search when the server only returns channels for brows
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('People');
-		expect(wrapper.text()).toContain('Search by username or server nickname');
+		expect(wrapper.text()).toContain('Type the start of a username or server nickname');
 		expect(wrapper.text()).toContain('#general');
 		await wrapper.get('input').setValue('Alex');
 		await vi.waitFor(() =>
@@ -348,6 +348,7 @@ it('creates and opens an approval workflow with a replaceable middle node', asyn
 				},
 			}),
 		);
+		expect(mocks.search).toHaveBeenCalledWith({ projectId: 'project', select: ['name'] });
 		expect(mocks.create.mock.calls[0][0]).not.toHaveProperty('nodeGroups');
 		expect(tab.location.href).toBe('/workflow/new');
 		expect(wrapper.emitted('select')).toEqual([

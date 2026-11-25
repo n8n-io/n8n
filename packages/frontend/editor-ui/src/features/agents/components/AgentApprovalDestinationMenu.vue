@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
+import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { N8nButton, N8nIcon, N8nInput, N8nPopover } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -46,7 +47,7 @@ const existingApprovers = computed(() =>
 	),
 );
 // The portaled menu sits above the fullscreen Builder and below the dialog overlay.
-const builderMenuZIndex = 'calc(var(--dialogs--z) - 2)';
+const builderMenuZIndex = APP_Z_INDEXES.DIALOGS - 2;
 const open = ref(false);
 const agentId = computed(() => props.context.agentId);
 const busy = ref(false);
@@ -87,6 +88,9 @@ const textDestination = computed(
 	() =>
 		typeof source.value === 'object' && source.value.fields.some((field) => field.type === 'text'),
 );
+onBeforeUnmount(() => {
+	menuSession++;
+});
 const showDiscordSearchHint = computed(
 	() =>
 		typeof source.value === 'object' &&
@@ -292,13 +296,15 @@ function chooseTelegram() {
 async function create() {
 	if (busy.value || props.disabled) return;
 	busy.value = true;
+	const session = menuSession;
+	const isCurrent = () => open.value && menuSession === session && !props.disabled;
 	try {
 		const workflow = await createWorkflow(props.projectId, props.context.getConfig()?.name);
-		if (props.disabled) return;
+		if (!isCurrent()) return;
 		emit('select', { method: 'workflow', workflowId: workflow.id, name: workflow.name });
 		open.value = false;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.hitl.createFailed'));
+		if (isCurrent()) toast.showError(error, i18n.baseText('agents.hitl.createFailed'));
 	} finally {
 		busy.value = false;
 	}

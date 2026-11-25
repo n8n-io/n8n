@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentToolGuardrailConfig, AgentToolGuardrailKind } from '@n8n/api-types';
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentJsonToolRef } from '../types';
 import AgentGuardrailModal from './AgentGuardrailModal.vue';
@@ -19,6 +19,7 @@ export interface AgentGuardrailModalData {
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
+	disabled?: MaybeRefOrGetter<boolean>;
 	/** Reopens the tool modal this one replaced. Runs on every close path. */
 	onExit: () => void;
 }
@@ -37,6 +38,7 @@ function close() {
 }
 
 function onSave(guardrail: AgentToolGuardrailConfig) {
+	if (toValue(props.data.disabled)) return;
 	const current = props.data.getGuardrails();
 	const next = props.data.guardrail
 		? current.map((entry) => (entry.id === guardrail.id ? guardrail : entry))
@@ -46,6 +48,7 @@ function onSave(guardrail: AgentToolGuardrailConfig) {
 
 // The modal closes itself through its update:open path; this only commits the config.
 function onRemove() {
+	if (toValue(props.data.disabled)) return;
 	props.data.onUpdateGuardrails(
 		props.data.getGuardrails().filter((guardrail) => guardrail.id !== props.data.guardrail?.id),
 	);
@@ -55,6 +58,7 @@ function onRemove() {
 <template>
 	<AgentGuardrailModal
 		:open="isOpen"
+		:disabled="toValue(data.disabled)"
 		:guardrail="data.guardrail"
 		:kind="data.kind ?? 'keywords'"
 		:tools="data.getTools()"

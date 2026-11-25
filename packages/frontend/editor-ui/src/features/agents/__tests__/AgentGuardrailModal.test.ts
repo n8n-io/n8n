@@ -398,6 +398,22 @@ describe('AgentGuardrailModal', () => {
 		expect(savedConfig(wrapper)).toEqual(KEYWORDS_ENTRY);
 	});
 
+	it('preserves both stages when the saved stage is omitted', async () => {
+		const guardrail = { ...KEYWORDS_ENTRY, stage: undefined };
+		const wrapper = mountModal({ guardrail });
+		await saveButton(wrapper).trigger('click');
+		expect(savedConfig(wrapper)).not.toHaveProperty('stage');
+	});
+
+	it('removes a keyword when its remove button is clicked', async () => {
+		const wrapper = mountModal({ guardrail: { ...KEYWORDS_ENTRY, keywords: ['secret', 'keep'] } });
+		await wrapper
+			.findAll('[data-testid="agent-guardrail-keywords-tag-remove"]')[0]
+			.trigger('click');
+		await saveButton(wrapper).trigger('click');
+		expect(savedConfig(wrapper)).toMatchObject({ keywords: ['keep'] });
+	});
+
 	it('keeps the id while a rename changes only the name', async () => {
 		const wrapper = mountModal({ guardrail: KEYWORDS_ENTRY });
 
