@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	APP_INSPECTOR_MESSAGE_SOURCE,
+	APP_PREVIEW_FRAME_PARAM,
 	appInspectorEventSchema,
 	type AppPreviewElement,
 	type AppResponse,
@@ -69,7 +70,12 @@ const latestFetch = useLatestFetch();
 
 const { head, latestBuilt, building } = props.versions;
 
-type Preview = { version: AppVersionResponse; url: string; authorizeUrl: string };
+type Preview = {
+	version: AppVersionResponse;
+	url: string;
+	frameUrl: string;
+	authorizeUrl: string;
+};
 
 const preview = ref<Preview | null>(null);
 const frameSrc = ref<string>();
@@ -110,10 +116,16 @@ async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
 }
 
+function toFrameUrl(url: string): string {
+	const frameUrl = new URL(url);
+	frameUrl.searchParams.set(APP_PREVIEW_FRAME_PARAM, '1');
+	return frameUrl.toString();
+}
+
 function showPreview(next: Preview | null) {
 	clearTimeout(refreshTimer);
 	preview.value = next;
-	frameSrc.value = next?.url;
+	frameSrc.value = next?.frameUrl;
 	if (next) refreshTimer = setTimeout(async () => await show(true), GRANT_REFRESH_MS);
 }
 
@@ -130,7 +142,7 @@ async function show(force = false) {
 	try {
 		const { url, authorizeUrl } = await grant(version.id);
 		if (!isLatest()) return;
-		showPreview({ version, url, authorizeUrl });
+		showPreview({ version, url, frameUrl: toFrameUrl(url), authorizeUrl });
 		grantFailed.value = false;
 	} catch (error) {
 		if (!isLatest()) return;
@@ -176,7 +188,7 @@ function setInspecting(value: boolean) {
 function onFrameLoad() {
 	// The first load only prepares the sign-in. The editor opens the sign-in itself, because a
 	// browser can drop the n8n session cookie when the preview host redirects the frame.
-	if (preview.value && frameSrc.value === preview.value.url) {
+	if (preview.value && frameSrc.value === preview.value.frameUrl) {
 		frameSrc.value = preview.value.authorizeUrl;
 		return;
 	}

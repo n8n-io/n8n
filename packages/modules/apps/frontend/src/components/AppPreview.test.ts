@@ -126,10 +126,15 @@ describe('AppPreview', () => {
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Build failed');
 	});
 
-	it('opens the sign-in in the frame after the preview URL loads', async () => {
+	it('opens the sign-in in the frame after the marked preview URL loads', async () => {
 		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
 		const { findByTestId } = renderComponent();
 		const frame = await findByTestId('app-preview-frame');
+
+		expect(frame).toHaveAttribute(
+			'src',
+			'https://sales--preview.apps.example.com/_n8n/preview?code=v2-1&frame=1',
+		);
 
 		await fireEvent.load(frame);
 		expect(frame).toHaveAttribute('src', 'https://n8n.example.com/oauth/authorize?state=v2-1');
@@ -317,7 +322,11 @@ describe('AppPreview', () => {
 		await userEvent.click(getByTestId('app-preview-open'));
 
 		expect(open).toHaveBeenCalledWith('about:blank', '_blank');
-		await waitFor(() => expect(tab.location.href).toContain('code=v2-2'));
+		await waitFor(() =>
+			expect(tab.location.href).toBe(
+				'https://sales--preview.apps.example.com/_n8n/preview?code=v2-2',
+			),
+		);
 		expect(tab.opener).toBeNull();
 	});
 

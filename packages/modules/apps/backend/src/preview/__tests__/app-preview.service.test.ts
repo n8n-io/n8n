@@ -155,44 +155,50 @@ describe('AppPreviewService', () => {
 	});
 
 	describe('exchange', () => {
-		it('sets the flow cookie and leaves the sign-in to the editor in a frame', async () => {
-			const { service, res, auth, store } = setup();
-			const code = await grantCode(service);
-			const req = previewRequest(
-				{ code },
-				{},
+		it.each<[string, Record<string, string>]>([
+			[
+				'with fetch metadata headers',
 				{ 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'iframe' },
-			);
+			],
+			['without fetch metadata headers', {}],
+		])(
+			'sets the flow cookie and leaves the sign-in to the editor in a marked frame load %s',
+			async (_case, fetchHeaders) => {
+				const { service, res, auth, store } = setup();
+				const code = await grantCode(service);
+				const req = previewRequest({ code, frame: '1' }, {}, fetchHeaders);
 
-			await service.exchange(req, res);
+				await service.exchange(req, res);
 
-			expect(auth.setFlowCookie).toHaveBeenCalledExactlyOnceWith(
-				res,
-				'preview',
-				expect.objectContaining({ state: signIn.state, nonce: signIn.nonce }),
-			);
-			expect(store.size).toBe(0);
-			expect(res.set).toHaveBeenCalledWith({
-				'Cache-Control': 'no-store',
-				'Referrer-Policy': 'no-referrer',
-			});
-			expect(res.type).toHaveBeenCalledWith('html');
-			expect(res.end).toHaveBeenCalledOnce();
-			expect(res.redirect).not.toHaveBeenCalled();
-		});
+				expect(auth.setFlowCookie).toHaveBeenCalledExactlyOnceWith(
+					res,
+					'preview',
+					expect.objectContaining({ state: signIn.state, nonce: signIn.nonce }),
+				);
+				expect(store.size).toBe(0);
+				expect(res.set).toHaveBeenCalledWith({
+					'Cache-Control': 'no-store',
+					'Referrer-Policy': 'no-referrer',
+				});
+				expect(res.type).toHaveBeenCalledWith('html');
+				expect(res.end).toHaveBeenCalledOnce();
+				expect(res.redirect).not.toHaveBeenCalled();
+			},
+		);
 
-		it('redirects to the sign-in in a new tab', async () => {
+		it.each<[string, Record<string, string>]>([
+			['a new tab', { 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'document' }],
+			['an unmarked frame load', { 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'iframe' }],
+			['a request without fetch metadata headers', {}],
+		])('redirects to the sign-in for %s', async (_case, fetchHeaders) => {
 			const { service, res, auth } = setup();
 			const code = await grantCode(service);
-			const req = previewRequest(
-				{ code },
-				{},
-				{ 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'document' },
-			);
+			const req = previewRequest({ code }, {}, fetchHeaders);
 
 			await service.exchange(req, res);
 
 			expect(auth.setFlowCookie).toHaveBeenCalledOnce();
+			expect(res.end).not.toHaveBeenCalled();
 			expect(res.redirect).toHaveBeenCalledExactlyOnceWith(authorizeUrl);
 		});
 

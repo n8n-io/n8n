@@ -1,4 +1,9 @@
-import { appSchema, appVersionSchema, type AppPreviewResponse } from '@n8n/api-types';
+import {
+	APP_PREVIEW_FRAME_PARAM,
+	appSchema,
+	appVersionSchema,
+	type AppPreviewResponse,
+} from '@n8n/api-types';
 import { CacheService, JwtService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
@@ -95,7 +100,7 @@ export class AppPreviewService {
 		if (!grant || !app || app.id !== grant.appId) throw this.invalidLink();
 
 		this.auth.setFlowCookie(res, 'preview', grant);
-		if (req.get('sec-fetch-dest') === 'iframe') {
+		if (req.query[APP_PREVIEW_FRAME_PARAM] === '1') {
 			res.type('html').end();
 			return;
 		}

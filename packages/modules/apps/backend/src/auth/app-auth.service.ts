@@ -53,6 +53,10 @@ const FLOW_COOKIE_TTL_MS = 5 * 60 * 1000;
 
 @Service()
 export class AppAuthService {
+	/**
+	 * Both host kinds share this cache on purpose, so an access change applies within 30 seconds.
+	 * Workflow runs check access again when they resolve credentials.
+	 */
 	private readonly admitted = new LRUCache<string, CachedAdmission>({
 		max: ADMISSION_CACHE_MAX_ENTRIES,
 		ttl: ADMISSION_CACHE_TTL_MS,
