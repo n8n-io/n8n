@@ -21,6 +21,7 @@ export interface CodeTask {
 const MAX_SANDBOXES_PER_SCOPE = 4;
 const FULL_WAIT_DEADLINE_MS = 30_000;
 const FULL_RETRY_DELAY_MS = 200;
+const FULL_RETRY_MAX_DELAY_MS = 1_000;
 const CACHE_SIZE = 1_000;
 
 export class CodeSandboxesFullError extends OperationalError {
@@ -47,6 +48,7 @@ export class ScopeClient {
 	): Promise<CodeTaskOutcome> {
 		const deadline = Date.now() + FULL_WAIT_DEADLINE_MS;
 		const firstShard = this.lastShards.get(scopeKey.value) ?? 0;
+		let retryDelayMs = FULL_RETRY_DELAY_MS;
 
 		while (true) {
 			for (let i = 0; i < MAX_SANDBOXES_PER_SCOPE; i++) {
@@ -54,18 +56,18 @@ export class ScopeClient {
 				if (Date.now() >= deadline) throw new CodeSandboxesFullError();
 
 				const shard = (firstShard + i) % MAX_SANDBOXES_PER_SCOPE;
+				// Remember the shard before the run, so a task that arrives during a long run skips the full shards
+				this.lastShards.set(scopeKey.value, shard);
 				const outcome = await this.runOnShard(
 					this.sandboxName(scopeKey, options, shard),
 					options,
 					task,
 				);
-				if (outcome !== 'full') {
-					this.lastShards.set(scopeKey.value, shard);
-					return outcome;
-				}
+				if (outcome !== 'full') return outcome;
 			}
 
-			await sleep(FULL_RETRY_DELAY_MS, undefined, { signal: task.signal });
+			await sleep(retryDelayMs, undefined, { signal: task.signal });
+			retryDelayMs = Math.min(retryDelayMs * 2, FULL_RETRY_MAX_DELAY_MS);
 		}
 	}
 
@@ -74,12 +76,13 @@ export class ScopeClient {
 		options: SandboxOptions,
 		task: CodeTask,
 	): Promise<CodeTaskOutcome | 'full'> {
+		const sandboxId = this.sandboxIds.get(name) ?? (await this.createSandbox(name, options));
 		try {
-			const sandboxId = this.sandboxIds.get(name) ?? (await this.createSandbox(name, options));
 			return await this.runOrFull(sandboxId, task);
 		} catch (error) {
 			// The sandbox is deleted or draining, so create a new sandbox for this name
 			if (!hasStatus(error, 404) && !hasStatus(error, 410)) throw error;
+			this.sandboxIds.delete(name);
 		}
 
 		return await this.runOrFull(await this.createSandbox(name, options), task);

@@ -10,6 +10,14 @@ describe('LruCache', () => {
 		expect(cache.get('b')).toBe(2);
 	});
 
+	it('should delete a key', () => {
+		const cache = new LruCache<string, number>(3);
+		cache.set('a', 1);
+		cache.delete('a');
+		expect(cache.get('a')).toBeUndefined();
+		expect(cache.size).toBe(0);
+	});
+
 	it('should return undefined for missing keys', () => {
 		const cache = new LruCache<string, number>(3);
 		expect(cache.get('missing')).toBeUndefined();
