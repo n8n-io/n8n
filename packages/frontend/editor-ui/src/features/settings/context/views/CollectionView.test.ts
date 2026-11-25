@@ -534,6 +534,36 @@ describe('CollectionView', () => {
 			);
 			await waitFor(() => expect(screen.queryByTestId('collection-modal')).toBeNull());
 		});
+
+		it('keeps a newer name when a description save ends after a rename', async () => {
+			await setup();
+			const descriptionSave = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValueOnce(descriptionSave.promise);
+
+			await pickAction('Edit description');
+			await screen.findByTestId('collection-modal');
+			await userEvent.clear(descriptionField());
+			await userEvent.type(descriptionField(), 'Refunds, pricing and shipping');
+			await userEvent.click(screen.getByTestId('collection-modal-submit'));
+			await userEvent.click(screen.getByTestId('collection-modal-cancel'));
+			await waitFor(() => expect(screen.queryByTestId('collection-modal')).toBeNull());
+
+			collectionsStore.updateCollection.mockResolvedValueOnce(
+				collectionDto({ name: 'Support handbook' }),
+			);
+			await typeTitle('Support handbook');
+			await waitFor(() => expect(currentCrumb()).toHaveAttribute('title', 'Support handbook'));
+
+			// The description request read the collection before the rename, so it has the old name.
+			descriptionSave.resolve(collectionDto({ description: 'Refunds, pricing and shipping' }));
+			await flushPromises();
+
+			expect(titlePreview()).toHaveTextContent('Support handbook');
+			expect(currentCrumb()).toHaveAttribute('title', 'Support handbook');
+			expect(screen.getByTestId('collection-description')).toHaveTextContent(
+				'Refunds, pricing and shipping',
+			);
+		});
 	});
 
 	describe('delete', () => {

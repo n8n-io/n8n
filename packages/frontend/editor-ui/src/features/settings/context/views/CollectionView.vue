@@ -241,12 +241,14 @@ function onAction(action: CollectionAction) {
 }
 
 // The dialog stays mounted, so make sure a late save of another collection does not land here.
+// Take only the description, so a rename that ends first keeps its name.
 function onDescriptionSaved(saved: KnowledgeCollectionDto) {
-	if (saved.id !== props.collectionId) {
+	const current = collection.value;
+	if (saved.id !== props.collectionId || !current) {
 		return;
 	}
 
-	collection.value = saved;
+	collection.value = { ...current, description: saved.description };
 }
 
 function closeDeleteDialog() {
