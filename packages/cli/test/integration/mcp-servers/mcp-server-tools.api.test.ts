@@ -68,8 +68,8 @@ let outsider: User;
 let project: Project;
 
 function enableFlag(on = true) {
-	vi.mocked(Container.get(PostHogClient).getFeatureFlags).mockResolvedValue(
-		on ? { '155_custom_mcp_servers': 'test' } : {},
+	vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+		async (flag) => (on && flag === '155_custom_mcp_servers' ? 'test' : undefined),
 	);
 }
 

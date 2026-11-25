@@ -19,14 +19,14 @@ export class McpServerToolsController {
 	@Get('/tool-candidates')
 	@ProjectScope('mcpServer:update')
 	async candidates(req: ToolsRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.toolsService.listCandidates(req.params.projectId, req.params.serverId);
 	}
 
 	@Post('/tools')
 	@ProjectScope('mcpServer:update')
 	async add(req: ToolsRequest, _res: unknown, @Body dto: AddMcpServerToolsDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.toolsService.addWorkflowTools(
 			req.params.projectId,
 			req.params.serverId,
@@ -38,7 +38,7 @@ export class McpServerToolsController {
 	@Patch('/tools/:toolId')
 	@ProjectScope('mcpServer:update')
 	async update(req: ToolRequest, _res: unknown, @Body dto: UpdateMcpServerToolDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.toolsService.updateTool(
 			req.params.projectId,
 			req.params.serverId,
@@ -50,7 +50,7 @@ export class McpServerToolsController {
 	@Delete('/tools/:toolId')
 	@ProjectScope('mcpServer:update')
 	async remove(req: ToolRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		await this.toolsService.removeTool(
 			req.params.projectId,
 			req.params.serverId,
