@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
 		baseUrl: 'http://localhost:5678/',
 		restApiContext: { baseUrl: 'http://localhost:5678', pushRef: 'test' },
 		defaultLocale: 'en',
+		versionCli: '2.0.0',
 	},
+	initialize: vi.fn(),
 	loadNodeTypes: vi.fn(),
 	getAllNodeTypes: vi.fn(),
 	getNodeType: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@/app/workers', () => ({
+	initialize: mocks.initialize,
 	loadNodeTypes: mocks.loadNodeTypes,
 	getAllNodeTypes: mocks.getAllNodeTypes,
 	getNodeType: mocks.getNodeType,
@@ -93,6 +96,10 @@ describe('useNodeTypesStore', () => {
 	describe('visibleNodeTypes module gating', () => {
 		const DATA_TABLE = 'n8n-nodes-base.dataTable';
 		const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
+		const decisionNodes = [
+			'n8n-nodes-base.agentDecisionTrigger',
+			'n8n-nodes-base.agentDecisionResponse',
+		];
 
 		let activeModules: string[];
 
@@ -103,6 +110,7 @@ describe('useNodeTypesStore', () => {
 				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
 				makeNodeType({ name: DATA_TABLE, outputs: ['main'] }),
 				makeNodeType({ name: MESSAGE_AN_AGENT, outputs: ['main'] }),
+				...decisionNodes.map((name) => makeNodeType({ name, outputs: ['main'] })),
 			]);
 
 			activeModules = ['data-table', 'agents'];
@@ -137,6 +145,27 @@ describe('useNodeTypesStore', () => {
 			expect(visibleNames()).not.toContain(MESSAGE_AN_AGENT);
 			expect(visibleNames()).toContain(DATA_TABLE);
 			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
+		});
+
+		it('only offers the approval nodes when Agents and Human Review are enabled', () => {
+			const settingsStore = useSettingsStore();
+			const gate = vi
+				.spyOn(settingsStore, 'isAgentModuleActive')
+				.mockImplementation(
+					(feature) =>
+						feature === 'human-review' &&
+						activeModules.includes('agents') &&
+						activeModules.includes(feature),
+				);
+
+			for (const name of decisionNodes) expect(visibleNames()).not.toContain(name);
+
+			activeModules = ['agents', 'human-review'];
+			for (const name of decisionNodes) expect(store.isNodeTypeModuleDisabled(name)).toBe(false);
+			expect(gate).toHaveBeenCalledWith('human-review');
+
+			activeModules = ['human-review'];
+			for (const name of decisionNodes) expect(store.isNodeTypeModuleDisabled(name)).toBe(true);
 		});
 
 		it('should never treat a node type without a module as disabled', () => {
@@ -319,6 +348,7 @@ describe('useNodeTypesStore', () => {
 			window.localStorage.clear();
 			mocks.rootStore.defaultLocale = 'en';
 			vi.mocked(nodeTypesApi.getNodeTypes).mockResolvedValue([restNode]);
+			mocks.initialize.mockResolvedValue(undefined);
 			mocks.loadNodeTypes.mockResolvedValue(undefined);
 			mocks.getAllNodeTypes.mockResolvedValue([dbNode]);
 		});
@@ -345,6 +375,35 @@ describe('useNodeTypesStore', () => {
 			expect(store.nodeTypes[dbNode.name]).toBeDefined();
 		});
 
+		it('should initialize the data worker before it syncs the local database', async () => {
+			window.localStorage.setItem(LOCAL_STORAGE_DATA_WORKER, 'true');
+			const calls: string[] = [];
+			mocks.initialize.mockImplementation(async () => {
+				calls.push('initialize');
+			});
+			mocks.loadNodeTypes.mockImplementation(async () => {
+				calls.push('loadNodeTypes');
+			});
+			const store = useNodeTypesStore();
+
+			await store.getNodeTypes();
+
+			expect(mocks.initialize).toHaveBeenCalledWith({ version: mocks.rootStore.versionCli });
+			expect(calls).toEqual(['initialize', 'loadNodeTypes']);
+		});
+
+		it('should fall back to REST when the data worker cannot initialize', async () => {
+			window.localStorage.setItem(LOCAL_STORAGE_DATA_WORKER, 'true');
+			mocks.initialize.mockRejectedValue(new Error('worker unavailable'));
+			const store = useNodeTypesStore();
+
+			await store.getNodeTypes();
+
+			expect(mocks.loadNodeTypes).not.toHaveBeenCalled();
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledWith(mocks.rootStore.baseUrl);
+			expect(store.nodeTypes[restNode.name]).toBeDefined();
+		});
+
 		it('should fall back to REST when the local database is empty', async () => {
 			window.localStorage.setItem(LOCAL_STORAGE_DATA_WORKER, 'true');
 			mocks.getAllNodeTypes.mockResolvedValue([]);
@@ -364,6 +423,75 @@ describe('useNodeTypesStore', () => {
 			await store.getNodeTypes();
 
 			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledWith(mocks.rootStore.baseUrl);
+			expect(store.nodeTypes[restNode.name]).toBeDefined();
+		});
+	});
+
+	describe('loadNodeTypesIfNotLoaded', () => {
+		const restNode = makeNodeType({
+			name: 'n8n-nodes-base.restNode',
+			outputs: [NodeConnectionTypes.Main],
+		});
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			vi.clearAllMocks();
+			window.localStorage.clear();
+			mocks.initialize.mockResolvedValue(undefined);
+			mocks.loadNodeTypes.mockResolvedValue(undefined);
+			mocks.getAllNodeTypes.mockResolvedValue([restNode]);
+		});
+
+		it('should share one request between calls that start together', async () => {
+			const { promise, resolve } = Promise.withResolvers<INodeTypeDescription[]>();
+			vi.mocked(nodeTypesApi.getNodeTypes).mockReturnValueOnce(promise);
+			const store = useNodeTypesStore();
+
+			const first = store.loadNodeTypesIfNotLoaded();
+			const second = store.loadNodeTypesIfNotLoaded();
+			resolve([restNode]);
+			await Promise.all([first, second]);
+
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+			expect(store.nodeTypes[restNode.name]).toBeDefined();
+		});
+
+		it('should reject every caller of a failed load, and retry on the next call', async () => {
+			const error = new Error('node types');
+			vi.mocked(nodeTypesApi.getNodeTypes)
+				.mockRejectedValueOnce(error)
+				.mockResolvedValueOnce([restNode]);
+			const store = useNodeTypesStore();
+
+			const first = store.loadNodeTypesIfNotLoaded();
+			const second = store.loadNodeTypesIfNotLoaded();
+			await expect(first).rejects.toBe(error);
+			await expect(second).rejects.toBe(error);
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(1);
+
+			await store.loadNodeTypesIfNotLoaded();
+
+			expect(nodeTypesApi.getNodeTypes).toHaveBeenCalledTimes(2);
+			expect(store.nodeTypes[restNode.name]).toBeDefined();
+		});
+
+		it('should send no request when the node types are already loaded', async () => {
+			const store = useNodeTypesStore();
+			store.setNodeTypes([restNode]);
+
+			await store.loadNodeTypesIfNotLoaded();
+
+			expect(nodeTypesApi.getNodeTypes).not.toHaveBeenCalled();
+		});
+
+		it('should initialize the data worker once for calls that start together', async () => {
+			window.localStorage.setItem(LOCAL_STORAGE_DATA_WORKER, 'true');
+			const store = useNodeTypesStore();
+
+			await Promise.all([store.loadNodeTypesIfNotLoaded(), store.loadNodeTypesIfNotLoaded()]);
+
+			expect(mocks.initialize).toHaveBeenCalledTimes(1);
+			expect(mocks.loadNodeTypes).toHaveBeenCalledTimes(1);
 			expect(store.nodeTypes[restNode.name]).toBeDefined();
 		});
 	});

@@ -108,6 +108,8 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
 
 export interface BuildFromJsonOptions {
+	/** Routes a gated tool through the configured approval destination. */
+	wrapApproval?: (tool: BuiltTool, ref: AgentJsonToolConfig) => BuiltTool;
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
 	credentialProvider: CredentialProvider;
@@ -472,10 +474,11 @@ function getConfiguredSkillSource(
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
-		const linkedFiles = linkedFilesForSkill(skill);
+		const textFiles = (skill.references ?? []).filter((file) => !file.isBinary);
+		const linkedFiles = linkedFilesForSkill(textFiles);
 		referencesBySkillId.set(
 			ref.id,
-			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+			new Map(textFiles.map((reference) => [reference.path, reference])),
 		);
 		configured.push({
 			id: ref.id,
@@ -504,9 +507,11 @@ function getConfiguredSkillSource(
 	};
 }
 
-function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+function linkedFilesForSkill(
+	files: NonNullable<AgentSkill['references']>,
+): RuntimeSkillLinkedFiles {
 	return {
-		references: (skill.references ?? []).map((reference) => ({
+		references: files.map((reference) => ({
 			path: reference.path,
 			bytes: Buffer.byteLength(reference.content, 'utf8'),
 			sha256: createHash('sha256').update(reference.content).digest('hex'),
@@ -554,7 +559,10 @@ async function resolveToolRef(
 			};
 
 			if (ref.requireApproval) {
-				return wrapToolForApproval(builtTool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(builtTool, ref) ??
+					wrapToolForApproval(builtTool, { requireApproval: true })
+				);
 			}
 			return builtTool;
 		}
@@ -574,7 +582,9 @@ async function resolveToolRef(
 			if (resolved === null) return null;
 			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
-				return wrapToolForApproval(tool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(tool, ref) ?? wrapToolForApproval(tool, { requireApproval: true })
+				);
 			}
 			return tool;
 		}
@@ -590,7 +600,9 @@ async function resolveToolRef(
 			if (resolved === null) return null;
 			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
-				return wrapToolForApproval(tool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(tool, ref) ?? wrapToolForApproval(tool, { requireApproval: true })
+				);
 			}
 			return tool;
 		}

@@ -84,6 +84,7 @@ function createSetupFactory() {
 			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			resolveApprovalJudgeModelConfig: vi.fn(async () => 'anthropic/claude-haiku'),
 			getModelFetch: vi.fn(() => undefined),
+			getLabeledModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {

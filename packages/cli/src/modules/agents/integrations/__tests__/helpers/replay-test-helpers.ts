@@ -355,7 +355,6 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		params.integration,
 		messageContextStore as unknown as IntegrationMessageContextService,
 		attachmentService,
-		undefined,
 		queue,
 	);
 

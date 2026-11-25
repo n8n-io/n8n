@@ -41,6 +41,7 @@ import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-te
 import type { AgentExecutionMetrics } from '@/modules/agents/agent-execution-metrics';
 import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
+import { AgentAttentionFlagRepository } from '@/modules/agents/repositories/agent-attention-flag.repository';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '@/modules/agents/background/sub-agent-background-runner';
@@ -189,7 +190,13 @@ describe('AgentExecutionRepository', () => {
 			connection ?? repository.manager.connection,
 			mockLogger(),
 		);
-		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
+		const executions = connection
+			? new AgentExecutionRepository(
+					connection,
+					txRunner,
+					new AgentAttentionFlagRepository(connection, txRunner),
+				)
+			: repository;
 		const threads = connection
 			? new AgentExecutionThreadRepository(
 					connection,
@@ -236,6 +243,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			new AgentAttentionFlagRepository(connection ?? repository.manager.connection, txRunner),
 			new IntegrationMessageContextService(
 				new AgentThreadRepository(connection ?? repository.manager.connection, txRunner),
 				new AgentResourceRepository(connection ?? repository.manager.connection),

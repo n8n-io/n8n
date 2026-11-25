@@ -3106,6 +3106,7 @@ describe('AgentChatPanel', () => {
 			backgroundJobsMock.value = [
 				job,
 				{ ...job, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
+				{ ...job, id: 'job-3', kind: 'approval', title: 'Publish forecast' },
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
@@ -3113,6 +3114,7 @@ describe('AgentChatPanel', () => {
 			await trigger.trigger('click');
 			const workflow = wrapper.findAll('li')[1];
 			expect(workflow.text()).toBe('Workflow — Forecast refresh');
+			expect(wrapper.findAll('li')[2].text()).toBe('Approval for Publish forecast');
 			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
 			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon: 'circle',
@@ -5161,7 +5163,7 @@ describe('AgentChatPanel', () => {
 			getInputElement: () => HTMLTextAreaElement | undefined;
 			insertText: (text: string) => Promise<void>;
 			addComposerAttachment: (
-				chip: { id: string; label: string; icon?: string },
+				chip: { id: string; label: string; icon?: string; hostRendered?: boolean },
 				clientContextPatch?: Record<string, unknown>,
 			) => void;
 			removeComposerAttachment: (id: string) => void;
@@ -5258,25 +5260,68 @@ describe('AgentChatPanel', () => {
 			);
 			expect(chip.text()).toContain('Invoices');
 
-			await wrapper.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+			await chip.find('[data-test-id="attachment-remove"]').trigger('click');
 
 			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(composerVm(wrapper).composerAttachments).toEqual([]);
+			expect(wrapper.emitted('composer-attachment-removed')).toEqual([['wf-1']]);
 		});
 
-		it('passes the chips to a host composer-attachments slot instead of the default chips', async () => {
-			const slot = vi.fn((props: Record<string, unknown>) =>
-				h('span', { 'data-testid': 'host-chips' }, JSON.stringify(props.chips)),
-			);
-			const wrapper = mountPanel({}, undefined, { 'composer-attachments': slot });
+		it('shows chips as cards before the files in one group, except chips that the host draws', async () => {
+			const wrapper = mountPanel({}, undefined, {
+				'composer-attachments': '<span data-testid="host-chip" />',
+			});
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'nodes-1', label: '2 nodes', hostRendered: true });
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			composer(wrapper).vm.$emit('files-selected', [
+				new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+			]);
+			await flushPromises();
 
+			const cards = wrapper.findAll('[data-testid="chat-input"] .n8n-attachment');
+			expect(cards.map((card) => card.text())).toEqual([
+				expect.stringContaining('Invoices'),
+				expect.stringContaining('notes.txt'),
+			]);
+			expect(cards[0].element.parentElement?.parentElement).toBe(
+				cards[1].element.parentElement?.parentElement,
+			);
+			expect(wrapper.find('[data-testid="host-chip"]').exists()).toBe(true);
+		});
+
+		it('blocks the send while a chip card plays its remove animation', async () => {
+			const wrapper = mountPanel();
 			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			composer(wrapper).vm.$emit('update:modelValue', 'Use it');
 			await nextTick();
+			const card = wrapper.findComponent('[data-test-id="agent-chat-composer-chip"]') as VueWrapper;
 
-			expect(wrapper.find('[data-testid="host-chips"]').text()).toContain('Invoices');
-			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
-			expect(slot).toHaveBeenLastCalledWith(
-				expect.objectContaining({ removeChip: expect.any(Function) }),
-			);
+			card.vm.$emit('remove-start');
+			await nextTick();
+			expect(composer(wrapper).props('canSubmit')).toBe(false);
+
+			card.vm.$emit('remove-end');
+			await nextTick();
+			expect(composer(wrapper).props('canSubmit')).toBe(true);
+		});
+
+		it('focuses a chip card with Up when the draft is empty', async () => {
+			const wrapper = mountPanel({}, document.body);
+			try {
+				composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+				await flushPromises();
+				const textbox = wrapper.get('textarea');
+				textbox.element.focus();
+
+				await textbox.trigger('keydown', { key: 'ArrowUp' });
+
+				expect(document.activeElement).toBe(
+					wrapper.get('[data-test-id="agent-chat-composer-chip"] .n8n-attachment').element,
+				);
+			} finally {
+				wrapper.unmount();
+			}
 		});
 
 		it('sends the merged clientContext patches with the next message and then clears the chips', async () => {
