@@ -8,6 +8,8 @@ import AgentVectorStoresModal from '../components/AgentVectorStoresModal.vue';
 const closeModalMock = vi.fn();
 const openNewCredentialMock = vi.fn();
 const fetchUsableCredentialsMock = vi.fn();
+const fetchCredentialTypesMock = vi.fn();
+const credentialTypes = new Map<string, { displayName: string }>();
 const testAgentVectorStoreMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
@@ -52,7 +54,8 @@ vi.mock('@/features/credentials/credentials.constants', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		fetchUsableCredentials: fetchUsableCredentialsMock,
-		getCredentialTypeByName: () => undefined,
+		fetchCredentialTypes: fetchCredentialTypesMock,
+		getCredentialTypeByName: (name: string) => credentialTypes.get(name),
 	}),
 }));
 
@@ -174,6 +177,30 @@ describe('AgentVectorStoresModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		fetchUsableCredentialsMock.mockResolvedValue([qdrantCredential, openAiCredential]);
+		credentialTypes.clear();
+		fetchCredentialTypesMock.mockResolvedValue(undefined);
+	});
+
+	it('sets the type label when the credential types arrive after the credentials', async () => {
+		const { promise, resolve } = Promise.withResolvers<void>();
+		fetchCredentialTypesMock.mockReturnValueOnce(promise);
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: { projectId: 'p1', agentId: 'a1', existingNames: [], onConfirm: vi.fn() },
+			},
+		});
+		await flushPromises();
+		await selectQdrantProvider(wrapper);
+		credentialTypes.set('openAiApi', { displayName: 'OpenAI' });
+		resolve();
+		await flushPromises();
+
+		expect(fetchCredentialTypesMock).toHaveBeenCalledWith(false);
+		const selector = wrapper.findComponent({ name: 'EmbeddingModelSelector' });
+		expect(selector.props('credentialsByType').openAiApi).toEqual([
+			expect.objectContaining({ id: 'openai-cred-1', typeDisplayName: 'OpenAI' }),
+		]);
 	});
 
 	it('lists all four vector store providers with a Connect button each', async () => {

@@ -7,6 +7,11 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentResource } from '../types';
+import type {
+	SetupTask,
+	SetupTaskId,
+} from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 
 const track = vi.fn();
 const triggerRedesignEnabled = vi.hoisted(() => ({ value: false }));
@@ -205,6 +210,8 @@ async function mountColumn(
 		canEditAgent: boolean;
 		isPreviewOpen: boolean;
 		agent: AgentResource | null;
+		tasks: Array<SetupTask<SetupTaskId>>;
+		hidePreviewButton: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -238,6 +245,8 @@ async function mountColumn(
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
 			isPreviewOpen: overrides.isPreviewOpen,
+			tasks: overrides.tasks,
+			hidePreviewButton: overrides.hidePreviewButton,
 			executionsDescription: '',
 		},
 		global: {
@@ -252,6 +261,7 @@ async function mountColumn(
 					props: ['showModel', 'showInstructions'],
 					emits: ['update:config'],
 				},
+				AgentSetupTasks: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
@@ -263,6 +273,34 @@ describe('AgentBuilderEditorColumn', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		triggerRedesignEnabled.value = false;
+	});
+
+	it('places setup tasks beside Test Agent and forwards task actions', async () => {
+		const task: SetupTask<SetupTaskId> = {
+			id: 'add-tool',
+			titleKey: 'agents.builder.setupTasks.addTool',
+			required: false,
+			state: 'todo',
+			visible: true,
+			action: { labelKey: 'agents.builder.setupTasks.addTool', target: { kind: 'tool' } },
+		};
+		const wrapper = await mountColumn({ tasks: [task] });
+		const actions = wrapper.get('[data-testid="agent-identity-actions"]');
+		const setupTasks = actions.getComponent(AgentSetupTasks);
+		expect(setupTasks.props('tasks')).toEqual([task]);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
+
+		setupTasks.vm.$emit('action', task);
+		expect(wrapper.emitted('setup-task-action')).toEqual([[task]]);
+
+		await wrapper.setProps({ hidePreviewButton: true });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(true);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(false);
+
+		await wrapper.setProps({ tasks: undefined });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
+		await wrapper.setProps({ tasks: [] });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
 	});
 
 	it.each([

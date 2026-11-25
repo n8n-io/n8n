@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted, shallowRef, useTemplateRef } from 'vue';
 
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
@@ -65,10 +65,15 @@ async function loadSummaries() {
 onMounted(async () => {
 	await Promise.all([loadSummaries(), instancePolicy.loadUsage('node')]);
 });
+
+const table = useTemplateRef<InstanceType<typeof InstancePolicyTable>>('table');
+
+defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFocus(name) });
 </script>
 
 <template>
 	<InstancePolicyTable
+		ref="table"
 		:rows="rows"
 		:loading="loading || typeSummaries === null"
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"

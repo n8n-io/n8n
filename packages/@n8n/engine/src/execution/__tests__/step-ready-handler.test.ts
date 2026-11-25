@@ -207,6 +207,9 @@ describe('StepReadyHandler', () => {
 		expect(executor.execute).toHaveBeenCalledWith({
 			node: { id: 'a', name: 'A', type: 'v1-node', config: { some: 'config' } },
 			inputs: [{ body: { hello: 'world' } }],
+			inputSources: [
+				[{ nodeId: 'trigger', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 }],
+			],
 			context: {
 				executionId: 'exec-1',
 				stepId: 'step-a',
@@ -349,9 +352,227 @@ describe('StepReadyHandler', () => {
 			{ nodeId: 'b', iteration: 0 },
 		]);
 		expect(executor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({ inputs: [[{ json: { from: 'a' } }], [{ json: { from: 'b' } }]] }),
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'a' } }], [{ json: { from: 'b' } }]],
+				inputSources: [
+					[{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 }],
+					[{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 }],
+				],
+			}),
 		);
 	});
+
+	/** trigger fans out to a and b, which both feed m's input slot 0. */
+	const converging: WorkflowGraph = {
+		nodes: [...graph.nodes, { id: 'm', name: 'M', type: 'v1-node' }],
+		edges: [
+			{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+			{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
+			{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 0 },
+			{ from: 'b', to: 'm', outputIndex: 0, inputIndex: 0 },
+		],
+	};
+
+	it('joins two live edges into one slot, and reports both sources', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]),
+					[at('b')]: stepRow('b', 'completed', [
+						[{ json: { from: 'b1' } }, { json: { from: 'b2' } }],
+					]),
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore({ graph: converging }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'a' } }, { json: { from: 'b1' } }, { json: { from: 'b2' } }]],
+				inputSources: [
+					[
+						{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+						{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 2 },
+					],
+				],
+			}),
+		);
+	});
+
+	it('joins in the order of the source nodes, not of the edges', async () => {
+		// b -> m is listed before a -> m, but a comes before b in the node list
+		const [toA, toB, aToM, bToM] = converging.edges;
+		const edgesOutOfOrder: WorkflowGraph = { ...converging, edges: [toA, toB, bToM, aToM] };
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]),
+					[at('b')]: stepRow('b', 'completed', [[{ json: { from: 'b' } }]]),
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = makeHandler(
+			makeExecutionStore({ graph: edgesOutOfOrder }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'a' } }, { json: { from: 'b' } }]],
+				inputSources: [
+					[
+						{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+						{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+					],
+				],
+			}),
+		);
+	});
+
+	it('joins two outputs of one node into one slot by output index', async () => {
+		// a's output 1 is listed before its output 0
+		const twoOutputs: WorkflowGraph = {
+			nodes: converging.nodes,
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 1, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[at('a')]: stepRow('a', 'completed', [
+						[{ json: { from: 'a0' } }],
+						[{ json: { from: 'a1' } }],
+					]),
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore({ graph: twoOutputs }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'a0' } }, { json: { from: 'a1' } }]],
+				inputSources: [
+					[
+						{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+						{ nodeId: 'a', outputIndex: 1, iteration: 0, offset: 0, itemCount: 1 },
+					],
+				],
+			}),
+		);
+	});
+
+	it('feeds a slot from its only live edge when the first edge is dead', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[at('a')]: stepRow('a', 'skipped'),
+					[at('b')]: stepRow('b', 'completed', [[{ json: { from: 'b' } }]]),
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore({ graph: converging }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'b' } }]],
+				inputSources: [[{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 }]],
+			}),
+		);
+	});
+
+	it('reports no source for a slot every edge left dead', async () => {
+		// a and b were skipped; the trigger also feeds m's slot 1, live
+		const withSecondSlot: WorkflowGraph = {
+			...converging,
+			edges: [...converging.edges, { from: 'trigger', to: 'm', outputIndex: 0, inputIndex: 1 }],
+		};
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[at('trigger')]: stepRow('trigger', 'completed', [[{ json: { from: 't' } }]]),
+					[at('a')]: stepRow('a', 'skipped'),
+					[at('b')]: stepRow('b', 'skipped'),
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = makeHandler(
+			makeExecutionStore({ graph: withSecondSlot }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [null, [{ json: { from: 't' } }]],
+				inputSources: [
+					[],
+					[{ nodeId: 'trigger', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 }],
+				],
+			}),
+		);
+	});
+
+	it.each([
+		{ order: 'the first', a: { scalar: true }, b: [{ json: { from: 'b' } }] },
+		{ order: 'the second', a: [{ json: { from: 'a' } }], b: { scalar: true } },
+	])(
+		'throws, running nothing, when $order of two live values into one slot is not a list',
+		async ({ a, b }) => {
+			const stepStore = makeStepStore(
+				{ id: 'step-m', nodeId: 'm' },
+				{
+					loadStepsByKeys: vi.fn().mockResolvedValue({
+						[at('a')]: stepRow('a', 'completed', [a]),
+						[at('b')]: stepRow('b', 'completed', [b]),
+					}),
+				},
+			);
+			const executor = makeExecutor();
+			const handler = makeHandler(
+				makeExecutionStore({ graph: converging }),
+				stepStore,
+				makeQueue(),
+				{
+					v1StepExecutor: executor,
+				},
+			);
+
+			await expect(handler.handle({ ...event, stepId: 'step-m' })).rejects.toThrow(/not all lists/);
+			expect(executor.execute).not.toHaveBeenCalled();
+		},
+	);
 
 	it('leaves an input slot no edge feeds null', async () => {
 		const gapped: WorkflowGraph = {
@@ -832,21 +1053,6 @@ describe('StepReadyHandler', () => {
 	 * (CAT-3930) will resolve these.
 	 */
 	it.each([
-		{
-			reason: 'two edges feed the same input slot',
-			stepId: 'step-b',
-			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
-			execution: () =>
-				makeExecutionStore({
-					graph: {
-						nodes: graph.nodes,
-						// both a and the trigger feed b's slot 0
-						edges: [...graph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 }],
-					},
-				}),
-			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnexpectedError', message: 'input slot' },
-		},
 		{
 			reason: 'its node has no predecessor in the graph',
 			stepId: 'step-orphan',
@@ -1803,7 +2009,10 @@ describe('StepReadyHandler over loop iterations', () => {
 			{ nodeId: 'B', iteration: 4 },
 		]);
 		expect(executor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({ inputs: [[{ json: { done: true } }]] }),
+			expect.objectContaining({
+				inputs: [[{ json: { done: true } }]],
+				inputSources: [[expect.objectContaining({ nodeId: 'B', iteration: 4 })]],
+			}),
 		);
 	});
 

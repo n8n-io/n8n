@@ -198,6 +198,12 @@ export interface WorkflowToolContext {
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	userId?: string;
+	/**
+	 * Set only for an interactive user. A guardrail check calls it before the
+	 * workflow runs. Published and integration runs leave it unset and keep the
+	 * project-scoped trust boundary.
+	 */
+	canExecuteWorkflow?: (workflowId: string) => Promise<boolean>;
 	/** See `RelatedAgentRun.agentServiceAccountId`. */
 	agentServiceAccountId?: string;
 	/** See `RelatedAgentRun.delegatingAgentId`. */
@@ -215,6 +221,10 @@ export interface WorkflowToolRunContext extends WorkflowToolContext {
 	abortSignal?: AbortSignal;
 	/** Stamped onto sub-executions so a Wait node finishing can wake this run. */
 	agentRun?: RelatedAgentRun;
+	/** Per-call execution budget. Defaults to {@link DEFAULT_TIMEOUT_MS}. */
+	timeoutMs?: number;
+	/** Stamped onto the execution's `resultData.metadata` at creation. */
+	executionMetadata?: Record<string, string>;
 }
 
 type WorkflowToolInputsConfig = NonNullable<
@@ -327,6 +337,8 @@ export async function executeWorkflow(
 		| 'agentRun'
 		| 'abortSignal'
 		| 'instrumentToolAdditionalData'
+		| 'executionMetadata'
+		| 'timeoutMs'
 	> & { executionProjectId?: string },
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
@@ -363,8 +375,14 @@ export async function executeWorkflow(
 			resultData: {
 				pinData: triggerPinData,
 				runData: {},
-				// Saved as the execution's custom data: its requests went to a simulation or mock.
-				...(instrumented ? { metadata: { ...SIMULATED_RUN_METADATA } } : {}),
+				// Custom data on the execution. A guardrail check records which agent it
+				// covers. An instrumented run records that its requests went to a simulation.
+				...((context.executionMetadata !== undefined || instrumented) && {
+					metadata: {
+						...(instrumented ? { ...SIMULATED_RUN_METADATA } : {}),
+						...context.executionMetadata,
+					},
+				}),
 			},
 			executionData: {
 				contextData: {},
@@ -428,7 +446,7 @@ export async function executeWorkflow(
 
 	return await withWorkflowCancellation(executionId, workflow.id, context.abortSignal, async () => {
 		// Wait for completion with timeout protection
-		const timeoutMs = DEFAULT_TIMEOUT_MS;
+		const timeoutMs = context.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
 		let completedRun: IRun | undefined;
 		if (activeExecutions.has(executionId)) {

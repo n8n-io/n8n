@@ -91,6 +91,7 @@ const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const {
 	fetchStatus,
+	n8nChatPublishedEnabled,
 	connectedCredentials,
 	integrationSettings,
 	integrationApproval,
@@ -812,6 +813,7 @@ watch(
 			>
 				<component
 					:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
+					v-bind="isN8nChatSelected ? { availableInChat: n8nChatPublishedEnabled } : {}"
 					:key="viewSession"
 					ref="channelViewRef"
 					v-model="selectedCredentials[currentIntegration.type]"

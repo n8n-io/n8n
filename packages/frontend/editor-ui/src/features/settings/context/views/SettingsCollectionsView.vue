@@ -67,12 +67,16 @@ function openEditModal(collection: KnowledgeCollectionDto) {
 	modalOpen.value = true;
 }
 
-async function onCreated(collection: KnowledgeCollectionDto) {
-	modalOpen.value = false;
+async function openCollection(collection: KnowledgeCollectionDto) {
 	await router.push({
 		name: VIEWS.KNOWLEDGE_COLLECTION,
 		params: { projectId: collection.homeProject.id, collectionId: collection.id },
 	});
+}
+
+async function onCreated(collection: KnowledgeCollectionDto) {
+	modalOpen.value = false;
+	await openCollection(collection);
 }
 
 function openDeleteDialog(collection: KnowledgeCollectionDto) {
@@ -125,6 +129,7 @@ onMounted(async () => {
 			:collections="collectionsStore.collections"
 			:loading="collectionsStore.loading"
 			:show-empty="showEmptyState"
+			@open="openCollection"
 			@edit="openEditModal"
 			@delete="openDeleteDialog"
 		>
