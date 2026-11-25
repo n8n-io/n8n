@@ -999,7 +999,12 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 			</InstanceAiViewHeader>
 
 			<div
-				:class="$style.contentArea"
+				:class="[
+					$style.contentArea,
+					{
+						[$style.contentAreaWithPinnedArtifacts]: showArtifactsPanel && isArtifactsPanelInLayout,
+					},
+				]"
 				:inert="isAgentTestDockOpen || undefined"
 				:aria-hidden="isAgentTestDockOpen || undefined"
 			>
@@ -1266,10 +1271,18 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 }
 
 .contentArea {
+	--assistant-agent-artifacts-panel-width: 280px;
+
 	position: relative;
 	display: flex;
 	flex: 1;
 	min-height: 0;
+}
+
+// The panel floats over the chat, so the chat scrollbar stays at the edge of the view.
+// The chat keeps its messages and its input clear of the panel.
+.contentAreaWithPinnedArtifacts {
+	--agent-chat-reserved-end: var(--assistant-agent-artifacts-panel-width);
 }
 
 .chatColumn {
@@ -1281,17 +1294,20 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 }
 
 .artifactsPanelSlot {
-	display: flex;
-	flex-shrink: 0;
-	overflow: hidden;
-}
-
-// A narrow view shows the panel over the chat.
-.artifactsPanelSlotOverlay {
 	position: absolute;
 	top: 0;
 	right: 0;
 	z-index: 4;
+	display: flex;
+	// Only as tall as the panel, so the chat below the panel still scrolls.
+	max-height: 100%;
+	overflow: hidden;
+	// Keeps the transparent right padding of the panel off the chat scrollbar.
+	clip-path: inset(0 var(--spacing--2xs) 0 0);
+}
+
+// A narrow view shows the panel over the chat with a gap above the input.
+.artifactsPanelSlotOverlay {
 	max-height: calc(100% - var(--spacing--sm));
 }
 
