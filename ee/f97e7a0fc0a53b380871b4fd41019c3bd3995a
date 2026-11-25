@@ -1,0 +1,248 @@
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 151-154,159
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 371,647,685,701,735,975
+packages/cli/src/modules/knowledge/collections/__tests__/knowledge-collection-catalog.service.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1,58,131-168,385-599
+packages/cli/src/modules/promotions.ee/__tests__/promotion-credential-selection.service.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-91
+packages/frontend/editor-ui/src/features/settings/context/collections.store.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 7,58-69,118-119
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 39
+packages/@n8n/api-types/src/schemas/ai-preference.schema.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 15-17,19
+packages/modules/promotions/frontend/src/promotionPreview.tree.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1,51-84
+  s_dfe3f914c8bb46::t_1c9c86d0afa80a 85
+packages/@n8n/instance-ai/evaluations/__tests__/helpers/fixture-navigation.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 3-6,15-23
+  s_dfe3f914c8bb46::t_56482615712364 24-25
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionModal.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 6,35,39,64,125-159,174-175,185-201,203-207,214-215,219,223-227,231-233,235,245-248,263-266,275-281,347,388-395
+packages/@n8n/api-types/src/knowledge/collections/__tests__/update-knowledge-collection.dto.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-55
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunToolsNotice.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-242
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-40
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 878,920,926-928,1084-1086,1416-1420,1422-1430,1433,1443-1450,1652-1659
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 150,162,170,177
+packages/frontend/editor-ui/src/features/settings/context/components/DeleteCollectionDialog.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-129
+packages/cli/src/modules/knowledge/collections/knowledge-collection-catalog.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 5,11,34-36,38-40,56-58,68-69,81,86,90-96,107,119-180,197,199,241-256
+  s_dfe3f914c8bb46::t_c6e3f688d18fa6 257
+packages/frontend/editor-ui/src/features/settings/context/collections.api.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 8,37-62
+  s_dfe3f914c8bb46::t_76a324a3c1a612 63
+packages/cli/src/modules/knowledge/collections/knowledge-collections.controller.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-5,7-16,50-72
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 7,109-250
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 136-143,287-290
+packages/modules/promotions/frontend/src/promotionPreview.tree.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 8-10,23-24,130-131,136-137,139-142,153
+packages/modules/promotions/frontend/src/composables/usePromotionSelection.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 10,19-23,71-74
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 77,107,248,457,539,3182-3298
+  s_dfe3f914c8bb46::t_57ff6ecce06399 3299
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 280-285
+packages/frontend/editor-ui/src/features/settings/context/components/DeleteCollectionDialog.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-168
+packages/@n8n/api-types/src/knowledge/collections/index.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 2
+packages/@n8n/backend-services/src/services/__tests__/ai-preference.service.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 560,563,572,574,847
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 119-173
+packages/cli/test/integration/knowledge/knowledge-collections.api.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 15,363-584
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 368
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 38,45,51,62
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-250
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1,469-470,472-479,509-510
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 26,66-91,168
+packages/@n8n/api-types/src/knowledge/collections/update-knowledge-collection.dto.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-13
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 6-24,26,28-66,91-95,100,126-159
+  s_dfe3f914c8bb46::t_956e20829e6658 160
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-server.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 449-500
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 825-924
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 106-110,142,145-166,260-278,280
+  s_dfe3f914c8bb46::t_66c6b0b9df1155 105
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 10,55,60
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionsTable.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 5,7-8,17-20,31-35,38-75,145-153,227-238,281-285
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 15-20,32,37-38,40-44
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionModal.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 335-508
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 157
+packages/@n8n/api-types/src/knowledge/collections/create-knowledge-collection.dto.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 5-7
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 29
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 889-959
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 38-48,159-166,318-326,328-331,473-478
+packages/@n8n/db/src/migrations/common/1795524706285-AllowImportSourceOnAiPreference.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-45
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 49,74,159-163,171-173,177-182,184-189
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 266-274
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 14,37,72-81,96-103
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 11,44,70-72,102-127,130-160,163-174,272-275,292,297-314
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsCollectionsView.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 20,30-32,59,61-66,78-90,128-129,148-159
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 4499,4535-4536,4549-4551,4564-4572,9944-9964,11691-11692,11694,11708
+packages/frontend/editor-ui/src/features/settings/context/collections.store.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 16-17,27-28,173-211
+packages/modules/promotions/frontend/src/promotionPreview.selection.groups.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-161
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 68-72,142-147,286-288,300,380,385-394,401-405,541-542
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionsTable.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 3,6-8,34-47,60-67,196-263
+  s_dfe3f914c8bb46::t_9eda641f7eb6f1 264
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 221,231,489
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsCollectionsView.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 8-10,28-29,32,35-39,53-67,69-74,96-117,258-317
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1,45-46,53-54,63-71,81-92
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-85
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 14-15,23-25
+  s_dfe3f914c8bb46::t_9cd656eeb0b429 26
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 4,41-45,84,95-110,114-146
+  s_dfe3f914c8bb46::t_53459169b35895 147-148
+packages/frontend/editor-ui/src/features/settings/context/collections.api.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 6,12,116-143
+packages/cli/src/modules/knowledge/repositories/knowledge-collection.repository.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 3,107,135-164
+  s_dfe3f914c8bb46::t_ed16d9d9df3bd3 165
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 76-78,82
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 63,113,241,2247,2277-2283,2305-2311,2335-2341
+packages/cli/test/migration/1795524706285-allow-import-source-on-ai-preference.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-172
+packages/cli/src/modules/knowledge/AGENTS.md
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 11,32
+  s_dfe3f914c8bb46::t_d495149a92a616 33
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 4,8-13,464,476-497,526,530-531,536,546,556,580-644,794-985
+  s_dfe3f914c8bb46::t_7090cf1f3c8e5a 986
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1215-1216,1233-1248
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 73,160,519,651,694,699,1676,1684-1687
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestRunToolsNotice.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-226
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 10,212-229
+  s_dfe3f914c8bb46::t_f7ab7a243ae5f6 230
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunModal.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-66
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 141-218
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 64
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 38-43,168,253-256,290-344,347,349
+  s_dfe3f914c8bb46::t_404e983dfbc452 345-346,348,350
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunChangesNote.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-31
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 163-168,198-205
+  s_dfe3f914c8bb46::t_9e732f322f4474 206
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 73-86
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-97
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-81
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunButton.vue
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-107
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentNewTestRun.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-212
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 20-21,107
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 277-300,949-976
+  s_dfe3f914c8bb46::t_d41c1ff18fe795 977
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 357
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 50-57,65
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.credentials.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-144
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 25-26,100-103,120,124
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-navigation.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 9,17,22-64,74,83
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 4,46-69
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 33-56
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-65
+packages/cli/test/integration/public-api/ai-preferences.test.ts
+  s_dfe3f914c8bb46::t_d147d5a14c7c0e 1-5,61,69,168-169,173,181,341-342,353,538,542,545
+docs/generated/postgres-schema/public.ai_preference.md
+  s_dfe3f914c8bb46::t_e29ac8d5265535 12,21
+docs/generated/sqlite-schema/README.md
+  s_dfe3f914c8bb46::t_70da95490b9e35 296-297
+docs/generated/sqlite-schema/ai_preference.md
+  s_dfe3f914c8bb46::t_bd10bcc6deca43 9,31-33,35
+docs/generated/sqlite-schema/user.md
+  s_dfe3f914c8bb46::t_dd3198b2512d6d 66
+packages/cli/src/public-api/v1/handlers/ai-preferences/spec/paths/listAiPreferences.generated.yml
+  s_dfe3f914c8bb46::t_ff11a534a0fbe1 65
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_dfe3f914c8bb46::t_2e734b985aea38 39-45
+packages/cli/src/public-api/v1/shared/spec/schemas/aiPreferencePublicDto.generated.yml
+  s_dfe3f914c8bb46::t_ab12ce4665aa4f 26
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  s_dfe3f914c8bb46::t_d3bb0de35f0a76 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eef97e7a0fc0a53b380871b4fd41019c3bd3995a",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

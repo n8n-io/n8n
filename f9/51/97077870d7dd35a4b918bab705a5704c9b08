@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_0b86643ea8f060::t_b4338c1a3bce78 240
+  s_0b86643ea8f060::t_ef951e2698ef7f 1268-1269,1271,1273-1284,1287-1292,1294-1299,1302-1303,1305-1316,1318-1321
+  s_0b86643ea8f060::t_0e6999930db33c 167-168
+  s_0b86643ea8f060::t_639534a2f0b7c8 55-58
+  s_0b86643ea8f060::t_c45628788b91cb 1270,1272
+  s_0b86643ea8f060::t_6ca594d4c25e44 1285-1286
+  s_0b86643ea8f060::t_7877dd6771166f 1293
+  s_0b86643ea8f060::t_f905be4ce8ef64 1300-1301,1304
+  s_0b86643ea8f060::t_265c766ec2996c 1317
+packages/cli/src/modules/agents/agents.service.ts
+  s_0b86643ea8f060::t_4a529bff3cf9c9 76
+  s_0b86643ea8f060::t_3dccd3cdb601fc 1071-1072
+  s_0b86643ea8f060::t_b8d719b24dd0d0 1202-1222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f95197077870d7dd35a4b918bab705a5704c9b08",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0b86643ea8f060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e1b4b47-a4e8-4a5d-826b-904a37a446d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
