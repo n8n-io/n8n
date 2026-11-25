@@ -1,3 +1,18 @@
+## [2.50.1](https://github.com/n8n-io/n8n/compare/n8n@2.50.0...n8n@2.50.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **core, editor:** Load the Assistant session timeline through the system agent routes ([#45074](https://github.com/n8n-io/n8n/issues/45074)) ([e80660e](https://github.com/n8n-io/n8n/commit/e80660e9b37d8f5365d1d6c302c4da473646d090))
+* **core:** Align base64, urlEncode and format results of isolate expression engines with legacy ([#44968](https://github.com/n8n-io/n8n/issues/44968)) ([32c599d](https://github.com/n8n-io/n8n/commit/32c599d6847e5f516597e3fa5b523d75c5e725ca))
+* **editor:** Keep an allowed trigger separate from its restricted node in the nodes panel ([#44991](https://github.com/n8n-io/n8n/issues/44991)) ([11c1e31](https://github.com/n8n-io/n8n/commit/11c1e3186c62b42bfab1a8693e596509349ed6b4))
+
+
+### Features
+
+* **core:** Evaluate urlEncode, base64Decode and format natively ([#44994](https://github.com/n8n-io/n8n/issues/44994)) ([37e36d7](https://github.com/n8n-io/n8n/commit/37e36d7ceafceec7714689475c934c710f527e9e))
+
+
 # [2.50.0](https://github.com/n8n-io/n8n/compare/n8n@2.49.0...n8n@2.50.0) (2026-11-24)
 
 
