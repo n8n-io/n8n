@@ -3,12 +3,16 @@ import { Container } from '@n8n/di';
 import { ExecutionLimitsConfig } from '../execution-limits.config';
 
 describe('ExecutionLimitsConfig', () => {
+	const setRetention = (value: string | undefined) =>
+		vi.stubEnv('N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS', value);
+
 	beforeEach(() => {
 		Container.reset();
+		setRetention(undefined);
 	});
 
 	afterEach(() => {
-		delete process.env.N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS;
+		vi.unstubAllEnvs();
 	});
 
 	it('keeps the usage rows for 400 days by default', () => {
@@ -16,20 +20,29 @@ describe('ExecutionLimitsConfig', () => {
 	});
 
 	it('reads the retention from its environment variable', () => {
-		process.env.N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS = '90';
+		setRetention('90');
 
 		expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(90);
 	});
 
 	it('accepts 31 days, the lowest allowed retention', () => {
-		process.env.N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS = '31';
+		setRetention('31');
 
 		expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(31);
 	});
 
-	it.each(['30', '0', '-1', 'abc', '45.5'])('falls back to 400 days when given %s', (value) => {
-		process.env.N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS = value;
+	it('accepts 36500 days, the highest allowed retention', () => {
+		setRetention('36500');
 
-		expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(400);
+		expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(36_500);
 	});
+
+	it.each(['30', '0', '-1', 'abc', '45.5', '36501', '1000000000'])(
+		'falls back to 400 days when given %s',
+		(value) => {
+			setRetention(value);
+
+			expect(Container.get(ExecutionLimitsConfig).usageRetentionDays).toBe(400);
+		},
+	);
 });

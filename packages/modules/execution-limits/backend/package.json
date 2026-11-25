@@ -46,7 +46,9 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
-    "@n8n/utils": "workspace:*",
+    "@n8n/utils": "workspace:*"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -60,7 +62,8 @@
     "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
