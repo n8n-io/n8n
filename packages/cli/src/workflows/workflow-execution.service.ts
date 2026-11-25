@@ -136,7 +136,7 @@ export class WorkflowExecutionService {
 
 	/**
 	 * Starts an execution for polled items, committing its row in the same transaction
-	 * as the poll's cursor advance so neither can exist without the other.
+	 * as the poll's cursor advance. A refused run advances the cursor alone, unless the poll is bounded.
 	 */
 	async runPolledWorkflow(
 		workflowData: IWorkflowBase,
@@ -148,6 +148,7 @@ export class WorkflowExecutionService {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
+		pollIsBounded = false,
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -205,10 +206,26 @@ export class WorkflowExecutionService {
 				this.logger.error('Blocked a polled execution before its row was committed', {
 					workflowId: workflowData.id,
 					nodeName: node.name,
+					pollIsBounded,
 					error: error.cause,
 				});
 
 				responsePromise?.reject(error.cause);
+
+				if (!pollIsBounded) {
+					const committed = await this.pollCursorService.commitCursorOnly({
+						workflowId: workflowData.id,
+						nodeId: node.id,
+						cursor,
+						fence,
+					});
+					if (!committed) {
+						this.logger.warn(
+							'Poll cursor commit skipped after a blocked execution: the poll no longer holds its lease',
+							{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name },
+						);
+					}
+				}
 
 				return undefined;
 			}

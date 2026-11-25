@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { findPopupItem, MENU_ITEM, OPTION, popupLabels } from '../__tests__/popups';
+import { accessFilter } from '../__tests__/table';
 
 const row = (
 	name: string,
@@ -47,7 +48,7 @@ const accessTrigger = (getByTestId: (id: string) => HTMLElement, name: string) =
 	getByTestId(`instance-policy-access-${name}`);
 
 const openFilter = async (getByRole: (role: string, options?: object) => HTMLElement) =>
-	await userEvent.click(getByRole('combobox', { name: 'Filter by access' }));
+	await userEvent.click(accessFilter(getByRole));
 
 const rowNames = (container: HTMLElement) =>
 	Array.from(container.querySelectorAll<HTMLTableRowElement>('tbody tr'), (tableRow) =>
@@ -339,6 +340,90 @@ describe('InstancePolicyTable', () => {
 
 		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
 		expect(emitted('open')).toBeUndefined();
+	});
+
+	describe('focus when the rows change', () => {
+		it('moves the focus to the access filter when the focused row leaves the filter', async () => {
+			const { getByTestId, queryByTestId, getByRole, rerender } = setup();
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			getByTestId('instance-policy-open-bitlyApi').focus();
+
+			await rerender({ rows: [row('bitlyApi', 'Bitly API', 'allow'), ...ROWS.slice(1)] });
+
+			expect(queryByTestId('instance-policy-open-bitlyApi')).not.toBeInTheDocument();
+			await waitFor(() => expect(accessFilter(getByRole)).toHaveFocus());
+		});
+
+		it('keeps the focus on the search box while the search changes the rows', async () => {
+			const { getByTestId, getByPlaceholderText } = setup();
+			const searchBox = getByPlaceholderText('Search credentials');
+
+			await userEvent.type(searchBox, 'notion');
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Notion API']),
+			);
+			expect(searchBox).toHaveFocus();
+		});
+
+		it('keeps the focus on a row that stays in the table', async () => {
+			const { getByTestId, rerender } = setup();
+			const airtableButton = getByTestId('instance-policy-open-airtableApi');
+			airtableButton.focus();
+
+			await rerender({ rows: ROWS.filter(({ name }) => name !== 'bitlyApi') });
+
+			expect(airtableButton).toHaveFocus();
+		});
+
+		it('keeps the focus on a row that moves when the table is sorted by access', async () => {
+			const rows = [...ROWS, row('zoomApi', 'Zoom API')];
+			const { getByTestId, getByRole, rerender } = setup(rows);
+			await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+			getByTestId('instance-policy-open-airtableApi').focus();
+
+			await rerender({
+				rows: rows.map((item) =>
+					item.name === 'airtableApi' ? { ...item, access: 'deny' } : item,
+				),
+			});
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Notion API',
+					'Zoom API',
+					'Airtable API',
+					'Bitly API',
+				]),
+			);
+			expect(getByTestId('instance-policy-open-airtableApi')).toHaveFocus();
+		});
+
+		it('does not move the focus of a control that is not a row', async () => {
+			const { getByTestId, rerender } = setup(paginationRows(30));
+			getByTestId('pagination-next').focus();
+
+			// With ten rows or fewer, the table shows no pagination.
+			await rerender({ rows: paginationRows(5) });
+
+			expect(document.activeElement).toBe(document.body);
+		});
+
+		it('does not move a focus that is outside the table', async () => {
+			const { rerender } = setup();
+			const outside = document.createElement('button');
+			document.body.appendChild(outside);
+			try {
+				outside.focus();
+
+				await rerender({ rows: [] });
+
+				expect(outside).toHaveFocus();
+			} finally {
+				outside.remove();
+			}
+		});
 	});
 
 	it('asks for the details of a read-only row when the admin clicks its access', async () => {

@@ -255,12 +255,28 @@ describe('readSpec', () => {
 		).toBe(false);
 	});
 
-	it('should keep a limit parameter when the operation has no cursor', () => {
+	it('should keep the limit and offset parameters when the operation has no cursor', () => {
 		const operation = readOperation({
-			parameters: [{ name: 'limit', in: 'query', schema: { type: 'number' } }],
+			parameters: [
+				{ name: 'limit', in: 'query', schema: { type: 'number' } },
+				{ name: 'offset', in: 'query', schema: { type: 'number' } },
+			],
 		});
 
 		expect(operation.paginated).toBe(false);
+		expect(operation.parameters.map((parameter) => parameter.name)).toEqual(['limit', 'offset']);
+	});
+
+	it('should drop the offset parameter of an operation with a cursor', () => {
+		const operation = readOperation({
+			parameters: [
+				{ name: 'limit', in: 'query', schema: { type: 'number' } },
+				{ name: 'offset', in: 'query', schema: { type: 'number' } },
+				{ name: 'cursor', in: 'query', schema: { type: 'string' } },
+			],
+		});
+
+		expect(operation.paginated).toBe(true);
 		expect(operation.parameters.map((parameter) => parameter.name)).toEqual(['limit']);
 	});
 

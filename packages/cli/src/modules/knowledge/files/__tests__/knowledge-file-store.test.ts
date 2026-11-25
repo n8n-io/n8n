@@ -100,6 +100,22 @@ describe('KnowledgeFileStore', () => {
 		});
 
 		expect(stored.storedAt).toBe('s3');
+		expect(stored.storageKey).toBe('agents/agent-1/knowledge-files/file-2/content');
+		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
+	});
+
+	it('stores the file of a collection under the key of the collection', async () => {
+		store = makeStore('fs');
+		const body = Buffer.from('collection-bytes', 'utf-8');
+
+		const stored = await store.write({ collectionId: 'collection-1', fileId: 'file-4' }, body, {
+			mimeType: 'text/plain',
+		});
+
+		expect(stored).toEqual({
+			storedAt: 'fs',
+			storageKey: 'knowledge-collections/collection-1/files/file-4/content',
+		});
 		await expect(store.readAsBuffer(stored)).resolves.toEqual(body);
 	});
 

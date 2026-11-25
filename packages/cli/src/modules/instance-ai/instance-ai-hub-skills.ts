@@ -242,13 +242,6 @@ async function readHubReference(
 	}
 	const content = scrubSecretsInText(file.content);
 	const bytes = Buffer.byteLength(content, 'utf8');
-	if (bytes === 0) return { message: 'This Hub reference is empty.', retryable: false };
-	if (bytes > RUNTIME_SKILL_MAX_OUTPUT_BYTES) {
-		return {
-			message: `This reference exceeds ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} UTF-8 bytes.`,
-			retryable: false,
-		};
-	}
 	return { skillId, filePath: path, content, bytes, sha256: hash(content) };
 }
 
@@ -299,8 +292,7 @@ function prepareSkill(
 		paths.some((path) => !agentSkillReferencePathSchema.safeParse(path).success)
 	) {
 		return {
-			message:
-				'Unsupported or invalid references. Use Markdown files under references/ within the custom Agent reference limits.',
+			message: 'The skill has invalid file paths or too many files.',
 			retryable: false,
 		};
 	}

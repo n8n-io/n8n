@@ -1,3 +1,4 @@
+import type { UpdateKnowledgeCollectionDto } from '@n8n/api-types';
 import type { ProjectScopeService } from '@n8n/backend-services';
 import type { ProjectRepository, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -41,6 +42,9 @@ const summary: KnowledgeCollectionSummary = {
 	agentCount: 1,
 };
 
+const ref = { projectId, collectionId: 'collection-1' };
+const collection = mock<KnowledgeCollection>({ id: 'collection-1', projectId });
+
 function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } = {}) {
 	const collectionRepository = mock<KnowledgeCollectionRepository>();
 	collectionRepository.existsByProjectIdAndName.mockResolvedValue(false);
@@ -49,7 +53,9 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 		mock<KnowledgeCollection>({ id: 'collection-1' }),
 	);
 	collectionRepository.findSharedSummaryById.mockResolvedValue(summary);
+	collectionRepository.findByIdAndProjectId.mockResolvedValue(collection);
 	collectionRepository.findSharedSummaries.mockResolvedValue([summary]);
+	collectionRepository.isNameTakenInProject.mockResolvedValue(false);
 
 	const projectRepository = mock<ProjectRepository>();
 	projectRepository.existsBy.mockResolvedValue(true);
@@ -120,6 +126,44 @@ describe('KnowledgeCollectionCatalogService', () => {
 				createdAt: '2026-11-20T10:00:00.000Z',
 				updatedAt: '2026-11-20T11:00:00.000Z',
 			});
+		});
+
+		it('trims the name and the description before it checks and saves them', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service.create(user, projectId, {
+				name: '  Returns playbook ',
+				description: ' How we handle returns and refunds  ',
+			});
+
+			expect(collectionRepository.existsByProjectIdAndName).toHaveBeenCalledWith(
+				'project-1',
+				'Returns playbook',
+				{},
+			);
+			expect(collectionRepository.insertShared).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'Returns playbook',
+					description: 'How we handle returns and refunds',
+					slug: 'returns_playbook',
+				}),
+				{},
+			);
+		});
+
+		it('answers conflict for a name with spaces when another create takes the name first', async () => {
+			const { service, collectionRepository } = makeService();
+			// The first check finds nothing. The check after the failed insert finds the trimmed name.
+			let checks = 0;
+			collectionRepository.existsByProjectIdAndName.mockImplementation(async (_projectId, name) => {
+				checks += 1;
+				return checks > 1 && name === 'Returns playbook';
+			});
+			collectionRepository.insertShared.mockRejectedValue(uniqueConstraintError());
+
+			await expect(
+				service.create(user, projectId, { ...input, name: '  Returns playbook ' }),
+			).rejects.toThrow(ConflictError);
 		});
 
 		it('adds a suffix to the slug when another collection has it', async () => {
@@ -201,6 +245,84 @@ describe('KnowledgeCollectionCatalogService', () => {
 		});
 	});
 
+	describe('get', () => {
+		it('returns the collection of the project with its totals', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.get(user, ref)).resolves.toMatchObject({
+				id: 'collection-1',
+				homeProject: { id: 'project-1', name: 'Docs', type: 'team' },
+				fileCount: 2,
+				totalFileSizeBytes: 300,
+				agentCount: 1,
+			});
+			expect(collectionRepository.findSharedSummaryById).toHaveBeenCalledWith('collection-1', {});
+		});
+
+		it('answers not found and reads no totals when the collection is not in the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.get(user, ref)).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.findSharedSummaryById).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getInProject', () => {
+		it('returns the collection that the repository finds in the project', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.getInProject(user, ref, 'agent:read')).resolves.toBe(collection);
+			expect(collectionRepository.findByIdAndProjectId).toHaveBeenCalledWith(
+				ref.collectionId,
+				ref.projectId,
+				{},
+			);
+		});
+
+		it('answers not found and reads nothing when collections are off', async () => {
+			const { service, collectionRepository } = makeService({ collectionsFlag: false });
+
+			await expect(service.getInProject(user, ref, 'agent:read')).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		it('refuses a user without the scope and reads nothing', async () => {
+			const { service, collectionRepository } = makeService();
+			grantScopes('agent:read');
+
+			await expect(service.getInProject(user, ref, 'agent:update')).rejects.toThrow(ForbiddenError);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:update'], false, { projectId });
+			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		// The repository finds a collection only in its home project.
+		it('answers not found when the repository finds no collection in the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.getInProject(user, ref, 'agent:read')).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('listAgentIds', () => {
+		it('returns the agents of a collection of the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+			await expect(service.listAgentIds(user, ref)).resolves.toEqual(['agent-1', 'agent-2']);
+			expect(collectionRepository.findAgentIds).toHaveBeenCalledWith('collection-1', {});
+		});
+
+		it('reads no agents when the collection is not in the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listAgentIds(user, ref)).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.findAgentIds).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('listForUser', () => {
 		const member = mock<User>({ id: 'member-1' });
 		const instanceOwner = mock<User>({ id: 'owner-1' });
@@ -258,6 +380,221 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 			await expect(service.listForUser(member)).rejects.toThrow(NotFoundError);
 			expect(collectionRepository.findSharedSummaries).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('update', () => {
+		const changes = { name: 'Refunds playbook', description: 'How we refund' };
+
+		it('can change the name and the description, and returns the collection', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service.update(user, projectId, 'collection-1', changes);
+
+			expect(collectionRepository.findByIdAndProjectId).toHaveBeenCalledWith(
+				'collection-1',
+				'project-1',
+				{},
+			);
+			expect(collectionRepository.updateNameAndDescription).toHaveBeenCalledWith(
+				'collection-1',
+				changes,
+				{},
+			);
+		});
+
+		it('returns the updated collection', async () => {
+			const { service, collectionRepository } = makeService();
+			const updatedSummary: KnowledgeCollectionSummary = {
+				...summary,
+				collection: mock<KnowledgeCollection>({ ...summary.collection, ...changes }),
+			};
+			collectionRepository.findSharedSummaryById.mockResolvedValue(updatedSummary);
+
+			const result = await service.update(user, projectId, 'collection-1', changes);
+
+			expect(collectionRepository.updateNameAndDescription).toHaveBeenCalledWith(
+				'collection-1',
+				changes,
+				{},
+			);
+			expect(collectionRepository.findSharedSummaryById).toHaveBeenCalledWith('collection-1', {});
+			expect(result).toMatchObject({
+				id: 'collection-1',
+				name: 'Refunds playbook',
+				description: 'How we refund',
+				slug: 'returns_playbook',
+			});
+		});
+
+		it('changes only the fields in the body', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service.update(user, projectId, 'collection-1', { description: 'How we refund' });
+
+			expect(collectionRepository.isNameTakenInProject).not.toHaveBeenCalled();
+			expect(collectionRepository.updateNameAndDescription).toHaveBeenCalledWith(
+				'collection-1',
+				{ description: 'How we refund' },
+				{},
+			);
+		});
+
+		it('writes only the name and the description, also when a caller passes other fields', async () => {
+			const { service, collectionRepository } = makeService();
+			// A caller that skips the DTO can pass any field, such as the slug or the project.
+			const body = {
+				name: 'Refunds playbook',
+				slug: 'new_slug',
+				projectId: 'other-project',
+			} as UpdateKnowledgeCollectionDto;
+
+			await service.update(user, projectId, 'collection-1', body);
+
+			expect(collectionRepository.updateNameAndDescription).toHaveBeenCalledWith(
+				'collection-1',
+				{ name: 'Refunds playbook' },
+				{},
+			);
+		});
+
+		it('trims the name and the description before it checks and saves them', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service.update(user, projectId, 'collection-1', {
+				name: '  Refunds playbook ',
+				description: ' How we refund  ',
+			});
+
+			expect(collectionRepository.isNameTakenInProject).toHaveBeenCalledWith(
+				'project-1',
+				'Refunds playbook',
+				'collection-1',
+				{},
+			);
+			expect(collectionRepository.updateNameAndDescription).toHaveBeenCalledWith(
+				'collection-1',
+				{ name: 'Refunds playbook', description: 'How we refund' },
+				{},
+			);
+		});
+
+		it('ignores a name of only spaces', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service.update(user, projectId, 'collection-1', { name: '   ' });
+
+			expect(collectionRepository.isNameTakenInProject).not.toHaveBeenCalled();
+			expect(collectionRepository.updateNameAndDescription).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing for an empty body and returns the collection', async () => {
+			const { service, collectionRepository } = makeService();
+
+			const result = await service.update(user, projectId, 'collection-1', {});
+
+			expect(collectionRepository.updateNameAndDescription).not.toHaveBeenCalled();
+			expect(result.id).toBe('collection-1');
+		});
+
+		it('checks the name against the other collections of the project only', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service.update(user, projectId, 'collection-1', changes);
+
+			expect(collectionRepository.isNameTakenInProject).toHaveBeenCalledWith(
+				'project-1',
+				'Refunds playbook',
+				'collection-1',
+				{},
+			);
+		});
+
+		it('returns a conflict errorwhen another collection of the project has the name', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.isNameTakenInProject.mockResolvedValue(true);
+
+			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
+				ConflictError,
+			);
+			expect(collectionRepository.updateNameAndDescription).not.toHaveBeenCalled();
+		});
+
+		it('returns a conflict error when another rename takes the name first', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.updateNameAndDescription.mockRejectedValue(uniqueConstraintError());
+
+			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
+				ConflictError,
+			);
+		});
+
+		it('returns not found for a collection that is not in the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(collectionRepository.updateNameAndDescription).not.toHaveBeenCalled();
+		});
+
+		it('returns forbidden for a user who cannot update agents in the project', async () => {
+			grantScopes('agent:read');
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		it('returns not found when collections are off', async () => {
+			const { service, collectionRepository } = makeService({ collectionsFlag: false });
+
+			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(collectionRepository.updateNameAndDescription).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('delete', () => {
+		it('deletes the collection of the project', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.delete(user, projectId, 'collection-1')).resolves.toEqual({
+				success: true,
+			});
+			expect(collectionRepository.deleteSharedInProject).toHaveBeenCalledWith(
+				'collection-1',
+				projectId,
+				{},
+			);
+		});
+
+		it('does not look the collection up, so a missing one also answers success', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.delete(user, projectId, 'missing')).resolves.toEqual({
+				success: true,
+			});
+			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		});
+
+		it('returns forbidden for a user who cannot update agents in the project', async () => {
+			grantScopes('agent:read');
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.delete(user, projectId, 'collection-1')).rejects.toThrow(ForbiddenError);
+			expect(collectionRepository.deleteSharedInProject).not.toHaveBeenCalled();
+		});
+
+		it('returns not found when collections are off', async () => {
+			const { service, collectionRepository } = makeService({ collectionsFlag: false });
+
+			await expect(service.delete(user, projectId, 'collection-1')).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.deleteSharedInProject).not.toHaveBeenCalled();
 		});
 	});
 });

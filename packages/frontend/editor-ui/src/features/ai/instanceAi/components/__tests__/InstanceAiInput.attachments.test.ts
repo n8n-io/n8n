@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, nextTick } from 'vue';
@@ -211,16 +211,20 @@ describe('InstanceAiInput — file attachments', () => {
 	}
 
 	function stubNoReducedMotion() {
-		vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
-			matches: query === '(prefers-reduced-motion: reduce)' ? false : true,
-			media: query,
-			onchange: null,
-			addListener: vi.fn(),
-			removeListener: vi.fn(),
-			addEventListener: vi.fn(),
-			removeEventListener: vi.fn(),
-			dispatchEvent: vi.fn(),
-		}));
+		// stubGlobal, not spyOn: restoring a spy on the setup mock leaves later tests without reduced motion.
+		vi.stubGlobal(
+			'matchMedia',
+			vi.fn((query: string) => ({
+				matches: query === '(prefers-reduced-motion: reduce)' ? false : true,
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})),
+		);
 	}
 
 	it('focuses attachments with Up from an empty input and returns with Escape', async () => {
@@ -343,7 +347,7 @@ describe('AttachmentPreview — nodes attachment delegation', () => {
 		expect(getByTestId('nodes-chip-node')).toBeInTheDocument();
 	});
 
-	it('lets a removable workflow chip emit resource removal', async () => {
+	it('lets a removable workflow card emit resource removal', async () => {
 		const { getByTestId, emitted } = renderAttachmentPreview({
 			props: {
 				attachment: { type: 'workflow', id: 'w1', name: 'Orders' },
@@ -351,7 +355,9 @@ describe('AttachmentPreview — nodes attachment delegation', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
+		await userEvent.click(
+			within(getByTestId('attachment-preview-resource')).getByTestId('attachment-remove'),
+		);
 		expect(emitted()['remove-resource']).toHaveLength(1);
 	});
 });
@@ -716,10 +722,12 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('tracks the removal of a mention with its workflow chip', async () => {
+	it('tracks the removal of a mention with its workflow card', async () => {
 		const { getByTestId, queryByTestId } = renderMentionsInput();
 		await userEvent.click(getByTestId('mention-picker-select'));
-		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
+		await userEvent.click(
+			within(getByTestId('attachment-preview-resource')).getByTestId('attachment-remove'),
+		);
 
 		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 		expect(telemetryTrack).toHaveBeenCalledWith(
@@ -763,7 +771,7 @@ describe('InstanceAiInput — staged element attachment', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
 
-	it('shows the picked element as a removable chip and tells the store which app it is for', async () => {
+	it('shows the picked element as a removable card and tells the store which app it is for', async () => {
 		const { findByTestId, queryByTestId } = renderComponent();
 		const store = useInstanceAiStore();
 
@@ -772,7 +780,9 @@ describe('InstanceAiInput — staged element attachment', () => {
 		expect(await findByTestId('attachment-preview-element')).toHaveTextContent('button: "Save"');
 		expect(store.hasComposerElementFor('app-1')).toBe(true);
 
-		await userEvent.click(await findByTestId('attachment-preview-remove-element'));
+		await userEvent.click(
+			within(await findByTestId('attachment-preview-element')).getByTestId('attachment-remove'),
+		);
 
 		await waitFor(() =>
 			expect(queryByTestId('attachment-preview-element')).not.toBeInTheDocument(),

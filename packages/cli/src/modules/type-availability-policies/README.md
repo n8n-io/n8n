@@ -98,7 +98,7 @@ A rule of this kind is written on `/credential-type-policies` and
 `/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
 own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
 
-It implements all eight points:
+It implements every point except `executionAdmission`:
 
 | Point                    | What it reads                                         |
 | ------------------------ | ----------------------------------------------------- |
@@ -408,7 +408,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
-| `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
+| `credential-type-policy.check.ts`                 | Credential types: every point but `executionAdmission`, incl. `credentialSave` |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |

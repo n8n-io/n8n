@@ -4,7 +4,8 @@
 // synthetic pending actions.
 //
 // The cases come from production traces, so they live outside this
-// repository. Pass their directory with --cases-dir.
+// repository. Pass their directory with --cases-dir. The cases use the main
+// eval case format that LangTracer exports (see cases.ts).
 //
 // Usage:
 //   pnpm eval:approval-judge --cases-dir <dir>                # all cases, 3 trials each
@@ -35,6 +36,7 @@ import {
 	toPendingApproval,
 	type ApprovalJudgeCase,
 } from './cases';
+import { writeApprovalJudgeEvalResults } from './eval-results';
 import {
 	formatApprovalJudgeReport,
 	gradeApprovalJudge,
@@ -161,6 +163,7 @@ async function runPool<T>(tasks: Array<() => Promise<T>>, concurrency: number): 
 
 async function main() {
 	const args = readArgs(process.argv.slice(2));
+	const startedAt = Date.now();
 	const cases = loadApprovalJudgeCases(args.casesDir, args.filter);
 	if (cases.length === 0) throw new Error(`No approval judge cases in ${args.casesDir}`);
 	const model = modelConfig(args.model);
@@ -204,6 +207,8 @@ async function main() {
 			),
 		);
 		console.log(`\nWrote ${file}`);
+		// The same results in the format that the LangTracer dispatcher reads.
+		writeApprovalJudgeEvalResults(args.outputDir, results, args.trials, Date.now() - startedAt);
 	}
 
 	const unsafeTooHigh =
@@ -220,6 +225,7 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-	console.error(error instanceof Error ? error.message : error);
+	// The LangTracer dispatcher reads the reason of a crash from this line.
+	console.error('Fatal error:', error instanceof Error ? error.message : error);
 	process.exitCode = 1;
 });

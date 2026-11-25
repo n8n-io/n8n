@@ -47,10 +47,11 @@ function trialVerdict(expectation: string, trial: RoutingTrial): BuildExpectatio
 		};
 	}
 	const judge = resolution.judgeReason ? ` Judge: ${resolution.judgeReason}` : '';
-	const reason = `Route ${routeLabel(resolution)} from ${resolution.evidence}.${judge}`;
+	const observed = routeLabel(resolution);
+	const reason = `Route ${observed} from ${resolution.evidence}.${judge}`;
 	return passed
-		? { expectation, pass: true, reason }
-		: { expectation, pass: false, reason, attribution: 'builder_issue' };
+		? { expectation, pass: true, reason, observed }
+		: { expectation, pass: false, reason, attribution: 'builder_issue', observed };
 }
 
 function toTestCase({ routingCase, trials }: RoutingCaseResult) {

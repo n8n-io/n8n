@@ -2837,6 +2837,8 @@ describe('executeWebhook on engine v2', () => {
 		destinationNode,
 		responseHeaders,
 		response = mock<express.Response>({ headersSent: false, writableEnded: false }),
+		method = 'POST',
+		childNodes = [],
 	}: {
 		responseMode?: string;
 		startNode?: INode;
@@ -2847,12 +2849,16 @@ describe('executeWebhook on engine v2', () => {
 		/** The response headers configured on the webhook node, as an expression. */
 		responseHeaders?: string;
 		response?: express.Response;
+		method?: 'GET' | 'POST';
+		/** The nodes after the start node. */
+		childNodes?: INode[];
 	} = {}) => {
 		webhookService.runWebhook.mockResolvedValue(webhookResult);
 
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
 			name: 'Test Workflow',
+			getChildNodes: vi.fn(() => childNodes.map((node) => node.name)),
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()
@@ -2873,6 +2879,9 @@ describe('executeWebhook on engine v2', () => {
 				),
 			},
 		});
+
+		// Set after `mock()`, which would wrap the nodes so that every unset property is truthy.
+		workflow.nodes = Object.fromEntries(childNodes.map((node) => [node.name, node]));
 
 		const responseReceived = createDeferredPromise();
 		const responseCallback = vi.fn<WebhookResponseCallback>(() => responseReceived.resolve());
@@ -2897,7 +2906,7 @@ describe('executeWebhook on engine v2', () => {
 						},
 					}),
 			executionId,
-			mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {} }),
+			mock<WebhookRequest>({ method, contentType: undefined, headers: {} }),
 			response,
 			responseCallback,
 			destinationNode,
@@ -3493,6 +3502,27 @@ describe('executeWebhook on engine v2', () => {
 			expect(webhookService.runWebhook).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
+
+		// The GET only renders the form, so a refusal on the submit alone would come
+		// after the person filled it in.
+		it.each(['GET', 'POST'] as const)(
+			'answers 400 for a %s to a form trigger followed by a Form Ending',
+			async (method) => {
+				const { responseCallback } = await startWebhook({
+					method,
+					startNode: webhookNode(FORM_TRIGGER_NODE_TYPE),
+					childNodes: [
+						{ ...webhookNode(FORM_NODE_TYPE, { operation: 'completion' }), name: 'Form Ending' },
+					],
+				});
+
+				expect(reasonFrom(responseCallback)).toEqual({
+					status: 400,
+					message: 'Engine v2 cannot run a form that has more pages or a Form Ending yet.',
+				});
+				expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			},
+		);
 
 		it('answers 400, not 500, when the engine-v2 module is disabled', async () => {
 			engineDataPlaneProxy.isAvailable.mockReturnValue(false);
