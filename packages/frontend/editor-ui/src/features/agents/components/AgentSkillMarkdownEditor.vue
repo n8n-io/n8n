@@ -24,6 +24,7 @@ const WORKFLOW_MENTION_URL_PREFIX = getSkillWorkflowMentionUrl('');
 
 const props = withDefaults(
 	defineProps<{
+		modelValue: string;
 		disabled?: boolean;
 		mentionProjectId?: string;
 		mentionProjectName?: string;
@@ -164,6 +165,7 @@ function onPickerOpenChange(open: boolean) {
 	<div :class="$style.root">
 		<N8nMarkdownEditor
 			v-bind="$attrs"
+			:model-value="props.modelValue"
 			:class="mentionsEnabled && $style.workflowChips"
 			:disabled="props.disabled"
 			:editor-props="editorProps"
