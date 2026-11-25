@@ -184,6 +184,25 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('shows the load error and no old rows when a page change fails', async () => {
+		getWorkflowReviewInstanceSettings.mockResolvedValue(
+			projectList(
+				Array.from({ length: 10 }, (_, i) => project({ id: `p${i}`, name: `Project ${i}` })),
+				{ count: 11 },
+			),
+		);
+		const { getByTestId, findByTestId } = renderView();
+		await approvalSelect('Project 0');
+		getWorkflowReviewInstanceSettings.mockRejectedValue(new Error('network down'));
+
+		await userEvent.click(getByTestId('pagination-next'));
+
+		expect(await findByTestId('workflow-review-instance-settings-load-error')).toBeInTheDocument();
+		expect(
+			screen.queryByRole('combobox', { name: 'Approval for Project 0' }),
+		).not.toBeInTheDocument();
+	});
+
 	it('keeps a saved option when an older list request returns after the save', async () => {
 		vi.useFakeTimers({ shouldAdvanceTime: true });
 		onTestFinished(() => {

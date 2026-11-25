@@ -47,7 +47,6 @@ const count = ref(0);
 const managedByEnv = ref(false);
 const loading = ref(true);
 const loadFailed = ref(false);
-const hasLoaded = ref(false);
 const savingIds = ref<ReadonlySet<string>>(new Set());
 
 const search = ref('');
@@ -86,7 +85,11 @@ function requiredByInstanceQuery(approval: ApprovalFilter): { requiredByInstance
 // Only the newest load updates the page, so a slow earlier search cannot win.
 const { next: nextLoad } = useLatestFetch();
 
-async function load() {
+/**
+ * `keepRowsOnError` is only for a reload with the query of the rows on screen (after a save).
+ * A failed page, search or filter change must not keep rows of another query.
+ */
+async function load({ keepRowsOnError = false } = {}) {
 	const isLatest = nextLoad();
 	const { page = 0, itemsPerPage = PAGE_SIZE } = tableOptions.value;
 	const term = search.value.trim();
@@ -111,11 +114,9 @@ async function load() {
 		managedByEnv.value = result.managedByEnv;
 		loadedFiltered.value = term !== '' || filters.value.approval !== '';
 		loadFailed.value = false;
-		hasLoaded.value = true;
 	} catch (error) {
 		if (!isLatest()) return;
-		// Once rows are on the page, a failed reload keeps them and only reports the error.
-		if (hasLoaded.value) {
+		if (keepRowsOnError) {
 			showError(
 				error,
 				i18n.baseText('settings.security.workflowReviews.instanceSettings.loadError'),
@@ -182,7 +183,7 @@ async function onRequired(projectId: string, required: boolean) {
 		);
 		setRequiredByInstance(projectId, response.requiredByInstance);
 		// The reload drops an older list request, and the saved row can leave the filter.
-		void load();
+		void load({ keepRowsOnError: true });
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.security.workflowReviews.requireApproval.success'),
