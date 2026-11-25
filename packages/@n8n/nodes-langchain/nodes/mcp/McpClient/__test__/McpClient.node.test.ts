@@ -843,6 +843,8 @@ describe('McpClient', () => {
 		});
 	});
 
+	// Tests for v1.2 operations
+
 	describe('v1.2 operations', () => {
 		const v12Node = (typeVersion = 1.2) => ({
 			id: '123',
