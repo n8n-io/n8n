@@ -1,5 +1,6 @@
 export { appsFeedbackFormUrl } from './appsFeedbackFormUrl';
 export { createAppAssistantHandoff } from './createAppAssistantHandoff';
+export { createMcpServerAssistantHandoff } from './createMcpServerAssistantHandoff';
 export { createSelfHealingChatHandoff } from './createSelfHealingChatHandoff';
 export { customMcpServersEnabled } from './customMcpServersEnabled';
 export { environmentsSettings } from './environmentsSettings';

@@ -1,6 +1,7 @@
 import type { InstanceAiThreadSubject } from '@n8n/api-types';
 
 import { withAppSubject } from './apps/app-target-binding';
+import { withMcpServerSubject } from './custom-mcp-server-target-binding';
 import { withAgentSubject } from './orchestration/agent-target-binding';
 
 /**
@@ -17,5 +18,7 @@ export function withThreadSubject(
 			return withAgentSubject(metadata, subject);
 		case 'app':
 			return withAppSubject(metadata, subject);
+		case 'mcpServer':
+			return withMcpServerSubject(metadata, subject);
 	}
 }

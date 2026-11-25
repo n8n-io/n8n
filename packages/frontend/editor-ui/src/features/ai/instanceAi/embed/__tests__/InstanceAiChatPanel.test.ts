@@ -4,7 +4,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises, mount } from '@vue/test-utils';
-import type { InstanceAiHandoffContext, SystemAgentThreadSummary } from '@n8n/api-types';
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiMessage,
+	SystemAgentThreadSummary,
+} from '@n8n/api-types';
 
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -1349,6 +1353,183 @@ describe('InstanceAiChatPanel', () => {
 
 			expect(agentApplyHandoffMock).toHaveBeenCalledWith(context, undefined);
 			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('custom MCP server subject', () => {
+		const SERVER_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71';
+		const serverSubject: InstanceAiEmbedSubject = {
+			type: 'mcpServer',
+			id: SERVER_ID,
+			projectId: 'p1',
+			name: 'Marketing tools',
+		};
+		const serverLaunch = { source: 'mcp_server_page' as const, origin: 'internal' as const };
+		const serverMetadata = {
+			instanceAiMcpServerTarget: { serverId: SERVER_ID, projectId: 'p1' },
+		};
+
+		/** An assistant message whose orchestrator made one call of the custom MCP servers tool. */
+		function serverToolCall(
+			toolCallId: string,
+			args: Record<string, unknown>,
+			result: unknown,
+		): InstanceAiMessage {
+			return {
+				id: `message-${toolCallId}`,
+				role: 'assistant',
+				createdAt: '2026-11-25T10:00:00.000Z',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				agentTree: {
+					agentId: 'orchestrator',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{ toolCallId, toolName: 'custom-mcp-servers', args, result, isLoading: false },
+					],
+					children: [],
+					timeline: [],
+				},
+			} as InstanceAiMessage;
+		}
+
+		function mountServerPanel(runtime = makeThread()) {
+			store.getOrCreateRuntime.mockReturnValue(runtime);
+			store.getThreadMetadata.mockReturnValue(serverMetadata);
+			return mount(InstanceAiChatPanel, {
+				props: { subject: serverSubject, launch: serverLaunch, threadId: 't-server' },
+				global: { stubs: panelStubs },
+			});
+		}
+
+		it('binds a new thread to the server', async () => {
+			store.getThreadMetadata.mockReturnValue(undefined);
+			const wrapper = mount(InstanceAiChatPanel, {
+				props: { subject: serverSubject, launch: serverLaunch },
+				global: { stubs: panelStubs },
+			});
+
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toEqual([['thread-2']]));
+			expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', serverLaunch);
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-2', {
+				instanceAiMcpServerTarget: {
+					serverId: SERVER_ID,
+					projectId: 'p1',
+					name: 'Marketing tools',
+				},
+			});
+		});
+
+		it('resumes the newest thread of the server', async () => {
+			store.threads = [
+				{
+					id: 't-other',
+					title: '',
+					createdAt: '',
+					updatedAt: '2026-11-25T10:00:00.000Z',
+					metadata: {},
+				},
+				{
+					id: 't-server',
+					title: '',
+					createdAt: '',
+					updatedAt: '2026-11-24T10:00:00.000Z',
+					metadata: serverMetadata,
+				},
+			] as typeof store.threads;
+			const wrapper = mount(InstanceAiChatPanel, {
+				props: { subject: serverSubject, launch: serverLaunch },
+				global: { stubs: panelStubs },
+			});
+
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toEqual([['t-server']]));
+		});
+
+		it('tells the host when the Assistant changes the server', async () => {
+			const runtime = makeThread();
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+
+			runtime.messages.push(
+				serverToolCall(
+					'tc-add',
+					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
+					{ success: true, tools: [] },
+				),
+			);
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toHaveLength(1);
+		});
+
+		it('does not tell the host about reads, denied changes, or other servers', async () => {
+			const runtime = makeThread();
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+
+			runtime.messages.push(
+				serverToolCall('tc-get', { action: 'get', serverId: SERVER_ID }, { server: {} }),
+				serverToolCall(
+					'tc-denied',
+					{ action: 'update', serverId: SERVER_ID, name: 'New' },
+					{ success: false, denied: true },
+				),
+				serverToolCall(
+					'tc-other',
+					{ action: 'remove-tool', serverId: 'other-server', toolId: 't1' },
+					{ success: true, toolId: 't1' },
+				),
+			);
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toBeUndefined();
+		});
+
+		it('does not replay the changes of the history when the thread opens', async () => {
+			const runtime = makeThread();
+			runtime.messages.push(
+				serverToolCall(
+					'tc-old',
+					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
+					{ success: true, server: {} },
+				),
+			);
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toBeUndefined();
+		});
+
+		it('keeps a pre-fill for the composer of the thread that it opens', async () => {
+			store.getThreadMetadata.mockReturnValue(undefined);
+			const wrapper = mount(InstanceAiChatPanel, {
+				props: { subject: serverSubject, launch: serverLaunch },
+				global: { stubs: panelStubs },
+			});
+			const prefill = {
+				text: 'Build out the server.',
+				prefillType: 'mcp_server_build_prompt' as const,
+			};
+
+			wrapper.vm.setPrefill(prefill);
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			expect(getPendingComposerDraft('thread-2')).toEqual(prefill);
+		});
+
+		it('shows the subject row of the host', async () => {
+			const wrapper = mount(InstanceAiChatPanel, {
+				props: { subject: serverSubject, launch: serverLaunch, threadId: 't-server' },
+				slots: { subject: '<p data-test-id="host-subject-row">Marketing tools</p>' },
+				global: { stubs: panelStubs },
+			});
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="host-subject-row"]').exists()).toBe(true);
 		});
 	});
 });

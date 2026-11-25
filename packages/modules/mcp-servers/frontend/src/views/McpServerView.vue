@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { MCP_SERVER_DESCRIPTION_MAX_LENGTH, type McpServerResponse } from '@n8n/api-types';
+import {
+	MCP_SERVER_DESCRIPTION_MAX_LENGTH,
+	type InstanceAiPrefillPayload,
+	type McpServerResponse,
+} from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionToggle,
 	N8nAlertDialog,
 	N8nBreadcrumbs,
+	N8nButton,
 	N8nEmptyState,
 	N8nHeading,
 	N8nIconButton,
@@ -17,12 +22,14 @@ import {
 	type PathItem,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import McpServerAssistantPanel from '../components/McpServerAssistantPanel.vue';
 import McpServerContentsTab from '../components/McpServerContentsTab.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
@@ -41,6 +48,7 @@ const rootStore = useRootStore();
 const toast = useToast();
 const { serverUrl, copyServerUrl } = useMcpServerUrl();
 const latestFetch = useLatestFetch();
+const assistant = capabilityRegistry.use(capabilities.createMcpServerAssistantHandoff)();
 
 const projectId = computed(() => String(route.params.projectId));
 const serverId = computed(() => String(route.params.serverId));
@@ -53,6 +61,13 @@ const renameOpen = ref(false);
 const renaming = ref(false);
 const deleteOpen = ref(false);
 const deleting = ref(false);
+
+const assistantOpen = ref(false);
+const assistantPrefill = ref<InstanceAiPrefillPayload>();
+/** A new value makes the Contents tab load the tools again. */
+const contentsRefreshKey = ref(0);
+/** The shell gives the docked panel. Without it, the page opens the full Assistant. */
+const hasAssistantPanel = computed(() => componentRegistry.has('assistant-panel'));
 
 const tabs = computed(() => [
 	{ value: MCP_SERVER_VIEW, label: i18n.baseText('mcpServers.server.tabs.contents') },
@@ -109,9 +124,10 @@ function applyResponse(response: McpServerResponse) {
 	if (response.id === serverId.value) server.value = response;
 }
 
-async function load() {
+/** `silent` keeps the page in place while it loads, for a change from the Assistant. */
+async function load({ silent = false } = {}) {
 	const isLatest = latestFetch.next();
-	loading.value = true;
+	if (!silent) loading.value = true;
 	notFound.value = false;
 	try {
 		const response = await getMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
@@ -129,7 +145,47 @@ async function load() {
 	loading.value = false;
 }
 
-watch([projectId, serverId], load, { immediate: true });
+watch([projectId, serverId], async () => await load(), { immediate: true });
+
+// A panel binds one server, so a route to another server closes it.
+watch(serverId, () => {
+	assistantOpen.value = false;
+	assistantPrefill.value = undefined;
+});
+
+async function openAssistant(prefill?: InstanceAiPrefillPayload) {
+	if (!server.value) return;
+	if (!hasAssistantPanel.value) {
+		await assistant.openServer({
+			serverId: server.value.id,
+			projectId: server.value.projectId,
+			serverName: server.value.name,
+		});
+		return;
+	}
+	assistantOpen.value = true;
+	if (prefill) assistantPrefill.value = prefill;
+}
+
+async function onBuildWithAssistant() {
+	if (!server.value) return;
+	await openAssistant({
+		text: i18n.baseText('mcpServers.assistant.build.prompt', {
+			interpolate: { name: server.value.name },
+		}),
+		prefillType: 'mcp_server_build_prompt',
+	});
+}
+
+function closeAssistant() {
+	assistantOpen.value = false;
+	assistantPrefill.value = undefined;
+}
+
+async function onAssistantChanged() {
+	contentsRefreshKey.value++;
+	await load({ silent: true });
+}
 
 async function onSelectTab(tab: string) {
 	await router.push({ name: tab, params: route.params });
@@ -201,135 +257,192 @@ async function onBreadcrumbSelected(item: PathItem) {
 </script>
 
 <template>
-	<div :class="$style.page" data-test-id="mcp-server-page">
-		<N8nLoading v-if="loading && !server" :rows="3" />
-		<N8nEmptyState
-			v-else-if="notFound"
-			:icon="{ type: 'icon', value: 'mcp' }"
-			:heading="i18n.baseText('mcpServers.server.notFound.heading')"
-			:description="i18n.baseText('mcpServers.server.notFound.description')"
-			:button-text="i18n.baseText('mcpServers.server.notFound.button')"
-			data-test-id="mcp-server-not-found"
-			@click:button="router.push({ name: MCP_SERVERS_LIST_VIEW })"
-		/>
-		<template v-else-if="server">
-			<header :class="$style.header" data-test-id="mcp-server-header">
-				<N8nBreadcrumbs
-					:items="breadcrumbs"
-					data-test-id="mcp-server-breadcrumbs"
-					@item-selected="onBreadcrumbSelected"
-				/>
-				<div :class="$style.titleRow">
-					<div :class="$style.title">
-						<N8nHeading
-							bold
-							tag="h1"
-							size="xlarge"
-							:class="$style.name"
-							data-test-id="mcp-server-name"
-							@dblclick="onTitleDoubleClick"
-						>
-							{{ server.name }}
-						</N8nHeading>
-						<N8nInlineTextEdit
-							v-if="permissions.canUpdate"
-							:model-value="server.description"
-							:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
-							:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
-							:max-width="640"
-							:class="$style.description"
-							data-test-id="mcp-server-description"
-							@update:model-value="onDescription"
-						/>
-						<N8nText
-							v-else
-							size="small"
-							color="text-light"
-							:class="$style.description"
-							data-test-id="mcp-server-description"
-						>
-							{{ server.description }}
-						</N8nText>
-						<div :class="$style.url">
+	<div :class="$style.layout">
+		<aside
+			v-if="assistantOpen && server"
+			:class="$style.assistantDock"
+			data-test-id="mcp-server-assistant-dock"
+		>
+			<McpServerAssistantPanel
+				:class="$style.assistantPanel"
+				:server="server"
+				:prefill="assistantPrefill"
+				@changed="onAssistantChanged"
+				@close="closeAssistant"
+			/>
+		</aside>
+		<div :class="$style.page" data-test-id="mcp-server-page">
+			<N8nLoading v-if="loading && !server" :rows="3" />
+			<N8nEmptyState
+				v-else-if="notFound"
+				:icon="{ type: 'icon', value: 'mcp' }"
+				:heading="i18n.baseText('mcpServers.server.notFound.heading')"
+				:description="i18n.baseText('mcpServers.server.notFound.description')"
+				:button-text="i18n.baseText('mcpServers.server.notFound.button')"
+				data-test-id="mcp-server-not-found"
+				@click:button="router.push({ name: MCP_SERVERS_LIST_VIEW })"
+			/>
+			<template v-else-if="server">
+				<header :class="$style.header" data-test-id="mcp-server-header">
+					<N8nBreadcrumbs
+						:items="breadcrumbs"
+						data-test-id="mcp-server-breadcrumbs"
+						@item-selected="onBreadcrumbSelected"
+					/>
+					<div :class="$style.titleRow">
+						<div :class="$style.title">
+							<N8nHeading
+								bold
+								tag="h1"
+								size="xlarge"
+								:class="$style.name"
+								data-test-id="mcp-server-name"
+								@dblclick="onTitleDoubleClick"
+							>
+								{{ server.name }}
+							</N8nHeading>
+							<N8nInlineTextEdit
+								v-if="permissions.canUpdate"
+								:model-value="server.description"
+								:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
+								:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
+								:max-width="640"
+								:class="$style.description"
+								data-test-id="mcp-server-description"
+								@update:model-value="onDescription"
+							/>
 							<N8nText
+								v-else
 								size="small"
 								color="text-light"
-								:class="$style.urlText"
-								data-test-id="mcp-server-url"
+								:class="$style.description"
+								data-test-id="mcp-server-description"
 							>
-								{{ serverUrl(server.slug) }}
+								{{ server.description }}
 							</N8nText>
-							<N8nTooltip :content="i18n.baseText('mcpServers.copyUrl.tooltip')">
-								<N8nIconButton
-									icon="copy"
-									variant="ghost"
-									size="mini"
-									:aria-label="i18n.baseText('mcpServers.actions.copyUrl')"
-									data-test-id="mcp-server-copy-url"
-									@click="copyServerUrl(server)"
-								/>
-							</N8nTooltip>
+							<div :class="$style.url">
+								<N8nText
+									size="small"
+									color="text-light"
+									:class="$style.urlText"
+									data-test-id="mcp-server-url"
+								>
+									{{ serverUrl(server.slug) }}
+								</N8nText>
+								<N8nTooltip :content="i18n.baseText('mcpServers.copyUrl.tooltip')">
+									<N8nIconButton
+										icon="copy"
+										variant="ghost"
+										size="mini"
+										:aria-label="i18n.baseText('mcpServers.actions.copyUrl')"
+										data-test-id="mcp-server-copy-url"
+										@click="copyServerUrl(server)"
+									/>
+								</N8nTooltip>
+							</div>
+						</div>
+						<div :class="$style.actions">
+							<N8nButton
+								v-if="assistant.available.value"
+								variant="outline"
+								size="small"
+								icon="n8n-assistant"
+								:label="i18n.baseText('mcpServers.assistant.open')"
+								:disabled="assistantOpen"
+								data-test-id="mcp-server-assistant-button"
+								data-attr="mcp-server-assistant-button"
+								@click="openAssistant()"
+							/>
+							<N8nActionToggle
+								:actions="menuActions"
+								:aria-label="i18n.baseText('mcpServers.server.menu')"
+								placement="bottom-end"
+								data-test-id="mcp-server-menu"
+								@action="onMenu"
+							/>
 						</div>
 					</div>
-					<N8nActionToggle
-						:actions="menuActions"
-						:aria-label="i18n.baseText('mcpServers.server.menu')"
-						placement="bottom-end"
-						data-test-id="mcp-server-menu"
-						@action="onMenu"
+					<N8nTabs
+						:model-value="selectedTab"
+						:options="tabs"
+						data-test-id="mcp-server-tabs"
+						@update:model-value="onSelectTab"
 					/>
-				</div>
-				<N8nTabs
-					:model-value="selectedTab"
-					:options="tabs"
-					data-test-id="mcp-server-tabs"
-					@update:model-value="onSelectTab"
+				</header>
+				<McpServerContentsTab
+					v-if="selectedTab === MCP_SERVER_VIEW"
+					:key="serverId"
+					:class="$style.panel"
+					:project-id="projectId"
+					:server-id="serverId"
+					:assistant-available="assistant.available.value"
+					:assistant-open="assistantOpen"
+					:refresh-key="contentsRefreshKey"
+					@build-with-assistant="onBuildWithAssistant"
 				/>
-			</header>
-			<McpServerContentsTab
-				v-if="selectedTab === MCP_SERVER_VIEW"
-				:key="serverId"
-				:class="$style.panel"
-				:project-id="projectId"
-				:server-id="serverId"
-			/>
-			<div v-else :class="$style.panel" data-test-id="mcp-server-connections" />
+				<div v-else :class="$style.panel" data-test-id="mcp-server-connections" />
 
-			<RenameMcpServerDialog
-				v-model:open="renameOpen"
-				:name="server.name"
-				:url="serverUrl(server.slug)"
-				:saving="renaming"
-				@rename="onRename"
-			/>
-			<N8nAlertDialog
-				:open="deleteOpen"
-				:title="i18n.baseText('mcpServers.delete.title', { interpolate: { name: server.name } })"
-				:description="
-					i18n.baseText('mcpServers.delete.description', {
-						interpolate: { url: serverUrl(server.slug) },
-					})
-				"
-				:action-label="i18n.baseText('mcpServers.delete.confirm')"
-				:cancel-label="i18n.baseText('generic.cancel')"
-				action-variant="destructive"
-				:loading="deleting"
-				data-test-id="delete-mcp-server-dialog"
-				@update:open="deleteOpen = $event"
-				@action="onDelete"
-				@cancel="deleteOpen = false"
-			/>
-		</template>
+				<RenameMcpServerDialog
+					v-model:open="renameOpen"
+					:name="server.name"
+					:url="serverUrl(server.slug)"
+					:saving="renaming"
+					@rename="onRename"
+				/>
+				<N8nAlertDialog
+					:open="deleteOpen"
+					:title="i18n.baseText('mcpServers.delete.title', { interpolate: { name: server.name } })"
+					:description="
+						i18n.baseText('mcpServers.delete.description', {
+							interpolate: { url: serverUrl(server.slug) },
+						})
+					"
+					:action-label="i18n.baseText('mcpServers.delete.confirm')"
+					:cancel-label="i18n.baseText('generic.cancel')"
+					action-variant="destructive"
+					:loading="deleting"
+					data-test-id="delete-mcp-server-dialog"
+					@update:open="deleteOpen = $event"
+					@action="onDelete"
+					@cancel="deleteOpen = false"
+				/>
+			</template>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
 
+.layout {
+	display: flex;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+}
+
+.assistantDock {
+	display: flex;
+	flex-shrink: 0;
+	width: calc(var(--spacing--5xl) * 1.5);
+	height: 100%;
+	border-right: var(--border);
+	background-color: var(--background--surface);
+}
+
+.assistantPanel {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+}
+
 .page {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	min-width: 0;
+	overflow-y: auto;
 	width: 100%;
 	max-width: var(--content-container--width);
 	box-sizing: border-box;
@@ -363,6 +476,12 @@ async function onBreadcrumbSelected(item: PathItem) {
 
 .description {
 	color: var(--text-color--subtler);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .url {

@@ -7,11 +7,11 @@ import type {
 	UpdateMcpServerToolDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import {
@@ -29,6 +29,16 @@ import McpWorkflowPickerDialog from './McpWorkflowPickerDialog.vue';
 const props = defineProps<{
 	projectId: string;
 	serverId: string;
+	/** The instance has the n8n Assistant, so an empty server offers to build with it. */
+	assistantAvailable?: boolean;
+	/** The Assistant panel is open beside the page. */
+	assistantOpen?: boolean;
+	/** A new value loads the tools again, after the Assistant changed the server. */
+	refreshKey?: number;
+}>();
+
+const emit = defineEmits<{
+	'build-with-assistant': [];
 }>();
 
 const i18n = useI18n();
@@ -44,10 +54,13 @@ const candidates = ref<McpServerToolCandidate[]>([]);
 const candidatesLoading = ref(false);
 /** Tools that wait for their first draft, after the add. */
 const draftingIds = ref(new Set<string>());
+/** The tools that the latest reload added. Their rows show a short highlight. */
+const highlightedIds = ref(new Set<string>());
 /** The fields of each tool for which a "Generate" call runs. */
 const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
 
 const canUpdate = computed(() => getMcpServerPermissions(props.projectId).canUpdate);
+const canBuildWithAssistant = computed(() => canUpdate.value && !!props.assistantAvailable);
 const canGenerate = computed(() => canUpdate.value && !!server.value?.toolDraftsAvailable);
 const workflowTools = computed(
 	() => server.value?.tools.filter((tool) => tool.kind === 'workflow') ?? [],
@@ -76,6 +89,25 @@ async function load() {
 		loading.value = false;
 	}
 }
+
+/** Loads the tools again with no loading state, so the rows of the page stay in place. */
+async function reload() {
+	try {
+		const next = await getMcpServer(rootStore.restApiContext, props.projectId, props.serverId);
+		const known = new Set(server.value?.tools.map(({ id }) => id));
+		highlightedIds.value = new Set(
+			next.tools.filter(({ id }) => !known.has(id)).map(({ id }) => id),
+		);
+		server.value = next;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('mcpServers.tools.loadError'));
+	}
+}
+
+watch(
+	() => props.refreshKey,
+	async () => await reload(),
+);
 
 async function openPicker() {
 	pickerOpen.value = true;
@@ -196,7 +228,31 @@ onMounted(load);
 				:class="$style.emptyBox"
 				data-test-id="mcp-server-empty-contents"
 			>
-				<N8nText color="text-light" align="center">
+				<template v-if="canBuildWithAssistant">
+					<div :class="$style.assistant" data-test-id="mcp-server-build-with-assistant">
+						<N8nHeading tag="h3" size="medium" bold>
+							{{ i18n.baseText('mcpServers.assistant.build.title') }}
+						</N8nHeading>
+						<N8nText color="text-light" align="center">
+							{{ i18n.baseText('mcpServers.assistant.build.description') }}
+						</N8nText>
+						<N8nButton
+							variant="brand"
+							icon="n8n-assistant"
+							:label="i18n.baseText('mcpServers.assistant.build.button')"
+							:disabled="assistantOpen"
+							data-test-id="mcp-server-build-with-assistant-button"
+							data-attr="mcp-server-build-with-assistant"
+							@click="emit('build-with-assistant')"
+						/>
+					</div>
+					<div :class="$style.divider">
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('mcpServers.tools.empty.or') }}
+						</N8nText>
+					</div>
+				</template>
+				<N8nText v-else color="text-light" align="center">
 					{{ i18n.baseText('mcpServers.tools.empty.description') }}
 				</N8nText>
 				<N8nButton
@@ -242,6 +298,7 @@ onMounted(load);
 						:generating="generatingFields(tool.id)"
 						:workflow-href="tool.targetId ? workflowHref(tool.targetId) : null"
 						:initially-expanded="!!expandName && tool.toolName === expandName"
+						:highlighted="highlightedIds.has(tool.id)"
 						@update="onUpdate(tool, $event)"
 						@remove="onRemove(tool)"
 						@generate="onGenerate(tool, $event)"
@@ -279,6 +336,27 @@ onMounted(load);
 	padding: var(--spacing--2xl) var(--spacing--lg);
 	border: calc(var(--border-width) * 2) dashed var(--border-color);
 	border-radius: var(--radius--lg);
+}
+
+.assistant {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.divider {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	width: 60%;
+
+	&::before,
+	&::after {
+		content: '';
+		flex: 1;
+		border-top: var(--border);
+	}
 }
 
 .section {
