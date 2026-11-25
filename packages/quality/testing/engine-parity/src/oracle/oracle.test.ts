@@ -119,6 +119,21 @@ describe('oracle', () => {
 		).toEqual(['L3.nodeRanByOrder.warning']);
 	});
 
+	it('reports a run that failed on one engine only as L2, even with the same items', () => {
+		const failed = outcome();
+		failed.nodes.Join[0].failed = true;
+
+		expect(kinds(outcome(), failed)).toEqual(['L2.runFailed.fail']);
+	});
+
+	it('reports an error that only one engine describes as L0', () => {
+		const error = { node: 'Join', class: 'NodeOperationError' };
+		const v1 = outcome({ status: 'error', error });
+		const v2 = outcome({ status: 'error' });
+
+		expect(kinds(v1, v2)).toEqual(['L0.error.fail']);
+	});
+
 	it('writes items with sorted keys', () => {
 		expect(canonical({ b: 1, a: { d: 2, c: 3 } })).toBe('{"a":{"c":3,"d":2},"b":1}');
 	});

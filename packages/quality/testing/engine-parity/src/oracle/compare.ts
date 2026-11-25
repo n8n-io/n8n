@@ -57,6 +57,18 @@ function compareRun(
 	rules: ParityRules,
 ): Diff[] {
 	const diffs: Diff[] = [];
+	if (v1.failed !== v2.failed) {
+		diffs.push({
+			level: 'L2',
+			kind: 'runFailed',
+			node,
+			run,
+			severity: 'fail',
+			message: `"${node}" run ${run} failed on ${v1.failed ? 'v1' : 'v2'} only`,
+			v1: v1.failed,
+			v2: v2.failed,
+		});
+	}
 	const outputs = Math.max(v1.outputs.length, v2.outputs.length);
 	for (let output = 0; output < outputs; output++) {
 		const items1 = v1.outputs[output] ?? [];
@@ -210,6 +222,16 @@ function compareStrict(
 			message: `The status is "${v1.status}" on v1 and "${v2.status}" on v2`,
 			v1: { status: v1.status, error: v1.error },
 			v2: { status: v2.status, error: v2.error },
+		});
+	} else if (!v1.error !== !v2.error) {
+		diffs.push({
+			level: 'L0',
+			kind: 'error',
+			node: (v1.error ?? v2.error)?.node,
+			severity: 'fail',
+			message: `Only ${v1.error ? 'v1' : 'v2'} reports the error of the run`,
+			v1: v1.error,
+			v2: v2.error,
 		});
 	} else if (v1.error && v2.error) {
 		if (v1.error.node !== v2.error.node) {

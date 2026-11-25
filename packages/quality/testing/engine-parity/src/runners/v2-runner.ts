@@ -109,6 +109,8 @@ export class V2Runner implements EngineRunner {
 			await this.engine.waitForFinish(start.executionId, CASE_TIMEOUT_MS);
 		} catch (error) {
 			if (!(error instanceof ExecutionStalledError)) throw error;
+			// The runtime runs one execution at a time. The next case must not start beside this one.
+			await this.engine.cancelExecution(start.executionId);
 			return {
 				kind: 'timeout',
 				stalledAt: error.steps.map(({ nodeId, iteration, status, error: stepError }) =>
