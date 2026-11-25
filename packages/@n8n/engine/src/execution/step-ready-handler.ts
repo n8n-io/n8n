@@ -123,9 +123,12 @@ export class StepReadyHandler {
 
 		// Decided outside the `try` below on purpose. Its errors are the engine's
 		// own bookkeeping, not the node's, so they leave the step `running`
-		// instead of recording it failed. In the future one of these resolves that:
-		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
-		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
+		// instead of recording it failed. The reconciliation sweeper then fails
+		// the step after the running threshold. For an idempotent node it first
+		// queues the step again, also when the error is permanent, so the same
+		// error repeats until the attempt limit.
+		// In the future, internal consistency checks (CAT-3930) detect a
+		// misconfigured graph and fail the execution.
 		const dispatch = await this.dispatchFor(step, node, execution);
 
 		// Only a failure to run the step fails it. A store error propagates instead —
