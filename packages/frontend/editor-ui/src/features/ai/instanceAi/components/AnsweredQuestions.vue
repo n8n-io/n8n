@@ -74,8 +74,9 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .userBubble {
-	// The same text size as the other chat bubbles, which follows the width of the message.
-	font-size: var(--n8n-markdown--font-size--base, var(--font-size--sm));
+	// The text size of the chat message, which follows its width. The bubble can render
+	// in the message content or in its after-actions slot, and both provide this size.
+	font-size: var(--n8n-chat-message--font-size, var(--font-size--sm));
 	line-height: var(--line-height--xl);
 	color: var(--assistant--color--text--user-bubble, var(--text-color));
 	background: var(--assistant--color--background--user-bubble);
