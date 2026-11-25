@@ -36,6 +36,7 @@ const embedLoginResult = {
 	subject: 'ext-sub-1',
 	issuer: 'https://issuer.example.com',
 	kid: 'key-id-1',
+	resolution: 'existing' as const,
 };
 
 describe('EmbedAuthController', () => {
@@ -97,6 +98,9 @@ describe('EmbedAuthController', () => {
 				issuer: 'https://issuer.example.com',
 				kid: 'key-id-1',
 				clientIp: '192.168.1.1',
+				userId: '123',
+				jitProvisioned: false,
+				identityLinked: false,
 			});
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
@@ -128,6 +132,9 @@ describe('EmbedAuthController', () => {
 				issuer: 'https://issuer.example.com',
 				kid: 'key-id-1',
 				clientIp: '10.0.0.1',
+				userId: '123',
+				jitProvisioned: false,
+				identityLinked: false,
 			});
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});

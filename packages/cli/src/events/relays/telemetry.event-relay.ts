@@ -372,6 +372,12 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-logged-out': (event) => this.userLoggedOut(event),
+			'user-logged-in': (event) => this.userLoggedIn(event),
+			'user-login-failed': (event) => this.userLoginFailed(event),
+			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
+			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
+			'embed-login': (event) => this.embedLogin(event),
+			'embed-login-failed': (event) => this.embedLoginFailed(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -2785,6 +2791,57 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, { user_id: user.id });
+	}
+
+	private userLoggedIn({ user, authenticationMethod, usedMfa }: RelayEventMap['user-logged-in']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_IN, {
+			user_id: user.id,
+			authentication_method: authenticationMethod,
+			used_mfa: usedMfa ?? false,
+		});
+	}
+
+	// The email that was tried is not reported: a failed attempt may name an account that does not exist.
+	private userLoginFailed({
+		authenticationMethod,
+		reasonCode,
+	}: RelayEventMap['user-login-failed']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGIN_FAILED, {
+			authentication_method: authenticationMethod,
+			reason: reasonCode,
+		});
+	}
+
+	private tokenExchangeSucceeded({
+		userId,
+		jitProvisioned,
+		identityLinked,
+	}: RelayEventMap['token-exchange-succeeded']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.TOKEN_EXCHANGE_SUCCEEDED, {
+			user_id: userId,
+			jit_provisioned: jitProvisioned,
+			identity_linked: identityLinked,
+		});
+	}
+
+	private tokenExchangeFailed({ failureReason }: RelayEventMap['token-exchange-failed']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.TOKEN_EXCHANGE_FAILED, {
+			reason: failureReason,
+		});
+	}
+
+	private embedLogin({ userId, jitProvisioned, identityLinked }: RelayEventMap['embed-login']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.EMBED_LOGIN_SUCCEEDED, {
+			user_id: userId,
+			jit_provisioned: jitProvisioned,
+			identity_linked: identityLinked,
+		});
+	}
+
+	private embedLoginFailed({ failureReason }: RelayEventMap['embed-login-failed']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.EMBED_LOGIN_FAILED, {
+			reason: failureReason,
+		});
 	}
 
 	private userSubmittedPersonalizationSurvey({

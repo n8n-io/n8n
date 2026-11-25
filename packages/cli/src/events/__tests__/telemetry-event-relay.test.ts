@@ -4403,6 +4403,55 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `user-logged-in` event', () => {
+			const event: RelayEventMap['user-logged-in'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				authenticationMethod: 'email',
+				usedMfa: true,
+			};
+
+			eventService.emit('user-logged-in', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_IN, {
+				user_id: 'user123',
+				authentication_method: 'email',
+				used_mfa: true,
+			});
+		});
+
+		it('should report a single sign-on as a sign-in without MFA', () => {
+			eventService.emit('user-logged-in', {
+				user: { id: 'user123' },
+				authenticationMethod: 'saml',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_IN, {
+				user_id: 'user123',
+				authentication_method: 'saml',
+				used_mfa: false,
+			});
+		});
+
+		it('should track on `user-login-failed` event without the email that was tried', () => {
+			eventService.emit('user-login-failed', {
+				userEmail: 'nobody@example.com',
+				authenticationMethod: 'ldap',
+				reason: 'wrong credentials',
+				reasonCode: 'wrong_credentials',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGIN_FAILED, {
+				authentication_method: 'ldap',
+				reason: 'wrong_credentials',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -6966,6 +7015,70 @@ describe('TelemetryEventRelay', () => {
 			appEventService.emit(eventName, payload);
 
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, properties);
+		});
+	});
+
+	describe('token exchange events', () => {
+		const grantType = 'urn:ietf:params:oauth:grant-type:token-exchange';
+
+		it('should track on `token-exchange-succeeded` event with how the user was resolved', () => {
+			eventService.emit('token-exchange-succeeded', {
+				subject: 'ext-sub-1',
+				grantType,
+				issuer: 'https://idp.example.com',
+				clientIp: '127.0.0.1',
+				userId: 'user-1',
+				jitProvisioned: true,
+				identityLinked: false,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TOKEN_EXCHANGE.TOKEN_EXCHANGE_SUCCEEDED,
+				{ user_id: 'user-1', jit_provisioned: true, identity_linked: false },
+			);
+		});
+
+		it('should track on `token-exchange-failed` event with the reason only', () => {
+			eventService.emit('token-exchange-failed', {
+				subject: 'ext-sub-1',
+				failureReason: 'token_replay',
+				grantType,
+				clientIp: '127.0.0.1',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TOKEN_EXCHANGE.TOKEN_EXCHANGE_FAILED,
+				{ reason: 'token_replay' },
+			);
+		});
+
+		it('should track on `embed-login` event with how the user was resolved', () => {
+			eventService.emit('embed-login', {
+				subject: 'ext-sub-1',
+				issuer: 'https://idp.example.com',
+				kid: 'key-1',
+				clientIp: '127.0.0.1',
+				userId: 'user-1',
+				jitProvisioned: false,
+				identityLinked: true,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TOKEN_EXCHANGE.EMBED_LOGIN_SUCCEEDED,
+				{ user_id: 'user-1', jit_provisioned: false, identity_linked: true },
+			);
+		});
+
+		it('should track on `embed-login-failed` event with the reason only', () => {
+			eventService.emit('embed-login-failed', {
+				failureReason: 'unknown_key',
+				clientIp: '127.0.0.1',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TOKEN_EXCHANGE.EMBED_LOGIN_FAILED,
+				{ reason: 'unknown_key' },
+			);
 		});
 	});
 });

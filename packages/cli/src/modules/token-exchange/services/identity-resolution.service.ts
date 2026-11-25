@@ -19,7 +19,7 @@ import { UserService } from '@/services/user.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError } from '../token-exchange.errors';
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
-import { TokenExchangeFailureReason } from '../token-exchange.types';
+import { TokenExchangeFailureReason, type ResolvedIdentity } from '../token-exchange.types';
 import { TrustedKeyService } from './trusted-key.service';
 
 /**
@@ -101,7 +101,7 @@ export class IdentityResolutionService {
 		claims: ExternalTokenClaims,
 		allowedRoles: string[] | undefined,
 		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-	): Promise<User> {
+	): Promise<ResolvedIdentity> {
 		const email = claims.email?.toLowerCase();
 
 		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
@@ -113,7 +113,10 @@ export class IdentityResolutionService {
 		});
 
 		if (identity) {
-			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
+			return {
+				user: await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext),
+				outcome: 'existing',
+			};
 		}
 
 		identity = await this.authIdentityRepository.findOne({
@@ -132,7 +135,10 @@ export class IdentityResolutionService {
 				kid: tokenContext.kid,
 				issuer: tokenContext.issuer,
 			});
-			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
+			return {
+				user: await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext),
+				outcome: 'existing',
+			};
 		}
 
 		// Path 2: email fallback
@@ -140,7 +146,16 @@ export class IdentityResolutionService {
 			const existingPerson = await this.personRepository.findByEmailWithAuthIdentities(email);
 
 			if (existingPerson) {
-				return await this.resolveByEmail(claims, email, existingPerson, allowedRoles, tokenContext);
+				return {
+					user: await this.resolveByEmail(
+						claims,
+						email,
+						existingPerson,
+						allowedRoles,
+						tokenContext,
+					),
+					outcome: 'linked',
+				};
 			}
 		}
 
@@ -152,7 +167,10 @@ export class IdentityResolutionService {
 			);
 		}
 
-		return await this.provisionUser(claims, email, allowedRoles, tokenContext);
+		return {
+			user: await this.provisionUser(claims, email, allowedRoles, tokenContext),
+			outcome: 'provisioned',
+		};
 	}
 
 	/** Path 1: resolve an already-linked identity and sync profile/role. */

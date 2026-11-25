@@ -17,6 +17,7 @@ import { PUBLIC_API_TELEMETRY } from './events/public-api';
 import { SCIM_TELEMETRY } from './events/scim';
 import { SELF_HEALING_TELEMETRY } from './events/self-healing';
 import { SSO_TELEMETRY } from './events/sso';
+import { TOKEN_EXCHANGE_TELEMETRY } from './events/token-exchange';
 import { TRUSTED_SOURCES_TELEMETRY } from './events/trusted-sources';
 import { TYPE_AVAILABILITY_POLICIES_TELEMETRY } from './events/type-availability-policies';
 import { WORKFLOW_TELEMETRY } from './events/workflow';
@@ -41,6 +42,7 @@ export const TELEMETRY_EVENT = {
 	SCIM: SCIM_TELEMETRY,
 	SELF_HEALING: SELF_HEALING_TELEMETRY,
 	SSO: SSO_TELEMETRY,
+	TOKEN_EXCHANGE: TOKEN_EXCHANGE_TELEMETRY,
 	TRUSTED_SOURCES: TRUSTED_SOURCES_TELEMETRY,
 	TYPE_AVAILABILITY_POLICIES: TYPE_AVAILABILITY_POLICIES_TELEMETRY,
 	WORKFLOW: WORKFLOW_TELEMETRY,

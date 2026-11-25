@@ -2437,6 +2437,7 @@ describe('LogStreamingEventRelay', () => {
 				userEmail: 'user@example.com',
 				authenticationMethod: 'email',
 				reason: 'Invalid password',
+				reasonCode: 'wrong_credentials',
 			};
 
 			eventService.emit('user-login-failed', event);
@@ -2447,6 +2448,7 @@ describe('LogStreamingEventRelay', () => {
 					userEmail: 'user@example.com',
 					authenticationMethod: 'email',
 					reason: 'Invalid password',
+					reasonCode: 'wrong_credentials',
 				},
 			});
 		});
@@ -2476,6 +2478,99 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:member',
 					authenticationMethod: 'saml',
 					_assertedEmail: 'asserted@example.com',
+				},
+			});
+		});
+
+		it('should log on `auth-request-rejected` event with the user the credential resolved to', () => {
+			const event: RelayEventMap['auth-request-rejected'] = {
+				user: {
+					id: 'user505',
+					email: 'member@example.com',
+					firstName: 'Mia',
+					lastName: 'Member',
+					role: { slug: 'global:member' },
+				},
+				apiKeyId: 'key-1',
+				method: 'GET',
+				endpoint: '/v1/workflows/:id',
+				reason: 'scope',
+				statusCode: 403,
+			};
+
+			eventService.emit('auth-request-rejected', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.auth.request.rejected',
+				payload: {
+					userId: 'user505',
+					_email: 'member@example.com',
+					_firstName: 'Mia',
+					_lastName: 'Member',
+					globalRole: 'global:member',
+					apiKeyId: 'key-1',
+					method: 'GET',
+					endpoint: '/v1/workflows/:id',
+					reason: 'scope',
+					statusCode: 403,
+				},
+			});
+		});
+
+		it('should read the user fields when the gate only had the user id', async () => {
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<Person>({
+					id: 'user505',
+					email: 'member@example.com',
+					firstName: 'Mia',
+					lastName: 'Member',
+					role: { slug: 'global:member' },
+				}),
+			);
+
+			eventService.emit('auth-request-rejected', {
+				user: { id: 'user505' },
+				method: 'GET',
+				endpoint: '/rest/settings',
+				reason: 'session_expired',
+				statusCode: 401,
+			});
+
+			await vi.waitFor(() =>
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.auth.request.rejected',
+					payload: {
+						userId: 'user505',
+						_email: 'member@example.com',
+						_firstName: 'Mia',
+						_lastName: 'Member',
+						globalRole: 'global:member',
+						method: 'GET',
+						endpoint: '/rest/settings',
+						reason: 'session_expired',
+						statusCode: 401,
+					},
+				}),
+			);
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user505');
+		});
+
+		it('should log on `auth-request-rejected` event without a user', () => {
+			eventService.emit('auth-request-rejected', {
+				method: 'POST',
+				endpoint: '/v1/workflows',
+				reason: 'api_key_invalid',
+				statusCode: 401,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.auth.request.rejected',
+				payload: {
+					userId: null,
+					method: 'POST',
+					endpoint: '/v1/workflows',
+					reason: 'api_key_invalid',
+					statusCode: 401,
 				},
 			});
 		});

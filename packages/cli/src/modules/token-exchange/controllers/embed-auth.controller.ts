@@ -69,7 +69,7 @@ export class EmbedAuthController {
 		redirect?: string,
 	) {
 		try {
-			const { user, subject, issuer, kid } =
+			const { user, subject, issuer, kid, resolution } =
 				await this.tokenExchangeService.embedLogin(subjectToken);
 
 			this.authService.issueCookie(res, user, true, req.browserId, true, {
@@ -82,6 +82,9 @@ export class EmbedAuthController {
 				issuer,
 				kid,
 				clientIp: req.ip ?? 'unknown',
+				userId: user.id,
+				jitProvisioned: resolution === 'provisioned',
+				identityLinked: resolution === 'linked',
 			});
 
 			const safePath = validateRedirectUrl(redirect ?? '');

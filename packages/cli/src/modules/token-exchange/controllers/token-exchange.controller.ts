@@ -86,6 +86,9 @@ export class TokenExchangeController {
 				grantType: parsed.data.grant_type,
 				clientIp,
 				issuer: result.issuer,
+				userId: result.subjectUserId,
+				jitProvisioned: result.subjectResolution === 'provisioned',
+				identityLinked: result.subjectResolution === 'linked',
 			});
 
 			res.json({

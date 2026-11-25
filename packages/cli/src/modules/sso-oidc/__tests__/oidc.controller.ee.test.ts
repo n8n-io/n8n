@@ -250,6 +250,7 @@ describe('OidcController', () => {
 					userEmail: 'unknown',
 					authenticationMethod: 'oidc',
 					reason: 'access_denied',
+					reasonCode: 'provider_error',
 				}),
 			);
 			expect(res.redirect).toHaveBeenCalledWith(
@@ -430,6 +431,7 @@ describe('OidcController', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'oidc',
+				reasonCode: 'access_denied',
 			});
 			expect(eventService.emit).not.toHaveBeenCalledWith('user-logged-in', expect.anything());
 		});

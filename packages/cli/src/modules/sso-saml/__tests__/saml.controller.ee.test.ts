@@ -323,6 +323,7 @@ describe('SAML Login Flow', () => {
 			userEmail: 'unknown',
 			authenticationMethod: 'saml',
 			reason: 'Access denied by SSO role mapping configuration',
+			reasonCode: 'access_denied',
 		});
 	});
 
@@ -347,6 +348,7 @@ describe('SAML Login Flow', () => {
 			userEmail: 'test@example.com',
 			authenticationMethod: 'saml',
 			reason: 'Email address is not verified by the identity provider',
+			reasonCode: 'email_not_verified',
 		});
 	});
 

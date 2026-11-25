@@ -16,6 +16,7 @@ import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
@@ -50,13 +51,9 @@ describe('AuthService', () => {
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-	const discoveryActivity = mock<EventService>();
-	// EOF Experiment cleanup
+	const eventService = mock<EventService>();
 	const authService = new AuthService(
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-		discoveryActivity,
-		// EOF Experiment cleanup
+		eventService,
 		globalConfig,
 		logger,
 		license,
@@ -145,9 +142,23 @@ describe('AuthService', () => {
 				cookies: {},
 				user: undefined,
 				browserId,
+				method: 'GET',
+				baseUrl: '/rest/workflows',
+				route: { path: '/:workflowId' },
 			});
 		const res = mock<Response>();
 		const next = vi.fn() as NextFunction;
+		// The route pattern names the gate; the resolved path never reaches the event.
+		const rejected = (
+			reason: RelayEventMap['auth-request-rejected']['reason'],
+			user?: { id: string },
+		) => ({
+			...(user && { user }),
+			method: 'GET',
+			endpoint: '/rest/workflows/:workflowId',
+			reason,
+			statusCode: 401,
+		});
 
 		beforeEach(() => {
 			res.status.mockReturnThis();
@@ -164,6 +175,8 @@ describe('AuthService', () => {
 			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
+			// An anonymous request carried nothing to reject.
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should 401 and clear the cookie if the JWT is expired', async () => {
@@ -181,6 +194,10 @@ describe('AuthService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'auth-request-rejected',
+				rejected('session_expired', { id: '123' }),
+			);
 		});
 
 		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
@@ -197,6 +214,28 @@ describe('AuthService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'auth-request-rejected',
+				rejected('session_invalid', { id: '123' }),
+			);
+		});
+
+		it('should 401 and report a cookie that is not a JWT without naming a user', async () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = 'not-a-jwt';
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+
+			await middleware(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'auth-request-rejected',
+				rejected('session_invalid'),
+			);
 		});
 
 		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
@@ -215,6 +254,10 @@ describe('AuthService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).not.toHaveBeenCalledWith();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'auth-request-rejected',
+				rejected('mfa', { id: '123' }),
+			);
 		});
 
 		it('should refresh the cookie before it expires', async () => {
@@ -235,6 +278,32 @@ describe('AuthService', () => {
 				sameSite: 'lax',
 				secure: true,
 			});
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'auth-request-rejected',
+				expect.anything(),
+			);
+		});
+
+		it('should report an expired cookie on a route open to anonymous callers and go on', async () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+			const middleware = authService.createAuthMiddleware({
+				allowSkipMFA: true,
+				allowUnauthenticated: true,
+			});
+
+			await middleware(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalledWith(401);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'auth-request-rejected',
+				rejected('session_expired', { id: '123' }),
+			);
 		});
 
 		describe('allowSkipPreviewAuth', () => {
@@ -767,12 +836,12 @@ describe('AuthService', () => {
 			const result = authService.issueCookie(res, person, false, browserId);
 			expect(result).toBeUndefined();
 			expect(res.cookie).toHaveBeenCalled();
-			expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-user-first-login', {
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-user-first-login', {
 				userId: person.id,
 				at: now.getTime(),
 			});
 			expect(res.cookie.mock.invocationCallOrder[0]).toBeLessThan(
-				discoveryActivity.emit.mock.invocationCallOrder[0],
+				eventService.emit.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -783,7 +852,7 @@ describe('AuthService', () => {
 			expect(() => authService.issueCookie(res, person, false, browserId)).toThrow(
 				'Headers already sent',
 			);
-			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 		// EOF Experiment cleanup
 
@@ -795,7 +864,7 @@ describe('AuthService', () => {
 					authService.issueCookie(res, person, false, browserId);
 				}).toThrowError('Maximum number of users reached');
 				// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-				expect(discoveryActivity.emit).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
 				// EOF Experiment cleanup
 			});
 
@@ -1111,7 +1180,7 @@ describe('AuthService', () => {
 			});
 
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 			// EOF Experiment cleanup
 			const newToken = res.cookie.mock.calls[0].at(1);
 			expect(newToken).not.toBe(validToken);
@@ -1162,7 +1231,7 @@ describe('AuthService', () => {
 			});
 
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 			// EOF Experiment cleanup
 			const refreshedToken = res.cookie.mock.calls[0].at(1);
 			const decoded = jwt.decode(refreshedToken) as jwt.JwtPayload;

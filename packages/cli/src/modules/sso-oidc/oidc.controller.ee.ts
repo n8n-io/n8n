@@ -204,6 +204,7 @@ export class OidcController {
 				this.eventService.emit('user-login-failed', {
 					userEmail: 'unknown',
 					authenticationMethod: 'oidc',
+					reasonCode: 'access_denied',
 				});
 				return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_ACCESS_DENIED_REDIRECT_PATH);
 			}
@@ -213,10 +214,12 @@ export class OidcController {
 			// The raw provider `error_description` is untrusted, so it is never
 			// reflected; only the short `error` code is kept, for the audit reason.
 			this.logger.error('OIDC callback failed', { error });
+			const providerError = callbackUrl.searchParams.get('error')?.slice(0, 100);
 			this.eventService.emit('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'oidc',
-				reason: callbackUrl.searchParams.get('error')?.slice(0, 100) ?? 'oidc_callback_failed',
+				reason: providerError ?? 'oidc_callback_failed',
+				reasonCode: providerError ? 'provider_error' : 'other',
 			});
 			return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_LOGIN_FAILED_REDIRECT_PATH);
 		}
