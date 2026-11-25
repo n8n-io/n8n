@@ -125,6 +125,11 @@ describe('toolsAgentExecute', () => {
 		expect(result[0]).toHaveLength(2);
 		expect(result[0][0].json).toEqual({ output: { text: 'success' } });
 		expect(result[0][1].json).toEqual({ error: 'Test error' });
+
+		const runSignals = mockExecutor.invoke.mock.calls.map(
+			([, executeOptions]) => (executeOptions as { signal: AbortSignal }).signal,
+		);
+		expect(runSignals.map((signal) => signal.aborted)).toEqual([false, true]);
 	});
 
 	it('should not expose raw model output in parser error messages', async () => {

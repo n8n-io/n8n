@@ -111,6 +111,8 @@ export class InstanceAiSkillsAdapterService {
 						skillId,
 						SaveSkillDto.parse(input),
 						'assistant',
+						// The Assistant reads a binary file without its content, so it cannot send it back.
+						{ keepUnnamedBinaryFiles: true },
 					);
 				} catch (error) {
 					const refusal = await toSkillToolRefusal(error, {
