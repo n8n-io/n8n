@@ -11,6 +11,7 @@ import {
 	getRuleDocsUrl,
 	getStringLiteralValue,
 	getTopLevelObjectInJson,
+	isMainConnection,
 	readJsonObject,
 } from '../utils/index.js';
 
@@ -27,29 +28,6 @@ function findStaticProperty(object: TSESTree.ObjectExpression, name: string) {
 		const key = getPropertyKeyName(property);
 		if (key === null) return undefined;
 		if (key === name) return property;
-	}
-	return null;
-}
-
-function isMainConnection(element: TSESTree.Node | null): boolean | null {
-	const connection =
-		element?.type === AST_NODE_TYPES.ObjectExpression
-			? (findStaticProperty(element, 'type')?.value ?? null)
-			: element;
-	const value = getStringLiteralValue(connection);
-	if (value !== null) return value === 'main';
-
-	if (
-		connection?.type === AST_NODE_TYPES.MemberExpression &&
-		connection.object.type === AST_NODE_TYPES.Identifier &&
-		connection.object.name === 'NodeConnectionTypes'
-	) {
-		const key =
-			!connection.computed && connection.property.type === AST_NODE_TYPES.Identifier
-				? connection.property.name
-				: getStringLiteralValue(connection.property);
-		if (key === 'Main') return true;
-		if (key?.startsWith('Ai')) return false;
 	}
 	return null;
 }
