@@ -108,6 +108,7 @@ export interface EngineRuntimeOptions {
 	/**
 	 * Which ended executions the engine deletes, with their files. No default:
 	 * absent, the engine deletes nothing, so no host deletes data by omission.
+	 * The orchestrator role runs the sweeper. Needs `deleteExecutionFiles`.
 	 */
 	retention?: ExecutionRetentionPolicy;
 }
@@ -244,15 +245,19 @@ export function createEngineRuntime({
 		},
 		logger,
 	);
-	const retentionSweeper =
-		retention === undefined
-			? undefined
-			: new RetentionSweeper(
-					executionStore,
-					new ExecutionFileCleanup(dependencies.deleteExecutionFiles, logger),
-					retention,
-					logger,
-				);
+	let retentionSweeper: RetentionSweeper | undefined;
+	if (retention !== undefined) {
+		// Refused here: without a deleter the sweeper would delete the rows and keep the files.
+		if (!dependencies.deleteExecutionFiles) {
+			throw new UnexpectedError('Execution retention needs a file deleter');
+		}
+		retentionSweeper = new RetentionSweeper(
+			executionStore,
+			new ExecutionFileCleanup(dependencies.deleteExecutionFiles, logger),
+			retention,
+			logger,
+		);
+	}
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -298,13 +303,14 @@ export function createEngineRuntime({
 		workers.push(orchestrationWorker);
 		// Not with the step worker: it repairs what a crashed step worker leaves behind.
 		sweepers.push(reconciliationSweeper);
+		// Only here: the role with the fewest replicas, so fewer processes race to delete the same rows.
+		if (retentionSweeper) sweepers.push(retentionSweeper);
 	}
 	if (runs.has('step-worker')) {
 		workers.push(stepWorker);
 		// The step worker re-arms it when a step suspends, which keeps a short wait on time.
 		sweepers.push(waitSweeper);
 	}
-	if (retentionSweeper) sweepers.push(retentionSweeper);
 
 	return {
 		app,

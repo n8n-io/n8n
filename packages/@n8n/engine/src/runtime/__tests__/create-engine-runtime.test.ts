@@ -7,6 +7,7 @@ import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { UnexpectedError } from '../../common';
 import { TypeOrmExecutionStore, TypeOrmStepStore, type EngineStores } from '../../database';
 import { generateId } from '../../database/generate-id';
+import { noopExecutionFilesDeleter } from '../../dependencies';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
 import {
 	createInMemoryWorkQueues,
@@ -397,7 +398,7 @@ describe('createEngineRuntime', () => {
 
 	it.each<{ name: string; roles?: EngineRole[] }>([
 		{ name: 'all roles (default)', roles: undefined },
-		...ENGINE_ROLES.map((role) => ({ name: `${role} only`, roles: [role] })),
+		{ name: 'orchestrator only', roles: ['orchestrator'] },
 	])(
 		'sweeps with the retention policy of the host and deletes files with its file deleter ($name)',
 		async ({ roles }) => {
@@ -430,6 +431,32 @@ describe('createEngineRuntime', () => {
 		},
 	);
 
+	it.each<{ name: string; roles: EngineRole[] }>([
+		{ name: 'api only', roles: ['api'] },
+		{ name: 'step-worker only', roles: ['step-worker'] },
+		{ name: 'api and step-worker', roles: ['api', 'step-worker'] },
+	])('starts no retention sweeper without the orchestrator role ($name)', async ({ roles }) => {
+		vi.mocked(RetentionSweeper).mockClear();
+		const engine = runtime({
+			roles,
+			externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+			retention: { maxAgeMs: 1_000 },
+		});
+		const sweeper = vi.mocked(RetentionSweeper).mock.results[0].value as RetentionSweeper;
+		const start = vi.spyOn(sweeper, 'start');
+
+		engine.start();
+		await engine.stop();
+
+		expect(start).not.toHaveBeenCalled();
+	});
+
+	it('refuses a retention policy without a file deleter', () => {
+		expect(() => runtime({ retention: { maxAgeMs: 1_000 } })).toThrow(
+			'Execution retention needs a file deleter',
+		);
+	});
+
 	it.each([
 		{ maxAgeMs: -1 },
 		{ maxAgeMs: 1e300 },
@@ -445,6 +472,7 @@ describe('createEngineRuntime', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier,
 				responseSender,
+				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
 				queues: createInMemoryWorkQueues(),
 				retention,
 			}),
@@ -458,6 +486,7 @@ describe('createEngineRuntime', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier,
 				responseSender,
+				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
 				queues: createInMemoryWorkQueues(),
 				retention: { maxAgeMs: 0 },
 			}),
@@ -479,6 +508,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
+			externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
 			queues: createInMemoryWorkQueues(),
 			retention: { maxAgeMs: 1_000, intervalMs: 1 },
 		});

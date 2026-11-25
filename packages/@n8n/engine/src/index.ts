@@ -111,6 +111,7 @@ export type {
 	SubExecutionDeclaration,
 	SubExecutionMode,
 } from './dependencies';
+export { noopExecutionFilesDeleter } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {

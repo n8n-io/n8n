@@ -22,7 +22,7 @@ export interface ExecutionRetentionPolicy {
 /**
  * Deletes the executions that ended before the retention period, with their files.
  *
- * Each process runs its own sweeper, without coordination. The first pass
+ * Each orchestrator process runs its own sweeper, without coordination. The first pass
  * starts after a random part of the interval, so processes that start together
  * spread their passes. The passes of one sweeper do not overlap: the sweeper
  * sets the next timer after the current pass ends.
