@@ -2,6 +2,8 @@ packages/modules/promotions/frontend/src/components/PromotionMissingDependencyLi
   s_4a494bfdece475::t_3c382e19aa859a 70-82
 packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.vue
   s_4a494bfdece475::t_30193c260d0c21 7,27-29,33-39
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.test.ts
+  s_4a494bfdece475::t_de0bf077f75202 175,177-180,186,188
 ---
 {
   "schema_version": "authorship/3.0.0",

@@ -15,6 +15,8 @@ packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
   s_d128ee12fdf482::t_3eb84a746b05e4 18-24,51,60-61,225-227,229,231-232
 packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.generated.yml
   s_d128ee12fdf482::t_0c5b10f2498f58 42-53
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-missing-dependencies.spec.ts
+  s_4a494bfdece475::t_aaa21188bea0c0 12-15
 ---
 {
   "schema_version": "authorship/3.0.0",

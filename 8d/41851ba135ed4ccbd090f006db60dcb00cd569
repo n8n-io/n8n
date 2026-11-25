@@ -80,6 +80,7 @@ packages/frontend/@n8n/i18n/src/locales/en.json
   s_4a494bfdece475::t_51df4f60661685 11533-11534,11690-11691,11703-11704,11709,11714-11716,11718,11720-11722,11725-11727,11729-11732,11746-11747,11749,11762-11763,11766,11768,11789-11792,11799-11800,11810
   s_4a494bfdece475::t_5b1d875892b024 5073,11733,11769
   s_4a494bfdece475::t_de2fffbec029ec 11707
+  s_4a494bfdece475::t_32bf0ba1327621 11696-11702
 packages/modules/promotions/frontend/src/__tests__/missingDependencies.fixtures.ts
   s_4a494bfdece475::t_17906dd0c5e888 1-6,8-59,61-67,69-77,143-145
   s_4a494bfdece475::t_cc5dd0fbc1a4a1 1-6,8-59,61-67,69-77,143-145
@@ -94,11 +95,13 @@ packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.vue
   s_4a494bfdece475::t_78765d2aeeac9f 6,18,21,24,52,77-80,83-85,100,246-247,335,342-345
   s_4a494bfdece475::t_6965aedc8cf6e3 346
   s_4a494bfdece475::t_4133955e03e53b 12,54-55,213,218-224,225,227,230,232,245,336-341
+  s_4a494bfdece475::t_5199f695a96c55 237
 packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.vue
   s_4a494bfdece475::t_993c8b62d9ca25 1-4,6,8-12,16,18-20,46-64,67-74,84-120,139
   s_4a494bfdece475::t_78765d2aeeac9f 1-4,6,8-12,16,18-20,46-50,54-64,67-74,84-120,139
   s_4a494bfdece475::t_91e95bdf1c247c 51-53
   s_4a494bfdece475::t_3253dbc9b142ce 5,24-26,34-36,65,75-83,121-138
+  s_4a494bfdece475::t_dcc83edc67d42f 13,15,17,27
 packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
   s_4a494bfdece475::t_b06a6b17766102 5-6,16,35-41,47,52-53,60-62,84-88,93,113,118-119,127-134,136,137-138,140-141,144,148,226,256-260,262-266,268-272,274-287,295-306,337-338,379,382,396,450-454,456,462-463,467-472,485-489,555,557-558,563-569,572,586,588-591,610-615,619-620,622-623,625-628,654,691,700,707-722,838,841-853,856-859,862,871-875,877,879-884,886-891,995-999,1011-1015,1017,1046-1053,1065-1073
   s_4a494bfdece475::t_f9d1b935e91d70 838,841-853,856-859,862,871-875,877,879-884,886-891,995-999,1011-1015,1017,1046-1053,1065-1073
@@ -149,13 +152,34 @@ packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
   s_4a494bfdece475::t_add0473e2150b4 29
   s_4a494bfdece475::t_c7fe231307c8b0 1237,1392-1394,1396-1420,1475,1477,1480,1497
   s_4a494bfdece475::t_f2879185dd1de4 1481-1483
+  s_4a494bfdece475::t_23fec8b519885c 208-213,1519,1526-1527,1529,1533,1535-1537,1539-1546,1548-1550,1552-1557,1559-1582,1585,1587,1597-1598,1602-1609,1612-1614,1616,1618,1620,1671,1726-1731,1757,1776-1777,2007-2008,2131,2146,2154,2166,2168-2170,2180-2184,2362,2404,2412-2413,2415-2423,2429-2439,2441-2448,2450,2452-2455,2458,2472-2474,2476-2478,2480,2483,2609,2611-2613,2623,2664,2807-2808,2811,2830,2832-2834,2992-2995,3110,3164-3165,3169-3174,3253-3254
 packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
   s_4a494bfdece475::t_39d9e6f07c2296 40,50,161-165,394-395,399,401-407,428,466,579,599-600,640,642,645-646,697-698,703,705-706,711
   s_4a494bfdece475::t_0fa05784e87e0c 40,50,161-165,394-395,399,401-407,428,466,579,599-600,640,642,645-646,697-698,703,705-706,711
+  s_4a494bfdece475::t_43736848a685a6 155-156,356,358-361,671
 packages/modules/promotions/frontend/src/promotionDependencyStatus.ts
   s_4a494bfdece475::t_a7798ef6bafc6c 1-38
 packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.test.ts
   s_4a494bfdece475::t_e2dc11b635714b 1-36,39,45-50,51-52,55-64,66,81-84,86-92
+  s_4a494bfdece475::t_5718ac27df02c8 37-38,40-44,53-54,65,67,73,85
+packages/modules/promotions/frontend/src/components/PromotionUnresolvedSummary.vue
+  s_4a494bfdece475::t_e0d4848681da82 1-68
+packages/modules/promotions/frontend/src/composables/usePromotionUnresolvedSummary.ts
+  s_4a494bfdece475::t_dfc764ac5c2649 1-79
+packages/modules/promotions/frontend/src/components/ApplyUnresolvedDialog.test.ts
+  s_4a494bfdece475::t_2b758790234713 4,13,15,18-22,28-37,39-45,48-49,52,54-57,62-64,66-78,80,87,109-110
+packages/modules/promotions/frontend/src/components/ApplyUnresolvedDialog.vue
+  s_4a494bfdece475::t_3cf3cbfaa7cc05 13-14,17-18,20-25,30,32-33,35-36,44,49,52,64
+packages/modules/promotions/frontend/src/components/PromoteSelectionDialog.test.ts
+  s_4a494bfdece475::t_4cbf4da3030517 40,44,62-65,67,70-72,74-76,78-88,93-133
+packages/modules/promotions/frontend/src/components/PromoteSelectionDialog.vue
+  s_4a494bfdece475::t_c83046ba0b13ab 15,17,26-29,47-51,54-55,58-62,92,98,101-107,121,133-137
+packages/modules/promotions/frontend/src/composables/usePromotionUnresolvedSummary.test.ts
+  s_4a494bfdece475::t_43b050899093aa 1-125
+packages/quality/testing/playwright/pages/promotion-preview-page.ts
+  s_4a494bfdece475::t_e6a39ea57eaade 74,87-94,98-99,101,103
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-missing-dependencies.spec.ts
+  s_4a494bfdece475::t_a40c8ac438c20b 168-169,174,178,188-189,203-204,207-219,221-223,273-274,279,281,295,299-300,303-312
 ---
 {
   "schema_version": "authorship/3.0.0",

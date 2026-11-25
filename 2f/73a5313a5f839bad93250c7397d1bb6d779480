@@ -1,5 +1,7 @@
 packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.test.ts
   s_4a494bfdece475::t_a6c0752ba39c7c 243
+packages/quality/testing/playwright/pages/promotion-preview-page.ts
+  s_4a494bfdece475::t_017732fc1de430 47-50,52-54,92-95,97-99
 ---
 {
   "schema_version": "authorship/3.0.0",

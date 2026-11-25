@@ -1,5 +1,6 @@
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_4a494bfdece475::t_bdca855aba37bc 11775-11776
+  s_4a494bfdece475::t_3e79cfca0b20a7 11810
 packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
   s_4a494bfdece475::t_1f9851f447f6cc 30,311-314,326-327,330,436,442,445,448,513-520,524-528,530-532,535-539,546,580-582,822,839-840,845-846,848-855,861,870
 packages/modules/promotions/frontend/src/promotionOperation.test.ts
@@ -8,8 +9,13 @@ packages/modules/promotions/frontend/src/promotionOperation.ts
   s_4a494bfdece475::t_b81722c02b664f 147-150
 packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
   s_4a494bfdece475::t_0d4b290937a2cc 1865-1868,1869-1873,1877-1879,1881-1897,1902,1907,2025,2034,2045,2074-2075,2078-2080,2082-2084,2095,2235,2246-2247,2265,2271,2284,2301-2302,2304-2309,2353-2355,2362,2373,2378,3047-3049,3051
+  s_4a494bfdece475::t_25c468db63788a 1683-1685,1687,1736-1738,1740
 packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
   s_4a494bfdece475::t_59972103a64d76 42,403-404
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.test.ts
+  s_4a494bfdece475::t_41d465948e4db8 6,8-12,29,32,44,46,100-130
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_4a494bfdece475::t_fa7c08c341cd3d 39-44,207-208
 ---
 {
   "schema_version": "authorship/3.0.0",
