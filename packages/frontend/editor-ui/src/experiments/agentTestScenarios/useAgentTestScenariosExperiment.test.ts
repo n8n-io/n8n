@@ -1,3 +1,4 @@
+import { AGENT_SAFE_TESTING_FLAG } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -5,10 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AGENT_TEST_SCENARIOS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 
-import {
-	AGENT_SAFE_TESTING_FLAG,
-	useAgentTestScenariosExperiment,
-} from './useAgentTestScenariosExperiment';
+import { useAgentTestScenariosExperiment } from './useAgentTestScenariosExperiment';
 
 describe('useAgentTestScenariosExperiment', () => {
 	beforeEach(() => {
