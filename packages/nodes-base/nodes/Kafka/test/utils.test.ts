@@ -1500,22 +1500,30 @@ describe('Kafka Utils', () => {
 				[
 					'a half-configured mTLS pair',
 					{ cert: '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----' },
+					'Set both the "Client Certificate" and "Client Private Key"',
 				],
-				['a malformed CA', { ca: 'not-a-pem' }],
-			])('fails activation on %s rather than running without a registry', async (_case, tls) => {
-				const ctx = createRegistryContext({
-					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
-					nodeCredentials: schemaRegistryNodeCredentials,
-					credentialData: {
-						url: 'https://schema-registry.local:8081',
-						authentication: 'none',
-						...tls,
-					},
-				});
+				['a malformed CA', { ca: 'not-a-pem' }, 'Paste the full PEM'],
+			])(
+				'fails activation on %s rather than running without a registry',
+				async (_case, tls, hint) => {
+					const ctx = createRegistryContext({
+						params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+						nodeCredentials: schemaRegistryNodeCredentials,
+						credentialData: {
+							url: 'https://schema-registry.local:8081',
+							authentication: 'none',
+							...tls,
+						},
+					});
 
-				await expect(setSchemaRegistry(ctx)).rejects.toThrow();
-				expect(ctx.logger.warn).not.toHaveBeenCalled();
-			});
+					const failure = await setSchemaRegistry(ctx).catch((error: NodeOperationError) => error);
+
+					expect(failure).toBeInstanceOf(NodeOperationError);
+					// Carried over from the helper's own error, so the user still reads what to do
+					expect((failure as NodeOperationError).description).toContain(hint);
+					expect(ctx.logger.warn).not.toHaveBeenCalled();
+				},
+			);
 
 			it('should redact URL userinfo and omit status in the warn payload when absent', async () => {
 				const ctx = createRegistryContext({

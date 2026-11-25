@@ -520,9 +520,8 @@ function asNodeError<T>(ctx: Pick<FunctionsBase, 'getNode'>, read: () => T): T {
 		return read();
 	} catch (error) {
 		if (!(error instanceof UserError)) throw error;
-		throw new NodeOperationError(ctx.getNode(), error.message, {
-			description: error.description ?? undefined,
-		});
+		// Given the error itself, so the message, the description and the cause all carry over
+		throw new NodeOperationError(ctx.getNode(), error);
 	}
 }
 
