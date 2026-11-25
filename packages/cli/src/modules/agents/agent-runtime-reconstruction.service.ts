@@ -924,7 +924,12 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 		} = options;
 		// Test chat only, when enabled: the network calls of node tools go through the guard.
-		const guardActive = isMcpGuardActive(runType, instrumentation?.mcpFetch !== undefined);
+		// An evaluation run sets its own handler for node tools (and MCP), so the guard stays off for it.
+		const guardActive = isMcpGuardActive(
+			runType,
+			instrumentation?.mcpFetch !== undefined ||
+				instrumentation?.configureToolAdditionalData !== undefined,
+		);
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
 		return this.makeToolResolver(
 			{

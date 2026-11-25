@@ -67,6 +67,17 @@ describe('AgentRuntimeReconstructionService node guard wiring', () => {
 			expect(await guardModelOf({ runType: 'production' })).toBeUndefined();
 		});
 
+		it('should not guard node tools of an evaluation run that sets its own tool data', async () => {
+			vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
+
+			expect(
+				await guardModelOf({
+					runType: 'test',
+					instrumentation: { configureToolAdditionalData: vi.fn() },
+				}),
+			).toBeUndefined();
+		});
+
 		it('should not guard node tools of an evaluation run with its own MCP fetch', async () => {
 			vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
 

@@ -75,6 +75,24 @@ export const isReadToolName: { has(name: string): boolean } = {
 	has: (name) => name.startsWith('read_'),
 };
 
+// A path with encoded separators or dot segments is not plain: a gateway can read it as another path.
+function isPlainPath(path: string): boolean {
+	let text = path.split(/[?#]/)[0];
+	for (let round = 0; round < 3; round++) {
+		if (/%2f|%5c/i.test(text)) return false;
+		if (text.split('/').some((segment) => segment === '.' || segment === '..')) return false;
+		let decoded: string;
+		try {
+			decoded = decodeURIComponent(text);
+		} catch {
+			return false;
+		}
+		if (decoded === text) return true;
+		text = decoded;
+	}
+	return false;
+}
+
 export function fromToolArgs(
 	origin: string,
 	args: HttpToolArgs,
@@ -83,6 +101,10 @@ export function fromToolArgs(
 	// A path is relative to the origin. An absolute URL would send the node credential to another host.
 	if (!args.path.startsWith('/') || args.path.startsWith('//') || args.path.includes('\\')) {
 		throw new UnexpectedError('mcp-guard: the path of a call must be relative');
+	}
+	// Compare the path as a gateway reads it: decode it (twice, for a double encoding), then look at its segments.
+	if (!isPlainPath(args.path)) {
+		throw new UnexpectedError('mcp-guard: the path of a call must be a plain path');
 	}
 	const url = new URL(args.path, origin);
 	if (url.origin !== new URL(origin).origin) {

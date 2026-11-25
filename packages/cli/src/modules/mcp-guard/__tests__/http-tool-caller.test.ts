@@ -107,6 +107,24 @@ describe('fromToolArgs', () => {
 });
 
 describe('fromToolArgs path check', () => {
+	it.each([
+		'/gmail/v1/%2e%2e/drive/v3/files',
+		'/gmail/v1/%2E%2E/%2e%2e/x',
+		'/gmail/v1/..%2fdrive',
+		'/gmail/v1/a%5cb',
+		'/gmail/v1/%252e%252e/x',
+		'/gmail/v1/%2e/x',
+	])('refuses the path %s, which a gateway can read as another path', (path) => {
+		expect(() => fromToolArgs('https://x.test', { method: 'GET', path }, {})).toThrow('plain path');
+	});
+
+	it.each(['/gmail/v1/users/me/messages/18c2a%20b', '/a/b.c/d-e_f', '/files/report%2Epdf'])(
+		'keeps the plain path %s',
+		(path) => {
+			expect(() => fromToolArgs('https://x.test', { method: 'GET', path }, {})).not.toThrow();
+		},
+	);
+
 	it.each(['https://evil.test/x', '//evil.test/x', 'gmail/v1/x', '/a\\b'])(
 		'refuses the path %s',
 		(path) => {
