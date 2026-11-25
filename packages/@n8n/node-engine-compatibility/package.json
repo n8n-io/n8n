@@ -1,6 +1,10 @@
 {
   "name": "@n8n/node-engine-compatibility",
+<<<<<<< HEAD
   "version": "1.4.0",
+=======
+  "version": "0.18.0",
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
   "description": "Adapts v1 nodes and workflows to the Engine v2 execution model",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -19,6 +23,16 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -37,11 +51,9 @@
     "@n8n/vitest-config": "workspace:*",
     "@n8n/workflow-engine-check": "workspace:*",
     "@testcontainers/postgresql": "catalog:",
-    "@types/supertest": "^6.0.3",
     "n8n-nodes-base": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
-    "supertest": "^7.1.1",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },

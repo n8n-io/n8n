@@ -1574,6 +1574,12 @@ export type RelayEventMap = ModuleEventMap & {
 
 	// #region Workflow Reviews
 
+	'project-workflow-review-settings-updated': {
+		user: UserLike;
+		projectId: string;
+		requiredByProject: boolean;
+	};
+
 	'workflow-review-requested': {
 		user: UserLike;
 		workflowReviewRequestId: string;

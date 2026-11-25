@@ -168,9 +168,21 @@
 		"packages/@n8n/node-cli/package.json": [
 			{
 				"rule": "catalog-violations",
+<<<<<<< HEAD
 				"line": 54,
 				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "b6a694c807bc"
+=======
+				"line": 53,
+				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9711a9b00bf9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 49,
+				"message": "@clack/prompts appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9f6f61583b58"
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 			}
 		],
 		"packages/quality/efficiency/scale/benchmark/package.json": [
@@ -1863,6 +1875,22 @@
 				"line": 76,
 				"message": "packages/frontend/editor-ui turns 'typescript/restrict-template-expressions' down to 'warn' for the whole package.",
 				"hash": "6c97c51e7004"
+			}
+		],
+		".github/workflows/ci-owners-review-recommendations.yml": [
+			{
+				"rule": "workflow-pr-target-safety",
+				"line": 8,
+				"message": ".github/workflows/ci-owners-review-recommendations.yml uses pull_request_target. Prefer pull_request — pull_request_target runs in the base-repo context with secrets exposed, which is unsafe when combined with PR-author-controlled code.",
+				"hash": "d8f14a75499b"
+			}
+		],
+		"scripts/experimental/rig/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 21,
+				"message": "@clack/prompts appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "eea984f2dfb7"
 			}
 		]
 	}

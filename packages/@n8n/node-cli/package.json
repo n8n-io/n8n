@@ -1,6 +1,10 @@
 {
   "name": "@n8n/node-cli",
+<<<<<<< HEAD
   "version": "1.4.0",
+=======
+  "version": "0.59.0",
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"

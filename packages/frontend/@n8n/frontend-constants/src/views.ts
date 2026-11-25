@@ -101,5 +101,6 @@ export enum VIEWS {
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
 	SETTINGS_CONTEXT_SKILLS = 'SettingsContextSkills',
 	SETTINGS_CONTEXT_COLLECTIONS = 'SettingsContextCollections',
+	KNOWLEDGE_COLLECTION = 'KnowledgeCollection',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

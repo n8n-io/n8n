@@ -1,6 +1,10 @@
 {
   "name": "@n8n/mcp-apps",
+<<<<<<< HEAD
   "version": "1.4.0",
+=======
+  "version": "0.27.0",
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
   "description": "MCP Apps UI resources and server helpers for n8n",
   "main": "dist/server/index.js",
   "types": "dist/server/index.d.ts",

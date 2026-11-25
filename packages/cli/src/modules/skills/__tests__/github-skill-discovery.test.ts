@@ -1,7 +1,12 @@
 import { SkillSourceUrlError } from '../errors/skill-source-url.error';
 import { lsRefsRequestBody, parseLsRefsResponse, pktLine } from '../sources/github/git-refs';
 import { parseGitHubLink, splitBranchAndPath } from '../sources/github/github-link';
-import { filesOfSkill, findSkillFolders } from '../sources/github/skill-discovery';
+import {
+	compareSkillFilePriority,
+	filesOfSkill,
+	findSkillFolders,
+	selectSkillFiles,
+} from '../sources/github/skill-discovery';
 
 describe('findSkillFolders', () => {
 	it.each([
@@ -89,7 +94,7 @@ describe('findSkillFolders', () => {
 });
 
 describe('filesOfSkill', () => {
-	it('lists the files of the folder without the skills nested in it', () => {
+	it('lists all files in the selected folder', () => {
 		const paths = [
 			'a/SKILL.md',
 			'a/references/x.md',
@@ -100,14 +105,178 @@ describe('filesOfSkill', () => {
 			'ab/SKILL.md',
 		];
 
-		expect(filesOfSkill(paths, 'a')).toEqual(['SKILL.md', 'references/x.md', 'scripts/run.sh']);
+		expect(filesOfSkill(paths, 'a')).toEqual(paths.slice(0, -1).map((path) => path.slice(2)));
 	});
 
 	it('lists the files of a skill at the root', () => {
 		expect(filesOfSkill(['SKILL.md', 'references/x.md', 'other/SKILL.md'], '')).toEqual([
 			'SKILL.md',
 			'references/x.md',
+			'other/SKILL.md',
 		]);
+	});
+});
+
+describe('compareSkillFilePriority', () => {
+	it('puts references first, then scripts and assets, then other files, then dependency folders', () => {
+		const paths = [
+			'node_modules/pkg/index.js',
+			'README.md',
+			'assets/logo.png',
+			'references/vendor/api.md',
+			'scripts/run.py',
+			'references/api.md',
+			'docs/guide.md',
+		];
+
+		expect([...paths].sort(compareSkillFilePriority)).toEqual([
+			'references/api.md',
+			'assets/logo.png',
+			'scripts/run.py',
+			'README.md',
+			'docs/guide.md',
+			'node_modules/pkg/index.js',
+			'references/vendor/api.md',
+		]);
+	});
+});
+
+describe('selectSkillFiles', () => {
+	const limits = { maxFiles: 3, maxSkillBytes: 100, maxTotalBytes: 1000, maxFileBytes: 50 };
+	const select = (files: Record<string, number>, folders: string[], overrides = {}) =>
+		[
+			...selectSkillFiles(new Map(Object.entries(files)), new Set(folders), {
+				...limits,
+				...overrides,
+			}),
+		].sort();
+
+	it('selects no file outside the skill folders', () => {
+		expect(select({ 'a/SKILL.md': 1, 'ab/guide.md': 1, 'guide.md': 1 }, ['a'])).toEqual([
+			'a/SKILL.md',
+		]);
+	});
+
+	it('selects the files of a skill at the root and of a nested folder', () => {
+		expect(select({ 'SKILL.md': 1, 'reference/nested/guide.md': 1 }, [''])).toEqual([
+			'SKILL.md',
+			'reference/nested/guide.md',
+		]);
+	});
+
+	it('keeps the files in priority order up to the file count of one skill', () => {
+		const files = {
+			'a/SKILL.md': 1,
+			'a/node_modules/x.js': 1,
+			'a/node_modules/y.js': 1,
+			'a/node_modules/z.js': 1,
+			'a/references/api.md': 1,
+			'a/scripts/run.py': 1,
+		};
+
+		expect(select(files, ['a'])).toEqual([
+			'a/SKILL.md',
+			'a/node_modules/x.js',
+			'a/references/api.md',
+			'a/scripts/run.py',
+		]);
+	});
+
+	it('leaves out a file that does not fit the bytes of one skill, and keeps a smaller one after it', () => {
+		const files = { 'a/SKILL.md': 10, 'a/assets/a.bin': 50, 'a/assets/b.bin': 50, 'a/z.txt': 5 };
+
+		expect(select(files, ['a'], { maxSkillBytes: 60 })).toEqual([
+			'a/SKILL.md',
+			'a/assets/a.bin',
+			'a/z.txt',
+		]);
+	});
+
+	it('keeps SKILL.md and the Markdown references of every skill before the other files', () => {
+		const files = {
+			'a/SKILL.md': 10,
+			'a/assets/logo.png': 40,
+			'a/references/api.md': 10,
+			'b/SKILL.md': 10,
+			'b/references/api.md': 10,
+		};
+
+		// The logo of the first skill does not take the room of the second skill.
+		expect(select(files, ['a', 'b'], { maxTotalBytes: 40 })).toEqual([
+			'a/SKILL.md',
+			'a/references/api.md',
+			'b/SKILL.md',
+			'b/references/api.md',
+		]);
+	});
+
+	it('caps Markdown references per skill by file count and size in path order', () => {
+		const manyRefs = {
+			'a/SKILL.md': 10,
+			'a/references/03.md': 1,
+			'a/references/01.md': 1,
+			'a/references/04.md': 1,
+			'a/references/02.md': 1,
+			'a/scripts/run.py': 1,
+		};
+
+		expect(select(manyRefs, ['a'], { maxFiles: 2 })).toEqual([
+			'a/SKILL.md',
+			'a/references/01.md',
+			'a/references/02.md',
+		]);
+
+		const largeRefs = {
+			'a/SKILL.md': 10,
+			'a/references/a.md': 50,
+			'a/references/b.md': 50,
+			'a/references/c.md': 5,
+		};
+
+		expect(select(largeRefs, ['a'], { maxSkillBytes: 60 })).toEqual([
+			'a/SKILL.md',
+			'a/references/a.md',
+			'a/references/c.md',
+		]);
+	});
+
+	it('selects a file over the file limit, so the reader lists it, and does not count it', () => {
+		const files = { 'a/SKILL.md': 10, 'a/assets/big.bin': 51, 'a/assets/small.bin': 50 };
+
+		expect(select(files, ['a'], { maxSkillBytes: 50 })).toEqual([
+			'a/SKILL.md',
+			'a/assets/big.bin',
+			'a/assets/small.bin',
+		]);
+	});
+
+	it('records only folders starved by maxTotalBytes, not folders capped by their own limits', () => {
+		const files = {
+			'a/SKILL.md': 10,
+			'a/assets/1.bin': 40,
+			'a/assets/2.bin': 40,
+			'a/assets/3.bin': 40,
+			'b/SKILL.md': 10,
+			'b/assets/1.bin': 40,
+		};
+		const starved = new Set<string>();
+
+		const kept = selectSkillFiles(
+			new Map(Object.entries(files)),
+			new Set(['a', 'b']),
+			{ maxFiles: 3, maxSkillBytes: 80, maxTotalBytes: 100, maxFileBytes: 50 },
+			starved,
+		);
+
+		// Skill `a` hit its own maxSkillBytes (80), not maxTotalBytes.
+		// Skill `b` had room in its own budget (40 <= 80), but hit maxTotalBytes (100).
+		expect([...kept].sort()).toEqual([
+			'a/SKILL.md',
+			'a/assets/1.bin',
+			'a/assets/2.bin',
+			'b/SKILL.md',
+		]);
+		expect([...starved]).toEqual(['b']);
 	});
 });
 

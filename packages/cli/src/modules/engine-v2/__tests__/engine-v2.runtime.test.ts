@@ -468,6 +468,17 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.engine.stop).not.toHaveBeenCalled();
 		});
 
+		it('stops the engine when it fails to start', async () => {
+			mocks.engine.start.mockImplementationOnce(() => {
+				throw new Error('start failed');
+			});
+
+			await expect(newRuntime().init(initOptions())).rejects.toThrow('start failed');
+
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
 		it('closes the unbound server, stops the engine and closes the connection when the server fails to listen', async () => {
 			mocks.listen.error = new Error('listen failed');
 

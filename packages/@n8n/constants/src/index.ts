@@ -1,5 +1,6 @@
 export * from './api';
 export * from './browser';
+export * from './client';
 export * from './community-nodes';
 export * from './csp';
 export * from './instance';

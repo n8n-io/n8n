@@ -1,3 +1,4 @@
+import { AgentApprovalCleanupService } from './approval/agent-approval-cleanup.service';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -191,6 +192,11 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
+<<<<<<< HEAD
+=======
+		private readonly approvalCleanup: AgentApprovalCleanupService,
+		private readonly globalConfig: GlobalConfig,
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 		private readonly tagService: TagService,
 		private readonly folderService: FolderService,
 		private readonly licenseState: LicenseState,
@@ -1035,10 +1041,14 @@ export class AgentsService {
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
 
+		await this.approvalCleanup.assertCanCleanupAgent(agentId);
+
 		// The work of the account moves before any cleanup that cannot be undone.
 		// If a policy blocks the transfer, the agent stays as it was. The agent
 		// row and the account row go in one transaction.
 		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx, async () => {
+			await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
+
 			await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
 			await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);

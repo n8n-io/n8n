@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # [3.4.0](https://github.com/n8n-io/n8n/compare/n8n@2.49.0...n8n@3.4.0) (2026-11-24)
+=======
+# [2.50.0](https://github.com/n8n-io/n8n/compare/n8n@2.49.0...n8n@2.50.0) (2026-11-24)
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 
 
 ### Bug Fixes
@@ -19,7 +23,10 @@
 * **AWS Bedrock Chat Model Node:** Report the token usage Bedrock returns ([#43796](https://github.com/n8n-io/n8n/issues/43796)) ([ff6cc05](https://github.com/n8n-io/n8n/commit/ff6cc05cfa1c4a0963008dd249fd0a054f8ad4a7))
 * **Baserow Node:** Handle missing and non-string filter values ([#44493](https://github.com/n8n-io/n8n/issues/44493)) ([1e783f4](https://github.com/n8n-io/n8n/commit/1e783f4a623bf3cc9cf24d9f0869b471f04dad8f))
 * Center the output info tooltip icon ([#42961](https://github.com/n8n-io/n8n/issues/42961)) ([72f315e](https://github.com/n8n-io/n8n/commit/72f315eb5f98ca80d339c1ddfaa72dd0fbd220f4))
+<<<<<<< HEAD
 * Community package supportedNodesApiVersion v3 compatibility ([136be23](https://github.com/n8n-io/n8n/commit/136be23c14b524ba2e3f5a4c42e1ae202d1c1513))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * **Compression Node:** Keep all dots in gzip file names ([#42268](https://github.com/n8n-io/n8n/issues/42268)) ([d02c34a](https://github.com/n8n-io/n8n/commit/d02c34a818a66bebd5fe50d28854fe47cb5f464d))
 * **Contentful Node:** Advance skip by page size in Return All pagination ([#35983](https://github.com/n8n-io/n8n/issues/35983)) ([3e2e92f](https://github.com/n8n-io/n8n/commit/3e2e92fb0144ffbd98aea6206ff52aad095f9e2e))
 * **ConvertAPI Node:** Fail the credential test when the API token is invalid ([#43355](https://github.com/n8n-io/n8n/issues/43355)) ([84b7783](https://github.com/n8n-io/n8n/commit/84b77835821dd997a26b1860db05aa607396c56f))
@@ -34,12 +41,18 @@
 * **core:** Count process crashes per workflow for auto-unpublishing ([#43685](https://github.com/n8n-io/n8n/issues/43685)) ([85296e8](https://github.com/n8n-io/n8n/commit/85296e890fa6149a9caa46a73a6a6f74b02dcd80))
 * **core:** Detect a change to version-scoped workflow settings on source control pull ([#44107](https://github.com/n8n-io/n8n/issues/44107)) ([220fd62](https://github.com/n8n-io/n8n/commit/220fd62a61bef0b31c96ce297a805c247890aa11))
 * **core:** End memory guard hold when hold-limit stop frees no memory ([#44417](https://github.com/n8n-io/n8n/issues/44417)) ([e96e929](https://github.com/n8n-io/n8n/commit/e96e92982351c5af1518653c89fbd393ab24a971))
+<<<<<<< HEAD
 * **core:** Expand default blocked IP ranges for outbound request guard ([#38912](https://github.com/n8n-io/n8n/issues/38912)) ([488ef31](https://github.com/n8n-io/n8n/commit/488ef31d1207673657a02e79991a7beb60a37d7b))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * **core:** Export and restore large binary data in entity archives ([#44555](https://github.com/n8n-io/n8n/issues/44555)) ([3c16c5b](https://github.com/n8n-io/n8n/commit/3c16c5bad30ba536a54ffb72f21a5c8ebe8b8a4a))
 * **core:** Give custom instance roles access to the Migration Report ([#44656](https://github.com/n8n-io/n8n/issues/44656)) ([4144837](https://github.com/n8n-io/n8n/commit/41448377600934ac6b737eb6ea55a29ddcf0e537))
 * **core:** Give each workflow built in one run its own work item ([#44235](https://github.com/n8n-io/n8n/issues/44235)) ([9664604](https://github.com/n8n-io/n8n/commit/9664604b73097a01f284813ede8f4b7065e71733))
 * **core:** Give fresh installs a random instance ID ([#44248](https://github.com/n8n-io/n8n/issues/44248)) ([b74f4d2](https://github.com/n8n-io/n8n/commit/b74f4d2126f3d4fd1a0305976229b25cd2356ce9))
+<<<<<<< HEAD
 * **core:** Guard misconfigured s3 binary data mode at boot and normalize removed-mode detection ([#37337](https://github.com/n8n-io/n8n/issues/37337)) ([d1b925b](https://github.com/n8n-io/n8n/commit/d1b925b45ee3ccd58b2248ea639b6ec92767df05))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * **core:** Keep cached test webhooks cloneable after a failed cleanup ([#43723](https://github.com/n8n-io/n8n/issues/43723)) ([14801e8](https://github.com/n8n-io/n8n/commit/14801e83e9fe1751bc2f062db338539a58ea881f))
 * **core:** Keep each recipient's reply in its own agent session (no-c… ([#41858](https://github.com/n8n-io/n8n/issues/41858)) ([0f3ca7e](https://github.com/n8n-io/n8n/commit/0f3ca7e755110663b00c5c29ff7e20fe1caa4cec))
 * **core:** Keep Insights chart days distinct across DST changes on SQLite ([#42690](https://github.com/n8n-io/n8n/issues/42690)) ([ab3ddc3](https://github.com/n8n-io/n8n/commit/ab3ddc31ba0f17914c1d9e757ab432437603b8b6))
@@ -57,7 +70,10 @@
 * **core:** Preserve timezones in PostgreSQL execution date filters ([#43927](https://github.com/n8n-io/n8n/issues/43927)) ([b0ac536](https://github.com/n8n-io/n8n/commit/b0ac5361a57ddfb9fdbbeee0f186977b29fe31ee))
 * **core:** Prevents accessing personal project settings page and improves error messages when adding members to it ([#44208](https://github.com/n8n-io/n8n/issues/44208)) ([3753344](https://github.com/n8n-io/n8n/commit/375334498ecaead3fc65a65055893d11a077ebb0))
 * **core:** Refresh the cached token of an expirable credential during its test ([#44812](https://github.com/n8n-io/n8n/issues/44812)) ([4d047a5](https://github.com/n8n-io/n8n/commit/4d047a5f0f08d58821540f15d310c76249fe8003))
+<<<<<<< HEAD
 * **core:** Resolve master sync with 3.x queue routing ([1a9ee08](https://github.com/n8n-io/n8n/commit/1a9ee08134924d2fb80aee2881c152193c1fca2c))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * **core:** Retry failed trigger activations with exponential backoff ([#43708](https://github.com/n8n-io/n8n/issues/43708)) ([8c86d49](https://github.com/n8n-io/n8n/commit/8c86d496b9a9ce760c4073ba967757306fae53b6))
 * **core:** Return an item that holds a value the vm expression engine cannot copy ([#44483](https://github.com/n8n-io/n8n/issues/44483)) ([d7177ef](https://github.com/n8n-io/n8n/commit/d7177ef470cccf62ad7b52b288275bd631dfd05f))
 * **core:** Serve binary data of an Engine v2 execution only while the execution exists ([#44278](https://github.com/n8n-io/n8n/issues/44278)) ([69d302b](https://github.com/n8n-io/n8n/commit/69d302b270000d2a8adb026e908c8179529bab7f))
@@ -116,6 +132,7 @@
 * Missing OpenAI icons in 3.x ([#44682](https://github.com/n8n-io/n8n/issues/44682)) ([6189cf4](https://github.com/n8n-io/n8n/commit/6189cf480b9eaf8e0573508a6dc90d8742c21af5))
 * **MySQL Node:** Apply the Connection Timeout the user set ([#44448](https://github.com/n8n-io/n8n/issues/44448)) ([f6af6bd](https://github.com/n8n-io/n8n/commit/f6af6bd380cb7d9d3c0ee67ba9b0c6fd23dff9e3))
 * **Netlify Node:** Update logo to current Netlify branding ([#44735](https://github.com/n8n-io/n8n/issues/44735)) ([a7b5af8](https://github.com/n8n-io/n8n/commit/a7b5af8cc6056821827bb9a7ea8afbf84e84c759))
+<<<<<<< HEAD
 * **node-cli:** Give each n8n image its own dev data volume ([2a01188](https://github.com/n8n-io/n8n/commit/2a01188ee6b6cda02d1af332a17f26d2c6dd9105))
 * **node-cli:** Harden the dev command against shell, timeout and port issues ([f8887e3](https://github.com/n8n-io/n8n/commit/f8887e3179757c4459275bcf0215406a9a8e5fee))
 * **node-cli:** Report why a dev reload did not reach n8n ([8beced0](https://github.com/n8n-io/n8n/commit/8beced080604359e349cda09fe29abfb5d94e11f))
@@ -123,6 +140,10 @@
 * **Ollama Chat Model Node:** Stop reporting expected API errors to Sentry ([#44385](https://github.com/n8n-io/n8n/issues/44385)) ([16767aa](https://github.com/n8n-io/n8n/commit/16767aa3676f48b2f8389f2199e6261a8736f1f1))
 * **Postgres Trigger Node:** Release the dedicated LISTEN connection on close ([#44509](https://github.com/n8n-io/n8n/issues/44509)) ([945aedc](https://github.com/n8n-io/n8n/commit/945aedca510a754a491549a8e58c549540c9c0da))
 * Remove LangChain Code example prompts from Instance AI examples ([7272d2f](https://github.com/n8n-io/n8n/commit/7272d2facedfb161e83d12f00810c8f370f3311b))
+=======
+* **Ollama Chat Model Node:** Stop reporting expected API errors to Sentry ([#44385](https://github.com/n8n-io/n8n/issues/44385)) ([16767aa](https://github.com/n8n-io/n8n/commit/16767aa3676f48b2f8389f2199e6261a8736f1f1))
+* **Postgres Trigger Node:** Release the dedicated LISTEN connection on close ([#44509](https://github.com/n8n-io/n8n/issues/44509)) ([945aedc](https://github.com/n8n-io/n8n/commit/945aedca510a754a491549a8e58c549540c9c0da))
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * Report MCP workflow trigger activation failures ([#43792](https://github.com/n8n-io/n8n/issues/43792)) ([7a384b3](https://github.com/n8n-io/n8n/commit/7a384b3580186fc1fd79514d3eb998193beef6de))
 * Require an n8n-workflow version with Node 26 binaries in the community nodes lint plugin (CE-3954) ([#43910](https://github.com/n8n-io/n8n/issues/43910)) ([279ad78](https://github.com/n8n-io/n8n/commit/279ad78a74d6e86c029fc5fe286c3c89c519221f))
 * Resolve variables in HTTP Request pagination ([#43967](https://github.com/n8n-io/n8n/issues/43967)) ([af1a88e](https://github.com/n8n-io/n8n/commit/af1a88e4d0f8b4fdb07b593b4353296a42131f27))
@@ -150,7 +171,10 @@
 * **API, editor:** Stop a Promote when the project changed after the preview ([#43897](https://github.com/n8n-io/n8n/issues/43897)) ([4349320](https://github.com/n8n-io/n8n/commit/434932043f2eed3144a4ca8e2009dc9e53f91d3f))
 * **API:** Add endpoints for AI preferences ([#44227](https://github.com/n8n-io/n8n/issues/44227)) ([3adc098](https://github.com/n8n-io/n8n/commit/3adc098b83e25f553cc1a2aef7a663354468a88e))
 * **API:** Add public endpoint to run a workflow with existing run data ([#44012](https://github.com/n8n-io/n8n/issues/44012)) ([775f9f3](https://github.com/n8n-io/n8n/commit/775f9f3d1e3e8ce58d10d857d3230774067d76f7))
+<<<<<<< HEAD
 * Bump N8N_NODES_API_VERSION to 3 ([2a8a63c](https://github.com/n8n-io/n8n/commit/2a8a63cad61d07456b2e0a99deed84469ee166c1))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * **core, editor:** Add folder support for Agents ([#43420](https://github.com/n8n-io/n8n/issues/43420)) ([86058fa](https://github.com/n8n-io/n8n/commit/86058fa88ac8698bc410c51e72aa58a561a34652))
 * **core, editor:** Allow users to close a workflow review without approval ([#44580](https://github.com/n8n-io/n8n/issues/44580)) ([cc6d959](https://github.com/n8n-io/n8n/commit/cc6d959020812377d52facc5290321924946618d))
 * **core, editor:** Enforce workflow reviews on instance level ([#44138](https://github.com/n8n-io/n8n/issues/44138)) ([a03ff17](https://github.com/n8n-io/n8n/commit/a03ff173a0b8c4b95c82c42f8c3ef114c7928bf4))
@@ -170,7 +194,10 @@
 * **core:** Show the instance Apply preview in the CLI ([#43856](https://github.com/n8n-io/n8n/issues/43856)) ([11ea85f](https://github.com/n8n-io/n8n/commit/11ea85ff22d733e792d9d15f64f68b4f0522b91f))
 * **core:** Support updating agents via PUT in the Public API ([#44031](https://github.com/n8n-io/n8n/issues/44031)) ([3b5236c](https://github.com/n8n-io/n8n/commit/3b5236c02b6123147f891656c06bc79ec273a7aa))
 * **core:** Tell n8n Assistant users how to save a preference when none are saved ([#44346](https://github.com/n8n-io/n8n/issues/44346)) ([948dcdf](https://github.com/n8n-io/n8n/commit/948dcdf6bc2fefcdde5e26a1cd6218a883da4932))
+<<<<<<< HEAD
 * **core:** Turn off the chat hub module by default ([#38612](https://github.com/n8n-io/n8n/issues/38612)) ([c23837d](https://github.com/n8n-io/n8n/commit/c23837da98583666478d244f5d9d4512361d482e))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * **core:** Wire model-based guardrails to tool guardrails ([#43998](https://github.com/n8n-io/n8n/issues/43998)) ([f25df67](https://github.com/n8n-io/n8n/commit/f25df67a6749946e79465b8f68eb079794e26d1f))
 * **Custom Endpoint Chat Model Node:** Add the sub-node for the AI Agent ([#42743](https://github.com/n8n-io/n8n/issues/42743)) ([c54f22c](https://github.com/n8n-io/n8n/commit/c54f22c76567a38705af5957e9d5da0536154635))
 * **Custom Endpoint Chat Model Node:** Call the Responses API ([#43797](https://github.com/n8n-io/n8n/issues/43797)) ([798bfb7](https://github.com/n8n-io/n8n/commit/798bfb73d79da65d08c0cc2abdced8bf32c38ff9))
@@ -198,8 +225,11 @@
 * **Postgres Node:** Add COPY option for bulk insert ([#44344](https://github.com/n8n-io/n8n/issues/44344)) ([18a7c5e](https://github.com/n8n-io/n8n/commit/18a7c5ed37a288ff4ad4ad2877a0c7c60f2387e8))
 * **Postgres Node:** Add Start After paging to Select ([#43679](https://github.com/n8n-io/n8n/issues/43679)) ([4cbe6db](https://github.com/n8n-io/n8n/commit/4cbe6dbdbffabda8fb72d41f5c12d36e7518b350))
 * **QuestDB Node:** Accept a CA certificate and allow skipping verification ([#44610](https://github.com/n8n-io/n8n/issues/44610)) ([60f080e](https://github.com/n8n-io/n8n/commit/60f080e7d881483f3f425f2536b280f8717f63e8))
+<<<<<<< HEAD
 * Remove dead nodes ([#34327](https://github.com/n8n-io/n8n/issues/34327)) ([8035d9c](https://github.com/n8n-io/n8n/commit/8035d9ccb06742ccad49d3e1ac62c6c77366bfd3))
 * Remove Edit Image v1-1.1 ([a2d527d](https://github.com/n8n-io/n8n/commit/a2d527d18e6ba3dc46a23ecff43c521c3bad39e7))
+=======
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 * Render Mermaid diagrams in the skill view ([#44571](https://github.com/n8n-io/n8n/issues/44571)) ([8360cf4](https://github.com/n8n-io/n8n/commit/8360cf441f59b1f5398c8997493bd1b7cdb269fe))
 * Show source attribution for recommended skills ([#44334](https://github.com/n8n-io/n8n/issues/44334)) ([c3b51b3](https://github.com/n8n-io/n8n/commit/c3b51b3c37a44812edd6db323bb86e1484b7240f))
 * Support accessible explanations for disabled buttons ([#41763](https://github.com/n8n-io/n8n/issues/41763)) ([d0129b4](https://github.com/n8n-io/n8n/commit/d0129b4fab18331c1eea75212cf526138e8f6b98))
@@ -207,6 +237,7 @@
 * **TimescaleDB Node:** Return a timestamp without time zone as the server sent it ([#44450](https://github.com/n8n-io/n8n/issues/44450)) ([1933f52](https://github.com/n8n-io/n8n/commit/1933f5260056662599b7c496092863ea115f79c8))
 
 
+<<<<<<< HEAD
 ### Reverts
 
 * Revert "feat(Execute Sub-workflow Node)!: Remove "Run once for each item" mode (#37036)" ([daa56f9](https://github.com/n8n-io/n8n/commit/daa56f97a78d72ad3d8069bef71b3c1da958a68c)), closes [#37036](https://github.com/n8n-io/n8n/issues/37036)
@@ -215,6 +246,9 @@
 
 
 # [3.3.0](https://github.com/n8n-io/n8n/compare/n8n@2.48.0...n8n@3.3.0) (2026-11-17)
+=======
+# [2.49.0](https://github.com/n8n-io/n8n/compare/n8n@2.48.0...n8n@2.49.0) (2026-11-17)
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 
 
 ### Bug Fixes

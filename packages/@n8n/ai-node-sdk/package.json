@@ -1,6 +1,10 @@
 {
   "name": "@n8n/ai-node-sdk",
+<<<<<<< HEAD
   "version": "1.4.0",
+=======
+  "version": "0.40.0",
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
   "description": "SDK for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",

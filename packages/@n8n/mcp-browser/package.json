@@ -1,6 +1,10 @@
 {
   "name": "@n8n/mcp-browser",
+<<<<<<< HEAD
   "version": "1.4.0",
+=======
+  "version": "0.27.0",
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
   "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

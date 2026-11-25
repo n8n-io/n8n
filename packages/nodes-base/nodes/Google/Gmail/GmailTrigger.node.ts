@@ -367,7 +367,12 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 		const simple = this.getNodeParameter('simple') as boolean;
 
+<<<<<<< HEAD
 		const shouldLimitMessages = this.getMode() !== 'manual';
+=======
+		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		if (shouldLimitMessages) this.declareBoundedPoll?.();
+>>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 		// How far this tick may reach before it must return — bounds scanning and
 		// fetching time, not delivery volume (maxResults stays the per-tick bound).
 		// Only consulted on shouldLimitMessages paths; pre-1.4 and manual polls are

@@ -218,6 +218,7 @@ const request = computed((): OperationRequest => {
 		return {
 			workflowIds: [],
 			folderIds: [],
+			credentialIds: [],
 			confirmDestructiveChanges: blockerList.value.some(({ kind }) => kind === 'destructive'),
 			deletedProjects: (check.value?.conflicts ?? []).flatMap((conflict) =>
 				conflict.code === 'project-deletion' ? conflict.project.name : [],
@@ -227,7 +228,7 @@ const request = computed((): OperationRequest => {
 	return {
 		...(graph.value
 			? toOperationRequest(graph.value, selection.selected.value)
-			: { workflowIds: [], folderIds: [] }),
+			: { workflowIds: [], folderIds: [], credentialIds: [] }),
 		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
 	};
 });
@@ -485,6 +486,7 @@ const treeResizer = useResizablePanel({
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
+						@toggle-group="selection.toggleGroup"
 						@select-all="selection.selectAll"
 						@clear="selection.clear"
 						@inspect="inspect"

@@ -1,9 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { LessThan, MoreThanOrEqual } from '@n8n/typeorm';
+import type { Repository } from '@n8n/typeorm';
+import { DataSource, LessThan, MoreThanOrEqual } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import { TokenExchangeJti } from '@/modules/token-exchange/database/entities/token-exchange-jti.entity';
 import { TokenExchangeJtiRepository } from '@/modules/token-exchange/database/repositories/token-exchange-jti.repository';
 import { JtiCleanupTask } from '@/modules/token-exchange/services/jti-cleanup.task';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
@@ -14,12 +16,14 @@ describe('JtiCleanupTask', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const signal = new AbortController().signal;
 	let repository: TokenExchangeJtiRepository;
+	let tableRepository: Repository<TokenExchangeJti>;
 	let task: JtiCleanupTask;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['token-exchange']);
 		await testDb.init();
 		repository = Container.get(TokenExchangeJtiRepository);
+		tableRepository = Container.get(DataSource).getRepository(TokenExchangeJti);
 		const config = Container.get(TokenExchangeConfig);
 		config.jtiCleanupBatchSize = 100;
 		task = new JtiCleanupTask(logger, config, repository);
@@ -38,7 +42,7 @@ describe('JtiCleanupTask', () => {
 	});
 
 	async function insertRows(prefix: string, count: number, expiresAt: Date): Promise<void> {
-		await repository.insert(
+		await tableRepository.insert(
 			Array.from({ length: count }, (_, i) => ({
 				jti: `${prefix}-${i}`,
 				expiresAt,
@@ -50,8 +54,8 @@ describe('JtiCleanupTask', () => {
 	async function counts(): Promise<{ expired: number; valid: number }> {
 		const now = new Date();
 		return {
-			expired: await repository.count({ where: { expiresAt: LessThan(now) } }),
-			valid: await repository.count({ where: { expiresAt: MoreThanOrEqual(now) } }),
+			expired: await tableRepository.count({ where: { expiresAt: LessThan(now) } }),
+			valid: await tableRepository.count({ where: { expiresAt: MoreThanOrEqual(now) } }),
 		};
 	}
 
@@ -78,14 +82,14 @@ describe('JtiCleanupTask', () => {
 		const runs = Promise.all(Array.from({ length: 4 }, async () => await task.run(signal)));
 		const fresh = Array.from(
 			{ length: 100 },
-			async (_, i) => await repository.atomicConsume(`fresh-${i}`, future),
+			async (_, i) => await repository.atomicConsume(`fresh-${i}`, future, {}),
 		);
 		const replays = Array.from(
 			{ length: 100 },
 			async (_, i) =>
 				await Promise.all([
-					repository.atomicConsume(`replay-${i}`, future),
-					repository.atomicConsume(`replay-${i}`, future),
+					repository.atomicConsume(`replay-${i}`, future, {}),
+					repository.atomicConsume(`replay-${i}`, future, {}),
 				]),
 		);
 		await runs;

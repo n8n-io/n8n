@@ -7,9 +7,19 @@ import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { TypeOrmExecutionStore, TypeOrmStepStore, type EngineStores } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
-import { createInMemoryWorkQueues, type OrchestrationMessage, type StepMessage } from '../../queue';
+import {
+	createInMemoryWorkQueues,
+	type EngineWorkQueues,
+	type OrchestrationMessage,
+	type StepMessage,
+} from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
-import { createEngineRuntime } from '../create-engine-runtime';
+import {
+	createEngineRuntime,
+	ENGINE_ROLES,
+	type EngineRole,
+	type EngineRuntimeOptions,
+} from '../create-engine-runtime';
 
 const fakeQueue = <T>() => ({
 	publish: vi.fn(async (_message: T) => {}),
@@ -25,13 +35,14 @@ const identityVerifier = new SharedSecretIdentityVerifier(secret);
 const token = mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' });
 const responseSender = noopExecutionResponseSender;
 
-const runtime = () =>
+const runtime = (options: Partial<EngineRuntimeOptions> = {}) =>
 	createEngineRuntime({
 		dataSource: fakeDataSource(),
 		admittance: new AllowAllAdmittance(),
 		identityVerifier,
 		responseSender,
 		queues: createInMemoryWorkQueues(),
+		...options,
 	});
 
 describe('createEngineRuntime', () => {
@@ -39,12 +50,17 @@ describe('createEngineRuntime', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('mounts the execution API behind authentication', async () => {
-		const unauthenticated = await request(runtime().app).post('/api/workflow-executions').send({});
+	it.each<{ name: string; roles?: EngineRole[] }>([
+		{ name: 'all roles (default)', roles: undefined },
+		{ name: 'api only', roles: ['api'] },
+	])('mounts the execution API behind authentication ($name)', async ({ roles }) => {
+		const unauthenticated = await request(runtime({ roles }).app)
+			.post('/api/workflow-executions')
+			.send({});
 		expect(unauthenticated.status).toBe(401);
 
 		// a rejected body proves the route is mounted without reaching the store
-		const response = await request(runtime().app)
+		const response = await request(runtime({ roles }).app)
 			.post('/api/workflow-executions')
 			.set('Authorization', `Bearer ${token}`)
 			.send({});
@@ -62,11 +78,120 @@ describe('createEngineRuntime', () => {
 		expect(response.body).toEqual({ error: 'unauthenticated' });
 	});
 
-	it('serves the healthcheck', async () => {
-		const response = await request(runtime().app).get('/healthz');
+	it.each<{ name: string; roles?: EngineRole[] }>([
+		{ name: 'all roles (default)', roles: undefined },
+		...ENGINE_ROLES.map((role) => ({ name: `${role} only`, roles: [role] })),
+	])('serves the healthcheck ($name)', async ({ roles }) => {
+		const response = await request(runtime({ roles }).app).get('/healthz');
 
 		expect(response.status).toBe(200);
 		expect(response.body).toEqual({ status: 'ok' });
+	});
+
+	it.each<{ name: string; roles: EngineRole[] }>([
+		{ name: 'orchestrator only', roles: ['orchestrator'] },
+		{ name: 'step-worker only', roles: ['step-worker'] },
+		{ name: 'orchestrator and step-worker', roles: ['orchestrator', 'step-worker'] },
+	])(
+		'needs no identity verifier and serves no execution API without the api role ($name)',
+		async ({ roles }) => {
+			// 404 and not 401: no authentication middleware is mounted either.
+			const response = await request(runtime({ roles, identityVerifier: undefined }).app).post(
+				'/api/workflow-executions',
+			);
+
+			expect(response.status).toBe(404);
+		},
+	);
+
+	it.each<{ name: string; roles?: EngineRole[] }>([
+		{ name: 'all roles (default)', roles: undefined },
+		{ name: 'api only', roles: ['api'] },
+	])('refuses the api role without an identity verifier ($name)', ({ roles }) => {
+		expect(() => runtime({ roles, identityVerifier: undefined })).toThrow(
+			'The api role needs an identity verifier',
+		);
+	});
+
+	it.each([
+		{ name: 'an empty role list', roles: [], error: 'The engine needs at least one role' },
+		{
+			name: 'an unknown role',
+			roles: ['worker'],
+			error: 'Unknown engine roles: worker. The valid roles are api, orchestrator, step-worker',
+		},
+		{
+			name: 'an unknown role next to a valid one',
+			roles: ['api', 'worker'],
+			error: 'Unknown engine roles: worker. The valid roles are api, orchestrator, step-worker',
+		},
+	])('refuses $name', ({ roles, error }) => {
+		// A host that parses a string can pass any value.
+		expect(() => runtime({ roles: roles as EngineRole[] })).toThrow(error);
+	});
+
+	it.each<{ name: string; roles?: EngineRole[]; consumed: Array<keyof EngineWorkQueues> }>([
+		{ name: 'all roles (default)', roles: undefined, consumed: ['orchestration', 'step'] },
+		{ name: 'api only', roles: ['api'], consumed: [] },
+		{ name: 'orchestrator only', roles: ['orchestrator'], consumed: ['orchestration'] },
+		{ name: 'step-worker only', roles: ['step-worker'], consumed: ['step'] },
+		{ name: 'a role listed twice', roles: ['step-worker', 'step-worker'], consumed: ['step'] },
+	])('starts and stops only the queues its roles consume ($name)', async ({ roles, consumed }) => {
+		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
+		const queues = {
+			orchestration: fakeQueue<OrchestrationMessage>(),
+			step: fakeQueue<StepMessage>(),
+		};
+		const engine = runtime({ roles, queues });
+
+		engine.start();
+		await engine.stop();
+
+		for (const name of ['orchestration', 'step'] as const) {
+			const times = consumed.includes(name) ? 1 : 0;
+			expect(queues[name].start, name).toHaveBeenCalledTimes(times);
+			expect(queues[name].stop, name).toHaveBeenCalledTimes(times);
+		}
+	});
+
+	it.each<{ name: string; roles: EngineRole[]; sweeps: Array<'waits' | 'reconciliation'> }>([
+		{ name: 'step-worker only', roles: ['step-worker'], sweeps: ['waits'] },
+		{ name: 'orchestrator only', roles: ['orchestrator'], sweeps: ['reconciliation'] },
+		{ name: 'api only', roles: ['api'], sweeps: [] },
+	])('runs only the sweepers of its roles ($name)', async ({ roles, sweeps }) => {
+		const sweepers = {
+			waits: vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null),
+			reconciliation: vi
+				.spyOn(TypeOrmExecutionStore.prototype, 'findStaleQueuedExecutions')
+				.mockResolvedValue([]),
+		};
+		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps').mockResolvedValue([]);
+		vi.spyOn(TypeOrmStepStore.prototype, 'findStaleQueuedSteps').mockResolvedValue([]);
+		vi.spyOn(TypeOrmStepStore.prototype, 'findStaleRunningSteps').mockResolvedValue([]);
+		const engine = runtime({
+			roles,
+			queues: {
+				orchestration: fakeQueue<OrchestrationMessage>(),
+				step: fakeQueue<StepMessage>(),
+			},
+			waitSweepIntervalMs: 1,
+			reconciliationIntervalMs: 1,
+		});
+		engine.start();
+
+		try {
+			// Longer than the 1 ms interval, so a started sweeper has run at least one pass.
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			for (const name of ['waits', 'reconciliation'] as const) {
+				if (sweeps.includes(name)) {
+					expect(sweepers[name], name).toHaveBeenCalled();
+				} else {
+					expect(sweepers[name], name).not.toHaveBeenCalled();
+				}
+			}
+		} finally {
+			await engine.stop();
+		}
 	});
 
 	it('hands the engine stores to the external dependencies', () => {
@@ -253,13 +378,6 @@ describe('createEngineRuntime', () => {
 		} finally {
 			await engine.stop();
 		}
-	});
-
-	it('starts and stops both workers', async () => {
-		const engine = runtime();
-		engine.start();
-
-		await expect(engine.stop()).resolves.toBeUndefined();
 	});
 
 	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(

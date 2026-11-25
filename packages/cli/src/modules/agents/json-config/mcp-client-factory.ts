@@ -103,6 +103,12 @@ export interface BuildMcpClientDeps {
 	projectId: string;
 	proxyFetch: CustomFetch;
 	/**
+	 * Set in a test run or an eval. This fetch answers every request of the server, so the client
+	 * resolves no credential, sends no auth header and never refreshes a token: a made-up 401
+	 * must not reach the real token endpoint or change the stored credential.
+	 */
+	simulatedFetch?: CustomFetch;
+	/**
 	 * Optional observer invoked when this server fails to connect. The
 	 * server's tools are skipped for the run; the run continues with the
 	 * remaining servers' tools. Used for logging/telemetry — the user-facing
@@ -115,6 +121,7 @@ export interface BuildMcpClientDeps {
 	 * storage), so tool permissions must never require approval.
 	 */
 	nonInterrupting?: boolean;
+	wrapApproval?: McpServerConfig['wrapApproval'];
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -132,17 +139,30 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const {
-		credentialProvider,
-		oauthService,
-		projectId,
-		proxyFetch,
-		onConnectionFailed,
-		onToolCallSettled,
-		nonInterrupting,
-	} = deps;
-	const { toolPermissions } = server;
+	const { credentialProvider, oauthService, projectId, proxyFetch } = deps;
 	const { McpClient } = await import('@n8n/agents');
+
+	if (deps.simulatedFetch) {
+		// The registry lookup reads no credential. It keeps the server's attribution on replies.
+		const registryNodeName = server.metadata?.nodeTypeName;
+		if (registryNodeName) {
+			try {
+				await deps.resolveRegistryConnection?.(registryNodeName);
+			} catch {
+				// The attribution is only a label. A simulated run does not need the connection.
+			}
+		}
+		// Keep a parseable URL: a mock can tell servers apart by it, and the SDK rejects a templated
+		// registry URL before it calls fetch. `.invalid` never resolves (RFC 2606).
+		const url = URL.canParse(server.url) ? server.url : SIMULATED_UNPARSEABLE_URL;
+		return new McpClient([
+			toSdkServerConfig(server, deps, {
+				url,
+				transport: server.transport,
+				fetch: deps.simulatedFetch,
+			}),
+		]);
+	}
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
 	let { credentialData, credentialType } = derivedAuth;
@@ -237,11 +257,28 @@ export async function buildMcpClientForServer(
 				}),
 			};
 
-	const sdkServerConfig: McpServerConfig = {
+	return new McpClient([
+		toSdkServerConfig(server, deps, { url, transport: runtimeTransport, fetch: authFetch }),
+	]);
+}
+
+/** Stand-in for a templated URL in a simulated run. Only the simulated fetch ever sees it. */
+const SIMULATED_UNPARSEABLE_URL = 'https://simulated-mcp-server.invalid/';
+
+function toSdkServerConfig(
+	server: AgentJsonMcpServerConfig,
+	deps: Pick<
+		BuildMcpClientDeps,
+		'onConnectionFailed' | 'onToolCallSettled' | 'nonInterrupting' | 'wrapApproval'
+	>,
+	connection: Pick<McpServerConfig, 'url' | 'transport' | 'fetch'>,
+): McpServerConfig {
+	const { toolPermissions } = server;
+	const { onConnectionFailed, onToolCallSettled, nonInterrupting } = deps;
+	return {
 		name: server.name,
-		url,
-		transport: runtimeTransport,
-		fetch: authFetch,
+		...connection,
+		...(deps.wrapApproval && { wrapApproval: deps.wrapApproval }),
 		...(toolPermissions !== undefined && {
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		}),
@@ -256,8 +293,6 @@ export async function buildMcpClientForServer(
 				}
 			: {}),
 	};
-
-	return new McpClient([sdkServerConfig]);
 }
 
 /**
@@ -267,7 +302,7 @@ export async function buildMcpClientForServer(
 export async function listMcpServerTools(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
-): Promise<Array<{ name: string; description: string }>> {
+): Promise<{ name: string; description: string }[]> {
 	let client: McpClient | undefined;
 	try {
 		client = await buildMcpClientForServer(server, deps);
