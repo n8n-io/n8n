@@ -187,4 +187,39 @@ describe(`Replaced built-ins (${engineName})`, () => {
 		expect(values[4]).toBeInstanceOf(String);
 		expect(values[4].valueOf()).toBe('from host');
 	});
+
+	it.each([
+		'String.prototype.valueOf',
+		'Number.prototype.valueOf',
+		'Boolean.prototype.valueOf',
+		'BigInt.prototype.valueOf',
+		'BigInt.prototype.toString',
+	])('keeps boxed primitives correct after an expression sets `call` on %s', (name) => {
+		expect(
+			evaluator.evaluate(
+				`{{ (${name}.call = function () { return 99; }, 'x') }}`,
+				data,
+				caller,
+				options,
+			),
+		).toBe('x');
+
+		const values = evaluator.evaluate(
+			'{{ [new String("ab"), new Number(5), new Boolean(false), Object(1n), $json.boxed] }}',
+			data,
+			caller,
+			options,
+		) as Array<{ valueOf(): unknown }>;
+
+		expect(values[0]).toBeInstanceOf(String);
+		expect(values[0].valueOf()).toBe('ab');
+		expect(values[1]).toBeInstanceOf(Number);
+		expect(values[1].valueOf()).toBe(5);
+		expect(values[2]).toBeInstanceOf(Boolean);
+		expect(values[2].valueOf()).toBe(false);
+		expect(values[3]).toBeInstanceOf(BigInt);
+		expect(values[3].valueOf()).toBe(1n);
+		expect(values[4]).toBeInstanceOf(String);
+		expect(values[4].valueOf()).toBe('from host');
+	});
 });

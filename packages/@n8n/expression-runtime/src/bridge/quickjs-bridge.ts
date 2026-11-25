@@ -1152,6 +1152,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	var objectToString = objectPrototype.toString;
 	var objectKeys = Object.keys;
 	var sameValue = Object.is;
+	var reflectApply = Reflect.apply;
 	var isArray = Array.isArray;
 	var isFiniteNumber = Number.isFinite;
 	var BoxedObject = Object;
@@ -1173,7 +1174,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 	function tryUnbox(fn, target) {
 		try {
-			return { ok: true, value: fn.call(target) };
+			return { ok: true, value: reflectApply(fn, target, []) };
 		} catch (_e) {
 			return { ok: false };
 		}
@@ -1200,7 +1201,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			proto: bigIntPrototype,
 			tag: '[object BigInt]',
 			unbox: bigIntValueOf,
-			encode: function(v) { return bigIntToString.call(v); },
+			encode: function(v) { return reflectApply(bigIntToString, v, []); },
 		});
 	}
 	function wrapBoxedPrimitive(v) {

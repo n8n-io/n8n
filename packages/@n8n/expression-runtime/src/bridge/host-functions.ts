@@ -1,10 +1,10 @@
 import type { NodeProxy } from '../types/evaluator';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import {
-	isBoxedPrimitive,
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_VALUE_KEY,
+	unboxPrimitive,
 } from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 import { prepareForGuest } from './guest-transfer';
@@ -111,6 +111,21 @@ export function getArrayElement(
 	return toHostMetadata(arr[index]);
 }
 
+/** Say whether a boxed primitive holds own enumerable keys other than the indices of a String. */
+function holdsOwnFields(value: object, primitive: string | number | boolean | bigint): boolean {
+	const indexCount = typeof primitive === 'string' ? primitive.length : 0;
+	return Object.keys(value).length > indexCount;
+}
+
+/**
+ * Say whether `value` is a boxed primitive that a direct transfer keeps whole.
+ * A direct transfer copies only the primitive, so own fields rule it out.
+ */
+function isWholeBoxedPrimitive(value: object): boolean {
+	const primitive = unboxPrimitive(value);
+	return primitive !== undefined && !holdsOwnFields(value, primitive);
+}
+
 /** Describe objects and arrays without reading their contents. */
 export function toHostMetadata(value: unknown): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
@@ -134,7 +149,7 @@ export function toHostMetadata(value: unknown): unknown {
 	// enumerable own keys. Transfer them directly.
 	if (
 		value instanceof Date ||
-		(value !== null && typeof value === 'object' && isBoxedPrimitive(value))
+		(value !== null && typeof value === 'object' && isWholeBoxedPrimitive(value))
 	) {
 		return value;
 	}

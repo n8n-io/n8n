@@ -39,6 +39,8 @@ describe('Expression - boxed primitives (engine parity)', () => {
 			bf: Object(false) as object,
 			bi: Object(1n) as object,
 			arr: [Object('ab') as object, Object(5) as object, Object(true) as object],
+			tagged: Object.assign(Object('ab') as object, { meta: 1 }),
+			taggedNumber: Object.assign(Object(5) as object, { unit: 'kg' }),
 			err: Object.assign(new Error('boom'), {
 				s: Object('ab') as object,
 				n: Object(5) as object,
@@ -212,6 +214,20 @@ describe('Expression - boxed primitives (engine parity)', () => {
 				expect(errStr).toBeInstanceOf(String);
 				expect(valueOf(errStr)).toBe('ab');
 			});
+
+			it.each(['$json', '$input.item.json'])(
+				'reads the own fields of a wrapper through %s',
+				(root) => {
+					expect(evaluate(`={{ ${root}.tagged.meta }}`, native)).toBe(1);
+					expect(evaluate(`={{ ${root}.taggedNumber.unit }}`, native)).toBe('kg');
+					expect(evaluate(`={{ Object.keys(${root}.tagged) }}`, native)).toEqual([
+						'0',
+						'1',
+						'meta',
+					]);
+					expect(evaluate(`={{ Object.keys(${root}.taggedNumber) }}`, native)).toEqual(['unit']);
+				},
+			);
 
 			it.each([
 				['={{ $json.s instanceof String }}', true],
