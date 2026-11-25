@@ -129,6 +129,8 @@ const open = ref(false);
 
 function showUpgradeModal() {
 	// The picker popover stacks above dialogs. Close it before the upgrade dialog opens.
+	// A close applies the local range. Restore the parent range first so this close does not apply a custom selection.
+	syncWithParentValue();
 	open.value = false;
 	upgradeModal.value = true;
 }
