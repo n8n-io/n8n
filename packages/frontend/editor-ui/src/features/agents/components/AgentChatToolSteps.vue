@@ -59,6 +59,8 @@ const props = defineProps<{
 	executionId?: string;
 	/** Host events that show right before the step of their call, by call. */
 	hostEvents?: ReadonlyMap<string, AgentsChatHostEventItem[]>;
+	/** The chat runs in test mode. A local tool call has no simulation, so the calls do not tell. */
+	testRun?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -147,7 +149,8 @@ const simulatedRouteItems = computed<AgentToolCallRouteItem[]>(() =>
 
 /** Keep raw tool calls collapsed under "N tool calls >" when multiple calls or a test run ran. */
 const collapseRawSteps = computed(
-	() => props.toolCalls.length > 1 || simulatedRouteItems.value.length > 0,
+	() =>
+		props.toolCalls.length > 1 || Boolean(props.testRun) || simulatedRouteItems.value.length > 0,
 );
 
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {

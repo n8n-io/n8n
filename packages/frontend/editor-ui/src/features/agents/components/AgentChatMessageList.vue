@@ -95,6 +95,8 @@ const props = defineProps<{
 	loadOlderMessagesFailed?: boolean;
 	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 	thinkingLabel?: string;
+	/** The chat runs in test mode. */
+	testRun?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -712,6 +714,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
 						:host-events="getGroupHostEventItems(group.id).toolCalls"
+						:test-run="testRun"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div
@@ -888,6 +891,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
 						:host-events="getGroupHostEventItems(group.id).toolCalls"
+						:test-run="testRun"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div

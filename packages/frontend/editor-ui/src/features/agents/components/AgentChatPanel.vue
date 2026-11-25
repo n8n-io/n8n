@@ -2350,6 +2350,7 @@ onBeforeUnmount(() => {
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
+				:test-run="props.chatMode === 'test'"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
