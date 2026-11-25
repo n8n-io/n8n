@@ -1,3 +1,4 @@
+import { slackHitl } from './slack-hitl';
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
@@ -54,6 +55,7 @@ import type { DecodedThread, OriginInput } from '../../integration-origin-suppor
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
+	readonly hitl = slackHitl;
 	constructor(private readonly agentRepository: AgentRepository) {
 		super();
 	}

@@ -23,6 +23,7 @@ import { valid } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -65,6 +66,14 @@ type PackageJson = {
 	name: 'installed-nodes';
 	private: true;
 	dependencies: Record<string, string>;
+};
+
+type PackageLoadOptions = {
+	/**
+	 * Reject the new version on a credential type conflict. Only for a user request:
+	 * restores, reinstalls and peer syncs must keep loading an installed package.
+	 */
+	rejectCredentialTypeConflicts?: boolean;
 };
 
 @Service()
@@ -463,8 +472,9 @@ export class CommunityPackagesService {
 		packageName: string,
 		version?: string,
 		checksum?: string,
+		options: PackageLoadOptions = {},
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { version, checksum });
+		return await this.installOrUpdatePackage(packageName, { ...options, version, checksum });
 	}
 
 	async updatePackage(
@@ -472,8 +482,14 @@ export class CommunityPackagesService {
 		installedPackage: InstalledPackages,
 		version?: string,
 		checksum?: string,
+		options: PackageLoadOptions = {},
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { installedPackage, version, checksum });
+		return await this.installOrUpdatePackage(packageName, {
+			...options,
+			installedPackage,
+			version,
+			checksum,
+		});
 	}
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
@@ -534,12 +550,15 @@ export class CommunityPackagesService {
 
 	private async installOrUpdatePackage(
 		packageName: string,
-		options:
-			| { version?: string; checksum?: string }
-			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
+		options: PackageLoadOptions &
+			(
+				| { version?: string; checksum?: string }
+				| { installedPackage: InstalledPackages; version?: string; checksum?: string }
+			) = {},
 	) {
 		return await this.packageMutex(async () => {
 			const isUpdate = 'installedPackage' in options;
+			const { rejectCredentialTypeConflicts = false } = options;
 			const packageVersion = !options.version ? 'latest' : options.version;
 
 			const authToken = await this.runRegistryChecks(packageName, packageVersion, options.checksum);
@@ -577,12 +596,20 @@ export class CommunityPackagesService {
 			let loader: PackageDirectoryLoader;
 			try {
 				await this.loadNodesAndCredentials.unloadPackage(packageName);
-				loader = await this.loadNodesAndCredentials.loadPackage(packageName);
+				loader = await this.loadNodesAndCredentials.loadPackage(packageName, {
+					rejectCredentialTypeConflicts,
+				});
 			} catch (error) {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
 				});
+				// Its message names the clashing credential types, so keep it for the caller.
+				// Client errors are not logged in production, so log it here.
+				if (error instanceof CredentialTypeConflictError) {
+					this.logger.error(error.message);
+					throw error;
+				}
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});

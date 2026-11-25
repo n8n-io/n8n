@@ -3,6 +3,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
+import type { AgentSkillReference } from './agent-skill.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
@@ -218,11 +219,6 @@ export interface AgentWhatsAppVerifyTokenResponse {
 /** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
 export interface AgentWebhookUrlResponse {
 	url: string;
-}
-
-export interface AgentSkillReference {
-	path: string;
-	content: string;
 }
 
 export interface AgentSkill {
@@ -598,6 +594,12 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 	/** Set on user turns that came in through a chat integration. */
 	author?: AgentMessageAuthor;
+	/**
+	 * Resources that the user sent with a user turn, for example mentioned
+	 * workflows. The system agent provider reads them from the stored model
+	 * input, and the chat host shows them. The shape belongs to that provider.
+	 */
+	references?: unknown[];
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */

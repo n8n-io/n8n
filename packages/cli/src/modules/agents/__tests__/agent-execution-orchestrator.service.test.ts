@@ -28,7 +28,7 @@ import { MockLanguageModelV3 } from 'ai/test';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
-import type { UserRepository, User } from '@n8n/db';
+import type { AgentExecutionStatisticsRepository, UserRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from '@n8n/errors';
@@ -46,6 +46,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { readReviewRequester } from '../approval/review-requester';
 import {
 	AgentChatExecutionService,
 	AgentTurnAlreadyRunningError,
@@ -263,6 +264,7 @@ function makeService(sandboxEnabled = false) {
 	});
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
+	const agentExecutionStatisticsRepository = mock<AgentExecutionStatisticsRepository>();
 	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 		isEnabled: () => sandboxEnabled,
 	});
@@ -339,10 +341,12 @@ function makeService(sandboxEnabled = false) {
 		settingsService,
 		createAgentSkillRefsService(),
 		userRepository,
+		agentExecutionStatisticsRepository,
 	);
 
 	return {
 		service,
+		agentExecutionStatisticsRepository,
 		logger,
 		userRepository,
 		cancellations,
@@ -914,6 +918,34 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it.each([
+		{ source: 'mcp', expected: 'mcp' },
+		{ source: undefined, expected: N8N_CHAT_INTEGRATION_TYPE },
+	])(
+		'records requester source $expected for a draft run with source $source',
+		async ({ source, expected }) => {
+			const { service, runtimeCacheService } = makeService();
+			const runtime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+			await collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					...(source ? { source } : {}),
+				}),
+			);
+
+			expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
+				id: user.id,
+				source: expected,
+			});
+		},
+	);
+
 	it('sends the knowledge use even when recording the turn fails', async () => {
 		const { service, runtimeCacheService, executionService, knowledgeUsageTracker } = makeService();
 		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
@@ -1079,6 +1111,16 @@ describe('AgentExecutionOrchestratorService', () => {
 				executionService.startExecutionRecording.mock.invocationCallOrder[0],
 			);
 			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
+			if (operation === 'start') {
+				expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
+					id: user.id,
+					source: 'preview',
+				});
+			} else {
+				expect(runtime.agent.resume.mock.calls[0][2].hostMetadata).not.toHaveProperty(
+					'n8nAgentReviewRequester',
+				);
+			}
 		});
 
 		it.each([true, false])(
@@ -2296,6 +2338,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
+			agentExecutionStatisticsRepository,
 			service,
 			runtimeCacheService,
 			executionService,
@@ -2340,6 +2383,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationMessageContextService.setLatest.mock.invocationCallOrder[0] ?? 0,
 		).toBeLessThan(runtime.agent.stream.mock.invocationCallOrder[0] ?? 0);
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).not.toHaveBeenCalled();
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
@@ -2425,6 +2469,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
 		const {
+			agentExecutionStatisticsRepository,
 			service,
 			runtimeCacheService,
 			executionService,
@@ -2454,6 +2499,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			usePublishedVersion: true,
 			sandboxPrincipalHash: integrationPrincipalHash,
 		});
+		expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
+			id: 'platform-user-1',
+			name: 'alice',
+			source: 'slack',
+		});
 		// The model sees the labelled text; the transcript keeps the plain text and the author.
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			[
@@ -2473,6 +2523,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.any(Date),
 		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
@@ -2494,6 +2545,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('runs production n8n Chat with a published user-owned session', async () => {
 		const {
+			agentExecutionStatisticsRepository,
 			service,
 			agentRepository,
 			runtimeCacheService,
@@ -2515,6 +2567,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
@@ -2534,6 +2587,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		// same as Preview.
 		expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject({
 			[BACKGROUND_PAUSE_USER_TURN_KEY]: true,
+		});
+		expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
+			id: user.id,
+			source: N8N_CHAT_INTEGRATION_TYPE,
 		});
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
@@ -3138,6 +3195,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
 		const {
+			agentExecutionStatisticsRepository,
 			service,
 			runtimeCacheService,
 			executionService,
@@ -3167,6 +3225,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			allowBackgroundTasks: false,
 		});
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
@@ -3188,8 +3247,33 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('continues a published turn when the usage counter cannot be saved', async () => {
+		const { service, runtimeCacheService, agentExecutionStatisticsRepository, logger } =
+			makeService();
+		const error = new Error('Database unavailable');
+		agentExecutionStatisticsRepository.recordAgentExecution.mockRejectedValue(error);
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+
+		await collect(
+			service.executeForTaskPublished({
+				agentId,
+				projectId,
+				message: 'run task',
+				memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
+			}),
+		);
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledWith('Failed to record agent execution statistic', {
+			error,
+		});
+	});
+
 	it('does not execute a published scheduled task when the agent quota hook rejects it', async () => {
-		const { service, runtimeCacheService, externalHooks } = makeService();
+		const { agentExecutionStatisticsRepository, service, runtimeCacheService, externalHooks } =
+			makeService();
 		const quotaError = new UserError('Execution quota exhausted');
 		externalHooks.run.mockRejectedValue(quotaError);
 
@@ -3207,10 +3291,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		).rejects.toBe(quotaError);
 
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).not.toHaveBeenCalled();
 	});
 
 	it('does not run the quota hook for manually started scheduled tasks', async () => {
-		const { service, runtimeCacheService, externalHooks, executionService } = makeService();
+		const {
+			agentExecutionStatisticsRepository,
+			service,
+			runtimeCacheService,
+			externalHooks,
+			executionService,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -3226,6 +3317,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).not.toHaveBeenCalled();
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ access: { accessScope: 'project', ownerId: null } }),
 			expect.any(Date),
@@ -3244,6 +3336,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+		expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toBeUndefined();
 	});
 
 	it('requests pending job results after a chat turn and ignores request errors', async () => {
@@ -3468,11 +3561,19 @@ describe('AgentExecutionOrchestratorService', () => {
 			abortSignal,
 		});
 
+		expect(executionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			usePublishedVersion: false,
+			previewChat: true,
 			user,
 			sandboxPrincipalHash: userPrincipalHash,
 		});
@@ -3510,6 +3611,50 @@ describe('AgentExecutionOrchestratorService', () => {
 		// Draft wakes skip the quota hook and do not trigger another wake.
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
+	});
+
+	it('keeps previewChat unset on a wake for a non-preview draft thread', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		executionService.canUseDraftThread.mockImplementation(
+			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
+		);
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await service.executeForWake({
+			backgroundJobSignal,
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>[]</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			identity: { type: 'draft', user, principalHash: userPrincipalHash },
+			abortSignal: new AbortController().signal,
+		});
+
+		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
+			1,
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
+			2,
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: false, sessionMode: 'existing' },
+		);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			usePublishedVersion: false,
+			user,
+			sandboxPrincipalHash: userPrincipalHash,
+		});
 	});
 
 	it.each(['draft', 'published'] as const)(
@@ -3554,8 +3699,43 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
+	it('counts a published wake only when its runtime starts after a retry', async () => {
+		const { service, runtimeCacheService, agentExecutionStatisticsRepository } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const controller = new AbortController();
+		const config = {
+			agentId,
+			projectId,
+			message: 'Wake',
+			backgroundJobSignal,
+			memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+			identity: {
+				type: 'published' as const,
+				integrationType: 'slack',
+				principalHash: integrationPrincipalHash,
+			},
+		};
+
+		await expect(
+			service.executeForWake({
+				...config,
+				abortSignal: controller.signal,
+				onAdmitted: async () => controller.abort(),
+			}),
+		).rejects.toThrow();
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).not.toHaveBeenCalled();
+
+		await service.executeForWake({ ...config, abortSignal: new AbortController().signal });
+
+		expect(runtime.agent.stream).toHaveBeenCalledTimes(1);
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
+	});
+
 	it('delivers a published wake through the stored connection and reply thread', async () => {
 		const {
+			agentExecutionStatisticsRepository,
 			service,
 			runtimeCacheService,
 			externalHooks,
@@ -3602,6 +3782,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			encodeEpisodicScopeMetadata({ disabled: true }),
 		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		// The third argument keeps a card the woken turn raises addressed to the
 		// person the conversation belongs to, on platforms that can target one.
@@ -4041,6 +4222,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
 		const {
+			agentExecutionStatisticsRepository,
 			service,
 			checkpointStorage,
 			runtimeCacheService,
@@ -4094,6 +4276,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(agentExecutionStatisticsRepository.recordAgentExecution).not.toHaveBeenCalled();
 		// After the resumed turn, request any job results that arrived during the approval wait.
 		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');

@@ -20,6 +20,7 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
+import { AgentAttentionFlagRepository } from './repositories/agent-attention-flag.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type {
 	AgentRunTelemetryType,
@@ -223,6 +224,7 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly attentionFlags: AgentAttentionFlagRepository,
 		private readonly integrationMessageContext: IntegrationMessageContextService,
 		private readonly metrics: AgentExecutionMetrics,
 	) {}
@@ -1022,7 +1024,7 @@ export class AgentExecutionService {
 		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
 	}
@@ -1063,9 +1065,25 @@ export class AgentExecutionService {
 		}
 		executions.reverse();
 
-		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * The timeline of one execution of a thread, also when it moved to blob
+	 * storage. `null` when the thread has no execution with this id, or the
+	 * execution has no readable timeline. Does not check access to the thread.
+	 */
+	async findExecutionTimeline(
+		agentId: string,
+		threadId: string,
+		executionId: string,
+	): Promise<TimelineEvent[] | null> {
+		const execution = await this.agentExecutionRepository.findExecution(executionId);
+		if (execution?.threadId !== threadId) return null;
+		await this.hydrateTimelines(agentId, threadId, [execution]);
+		return execution.timeline;
 	}
 
 	/**
@@ -1081,8 +1099,11 @@ export class AgentExecutionService {
 	private async hydrateExecutionInputs(
 		executions: AgentExecution[],
 		agentName: string,
+		agentId: string,
 	): Promise<void> {
 		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
+		// A system agent can read the resources of a message from its stored model input.
+		const provider = this.systemAgents.get(agentId);
 		const seen = new Set<string>();
 
 		for (const execution of executions) {
@@ -1100,6 +1121,11 @@ export class AgentExecutionService {
 				if (message.origin?.hidden) continue;
 				const dto = this.inputMessageToDto(message, execution.id, agentName);
 				if (!dto) continue;
+				const references =
+					message.modelContent && provider?.readMessageReferences
+						? provider.readMessageReferences(message.modelContent)
+						: [];
+				if (references.length > 0) dto.references = references;
 				execution.inputMessages.push(dto);
 			}
 			const parts = execution.inputMessages.flatMap(({ content }) => content);
@@ -1340,13 +1366,17 @@ export class AgentExecutionService {
 				const finalized = await this.txRunner.run({}, async (ctx) => {
 					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
 						return false;
-					return await this.agentExecutionRepository.updateIfRunning(
+					const updated = await this.agentExecutionRepository.updateIfRunning(
 						executionId,
 						terminalValues,
 						undefined,
 						ctx,
 						record.totalCost ?? undefined,
 					);
+					if (updated && status === 'error') {
+						await this.attentionFlags.flagSession(params.threadId, 'session-error', ctx);
+					}
+					return updated;
 				});
 				if (!finalized) {
 					throw new OperationalError('Agent execution is no longer running', {

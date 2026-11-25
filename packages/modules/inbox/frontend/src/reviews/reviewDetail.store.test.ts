@@ -1,6 +1,7 @@
 import type {
 	DecideWorkflowReviewRequestResponse,
 	WorkflowReviewRequestDetail,
+	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -27,6 +28,7 @@ function detail(id: string): WorkflowReviewRequestDetail {
 		viewerCanDecide: true,
 		viewerCanComment: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanClose: true,
 	};
 }
 
@@ -132,4 +134,29 @@ it('keeps a different review request when an earlier decision finishes', async (
 	expect(store.detail?.state).toBe('open');
 	expect(store.detail?.id).toBe('other');
 	expect(store.detailLoading).toBe(false);
+});
+
+const closedSummary = (id: string): WorkflowReviewRequestSummary => ({
+	id,
+	state: 'closed',
+	decision: 'pending',
+	workflowVersionId: null,
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-02T00:00:00.000Z',
+});
+
+it('shows the selected review as closed once the close succeeds', async () => {
+	vi.mocked(api.fetchWorkflowReviewRequestDetail).mockResolvedValueOnce(detail('review'));
+	vi.mocked(api.closeWorkflowReviewRequest).mockResolvedValueOnce(closedSummary('review'));
+	const store = useReviewDetailStore();
+	await store.fetchDetail('review');
+
+	await store.closeReview('review');
+
+	expect(api.closeWorkflowReviewRequest).toHaveBeenCalledWith(expect.anything(), 'review');
+	expect(store.detail).toMatchObject({
+		state: 'closed',
+		decision: 'pending',
+		updatedAt: '2026-01-02T00:00:00.000Z',
+	});
 });

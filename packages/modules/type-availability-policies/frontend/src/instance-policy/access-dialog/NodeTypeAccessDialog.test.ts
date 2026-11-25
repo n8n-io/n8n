@@ -12,11 +12,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NodeTypeAccessDialog from './NodeTypeAccessDialog.vue';
 import { useInstancePolicyStore } from '../instance-policy.store';
+import { useRestrictReviewStore } from '../restrict-review/restrict-review.store';
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
+	fetchCredentialTypeUsage: vi.fn(),
 }));
 
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
@@ -46,10 +49,10 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 
 // Element Plus selects do not open in jsdom, so the stub shows the value and picks the other one.
 const typeAccessSelectStub = {
-	props: ['modelValue', 'label'],
+	props: ['modelValue', 'label', 'loading'],
 	emits: ['update:modelValue'],
 	template:
-		"<button data-test-id=\"type-access-select\" :data-value=\"modelValue\" @click=\"$emit('update:modelValue', modelValue === 'deny' ? 'allow' : 'deny')\">{{ label }}</button>",
+		'<button data-test-id="type-access-select" :data-value="modelValue" :data-loading="loading" @click="$emit(\'update:modelValue\', modelValue === \'deny\' ? \'allow\' : \'deny\')">{{ label }}</button>',
 };
 
 function nodeType(name: string, displayName: string, credentials: string[] = []) {
@@ -113,6 +116,11 @@ async function setup(
 	return rendered;
 }
 
+const usageIn = (section: HTMLElement) =>
+	within(section)
+		.queryAllByTestId('type-access-item-usage')
+		.map((line) => line.textContent?.trim());
+
 describe('NodeTypeAccessDialog', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -137,6 +145,12 @@ describe('NodeTypeAccessDialog', () => {
 			version: 2,
 			warnings: [],
 		}));
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			'n8n-nodes-base.notion': { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+		});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({
+			notionApi: { uses: 1, workflows: 1, activeWorkflows: 0, projects: 1 },
+		});
 		componentRegistry.register('node-type-icon', {
 			props: ['nodeType', 'size'],
 			template: '<span data-test-id="node-icon" :data-type="nodeType?.name" />',
@@ -196,6 +210,46 @@ describe('NodeTypeAccessDialog', () => {
 			['Notion API', 'deny'],
 			['Notion OAuth2 API', 'allow'],
 		]);
+	});
+
+	it('shows the usage of the node and of each related type', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+
+		expect(usageIn(getByTestId('node-type-access-node'))).toEqual([
+			'Used 3 times across 2 workflows · 1 active',
+		]);
+		expect(usageIn(getByTestId('node-type-access-related-node'))).toEqual([
+			'Not used in any workflow',
+		]);
+		expect(usageIn(getByTestId('node-type-access-related-credential'))).toEqual([
+			'Used 1 time across 1 workflow · 0 active',
+			'Not used in any workflow',
+		]);
+	});
+
+	it('shows no usage of credential types to a user who cannot manage them', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion', ['nodeTypePolicy:manage']);
+
+		expect(usageIn(getByTestId('node-type-access-node'))).toEqual([
+			'Used 3 times across 2 workflows · 1 active',
+		]);
+		expect(usageIn(getByTestId('node-type-access-related-credential'))).toEqual([]);
+		expect(mocks.fetchCredentialTypeUsage).not.toHaveBeenCalled();
+	});
+
+	it('shows no usage of a kind whose counts do not load, and the usage of the other kind', async () => {
+		mocks.fetchNodeTypeUsage.mockRejectedValue(new Error('offline'));
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+
+		expect(usageIn(getByTestId('node-type-access-node'))).toEqual([]);
+		expect(usageIn(getByTestId('node-type-access-related-node'))).toEqual([]);
+		expect(usageIn(getByTestId('node-type-access-related-credential'))).toEqual([
+			'Used 1 time across 1 workflow · 0 active',
+			'Not used in any workflow',
+		]);
+		expect(
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
+		).toHaveAttribute('data-value', 'allow');
 	});
 
 	it('does not relate Gmail to other Google nodes through the shared Google credential', async () => {
@@ -296,7 +350,7 @@ describe('NodeTypeAccessDialog', () => {
 			)[1];
 
 		await fireEvent.click(notionOAuth());
-		expect(notionOAuth()).toHaveAttribute('data-value', 'deny');
+		await waitFor(() => expect(notionOAuth()).toHaveAttribute('data-value', 'deny'));
 		save.reject(new Error('offline'));
 
 		await waitFor(() =>
@@ -322,6 +376,8 @@ describe('NodeTypeAccessDialog', () => {
 	});
 
 	it('keeps the rule that decides for the Tool variant when the node changes', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const denyNotionTool = {
 			id: 'deny-notion-tool',
 			action: 'deny',
@@ -355,6 +411,8 @@ describe('NodeTypeAccessDialog', () => {
 	});
 
 	it('keeps showing the latest choice when an earlier save on the same row ends', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const firstSave = createDeferredPromise<unknown>();
 		const secondSave = createDeferredPromise<unknown>();
 		mocks.saveInstancePolicy
@@ -365,6 +423,7 @@ describe('NodeTypeAccessDialog', () => {
 			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
 
 		await fireEvent.click(nodeSelect());
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
 		await fireEvent.click(nodeSelect());
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
 
@@ -382,6 +441,70 @@ describe('NodeTypeAccessDialog', () => {
 		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(2));
 
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
+	});
+
+	it('asks before it restricts a node type in use, and keeps Allowed when the admin cancels', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+		const review = useRestrictReviewStore();
+		const nodeSelect = () =>
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
+
+		await fireEvent.click(nodeSelect());
+
+		await waitFor(() =>
+			expect(review.request).toEqual({
+				kind: 'node',
+				name: 'n8n-nodes-base.notion',
+				label: 'Notion',
+				usage: { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+			}),
+		);
+		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
+
+		review.resolve(false);
+		await waitFor(() => expect(review.request).toBeNull());
+		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
+		expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+	});
+
+	it('shows that a restriction waits for the usage counts', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+		const counts = createDeferredPromise<Record<string, unknown>>();
+		mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+		const nodeSelect = () =>
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
+
+		await fireEvent.click(nodeSelect());
+
+		await waitFor(() => expect(nodeSelect()).toHaveAttribute('data-loading', 'true'));
+
+		counts.resolve({});
+		await waitFor(() => expect(nodeSelect()).toHaveAttribute('data-loading', 'false'));
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+	});
+
+	it('restricts a node type in use when the admin confirms', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+		const review = useRestrictReviewStore();
+
+		await fireEvent.click(
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
+		);
+		await waitFor(() => expect(review.request).not.toBeNull());
+		review.resolve(true);
+
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
+			rules: [
+				{
+					id: expect.any(String),
+					action: 'deny',
+					selector: { kind: 'name', value: 'n8n-nodes-base.notion' },
+				},
+			],
+			defaultAction: 'allow',
+			version: 1,
+		});
 	});
 
 	it('shows no Credentials tab advice to a user who cannot manage credential types', async () => {

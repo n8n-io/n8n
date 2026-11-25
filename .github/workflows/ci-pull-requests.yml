@@ -17,6 +17,11 @@ jobs:
     needs: pr-policy
     if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    # find-last-green-commit.mjs reads the workflow runs and the PR commits.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -46,7 +51,10 @@ jobs:
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       affected_base: ${{ steps.affected-base.outputs.sha }}
-      merge_base: ${{ steps.ci-filter.outputs.merge-base }}
+      affected_head: ${{ steps.affected-base.outputs.head }}
+      lockfile_base: ${{ steps.affected-base.outputs.lockfile-base }}
+      # The merge base, or the last green commit when this run tests only the newer commits.
+      diff_base: ${{ steps.ci-filter.outputs.diff-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
@@ -64,20 +72,23 @@ jobs:
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # Lint and typecheck compare the checked-out commit against this base. On a
-      # PR it is the first parent of the merge commit. A merge group can hold more
-      # than one PR, so it uses the queue base.
-      - name: Resolve affected base
-        id: affected-base
-        env:
-          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
-        run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
+      # Finds the newest PR commit that passed this workflow, so that ci-filter tests
+      # only the newer commits. The merge queue tests the whole PR on the latest master.
+      - name: Find last green commit
+        id: last-green
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+        continue-on-error: true
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/find-last-green-commit.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for relevant changes
         uses: ./.github/actions/ci-filter
         id: ci-filter
         with:
           mode: filter
+          incremental-base: ${{ steps.last-green.outputs.result }}
           filters: |
             ci:
               **
@@ -262,6 +273,36 @@ jobs:
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
 
+      # Lint and typecheck compare these two commits. On a PR, the base is the first
+      # parent of the merge commit. A merge group can hold more than one PR, so it
+      # uses the queue base. An incremental run compares the last green commit with
+      # the PR head: the merge commit also holds the master changes since that commit.
+      - name: Resolve affected base
+        id: affected-base
+        env:
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          INCREMENTAL: ${{ steps.ci-filter.outputs.incremental }}
+          DIFF_BASE: ${{ steps.ci-filter.outputs.diff-base }}
+        run: |
+          echo "lockfile-base=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
+          if [ "$INCREMENTAL" = 'true' ]; then
+            echo "sha=$DIFF_BASE" >> "$GITHUB_OUTPUT"
+            echo "head=$(git rev-parse HEAD^2)" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
+            echo "head=HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report incremental scope
+        if: steps.ci-filter.outputs.incremental == 'true'
+        env:
+          DIFF_BASE: ${{ steps.ci-filter.outputs.diff-base }}
+        run: |
+          {
+            echo "This run tests only the changes after $DIFF_BASE, the last commit of this PR that passed CI."
+            echo "To test the whole PR, add the \`force-full-ci\` label and re-run all jobs."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
@@ -289,7 +330,7 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
-          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.diff-base }}
         run: |
           JANITOR=packages/quality/testing/janitor/dist/cli.js
           # Without a built janitor (a workflow-only PR skips the build), report no
@@ -356,7 +397,7 @@ jobs:
       NODE_OPTIONS: --max-old-space-size=6144
       # Read by `turbo --affected`. If the base is missing, turbo checks every package.
       TURBO_SCM_BASE: ${{ needs.install-and-build.outputs.affected_base }}
-      TURBO_SCM_HEAD: HEAD
+      TURBO_SCM_HEAD: ${{ needs.install-and-build.outputs.affected_head || 'HEAD' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -387,6 +428,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       affectedBase: ${{ needs.install-and-build.outputs.affected_base }}
+      affectedHead: ${{ needs.install-and-build.outputs.affected_head }}
 
   check-packaging:
     name: Check packaging
@@ -443,13 +485,13 @@ jobs:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
           fetch-depth: 1
 
-      # Impact selection reads package.json at the merge base, and pnpm-lock.yaml at
-      # the affected base: the merge commit's first parent, so lockfile changes that
-      # master made after the merge base do not count as the PR's.
-      - name: Fetch merge base and affected base
+      # Impact selection reads package.json at the diff base, and pnpm-lock.yaml at
+      # the merge commit's first parent, so lockfile changes that master made after
+      # the merge base do not count as the PR's.
+      - name: Fetch diff base and lockfile base
         env:
-          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
-          AFFECTED_BASE: ${{ needs.install-and-build.outputs.affected_base }}
+          MERGE_BASE: ${{ needs.install-and-build.outputs.diff_base }}
+          AFFECTED_BASE: ${{ needs.install-and-build.outputs.lockfile_base }}
         run: |
           for sha in "$MERGE_BASE" "$AFFECTED_BASE"; do
             if [ -n "$sha" ] && ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
@@ -470,8 +512,8 @@ jobs:
         id: generate-matrix
         env:
           CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
-          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
-          LOCKFILE_BASE: ${{ needs.install-and-build.outputs.affected_base }}
+          MERGE_BASE: ${{ needs.install-and-build.outputs.diff_base }}
+          LOCKFILE_BASE: ${{ needs.install-and-build.outputs.lockfile_base }}
           PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |

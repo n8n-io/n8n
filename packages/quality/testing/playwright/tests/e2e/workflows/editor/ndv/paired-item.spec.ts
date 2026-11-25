@@ -6,7 +6,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
+		// TODO(CET-1206): engine v2 does not add the links that a Code node leaves out of its output, so the editor cannot pair the items behind it.
 		test('maps paired input and output items @engine:v2-pending', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
@@ -79,8 +79,8 @@ test.describe(
 			);
 		});
 
-		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
-		test('maps paired input and output items based on selected input node @engine:v2-pending', async ({
+		// Engine v2 runs a node that two branches feed once, so the node shows one run, not one for each branch.
+		test('maps paired input and output items based on selected input node @engine:v1-only', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
@@ -120,8 +120,8 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 		});
 
-		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
-		test('maps paired input and output items based on selected run @engine:v2-pending', async ({
+		// Engine v2 runs Set2 once, though two branches feed it. So Set3 shows one run, not two.
+		test('maps paired input and output items based on selected run @engine:v1-only', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
@@ -184,8 +184,8 @@ test.describe(
 			);
 		});
 
-		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
-		test('can pair items between input and output across branches and runs @engine:v2-pending', async ({
+		// Engine v2 runs a node that two branches feed once, so the node shows one run, not one for each branch.
+		test('can pair items between input and output across branches and runs @engine:v1-only', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
@@ -265,8 +265,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.get()).toContainText('Jay Gatsby');
 		});
 
-		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
-		test('can resolve expression with paired item in multi-input node @engine:v2-pending', async ({
+		test('can resolve expression with paired item in multi-input node @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('expression_with_paired_item_in_multi_input_node.json');

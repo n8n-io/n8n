@@ -330,7 +330,7 @@ export const listParentFolderOpenApi: ZodOpenAPIMetadata = {
 
 export const includeParentFolderOpenApi: ZodOpenAPIMetadata = {
 	description:
-		'Set to `true` to add `parentFolder` to each workflow. `parentFolder` holds the folder `id`, or is `null` at the project root.',
+		'Whether to add `parentFolder` to each workflow. `parentFolder` holds the ID of the folder that contains the workflow, or is `null` at the project root.',
 };
 
 /** `ZodOpenAPIMetadata` is a union, which will not assign into a nested `properties` slot. */

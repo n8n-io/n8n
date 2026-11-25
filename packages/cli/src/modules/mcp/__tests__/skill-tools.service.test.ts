@@ -289,6 +289,97 @@ describe('McpSkillToolsService', () => {
 			});
 		});
 
+		it('lists a binary file without its content', async () => {
+			skillService.get.mockResolvedValue({
+				...detail,
+				skill: {
+					...detail.skill,
+					references: [
+						{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+						{ path: 'references/tone.md', content: 'Warm.' },
+					],
+				},
+			});
+
+			const result = await callTool('get_skill', { skillId: 'skill_a' });
+
+			expect((result.structuredContent as { skill: unknown }).skill).toEqual({
+				...detail.skill,
+				references: [
+					{ path: 'assets/logo.png', isBinary: true, characterCount: 4 },
+					{ path: 'references/tone.md', content: 'Warm.', characterCount: 5 },
+				],
+			});
+			expect(JSON.stringify(result)).not.toContain('AP8=');
+		});
+
+		it('refuses a referenceOffset without a referencePath as an error result', async () => {
+			const result = await callTool('get_skill', { skillId: 'skill_a', referenceOffset: 10 });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				skillId: 'skill_a',
+				error: 'Pass referencePath with referenceOffset.',
+			});
+			expect(skillService.get).not.toHaveBeenCalled();
+		});
+
+		it('bounds reference content and reads omitted paths and the remaining parts on request', async () => {
+			const referencePath = 'reference/long.md';
+			const fullContent = `${'x'.repeat(50 * 1024)}Last part`;
+			skillService.get.mockResolvedValue({
+				...detail,
+				skill: {
+					...detail.skill,
+					references: [
+						{ path: referencePath, content: fullContent },
+						{ path: 'reference/other.md', content: 'Another guide' },
+					],
+				},
+			});
+
+			const initial = await callTool('get_skill', { skillId: 'skill_a' });
+			const firstRef = (
+				initial.structuredContent.skill as {
+					references: Array<{ content?: string; nextOffset?: number; contentTruncated?: boolean }>;
+				}
+			).references[0];
+			expect(firstRef.contentTruncated).toBe(true);
+			expect(firstRef.nextOffset).toBeGreaterThan(0);
+			expect(firstRef.content).toBe(fullContent.slice(0, firstRef.nextOffset));
+			expect(initial.structuredContent).toMatchObject({
+				omittedReferencePaths: ['reference/other.md'],
+			});
+			expect(JSON.stringify(initial.structuredContent)).not.toContain('Another guide');
+
+			const next = await callTool('get_skill', {
+				skillId: 'skill_a',
+				referencePath,
+				referenceOffset: firstRef.nextOffset,
+			});
+			expect(next.structuredContent).toMatchObject({
+				skill: {
+					references: [
+						{ path: referencePath, content: fullContent.slice(firstRef.nextOffset) },
+						{ path: 'reference/other.md' },
+					],
+				},
+			});
+			const omitted = await callTool('get_skill', {
+				skillId: 'skill_a',
+				referencePath: 'reference/other.md',
+			});
+			expect(omitted.structuredContent).toMatchObject({
+				skill: {
+					references: [
+						{ path: referencePath },
+						{ path: 'reference/other.md', content: 'Another guide' },
+					],
+				},
+			});
+		});
+
 		it('shows where a synced skill comes from', async () => {
 			skillService.get.mockResolvedValue(syncedDetail);
 
@@ -423,6 +514,8 @@ describe('McpSkillToolsService', () => {
 				'skill_a',
 				{ baseSkillHash: 'hash-2', instructions: 'Be kinder.', availableToAssistant: true },
 				'mcp',
+				// A client reads no binary content, so its update must not drop the binary files.
+				{ keepUnnamedBinaryFiles: true },
 			);
 			expect(result.structuredContent).toEqual({
 				id: 'skill_a',
@@ -447,6 +540,7 @@ describe('McpSkillToolsService', () => {
 				'skill_a',
 				{ baseSkillHash: 'hash-2', availableToMCP: true },
 				'mcp',
+				{ keepUnnamedBinaryFiles: true },
 			);
 		});
 

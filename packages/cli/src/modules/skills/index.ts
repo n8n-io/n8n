@@ -39,8 +39,12 @@ export {
 	type AssistantSkillSummary,
 	type LatestSkill,
 	type McpSkillContent,
+	type McpSkillFile,
+	type McpSkillListItem,
+	type SkillFileReadOptions,
 	type SkillMoveOptions,
 	type SkillRef,
 	type SkillSaveResult,
 	type SkillTarget,
 } from './utils/skill-content';
+export { withUnsentSkillFiles } from './utils/skill-model-update';

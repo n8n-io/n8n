@@ -134,6 +134,8 @@ export type McpResponseMessage = {
 	mcpType: 'service' | 'trigger';
 	sessionId: string;
 	messageId: string;
+	/** Name of the tool that produced `response`, for MCP Trigger tool calls. */
+	toolName?: string;
 	response: unknown;
 	workerId: string;
 };

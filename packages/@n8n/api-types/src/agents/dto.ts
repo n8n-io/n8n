@@ -1,3 +1,4 @@
+import { AgentHitlOptionsQuerySchema } from './agent-hitl.schema';
 import { jsonParse } from 'n8n-workflow';
 import { z, type ZodRawShape } from 'zod';
 
@@ -176,11 +177,22 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
+	/** Comma-separated session IDs, or repeated query parameters. An empty list matches nothing. */
+	sessionIds: z.preprocess(
+		(value) =>
+			typeof value === 'string'
+				? value
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: value,
+		z.array(z.string().min(1).max(128)).max(500).optional(),
+	),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly' | 'sessionIds'
 >;
 
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
@@ -192,10 +204,22 @@ export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	sourceFacetId: z.string().min(1).max(255).optional(),
 }) {}
 
-/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+const threadCursorTimestamp = z.string().datetime();
+
+/** Cross-agent n8n Chat thread list: no status, origin, or scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
-	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
-	cursor: z.string().datetime().optional(),
+	// New cursors add the thread ID to break ties at the same update time.
+	cursor: z
+		.string()
+		.refine((cursor) => {
+			const [timestamp, ...idParts] = cursor.split('|');
+			return (
+				threadCursorTimestamp.safeParse(timestamp).success &&
+				(idParts.length === 0 || idParts.join('|') !== '') &&
+				!cursor.includes('\0')
+			);
+		}, 'Invalid session cursor')
+		.optional(),
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
@@ -835,11 +859,26 @@ export const lowercaseUuidSchema = z
 	.refine((value) => value === value.toLowerCase(), { message: 'The UUID must be lowercase' });
 
 /**
+ * Raised character limit for chat surfaces where users paste long,
+ * externally-drafted prompts (agent builder, Assistant). The system agent
+ * chat routes enforce it on the backend.
+ */
+export const EXTENDED_PROMPT_MAX_LENGTH = 25_000;
+
+const systemAgentMessageSchema = z
+	.string()
+	.max(
+		EXTENDED_PROMPT_MAX_LENGTH,
+		`Message must be ${EXTENDED_PROMPT_MAX_LENGTH} characters or fewer`,
+	);
+
+/**
  * A system agent session ID is a lowercase UUID. System agents derive
  * resource names, such as sandbox names, from it.
  */
 const systemAgentChatMessageShape = {
 	...agentChatMessageShape,
+	message: systemAgentMessageSchema,
 	sessionId: lowercaseUuidSchema.optional(),
 };
 
@@ -870,8 +909,9 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 /**
  * The chat message of a system agent. Same as {@link AgentChatMessageDto},
- * but the session ID must be a lowercase UUID. Validate via `parse`/`safeParse`,
- * for the same reason as `AgentChatMessageDto`.
+ * but the session ID must be a lowercase UUID and the message has a maximum
+ * length. Validate via `parse`/`safeParse`, for the same reason as
+ * `AgentChatMessageDto`.
  */
 export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageShape) {
 	constructor(data: z.infer<typeof systemAgentChatMessageSchema>) {
@@ -889,6 +929,11 @@ export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageSha
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+/** Same as {@link AgentChatQueueUpdateDto}, with the system agent message limit. */
+export class SystemAgentChatQueueUpdateDto extends Z.class({
+	message: systemAgentMessageSchema,
 }) {}
 
 export class AgentChatQueueSteerDto extends Z.class({
@@ -1050,3 +1095,5 @@ export class AgentChatCancelDto extends Z.class({
 export class AgentTaskCancellationDto extends Z.class({
 	planId: z.string().uuid().toLowerCase().nullable(),
 }) {}
+
+export class AgentHitlOptionsQueryDto extends Z.class(AgentHitlOptionsQuerySchema.shape) {}

@@ -2,14 +2,14 @@
 
 ## Rules
 
-- Always use `n8n:ui-design` skill when building or refactoring components
-- Always add stories for new components to `packages/frontend/@n8n/design-system`.
-- Always add comments to the public interfaces, with comments explaining what each one is for
-- Always add a `.test.ts` file with relevant tests for each component
-- Put the stories and the tests in the component folder, next to the component, for example `N8nButton/Button.stories.ts` and `N8nButton/Button.test.ts`
-- Always add i18n translations for user-facing strings, including accessible labels
-- Always use `n8n:content-design` skill for copy wording
-- Prefer to bind fixed child component props from a fixed props object. Add comment that explain why each prop must remain fixed.
+- Load the `ui-design` skill (`.agents/skills/ui-design`) when you build or refactor a component.
+- Add stories for each new component.
+- Add a comment to each public interface. The comment tells what the interface is for.
+- Add a `.test.ts` file with tests for each component.
+- Put the stories and the tests in the component folder, next to the component, for example `N8nButton/Button.stories.ts` and `N8nButton/Button.test.ts`.
+- Add i18n translations for all user-facing strings. This includes accessible labels.
+- Load the `content-design` skill (`.agents/skills/content-design`) when you write copy.
+- When you can, bind fixed props of a child component from a fixed props object. Add a comment that tells why each prop must stay fixed.
 - Declare state that the parent owns as a named prop. Declare the change as `update:<name>` on the emits interface.
 - Name the prop for that state. `N8nSettingsEnableRow` uses `enabled`. Callers bind `:enabled` and `@update:enabled`.
 - Use `defineModel` only when the component must also work with no parent binding. `N8nSettingsRow` does this for its disclosure state.
