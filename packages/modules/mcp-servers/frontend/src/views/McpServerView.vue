@@ -14,7 +14,6 @@ import {
 	N8nEmptyState,
 	N8nHeading,
 	N8nIconButton,
-	N8nInlineTextEdit,
 	N8nLoading,
 	N8nTabs,
 	N8nText,
@@ -31,6 +30,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import McpServerAssistantPanel from '../components/McpServerAssistantPanel.vue';
 import McpServerContentsTab from '../components/McpServerContentsTab.vue';
+import McpServerDescriptionEdit from '../components/McpServerDescriptionEdit.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
 import { deleteMcpServer, getMcpServer, updateMcpServer } from '../mcp-servers.api';
@@ -53,6 +53,8 @@ const assistant = capabilityRegistry.use(capabilities.createMcpServerAssistantHa
 const projectId = computed(() => String(route.params.projectId));
 const serverId = computed(() => String(route.params.serverId));
 const permissions = computed(() => getMcpServerPermissions(projectId.value));
+/** The Assistant on this page changes the server, so a project viewer does not get it. */
+const canUseAssistant = computed(() => assistant.available.value && permissions.value.canUpdate);
 
 const server = ref<McpServerResponse | null>(null);
 const loading = ref(true);
@@ -138,8 +140,10 @@ async function load({ silent = false } = {}) {
 		server.value = response;
 	} catch (error) {
 		if (!isLatest()) return;
-		server.value = null;
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+		const missing = error instanceof ResponseError && error.httpStatusCode === 404;
+		// A failed reload after an Assistant change keeps the page, and the panel, in place.
+		if (!silent || missing) server.value = null;
+		if (missing) {
 			notFound.value = true;
 		} else {
 			toast.showError(error, i18n.baseText('mcpServers.server.load.error'));
@@ -186,8 +190,18 @@ function closeAssistant() {
 }
 
 async function onAssistantChanged() {
-	contentsRefreshKey.value++;
+	const name = server.value?.name ?? '';
 	await load({ silent: true });
+	if (notFound.value) {
+		// The Assistant deleted the server: the page ends as after a delete from the menu.
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('mcpServers.delete.success', { interpolate: { name } }),
+		});
+		await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		return;
+	}
+	contentsRefreshKey.value++;
 }
 
 async function onSelectTab(tab: string) {
@@ -305,13 +319,11 @@ async function onBreadcrumbSelected(item: PathItem) {
 							>
 								{{ server.name }}
 							</N8nHeading>
-							<N8nInlineTextEdit
+							<McpServerDescriptionEdit
 								v-if="permissions.canUpdate"
 								:model-value="server.description"
 								:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
 								:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
-								:max-width="640"
-								:class="$style.description"
 								data-test-id="mcp-server-description"
 								@update:model-value="onDescription"
 							/>
@@ -347,7 +359,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 						</div>
 						<div :class="$style.actions">
 							<N8nButton
-								v-if="assistant.available.value"
+								v-if="canUseAssistant"
 								variant="outline"
 								size="small"
 								icon="n8n-assistant"
@@ -480,6 +492,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 
 .description {
 	color: var(--text-color--subtler);
+	white-space: pre-wrap;
 }
 
 .actions {

@@ -3,9 +3,9 @@ import { EventService } from '@n8n/backend-services';
 import { isPerson, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { McpServer } from './mcp-server.entity';
-import { McpServerRepository } from './mcp-server.repository';
-import { McpServerToolsService } from './mcp-server-tools.service';
+import type { McpServer } from './database/entities/mcp-server.entity';
+import { McpServerRepository } from './database/repositories/mcp-server.repository';
+import { McpServerToolsService } from './services/mcp-server-tools.service';
 import { McpServerProtectedResource } from './runtime/mcp-server-protected-resource';
 
 /**

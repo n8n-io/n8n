@@ -74,7 +74,7 @@ import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
-import { getLatestMcpServerMutation } from './mcpServerMutations';
+import { getMcpServerMutations } from './mcpServerMutations';
 import {
 	INSTANCE_AI_EMBED_SUBJECT_KEY,
 	threadTargetsSubject,
@@ -364,7 +364,11 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 		conversation.setPrefill(prefill);
 		return;
 	}
-	queuedPrefill.value = { text: prefill.text, prefillType: prefill.prefillType };
+	queuedPrefill.value = {
+		text: prefill.text,
+		prefillType: prefill.prefillType,
+		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+	};
 	if (activeThreadId.value) flushQueuedPrefill(activeThreadId.value);
 }
 
@@ -723,20 +727,32 @@ const ThreadScope = defineComponent({
 		const working = useIsAgentWorking(runtime);
 		watch(working, (value) => emit('update:working', value), { immediate: true });
 		useAgentMutationRefresh(runtime);
-		const serverMutation = computed(() =>
+		const serverMutations = computed(() =>
 			props.subject.type === 'mcpServer'
-				? getLatestMcpServerMutation(runtime.artifactTurns, props.subject.id)
-				: undefined,
+				? getMcpServerMutations(runtime.artifactTurns, props.subject.id)
+				: [],
 		);
-		watch(serverMutation, (toolCallId) => {
-			// A thread that loads its history replays old changes, which the host already shows.
-			if (toolCallId && !runtime.isHydratingThread) emit('subject-changed');
-		});
+		const seenServerMutations = new Set<string>();
+		let seededServerMutations = false;
+		watch(
+			serverMutations,
+			(toolCallIds) => {
+				const unseen = toolCallIds.filter((toolCallId) => !seenServerMutations.has(toolCallId));
+				for (const toolCallId of unseen) seenServerMutations.add(toolCallId);
+				// The changes of the history are already on the page: the thread at mount, and the
+				// messages that hydration loads. `sync` sees the hydrating flag before it turns off.
+				if (unseen.length > 0 && seededServerMutations && !runtime.isHydratingThread) {
+					emit('subject-changed');
+				}
+				seededServerMutations = true;
+			},
+			{ immediate: true, flush: 'sync' },
+		);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
 		watch(
 			() => buildingArtifactIds.value.has(props.subject.id),
 			(value) => scopeEmit('update:building', value),
-			{ immediate: true },
+			{ immediate: true, flush: 'sync' },
 		);
 		return () =>
 			h(

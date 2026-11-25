@@ -182,6 +182,7 @@ describe('custom-mcp-servers tool', () => {
 				description: 'Tools for the campaign team',
 			});
 			expect(result).toMatchObject({ success: true, server: { id: SERVER_ID } });
+			expect(result).not.toHaveProperty('serverMutated');
 		});
 
 		it('creates nothing when the user denies', async () => {
@@ -317,7 +318,7 @@ describe('custom-mcp-servers tool', () => {
 			);
 
 			expect(service.delete).toHaveBeenCalledWith({ serverId: SERVER_ID, projectId: 'project-1' });
-			expect(result).toEqual({ success: true, serverId: SERVER_ID });
+			expect(result).toEqual({ success: true, serverMutated: true, serverId: SERVER_ID });
 		});
 
 		it('deletes without asking when an admin always allows it', async () => {
@@ -494,6 +495,7 @@ describe('custom-mcp-servers tool', () => {
 			]);
 			expect(result).toMatchObject({
 				success: true,
+				serverMutated: true,
 				tools: [{ id: TOOL_ID, toolName: 'get_campaign_stats' }],
 			});
 		});
@@ -544,7 +546,7 @@ describe('custom-mcp-servers tool', () => {
 			{ serverId: SERVER_ID, projectId: undefined },
 			TOOL_ID,
 		);
-		expect(result).toEqual({ success: true, toolId: TOOL_ID });
+		expect(result).toEqual({ success: true, serverMutated: true, toolId: TOOL_ID });
 	});
 
 	it('asks before each removal, even after "Allow for this chat"', async () => {

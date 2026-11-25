@@ -7016,7 +7016,6 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user-1',
 				source: 'ui',
 				toolKind: 'workflow',
-				isAiDraft: false,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
@@ -7026,7 +7025,28 @@ describe('TelemetryEventRelay', () => {
 					user_id: 'user-1',
 					source: 'ui',
 					tool_kind: 'workflow',
-					is_ai_draft: false,
+				},
+			);
+		});
+
+		it('tracks a tool draft, with the field and the status', () => {
+			mcpEventService.emit('mcp-server-tool-drafted', {
+				serverId: 'server-1',
+				userId: 'user-1',
+				source: 'ui',
+				field: 'both',
+				status: 'invalid_answer',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					source: 'ui',
+					thread_id: undefined,
+					field: 'both',
+					status: 'invalid_answer',
 				},
 			);
 		});
@@ -7074,7 +7094,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
-				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.CUSTOM_MCP_SERVER_TOOL_CALLED,
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CALLED_CUSTOM_MCP_SERVER_TOOL,
 				{
 					server_id: 'server-1',
 					user_id: 'user-1',

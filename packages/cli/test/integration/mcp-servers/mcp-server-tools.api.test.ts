@@ -68,8 +68,8 @@ let outsider: User;
 let project: Project;
 
 function enableFlag(on = true) {
-	vi.mocked(Container.get(PostHogClient).getFeatureFlags).mockResolvedValue(
-		on ? { '155_custom_mcp_servers': 'test' } : {},
+	vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+		async (flag) => (on && flag === '155_custom_mcp_servers' ? 'test' : undefined),
 	);
 }
 
@@ -259,7 +259,6 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools', () => {
 			serverId,
 			userId: editor.id,
 			toolKind: 'workflow',
-			isAiDraft: false,
 			source: 'ui',
 		});
 		emit.mockRestore();
@@ -308,6 +307,50 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools', () => {
 			.post(`${base(serverId)}/tools`)
 			.send({ workflowIds: [workflow.id] })
 			.expect(400);
+	});
+
+	it('saves one tool when the same workflow comes twice', async () => {
+		const serverId = await createServer();
+		const workflow = await createToolWorkflow('Get campaign numbers');
+
+		const response = await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [workflow.id, workflow.id] })
+			.expect(200);
+
+		expect(response.body.data.map((tool: McpServerToolResponse) => tool.toolName)).toEqual([
+			'get_campaign_numbers',
+		]);
+	});
+
+	it('refuses an unknown workflow id, and saves nothing', async () => {
+		const serverId = await createServer();
+		const callable = await createToolWorkflow('Get campaign numbers');
+
+		await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [callable.id, 'does-not-exist'] })
+			.expect(400);
+
+		const detail = await testServer.authAgentFor(editor).get(base(serverId)).expect(200);
+		expect(detail.body.data.tools).toEqual([]);
+	});
+
+	it('cuts a long workflow description to 2000 characters', async () => {
+		const serverId = await createServer();
+		const workflow = await createToolWorkflow('Get campaign numbers', {
+			description: 'a'.repeat(2500),
+		});
+
+		const response = await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [workflow.id] })
+			.expect(200);
+
+		expect(response.body.data[0].description).toBe('a'.repeat(2000));
 	});
 });
 
@@ -365,6 +408,24 @@ describe('PATCH /projects/:projectId/mcp-servers/:serverId/tools/:toolId', () =>
 			.patch(`${base(serverId)}/tools/${second.id}`)
 			.send({ toolName: first.toolName })
 			.expect(409);
+	});
+
+	it('accepts a description of 2000 characters and refuses 2001 characters', async () => {
+		const serverId = await createServer();
+		const tool = await addTool(serverId);
+		const agent = testServer.authAgentFor(editor);
+
+		await agent
+			.patch(`${base(serverId)}/tools/${tool.id}`)
+			.send({ description: 'a'.repeat(2000) })
+			.expect(200);
+		await agent
+			.patch(`${base(serverId)}/tools/${tool.id}`)
+			.send({ description: 'b'.repeat(2001) })
+			.expect(400);
+
+		const detail = await agent.get(base(serverId)).expect(200);
+		expect(detail.body.data.tools[0].description).toBe('a'.repeat(2000));
 	});
 
 	it('answers 404 for a tool of another server', async () => {
@@ -508,6 +569,35 @@ describe('access', () => {
 		const { serverId, toolId } = await setup();
 		expect((await send(outsider, call(serverId, toolId))).status).toBe(403);
 	});
+
+	it.each(calls)(
+		'an editor cannot call "%s" on a server of another project through this project',
+		async (_name, call) => {
+			const other = await createTeamProject('Other', owner);
+			const otherServerId = await createServer(other);
+			const otherToolId = uuidv7();
+			const tools = Container.get(DataSource).getRepository(McpServerTool);
+			await tools.insert({
+				id: otherToolId,
+				serverId: otherServerId,
+				kind: 'workflow',
+				targetId: null,
+				toolName: 'other_tool',
+				description: 'A tool of another project.',
+				draftSource: 'defaults',
+				position: 0,
+			});
+
+			expect((await send(editor, call(otherServerId, otherToolId))).status).toBe(404);
+			expect(await tools.findBy({ serverId: otherServerId })).toEqual([
+				expect.objectContaining({
+					id: otherToolId,
+					toolName: 'other_tool',
+					description: 'A tool of another project.',
+				}),
+			]);
+		},
+	);
 
 	it('a project viewer reads the server and its tools, a chat user and an outsider cannot', async () => {
 		const { serverId } = await setup();
