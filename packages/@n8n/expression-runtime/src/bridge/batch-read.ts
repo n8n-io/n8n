@@ -74,10 +74,19 @@ function valueCharsFor(request: unknown, limits: BatchReadLimits): number {
 	return request === WHOLE_VALUES ? limits.maxBatchChars : limits.smallValueChars;
 }
 
-/** The field names of a request. Undefined for a request that is not a list. */
-function namesOf(request: unknown): string[] | undefined {
+/**
+ * The field names of a request. Undefined for a request that is not a list.
+ * The first item of a read goes without a size check, so a name over
+ * `smallValueChars` is left out. Its field is then read alone.
+ */
+function namesOf(request: unknown, limits: BatchReadLimits): string[] | undefined {
 	return Array.isArray(request)
-		? request.filter((name): name is string => typeof name === 'string').slice(0, MAX_REQUEST_NAMES)
+		? request
+				.filter(
+					(name): name is string =>
+						typeof name === 'string' && name.length <= limits.smallValueChars,
+				)
+				.slice(0, MAX_REQUEST_NAMES)
 		: undefined;
 }
 
@@ -230,7 +239,7 @@ function itemsOfRead(
 	limits: BatchReadLimits,
 	budget: BatchReadBudget,
 ): unknown[] {
-	const names = namesOf(request);
+	const names = namesOf(request, limits);
 	const readChars = readAheadChars(step, limits);
 	const childChars = valueCharsFor(request, limits);
 	// An array subclass can change how its items read.

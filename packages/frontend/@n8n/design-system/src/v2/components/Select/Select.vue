@@ -83,8 +83,15 @@ function rootBind() {
 
 const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
 
+/** Puts the focus on the trigger, as a click or a Tab key press does. */
+function focus() {
+	const trigger: unknown = triggerRef.value?.$el;
+	if (trigger instanceof HTMLElement) trigger.focus();
+}
+
 defineExpose({
 	triggerRef,
+	focus,
 });
 
 const sizes: Record<SelectSizes, string> = {

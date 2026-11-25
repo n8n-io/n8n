@@ -565,7 +565,7 @@ const modelToolGuardrailShape = {
 /**
  * A guardrail running before or after the referenced tools. Pattern kinds
  * run locally; model kinds call a model with an optional prompt and
- * threshold.
+ * threshold; the workflow kind runs a check workflow before the call.
  */
 export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
@@ -602,6 +602,12 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 		kind: z.literal('topicalAlignment'),
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
+	}),
+	z.object({
+		kind: z.literal('workflow'),
+		...toolGuardrailBaseShape,
+		/** The check workflow, run before each covered call. */
+		workflowId: z.string().min(1),
 	}),
 ]);
 
@@ -728,6 +734,16 @@ export const AgentJsonConfigBaseSchema = z.object({
 										code: z.ZodIssueCode.custom,
 										path: [index, 'entities'],
 										message: 'Select at least one PII entity or set type to "all"',
+									});
+								}
+								// The workflow kind registers before-only, so an
+								// after-stage check workflow cannot run: reject the
+								// config instead of silently dropping the hook.
+								if (guardrail.kind === 'workflow' && guardrail.stage === 'after') {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'stage'],
+										message: 'A workflow guardrail cannot run after a tool call',
 									});
 								}
 							}
