@@ -801,6 +801,7 @@ describe('InstanceAiPreviewTabBar', () => {
 					name: 'My Workflow',
 					updatedAt: new Date().toISOString(),
 					activeVersionId: null,
+					isArchived: false,
 				},
 			]);
 			const { container } = renderComponent({
@@ -812,6 +813,86 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(
 				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
 			).toHaveTextContent('Draft');
+		});
+
+		it('shows the archived status of an archived workflow instead of draft', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+					isArchived: true,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await hoverTab(container, 'wf-1');
+
+			const statusTag = document.body.querySelector(
+				'[data-test-id="instance-ai-tab-hover-card-status"]',
+			);
+			expect(statusTag).toHaveTextContent('Archived');
+			expect(statusTag?.className).not.toMatch(/statusTagPublished/);
+		});
+
+		it('shows the archived status even when an archived workflow still has an active version', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: 'v1',
+					isArchived: true,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await hoverTab(container, 'wf-1');
+
+			const statusTag = document.body.querySelector(
+				'[data-test-id="instance-ai-tab-hover-card-status"]',
+			);
+			expect(statusTag).toHaveTextContent('Archived');
+			expect(statusTag?.className).not.toMatch(/statusTagPublished/);
+		});
+
+		it('updates a previously published workflow hover status to archived after it is archived', async () => {
+			mockSearchWorkflows.mockResolvedValueOnce([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: 'v1',
+					isArchived: false,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+			await flushPromises();
+
+			mockSearchWorkflows.mockResolvedValueOnce([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+					isArchived: true,
+				},
+			]);
+
+			await hoverTab(container, 'wf-1');
+
+			const statusTag = document.body.querySelector(
+				'[data-test-id="instance-ai-tab-hover-card-status"]',
+			);
+			expect(statusTag).toHaveTextContent('Archived');
+			expect(statusTag?.className).not.toMatch(/statusTagPublished/);
 		});
 
 		it('shows placeholders until the workflow details load', async () => {
