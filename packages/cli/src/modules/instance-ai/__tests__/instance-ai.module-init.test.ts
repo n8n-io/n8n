@@ -18,6 +18,7 @@ import { AssistantAgentProvider } from '../assistant-agent/assistant-agent.provi
 import { AssistantThreadCreditsService } from '../assistant-agent/assistant-thread-credits.service';
 import { AssistantTurnTracer } from '../assistant-agent/assistant-turn-trace';
 import { EvalAssistantTurnOverrides } from '../eval/eval-assistant-turn-overrides';
+import { LlmMockSimulationBackend } from '../eval/llm-mock-simulation-backend';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
@@ -73,6 +74,8 @@ vi.mock('../self-healing/self-healing-result.service', () => ({
 	SelfHealingResultService: vi.fn(),
 }));
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
+// The real backend imports the eval mocks, which are slow to load.
+vi.mock('../eval/llm-mock-simulation-backend', () => ({ LlmMockSimulationBackend: vi.fn() }));
 vi.mock('../assistant-agent/assistant-agent.provider', () => ({ AssistantAgentProvider: vi.fn() }));
 vi.mock('../assistant-agent/assistant-thread-credits.service', () => ({
 	AssistantThreadCreditsService: vi.fn(),
@@ -135,6 +138,7 @@ describe('InstanceAiModule.init', () => {
 		const settings = mockInstance(InstanceAiSettingsService);
 		mockInstance(InstanceAiSetupTelemetryService);
 		mockInstance(InstanceAiEventRelay);
+		mockInstance(LlmMockSimulationBackend);
 		const runtime = mockInstance(InstanceAiService);
 		const tracer = mockInstance(AssistantTurnTracer);
 		const credits = mockInstance(InstanceAiCreditService);
@@ -467,7 +471,6 @@ describe('InstanceAiModule.init', () => {
 		const { SimulationBackendRegistry } = await import(
 			'@/modules/agents/simulation/simulation-backend-registry.js'
 		);
-		const { LlmMockSimulationBackend } = await import('../eval/llm-mock-simulation-backend.js');
 		const registry = mockInstance(SimulationBackendRegistry);
 		const backend = mockInstance(LlmMockSimulationBackend);
 		const modules = mockInstance(ModuleRegistry);
