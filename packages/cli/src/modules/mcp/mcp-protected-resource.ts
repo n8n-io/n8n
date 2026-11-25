@@ -1,5 +1,4 @@
 import {
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
@@ -19,7 +18,6 @@ import {
 	ACTIVITY_LOG_TOOLS,
 	BUILDER_TOOLS,
 	FOLDER_FEATURE_TOOLS,
-	INSTANCE_CONTEXT_TOOLS,
 	SKILL_SOURCE_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
@@ -107,16 +105,7 @@ export class McpProtectedResource implements ProtectedResource {
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
-		// Consent and tool registration use the same instance activity gate.
 		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
-		let instanceContextEnabled = false;
-		try {
-			instanceContextEnabled =
-				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
-				true;
-		} catch {
-			// Keep context tools hidden when the gate cannot be read.
-		}
 
 		const credentialDescriptionsEnabled =
 			(await this.postHogClient
@@ -139,7 +128,6 @@ export class McpProtectedResource implements ProtectedResource {
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
 							(skillSourcesAvailable || !SKILL_SOURCE_TOOLS.has(tool)) &&
-							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
 							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),
 				]),

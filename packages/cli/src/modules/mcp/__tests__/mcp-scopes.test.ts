@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import type { Mock } from 'vitest';
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
@@ -490,28 +489,25 @@ describe('McpService scope enforcement', () => {
 		},
 	);
 
-	it.each([true, false])(
-		'sets all context tools and the resource from the shared flag override: %s',
-		async (enabled) => {
-			mockInstance(InstanceContextService);
-			mockInstance(WorkflowDependencyQueryService);
-			const config = mockInstance(GlobalConfig, {
-				diagnostics: { enabled: false },
-				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled } },
-			});
-			const service = buildService({
-				instanceAiActive: true,
-				postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
-			});
+	it('registers all context tools and the resource without telemetry', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+		const config = mockInstance(GlobalConfig, {
+			diagnostics: { enabled: false },
+			featureFlags: { override: {} },
+		});
+		const service = buildService({
+			instanceAiActive: true,
+			postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
+		});
 
-			const flags = await service.resolveFeatureFlags(user);
-			const server = await service.getServer(user, flags);
+		const flags = await service.resolveFeatureFlags(user);
+		const server = await service.getServer(user, flags);
 
-			const registered = getRegisteredToolNames(server);
-			for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(enabled);
-			expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(enabled);
-		},
-	);
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(true);
+		expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(true);
+	});
 
 	/**
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the

@@ -71,7 +71,6 @@ import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-
 import { skillGroupPage, type SkillSourceGroup } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { withUnsentSkillFiles } from '../utils/skill-model-update';
-import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -161,7 +160,6 @@ export class SkillService {
 		private readonly skillAccess: SkillAccessService,
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly skillsTelemetry: SkillsTelemetry,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
@@ -456,12 +454,6 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new UserError("The n8n Assistant can't use skills on this instance.");
-		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
 		const input = {
 			checkNameTaken: true,
@@ -509,12 +501,6 @@ export class SkillService {
 			keepUnnamedBinaryFiles?: boolean;
 		} = {},
 	): Promise<SkillSaveResponse> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new NotFoundError('Skill not found');
-		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
 		if (options.keepUnnamedBinaryFiles && update.references) {
