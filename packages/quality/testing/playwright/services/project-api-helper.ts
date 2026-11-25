@@ -121,6 +121,21 @@ export class ProjectApiHelper {
 		return await this.addUsersToProject(projectId, [{ userId, role }]);
 	}
 
+	/** Turns "Require approval" for workflow reviews on or off for a team project. */
+	async setWorkflowReviewApprovalRequired(
+		projectId: string,
+		requiredByProject: boolean,
+	): Promise<void> {
+		const response = await this.api.request.patch(
+			`/rest/projects/${projectId}/workflow-review-settings`,
+			{ data: { requiredByProject } },
+		);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to update workflow review settings: ${await response.text()}`);
+		}
+	}
+
 	/**
 	 * Add a user to a project by email
 	 * @param projectId The ID of the project

@@ -49,7 +49,7 @@ const objectStoreService = mockInstance(ObjectStoreService);
 const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
 const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
 const publisher = mock<RedisChannelPublisher & WorkQueuePublisherClient>();
-/** Stands in for each of the two consuming connections of the work queues. */
+/** Stands in for each consuming connection of the work queues. */
 const workQueueConsumer = mock<{ disconnect(): void }>();
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
@@ -111,6 +111,15 @@ describe('Engine', () => {
 	afterEach(() => {
 		process.env = originalEnv;
 	});
+
+	/** Opens the consuming connections, as the runtime does when it starts the queues. */
+	const startAndStopWorkQueues = async () => {
+		const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
+		for (const queue of [queues?.orchestration, queues?.step]) {
+			queue?.start(async () => {});
+			await queue?.stop();
+		}
+	};
 
 	const createEngine = () => {
 		const engine = new Engine();
@@ -249,7 +258,7 @@ describe('Engine', () => {
 				stepId: 'step-1',
 			});
 
-			expect(redisClientService.createClient).toHaveBeenCalledTimes(3);
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
 			expect(publisher.lpush).toHaveBeenCalledWith(
 				expect.stringMatching(/:engine-v2-queue:orchestration$/),
@@ -359,6 +368,7 @@ describe('Engine', () => {
 		it('shuts the data plane down before exiting, without touching the crash journal', async () => {
 			const engine = createEngine();
 			await engine.init();
+			await startAndStopWorkQueues();
 			const dispose = vi.spyOn(Expression, 'disposeExpressionEngine');
 			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 			try {
@@ -393,6 +403,7 @@ describe('Engine', () => {
 		it('closes every Redis connection and reports every error when the data plane fails to shut down', async () => {
 			const engine = createEngine();
 			await engine.init();
+			await startAndStopWorkQueues();
 			const shutdownError = new Error('shutdown failed');
 			runtime.shutdown.mockRejectedValueOnce(shutdownError);
 			const disconnectError = new Error('disconnect failed');

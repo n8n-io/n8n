@@ -23,6 +23,25 @@ describe('buildSuspendCardPayload', () => {
 		});
 	});
 
+	it('shows the explanation with approve-once and deny actions for an external request', () => {
+		const card = buildSuspendCardPayload({
+			type: 'approval',
+			toolName: 'write_record',
+			displayName: 'Update record',
+			description: 'Set the selected record status to complete.',
+			args: { secret: 'not included in the message' },
+			supportsSessionApproval: false,
+		});
+		expect(card?.components).toContainEqual({
+			type: 'section',
+			text: 'Set the selected record status to complete.',
+		});
+		expect(
+			card?.components.filter((entry) => entry.type === 'button').map((entry) => entry.value),
+		).toEqual(['true', 'false']);
+		expect(JSON.stringify(card)).not.toContain('not included in the message');
+	});
+
 	it('leaves an interactive card suspension to the component mapper', () => {
 		const card = buildSuspendCardPayload({
 			type: 'integration_action',
@@ -33,4 +52,15 @@ describe('buildSuspendCardPayload', () => {
 
 		expect(card).toBeUndefined();
 	});
+});
+
+it('shows administrator waiting text without requester approval buttons', () => {
+	const payload = {
+		type: 'workflow_wait',
+		title: 'The Agent is waiting for approval from an administrator.',
+		components: [
+			{ type: 'section', text: 'The Agent will continue when the approval request is resolved.' },
+		],
+	};
+	expect(buildSuspendCardPayload(payload)).toEqual(payload);
 });
