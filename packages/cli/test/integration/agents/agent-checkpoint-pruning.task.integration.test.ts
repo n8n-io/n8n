@@ -100,6 +100,60 @@ describe('AgentCheckpointPruningTask', () => {
 		await testDb.terminate();
 	});
 
+	it('retains an approval checkpoint without expiry until its result is consumed', async () => {
+		const jobs = Container.get(AgentBackgroundJobRepository);
+		await checkpointRepository.insert({
+			runId: 'approval-run',
+			agentId,
+			threadId: 'approval-thread',
+			state: suspendedJson,
+			expired: false,
+			createdAt: stale,
+			updatedAt: stale,
+		});
+		await jobs.insert({
+			id: uuid(),
+			kind: 'approval',
+			parentRunId: 'approval-run',
+			status: 'completed',
+			parentAgentId: agentId,
+			parentThreadId: 'approval-thread',
+			parentResourceId: 'resource',
+			parentPrincipalHash: 'principal',
+			title: 'Approval',
+			childExecutionId: 'approval-execution',
+			result: '{"approved":true}',
+		});
+		expect(await checkpointRepository.isRetainedForApproval('approval-run')).toBe(true);
+		expect(await storage.load('approval-run', agentId)).toMatchObject({ status: 'suspended' });
+		expect(await storage.getStatus('approval-run', agentId)).toMatchObject({ status: 'active' });
+		await checkpointRepository.insert({
+			runId: 'other-run',
+			agentId,
+			threadId: 'approval-thread',
+			state: suspendedJson,
+			expired: false,
+			createdAt: stale,
+			updatedAt: stale,
+		});
+		expect(await checkpointRepository.expireStale(new Date())).toEqual({
+			affected: 1,
+			threadIds: [],
+		});
+		expect(await checkpointRepository.findByRunId('approval-run')).toMatchObject({
+			expired: false,
+		});
+		expect(await checkpointRepository.findByRunId('other-run')).toMatchObject(PRUNED);
+		expect(await jobs.findWakeableUnconsumed('approval-thread')).toEqual([]);
+		expect(await jobs.findThreadsWithUnconsumedMail()).not.toContain('approval-thread');
+		await jobs.consumeApprovalJob('approval-execution');
+		expect(await checkpointRepository.expireStale(new Date())).toEqual({
+			affected: 1,
+			threadIds: ['approval-thread'],
+		});
+		expect(await checkpointRepository.findByRunId('approval-run')).toMatchObject(PRUNED);
+	});
+
 	async function insertCheckpoints(
 		prefix: string,
 		count: number,

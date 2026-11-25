@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 export class Limit implements INodeType {
 	description: INodeTypeDescription = {
@@ -15,6 +15,7 @@ export class Limit implements INodeType {
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
+		annotations: READ_ONLY_ANNOTATIONS,
 		description: 'Restrict the number of items',
 		defaults: {
 			name: 'Limit',

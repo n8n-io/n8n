@@ -18,3 +18,8 @@ it('should throw `UnknownModuleError` if any disabled module name is invalid', (
 	process.env.N8N_DISABLED_MODULES = 'insights,invalidModule';
 	expect(() => Container.get(ModulesConfig)).toThrowError(UnknownModuleError);
 });
+
+it('should accept `durable-leases` as an enabled module', () => {
+	process.env.N8N_ENABLED_MODULES = 'durable-leases';
+	expect(Container.get(ModulesConfig).enabledModules).toEqual(['durable-leases']);
+});

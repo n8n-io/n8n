@@ -166,6 +166,70 @@ describe('skills tool', () => {
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
 	});
 
+	it('lists a binary file without its content', async () => {
+		service.get.mockResolvedValue({
+			...detail,
+			skill: {
+				...detail.skill,
+				references: [{ path: 'assets/logo.png', content: 'AP8=', isBinary: true }],
+			},
+		});
+		const tool = createSkillsTool(createContext(service));
+
+		const result = await executeTool<{ skill: { references: unknown[] } }>(tool, {
+			action: 'get',
+			skillId: 'skill_a',
+		});
+
+		expect(result.skill.references).toEqual([
+			{ path: 'assets/logo.png', isBinary: true, characterCount: 4 },
+		]);
+	});
+
+	it('refuses a referenceOffset without a referencePath', async () => {
+		const tool = createSkillsTool(createContext(service));
+
+		const result = await executeTool(tool, {
+			action: 'get',
+			skillId: 'skill_a',
+			referenceOffset: 10,
+		});
+
+		expect(result).toEqual({
+			success: false,
+			refused: true,
+			reason: 'Pass referencePath with referenceOffset.',
+		});
+		expect(service.get).not.toHaveBeenCalled();
+	});
+
+	it('reads the next part of a reference on request', async () => {
+		const referencePath = 'reference/guide.md';
+		const fullContent = `${'x'.repeat(50 * 1024)}End`;
+		service.get.mockResolvedValue({
+			...detail,
+			skill: { ...detail.skill, references: [{ path: referencePath, content: fullContent }] },
+		});
+		const tool = createSkillsTool(createContext(service));
+		const input = { action: 'get', skillId: 'skill_a', referencePath };
+
+		const start = (await executeTool(tool, input)) as {
+			skill: {
+				references: Array<{ content?: string; nextOffset?: number; contentTruncated?: boolean }>;
+			};
+		};
+		const firstRef = start.skill.references[0];
+		expect(firstRef.contentTruncated).toBe(true);
+		expect(firstRef.nextOffset).toBeGreaterThan(0);
+		expect(firstRef.content).toBe(fullContent.slice(0, firstRef.nextOffset));
+
+		const end = await executeTool(tool, { ...input, referenceOffset: firstRef.nextOffset });
+		expect(end).toMatchObject({
+			skill: { references: [{ content: fullContent.slice(firstRef.nextOffset) }] },
+		});
+		expect(end).not.toHaveProperty('skill.references.0.nextOffset');
+	});
+
 	describe('synced skills', () => {
 		it('shows in the list that a skill is synced, with its source and sync state', async () => {
 			service.list.mockResolvedValue({ count: 2, data: [listItem, syncedListItem] });

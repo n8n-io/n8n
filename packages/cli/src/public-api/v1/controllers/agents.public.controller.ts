@@ -32,6 +32,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import {
 	AgentResponseMapper,
 	mapAgentListPublicItem,
@@ -51,6 +52,7 @@ export class AgentsPublicController {
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentConfigService: AgentConfigService,
+		private readonly agentPublishService: AgentPublishService,
 	) {}
 
 	@Post('/')
@@ -228,6 +230,70 @@ export class AgentsPublicController {
 		}
 
 		return this.toDeletedAgentPublicDto(deleted);
+	}
+
+	@Post('/:agentId/archive')
+	@ApiKeyScope('agent:delete')
+	@ProjectScope('agent:delete')
+	@ApiSummary('Archive an agent')
+	@ApiDescription(
+		'Soft-deletes an agent by archiving it. Idempotent: archiving an already ' +
+			'archived agent returns 200 with the current agent.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(404)
+	async archiveAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+	): Promise<AgentPublicDto> {
+		const existing = await this.agentsService.findById(agentId);
+		if (!existing?.projectId) throw new NotFoundError('Not Found');
+
+		try {
+			const archived = await this.agentPublishService.archiveAgent(
+				agentId,
+				existing.projectId,
+				req.user,
+				undefined,
+				'user',
+				req.ctx,
+			);
+			return await this.agentResponseMapper.toPublicDto(archived, existing.projectId, req.user);
+		} catch (error) {
+			// The service rejects an agent that is already archived. This endpoint returns that agent.
+			if (!(error instanceof BadRequestError)) throw error;
+			const current = await this.agentsService.findById(agentId);
+			if (!current?.isArchived || !current.projectId) throw error;
+			return await this.agentResponseMapper.toPublicDto(current, current.projectId, req.user);
+		}
+	}
+
+	@Post('/:agentId/unarchive')
+	@ApiKeyScope('agent:delete')
+	@ProjectScope('agent:delete')
+	@ApiSummary('Unarchive an agent')
+	@ApiDescription('Restores an archived agent.')
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async unarchiveAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+	): Promise<AgentPublicDto> {
+		const existing = await this.agentsService.findById(agentId);
+		if (!existing?.projectId) throw new NotFoundError('Not Found');
+		const restored = await this.agentPublishService.unarchiveAgent(
+			agentId,
+			existing.projectId,
+			req.user,
+			undefined,
+			req.ctx,
+		);
+		return await this.agentResponseMapper.toPublicDto(restored, existing.projectId, req.user);
 	}
 
 	private toDeletedAgentPublicDto(agent: DeletedAgentSnapshot): DeletedAgentPublicDto {

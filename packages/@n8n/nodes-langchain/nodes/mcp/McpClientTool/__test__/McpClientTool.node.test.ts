@@ -562,7 +562,7 @@ describe('McpClientTool', () => {
 			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				toolResult: 'Weather unknown at location',
-				content: [{ text: 'Weather unknown at location' }],
+				content: [{ type: 'text', text: 'Weather unknown at location' }],
 			});
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
@@ -598,7 +598,12 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			const toolResult = await tools[0].invoke({ location: 'Berlin' });
-			expect(toolResult).toEqual('Weather unknown at location');
+			expect(toolResult).toEqual(
+				JSON.stringify({
+					isError: true,
+					content: [{ type: 'text', text: 'Weather unknown at location' }],
+				}),
+			);
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
 				0,
@@ -872,7 +877,10 @@ describe('McpClientTool', () => {
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 
 			await expect(tools[0].invoke({ input: 'foo' })).resolves.toEqual(
-				'MCP error -32001: Request timed out',
+				JSON.stringify({
+					isError: true,
+					content: [{ type: 'text', text: 'MCP error -32001: Request timed out' }],
+				}),
 			);
 			expect(callToolSpy).toHaveBeenCalledWith(
 				expect.any(Object), // params

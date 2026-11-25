@@ -77,7 +77,7 @@ import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
-import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
@@ -2436,7 +2436,17 @@ describe('McpAgentToolsService', () => {
 			agentValidationService.validateAgentIsRunnable.mockResolvedValue({
 				missing: ['credential:model'],
 			} as never);
-			agentSkillsService.listSkills.mockResolvedValue([{ id: 'skill-1' }] as never);
+			agentSkillsService.listSkills.mockResolvedValue({
+				'skill-1': {
+					name: 'Skill',
+					description: 'Use for tests',
+					instructions: 'Read the guide.',
+					references: [
+						{ path: 'references/guide.md', content: 'Guide text.' },
+						{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					],
+				},
+			});
 			agentTaskService.list.mockResolvedValue([
 				{ id: 'task-1', name: 'Daily' },
 				{ id: 'task-2', name: 'Detached' },
@@ -2450,13 +2460,26 @@ describe('McpAgentToolsService', () => {
 				configHash: getAgentConfigHash({ ...config, integrations: [] }),
 				isRunnable: false,
 				missing: ['credential:model'],
-				skills: [{ id: 'skill-1' }],
+				// A file shows its path and size. The content stays out of the result.
+				skills: {
+					'skill-1': {
+						name: 'Skill',
+						instructions: 'Read the guide.',
+						references: [
+							{ path: 'references/guide.md', characterCount: 11 },
+							{ path: 'assets/logo.png', characterCount: 4, isBinary: true },
+						],
+					},
+				},
 				tasks: [
 					{ id: 'task-1', name: 'Daily', enabled: true },
 					{ id: 'task-2', name: 'Detached', enabled: false },
 				],
 				customTools: [{ id: 'my_tool', descriptor: { name: 'my_tool' } }],
 			});
+			expect(JSON.stringify(result.structuredContent)).not.toContain('Guide text.');
+			expect(JSON.stringify(result.structuredContent)).not.toContain('AP8=');
+			expect(result.structuredContent).toHaveProperty('skillHashes.skill-1');
 		});
 
 		it('reports integrations separately and omits them from the editable config', async () => {
@@ -2612,6 +2635,150 @@ describe('McpAgentToolsService', () => {
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({
 				error: 'Version "v9" not found for agent "agent-1"',
+			});
+		});
+
+		it('reads bounded reference text from an attached draft skill under agent:read without requiring skill scopes', async () => {
+			const fullContent = `${'x'.repeat(50 * 1024)}End`;
+			const skill = {
+				name: 'Skill',
+				description: 'Use for tests',
+				instructions: 'Read the guide.',
+				references: [
+					{ path: 'references/guide.md', content: fullContent },
+					{ path: 'references/other.md', content: 'Other text.' },
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true as const },
+				],
+			};
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+			agentSkillsService.getSkill.mockResolvedValue(skill);
+
+			const initial = await callTool('get_agent', { agentId: 'agent-1', skillId: 'skill-1' });
+			expect(initial.isError).toBeFalsy();
+			expect(agentSkillsService.getSkill).toHaveBeenCalledWith('agent-1', 'project-1', 'skill-1');
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+			expect(initial.structuredContent).toMatchObject({
+				ok: true,
+				agentId: 'agent-1',
+				skillId: 'skill-1',
+				skillHash: getAgentSkillHash(skill),
+				omittedReferencePaths: ['references/other.md'],
+			});
+			expect(JSON.stringify(initial.structuredContent)).not.toContain('AP8=');
+
+			const firstRef = (
+				initial.structuredContent.skill as {
+					references: Array<{ content?: string; nextOffset?: number; contentTruncated?: boolean }>;
+				}
+			).references[0];
+			expect(firstRef.contentTruncated).toBe(true);
+			expect(firstRef.nextOffset).toBeGreaterThan(0);
+
+			const next = await callTool('get_agent', {
+				agentId: 'agent-1',
+				skillId: 'skill-1',
+				referencePath: 'references/guide.md',
+				referenceOffset: firstRef.nextOffset,
+			});
+			expect(next.isError).toBeFalsy();
+			expect(next.structuredContent).toMatchObject({
+				ok: true,
+				skill: {
+					references: [
+						{ path: 'references/guide.md', content: fullContent.slice(firstRef.nextOffset) },
+						{ path: 'references/other.md', characterCount: 11 },
+						{ path: 'assets/logo.png', characterCount: 4, isBinary: true },
+					],
+				},
+			});
+		});
+
+		it('reads reference text from the skill version used by a published Agent versionId', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: 'v0' }));
+			agentPublishService.getVersion.mockResolvedValue({
+				agent: agentEntity({ activeVersionId: 'v0' }),
+				version: {
+					versionId: 'v0',
+					agentId: 'agent-1',
+					author: 'Ada Lovelace',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+				definition: {
+					schema: baseConfig,
+					tools: {},
+					skills: {
+						'skill-1': {
+							name: 'Skill v1',
+							description: 'Published skill',
+							instructions: 'Use v1 guide.',
+							references: [{ path: 'references/v1-only.md', content: 'Version 1 text.' }],
+						},
+					},
+					tasks: new Map(),
+				},
+			} as never);
+
+			const result = await callTool('get_agent', {
+				agentId: 'agent-1',
+				versionId: 'v0',
+				skillId: 'skill-1',
+				referencePath: 'references/v1-only.md',
+			});
+
+			expect(result.isError).toBeFalsy();
+			expect(agentPublishService.getVersion).toHaveBeenCalledWith('agent-1', 'project-1', 'v0');
+			expect(agentSkillsService.getSkill).not.toHaveBeenCalled();
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				agentId: 'agent-1',
+				versionId: 'v0',
+				skillId: 'skill-1',
+				skill: {
+					name: 'Skill v1',
+					references: [{ path: 'references/v1-only.md', content: 'Version 1 text.' }],
+				},
+			});
+			expect(result.structuredContent).not.toHaveProperty('skillHash');
+		});
+
+		it('refuses invalid attached-skill reference reads in get_agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+
+			const missingSkillId = await callTool('get_agent', {
+				agentId: 'agent-1',
+				referencePath: 'references/guide.md',
+			});
+			expect(missingSkillId.isError).toBe(true);
+			expect(missingSkillId.structuredContent).toMatchObject({
+				error: 'Pass skillId with referencePath or referenceOffset.',
+			});
+
+			const missingPath = await callTool('get_agent', {
+				agentId: 'agent-1',
+				skillId: 'skill-1',
+				referenceOffset: 10,
+			});
+			expect(missingPath.isError).toBe(true);
+			expect(missingPath.structuredContent).toMatchObject({
+				error: 'Pass referencePath with referenceOffset.',
+			});
+
+			agentSkillsService.getSkill.mockResolvedValue({
+				name: 'Skill',
+				description: 'Use for tests',
+				instructions: 'Read the guide.',
+				references: [{ path: 'references/guide.md', content: 'Guide.' }],
+			});
+			const missingRef = await callTool('get_agent', {
+				agentId: 'agent-1',
+				skillId: 'skill-1',
+				referencePath: 'references/missing.md',
+			});
+			expect(missingRef.isError).toBe(true);
+			expect(missingRef.structuredContent).toMatchObject({
+				error: 'Skill reference not found: references/missing.md',
 			});
 		});
 	});

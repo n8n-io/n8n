@@ -96,6 +96,21 @@ RUN case "$ENABLE_POINTER_COMPRESSION" in true|false) ;; *) echo "ENABLE_POINTER
     # Remove unused OpenSSL headers to save ~34MB. See https://github.com/nodejs/node/issues/46451
     && find /node-install/usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name "$OPENSSL_ARCH" -exec rm -rf {} \;
 
+# Remove this override when Node 26 bundles brace-expansion 5.0.12 or later.
+RUN set -eu; \
+    if [ "${NODE_VERSION%%.*}" != 26 ]; then exit 0; fi; \
+    cd /node-install/usr/local/lib/node_modules/npm/node_modules; \
+    needs_update=$(/node-install/usr/local/bin/node -p \
+        "require('./semver').lt(require('./brace-expansion/package.json').version, '5.0.12')"); \
+    if [ "$needs_update" = false ]; then exit 0; fi; \
+    archive=/tmp/brace-expansion.tgz; \
+    curl -fsSL https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz -o "$archive"; \
+    echo "ef8448ec78f20b692f04fa6d01f39b5ab34c66404bea3429f5a39c6c9e0be8b4  $archive" | sha256sum -c -; \
+    rm -rf brace-expansion; \
+    mkdir brace-expansion; \
+    tar -xzf "$archive" --strip-components=1 -C brace-expansion; \
+    rm "$archive"
+
 FROM ${ALPINE_IMAGE} AS base
 ARG ENABLE_POINTER_COMPRESSION
 

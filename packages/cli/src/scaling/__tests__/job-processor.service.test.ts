@@ -1375,6 +1375,7 @@ describe('JobProcessor', () => {
 				mcpType: 'trigger',
 				sessionId: 'session-tool',
 				messageId: 'msg-tool',
+				toolName: 'test-tool',
 				workerId: 'worker-host-123',
 			});
 		});

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
@@ -8,6 +8,11 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { useToolLabel } from '../toolLabels';
+
+// The labels do not depend on the experiment here, and the test runs without a store.
+vi.mock('@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled', () => ({
+	useDraftWorkflowPreviewEnabled: () => ({ value: false }),
+}));
 
 // Keep in sync with the tools that `@n8n/instance-ai` and `@n8n/agents` register outside the
 // builder registries. The frontend cannot import those backend packages.
@@ -23,6 +28,7 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'conversation-history',
 	'activity',
 	'save_user_preference',
+	'send_feedback',
 	'get-session',
 	'write-file',
 	'materialize-node-type',
@@ -34,7 +40,6 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'search_tools',
 	'load_tool',
 	'load_skill',
-	'apps',
 	'workspace_append_file',
 	'workspace_copy_file',
 	'workspace_delete_file',

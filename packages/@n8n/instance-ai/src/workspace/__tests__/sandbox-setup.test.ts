@@ -494,7 +494,8 @@ describe('setupSandboxWorkspace', () => {
 
 		await setup(workspace, createSetupContext());
 
-		expect(writeFiles).toHaveBeenCalledTimes(1);
+		// One batch for the setup files, one for the knowledge base.
+		expect(writeFiles).toHaveBeenCalledTimes(2);
 		expect(writeFiles.mock.calls[0][0].map(({ path }) => path).sort()).toEqual([
 			'/home/daytona/workspace/build.mjs',
 			'/home/daytona/workspace/node-types/index.txt',
@@ -502,6 +503,12 @@ describe('setupSandboxWorkspace', () => {
 			'/home/daytona/workspace/tsconfig.json',
 			'/home/daytona/workspace/workflow-diagnostics.mts',
 		]);
+		expect(writeFiles.mock.calls[1][0].length).toBeGreaterThan(0);
+		expect(
+			writeFiles.mock.calls[1][0].every(({ path }) =>
+				path.startsWith('/home/daytona/workspace/knowledge-base/'),
+			),
+		).toBe(true);
 		const singleWrites = writeFile.mock.calls.map(([path]) => path);
 		expect(singleWrites).not.toContain('/home/daytona/workspace/package.json');
 		expect(singleWrites).not.toContain('/home/daytona/workspace/node-types/index.txt');
