@@ -120,7 +120,10 @@ export function useWorkflowCommands(): CommandGroup {
 			? [
 					{
 						id: ITEM_ID.PUBLISH_WORKFLOW,
-						title: isReviewRequiredFor(workflowDocumentStore.value.homeProject)
+						title: isReviewRequiredFor({
+							id: workflowDocumentStore.value.workflowId,
+							homeProject: workflowDocumentStore.value.homeProject,
+						})
 							? i18n.baseText('commandBar.workflow.submitForReview')
 							: i18n.baseText('commandBar.workflow.publish'),
 						section: i18n.baseText('commandBar.sections.workflow'),

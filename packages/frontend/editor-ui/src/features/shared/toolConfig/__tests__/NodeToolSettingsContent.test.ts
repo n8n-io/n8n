@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -14,6 +14,7 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, inject, type PropType } from 'vue';
 
@@ -161,6 +162,9 @@ describe('NodeToolSettingsContent', () => {
 		settingsStore = mockedStore(useSettingsStore);
 
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
+		// The node types are in the store by default. The node types tests below empty it.
+		nodeTypesStore.hasNodeTypes = true;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		environmentsStore.variablesAsObject = {};
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
@@ -765,6 +769,81 @@ describe('NodeToolSettingsContent', () => {
 				const lastEmission = nameEmissions[nameEmissions.length - 1];
 				expect(lastEmission[0]).toBe('Second Tool');
 			});
+		});
+	});
+
+	describe('node types that load after the component mounts', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const lastNode = (emitted: () => Record<string, unknown[]>) =>
+			(emitted()['update:node'] as INode[][]).at(-1)?.[0];
+
+		it('shows a loading state, then fills the default parameters once the node types load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+			const getNodeParametersSpy = vi.spyOn(NodeHelpers, 'getNodeParameters');
+
+			const { emitted, getByTestId, queryByTestId } = renderComponent({
+				props: { initialNode: createMockNode({ parameters: {} }) },
+			});
+			await flushPromises();
+
+			expect(getByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(queryByTestId('parameter-input-list')).not.toBeInTheDocument();
+			expect(getNodeParametersSpy).not.toHaveBeenCalled();
+
+			resolve();
+			await flushPromises();
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(lastNode(emitted)?.parameters).toEqual({
+				resource: 'contact',
+				operation: 'create',
+				nameField: '',
+			});
+			expect(getNodeParametersSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the form as invalid until the node types load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+			// A node type with no required parameters or credentials, so only the load decides.
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE_NO_PARAMS);
+
+			const { emitted } = renderComponent({
+				props: {
+					initialNode: createMockNode({
+						name: 'No Params Tool',
+						type: MOCK_NODE_TYPE_NO_PARAMS.name,
+						parameters: {},
+					}),
+				},
+			});
+			await flushPromises();
+
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+
+			resolve();
+			await flushPromises();
+
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+		});
+
+		it('shows the form when the node types fail to load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+
+			const { queryByTestId, queryAllByTestId } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
 		});
 	});
 

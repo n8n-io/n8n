@@ -20,6 +20,7 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
+import { AgentAttentionFlagRepository } from './repositories/agent-attention-flag.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type {
 	AgentRunTelemetryType,
@@ -223,6 +224,7 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly attentionFlags: AgentAttentionFlagRepository,
 		private readonly integrationMessageContext: IntegrationMessageContextService,
 		private readonly metrics: AgentExecutionMetrics,
 	) {}
@@ -1364,13 +1366,17 @@ export class AgentExecutionService {
 				const finalized = await this.txRunner.run({}, async (ctx) => {
 					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
 						return false;
-					return await this.agentExecutionRepository.updateIfRunning(
+					const updated = await this.agentExecutionRepository.updateIfRunning(
 						executionId,
 						terminalValues,
 						undefined,
 						ctx,
 						record.totalCost ?? undefined,
 					);
+					if (updated && status === 'error') {
+						await this.attentionFlags.flagSession(params.threadId, 'session-error', ctx);
+					}
+					return updated;
 				});
 				if (!finalized) {
 					throw new OperationalError('Agent execution is no longer running', {

@@ -1,9 +1,8 @@
 name: 'Util: Notify Merge Queue Removal'
 
-# pull_request_target runs without approval for fork and bot PRs and gets a write token.
-# Safe because no step checks out or runs PR code.
+# GitHub rejects pull_request_target for the dequeued type at startup.
 on:
-  pull_request_target:
+  pull_request:
     types: [dequeued]
 
 permissions: {}

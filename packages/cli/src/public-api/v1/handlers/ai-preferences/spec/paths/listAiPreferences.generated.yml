@@ -62,6 +62,7 @@ responses:
                       - aia
                       - mcp
                       - api
+                      - import
                   createdAt:
                     type: string
                   updatedAt:

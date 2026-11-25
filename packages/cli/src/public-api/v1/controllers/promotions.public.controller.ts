@@ -31,8 +31,10 @@ import {
 	PromotionResourceDetailsDto,
 	PromotionResourceDetailsRequestDto,
 	PromotionBranchListPublicDto,
+	PromotionSettingsPublicDto,
 	UpdatePromotionEnvironmentDto,
 	UpdatePromotionProviderDto,
+	UpdatePromotionSettingsDto,
 	projectIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionEnvironmentIdParamSchema,
@@ -90,6 +92,44 @@ const BETA_NOTE = '**Beta** — breaking changes may still occur without major v
 @PublicApiController('/promotions')
 export class PromotionsPublicController {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
+
+	// -- Settings ------------------------------------------------------------
+
+	@Get('/settings')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('securitySettings:manage')
+	@GlobalScope('securitySettings:manage')
+	@ApiSummary('Beta: Get the promotion settings')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns who can promote, approve, and apply in their own projects. Instance owners and admins can always do all three.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionSettingsPublicDto)
+	@ApiErrorResponse(503)
+	async getPromotionSettings(): Promise<PromotionSettingsPublicDto> {
+		return await (await this.settingsService()).get();
+	}
+
+	@Put('/settings')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('securitySettings:manage')
+	@GlobalScope('securitySettings:manage')
+	@ApiSummary('Beta: Update the promotion settings')
+	@ApiDescription(
+		BETA_NOTE +
+			'Replaces who can promote, approve, and apply in their own projects. Send every setting. A `GET` response can be sent back as the body. Each setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionSettingsPublicDto)
+	@ApiErrorResponse(503)
+	async updatePromotionSettings(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: UpdatePromotionSettingsDto,
+	): Promise<PromotionSettingsPublicDto> {
+		return await (await this.settingsService()).update(req.user, body, req.ctx);
+	}
 
 	// -- Providers -----------------------------------------------------------
 
@@ -876,6 +916,14 @@ export class PromotionsPublicController {
 		if (!this.moduleRegistry.isActive('promotions')) {
 			throw new ServiceUnavailableError('Promotions module is not enabled');
 		}
+	}
+
+	private async settingsService() {
+		this.assertModuleActive();
+		const { PromotionSettingsService } = await import(
+			'@/modules/promotions.ee/promotion-settings.service.js'
+		);
+		return Container.get(PromotionSettingsService);
 	}
 
 	private async providersService() {

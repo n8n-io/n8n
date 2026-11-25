@@ -311,7 +311,7 @@ export async function computeChatModelValidationIssues(
 
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
-	const catalog = await loadCatalogWithTimeout(context.modelFetch);
+	const catalog = await loadCatalogWithTimeout(context.catalogFetch ?? context.modelFetch);
 	const issues = computeCatalogChatModelIssues(node.type, parameters, catalog);
 
 	const entry = resolveChatModelCatalogEntry(node.type);
@@ -392,7 +392,7 @@ export interface ChatModelRecoveryContext {
  * replacement suggestions per node, and n8n-credits availability.
  */
 export async function collectChatModelRecoveryContext(
-	context: Pick<InstanceAiContext, 'credentialService' | 'modelFetch'>,
+	context: Pick<InstanceAiContext, 'credentialService' | 'modelFetch' | 'catalogFetch'>,
 	nodes: ReadonlyArray<{ name?: string; type?: string }>,
 	connections: IConnections | Record<string, unknown> | undefined,
 ): Promise<ChatModelRecoveryContext> {
@@ -403,7 +403,7 @@ export async function collectChatModelRecoveryContext(
 		return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
 	}
 
-	const catalog = await loadCatalogWithTimeout(context.modelFetch);
+	const catalog = await loadCatalogWithTimeout(context.catalogFetch ?? context.modelFetch);
 	const gatewaySupportByCredType = new Map<string, boolean>();
 	for (const node of nodes) {
 		if (!node.name || !isChatModelNode(node.type)) continue;
