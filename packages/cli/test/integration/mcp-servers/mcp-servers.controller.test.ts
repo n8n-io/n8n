@@ -40,8 +40,10 @@ const agentFor = (role: AssignableProjectRole) => testServer.authAgentFor(roleUs
 const serversPath = (projectId = teamProject.id) => `/projects/${projectId}/mcp-servers`;
 
 function setFlag(on: boolean) {
-	const flags = on ? { [CUSTOM_MCP_SERVERS_FLAG]: CUSTOM_MCP_SERVERS_FLAG_VARIANT } : {};
-	vi.mocked(Container.get(PostHogClient).getFeatureFlags).mockResolvedValue(flags);
+	vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+		async (flag) =>
+			on && flag === CUSTOM_MCP_SERVERS_FLAG ? CUSTOM_MCP_SERVERS_FLAG_VARIANT : undefined,
+	);
 }
 
 async function createServer(
