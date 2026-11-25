@@ -60,7 +60,10 @@ import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
-import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+import {
+	findUnarchivedWorkflowIds,
+	findWorkflowToolWorkflows,
+} from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 import {
@@ -443,7 +446,8 @@ export class AgentValidationService {
 	) {
 		const attached = directWorkflowIds(config, workflowsByReference);
 		const unattached = skillWorkflowTools.filter(({ tool }) => !attached.has(tool.workflowId));
-		const outsideProjectIds = await this.findWorkflowsOutsideProject(
+		const outsideProjectIds = await findUnarchivedWorkflowIds(
+			this.workflowRepository,
 			unattached
 				.map(({ tool }) => tool.workflowId)
 				.filter((workflowId) => !workflowsByReference.has(workflowId)),
@@ -466,14 +470,6 @@ export class AgentValidationService {
 				issues.push(issue('missing_reference', path, capability));
 			}
 		}
-	}
-
-	private async findWorkflowsOutsideProject(workflowIds: string[]): Promise<Set<string>> {
-		if (workflowIds.length === 0) return new Set();
-		const workflows = await this.workflowRepository.findByIds(workflowIds, {
-			fields: ['isArchived'],
-		});
-		return new Set(workflows.filter(({ isArchived }) => !isArchived).map(({ id }) => id));
 	}
 
 	private async prefetchReferenceLookups(

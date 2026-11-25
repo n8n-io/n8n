@@ -222,6 +222,36 @@ describe('AgentSkillFileNav', () => {
 		expect(byTestId(container, 'picker-stub')).toBeNull();
 	});
 
+	it('warns about the workflows that the agent project cannot use', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: {
+				skill: MENTIONING_SKILL,
+				selectedPath: 'SKILL.md',
+				readOnly: true,
+				outsideProjectWorkflowIds: ['wf2'],
+			},
+		});
+
+		const warnings = container.querySelectorAll(
+			'[data-testid="agent-skill-workflow-not-in-project"]',
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toHaveAttribute(
+			'aria-label',
+			'This agent\'s project can\'t use workflow "Archive". Share the workflow with this project and set "This workflow can be called by" to "Any workflow".',
+		);
+	});
+
+	it('shows no project warning without an agent project', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', readOnly: true },
+		});
+
+		expect(byTestId(container, 'agent-skill-workflow-not-in-project')).toBeNull();
+	});
+
 	it('hides the workflows section when the flag is off', () => {
 		const { container } = renderComponent({
 			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' },

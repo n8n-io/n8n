@@ -34,6 +34,7 @@ const props = withDefaults(
 		mentionProjectName?: string;
 		instanceSkill?: boolean;
 		availableToMcp?: boolean;
+		outsideProjectWorkflowIds?: string[];
 	}>(),
 	{
 		addReferenceDisabled: false,
@@ -43,6 +44,7 @@ const props = withDefaults(
 		mentionProjectName: undefined,
 		instanceSkill: false,
 		availableToMcp: false,
+		outsideProjectWorkflowIds: () => [],
 	},
 );
 
@@ -85,7 +87,12 @@ const workflowRows = computed(() =>
 					availableToMCP: props.availableToMcp,
 				}).map((note) => i18n.baseText(NOTE_TEXT_KEYS[note]))
 			: [];
-		return { ...workflow, notes };
+		const outsideProjectWarning = props.outsideProjectWorkflowIds.includes(workflow.workflowId)
+			? i18n.baseText('agents.builder.validation.issue.tool.workflow.notInProject', {
+					interpolate: { id: workflow.name || workflow.workflowId },
+				})
+			: undefined;
+		return { ...workflow, notes, outsideProjectWarning };
 	}),
 );
 
@@ -277,6 +284,21 @@ function testIdForPath(path: string) {
 						data-attr="agent-skill-workflow-notes"
 					>
 						<N8nIcon icon="info" :size="16" />
+					</span>
+				</N8nTooltip>
+				<N8nTooltip v-if="workflow.outsideProjectWarning" as-child placement="right">
+					<template #content>
+						<p :class="$style.note">{{ workflow.outsideProjectWarning }}</p>
+					</template>
+					<span
+						:class="[$style.noteIcon, $style.invalidIcon]"
+						tabindex="0"
+						role="img"
+						:aria-label="workflow.outsideProjectWarning"
+						data-testid="agent-skill-workflow-not-in-project"
+						data-attr="agent-skill-workflow-not-in-project"
+					>
+						<N8nIcon icon="triangle-alert" :size="16" />
 					</span>
 				</N8nTooltip>
 			</div>

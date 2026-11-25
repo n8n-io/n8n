@@ -33,6 +33,15 @@ export async function findWorkflowToolWorkflows(
 	return workflowsByReference;
 }
 
+export async function findUnarchivedWorkflowIds(
+	workflowRepository: WorkflowRepository,
+	workflowIds: string[],
+): Promise<Set<string>> {
+	if (workflowIds.length === 0) return new Set();
+	const workflows = await workflowRepository.findByIds(workflowIds, { fields: ['isArchived'] });
+	return new Set(workflows.filter(({ isArchived }) => !isArchived).map(({ id }) => id));
+}
+
 export async function findWorkflowToolWorkflow(
 	workflowRepository: WorkflowRepository,
 	ref: AgentJsonWorkflowToolConfig,
