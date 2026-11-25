@@ -666,9 +666,10 @@ divider before the options to create an approval. List Workflow before the
 connected channels.
 Open the destination pane on pointer hover or keyboard activation. Include search
 in that pane and fetch more results as the user scrolls. Group people and channels.
-Keep the source menu and destination pane at their own heights. Render the Build
-tab menu outside the editor column so it stays anchored beside either chat
-panel. Keep menus inside their settings dialogs.
+Anchor the source menu to its trigger. Position the destination pane separately
+so that loading or resizing results does not move the source menu. Render the
+Build tab menu outside the editor column so it stays anchored beside either
+chat panel. Keep menus inside their settings dialogs.
 Create the approval when the user selects a destination. Use workflow or recipient
 names by default and show the platform as an icon. Preserve explicit name overrides.
 

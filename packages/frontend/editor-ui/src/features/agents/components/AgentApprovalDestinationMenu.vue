@@ -323,7 +323,6 @@ async function enter(value: typeof source.value) {
 		:z-index="teleported ? builderMenuZIndex : undefined"
 		position-strategy="fixed"
 		:enable-scrolling="false"
-		:content-class="$style.popover"
 	>
 		<template #trigger>
 			<slot name="trigger">
@@ -340,7 +339,7 @@ async function enter(value: typeof source.value) {
 			</slot>
 		</template>
 		<template #content>
-			<div :class="$style.menu">
+			<div>
 				<div ref="sources" :class="$style.sources">
 					<template v-if="existing && existingApprovers.length">
 						<button
@@ -388,106 +387,101 @@ async function enter(value: typeof source.value) {
 						<N8nIcon icon="chevron-right" :class="$style.chevron" />
 					</button>
 				</div>
-				<div
+				<N8nPopover
 					v-if="source"
-					ref="searchArea"
-					:class="$style.destination"
-					@keydown.left="focusSourceFromResult"
+					:open="true"
+					:reference="sources"
+					side="right"
+					:side-offset="0"
+					:teleported="false"
+					:enable-scrolling="false"
+					:enable-slide-in="false"
+					suppress-auto-focus
+					@update:open="!$event && activate(undefined)"
 				>
-					<div :class="$style.search">
-						<N8nInput
-							:model-value="query"
-							:maxlength="200"
-							:placeholder="
-								i18n.baseText(textDestination ? 'agents.hitl.telegramUserId' : 'generic.search')
-							"
-							:aria-label="
-								i18n.baseText(textDestination ? 'agents.hitl.telegramUserId' : 'generic.search')
-							"
-							@update:model-value="setQuery"
-							@keydown.enter.prevent="textDestination && chooseTelegram()"
-						/>
-					</div>
-					<button
-						v-if="source === 'workflow'"
-						:class="$style.item"
-						type="button"
-						:disabled="busy"
-						@click="create"
-					>
-						<N8nIcon icon="plus" />{{ i18n.baseText('agents.hitl.createWorkflow') }}
-					</button>
-					<button
-						v-if="textDestination"
-						:class="$style.item"
-						type="button"
-						:disabled="!telegramId"
-						@click="chooseTelegram"
-					>
-						{{ i18n.baseText('agents.hitl.useTelegramId') }}
-					</button>
-					<div
-						v-else
-						ref="list"
-						data-testid="approval-destination-results"
-						:class="$style.results"
-						@scroll="onScroll"
-					>
-						<div
-							v-for="group in groups.filter((entry) => entry.rows.length || entry.hint)"
-							:key="group.label"
-							:class="$style.group"
-						>
-							<div :class="$style.caption">{{ group.label }}</div>
-							<div v-if="group.hint" :class="$style.caption">{{ group.hint }}</div>
+					<template #content>
+						<div ref="searchArea" :class="$style.destination" @keydown.left="focusSourceFromResult">
+							<div :class="$style.search">
+								<N8nInput
+									:model-value="query"
+									:maxlength="200"
+									:placeholder="
+										i18n.baseText(textDestination ? 'agents.hitl.telegramUserId' : 'generic.search')
+									"
+									:aria-label="
+										i18n.baseText(textDestination ? 'agents.hitl.telegramUserId' : 'generic.search')
+									"
+									@update:model-value="setQuery"
+									@keydown.enter.prevent="textDestination && chooseTelegram()"
+								/>
+							</div>
 							<button
-								v-for="row in group.rows"
-								:key="row.id"
+								v-if="source === 'workflow'"
 								:class="$style.item"
 								type="button"
-								@click="choose(row)"
+								:disabled="busy"
+								@click="create"
 							>
-								{{ row.name }}
+								<N8nIcon icon="plus" />{{ i18n.baseText('agents.hitl.createWorkflow') }}
 							</button>
+							<button
+								v-if="textDestination"
+								:class="$style.item"
+								type="button"
+								:disabled="!telegramId"
+								@click="chooseTelegram"
+							>
+								{{ i18n.baseText('agents.hitl.useTelegramId') }}
+							</button>
+							<div
+								v-else
+								ref="list"
+								data-testid="approval-destination-results"
+								:class="$style.results"
+								@scroll="onScroll"
+							>
+								<div
+									v-for="group in groups.filter((entry) => entry.rows.length || entry.hint)"
+									:key="group.label"
+									:class="$style.group"
+								>
+									<div :class="$style.caption">{{ group.label }}</div>
+									<div v-if="group.hint" :class="$style.caption">{{ group.hint }}</div>
+									<button
+										v-for="row in group.rows"
+										:key="row.id"
+										:class="$style.item"
+										type="button"
+										@click="choose(row)"
+									>
+										{{ row.name }}
+									</button>
+								</div>
+								<div v-if="failed" :class="$style.caption">
+									{{ i18n.baseText('agents.hitl.destinationLoadFailed') }}
+								</div>
+								<div v-else-if="loading" :class="$style.caption" role="status">
+									{{ i18n.baseText('agents.hitl.loading') }}
+								</div>
+								<div v-else-if="!options.length && !showDiscordSearchHint" :class="$style.caption">
+									{{ i18n.baseText('agents.hitl.noDestinations') }}
+								</div>
+								<button v-if="failed" :class="$style.item" type="button" @click="load()">
+									{{ i18n.baseText('agents.hitl.retry') }}
+								</button>
+							</div>
 						</div>
-						<div v-if="failed" :class="$style.caption">
-							{{ i18n.baseText('agents.hitl.destinationLoadFailed') }}
-						</div>
-						<div v-else-if="loading" :class="$style.caption" role="status">
-							{{ i18n.baseText('agents.hitl.loading') }}
-						</div>
-						<div v-else-if="!options.length && !showDiscordSearchHint" :class="$style.caption">
-							{{ i18n.baseText('agents.hitl.noDestinations') }}
-						</div>
-						<button v-if="failed" :class="$style.item" type="button" @click="load()">
-							{{ i18n.baseText('agents.hitl.retry') }}
-						</button>
-					</div>
-				</div>
+					</template>
+				</N8nPopover>
 			</div>
 		</template>
 	</N8nPopover>
 </template>
 
 <style module lang="scss">
-.popover[data-state='open'] {
-	background-color: transparent;
-	box-shadow: none;
-}
-.menu {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
-	max-width: calc(100vw - var(--spacing--md));
-}
 .sources,
 .destination {
-	width: var(--spacing--5xl);
-	min-width: 0;
-	flex-shrink: 1;
-	border-radius: var(--radius--xs);
-	background-color: var(--background--surface);
-	box-shadow: var(--shadow--md), var(--shadow--outline);
+	width: min(var(--spacing--5xl), calc((100vw - var(--spacing--md)) / 2));
 }
 .sources,
 .results {

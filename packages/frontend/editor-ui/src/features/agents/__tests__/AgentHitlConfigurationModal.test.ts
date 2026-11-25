@@ -162,6 +162,19 @@ it.each([true, undefined])(
 			);
 			expect(menu).toBeInTheDocument();
 			expect(column.contains(menu)).toBe(teleported !== true);
+
+			const slack = Array.from(menu?.querySelectorAll('button') ?? []).find(
+				(button) => button.textContent?.trim() === 'Slack',
+			);
+			expect(slack).toBeInTheDocument();
+			slack?.dispatchEvent(new Event('pointerenter'));
+			await flushPromises();
+
+			const results = menu?.querySelector('[data-testid="approval-destination-results"]');
+			const destinationPane = results?.closest('[role="dialog"]');
+			expect(destinationPane).toBeInTheDocument();
+			expect(destinationPane).not.toBe(menu);
+			expect(menu).toHaveAttribute('aria-labelledby', trigger.attributes('id'));
 		} finally {
 			wrapper.unmount();
 			column.remove();
