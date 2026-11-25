@@ -2581,7 +2581,7 @@
 	"mcpServers.tools.addError": "Could not add the tools",
 	"mcpServers.tools.saveError": "Could not save the tool",
 	"mcpServers.tools.removeError": "Could not remove the tool",
-	"mcpServers.tools.removed": "{name} removed",
+	"mcpServers.tools.removed": "Tool removed",
 	"mcpServers.tools.row.fromWorkflow": "From workflow",
 	"mcpServers.tools.row.remove": "Remove",
 	"mcpServers.tools.row.menu": "Tool actions",

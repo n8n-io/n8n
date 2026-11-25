@@ -263,6 +263,14 @@ describe('McpServerContentsTab', () => {
 				SERVER_ID,
 				tool().id,
 			);
+			// The title capitalizes its first letter, so the exact name is in the message.
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+					title: 'Tool removed',
+					message: expect.objectContaining({ children: 'get_campaign_numbers' }),
+				}),
+			);
 		});
 	});
 
