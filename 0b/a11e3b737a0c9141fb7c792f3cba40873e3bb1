@@ -1,0 +1,62 @@
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_4a494bfdece475::t_7c9814122d3e13 6-7,27,29-31,33-34,43,171,173,182-184,281,466,510-514,517-522,524-528,530-531,533-535,561,568,575,623,627-629,636-638,658,714-719
+  s_4a494bfdece475::t_ea0eaf73cd6d8a 720
+packages/cli/BREAKING-CHANGES.md
+  s_4a494bfdece475::t_b0cd2eb238e83a 95-101,114
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_4a494bfdece475::t_46a3c08f2e62a9 3298,3303-3309,3311-3312,3314-3321,3439-3453,3455-3459,3469,3588,4006-4020,4024,4034
+  s_4a494bfdece475::t_44db3ed24a8e28 268,3061,3068,3296,3348,3355,3371,3374,3392,3398,3404,3411,3423,3430,3974,3977,4037,4044
+  s_4a494bfdece475::t_ec6c92a54eee7d 3589,4035
+packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
+  s_4a494bfdece475::t_b514447f9b0be0 7-13,15-35,41-42,55-71,74-93,109-112,116-136,138,141,175-177,240-241,244,251-257,279-290,292-295
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_4a494bfdece475::t_7fd217d9eb13ad 46,56,150,227,342-344,349,355,364,370,372-377,379,513
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_4a494bfdece475::t_7fd217d9eb13ad 1511
+packages/cli/src/modules/promotions.ee/apply-dependency-check.service.ts
+  s_4a494bfdece475::t_7fd217d9eb13ad 1-5,7-23,25-33,35-44,47-50,54-60,63,67-70,72,77-83,86,88-90,98-101,103-105,106-109,112,114-142
+  s_4a494bfdece475::t_72ce81654902cf 143,168-170
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.test.ts
+  s_4a494bfdece475::t_cbffd1aafc8124 1-11,13-14,16-93,95,98-200,203-204,216-248,250-255,258-360,362,366-367,393-406,682-697,699-704,713-716,727-729
+packages/cli/src/modules/promotions.ee/package-references.ts
+  s_4a494bfdece475::t_0905bd9df06748 30-32,35-36,112-115,119,120-121,125-127
+  s_4a494bfdece475::t_71e8d6153edda3 128
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
+  s_4a494bfdece475::t_b0cd2eb238e83a 1-5,58-92
+  s_4a494bfdece475::t_e49f2365752db2 93-94
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_43bec5bc639050 62-84,90-92,94,97-101,107-118,125,130,136,144,146,159,181,183,263-325,327-329,332-340,342-371,373-398,401-403,412-471,512-560,562-579,581-623,625-629
+  s_4a494bfdece475::t_0f51094c8f5cc5 11,17,19,21-25,61,1058
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
+  s_4a494bfdece475::t_03c5baefc4b8e1 1-11,13-17,19-31,33-37,39-42,44-46,51-54,56,59-62,64,67-71,77-78,80-83,89-92,94-101,103-110,113-115,140-169,193-214,216,220-222,224-225,235-236,238-245,247-258,262,264-266,320-351
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_a67dea93c74611 22,86-89,105,528-529,2600-2613,2642,2644,2648,2650-2674,2716,2719-2720,2778-2811,2815,2855-2865,2870-2871,2879-2880,2882-2926,2938-2954,2955-2959,2961,2963-2971,2974,2976,2978-2980,2982-3005,3007,3009-3013,3097-3135,3137-3159,3161-3168,3170-3172,3174-3184,3186,3198,3210,3278-3316,3319-3328,3330-3335,3337-3346,3348-3362,3364-3373,3375-3389,3417-3424,3425,3427-3445,3448-3519,3521-3536,3726,3732-3733,4054-4056
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_4a494bfdece475::t_234e3c26ad6440 1271-1275,1282
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_4b48ca0c4561f7::t_2887e4d192d063 2880-2889,2891,3144-3153,3155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ba11e3b737a0c9141fb7c792f3cba40873e3bb1",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4b48ca0c4561f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a38a2c5b125073c09",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
