@@ -21,6 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
+import ParameterNewTag from '../ParameterNewTag.vue';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
@@ -197,6 +198,9 @@ function getIssues(index: number): string[] {
 			size="small"
 			color="text-dark"
 		>
+			<template #labelSuffix>
+				<ParameterNewTag :path="path" />
+			</template>
 		</N8nInputLabel>
 		<div :class="$style.content">
 			<div :class="$style.conditions">

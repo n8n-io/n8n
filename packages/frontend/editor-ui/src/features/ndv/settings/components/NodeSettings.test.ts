@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref, shallowRef } from 'vue';
+import { computed, defineComponent, h, inject, ref, shallowRef } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
@@ -11,6 +11,7 @@ import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
+import { NodeVersionNewParameterKey } from '@/app/constants';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/useNdvAgentConfig';
@@ -741,9 +742,19 @@ describe('NodeSettings', () => {
 					')" />',
 			},
 			ParameterInputList: {
-				props: ['parameters', 'nodeValues', 'hiddenIssuesInputs'],
+				props: ['parameters', 'nodeValues', 'hiddenIssuesInputs', 'path'],
+				setup(props: { parameters: Array<{ name: string }>; path: string }) {
+					const isNew = inject(NodeVersionNewParameterKey, () => false);
+					const newNames = computed(() =>
+						props.parameters
+							.map(({ name }) => name)
+							.filter((name) => isNew(props.path ? `${props.path}.${name}` : name))
+							.join(),
+					);
+					return { newNames };
+				},
 				template:
-					'<div data-test-id="parameters-stub" :data-names="parameters.map((parameter) => parameter.name).join()" :data-values="JSON.stringify(nodeValues.parameters)" :data-hidden-issues="hiddenIssuesInputs.join()" />',
+					'<div data-test-id="parameters-stub" :data-path="path" :data-new="newNames" :data-names="parameters.map((parameter) => parameter.name).join()" :data-values="JSON.stringify(nodeValues.parameters)" :data-hidden-issues="hiddenIssuesInputs.join()" />',
 			},
 		});
 		const pickerStubs = pickerStubsEmitting(2);
@@ -884,6 +895,84 @@ describe('NodeSettings', () => {
 				}
 			},
 		);
+
+		describe('new parameter tags', () => {
+			/**
+			 * Waits for the three parameter lists: the node parameters, the parameters of the
+			 * Settings tab and the node settings. The last one has no path prefix.
+			 */
+			const expectNewNames = async (
+				findAllByTestId: (id: string) => Promise<HTMLElement[]>,
+				expected: string,
+			) =>
+				await waitFor(async () =>
+					expect(
+						(await findAllByTestId('parameters-stub')).map((list) => [
+							list.getAttribute('data-path'),
+							list.getAttribute('data-new'),
+						]),
+					).toEqual([
+						['parameters', expected],
+						['parameters', ''],
+						['', ''],
+					]),
+				);
+
+			it('marks the parameters that the old description does not have', async () => {
+				// `notes` is also the name of a node setting. That list has no path prefix.
+				const typeV2WithNotes = versionedType(2, {
+					properties: [
+						...typeV2.properties,
+						{ displayName: 'Notes', name: 'notes', type: 'string', default: '' },
+					],
+				});
+				const { findByTestId, findAllByTestId } = renderVersioned({
+					nodeTypes: [typeV1, typeV2WithNotes],
+				});
+				await expectNewNames(findAllByTestId, '');
+
+				await fireEvent.click(await findByTestId('node-version-select'));
+
+				await expectNewNames(findAllByTestId, 'method,token,notes');
+			});
+
+			it('marks the parameter that a shared description shows from the new version', async () => {
+				const { findByTestId, findAllByTestId } = renderVersioned({
+					node: nodeOnVersion(2),
+					nodeTypes: [typeV1, typeV2AndV2Point1],
+					stubs: pickerStubsEmitting(2.1),
+				});
+
+				await fireEvent.click(await findByTestId('node-version-select'));
+
+				await expectNewNames(findAllByTestId, 'mode');
+			});
+
+			it.each([
+				[true, 'method,token'],
+				[false, ''],
+			])(
+				'marks the parameters of a stored version change only with the flag on: %s',
+				async (enabled, expected) => {
+					versionPickerFlag.enabled = enabled;
+					const node = nodeOnVersion(2);
+					const { findAllByTestId } = renderVersioned({
+						node,
+						beforeMount: () => {
+							useNDVStore(
+								createWorkflowDocumentId(useWorkflowsStore().workflowId),
+							).setNodeVersionChange(node.id, {
+								setAside: [],
+								changedDefaults: [],
+								fromVersion: 1,
+							});
+						},
+					});
+
+					await expectNewNames(findAllByTestId, expected);
+				},
+			);
+		});
 
 		it('writes the default for a value that the new version does not accept', async () => {
 			const formatProperty = (options: string[]) => ({

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import ParameterNewTag from '../ParameterNewTag.vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -254,6 +255,10 @@ function valueChanged(parameterData: IUpdateInformation) {
 							:value="item.name"
 							data-test-id="collection-parameter-option"
 						>
+							<span :class="$style.optionLabel">
+								{{ getParameterOptionLabel(item) }}
+								<ParameterNewTag :path="`${path}.${item.name}`" />
+							</span>
 						</N8nOption>
 					</N8nSelect>
 				</div>
@@ -265,6 +270,12 @@ function valueChanged(parameterData: IUpdateInformation) {
 <style lang="scss" module>
 .collectionParameter {
 	padding-left: var(--spacing--sm);
+}
+
+.optionLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 // Legacy UI: Add margin-top and custom styling for tertiary button to look like input

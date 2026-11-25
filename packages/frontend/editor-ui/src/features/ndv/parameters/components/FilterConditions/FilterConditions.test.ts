@@ -13,6 +13,7 @@ import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-wor
 import FilterConditions from './FilterConditions.vue';
 import { getFilterOperator } from './utils';
 import { flushPromises } from '@vue/test-utils';
+import { NodeVersionNewParameterKey } from '@/app/constants';
 
 vi.mock('vue-router');
 
@@ -65,6 +66,21 @@ describe('FilterConditions.vue', () => {
 	afterEach(async () => {
 		vi.clearAllMocks();
 		await flushPromises();
+	});
+
+	it('shows the new tag on the label of a parameter that the node version added', () => {
+		const provide = (newPath: string) => ({
+			[NodeVersionNewParameterKey as symbol]: (path: string) => path === newPath,
+		});
+
+		const tagged = renderComponent({ global: { provide: provide('parameters.conditions') } });
+		expect(tagged.getByText('Conditions').parentElement).toContainElement(
+			tagged.getByTestId('parameter-new-tag'),
+		);
+		tagged.unmount();
+
+		const other = renderComponent({ global: { provide: provide('parameters.other') } });
+		expect(other.queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
 	});
 
 	it('renders default state properly', async () => {

@@ -4,10 +4,11 @@ import CollectionParameterNew, { type Props } from './CollectionParameterNew.vue
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { NodeVersionNewParameterKey } from '@/app/constants';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -206,6 +207,64 @@ describe('CollectionParameterNew.vue', () => {
 			// Selecting an option adds the field
 			await userEvent.click(option);
 			expect(emitted('valueChanged')).toBeTruthy();
+		});
+	});
+
+	describe('New parameter tag', () => {
+		const provide = {
+			[NodeVersionNewParameterKey as symbol]: (path: string) =>
+				path === 'parameters.additionalFields.field2',
+		};
+
+		it.each([
+			[false, 'collection-parameter-add-header'],
+			[false, 'collection-parameter-add-dropdown'],
+			[true, 'collection-parameter-add-header'],
+			[true, 'collection-parameter-add-dropdown'],
+		])(
+			'tags only the new option in the menu (nested: %s, trigger: %s)',
+			async (isNested, trigger) => {
+				const { getByTestId } = renderComponent({
+					props: { ...baseProps, isNested },
+					global: { provide },
+				});
+
+				await userEvent.click(getByTestId(trigger));
+
+				const newItem = (await screen.findByText('Field 2')).closest('[role="menuitem"]');
+				const oldItem = screen.getByText('Field 1').closest('[role="menuitem"]');
+				expect(within(newItem as HTMLElement).getByTestId('parameter-new-tag')).toBeVisible();
+				expect(
+					within(oldItem as HTMLElement).queryByTestId('parameter-new-tag'),
+				).not.toBeInTheDocument();
+			},
+		);
+
+		it('tags the label of a new option after the user adds it', async () => {
+			const { findAllByTestId, getByText } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: [
+							{ displayName: 'Currency', name: 'currency', type: 'string', default: 'USD' },
+							{ displayName: 'Value', name: 'value', type: 'number', default: 0 },
+						],
+					},
+					values: { currency: 'USD', value: 1 },
+					nodeValues: { parameters: { additionalFields: { currency: 'USD', value: 1 } } },
+				},
+				global: {
+					provide: {
+						[NodeVersionNewParameterKey as symbol]: (path: string) =>
+							path === 'parameters.additionalFields.currency',
+					},
+				},
+			});
+
+			const tags = await findAllByTestId('parameter-new-tag');
+			expect(tags).toHaveLength(1);
+			expect(getByText('Currency').parentElement).toContainElement(tags[0]);
 		});
 	});
 

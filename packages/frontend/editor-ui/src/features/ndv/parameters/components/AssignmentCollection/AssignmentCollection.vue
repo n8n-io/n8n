@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { computed, inject, reactive, useTemplateRef, watch } from 'vue';
 import DropArea from '@/app/components/DropArea/DropArea.vue';
+import ParameterNewTag from '../ParameterNewTag.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from '../../utils/assignmentCollection.utils';
@@ -186,6 +187,9 @@ function optionSelected(action: string) {
 			underline
 			color="text-dark"
 		>
+			<template #labelSuffix>
+				<ParameterNewTag :path="path" />
+			</template>
 			<template v-if="!hasRestrictedAssignments" #options>
 				<ParameterOptions
 					:parameter="parameter"

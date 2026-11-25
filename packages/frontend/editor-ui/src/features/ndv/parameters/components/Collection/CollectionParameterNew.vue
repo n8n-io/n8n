@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from 'vue';
+import ParameterNewTag from '../ParameterNewTag.vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -280,6 +281,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 				@select="optionSelected"
 				@update:model-value="isDropdownOpen = $event"
 			>
+				<template #item-trailing="{ item, ui }">
+					<ParameterNewTag :class="ui.class" :path="`${path}.${item.id}`" />
+				</template>
 				<template #trigger>
 					<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 				</template>
@@ -315,6 +319,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 					data-test-id="collection-parameter-add-dropdown"
 					@select="optionSelected"
 				>
+					<template #item-trailing="{ item, ui }">
+						<ParameterNewTag :class="ui.class" :path="`${path}.${item.id}`" />
+					</template>
 					<template #trigger>
 						<N8nButton
 							class="n8n-button--highlightFill"
@@ -354,6 +361,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 							data-test-id="collection-parameter-add-header"
 							@select="optionSelected"
 						>
+							<template #item-trailing="{ item, ui }">
+								<ParameterNewTag :class="ui.class" :path="`${path}.${item.id}`" />
+							</template>
 							<template #trigger>
 								<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 							</template>
@@ -383,6 +393,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 					data-test-id="collection-parameter-add-dropdown"
 					@select="optionSelected"
 				>
+					<template #item-trailing="{ item, ui }">
+						<ParameterNewTag :class="ui.class" :path="`${path}.${item.id}`" />
+					</template>
 					<template #trigger>
 						<N8nButton
 							class="n8n-button--highlightFill"

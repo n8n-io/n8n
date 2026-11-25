@@ -4,6 +4,7 @@ import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
+import ParameterNewTag from './ParameterNewTag.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import FromAiOverrideButton from './ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.vue';
@@ -453,6 +454,9 @@ function removeOverride(clearField = false) {
 			:input-name="parameter.name"
 			color="text-dark"
 		>
+			<template #labelSuffix>
+				<ParameterNewTag :path="path" />
+			</template>
 			<template #options>
 				<ParameterOptions
 					v-if="displayOptions"
@@ -488,6 +492,9 @@ function removeOverride(clearField = false) {
 		@mouseenter="onWrapperMouseEnter"
 		@mouseleave="onWrapperMouseLeave"
 	>
+		<template #labelSuffix>
+			<ParameterNewTag :path="path" />
+		</template>
 		<template
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
 			#persistentOptions
