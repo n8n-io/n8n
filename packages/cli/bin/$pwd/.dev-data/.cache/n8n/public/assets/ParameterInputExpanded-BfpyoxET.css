@@ -1,0 +1,18 @@
+._errors_rh4vu_1 {
+  margin-top: var(--spacing--2xs);
+}
+._hint_rh4vu_5 {
+  margin-top: var(--spacing--4xs);
+}.fixed-collection-wrapper .icon-button {
+  position: absolute;
+  opacity: 0;
+  top: -3px;
+  left: calc(-0.5 * var(--spacing--xs));
+  transition: opacity 100ms ease-in;
+}
+.fixed-collection-wrapper .icon-button Button {
+  color: var(--icon--color);
+}
+.fixed-collection-wrapper .icon-button > Button:hover {
+  color: var(--icon--color--hover);
+}

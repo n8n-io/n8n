@@ -1,0 +1,95 @@
+._eventListCard_o3525_1 {
+  margin-left: 1em;
+}
+._eventList_o3525_1 {
+  height: auto;
+  overflow-y: auto;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+._eventList_o3525_1 ._eventListItem_o3525_13 {
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  margin: 10px;
+  color: var(--color--primary);
+}
+._eventListItemDisabled_o3525_21 > label > span > span {
+  background-color: transparent !important;
+}
+._eventListItemDisabled_o3525_21 > label > span > span:after {
+  border-color: rgb(54, 54, 54) !important;
+}
+._eventList_o3525_1 ._eventListItem_o3525_13 + ._listItem_o3525_28 {
+  margin-top: 10px;
+}._labelMargins_9d8u2_1 {
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+._typeSelector_9d8u2_6 {
+  width: 100%;
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+._sidebarSwitches_9d8u2_12 {
+  margin-left: 1.5em;
+  margin-bottom: 0.5em;
+}
+._sidebarSwitches_9d8u2_12 span {
+  color: var(--color--text--shade-1) !important;
+}
+._tabbar_9d8u2_20 {
+  margin-bottom: 1em;
+}
+._mainContent_9d8u2_24 {
+  flex: 1;
+  overflow: auto;
+  padding-left: 1em;
+  padding-right: 1em;
+  padding-bottom: 2em;
+}
+._sidebar_9d8u2_12 {
+  padding-top: 1em;
+  max-width: 170px;
+  min-width: 170px;
+  margin-right: var(--spacing--lg);
+  flex-grow: 1;
+}
+._sidebar_9d8u2_12 ul {
+  padding: 0 !important;
+}
+._cardTitle_9d8u2_43 {
+  font-size: 14px;
+  font-weight: var(--font-weight--medium);
+}
+._header_9d8u2_48 {
+  display: flex;
+  min-height: 61px;
+}
+._headerCreate_9d8u2_53 {
+  display: flex;
+  font-size: 20px;
+}
+._container_9d8u2_58 {
+  display: flex;
+  height: 100%;
+}
+._destinationInfo_9d8u2_63 {
+  flex-grow: 1;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  margin-bottom: var(--spacing--lg);
+}
+._destinationActions_9d8u2_72 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-right: var(--spacing--xl);
+  margin-bottom: var(--spacing--lg);
+}
+._destinationActions_9d8u2_72 > * {
+  margin-left: var(--spacing--2xs);
+}

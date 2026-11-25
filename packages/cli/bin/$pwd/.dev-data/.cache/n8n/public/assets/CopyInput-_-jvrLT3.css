@@ -1,0 +1,67 @@
+._copyText_deyf7_1 span {
+  font-family: Monaco, Consolas;
+  color: var(--color--text);
+  overflow-wrap: break-word;
+}
+._copyText_deyf7_1 {
+  padding: var(--spacing--xs);
+  background-color: var(--color--background--light-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  position: relative;
+  font-weight: var(--font-weight--regular);
+}
+._copyText_deyf7_1:hover {
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  --display-copy-button: flex;
+  width: 100%;
+}
+._noHover_deyf7_21 {
+  cursor: default;
+}
+._large_deyf7_25 span {
+  font-size: var(--font-size--sm);
+  line-height: 1.5;
+}
+._medium_deyf7_30 span {
+  font-size: var(--font-size--xs);
+  line-height: 1;
+}
+._collapsed_deyf7_35 {
+  white-space: nowrap;
+  overflow: hidden;
+}
+._truncateStart_deyf7_40 {
+  white-space: nowrap;
+  overflow: hidden;
+  direction: rtl;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+._truncateStart_deyf7_40 > span {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+._copyButton_deyf7_52 {
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  display: var(--display-copy-button, none);
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: var(--spacing--xs);
+  background-color: var(--color--background--light-2);
+  height: 100%;
+  align-items: center;
+  border-radius: var(--radius);
+}
+._copyButton_deyf7_52 span {
+  font-family: unset;
+}
+._hint_deyf7_68 {
+  margin-top: var(--spacing--2xs);
+  font-size: var(--font-size--2xs);
+  line-height: var(--line-height--lg);
+  font-weight: var(--font-weight--regular);
+  word-break: normal;
+}

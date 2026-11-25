@@ -1,0 +1,206 @@
+._name_125ko_1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._name_125ko_1 del:not(:last-child) {
+  margin-right: var(--spacing--4xs);
+}._container_18lg6_1 {
+  display: flex;
+  align-items: center;
+  justify-content: stretch;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  padding-inline-end: var(--spacing--5xs);
+  cursor: pointer;
+}
+._container_18lg6_1 > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--spacing--2xs);
+}
+._background_18lg6_18 {
+  position: absolute;
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  left: calc(var(--indent-depth) * 32px);
+  top: 0;
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  width: calc(100% - var(--indent-depth) * 32px);
+  height: 100%;
+  border-radius: var(--radius);
+  z-index: -1;
+}
+._selected_18lg6_29 ._background_18lg6_18 {
+  background-color: var(--color--foreground);
+}
+._container_18lg6_1:hover:not(._selected_18lg6_29) ._background_18lg6_18 {
+  background-color: var(--color--background--light-1);
+}
+._selected_18lg6_29:not(:hover)._error_18lg6_35 ._background_18lg6_18 {
+  background-color: var(--callout--color--background--danger);
+}
+._indent_18lg6_39 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: var(--spacing--xl);
+  align-self: stretch;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+._indent_18lg6_39._connectorCurved_18lg6_48:before {
+  content: "";
+  position: absolute;
+  left: var(--spacing--sm);
+  bottom: var(--spacing--sm);
+  border: 2px solid var(--canvas--dot--color);
+  width: var(--spacing--lg);
+  height: var(--spacing--lg);
+  border-radius: var(--radius--lg);
+}
+._indent_18lg6_39._connectorStraight_18lg6_58:after {
+  content: "";
+  position: absolute;
+  left: var(--spacing--sm);
+  top: 0;
+  border-left: 2px solid var(--canvas--dot--color);
+  height: 100%;
+}
+._icon_18lg6_67 {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+._name_18lg6_72 {
+  flex-basis: 0;
+  flex-grow: 1;
+  padding-inline-start: 0;
+}
+
+/* Groups have no icon, so inset the label to match where node labels start */
+._groupName_18lg6_79 {
+  padding-inline-start: var(--spacing--2xs);
+}
+._emptyGroupBadge_18lg6_83 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  padding: 0 var(--spacing--4xs);
+}
+._timeTook_18lg6_89 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 20%;
+}
+._timeTook_18lg6_89 ._statusTextIcon_18lg6_94 {
+  margin-right: var(--spacing--5xs);
+  vertical-align: text-bottom;
+}
+._startedAt_18lg6_99 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 25%;
+}
+._consumedTokens_18lg6_105 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 15%;
+  text-align: right;
+}
+._compactErrorIcon_18lg6_112 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._container_18lg6_1:hover ._compactErrorIcon_18lg6_112 {
+  display: none;
+}
+._partialExecutionButton_18lg6_124,
+._openNdvButton_18lg6_125 {
+  transition: none;
+  /* By default, take space but keep invisible */
+  visibility: hidden;
+}
+._container_18lg6_1._compact_18lg6_112 ._partialExecutionButton_18lg6_124,
+._container_18lg6_1._compact_18lg6_112 ._openNdvButton_18lg6_125 {
+  /* When compact, collapse to save space */
+  display: none;
+}
+._container_18lg6_1:hover ._partialExecutionButton_18lg6_124:not(._unavailable_18lg6_135),
+._container_18lg6_1:hover ._openNdvButton_18lg6_125:not(._unavailable_18lg6_135) {
+  visibility: visible;
+  display: inline-flex;
+}
+._partialExecutionButton_18lg6_124,
+._openNdvButton_18lg6_125,
+._toggleButton_18lg6_143 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color--text);
+  align-items: center;
+  justify-content: center;
+}
+._partialExecutionButton_18lg6_124:hover,
+._openNdvButton_18lg6_125:hover,
+._toggleButton_18lg6_143:hover {
+  background: transparent;
+}
+._partialExecutionButton_18lg6_124:disabled,
+._openNdvButton_18lg6_125:disabled,
+._toggleButton_18lg6_143:disabled {
+  visibility: hidden !important;
+}
+._toggleButton_18lg6_143 {
+  display: inline-flex;
+}
+
+/* Matches a single small icon button's footprint (row padding comes from .container > *) */
+._buttonSpacer_18lg6_168 {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: var(--height--sm);
+}
+._statusIcon_18lg6_174 {
+  color: var(--color--text--tint-1);
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: var(--spacing--3xs);
+}
+._statusIcon_18lg6_174._placeholder_18lg6_182 {
+  color: transparent;
+}._tree_vs7gc_1 {
+  padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
+  /* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
+  scroll-behavior: smooth;
+}
+._container_vs7gc_6:not(._staticScrollBar_vs7gc_6) ._tree_vs7gc_1 {
+  scroll-padding-block: var(--spacing--3xs);
+}
+@supports not (selector(::-webkit-scrollbar)) {
+._container_vs7gc_6:not(._staticScrollBar_vs7gc_6) ._tree_vs7gc_1 {
+    scrollbar-width: thin;
+}
+}
+@supports selector(::-webkit-scrollbar) {
+._container_vs7gc_6:not(._staticScrollBar_vs7gc_6) ._tree_vs7gc_1 {
+    padding-right: var(--spacing--5xs);
+    scrollbar-gutter: stable;
+}
+._container_vs7gc_6:not(._staticScrollBar_vs7gc_6) ._tree_vs7gc_1::-webkit-scrollbar {
+    width: var(--spacing--4xs);
+}
+._container_vs7gc_6:not(._staticScrollBar_vs7gc_6) ._tree_vs7gc_1::-webkit-scrollbar-thumb {
+    border-radius: var(--spacing--4xs);
+    background: var(--color--foreground--shade-1);
+}
+}
+._tree_vs7gc_1 .el-icon {
+  display: none;
+}

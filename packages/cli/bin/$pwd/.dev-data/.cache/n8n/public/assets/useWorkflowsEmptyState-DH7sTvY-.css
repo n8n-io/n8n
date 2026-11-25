@@ -1,0 +1,10 @@
+._container_wwumi_1 {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--spacing--2xl);
+}

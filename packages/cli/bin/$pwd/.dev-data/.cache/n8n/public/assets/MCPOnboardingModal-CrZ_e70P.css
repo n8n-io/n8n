@@ -1,0 +1,1391 @@
+/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_94f25_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_94f25_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_94f25_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_94f25_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_94f25_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_94f25_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_94f25_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_94f25_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_94f25_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_94f25_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_94f25_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_94f25_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_94f25_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_94f25_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_94f25_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_94f25_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_94f25_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_94f25_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_94f25_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_94f25_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_94f25_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_94f25_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_94f25_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_94f25_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_94f25_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_94f25_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_94f25_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_94f25_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._bridge_94f25_450 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--3xs);
+  color: var(--icon-color--strong);
+}
+._bridge--hero_94f25_458 {
+  gap: var(--spacing--2xs);
+}
+._bridge--hero_94f25_458 ._node_94f25_461 {
+  width: 56px;
+  height: 56px;
+}
+._bridge--hero_94f25_458 ._nodeMcp_94f25_465 {
+  width: 72px;
+  height: 72px;
+}
+._bridge--hero_94f25_458 ._nodeN8n_94f25_469 svg {
+  width: 32px;
+  height: auto;
+}
+._bridge--hero_94f25_458 ._mcpIcon_94f25_473 {
+  font-size: 36px;
+}
+._bridge--hero_94f25_458 ._connector_94f25_476 {
+  width: 96px;
+}
+._bridge--hero_94f25_458 ._agent_94f25_479 {
+  width: 38px;
+  height: 38px;
+}
+._bridge--hero_94f25_458 ._agentStacked_94f25_483 {
+  margin-right: -12px;
+}
+._bridge--hero_94f25_458 ._agentIcon_94f25_486 {
+  width: 18px;
+  height: 18px;
+}
+._bridge--inline_94f25_491 {
+  gap: var(--spacing--4xs);
+}
+._bridge--inline_94f25_491 ._node_94f25_461 {
+  width: 28px;
+  height: 28px;
+}
+._bridge--inline_94f25_491 ._nodeMcp_94f25_465 {
+  width: 36px;
+  height: 36px;
+}
+._bridge--inline_94f25_491 ._nodeN8n_94f25_469 svg {
+  width: 18px;
+  height: auto;
+}
+._bridge--inline_94f25_491 ._mcpIcon_94f25_473 {
+  font-size: 20px;
+}
+._bridge--inline_94f25_491 ._connector_94f25_476 {
+  width: 24px;
+}
+._bridge--inline_94f25_491 ._agent_94f25_479 {
+  width: 22px;
+  height: 22px;
+}
+._bridge--inline_94f25_491 ._agentStacked_94f25_483 {
+  margin-right: -7px;
+}
+._bridge--inline_94f25_491 ._agentIcon_94f25_486 {
+  width: 11px;
+  height: 11px;
+}
+._bridge--tile_94f25_524 {
+  gap: var(--spacing--4xs);
+}
+._bridge--tile_94f25_524 ._tileMcp_94f25_527 {
+  width: 40px;
+  height: 40px;
+}
+._bridge--tile_94f25_524 ._mcpIcon_94f25_473 {
+  font-size: 22px;
+}
+._node_94f25_461 {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius--full);
+}
+._nodeN8n_94f25_469 {
+  order: 3;
+  background: var(--background--surface);
+  border: 1px solid var(--border-color--subtle);
+  color: var(--color--orange-500);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+._nodeMcp_94f25_465 {
+  background: var(--background--surface);
+  border: 1px solid var(--border-color--subtle);
+  color: var(--icon-color--strong);
+  box-shadow: 0 2px 8px rgba(234, 75, 113, 0.08);
+  z-index: 1;
+}
+._mcpHalo_94f25_560 {
+  position: absolute;
+  inset: -4px;
+  border-radius: var(--radius--full);
+  background: radial-gradient(circle, rgba(234, 152, 75, 0.18) 0%, rgba(234, 152, 75, 0) 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+._nodeAgents_94f25_569 {
+  order: 1;
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0;
+}
+._agent_94f25_479 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius--full);
+  background: var(--background--surface);
+  border: 1px solid var(--border-color--subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  color: var(--icon-color--strong);
+}
+._agentClaude_94f25_591 {
+  z-index: 4;
+}
+._agentCodex_94f25_595 {
+  z-index: 3;
+}
+._agentCursor_94f25_599 {
+  z-index: 2;
+}
+._agentOpenAi_94f25_603 {
+  color: var(--icon-color--strong);
+}
+._connector_94f25_476 {
+  display: inline-flex;
+  align-items: center;
+  height: 8px;
+  color: var(--border-color--strong);
+}
+._connector_94f25_476 svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+._connector_94f25_476 line {
+  stroke-dashoffset: 0;
+}
+._connectorToN8n_94f25_623 {
+  order: 2;
+}
+._connectorAnimated_94f25_627 line {
+  animation: _dashFlow_94f25_1 1.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._connectorAnimated_94f25_627 line {
+    animation: none;
+}
+}
+@keyframes _dashFlow_94f25_1 {
+from {
+    stroke-dashoffset: 0;
+}
+to {
+    stroke-dashoffset: -14;
+}
+}
+._tileDot_94f25_644 {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius--full);
+  flex-shrink: 0;
+}
+._tileDotLeft_94f25_652 {
+  background: var(--color--orange-500);
+  box-shadow: 0 0 0 3px rgba(234, 152, 75, 0.16);
+}
+._tileDotRight_94f25_657 {
+  background: var(--icon-color--strong);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+._tileConnector_94f25_662 {
+  display: inline-flex;
+  align-items: center;
+  width: 18px;
+  height: 8px;
+  color: var(--border-color--strong);
+}
+._tileConnector_94f25_662 svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}._logo_14348_1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mcp-agent-logo-size, 22px);
+  height: var(--mcp-agent-logo-size, 22px);
+  border-radius: var(--radius--sm);
+  background: var(--background--surface);
+  border: 1px solid var(--border-color--subtle);
+  color: var(--icon-color--strong);
+}
+._icon_14348_13 {
+  width: var(--mcp-agent-logo-icon-size, 14px);
+  height: var(--mcp-agent-logo-icon-size, 14px);
+}/* Focus State
+ -------------------------- */
+._picker_52vld_3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--spacing--2xs);
+  width: 100%;
+}
+._tile_52vld_10 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+  min-height: 76px;
+  padding: var(--spacing--xs) var(--spacing--2xs);
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius--lg);
+  background: var(--background--surface);
+  color: var(--text-color);
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  outline-offset: 2px;
+  transition: border-color var(--duration--snappy) var(--easing--ease-out), background-color var(--duration--snappy) var(--easing--ease-out), box-shadow var(--duration--snappy) var(--easing--ease-out), transform var(--duration--snappy) var(--easing--ease-out);
+}
+._tile_52vld_10:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+}
+._tile_52vld_10:hover:not(._tileActive_52vld_32) {
+  border-color: var(--border-color--strong);
+  box-shadow: var(--shadow--card-hover);
+  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+._tile_52vld_10 {
+    transition: none;
+}
+._tile_52vld_10:hover:not(._tileActive_52vld_32) {
+    transform: none;
+}
+}
+._tileActive_52vld_32 {
+  border-color: var(--color--primary);
+  background: var(--color--orange-alpha-100);
+  box-shadow: inset 0 0 0 1px var(--color--primary);
+}
+._tileActive_52vld_32:hover {
+  box-shadow: inset 0 0 0 1px var(--color--primary), var(--shadow--card-hover);
+}
+._tileActive_52vld_32 ._tileLabel_52vld_54 {
+  font-weight: var(--font-weight--medium);
+}
+._tileIconSlot_52vld_58 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  --mcp-agent-logo-size: 32px;
+  --mcp-agent-logo-icon-size: 20px;
+}
+._tileLabel_52vld_54 {
+  display: block;
+  max-width: 100%;
+  font-size: var(--font-size--2xs);
+  font-weight: var(--font-weight--regular);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}._codeBlock_14ryn_1 {
+  position: relative;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--background--surface);
+  overflow: hidden;
+  width: 100%;
+}
+._codeBlock_14ryn_1 .n8n-markdown {
+  width: 100%;
+}
+._codeBlock_14ryn_1 pre {
+  margin: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+._codeBlock_14ryn_1 code {
+  display: block;
+  overflow-x: auto;
+  font-size: var(--font-size--3xs);
+  line-height: 1.55;
+  padding-right: var(--spacing--xl);
+}
+._codeToolbar_14ryn_25 {
+  position: absolute;
+  top: var(--spacing--4xs);
+  right: var(--spacing--4xs);
+  z-index: 1;
+  background: var(--background--surface);
+  border-radius: var(--radius--xs);
+  padding: var(--spacing--5xs);
+}._container_1xsl0_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  width: 100%;
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_n2huf_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_n2huf_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_n2huf_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_n2huf_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_n2huf_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_n2huf_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_n2huf_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_n2huf_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_n2huf_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_n2huf_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_n2huf_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_n2huf_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_n2huf_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_n2huf_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_n2huf_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_n2huf_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_n2huf_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_n2huf_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_n2huf_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_n2huf_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_n2huf_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_n2huf_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_n2huf_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_n2huf_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_n2huf_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_n2huf_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_n2huf_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_n2huf_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._modal_n2huf_450 {
+  overflow: hidden;
+}
+._modal_n2huf_450 .el-dialog__header {
+  padding: 0;
+  margin: 0;
+}
+._modal_n2huf_450 .el-dialog__body {
+  padding-top: var(--spacing--lg);
+  padding-bottom: var(--spacing--sm);
+}
+._modal_n2huf_450 .el-dialog__body > :last-child {
+  margin-top: var(--spacing--sm);
+}
+._header_n2huf_465 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--xl) var(--spacing--3xl) var(--spacing--lg);
+  background: linear-gradient(180deg, rgba(234, 152, 75, 0.08) 0%, rgba(234, 152, 75, 0) 100%);
+  border-bottom: 1px solid var(--border-color--subtle);
+  text-align: center;
+}
+._headerGraphic_n2huf_476 {
+  margin-bottom: var(--spacing--xs);
+  animation: _fadeInUp_n2huf_1 var(--animation--fade-in-up--duration, var(--duration--snappy)) var(--animation--fade-in-up--easing, var(--easing--ease-out));
+}
+@media (prefers-reduced-motion: reduce) {
+._headerGraphic_n2huf_476 {
+    animation: none;
+}
+}
+._headerTitle_n2huf_486 {
+  margin: 0;
+  font-size: var(--font-size--xl);
+  font-weight: var(--font-weight--medium);
+  letter-spacing: var(--letter-spacing--tight);
+  color: var(--text-color);
+}
+._headerDescription_n2huf_494 {
+  max-width: 50ch;
+  line-height: 1.55;
+  margin-top: var(--spacing--3xs);
+}
+._content_n2huf_500 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+}
+._section_n2huf_506 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._revealSection_n2huf_512 {
+  animation: _fadeInUp_n2huf_1 var(--animation--fade-in-up--duration, var(--duration--snappy)) var(--animation--fade-in-up--easing, var(--easing--ease-out));
+}
+@media (prefers-reduced-motion: reduce) {
+._revealSection_n2huf_512 {
+    animation: none;
+}
+}
+._revealSection_n2huf_512 {
+  animation-duration: var(--duration--base);
+  animation-fill-mode: both;
+}
+._revealSection_n2huf_512:nth-of-type(2) {
+  animation-delay: 60ms;
+}
+._revealSection_n2huf_512:nth-of-type(3) {
+  animation-delay: 120ms;
+}
+._sectionHeader_n2huf_531 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._sectionStep_n2huf_537 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius--full);
+  background: var(--background--surface);
+  border: 1px solid var(--border-color--strong);
+  color: var(--text-color--subtle);
+  font-size: var(--font-size--3xs);
+  font-weight: var(--font-weight--medium);
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background-color var(--duration--snappy) ease, border-color var(--duration--snappy) ease, color var(--duration--snappy) ease;
+}
+._sectionStepDone_n2huf_554 {
+  background: var(--color--green-500, #22c55e);
+  border-color: var(--color--green-500, #22c55e);
+  color: var(--color--neutral-white, #fff);
+}
+._sectionTitle_n2huf_560 {
+  margin: 0;
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  letter-spacing: var(--letter-spacing--tight);
+  color: var(--text-color);
+}
+._sectionBody_n2huf_568 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing--xs);
+  padding-left: calc(22px + var(--spacing--2xs));
+}
+._stepDescription_n2huf_576,
+._stepHelper_n2huf_577 {
+  margin: 0;
+  line-height: 1.5;
+}
+._copyFields_n2huf_582 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  width: 100%;
+}
+._copyField_n2huf_582 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  width: 100%;
+}
+._copyFieldLabel_n2huf_596 {
+  margin: 0;
+  font-weight: var(--font-weight--medium);
+}
+._accessHeader_n2huf_601 {
+  justify-content: space-between;
+  gap: var(--spacing--md);
+  width: 100%;
+}
+@media (max-width: 600px) {
+._accessHeader_n2huf_601 {
+    align-items: flex-start;
+    flex-direction: column;
+}
+}
+._accessTitleRow_n2huf_613 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._accessRow_n2huf_619 {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--md);
+  width: 100%;
+}
+@media (max-width: 600px) {
+._accessRow_n2huf_619 {
+    flex-direction: column;
+    align-items: flex-start;
+}
+}
+._footer_n2huf_633 {
+  margin: 0;
+  padding: 0 var(--spacing--md);
+  color: var(--text-color--subtler);
+  line-height: 1.35;
+}

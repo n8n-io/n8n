@@ -1,0 +1,1478 @@
+/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1ildu_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1ildu_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1ildu_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1ildu_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1ildu_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1ildu_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1ildu_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1ildu_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1ildu_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1ildu_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1ildu_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1ildu_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1ildu_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1ildu_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1ildu_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1ildu_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1ildu_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1ildu_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1ildu_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1ildu_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1ildu_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1ildu_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1ildu_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1ildu_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1ildu_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1ildu_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1ildu_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1ildu_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._typing_1ildu_450 {
+  display: inline-flex;
+  gap: 6px;
+}
+._typing_1ildu_450 i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: _typingBlink_1ildu_1 var(--animation--typing-blink--duration, 1.2s) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._typing_1ildu_450 i {
+    animation: none;
+}
+}
+._typing_1ildu_450 i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+._typing_1ildu_450 i:nth-child(3) {
+  animation-delay: 0.4s;
+}._button_1wpmk_1 g, ._button_1wpmk_1 path {
+  color: var(--color--text--tint-1);
+  stroke-width: 2.5;
+}._actions_14q4w_1 {
+  display: flex;
+  align-items: center;
+}
+._actions_14q4w_1 g, ._actions_14q4w_1 path {
+  color: var(--color--text--tint-1);
+  stroke-width: 2.5;
+}
+.fade-enter-active[data-v-1effe526],
+.fade-leave-active[data-v-1effe526] {
+	transition: opacity 0.15s ease;
+}
+.fade-enter-from[data-v-1effe526],
+.fade-leave-to[data-v-1effe526] {
+	opacity: 0;
+}
+._buttons_f5szf_1 {
+  display: flex;
+  gap: var(--spacing--xs);
+}pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+code.hljs {
+  padding: 3px 5px;
+}
+
+/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+  color: #24292e;
+  background: #ffffff;
+}
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #d73a49;
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #6f42c1;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #005cc5;
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #032f62;
+}
+.hljs-built_in,
+.hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #e36209;
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #6a737d;
+}
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #22863a;
+}
+.hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #24292e;
+}
+.hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #005cc5;
+  font-weight: bold;
+}
+.hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #735c0f;
+}
+.hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #24292e;
+  font-style: italic;
+}
+.hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #24292e;
+  font-weight: bold;
+}
+.hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #22863a;
+  background-color: #f0fff4;
+}
+.hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+.hljs-char.escape_,
+.hljs-link,
+.hljs-params,
+.hljs-property,
+.hljs-punctuation,
+.hljs-tag {
+  /* purposely ignored */
+}
+[data-theme=dark] pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+[data-theme=dark] code.hljs {
+  padding: 3px 5px;
+}
+[data-theme=dark] {
+  /*!
+    Theme: GitHub Dark Dimmed
+    Description: Dark dimmed theme as seen on github.com
+    Author: github.com
+    Maintainer: @Hirse
+    Updated: 2021-05-15
+
+    Colors taken from GitHub's CSS
+  */
+}
+[data-theme=dark] .hljs {
+  color: #adbac7;
+  background: #22272e;
+}
+[data-theme=dark] .hljs-doctag,
+[data-theme=dark] .hljs-keyword,
+[data-theme=dark] .hljs-meta .hljs-keyword,
+[data-theme=dark] .hljs-template-tag,
+[data-theme=dark] .hljs-template-variable,
+[data-theme=dark] .hljs-type,
+[data-theme=dark] .hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #f47067;
+}
+[data-theme=dark] .hljs-title,
+[data-theme=dark] .hljs-title.class_,
+[data-theme=dark] .hljs-title.class_.inherited__,
+[data-theme=dark] .hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #dcbdfb;
+}
+[data-theme=dark] .hljs-attr,
+[data-theme=dark] .hljs-attribute,
+[data-theme=dark] .hljs-literal,
+[data-theme=dark] .hljs-meta,
+[data-theme=dark] .hljs-number,
+[data-theme=dark] .hljs-operator,
+[data-theme=dark] .hljs-variable,
+[data-theme=dark] .hljs-selector-attr,
+[data-theme=dark] .hljs-selector-class,
+[data-theme=dark] .hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #6cb6ff;
+}
+[data-theme=dark] .hljs-regexp,
+[data-theme=dark] .hljs-string,
+[data-theme=dark] .hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #96d0ff;
+}
+[data-theme=dark] .hljs-built_in,
+[data-theme=dark] .hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #f69d50;
+}
+[data-theme=dark] .hljs-comment,
+[data-theme=dark] .hljs-code,
+[data-theme=dark] .hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #768390;
+}
+[data-theme=dark] .hljs-name,
+[data-theme=dark] .hljs-quote,
+[data-theme=dark] .hljs-selector-tag,
+[data-theme=dark] .hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #8ddb8c;
+}
+[data-theme=dark] .hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #adbac7;
+}
+[data-theme=dark] .hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #316dca;
+  font-weight: bold;
+}
+[data-theme=dark] .hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #eac55f;
+}
+[data-theme=dark] .hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #adbac7;
+  font-style: italic;
+}
+[data-theme=dark] .hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #adbac7;
+  font-weight: bold;
+}
+[data-theme=dark] .hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #b4f1b4;
+  background-color: #1b4721;
+}
+[data-theme=dark] .hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #ffd8d3;
+  background-color: #78191b;
+}
+[data-theme=dark] .hljs-char.escape_,
+[data-theme=dark] .hljs-link,
+[data-theme=dark] .hljs-params,
+[data-theme=dark] .hljs-property,
+[data-theme=dark] .hljs-punctuation,
+[data-theme=dark] .hljs-tag {
+  /* purposely ignored */
+}
+@media (prefers-color-scheme: dark) {
+body:not([data-theme]) pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+}
+body:not([data-theme]) code.hljs {
+    padding: 3px 5px;
+}
+body:not([data-theme]) {
+    /*!
+      Theme: GitHub Dark Dimmed
+      Description: Dark dimmed theme as seen on github.com
+      Author: github.com
+      Maintainer: @Hirse
+      Updated: 2021-05-15
+
+      Colors taken from GitHub's CSS
+    */
+}
+body:not([data-theme]) .hljs {
+    color: #adbac7;
+    background: #22272e;
+}
+body:not([data-theme]) .hljs-doctag,
+  body:not([data-theme]) .hljs-keyword,
+  body:not([data-theme]) .hljs-meta .hljs-keyword,
+  body:not([data-theme]) .hljs-template-tag,
+  body:not([data-theme]) .hljs-template-variable,
+  body:not([data-theme]) .hljs-type,
+  body:not([data-theme]) .hljs-variable.language_ {
+    /* prettylights-syntax-keyword */
+    color: #f47067;
+}
+body:not([data-theme]) .hljs-title,
+  body:not([data-theme]) .hljs-title.class_,
+  body:not([data-theme]) .hljs-title.class_.inherited__,
+  body:not([data-theme]) .hljs-title.function_ {
+    /* prettylights-syntax-entity */
+    color: #dcbdfb;
+}
+body:not([data-theme]) .hljs-attr,
+  body:not([data-theme]) .hljs-attribute,
+  body:not([data-theme]) .hljs-literal,
+  body:not([data-theme]) .hljs-meta,
+  body:not([data-theme]) .hljs-number,
+  body:not([data-theme]) .hljs-operator,
+  body:not([data-theme]) .hljs-variable,
+  body:not([data-theme]) .hljs-selector-attr,
+  body:not([data-theme]) .hljs-selector-class,
+  body:not([data-theme]) .hljs-selector-id {
+    /* prettylights-syntax-constant */
+    color: #6cb6ff;
+}
+body:not([data-theme]) .hljs-regexp,
+  body:not([data-theme]) .hljs-string,
+  body:not([data-theme]) .hljs-meta .hljs-string {
+    /* prettylights-syntax-string */
+    color: #96d0ff;
+}
+body:not([data-theme]) .hljs-built_in,
+  body:not([data-theme]) .hljs-symbol {
+    /* prettylights-syntax-variable */
+    color: #f69d50;
+}
+body:not([data-theme]) .hljs-comment,
+  body:not([data-theme]) .hljs-code,
+  body:not([data-theme]) .hljs-formula {
+    /* prettylights-syntax-comment */
+    color: #768390;
+}
+body:not([data-theme]) .hljs-name,
+  body:not([data-theme]) .hljs-quote,
+  body:not([data-theme]) .hljs-selector-tag,
+  body:not([data-theme]) .hljs-selector-pseudo {
+    /* prettylights-syntax-entity-tag */
+    color: #8ddb8c;
+}
+body:not([data-theme]) .hljs-subst {
+    /* prettylights-syntax-storage-modifier-import */
+    color: #adbac7;
+}
+body:not([data-theme]) .hljs-section {
+    /* prettylights-syntax-markup-heading */
+    color: #316dca;
+    font-weight: bold;
+}
+body:not([data-theme]) .hljs-bullet {
+    /* prettylights-syntax-markup-list */
+    color: #eac55f;
+}
+body:not([data-theme]) .hljs-emphasis {
+    /* prettylights-syntax-markup-italic */
+    color: #adbac7;
+    font-style: italic;
+}
+body:not([data-theme]) .hljs-strong {
+    /* prettylights-syntax-markup-bold */
+    color: #adbac7;
+    font-weight: bold;
+}
+body:not([data-theme]) .hljs-addition {
+    /* prettylights-syntax-markup-inserted */
+    color: #b4f1b4;
+    background-color: #1b4721;
+}
+body:not([data-theme]) .hljs-deletion {
+    /* prettylights-syntax-markup-deleted */
+    color: #ffd8d3;
+    background-color: #78191b;
+}
+body:not([data-theme]) .hljs-char.escape_,
+  body:not([data-theme]) .hljs-link,
+  body:not([data-theme]) .hljs-params,
+  body:not([data-theme]) .hljs-property,
+  body:not([data-theme]) .hljs-punctuation,
+  body:not([data-theme]) .hljs-tag {
+    /* purposely ignored */
+}
+}
+.n8n-markdown {
+  --n8n-markdown--spacing: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) / 2);
+  --n8n-markdown--radius: var(--radius);
+  display: block;
+  color: var(--n8n-markdown--color, color-mix(in oklch, var(--text-color), transparent 10%));
+  font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
+  line-height: var(--n8n-markdown--line-height, var(--line-height--xl));
+  -webkit-text-size-adjust: 100%;
+  word-break: break-word;
+}
+.n8n-markdown *:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown :not(:where(.not-prose, .not-prose *))::before,
+.n8n-markdown :not(:where(.not-prose, .not-prose *))::after {
+  box-sizing: border-box;
+}
+.n8n-markdown p:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)) {
+  font-size: inherit;
+  line-height: inherit;
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown p:not(:where(.not-prose, .not-prose *)):first-child:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)):first-child:not(:where(.not-prose, .not-prose *)) {
+  margin-top: 0;
+}
+.n8n-markdown p:not(:where(.not-prose, .not-prose *)):last-child:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)):last-child:not(:where(.not-prose, .not-prose *)) {
+  margin-bottom: 0;
+}
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)) {
+  margin: 0;
+}
+.n8n-markdown h1:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h2:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h3:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h4:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h5:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h6:not(:where(.not-prose, .not-prose *)) {
+  margin: 0;
+  color: var(--color--text--shade-1);
+  line-height: var(--line-height--md);
+  font-weight: var(--font-weight--medium);
+  scroll-margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown {
+  /** Scale headings with the Markdown base size. */
+}
+.n8n-markdown h1:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.75);
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown h2:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.5);
+  margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown h3:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.25);
+  margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown h4:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.125);
+  margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown h5:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h6:not(:where(.not-prose, .not-prose *)) {
+  font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown h2 + h3:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown li > :is(h1, h2, h3, h4, h5, h6, p, strong):first-child:not(:where(.not-prose, .not-prose *)) {
+  margin-top: 0;
+}
+.n8n-markdown strong:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown b:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+}
+.n8n-markdown a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.15s ease;
+}
+.n8n-markdown a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(.not-prose, .not-prose *)):hover:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--primary);
+}
+.n8n-markdown a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)) {
+  font-weight: var(--font-weight--medium);
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown code:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown kbd:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown samp:not(:where(.not-prose, .not-prose *)) {
+  font-family: var(--font-family--monospace);
+  font-variant-ligatures: none;
+}
+.n8n-markdown :not(pre) > code:not(:where(.not-prose, .not-prose *)) {
+  font-weight: var(--font-weight--medium);
+  font-size: 90%;
+  padding: calc(var(--n8n-markdown--spacing) * 0.25) calc(var(--n8n-markdown--spacing) * 0.5);
+  line-height: inherit;
+  background-color: var(--chat--message--pre--background, var(--background--subtle));
+  border: 1px solid var(--border-color);
+  background-clip: padding-box;
+  border-radius: calc(var(--n8n-markdown--radius) / 2);
+}
+.n8n-markdown :is(h1, h2, h3, h4, h5, h6) code:not(:where(.not-prose, .not-prose *)) {
+  font-weight: var(--font-weight--medium);
+}
+.n8n-markdown {
+  /** Custom blocks own their styles. Keep only the space between blocks. */
+}
+.n8n-markdown .not-prose {
+  margin: var(--n8n-markdown--spacing) 0 calc(var(--n8n-markdown--spacing) * 2.5);
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) {
+  width: 100%;
+  font-family: var(--font-family--monospace);
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.875);
+  line-height: var(--line-height--xl);
+  margin: var(--n8n-markdown--spacing) 0 calc(var(--n8n-markdown--spacing) * 2.5);
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  padding: calc(var(--n8n-markdown--spacing) * 2);
+  background-color: var(--background--subtle);
+  border: 1px solid var(--border-color);
+  background-clip: padding-box;
+  border-radius: var(--n8n-markdown--radius);
+  display: grid;
+  position: relative;
+  tab-size: 4;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)) {
+  display: block;
+  overflow-x: auto;
+  background-color: transparent;
+  color: var(--color--text--shade-1);
+  font-family: var(--font-family--monospace);
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)):not(:where(.not-prose, .not-prose *))::before, .n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)):not(:where(.not-prose, .not-prose *))::after {
+  content: none;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:last-of-type:not(:where(.not-prose, .not-prose *)) {
+  padding-bottom: 0;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code * + *:not(:where(.not-prose, .not-prose *)) {
+  margin-top: 0;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) ~ pre:not(:where(.not-prose, .not-prose *)) {
+  margin-bottom: calc(var(--n8n-markdown--spacing) * 2.5);
+}
+.n8n-markdown.n8n-markdown--single-pre pre:not(:where(.not-prose, .not-prose *)) {
+  background: transparent;
+  margin: 0;
+  border-radius: var(--n8n-markdown--radius);
+}
+.n8n-markdown .n8n-markdown-code-block-actions:not(:where(.not-prose, .not-prose *)) {
+  position: sticky;
+  top: var(--n8n-markdown--spacing);
+  right: var(--n8n-markdown--spacing);
+  height: 0;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+  z-index: 1;
+}
+.n8n-markdown .n8n-markdown-code-block-actions:not(:where(.not-prose, .not-prose *)) > *:not(:where(.not-prose, .not-prose *)) {
+  pointer-events: auto;
+}
+.n8n-markdown blockquote:not(:where(.not-prose, .not-prose *)) {
+  font-style: italic;
+  border-left: calc(var(--n8n-markdown--spacing) * 0.5) solid var(--color--foreground--shade-1);
+  padding-left: calc(var(--n8n-markdown--spacing) * 2);
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+  color: var(--color--text--tint-1);
+}
+.n8n-markdown blockquote:not(:where(.not-prose, .not-prose *)) p:first-of-type:not(:where(.not-prose, .not-prose *))::before {
+  content: open-quote;
+}
+.n8n-markdown blockquote:not(:where(.not-prose, .not-prose *)) p:last-of-type:not(:where(.not-prose, .not-prose *))::after {
+  content: close-quote;
+}
+.n8n-markdown hr:not(:where(.not-prose, .not-prose *)) {
+  border: none;
+  border-top: var(--border-width) var(--border-style) var(--color--foreground);
+  margin: calc(var(--n8n-markdown--spacing) * 3) 0;
+}
+.n8n-markdown hr:not(:where(.not-prose, .not-prose *)) + h2:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown ol:not(:where(.not-prose, .not-prose *)) {
+  padding-left: calc(var(--n8n-markdown--spacing) * 4);
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown ol:not(:where(.not-prose, .not-prose *)) li + li:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 1.5);
+}
+.n8n-markdown ol:not(:where(.not-prose, .not-prose *)) li:not(:where(.not-prose, .not-prose *))::marker {
+  font-family: var(--font-family--monospace);
+  color: var(--color--text);
+}
+.n8n-markdown ul:not(:where(.not-prose, .not-prose *)) {
+  padding-left: calc(var(--n8n-markdown--spacing) * 4);
+  list-style-type: disc;
+  list-style-position: outside;
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown ul:not(:where(.not-prose, .not-prose *)) li + li:not(:where(.not-prose, .not-prose *)) {
+  margin-top: var(--n8n-markdown--spacing);
+}
+.n8n-markdown ul:not(:where(.not-prose, .not-prose *)) li:not(:where(.not-prose, .not-prose *))::marker {
+  color: var(--color--foreground--shade-1);
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) {
+  padding-left: 0;
+  list-style: none;
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) li:not(:where(.not-prose, .not-prose *)) {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) li > label:not(:where(.not-prose, .not-prose *)) {
+  flex: 0 0 auto;
+  -webkit-user-select: none;
+          user-select: none;
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) li > div:not(:where(.not-prose, .not-prose *)) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.n8n-markdown ul ul:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown ol ol:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown ul ol:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown ol ul:not(:where(.not-prose, .not-prose *)) {
+  margin-top: var(--n8n-markdown--spacing);
+  margin-bottom: 0;
+  padding-left: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown .n8n-markdown-footnote-ref:not(:where(.not-prose, .not-prose *)) {
+  display: inline-block;
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.625);
+  line-height: 1;
+  color: var(--color--text);
+  background: var(--color--foreground--tint-1);
+  border-radius: var(--n8n-markdown--radius);
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  margin-inline: var(--spacing--5xs);
+  vertical-align: middle;
+  white-space: nowrap;
+  font-weight: var(--font-weight--regular);
+}
+.n8n-markdown .n8n-markdown-table-container:not(:where(.not-prose, .not-prose *)) {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--n8n-markdown--radius);
+  background-color: var(--background--surface);
+  box-shadow: var(--shadow--xs);
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown .n8n-markdown-table-container:not(:where(.not-prose, .not-prose *)) > table:not(:where(.not-prose, .not-prose *)) {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+.n8n-markdown table:not(:where(.not-prose, .not-prose *)) {
+  width: 100%;
+  min-width: min-content;
+  word-break: normal;
+  overflow-wrap: normal;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border-color);
+  background-clip: padding-box;
+  border-radius: var(--n8n-markdown--radius);
+  background-color: var(--background--surface);
+  box-shadow: var(--shadow--xs);
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+  /** Tables should be slightly smaller font-size from base **/
+  font-size: 90%;
+  line-height: var(--line-height--lg);
+}
+.n8n-markdown thead:not(:where(.not-prose, .not-prose *)) {
+  background: var(--background--subtle);
+  font-size: inherit;
+}
+.n8n-markdown thead th:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+  vertical-align: bottom;
+  padding: var(--spacing--xs) var(--spacing--sm);
+  border-bottom: var(--border);
+  text-align: start;
+}
+.n8n-markdown tbody tr + tr td:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown tfoot td:not(:where(.not-prose, .not-prose *)) {
+  border-top: var(--border);
+  border-color: var(--border-color--subtle);
+  font-size: inherit;
+}
+.n8n-markdown tbody td:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown tfoot td:not(:where(.not-prose, .not-prose *)) {
+  vertical-align: baseline;
+  padding: var(--spacing--xs) var(--spacing--sm);
+}
+.n8n-markdown :is(th, td) :is(a, code):not(:where(.not-prose, .not-prose *)) {
+  white-space: nowrap;
+}
+.n8n-markdown td code:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.8125);
+}
+.n8n-markdown th:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown td:not(:where(.not-prose, .not-prose *)) {
+  text-align: start;
+}
+.n8n-markdown figure:not(:where(.not-prose, .not-prose *)) {
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown figcaption:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 1.5);
+  text-align: center;
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.875);
+  font-style: italic;
+  color: var(--color--text--tint-1);
+}
+.n8n-markdown img:not(:where(.not-prose, .not-prose *)) {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--n8n-markdown--radius);
+}
+.n8n-markdown .label:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text);
+}
+.n8n-markdown input[type=checkbox]:not(:where(.not-prose, .not-prose *)) {
+  accent-color: var(--color--primary);
+}
+.n8n-markdown input[type=checkbox] + label:not(:where(.not-prose, .not-prose *)) {
+  cursor: pointer;
+}
+.n8n-markdown iframe:not(:where(.not-prose, .not-prose *)) {
+  aspect-ratio: 16/9 auto;
+}
+.n8n-markdown summary:not(:where(.not-prose, .not-prose *)) {
+  cursor: pointer;
+}
+.n8n-markdown .n8n-markdown-footnote-block {
+  display: none;
+}._container_fy8ww_1 {
+  display: flex;
+  flex-direction: column;
+}
+._container_fy8ww_1 > *:first-child > *:first-child {
+  margin-top: 0;
+}
+._command_fy8ww_9 {
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  padding: var(--spacing--sm);
+  margin-bottom: var(--spacing--sm);
+  background-color: transparent;
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-weight: var(--font-weight--regular);
+  cursor: pointer;
+}._message_7n4q6_1 {
+  position: relative;
+  scroll-margin-block: var(--spacing--sm);
+}
+._markdownContent_7n4q6_6 {
+  color: var(--color--text--shade-1);
+  font-size: var(--font-size--md);
+  line-height: var(--line-height--xl);
+}
+._markdownContent_7n4q6_6 > *:last-child > *:last-child {
+  margin-bottom: 0;
+}
+._markdownContent_7n4q6_6 > *:first-child > *:first-child {
+  margin-top: 0;
+}
+.n8n-markdown-code-block-actions > * {
+  margin-top: -2px;
+}
+._avatar_7n4q6_22 {
+  position: absolute;
+  right: 100%;
+  margin-right: var(--spacing--xs);
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color--background);
+  color: var(--color--text--tint-1);
+}
+._compact_7n4q6_35 ._avatar_7n4q6_22 {
+  margin-left: calc(-1 * var(--spacing--2xs));
+  position: static;
+  margin-bottom: var(--spacing--xs);
+}
+._content_7n4q6_41 {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+@media (hover: hover) {
+._content_7n4q6_41:hover ._actions_7n4q6_47, ._content_7n4q6_41:focus-within ._actions_7n4q6_47 {
+    opacity: 1;
+    pointer-events: auto;
+}
+}
+._attachments_7n4q6_53 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs);
+}
+._chatMessage_7n4q6_58 ._attachments_7n4q6_53 {
+  margin-top: var(--spacing--xs);
+}
+._editContainer_7n4q6_61 ._attachments_7n4q6_53 {
+  position: absolute;
+  top: 0;
+  padding: var(--spacing--sm);
+  padding-bottom: 0;
+}
+._chatMessage_7n4q6_58 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  position: relative;
+  overflow-wrap: break-word;
+  font-size: var(--font-size--sm);
+  line-height: 1.5;
+}
+._user_7n4q6_77 ._chatMessage_7n4q6_58 {
+  padding: var(--spacing--2xs) var(--spacing--sm);
+  border-radius: var(--radius--xl);
+  background-color: var(--color--background);
+  white-space-collapse: preserve-breaks;
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 100%;
+  font-size: var(--font-size--md);
+  line-height: var(--line-height--xl);
+}
+._errorMessage_7n4q6_88 {
+  padding: var(--spacing--xs) var(--spacing--sm);
+  border-radius: var(--radius--lg);
+  background-color: var(--color--danger--tint-4);
+  border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
+  color: var(--color--danger);
+}
+._errorMessage_7n4q6_88 p,
+._errorMessage_7n4q6_88 a {
+  color: var(--color--danger);
+}
+._actions_7n4q6_47 {
+  margin-top: var(--spacing--2xs);
+  transition: opacity 0.15s;
+}
+@media (hover: hover) {
+._actions_7n4q6_47 {
+    opacity: 0;
+    pointer-events: none;
+}
+._actions_7n4q6_47:hover {
+    opacity: 1;
+    pointer-events: auto;
+}
+}
+._editContainer_7n4q6_61 {
+  width: 100%;
+  position: relative;
+}
+._textarea_7n4q6_120 {
+  scroll-margin-block: var(--spacing--sm);
+}
+._textarea_7n4q6_120 textarea {
+  font-family: inherit;
+  line-height: 1.5em;
+  padding: var(--spacing--sm);
+  padding-top: calc(var(--spacing--sm) + var(--attachments--height));
+  padding-bottom: 64px;
+  color: var(--color--text--shade-1);
+}
+._fileInput_7n4q6_133 {
+  display: none;
+}
+._editFooter_7n4q6_137 {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: var(--spacing--xs);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+._editFooter_7n4q6_137 > * {
+  pointer-events: auto;
+}
+._editActions_7n4q6_151 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  margin-left: auto;
+}
+._typingIndicator_7n4q6_157 {
+  margin-top: var(--spacing--xs);
+}._callout_1s1u1_1 {
+  margin: -1px;
+  padding: var(--spacing--sm);
+  border-radius: 16px 16px 0 0;
+}
+._calloutCompact_1s1u1_7 {
+  width: 100%;
+  box-shadow: 0 10px 24px 0 rgba(0, 0, 0, 0.062745098);
+}._prompt_g90uq_1,
+._inputWrap_g90uq_2 {
+  width: 100%;
+}
+._fileInput_g90uq_6 {
+  display: none;
+}
+._compactAttachments_g90uq_10 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs);
+}
+._recording_g90uq_16 {
+  color: var(--color--danger);
+}._prompt_yn61j_1 {
+  width: 100%;
+}
+._fileInput_yn61j_5 {
+  display: none;
+}
+._toolsButton_yn61j_9 {
+  /* maintain the same height with other buttons regardless of selected tools */
+  height: 30px;
+}
+._attachments_yn61j_14 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs);
+}
+._recording_yn61j_20 {
+  color: var(--color--danger);
+}._container_1dmvk_1 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--xs);
+  justify-content: center;
+}
+._chip_1dmvk_8 {
+  border-radius: 999px;
+  padding-right: var(--spacing--sm);
+  font-weight: 500;
+  gap: var(--spacing--3xs);
+}
+._emoji_1dmvk_15 {
+  font-size: var(--font-size--sm);
+  line-height: 1;
+}._greetings_4qrcy_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+}
+._agentCard_4qrcy_8 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  text-align: center;
+}
+._agentName_4qrcy_16 {
+  margin-top: var(--spacing--2xs);
+  color: var(--color--text--shade-1);
+  font-size: 24px;
+  font-weight: var(--font-weight--medium);
+  line-height: 32px;
+}
+._agentDescription_4qrcy_24 {
+  display: -webkit-box;
+  line-clamp: 9;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--color--text--tint-1);
+  font-size: var(--font-size--sm);
+}
+._suggestions_4qrcy_34 {
+  margin-top: var(--spacing--md);
+}
+._skeletonName_4qrcy_38 {
+  width: 160px;
+  margin-top: var(--spacing--2xs);
+}
+._skeletonDescription_4qrcy_43 {
+  width: 300px;
+  margin-top: var(--spacing--2xs);
+}
+._skeletonPrompts_4qrcy_48 {
+  display: flex;
+  gap: var(--spacing--3xs);
+  justify-content: center;
+}
+._skeletonChip_4qrcy_54 {
+  width: 140px;
+}
+._header_4qrcy_58 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._inlineIcon_4qrcy_64 {
+  flex-shrink: 0;
+  margin-block: -4px;
+}

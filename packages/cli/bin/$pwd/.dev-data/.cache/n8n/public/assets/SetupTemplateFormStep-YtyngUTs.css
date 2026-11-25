@@ -1,0 +1,39 @@
+._notice_1vgxa_1 {
+  margin-top: 0;
+}i[data-v-563d175d] {
+  color: var(--color--success);
+}._container_oqcbn_1 {
+  list-style: none;
+}
+._heading_oqcbn_5 {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing--2xs);
+}
+._headingOrder_oqcbn_11 {
+  font-weight: var(--font-weight--medium);
+  margin-right: var(--spacing--xs);
+}
+._headingIcon_oqcbn_16 {
+  margin-right: var(--spacing--2xs);
+}
+._description_oqcbn_20 {
+  margin-bottom: var(--spacing--lg);
+  font-size: var(--font-size--sm);
+  color: var(--color--text);
+}
+._credentials_oqcbn_26 {
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+}
+._credentialPicker_oqcbn_32 {
+  flex: 1;
+}
+._credentialOk_oqcbn_36 {
+  margin-left: var(--spacing--2xs);
+  font-size: 24px;
+}
+._invisible_oqcbn_41 {
+  visibility: hidden;
+}

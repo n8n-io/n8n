@@ -1,0 +1,49 @@
+._table_1fk95_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._controls_1fk95_7 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._search_1fk95_13 {
+  /* No width token fits; this matches the search box of the design. */
+  width: 292px;
+  flex-shrink: 0;
+}
+._filter_1fk95_19 {
+  /* No width token fits; this matches the filter of the design. */
+  width: 232px;
+  margin-inline-start: auto;
+}
+._name_1fk95_25,
+._readOnly_1fk95_26 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._footer_1fk95_32 {
+  display: flex;
+  justify-content: flex-end;
+}/* Doubled to win over the layout's own rules: the policy table needs the full page width, and the
+   design keeps the tabs close to the header. */
+._layout_1oe0q_3._layout_1oe0q_3 {
+  --settings-content--max-width: none;
+}
+._layout_1oe0q_3._layout_1oe0q_3 header + * {
+  margin-block-start: var(--spacing--lg);
+}
+._layout_1oe0q_3 {
+  /* The settings shell already pads the page top, so collapse the layout's own inset. */
+  padding-top: 0;
+  /* Pin the back link to the top-left of the settings area (the shell's content container is
+     position: relative), apart from the centered column. */
+}
+._layout_1oe0q_3 > div:first-child {
+  position: absolute;
+  top: var(--spacing--lg);
+  left: var(--spacing--lg);
+  width: auto;
+}

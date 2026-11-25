@@ -1,0 +1,135 @@
+._icon_4a7um_1 {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius--full);
+  background-color: var(--background--subtle);
+}
+._xsmall_4a7um_10 {
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+}
+._xsmall_4a7um_10 ._emoji_4a7um_14 {
+  font-size: var(--font-size--3xs);
+}
+._small_4a7um_18 {
+  width: var(--height--sm);
+  height: var(--height--sm);
+}
+._small_4a7um_18 ._emoji_4a7um_14 {
+  font-size: var(--font-size--2xs);
+}
+._medium_4a7um_26 {
+  width: var(--height--xl);
+  height: var(--height--xl);
+}
+._medium_4a7um_26 ._emoji_4a7um_14 {
+  font-size: var(--font-size--sm);
+}._personalTab_nytks_1 {
+  min-width: 0;
+}
+._heading_nytks_5 {
+  display: flex;
+  /* The label has a bottom margin, so the badges align with its text. */
+  align-items: baseline;
+  gap: var(--spacing--2xs);
+}
+._table_nytks_12 {
+  margin-bottom: var(--spacing--sm);
+}
+._table_nytks_12 .table-scroll {
+  scrollbar-gutter: auto;
+}
+._people_nytks_19 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--2xs) 0;
+}
+._person_nytks_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._scope_nytks_33,
+._personName_nytks_34 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._empty_nytks_41 {
+  display: block;
+  margin-bottom: var(--spacing--sm);
+}
+._loadingLine_nytks_46 {
+  max-width: 50%;
+  margin-bottom: var(--spacing--sm);
+}
+._loadingLine_nytks_46 .el-skeleton__p {
+  display: block;
+  margin-top: 0;
+}._icon_5jcct_1 {
+  flex-shrink: 0;
+  opacity: 0.9;
+}._costNote_31mo2_1 {
+  display: block;
+  margin-top: var(--spacing--2xs);
+}
+._page_31mo2_6 {
+  width: 100%;
+}
+._backBar_31mo2_10 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--spacing--2xs) var(--spacing--lg) var(--spacing--sm);
+  background-color: var(--color--background--light-2);
+}
+._backButton_31mo2_18 {
+  margin-inline-start: calc(-1 * var(--spacing--xs));
+}
+._layout_31mo2_22 {
+  padding-top: var(--spacing--2xs);
+}
+._actions_31mo2_26 {
+  margin-top: var(--spacing--lg);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}
+._searchPicker_31mo2_33 [data-icon=search] {
+  color: var(--input--placeholder--color);
+}
+._person_31mo2_37 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._personText_31mo2_44 {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+._truncate_31mo2_50 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._projectMembers_31mo2_57 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  min-width: 0;
+}
+._hint_31mo2_64 {
+  display: block;
+  margin-top: var(--spacing--2xs);
+}
+._skeleton_31mo2_69 .el-skeleton__p {
+  margin-top: 0;
+}

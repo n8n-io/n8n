@@ -1,0 +1,65 @@
+._container_1se74_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+  padding-bottom: var(--spacing--2xl);
+}
+._mainHeader_1se74_8 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing--md);
+}
+@media (max-width: 820px) {
+._mainHeader_1se74_8 {
+    flex-direction: column;
+    align-items: flex-start;
+}
+}
+._headings_1se74_21 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+._headingRow_1se74_28 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs);
+  margin-bottom: var(--spacing--5xs);
+}
+._usageTableHeader_1se74_36 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing--sm);
+}
+._usageTableActions_1se74_43 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._gatewayUsageTable_1se74_49 tr:last-child {
+  border-bottom: none !important;
+}
+._clickableRow_1se74_53 {
+  cursor: pointer;
+}
+._clickableRow_1se74_53:hover td {
+  background-color: var(--color--background--light-2);
+}
+._providerBadge_1se74_60 {
+  display: inline-block;
+  padding: var(--spacing--5xs) var(--spacing--2xs);
+  border-radius: var(--radius);
+  font-size: var(--font-size--2xs);
+  font-weight: var(--font-weight--medium);
+  background-color: var(--color--foreground);
+  color: var(--color--text);
+}
+._loadMore_1se74_70 {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--spacing--md);
+}

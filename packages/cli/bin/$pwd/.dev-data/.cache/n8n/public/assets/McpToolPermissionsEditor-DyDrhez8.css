@@ -1,0 +1,141 @@
+._container_eqtqb_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._identity_eqtqb_7 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  min-width: 0;
+}
+._serverName_eqtqb_14 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: var(--font-size--md);
+  font-weight: var(--font-weight--medium);
+  line-height: var(--line-height--md);
+}
+._metadata_eqtqb_22 {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--2xs);
+  line-height: var(--line-height--md);
+  white-space: nowrap;
+}
+._publisher_eqtqb_33 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+._version_eqtqb_39 {
+  flex-shrink: 0;
+}
+._metadataLink_eqtqb_43 {
+  color: inherit;
+  text-decoration: none;
+}
+._metadataLink_eqtqb_43:hover {
+  color: var(--color--primary);
+  text-decoration: underline;
+}
+._description_eqtqb_52 {
+  margin: 0;
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--md);
+}._container_1qrx8_1,
+._field_1qrx8_2,
+._permissionGroups_1qrx8_3,
+._permissionGroup_1qrx8_3,
+._groupSummary_1qrx8_5,
+._toolSummary_1qrx8_6 {
+  display: flex;
+  flex-direction: column;
+}
+._container_1qrx8_1 {
+  gap: var(--spacing--2xs);
+}
+._field_1qrx8_2 {
+  gap: var(--spacing--4xs);
+}
+._fieldLabel_1qrx8_19 {
+  color: var(--color--text);
+}
+._permissionGroups_1qrx8_3 {
+  gap: var(--spacing--2xs);
+}
+._permissionGroupsDisabled_1qrx8_27 {
+  opacity: 0.5;
+}
+._permissionGroupDisabled_1qrx8_31 {
+  opacity: 0.5;
+}
+._permissionGroup_1qrx8_3 {
+  overflow: hidden;
+  border: var(--border);
+  border-radius: var(--radius--xs);
+}
+._groupHeader_1qrx8_41 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  min-height: var(--height--4xl);
+  padding-inline: var(--spacing--sm);
+}
+._groupSummary_1qrx8_5,
+._toolSummary_1qrx8_6 {
+  flex: 1;
+  gap: var(--spacing--5xs);
+  min-width: 0;
+}
+._groupSummary_1qrx8_5 {
+  padding-block: var(--spacing--xs);
+}
+._groupTitle_1qrx8_60 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._groupTitleText_1qrx8_66 {
+  font-weight: var(--font-weight--medium);
+}
+._countBadge_1qrx8_70 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: var(--height--3xs);
+  height: var(--height--3xs);
+  padding: var(--spacing--5xs) var(--spacing--4xs);
+  border-radius: var(--radius--full);
+  background: var(--background--active);
+  color: var(--text-color--subtler);
+}
+._toolList_1qrx8_83 {
+  display: flex;
+  flex-direction: column;
+  margin-inline: var(--spacing--sm);
+  padding-block: var(--spacing--4xs);
+  border-top: 1px solid var(--border-color--subtle);
+}
+._toolRow_1qrx8_91 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding-block: var(--spacing--2xs);
+}
+._toolDescription_1qrx8_98 {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+._permissionSelect_1qrx8_106 {
+  flex: 0 0 auto;
+  width: auto;
+}

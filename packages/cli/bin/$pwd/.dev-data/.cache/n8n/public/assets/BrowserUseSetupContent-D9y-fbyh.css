@@ -1,0 +1,46 @@
+._passthrough_1g6eg_1 {
+  display: contents;
+}
+._waiting_1g6eg_5 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}._body_7e2lg_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._bodyEmbedded_7e2lg_7 {
+  padding: 0;
+}
+._description_7e2lg_11 {
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--xl);
+}
+._step_7e2lg_16 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs) var(--spacing--sm);
+  background: var(--color--background--light-2);
+  border-radius: var(--radius);
+}
+._footer_7e2lg_26 {
+  display: flex;
+  justify-content: flex-end;
+}
+._statusRow_7e2lg_31 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._statusDot_7e2lg_37 {
+  width: var(--spacing--2xs);
+  height: var(--spacing--2xs);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+._statusDotConnected_7e2lg_44 {
+  background: var(--color--success);
+}

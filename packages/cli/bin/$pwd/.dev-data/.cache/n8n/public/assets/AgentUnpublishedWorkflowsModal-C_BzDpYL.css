@@ -1,0 +1,26 @@
+._content_ngao9_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._header_ngao9_7 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._icon_ngao9_14 {
+  flex-shrink: 0;
+}
+._list_ngao9_18 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  margin: 0;
+  padding-inline-start: var(--spacing--xl);
+}
+._link_ngao9_26 {
+  color: var(--color--primary);
+  cursor: pointer;
+  text-decoration: underline;
+}

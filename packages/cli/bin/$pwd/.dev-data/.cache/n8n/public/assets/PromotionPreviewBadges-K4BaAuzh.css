@@ -1,0 +1,36 @@
+._badges_18sd6_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._count_18sd6_7 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Keep the count at least as wide as the small loading icon. */
+  min-width: var(--spacing--xs);
+  font-variant-numeric: tabular-nums;
+}
+._link_18sd6_16 {
+  display: inline-flex;
+  /* Match the badge radius so the focus ring follows its shape. */
+  border-radius: var(--radius--xs);
+}
+._link_18sd6_16:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  outline-offset: var(--focus--border-width);
+}
+._disabled_18sd6_26 {
+  cursor: default;
+}
+._disabled_18sd6_26 .n8n-badge {
+  --n8n-badge--text-color: var(--text-color--disabled);
+}
+._blocked_18sd6_33 {
+  cursor: not-allowed;
+}
+
+/* The wrapper receives hover events from the disabled badge. */
+._inert_18sd6_38 {
+  pointer-events: none;
+}

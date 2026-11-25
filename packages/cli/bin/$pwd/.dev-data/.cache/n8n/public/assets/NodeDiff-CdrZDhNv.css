@@ -1,0 +1,28 @@
+/* Diff colors are now centralized in @n8n/design-system tokens */
+._codeDiff_1maej_2.code-diff-view {
+  height: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+._codeDiff_1maej_2.code-diff-view .blob-num {
+  display: none;
+}
+._codeDiff_1maej_2.code-diff-view[theme='dark'] {
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  --fgColor-default: var(--color--text--shade-1);
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  --bgColor-default: var(--color--background--light-2);
+  /* stylelint-disable-next-line @n8n/css-var-naming */
+  --color-fg-subtle: var(--color--text--tint-1);
+  --diff--blob--deletion-num--color--background: var(--diff--color--deleted--light);
+  --diff--blob--deletion-num--color--text: var(--color--text--tint-3);
+  --diff--color--danger--emphasis: var(--diff--color--deleted);
+  --diff--blob--addition-num--color--text: var(--color--text--tint-3);
+  --diff--blob--addition-num--color--background: var(--diff--color--new--light);
+  --diff--color--success--emphasis: var(--diff--color--new);
+  --diff--blob--hunk-num--color--background: var(--color--background--shade-1);
+}
+._codeDiff_1maej_2.code-diff-view[theme='dark'] .blob-code-hunk {
+  background-color: var(--diff--blob--hunk-num--color--background);
+}

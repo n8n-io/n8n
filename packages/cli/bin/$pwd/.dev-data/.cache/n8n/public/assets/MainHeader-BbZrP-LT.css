@@ -1,0 +1,325 @@
+@charset "UTF-8";._container_q7lw5_1 {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(50%);
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  z-index: 100;
+}
+._floating_q7lw5_12 {
+  top: var(--spacing--4xs);
+}
+@media screen and (max-width: 430px) {
+._container_q7lw5_1 {
+    flex-direction: column;
+}
+}._group_1gp4i_1 {
+  display: flex;
+}
+._checklistAnchor_1gp4i_5 {
+  position: absolute;
+  top: calc(100% + var(--spacing--sm));
+  left: var(--spacing--sm);
+}
+._hiddenInput_1gp4i_11 {
+  display: none;
+}._container_1r1q8_1 {
+  margin: 0 var(--spacing--4xs);
+}
+._footer_1bx3p_2 {
+	padding: 0 var(--spacing--4xs) var(--spacing--4xs);
+}
+._description_1bx3p_6 {
+	padding: 0 var(--spacing--2xs) var(--spacing--4xs);
+}
+._switch_1bx3p_10 {
+	pointer-events: none;
+}
+._description_qxiis_1 {
+  display: block;
+  margin-top: var(--spacing--xs);
+}
+._footer_qxiis_6 {
+  align-items: center;
+  justify-content: space-between;
+}
+._actions_qxiis_11 {
+  display: flex;
+  gap: var(--spacing--2xs);
+}
+._dontShowAgain_qxiis_16 :deep(label) {
+  color: var(--text-color--subtler);
+}._form_1ygz7_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._heading_1ygz7_7 {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--spacing--2xs);
+}
+._step_1ygz7_15 {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing--wide);
+}._description_e4d4y_1 {
+  display: block;
+  margin-top: var(--spacing--xs);
+}
+._footer_e4d4y_6 {
+  align-items: center;
+  justify-content: space-between;
+}
+._dontShowAgain_e4d4y_11 :deep(label) {
+  color: var(--text-color--subtler);
+}._description_1d2jc_1 {
+  display: block;
+  margin-top: var(--spacing--xs);
+}
+._form_1d2jc_6 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+}
+._heading_1d2jc_12 {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--spacing--2xs);
+}
+._step_1d2jc_20 {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing--wide);
+}/* Focus State
+ -------------------------- */
+/* A blocked-publish reason can list one restriction scope on each line. */
+._submitChangesHint_1f9e0_4 {
+  white-space: pre-line;
+}
+._pill_1f9e0_8 {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing--5xs) var(--spacing--3xs);
+  border: var(--border-width, 1px) var(--border-style, solid) transparent;
+  border-radius: var(--radius--3xs);
+  font-size: var(--font-size--2xs);
+  font-weight: var(--font-weight--medium);
+  line-height: var(--line-height--md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+._pill_1f9e0_8:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+}
+._info_1f9e0_24 {
+  background-color: var(--background--info);
+  color: var(--text-color--info);
+}
+._info_1f9e0_24:hover {
+  border-color: var(--border-color--info);
+}
+._warning_1f9e0_32 {
+  background-color: var(--background--warning);
+  color: var(--text-color--warning);
+}
+._warning_1f9e0_32:hover {
+  border-color: var(--border-color--warning);
+}
+._popover_1f9e0_40 {
+  padding: var(--spacing--xs);
+}
+._content_1f9e0_44 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._actions_1f9e0_50 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}
+._container_1m61o_2 {
+  display: contents;
+}
+
+/* A restricted node list puts one scope on each line. */
+._tooltipReason_1m61o_7 {
+  white-space: pre-line;
+}
+._activeVersionIndicator_1m61o_11 {
+  display: inline-flex;
+  align-items: center;
+}
+._activeVersionIndicator_1m61o_11 ._icon_1m61o_15:focus {
+  outline: none;
+}
+
+/**
+ * Leftmost item of the header actions row. This component's container is
+ * `display: contents`, so this wrapper is a flex item of that row — but the
+ * production checklist is a sibling rendered before this component, so the
+ * position has to come from `order` rather than DOM placement.
+ */
+._reviewStatusBannerSlot_1m61o_25 {
+  display: inline-flex;
+  align-items: center;
+  order: -1;
+}
+._publishButtonWrapper_1m61o_31 {
+  position: relative;
+  display: inline-flex;
+}
+._buttonGroup_1m61o_36 {
+  display: inline-flex;
+  border: var(--border);
+  border-radius: var(--radius--full);
+}
+._groupButtonLeft_1m61o_42,
+._groupButtonLeft_1m61o_42:disabled,
+._groupButtonLeft_1m61o_42:hover:disabled {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+._groupButtonLeft_1m61o_42:hover {
+  border-right-color: inherit;
+}
+._groupButtonRight_1m61o_54 {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: var(--border);
+}
+._buttonGroup_1m61o_36:has(._groupButtonLeft_1m61o_42:not(:disabled):hover) ._groupButtonRight_1m61o_54 {
+  border-left-color: transparent;
+}
+._indicatorDot_1m61o_64 {
+  height: var(--spacing--2xs);
+  width: var(--spacing--2xs);
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: var(--spacing--2xs);
+}
+._publishingSpinner_1m61o_72 {
+  margin-right: var(--spacing--2xs);
+}
+._indicatorPublished_1m61o_76 {
+  background-color: var(--color--mint-600);
+}
+._indicatorPublishedText_1m61o_80 {
+  color: var(--color--text--tint-1);
+}
+._indicatorChanges_1m61o_84 {
+  background-color: var(--color--yellow-500);
+}
+._indicatorIssues_1m61o_88 {
+  background-color: var(--color--red-600);
+}
+._indicatorPartial_1m61o_92 {
+  background-color: var(--color--warning);
+}
+._flex_1m61o_96 {
+  display: flex;
+  align-items: center;
+}.name-container[data-v-d3c1a7bc] {
+  margin-right: var(--spacing--sm);
+  min-width: 0;
+}
+.name-container[data-v-d3c1a7bc] .el-input {
+  padding: 0;
+}
+.name-container[data-v-d3c1a7bc] [data-test-id='folder-breadcrumbs'] > div {
+  min-width: 0;
+}
+.name-container[data-v-d3c1a7bc] [data-test-id='home-project'] {
+  flex-shrink: 0;
+}
+.name[data-v-d3c1a7bc] {
+  color: var(--color--text--shade-1);
+  font-size: var(--font-size--sm);
+  padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+  min-width: 0;
+}
+.spacer[data-v-d3c1a7bc] {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  margin-right: 20px;
+}
+.actions[data-v-d3c1a7bc] {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}._container_qey36_1 {
+  position: relative;
+  width: 100%;
+  padding: var(--spacing--xs) var(--spacing--md);
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  container-type: inline-size;
+  container-name: workflow-header;
+}
+._path-separator_qey36_12 {
+  font-size: var(--font-size--xl);
+  color: var(--color--foreground);
+  padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+}
+@container workflow-header (max-width: 480px) {
+._path-separator_qey36_12 {
+    display: none;
+}
+._container_qey36_1 [data-test-id='home-project'],
+  ._container_qey36_1 .n8n-breadcrumbs ul {
+    display: none;
+}
+}
+._closeNodeViewDiscovery_qey36_27 {
+  position: absolute;
+  right: var(--spacing--xs);
+  top: var(--spacing--xs);
+  cursor: pointer;
+}
+._header-controls_qey36_34 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--md);
+  width: 100%;
+  flex: 1;
+  margin: 0 var(--spacing--md);
+}._container_sqfsw_1 {
+  display: flex;
+  position: relative;
+  width: 100%;
+  align-items: center;
+}
+._main-header_sqfsw_8 {
+  min-height: var(--navbar--height);
+  background-color: var(--color--background--light-3);
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+._canvas-only_sqfsw_16 {
+  min-height: 0;
+  border-bottom: none;
+  background-color: transparent;
+}
+._top-menu_sqfsw_22 {
+  position: relative;
+  display: flex;
+  height: var(--navbar--height);
+  align-items: center;
+  font-size: 0.9em;
+  font-weight: var(--font-weight--regular);
+}

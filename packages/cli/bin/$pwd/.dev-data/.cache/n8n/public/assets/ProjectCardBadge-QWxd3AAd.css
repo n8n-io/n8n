@@ -1,0 +1,38 @@
+._wrapper_2ck6b_1 {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+._badge_2ck6b_7 {
+  border: var(--border);
+}
+._badge_2ck6b_7 .n8n-text,
+._badge_2ck6b_7 a {
+  color: var(--color--text);
+  font-size: var(--font-size--xs);
+  font-weight: var(--font-weight--medium);
+}
+._projectBadge_2ck6b_17 > span {
+  display: flex;
+  gap: var(--n8n-badge--gap);
+  justify-content: center;
+  align-items: center;
+}
+._link_2ck6b_24:hover {
+  background-color: var(--background--hover);
+}
+._count-badge_2ck6b_28 {
+  font-size: var(--font-size--2xs);
+  padding: var(--spacing--4xs) var(--spacing--3xs);
+  color: var(--color--text);
+  border-left: var(--border);
+  line-height: var(--line-height--md);
+}
+._global-badge_2ck6b_36 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._nowrap_2ck6b_43 {
+  white-space: nowrap !important;
+}

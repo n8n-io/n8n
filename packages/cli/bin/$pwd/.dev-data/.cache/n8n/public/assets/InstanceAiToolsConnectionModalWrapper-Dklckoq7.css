@@ -1,0 +1,19 @@
+._layout_19u0r_1 {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+._failureCallout_19u0r_9 {
+  margin-top: var(--spacing--sm);
+}
+._permissions_19u0r_13 {
+  margin-top: var(--spacing--xl);
+}
+._removeButton_19u0r_17 {
+  margin-right: auto;
+}
+._footerIcon_19u0r_21 {
+  margin-right: var(--spacing--5xs);
+}

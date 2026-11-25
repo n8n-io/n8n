@@ -1,0 +1,29 @@
+._container_1ujhg_1 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+._container_1ujhg_1 > * {
+  overflow-wrap: break-word;
+}
+._content_1ujhg_11 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+._usersList_1ujhg_18 {
+  height: 100%;
+  overflow-y: auto;
+}
+._actionButtons_1ujhg_23 {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+._roleSelect_1ujhg_29 {
+  max-width: 100px;
+}
+._roleSelectRemoveOption_1ujhg_33 {
+  border-top: 1px solid var(--color--foreground);
+}

@@ -1,0 +1,1 @@
+window.BASE_PATH = '/';

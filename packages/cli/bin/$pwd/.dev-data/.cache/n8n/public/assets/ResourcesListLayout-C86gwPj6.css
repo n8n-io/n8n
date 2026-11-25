@@ -1,0 +1,237 @@
+._wrapper_183my_1 {
+  display: grid;
+  height: 100%;
+}
+._overflow_183my_6 ._list_183my_6 ._body_183my_6 {
+  overflow: auto;
+}
+._list_183my_6 {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+._list_183my_6 ._body_183my_6 {
+  position: relative;
+  height: 100%;
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+/* Break-points
+ -------------------------- */
+/* Scrollbar
+ -------------------------- */
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+/* Placeholder
+ -------------------------- */
+/* BEM
+ -------------------------- */
+._filters-row_1bzm6_122 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--spacing--2xs);
+}
+._filters_1bzm6_122 {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr max-content max-content max-content;
+  gap: var(--spacing--4xs);
+  align-items: center;
+  justify-content: end;
+  width: 100%;
+}
+._filters_1bzm6_122 ._sort-and-filter_1bzm6_140 {
+  display: flex;
+  gap: var(--spacing--4xs);
+  align-items: center;
+}
+._filters_1bzm6_122 ._sort-and-filter_1bzm6_140 input {
+  min-height: 0;
+  width: 196px;
+  height: 32px;
+}
+@media screen and (max-width: 767px) {
+._filters_1bzm6_122 {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: 1fr;
+}
+._filters_1bzm6_122 ._sort-and-filter_1bzm6_140 input {
+    width: 100%;
+}
+}
+._search_1bzm6_161 {
+  max-width: 196px;
+  justify-self: end;
+}
+@media screen and (max-width: 991px) {
+._search_1bzm6_161 {
+    max-width: 100%;
+}
+}
+._listWrapper_1bzm6_171 {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+}
+._paginatedListWrapper_1bzm6_177 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;
+  gap: var(--spacing--md);
+}
+._listItems_1bzm6_185 {
+  overflow-y: auto;
+  padding-inline: var(--spacing--4xs);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._listItems_1bzm6_185::-webkit-scrollbar {
+  z-index: 11;
+  width: 6px;
+}
+._listItems_1bzm6_185::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+._listItems_1bzm6_185::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  width: 6px;
+  background-color: var(--color--text--tint-2);
+}
+._listItems_1bzm6_185::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color--text--tint-1);
+}
+._listItems_1bzm6_185::-webkit-scrollbar-corner, ._listItems_1bzm6_185::-webkit-scrollbar-track, ._listItems_1bzm6_185::-webkit-scrollbar-track-piece {
+  background-color: transparent;
+}
+._listItems_1bzm6_185 {
+  scrollbar-gutter: stable;
+}
+._listPagination_1bzm6_213 {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing--lg);
+}
+._sort-and-filter_1bzm6_140 {
+  white-space: nowrap;
+}
+@media screen and (max-width: 991px) {
+._sort-and-filter_1bzm6_140 {
+    width: 100%;
+}
+}
+._datatable_1bzm6_228 {
+  padding-bottom: var(--spacing--sm);
+}

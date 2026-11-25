@@ -1,0 +1,15 @@
+._content_2m4j5_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+}
+._field_2m4j5_7 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._footer_2m4j5_13 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}

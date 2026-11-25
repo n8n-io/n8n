@@ -10,6 +10,7 @@ import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import type { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
+import type { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { toAgentPublicDto, type AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { AgentsService, DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 
@@ -23,6 +24,7 @@ describe('AgentsPublicController route metadata', () => {
 
 	it('registers the public agent routes', () => {
 		expect([...routes.keys()].sort()).toEqual([
+			'archiveAgent',
 			'createAgent',
 			'deleteAgent',
 			'getAgent',
@@ -30,6 +32,7 @@ describe('AgentsPublicController route metadata', () => {
 			'listAgents',
 			'runAgent',
 			'stopAgentExecution',
+			'unarchiveAgent',
 			'updateAgent',
 		]);
 	});
@@ -61,6 +64,38 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+	});
+
+	it('archiveAgent requires the agent:delete API key scope and project RBAC check', () => {
+		expect(routes.get('archiveAgent')?.apiKeyScope).toBe('agent:delete');
+		expect(routes.get('archiveAgent')?.accessScope).toEqual({
+			scope: 'agent:delete',
+			globalOnly: false,
+		});
+	});
+
+	it('archiveAgent answers 200 with the public agent DTO and does not declare 400', () => {
+		const route = routes.get('archiveAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 400)).toBe(false);
+	});
+
+	it('unarchiveAgent requires the agent:delete API key scope and project RBAC check', () => {
+		expect(routes.get('unarchiveAgent')?.apiKeyScope).toBe('agent:delete');
+		expect(routes.get('unarchiveAgent')?.accessScope).toEqual({
+			scope: 'agent:delete',
+			globalOnly: false,
+		});
+	});
+
+	it('unarchiveAgent answers 200 and declares 400 and 404', () => {
+		const route = routes.get('unarchiveAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 400)).toBe(true);
 	});
 
 	it('getAgent requires the agent:read API key scope and project RBAC check', () => {
@@ -188,6 +223,7 @@ describe('AgentsPublicController createAgent', () => {
 		agentCustomToolsService,
 		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -328,6 +364,7 @@ describe('AgentsPublicController getAgent', () => {
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -383,6 +420,7 @@ describe('AgentsPublicController listAgents', () => {
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -491,6 +529,7 @@ describe('AgentsPublicController updateAgent', () => {
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
 		agentConfigService,
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -635,6 +674,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -684,6 +724,7 @@ describe('AgentsPublicController run and stop', () => {
 		mock<AgentCustomToolsService>(),
 		agentPublicRunService,
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -733,5 +774,123 @@ describe('AgentsPublicController run and stop', () => {
 			sessionId: undefined,
 			status: undefined,
 		});
+	});
+});
+
+describe('AgentsPublicController archive and unarchive', () => {
+	const agentsService = mock<AgentsService>();
+	const agentResponseMapper = mock<AgentResponseMapper>();
+	const agentPublishService = mock<AgentPublishService>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		agentResponseMapper,
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
+		mock<AgentConfigService>(),
+		agentPublishService,
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+	const liveAgent = { id: 'agent-1', projectId: 'project-1', isArchived: false } as never;
+	const archivedAgent = { id: 'agent-1', projectId: 'project-1', isArchived: true } as never;
+	const publicDto = toAgentPublicDto(fullAgentDto);
+
+	beforeEach(() => {
+		agentsService.findById.mockReset();
+		agentPublishService.archiveAgent.mockReset();
+		agentPublishService.unarchiveAgent.mockReset();
+		agentResponseMapper.toPublicDto.mockReset();
+	});
+
+	it('archives the agent and returns the public DTO', async () => {
+		agentsService.findById.mockResolvedValue(liveAgent);
+		agentPublishService.archiveAgent.mockResolvedValue(archivedAgent);
+		agentResponseMapper.toPublicDto.mockResolvedValue(publicDto);
+
+		const result = await controller.archiveAgent(req, res, 'agent-1');
+
+		expect(agentPublishService.archiveAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			req.user,
+			undefined,
+			'user',
+			req.ctx,
+		);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			archivedAgent,
+			'project-1',
+			req.user,
+		);
+		expect(result).toBe(publicDto);
+	});
+
+	it('returns the current agent when it is already archived', async () => {
+		agentsService.findById.mockResolvedValueOnce(liveAgent).mockResolvedValueOnce(archivedAgent);
+		agentPublishService.archiveAgent.mockRejectedValue(
+			new BadRequestError('Agent is already archived.'),
+		);
+		agentResponseMapper.toPublicDto.mockResolvedValue(publicDto);
+
+		const result = await controller.archiveAgent(req, res, 'agent-1');
+
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			archivedAgent,
+			'project-1',
+			req.user,
+		);
+		expect(result).toBe(publicDto);
+	});
+
+	it('rethrows a bad request when the agent is not archived', async () => {
+		agentsService.findById.mockResolvedValue(liveAgent);
+		agentPublishService.archiveAgent.mockRejectedValue(new BadRequestError('nope'));
+
+		await expect(controller.archiveAgent(req, res, 'agent-1')).rejects.toThrow(BadRequestError);
+		expect(agentResponseMapper.toPublicDto).not.toHaveBeenCalled();
+	});
+
+	it('rethrows a conflict from archive', async () => {
+		agentsService.findById.mockResolvedValue(liveAgent);
+		const conflict = new ConflictError('Agent was modified concurrently; please retry');
+		agentPublishService.archiveAgent.mockRejectedValue(conflict);
+
+		await expect(controller.archiveAgent(req, res, 'agent-1')).rejects.toBe(conflict);
+		expect(agentResponseMapper.toPublicDto).not.toHaveBeenCalled();
+	});
+
+	it('answers 404 when archive cannot find the agent', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(controller.archiveAgent(req, res, 'missing-agent')).rejects.toThrow(NotFoundError);
+		expect(agentPublishService.archiveAgent).not.toHaveBeenCalled();
+	});
+
+	it('answers 404 when unarchive cannot find the agent', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(controller.unarchiveAgent(req, res, 'missing-agent')).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(agentPublishService.unarchiveAgent).not.toHaveBeenCalled();
+	});
+
+	it('restores an archived agent and returns the public DTO', async () => {
+		agentsService.findById.mockResolvedValue(archivedAgent);
+		agentPublishService.unarchiveAgent.mockResolvedValue(liveAgent);
+		agentResponseMapper.toPublicDto.mockResolvedValue(publicDto);
+
+		const result = await controller.unarchiveAgent(req, res, 'agent-1');
+
+		expect(agentPublishService.unarchiveAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			req.user,
+			undefined,
+			req.ctx,
+		);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(liveAgent, 'project-1', req.user);
+		expect(result).toBe(publicDto);
 	});
 });

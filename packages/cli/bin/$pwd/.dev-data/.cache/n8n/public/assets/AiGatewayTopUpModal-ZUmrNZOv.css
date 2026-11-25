@@ -1,0 +1,38 @@
+._services_mkl23_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  margin-top: var(--spacing--md);
+}
+._serviceGrid_mkl23_8 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing--2xs);
+}
+._serviceTag_mkl23_14 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius--xs);
+}
+._logo_mkl23_24 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color--text);
+}
+._logoSvg_mkl23_34 {
+  width: 100%;
+  height: 100%;
+}
+._serviceName_mkl23_39 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

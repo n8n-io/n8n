@@ -1,0 +1,148 @@
+/* Focus State
+ -------------------------- */
+/* Option and checkbox labels render at 12px here, one step below the body copy. */
+._selector_1yrry_4 {
+  --radio-group-item--label--font-size: var(--font-size--2xs);
+  --checkbox--label--font-size: var(--font-size--2xs);
+}
+._modes_1yrry_9 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--xs);
+}
+._modeCard_1yrry_16 {
+  padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--xs);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  cursor: pointer;
+}
+._modeCardActive_1yrry_23 {
+  background: var(--color--background--light-2);
+  border-color: var(--color--primary);
+}
+._customSection_1yrry_28 {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing--xs);
+}
+
+/* Spacing lives inside the animated wrapper (as padding, not flex gap on the
+   parent), so the collapse animates all the way to zero height with no jump. */
+._treeBody_1yrry_36 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding-top: var(--spacing--2xs);
+}
+._treeHeader_1yrry_43 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color--text);
+  font-size: var(--font-size--xs);
+  font-weight: var(--font-weight--medium);
+  text-align: left;
+}
+._treeHeader_1yrry_43:focus-visible {
+  outline: var(--border--width--medium) solid var(--color--primary);
+  outline-offset: 2px;
+}
+._groups_1yrry_61 {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Compact rows (~24px pitch): the ghost toggle is the tallest thing in the row,
+   so cap it instead of padding the whole row. */
+._groupHeader_1yrry_70 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  min-height: var(--spacing--lg);
+}
+._groupHeader_1yrry_70 > button:first-child {
+  --button--height: var(--spacing--lg);
+  width: var(--spacing--lg);
+}
+._tools-tag_1yrry_81 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  margin-left: var(--spacing--2xs);
+  padding: var(--spacing--5xs) var(--spacing--2xs);
+  border-radius: var(--radius--full);
+  border: var(--border);
+  background-color: var(--color--background--light-2);
+  color: var(--color--text--tint-1);
+  font-size: var(--font-size--3xs);
+  font-weight: var(--font-weight--medium);
+  cursor: default;
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+._tools-tag_1yrry_81:hover, ._tools-tag_1yrry_81:focus-visible {
+  border-color: var(--color--primary);
+  color: var(--color--text--shade-1);
+}
+._tools-tag_1yrry_81:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--border-color);
+  outline-offset: var(--spacing--5xs);
+}
+
+/* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */
+.n8n-tooltip._tools-tooltip_1yrry_106 {
+  max-width: 320px;
+  align-items: flex-start;
+}
+._tools-popover_1yrry_111 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  width: max-content;
+  max-width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--spacing--4xs);
+}
+._tools-popover-header_1yrry_122 {
+  font-size: var(--font-size--3xs);
+  font-weight: var(--font-weight--medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color--text--tint-1);
+  margin-bottom: var(--spacing--4xs);
+}
+._tool-row_1yrry_131 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._tool-row_1yrry_131 ._tool-icon_1yrry_136 {
+  color: var(--color--primary);
+}
+._tool-row-disabled_1yrry_140 ._tool-icon_1yrry_136,
+._tool-row-disabled_1yrry_140 ._tool-name_1yrry_141 {
+  color: var(--color--text--tint-1);
+}
+._tool-name_1yrry_141 {
+  font-family: var(--font-family--monospace);
+  font-size: var(--font-size--3xs);
+}
+._scopeList_1yrry_150 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--3xs) 0 var(--spacing--2xs) var(--spacing--2xl);
+}
+._scopeRow_1yrry_157 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+}

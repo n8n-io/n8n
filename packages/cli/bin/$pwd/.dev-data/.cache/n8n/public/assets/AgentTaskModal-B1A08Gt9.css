@@ -1,0 +1,55 @@
+
+._content_5s8up_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+._field_5s8up_8 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+._objectiveEditor_5s8up_14 {
+	height: min(36dvh, calc(var(--height--5xl) * 3));
+}
+._scheduleRow_5s8up_18 {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+._frequencySelect_5s8up_25 {
+	width: 12rem;
+}
+._daySelect_5s8up_29 {
+	width: 10rem;
+}
+._minuteInput_5s8up_33 {
+	width: 6rem;
+}
+._cronInput_5s8up_37 {
+	flex: 1;
+	min-width: 12rem;
+}
+._timeSelect_5s8up_42 {
+	width: 8rem;
+}
+._timezoneSelect_5s8up_46 {
+	width: 14rem;
+}
+._scheduleSummary_5s8up_50 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+._infoIcon_5s8up_56 {
+	display: inline-flex;
+	color: var(--color--text--tint-1);
+	cursor: help;
+}
+._help_5s8up_62 {
+	color: var(--color--text--tint-1);
+}
+._error_5s8up_66 {
+	color: var(--color--danger);
+}

@@ -1,0 +1,232 @@
+/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+._cardLink_7h7hx_113 {
+  cursor: pointer;
+  padding: 0;
+  align-items: stretch;
+}
+._cardHeading_7h7hx_119 {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size--sm);
+  word-break: break-word;
+  padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+._untitledName_7h7hx_127 {
+  font-style: italic;
+}
+._cardHeadingArchived_7h7hx_131 {
+  color: var(--color--text--tint-1);
+}
+._cardArchived_7h7hx_135 {
+  background-color: var(--color--background--light-2);
+  border-color: var(--color--foreground--tint-1);
+  color: var(--color--text);
+}
+._readonlyBadge_7h7hx_141 {
+  margin-left: var(--spacing--3xs);
+}
+._cardDescription_7h7hx_145 {
+  min-height: var(--spacing--xl);
+  display: flex;
+  align-items: center;
+  padding: 0 0 var(--spacing--sm) var(--spacing--sm);
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+  gap: var(--spacing--2xs);
+  flex-wrap: wrap;
+}
+._folderPath_7h7hx_156 {
+  padding: 0 var(--spacing--sm);
+  overflow-wrap: anywhere;
+}
+._mcpIndicator_7h7hx_161 {
+  display: inline-flex;
+  align-items: center;
+}
+._divider_7h7hx_166 {
+  -webkit-user-select: none;
+          user-select: none;
+}
+._cardActions_7h7hx_170 {
+  display: flex;
+  gap: var(--spacing--4xs);
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 var(--spacing--sm) 0 0;
+  cursor: default;
+}
+@media screen and (max-width: 991px) {
+._cardLink_7h7hx_113 {
+    --card--padding: 0 var(--spacing--sm) var(--spacing--sm);
+    --card--append--width: 100%;
+    flex-direction: column;
+}
+._cardActions_7h7hx_170 {
+    width: 100%;
+    padding: 0 var(--spacing--sm) var(--spacing--sm);
+    justify-content: end;
+}
+}._intro_4uvb4_1 {
+  /* No token for this content column. 30rem is the wireframe width. */
+  max-width: 30rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  padding-block: var(--spacing--xl);
+}
+._header_4uvb4_11 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--sm);
+  text-align: center;
+  margin-top: var(--spacing--2xl);
+}
+._createBlank_4uvb4_20 {
+  display: flex;
+  justify-content: flex-end;
+  /* The button sets its own text color, so the parent color property does not reach it. */
+}
+._createBlank_4uvb4_20 :deep(button) {
+  --button--color: var(--text-color--subtle);
+}
+._composerContainer_4uvb4_29 {
+  margin: var(--spacing--xl) 0;
+}
+._templatesLabel_4uvb4_33 {
+  text-transform: uppercase;
+}._browser_1ya9e_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  margin-bottom: var(--spacing--2xs);
+}
+._folder_1ya9e_8 {
+  cursor: pointer;
+}
+._name_1ya9e_12 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin-bottom: var(--spacing--5xs);
+}._toolbar_y3lme_1 {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+}

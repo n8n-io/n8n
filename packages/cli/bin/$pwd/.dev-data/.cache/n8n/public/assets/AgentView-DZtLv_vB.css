@@ -1,0 +1,42 @@
+
+._banner_1rzmt_2 {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+	width: 100%;
+	padding: var(--spacing--3xs) var(--spacing--sm);
+	border: none;
+	border-bottom: var(--border-width, 1px) solid var(--color--purple-500);
+	background-color: var(--color--purple-50);
+	color: var(--color--purple-950);
+	cursor: pointer;
+}
+
+/* Dark mode: darker purple surface with light text */
+body[data-theme='dark'] ._banner_1rzmt_2 {
+	border-bottom-color: var(--color--purple-700);
+	background-color: var(--color--purple-800);
+	color: var(--color--neutral-white);
+}
+@media (prefers-color-scheme: dark) {
+body:not([data-theme]) ._banner_1rzmt_2 {
+		border-bottom-color: var(--color--purple-700);
+		background-color: var(--color--purple-800);
+		color: var(--color--neutral-white);
+}
+}
+._label_1rzmt_32 {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--lg);
+}
+
+._agentView_1rlmu_2 {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	min-height: 0;
+}

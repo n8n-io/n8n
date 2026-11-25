@@ -1,0 +1,54 @@
+.node-creator-shortcut-coachmark {
+  width: 250px;
+  padding: var(--spacing--xs);
+  background: var(--color--background--shade-2);
+  color: var(--color--foreground--tint-2);
+}
+.node-creator-shortcut-coachmark svg {
+  fill: var(--color--background--shade-2);
+  stroke: var(--color--background--shade-2);
+}
+.node-creator-shortcut-coachmark__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--spacing--4xs);
+}
+.node-creator-shortcut-coachmark__title {
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  line-height: 1.45;
+}
+.node-creator-shortcut-coachmark__body {
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--xl);
+  margin: 0;
+}
+.node-creator-shortcut-coachmark__footer {
+  padding-top: var(--spacing--2xs);
+}
+.node-creator-shortcut-coachmark__button {
+  background-color: var(--color--primary);
+}
+.node-creator-shortcut-coachmark__button:hover {
+  background-color: var(--color--primary--shade-1);
+}._nodeButtonsWrapper_15mgv_1 {
+  position: absolute;
+  top: var(--spacing--sm);
+  right: var(--spacing--sm);
+  background: var(--background--surface);
+  border: var(--border);
+  box-shadow: var(--shadow--xs);
+  border-radius: var(--radius--full);
+  padding: var(--spacing--5xs);
+  gap: var(--spacing--5xs);
+  pointer-events: all !important;
+}
+._icon_15mgv_14 {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+._icon_15mgv_14 svg {
+  display: block;
+}

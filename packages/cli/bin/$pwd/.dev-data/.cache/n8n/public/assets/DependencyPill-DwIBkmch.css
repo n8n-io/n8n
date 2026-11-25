@@ -1,0 +1,15 @@
+/* Mirrors N8nBadge's leading icon, which only renders at 14px or larger. */
+._icon_5gs8z_2 {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+._hiddenNotice_5gs8z_7 {
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  border-top: var(--border);
+  color: var(--color--text--tint-1);
+  font-size: var(--font-size--3xs);
+  font-style: italic;
+  line-height: var(--line-height--lg);
+}.dependency-pill-dropdown {
+  z-index: 1;
+}

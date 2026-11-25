@@ -1,0 +1,104 @@
+._pullResultModal_1exvv_1.el-dialog {
+  margin: 0;
+}
+._pullResultModal_1exvv_1 .el-dialog__header {
+  padding-bottom: var(--spacing--xs);
+}
+._headerTitle_1exvv_8 {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: 10px 16px;
+}
+._scrollContent_1exvv_14 {
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-color: var(--color--foreground) transparent;
+}
+._listItem_1exvv_20 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin: 0;
+  border-bottom: var(--border);
+  gap: 30px;
+}
+._listItem_1exvv_20:last-child {
+  border-bottom: 0;
+}
+._itemContent_1exvv_33 {
+  flex: 1;
+  min-width: 0;
+}
+._listItemName_1exvv_38 {
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+}
+._listItemName_1exvv_38 a {
+  color: inherit;
+  text-decoration: none;
+}
+._listItemName_1exvv_38 a:hover {
+  text-decoration: underline;
+}
+._footer_1exvv_55 {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+._table_1exvv_62 {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: var(--border);
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+._tableHeader_1exvv_72 {
+  border-bottom: var(--border);
+  display: flex;
+  flex-direction: column;
+}
+._tableContent_1exvv_78 {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+._tabs_1exvv_85 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 165px;
+  padding: var(--spacing--2xs);
+  border: var(--border);
+  border-right: 0;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+._tab_1exvv_62 {
+  color: var(--color--text);
+  background-color: transparent;
+  border: 1px solid transparent;
+  padding: var(--spacing--2xs);
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+._tab_1exvv_62:hover {
+  border-color: var(--color--background);
+}
+._tabActive_1exvv_113 {
+  background-color: var(--color--background);
+  color: var(--color--text--shade-1);
+}

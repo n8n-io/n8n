@@ -1,0 +1,724 @@
+
+._icon_1mpu8_2 {
+	vertical-align: middle;
+	margin-right: var(--spacing--4xs);
+	transform: translateY(-1px);
+}
+._link_1mpu8_7 {
+	display: inline;
+	font-size: inherit;
+}
+@font-face{font-display:block;font-family:KaTeX_AMS;font-style:normal;font-weight:400;src:url(/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2) format("woff2"),url(/assets/KaTeX_AMS-Regular-DMm9YOAa.woff) format("woff"),url(/assets/KaTeX_AMS-Regular-DRggAlZN.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Caligraphic;font-style:normal;font-weight:700;src:url(/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2) format("woff2"),url(/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff) format("woff"),url(/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Caligraphic;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2) format("woff2"),url(/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff) format("woff"),url(/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Fraktur;font-style:normal;font-weight:700;src:url(/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2) format("woff2"),url(/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff) format("woff"),url(/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Fraktur;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2) format("woff2"),url(/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff) format("woff"),url(/assets/KaTeX_Fraktur-Regular-CB_wures.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:normal;font-weight:700;src:url(/assets/KaTeX_Main-Bold-Cx986IdX.woff2) format("woff2"),url(/assets/KaTeX_Main-Bold-Jm3AIy58.woff) format("woff"),url(/assets/KaTeX_Main-Bold-waoOVXN0.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:italic;font-weight:700;src:url(/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2) format("woff2"),url(/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff) format("woff"),url(/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:italic;font-weight:400;src:url(/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2) format("woff2"),url(/assets/KaTeX_Main-Italic-BMLOBm91.woff) format("woff"),url(/assets/KaTeX_Main-Italic-3WenGoN9.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Main-Regular-B22Nviop.woff2) format("woff2"),url(/assets/KaTeX_Main-Regular-Dr94JaBh.woff) format("woff"),url(/assets/KaTeX_Main-Regular-ypZvNtVU.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Math;font-style:italic;font-weight:700;src:url(/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2) format("woff2"),url(/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff) format("woff"),url(/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Math;font-style:italic;font-weight:400;src:url(/assets/KaTeX_Math-Italic-t53AETM-.woff2) format("woff2"),url(/assets/KaTeX_Math-Italic-DA0__PXp.woff) format("woff"),url(/assets/KaTeX_Math-Italic-flOr_0UB.ttf) format("truetype")}@font-face{font-display:block;font-family:"KaTeX_SansSerif";font-style:normal;font-weight:700;src:url(/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2) format("woff2"),url(/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff) format("woff"),url(/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf) format("truetype")}@font-face{font-display:block;font-family:"KaTeX_SansSerif";font-style:italic;font-weight:400;src:url(/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2) format("woff2"),url(/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff) format("woff"),url(/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf) format("truetype")}@font-face{font-display:block;font-family:"KaTeX_SansSerif";font-style:normal;font-weight:400;src:url(/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2) format("woff2"),url(/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff) format("woff"),url(/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Script;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Script-Regular-D3wIWfF6.woff2) format("woff2"),url(/assets/KaTeX_Script-Regular-D5yQViql.woff) format("woff"),url(/assets/KaTeX_Script-Regular-C5JkGWo-.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size1;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2) format("woff2"),url(/assets/KaTeX_Size1-Regular-C195tn64.woff) format("woff"),url(/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size2;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2) format("woff2"),url(/assets/KaTeX_Size2-Regular-oD1tc_U0.woff) format("woff"),url(/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size3;font-style:normal;font-weight:400;src:url(data:font/woff2;base64,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) format("woff2"),url(/assets/KaTeX_Size3-Regular-CTq5MqoE.woff) format("woff"),url(/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size4;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2) format("woff2"),url(/assets/KaTeX_Size4-Regular-BF-4gkZK.woff) format("woff"),url(/assets/KaTeX_Size4-Regular-DWFBv043.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Typewriter;font-style:normal;font-weight:400;src:url(/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2) format("woff2"),url(/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff) format("woff"),url(/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf) format("truetype")}.katex{font:normal 1.21em KaTeX_Main,Times New Roman,serif;line-height:1.2;position:relative;text-indent:0;text-rendering:auto}.katex *{-ms-high-contrast-adjust:none!important;border-color:currentColor}.katex .katex-version:after{content:"0.18.2"}.katex .katex-mathml{border:0;clip-path:inset(50%);height:1px;overflow:hidden;padding:0;position:absolute;width:1px}.katex .katex-html>.katex-newline{display:block}.katex .katex-base{position:relative;white-space:nowrap;width:-moz-min-content;width:min-content}.katex .katex-base,.katex .katex-strut{display:inline-block}.katex .textbf{font-weight:700}.katex .textit{font-style:italic}.katex .textrm{font-family:KaTeX_Main}.katex .textsf{font-family:KaTeX_SansSerif}.katex .texttt{font-family:KaTeX_Typewriter}.katex .mathnormal{font-family:KaTeX_Math;font-style:italic}.katex .mathit{font-family:KaTeX_Main;font-style:italic}.katex .mathrm{font-style:normal}.katex .mathbf{font-family:KaTeX_Main;font-weight:700}.katex .boldsymbol{font-family:KaTeX_Math;font-style:italic;font-weight:700}.katex .amsrm,.katex .mathbb,.katex .textbb{font-family:KaTeX_AMS}.katex .mathcal{font-family:KaTeX_Caligraphic}.katex .mathfrak,.katex .textfrak{font-family:KaTeX_Fraktur}.katex .mathboldfrak,.katex .textboldfrak{font-family:KaTeX_Fraktur;font-weight:700}.katex .mathtt{font-family:KaTeX_Typewriter}.katex .mathscr,.katex .textscr{font-family:KaTeX_Script}.katex .mathsf,.katex .textsf{font-family:KaTeX_SansSerif}.katex .mathboldsf,.katex .textboldsf{font-family:KaTeX_SansSerif;font-weight:700}.katex .mathitsf,.katex .mathsfit,.katex .textitsf{font-family:KaTeX_SansSerif;font-style:italic}.katex .mainrm{font-family:KaTeX_Main;font-style:normal}.katex .vlist-t{border-collapse:collapse;display:inline-table;table-layout:fixed}.katex .vlist-r{display:table-row}.katex .vlist{display:table-cell;position:relative;vertical-align:bottom}.katex .vlist>span{display:block;height:0;position:relative}.katex .vlist>span>span{display:inline-block}.katex .vlist>span>.pstrut{overflow:hidden;width:0}.katex .vlist-t2{margin-right:-2px}.katex .vlist-s{display:table-cell;font-size:1px;min-width:2px;vertical-align:bottom;width:2px}.katex .katex-vbox{align-items:baseline;display:inline-flex;flex-direction:column}.katex .katex-thinbox{display:inline-flex;flex-direction:row;max-width:0;width:0}.katex .msupsub{text-align:left}.katex .mfrac>span>span{text-align:center}.katex .mfrac .frac-line{border-bottom-style:solid;display:inline-block;width:100%}.katex .katex-hdashline,.katex .katex-hline,.katex .katex-overline .overline-line,.katex .katex-rule,.katex .katex-underline .underline-line,.katex .mfrac .frac-line{min-height:1px}.katex .mspace{display:inline-block}.katex .katex-smash{display:inline;line-height:0}.katex .clap,.katex .llap,.katex .rlap{position:relative;width:0}.katex .clap>.katex-inner,.katex .llap>.katex-inner,.katex .rlap>.katex-inner{position:absolute}.katex .clap>.katex-fix,.katex .llap>.katex-fix,.katex .rlap>.katex-fix{display:inline-block}.katex .llap>.katex-inner{right:0}.katex .clap>.katex-inner,.katex .rlap>.katex-inner{left:0}.katex .clap>.katex-inner>span{margin-left:-50%;margin-right:50%}.katex .katex-rule{border:0 solid;display:inline-block;position:relative}.katex .katex-hline,.katex .katex-overline .overline-line,.katex .katex-underline .underline-line{border-bottom-style:solid;display:inline-block;width:100%}.katex .katex-hdashline{border-bottom-style:dashed;display:inline-block;width:100%}.katex .sqrt>.katex-root{margin-left:.2777777778em;margin-right:-.5555555556em}.katex .fontsize-ensurer.reset-size1.size1,.katex .katex-sizing.reset-size1.size1{font-size:1em}.katex .fontsize-ensurer.reset-size1.size2,.katex .katex-sizing.reset-size1.size2{font-size:1.2em}.katex .fontsize-ensurer.reset-size1.size3,.katex .katex-sizing.reset-size1.size3{font-size:1.4em}.katex .fontsize-ensurer.reset-size1.size4,.katex .katex-sizing.reset-size1.size4{font-size:1.6em}.katex .fontsize-ensurer.reset-size1.size5,.katex .katex-sizing.reset-size1.size5{font-size:1.8em}.katex .fontsize-ensurer.reset-size1.size6,.katex .katex-sizing.reset-size1.size6{font-size:2em}.katex .fontsize-ensurer.reset-size1.size7,.katex .katex-sizing.reset-size1.size7{font-size:2.4em}.katex .fontsize-ensurer.reset-size1.size8,.katex .katex-sizing.reset-size1.size8{font-size:2.88em}.katex .fontsize-ensurer.reset-size1.size9,.katex .katex-sizing.reset-size1.size9{font-size:3.456em}.katex .fontsize-ensurer.reset-size1.size10,.katex .katex-sizing.reset-size1.size10{font-size:4.148em}.katex .fontsize-ensurer.reset-size1.size11,.katex .katex-sizing.reset-size1.size11{font-size:4.976em}.katex .fontsize-ensurer.reset-size2.size1,.katex .katex-sizing.reset-size2.size1{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size2.size2,.katex .katex-sizing.reset-size2.size2{font-size:1em}.katex .fontsize-ensurer.reset-size2.size3,.katex .katex-sizing.reset-size2.size3{font-size:1.1666666667em}.katex .fontsize-ensurer.reset-size2.size4,.katex .katex-sizing.reset-size2.size4{font-size:1.3333333333em}.katex .fontsize-ensurer.reset-size2.size5,.katex .katex-sizing.reset-size2.size5{font-size:1.5em}.katex .fontsize-ensurer.reset-size2.size6,.katex .katex-sizing.reset-size2.size6{font-size:1.6666666667em}.katex .fontsize-ensurer.reset-size2.size7,.katex .katex-sizing.reset-size2.size7{font-size:2em}.katex .fontsize-ensurer.reset-size2.size8,.katex .katex-sizing.reset-size2.size8{font-size:2.4em}.katex .fontsize-ensurer.reset-size2.size9,.katex .katex-sizing.reset-size2.size9{font-size:2.88em}.katex .fontsize-ensurer.reset-size2.size10,.katex .katex-sizing.reset-size2.size10{font-size:3.4566666667em}.katex .fontsize-ensurer.reset-size2.size11,.katex .katex-sizing.reset-size2.size11{font-size:4.1466666667em}.katex .fontsize-ensurer.reset-size3.size1,.katex .katex-sizing.reset-size3.size1{font-size:.7142857143em}.katex .fontsize-ensurer.reset-size3.size2,.katex .katex-sizing.reset-size3.size2{font-size:.8571428571em}.katex .fontsize-ensurer.reset-size3.size3,.katex .katex-sizing.reset-size3.size3{font-size:1em}.katex .fontsize-ensurer.reset-size3.size4,.katex .katex-sizing.reset-size3.size4{font-size:1.1428571429em}.katex .fontsize-ensurer.reset-size3.size5,.katex .katex-sizing.reset-size3.size5{font-size:1.2857142857em}.katex .fontsize-ensurer.reset-size3.size6,.katex .katex-sizing.reset-size3.size6{font-size:1.4285714286em}.katex .fontsize-ensurer.reset-size3.size7,.katex .katex-sizing.reset-size3.size7{font-size:1.7142857143em}.katex .fontsize-ensurer.reset-size3.size8,.katex .katex-sizing.reset-size3.size8{font-size:2.0571428571em}.katex .fontsize-ensurer.reset-size3.size9,.katex .katex-sizing.reset-size3.size9{font-size:2.4685714286em}.katex .fontsize-ensurer.reset-size3.size10,.katex .katex-sizing.reset-size3.size10{font-size:2.9628571429em}.katex .fontsize-ensurer.reset-size3.size11,.katex .katex-sizing.reset-size3.size11{font-size:3.5542857143em}.katex .fontsize-ensurer.reset-size4.size1,.katex .katex-sizing.reset-size4.size1{font-size:.625em}.katex .fontsize-ensurer.reset-size4.size2,.katex .katex-sizing.reset-size4.size2{font-size:.75em}.katex .fontsize-ensurer.reset-size4.size3,.katex .katex-sizing.reset-size4.size3{font-size:.875em}.katex .fontsize-ensurer.reset-size4.size4,.katex .katex-sizing.reset-size4.size4{font-size:1em}.katex .fontsize-ensurer.reset-size4.size5,.katex .katex-sizing.reset-size4.size5{font-size:1.125em}.katex .fontsize-ensurer.reset-size4.size6,.katex .katex-sizing.reset-size4.size6{font-size:1.25em}.katex .fontsize-ensurer.reset-size4.size7,.katex .katex-sizing.reset-size4.size7{font-size:1.5em}.katex .fontsize-ensurer.reset-size4.size8,.katex .katex-sizing.reset-size4.size8{font-size:1.8em}.katex .fontsize-ensurer.reset-size4.size9,.katex .katex-sizing.reset-size4.size9{font-size:2.16em}.katex .fontsize-ensurer.reset-size4.size10,.katex .katex-sizing.reset-size4.size10{font-size:2.5925em}.katex .fontsize-ensurer.reset-size4.size11,.katex .katex-sizing.reset-size4.size11{font-size:3.11em}.katex .fontsize-ensurer.reset-size5.size1,.katex .katex-sizing.reset-size5.size1{font-size:.5555555556em}.katex .fontsize-ensurer.reset-size5.size2,.katex .katex-sizing.reset-size5.size2{font-size:.6666666667em}.katex .fontsize-ensurer.reset-size5.size3,.katex .katex-sizing.reset-size5.size3{font-size:.7777777778em}.katex .fontsize-ensurer.reset-size5.size4,.katex .katex-sizing.reset-size5.size4{font-size:.8888888889em}.katex .fontsize-ensurer.reset-size5.size5,.katex .katex-sizing.reset-size5.size5{font-size:1em}.katex .fontsize-ensurer.reset-size5.size6,.katex .katex-sizing.reset-size5.size6{font-size:1.1111111111em}.katex .fontsize-ensurer.reset-size5.size7,.katex .katex-sizing.reset-size5.size7{font-size:1.3333333333em}.katex .fontsize-ensurer.reset-size5.size8,.katex .katex-sizing.reset-size5.size8{font-size:1.6em}.katex .fontsize-ensurer.reset-size5.size9,.katex .katex-sizing.reset-size5.size9{font-size:1.92em}.katex .fontsize-ensurer.reset-size5.size10,.katex .katex-sizing.reset-size5.size10{font-size:2.3044444444em}.katex .fontsize-ensurer.reset-size5.size11,.katex .katex-sizing.reset-size5.size11{font-size:2.7644444444em}.katex .fontsize-ensurer.reset-size6.size1,.katex .katex-sizing.reset-size6.size1{font-size:.5em}.katex .fontsize-ensurer.reset-size6.size2,.katex .katex-sizing.reset-size6.size2{font-size:.6em}.katex .fontsize-ensurer.reset-size6.size3,.katex .katex-sizing.reset-size6.size3{font-size:.7em}.katex .fontsize-ensurer.reset-size6.size4,.katex .katex-sizing.reset-size6.size4{font-size:.8em}.katex .fontsize-ensurer.reset-size6.size5,.katex .katex-sizing.reset-size6.size5{font-size:.9em}.katex .fontsize-ensurer.reset-size6.size6,.katex .katex-sizing.reset-size6.size6{font-size:1em}.katex .fontsize-ensurer.reset-size6.size7,.katex .katex-sizing.reset-size6.size7{font-size:1.2em}.katex .fontsize-ensurer.reset-size6.size8,.katex .katex-sizing.reset-size6.size8{font-size:1.44em}.katex .fontsize-ensurer.reset-size6.size9,.katex .katex-sizing.reset-size6.size9{font-size:1.728em}.katex .fontsize-ensurer.reset-size6.size10,.katex .katex-sizing.reset-size6.size10{font-size:2.074em}.katex .fontsize-ensurer.reset-size6.size11,.katex .katex-sizing.reset-size6.size11{font-size:2.488em}.katex .fontsize-ensurer.reset-size7.size1,.katex .katex-sizing.reset-size7.size1{font-size:.4166666667em}.katex .fontsize-ensurer.reset-size7.size2,.katex .katex-sizing.reset-size7.size2{font-size:.5em}.katex .fontsize-ensurer.reset-size7.size3,.katex .katex-sizing.reset-size7.size3{font-size:.5833333333em}.katex .fontsize-ensurer.reset-size7.size4,.katex .katex-sizing.reset-size7.size4{font-size:.6666666667em}.katex .fontsize-ensurer.reset-size7.size5,.katex .katex-sizing.reset-size7.size5{font-size:.75em}.katex .fontsize-ensurer.reset-size7.size6,.katex .katex-sizing.reset-size7.size6{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size7.size7,.katex .katex-sizing.reset-size7.size7{font-size:1em}.katex .fontsize-ensurer.reset-size7.size8,.katex .katex-sizing.reset-size7.size8{font-size:1.2em}.katex .fontsize-ensurer.reset-size7.size9,.katex .katex-sizing.reset-size7.size9{font-size:1.44em}.katex .fontsize-ensurer.reset-size7.size10,.katex .katex-sizing.reset-size7.size10{font-size:1.7283333333em}.katex .fontsize-ensurer.reset-size7.size11,.katex .katex-sizing.reset-size7.size11{font-size:2.0733333333em}.katex .fontsize-ensurer.reset-size8.size1,.katex .katex-sizing.reset-size8.size1{font-size:.3472222222em}.katex .fontsize-ensurer.reset-size8.size2,.katex .katex-sizing.reset-size8.size2{font-size:.4166666667em}.katex .fontsize-ensurer.reset-size8.size3,.katex .katex-sizing.reset-size8.size3{font-size:.4861111111em}.katex .fontsize-ensurer.reset-size8.size4,.katex .katex-sizing.reset-size8.size4{font-size:.5555555556em}.katex .fontsize-ensurer.reset-size8.size5,.katex .katex-sizing.reset-size8.size5{font-size:.625em}.katex .fontsize-ensurer.reset-size8.size6,.katex .katex-sizing.reset-size8.size6{font-size:.6944444444em}.katex .fontsize-ensurer.reset-size8.size7,.katex .katex-sizing.reset-size8.size7{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size8.size8,.katex .katex-sizing.reset-size8.size8{font-size:1em}.katex .fontsize-ensurer.reset-size8.size9,.katex .katex-sizing.reset-size8.size9{font-size:1.2em}.katex .fontsize-ensurer.reset-size8.size10,.katex .katex-sizing.reset-size8.size10{font-size:1.4402777778em}.katex .fontsize-ensurer.reset-size8.size11,.katex .katex-sizing.reset-size8.size11{font-size:1.7277777778em}.katex .fontsize-ensurer.reset-size9.size1,.katex .katex-sizing.reset-size9.size1{font-size:.2893518519em}.katex .fontsize-ensurer.reset-size9.size2,.katex .katex-sizing.reset-size9.size2{font-size:.3472222222em}.katex .fontsize-ensurer.reset-size9.size3,.katex .katex-sizing.reset-size9.size3{font-size:.4050925926em}.katex .fontsize-ensurer.reset-size9.size4,.katex .katex-sizing.reset-size9.size4{font-size:.462962963em}.katex .fontsize-ensurer.reset-size9.size5,.katex .katex-sizing.reset-size9.size5{font-size:.5208333333em}.katex .fontsize-ensurer.reset-size9.size6,.katex .katex-sizing.reset-size9.size6{font-size:.5787037037em}.katex .fontsize-ensurer.reset-size9.size7,.katex .katex-sizing.reset-size9.size7{font-size:.6944444444em}.katex .fontsize-ensurer.reset-size9.size8,.katex .katex-sizing.reset-size9.size8{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size9.size9,.katex .katex-sizing.reset-size9.size9{font-size:1em}.katex .fontsize-ensurer.reset-size9.size10,.katex .katex-sizing.reset-size9.size10{font-size:1.2002314815em}.katex .fontsize-ensurer.reset-size9.size11,.katex .katex-sizing.reset-size9.size11{font-size:1.4398148148em}.katex .fontsize-ensurer.reset-size10.size1,.katex .katex-sizing.reset-size10.size1{font-size:.2410800386em}.katex .fontsize-ensurer.reset-size10.size2,.katex .katex-sizing.reset-size10.size2{font-size:.2892960463em}.katex .fontsize-ensurer.reset-size10.size3,.katex .katex-sizing.reset-size10.size3{font-size:.337512054em}.katex .fontsize-ensurer.reset-size10.size4,.katex .katex-sizing.reset-size10.size4{font-size:.3857280617em}.katex .fontsize-ensurer.reset-size10.size5,.katex .katex-sizing.reset-size10.size5{font-size:.4339440694em}.katex .fontsize-ensurer.reset-size10.size6,.katex .katex-sizing.reset-size10.size6{font-size:.4821600771em}.katex .fontsize-ensurer.reset-size10.size7,.katex .katex-sizing.reset-size10.size7{font-size:.5785920926em}.katex .fontsize-ensurer.reset-size10.size8,.katex .katex-sizing.reset-size10.size8{font-size:.6943105111em}.katex .fontsize-ensurer.reset-size10.size9,.katex .katex-sizing.reset-size10.size9{font-size:.8331726133em}.katex .fontsize-ensurer.reset-size10.size10,.katex .katex-sizing.reset-size10.size10{font-size:1em}.katex .fontsize-ensurer.reset-size10.size11,.katex .katex-sizing.reset-size10.size11{font-size:1.1996142719em}.katex .fontsize-ensurer.reset-size11.size1,.katex .katex-sizing.reset-size11.size1{font-size:.2009646302em}.katex .fontsize-ensurer.reset-size11.size2,.katex .katex-sizing.reset-size11.size2{font-size:.2411575563em}.katex .fontsize-ensurer.reset-size11.size3,.katex .katex-sizing.reset-size11.size3{font-size:.2813504823em}.katex .fontsize-ensurer.reset-size11.size4,.katex .katex-sizing.reset-size11.size4{font-size:.3215434084em}.katex .fontsize-ensurer.reset-size11.size5,.katex .katex-sizing.reset-size11.size5{font-size:.3617363344em}.katex .fontsize-ensurer.reset-size11.size6,.katex .katex-sizing.reset-size11.size6{font-size:.4019292605em}.katex .fontsize-ensurer.reset-size11.size7,.katex .katex-sizing.reset-size11.size7{font-size:.4823151125em}.katex .fontsize-ensurer.reset-size11.size8,.katex .katex-sizing.reset-size11.size8{font-size:.578778135em}.katex .fontsize-ensurer.reset-size11.size9,.katex .katex-sizing.reset-size11.size9{font-size:.6945337621em}.katex .fontsize-ensurer.reset-size11.size10,.katex .katex-sizing.reset-size11.size10{font-size:.8336012862em}.katex .fontsize-ensurer.reset-size11.size11,.katex .katex-sizing.reset-size11.size11{font-size:1em}.katex .delimsizing.size1{font-family:KaTeX_Size1}.katex .delimsizing.size2{font-family:KaTeX_Size2}.katex .delimsizing.size3{font-family:KaTeX_Size3}.katex .delimsizing.size4{font-family:KaTeX_Size4}.katex .delimsizing.mult .delim-size1>span{font-family:KaTeX_Size1}.katex .delimsizing.mult .delim-size4>span{font-family:KaTeX_Size4}.katex .nulldelimiter{display:inline-block;width:.12em}.katex .delimcenter,.katex .op-symbol{position:relative}.katex .op-symbol.small-op{font-family:KaTeX_Size1}.katex .op-symbol.large-op{font-family:KaTeX_Size2}.katex .katex-accent>.vlist-t,.katex .op-limits>.vlist-t{text-align:center}.katex .katex-accent .accent-body{position:relative}.katex .katex-accent .accent-body:not(.accent-full){width:0}.katex .katex-overlay{display:block}.katex .mtable .vertical-separator{display:inline-block;min-width:1px}.katex .mtable .arraycolsep{display:inline-block}.katex .mtable .col-align-c>.vlist-t{text-align:center}.katex .mtable .col-align-l>.vlist-t{text-align:left}.katex .mtable .col-align-r>.vlist-t{text-align:right}.katex .svg-align{text-align:left}.katex svg{fill:currentColor;stroke:currentColor;display:block;height:inherit;position:absolute;width:100%}.katex svg path{stroke:none}.katex svg{fill-rule:nonzero;fill-opacity:1;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1}.katex img{border-style:none;max-height:none;max-width:none;min-height:0;min-width:0}.katex .katex-stretchy{display:block;overflow:hidden;position:relative;width:100%}.katex .katex-stretchy:after,.katex .katex-stretchy:before{content:""}.katex .hide-tail{overflow:hidden;position:relative;width:100%}.katex .halfarrow-left{left:0;overflow:hidden;position:absolute;width:50.2%}.katex .halfarrow-right{overflow:hidden;position:absolute;right:0;width:50.2%}.katex .brace-left{left:0;overflow:hidden;position:absolute;width:25.1%}.katex .brace-center{left:25%;overflow:hidden;position:absolute;width:50%}.katex .brace-right{overflow:hidden;position:absolute;right:0;width:25.1%}.katex .x-arrow-pad{padding:0 .5em}.katex .cd-arrow-pad{padding:0 .55556em 0 .27778em}.katex .mover,.katex .munder,.katex .x-arrow{text-align:center}.katex .boxpad{padding:0 .3em}.katex .fbox,.katex .fcolorbox{border:.04em solid;box-sizing:border-box}.katex .cancel-pad{padding:0 .2em}.katex .cancel-lap{margin-left:-.2em;margin-right:-.2em}.katex .katex-sout{border-bottom-style:solid;border-bottom-width:.08em}.katex .angl{border-right:.049em solid;border-top:.049em solid;box-sizing:border-box;margin-right:.03889em}.katex .anglpad{padding:0 .03889em}.katex .eqn-num:before{content:"(" counter(katexEqnNo) ")";counter-increment:katexEqnNo}.katex .mml-eqn-num:before{content:"(" counter(mmlEqnNo) ")";counter-increment:mmlEqnNo}.katex .mtr-glue{width:50%}.katex .cd-vert-arrow{display:inline-block;position:relative}.katex .cd-label-left{display:inline-block;position:absolute;right:calc(50% + .3em);text-align:left}.katex .cd-label-right{display:inline-block;left:calc(50% + .3em);position:absolute;text-align:right}.katex-display{display:block;margin:1em 0;text-align:center}.katex-display>.katex{display:block;text-align:center;white-space:nowrap}.katex-display>.katex>.katex-html{display:block;position:relative}.katex-display>.katex>.katex-html>.katex-tag{position:absolute;right:0}.katex-display.leqno>.katex>.katex-html>.katex-tag{left:0;right:auto}.katex-display.fleqn>.katex{padding-left:2em;text-align:left}body{counter-reset:katexEqnNo mmlEqnNo}
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+code.hljs {
+  padding: 3px 5px;
+}
+
+/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+  color: #24292e;
+  background: #ffffff;
+}
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #d73a49;
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #6f42c1;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #005cc5;
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #032f62;
+}
+.hljs-built_in,
+.hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #e36209;
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #6a737d;
+}
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #22863a;
+}
+.hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #24292e;
+}
+.hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #005cc5;
+  font-weight: bold;
+}
+.hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #735c0f;
+}
+.hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #24292e;
+  font-style: italic;
+}
+.hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #24292e;
+  font-weight: bold;
+}
+.hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #22863a;
+  background-color: #f0fff4;
+}
+.hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+.hljs-char.escape_,
+.hljs-link,
+.hljs-params,
+.hljs-property,
+.hljs-punctuation,
+.hljs-tag {
+  /* purposely ignored */
+}
+[data-theme=dark] pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+[data-theme=dark] code.hljs {
+  padding: 3px 5px;
+}
+[data-theme=dark] {
+  /*!
+    Theme: GitHub Dark Dimmed
+    Description: Dark dimmed theme as seen on github.com
+    Author: github.com
+    Maintainer: @Hirse
+    Updated: 2021-05-15
+
+    Colors taken from GitHub's CSS
+  */
+}
+[data-theme=dark] .hljs {
+  color: #adbac7;
+  background: #22272e;
+}
+[data-theme=dark] .hljs-doctag,
+[data-theme=dark] .hljs-keyword,
+[data-theme=dark] .hljs-meta .hljs-keyword,
+[data-theme=dark] .hljs-template-tag,
+[data-theme=dark] .hljs-template-variable,
+[data-theme=dark] .hljs-type,
+[data-theme=dark] .hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #f47067;
+}
+[data-theme=dark] .hljs-title,
+[data-theme=dark] .hljs-title.class_,
+[data-theme=dark] .hljs-title.class_.inherited__,
+[data-theme=dark] .hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #dcbdfb;
+}
+[data-theme=dark] .hljs-attr,
+[data-theme=dark] .hljs-attribute,
+[data-theme=dark] .hljs-literal,
+[data-theme=dark] .hljs-meta,
+[data-theme=dark] .hljs-number,
+[data-theme=dark] .hljs-operator,
+[data-theme=dark] .hljs-variable,
+[data-theme=dark] .hljs-selector-attr,
+[data-theme=dark] .hljs-selector-class,
+[data-theme=dark] .hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #6cb6ff;
+}
+[data-theme=dark] .hljs-regexp,
+[data-theme=dark] .hljs-string,
+[data-theme=dark] .hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #96d0ff;
+}
+[data-theme=dark] .hljs-built_in,
+[data-theme=dark] .hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #f69d50;
+}
+[data-theme=dark] .hljs-comment,
+[data-theme=dark] .hljs-code,
+[data-theme=dark] .hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #768390;
+}
+[data-theme=dark] .hljs-name,
+[data-theme=dark] .hljs-quote,
+[data-theme=dark] .hljs-selector-tag,
+[data-theme=dark] .hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #8ddb8c;
+}
+[data-theme=dark] .hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #adbac7;
+}
+[data-theme=dark] .hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #316dca;
+  font-weight: bold;
+}
+[data-theme=dark] .hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #eac55f;
+}
+[data-theme=dark] .hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #adbac7;
+  font-style: italic;
+}
+[data-theme=dark] .hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #adbac7;
+  font-weight: bold;
+}
+[data-theme=dark] .hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #b4f1b4;
+  background-color: #1b4721;
+}
+[data-theme=dark] .hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #ffd8d3;
+  background-color: #78191b;
+}
+[data-theme=dark] .hljs-char.escape_,
+[data-theme=dark] .hljs-link,
+[data-theme=dark] .hljs-params,
+[data-theme=dark] .hljs-property,
+[data-theme=dark] .hljs-punctuation,
+[data-theme=dark] .hljs-tag {
+  /* purposely ignored */
+}
+@media (prefers-color-scheme: dark) {
+body:not([data-theme]) pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+}
+body:not([data-theme]) code.hljs {
+    padding: 3px 5px;
+}
+body:not([data-theme]) {
+    /*!
+      Theme: GitHub Dark Dimmed
+      Description: Dark dimmed theme as seen on github.com
+      Author: github.com
+      Maintainer: @Hirse
+      Updated: 2021-05-15
+
+      Colors taken from GitHub's CSS
+    */
+}
+body:not([data-theme]) .hljs {
+    color: #adbac7;
+    background: #22272e;
+}
+body:not([data-theme]) .hljs-doctag,
+  body:not([data-theme]) .hljs-keyword,
+  body:not([data-theme]) .hljs-meta .hljs-keyword,
+  body:not([data-theme]) .hljs-template-tag,
+  body:not([data-theme]) .hljs-template-variable,
+  body:not([data-theme]) .hljs-type,
+  body:not([data-theme]) .hljs-variable.language_ {
+    /* prettylights-syntax-keyword */
+    color: #f47067;
+}
+body:not([data-theme]) .hljs-title,
+  body:not([data-theme]) .hljs-title.class_,
+  body:not([data-theme]) .hljs-title.class_.inherited__,
+  body:not([data-theme]) .hljs-title.function_ {
+    /* prettylights-syntax-entity */
+    color: #dcbdfb;
+}
+body:not([data-theme]) .hljs-attr,
+  body:not([data-theme]) .hljs-attribute,
+  body:not([data-theme]) .hljs-literal,
+  body:not([data-theme]) .hljs-meta,
+  body:not([data-theme]) .hljs-number,
+  body:not([data-theme]) .hljs-operator,
+  body:not([data-theme]) .hljs-variable,
+  body:not([data-theme]) .hljs-selector-attr,
+  body:not([data-theme]) .hljs-selector-class,
+  body:not([data-theme]) .hljs-selector-id {
+    /* prettylights-syntax-constant */
+    color: #6cb6ff;
+}
+body:not([data-theme]) .hljs-regexp,
+  body:not([data-theme]) .hljs-string,
+  body:not([data-theme]) .hljs-meta .hljs-string {
+    /* prettylights-syntax-string */
+    color: #96d0ff;
+}
+body:not([data-theme]) .hljs-built_in,
+  body:not([data-theme]) .hljs-symbol {
+    /* prettylights-syntax-variable */
+    color: #f69d50;
+}
+body:not([data-theme]) .hljs-comment,
+  body:not([data-theme]) .hljs-code,
+  body:not([data-theme]) .hljs-formula {
+    /* prettylights-syntax-comment */
+    color: #768390;
+}
+body:not([data-theme]) .hljs-name,
+  body:not([data-theme]) .hljs-quote,
+  body:not([data-theme]) .hljs-selector-tag,
+  body:not([data-theme]) .hljs-selector-pseudo {
+    /* prettylights-syntax-entity-tag */
+    color: #8ddb8c;
+}
+body:not([data-theme]) .hljs-subst {
+    /* prettylights-syntax-storage-modifier-import */
+    color: #adbac7;
+}
+body:not([data-theme]) .hljs-section {
+    /* prettylights-syntax-markup-heading */
+    color: #316dca;
+    font-weight: bold;
+}
+body:not([data-theme]) .hljs-bullet {
+    /* prettylights-syntax-markup-list */
+    color: #eac55f;
+}
+body:not([data-theme]) .hljs-emphasis {
+    /* prettylights-syntax-markup-italic */
+    color: #adbac7;
+    font-style: italic;
+}
+body:not([data-theme]) .hljs-strong {
+    /* prettylights-syntax-markup-bold */
+    color: #adbac7;
+    font-weight: bold;
+}
+body:not([data-theme]) .hljs-addition {
+    /* prettylights-syntax-markup-inserted */
+    color: #b4f1b4;
+    background-color: #1b4721;
+}
+body:not([data-theme]) .hljs-deletion {
+    /* prettylights-syntax-markup-deleted */
+    color: #ffd8d3;
+    background-color: #78191b;
+}
+body:not([data-theme]) .hljs-char.escape_,
+  body:not([data-theme]) .hljs-link,
+  body:not([data-theme]) .hljs-params,
+  body:not([data-theme]) .hljs-property,
+  body:not([data-theme]) .hljs-punctuation,
+  body:not([data-theme]) .hljs-tag {
+    /* purposely ignored */
+}
+}
+.n8n-markdown {
+  --n8n-markdown--spacing: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) / 2);
+  --n8n-markdown--radius: var(--radius);
+  display: block;
+  color: var(--n8n-markdown--color, color-mix(in oklch, var(--text-color), transparent 10%));
+  font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
+  line-height: var(--n8n-markdown--line-height, var(--line-height--xl));
+  -webkit-text-size-adjust: 100%;
+  word-break: break-word;
+}
+.n8n-markdown *:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown :not(:where(.not-prose, .not-prose *))::before,
+.n8n-markdown :not(:where(.not-prose, .not-prose *))::after {
+  box-sizing: border-box;
+}
+.n8n-markdown p:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)) {
+  font-size: inherit;
+  line-height: inherit;
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown p:not(:where(.not-prose, .not-prose *)):first-child:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)):first-child:not(:where(.not-prose, .not-prose *)) {
+  margin-top: 0;
+}
+.n8n-markdown p:not(:where(.not-prose, .not-prose *)):last-child:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)):last-child:not(:where(.not-prose, .not-prose *)) {
+  margin-bottom: 0;
+}
+.n8n-markdown li:not(:where(.not-prose, .not-prose *)) {
+  margin: 0;
+}
+.n8n-markdown h1:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h2:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h3:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h4:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h5:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h6:not(:where(.not-prose, .not-prose *)) {
+  margin: 0;
+  color: var(--color--text--shade-1);
+  line-height: var(--line-height--md);
+  font-weight: var(--font-weight--medium);
+  scroll-margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown {
+  /** Scale headings with the Markdown base size. */
+}
+.n8n-markdown h1:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.75);
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown h2:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.5);
+  margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown h3:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.25);
+  margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown h4:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.125);
+  margin-top: calc(var(--n8n-markdown--spacing) * 4);
+}
+.n8n-markdown h5:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown h6:not(:where(.not-prose, .not-prose *)) {
+  font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown h2 + h3:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown li > :is(h1, h2, h3, h4, h5, h6, p, strong):first-child:not(:where(.not-prose, .not-prose *)) {
+  margin-top: 0;
+}
+.n8n-markdown strong:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown b:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+}
+.n8n-markdown a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.15s ease;
+}
+.n8n-markdown a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(.not-prose, .not-prose *)):hover:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--primary);
+}
+.n8n-markdown a:not(:where(h1, h2, h3, h4, h5, h6) *):not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)) {
+  font-weight: var(--font-weight--medium);
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown code:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown kbd:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown samp:not(:where(.not-prose, .not-prose *)) {
+  font-family: var(--font-family--monospace);
+  font-variant-ligatures: none;
+}
+.n8n-markdown :not(pre) > code:not(:where(.not-prose, .not-prose *)) {
+  font-weight: var(--font-weight--medium);
+  font-size: 90%;
+  padding: calc(var(--n8n-markdown--spacing) * 0.25) calc(var(--n8n-markdown--spacing) * 0.5);
+  line-height: inherit;
+  background-color: var(--chat--message--pre--background, var(--background--subtle));
+  border: 1px solid var(--border-color);
+  background-clip: padding-box;
+  border-radius: calc(var(--n8n-markdown--radius) / 2);
+}
+.n8n-markdown :is(h1, h2, h3, h4, h5, h6) code:not(:where(.not-prose, .not-prose *)) {
+  font-weight: var(--font-weight--medium);
+}
+.n8n-markdown {
+  /** Custom blocks own their styles. Keep only the space between blocks. */
+}
+.n8n-markdown .not-prose {
+  margin: var(--n8n-markdown--spacing) 0 calc(var(--n8n-markdown--spacing) * 2.5);
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) {
+  width: 100%;
+  font-family: var(--font-family--monospace);
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.875);
+  line-height: var(--line-height--xl);
+  margin: var(--n8n-markdown--spacing) 0 calc(var(--n8n-markdown--spacing) * 2.5);
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  padding: calc(var(--n8n-markdown--spacing) * 2);
+  background-color: var(--background--subtle);
+  border: 1px solid var(--border-color);
+  background-clip: padding-box;
+  border-radius: var(--n8n-markdown--radius);
+  display: grid;
+  position: relative;
+  tab-size: 4;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)) {
+  display: block;
+  overflow-x: auto;
+  background-color: transparent;
+  color: var(--color--text--shade-1);
+  font-family: var(--font-family--monospace);
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)):not(:where(.not-prose, .not-prose *))::before, .n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:not(:where(.not-prose, .not-prose *)):not(:where(.not-prose, .not-prose *))::after {
+  content: none;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code:last-of-type:not(:where(.not-prose, .not-prose *)) {
+  padding-bottom: 0;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) code * + *:not(:where(.not-prose, .not-prose *)) {
+  margin-top: 0;
+}
+.n8n-markdown pre:not(:where(.not-prose, .not-prose *)) ~ pre:not(:where(.not-prose, .not-prose *)) {
+  margin-bottom: calc(var(--n8n-markdown--spacing) * 2.5);
+}
+.n8n-markdown.n8n-markdown--single-pre pre:not(:where(.not-prose, .not-prose *)) {
+  background: transparent;
+  margin: 0;
+  border-radius: var(--n8n-markdown--radius);
+}
+.n8n-markdown .n8n-markdown-code-block-actions:not(:where(.not-prose, .not-prose *)) {
+  position: sticky;
+  top: var(--n8n-markdown--spacing);
+  right: var(--n8n-markdown--spacing);
+  height: 0;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+  z-index: 1;
+}
+.n8n-markdown .n8n-markdown-code-block-actions:not(:where(.not-prose, .not-prose *)) > *:not(:where(.not-prose, .not-prose *)) {
+  pointer-events: auto;
+}
+.n8n-markdown blockquote:not(:where(.not-prose, .not-prose *)) {
+  font-style: italic;
+  border-left: calc(var(--n8n-markdown--spacing) * 0.5) solid var(--color--foreground--shade-1);
+  padding-left: calc(var(--n8n-markdown--spacing) * 2);
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+  color: var(--color--text--tint-1);
+}
+.n8n-markdown blockquote:not(:where(.not-prose, .not-prose *)) p:first-of-type:not(:where(.not-prose, .not-prose *))::before {
+  content: open-quote;
+}
+.n8n-markdown blockquote:not(:where(.not-prose, .not-prose *)) p:last-of-type:not(:where(.not-prose, .not-prose *))::after {
+  content: close-quote;
+}
+.n8n-markdown hr:not(:where(.not-prose, .not-prose *)) {
+  border: none;
+  border-top: var(--border-width) var(--border-style) var(--color--foreground);
+  margin: calc(var(--n8n-markdown--spacing) * 3) 0;
+}
+.n8n-markdown hr:not(:where(.not-prose, .not-prose *)) + h2:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown ol:not(:where(.not-prose, .not-prose *)) {
+  padding-left: calc(var(--n8n-markdown--spacing) * 4);
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown ol:not(:where(.not-prose, .not-prose *)) li + li:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 1.5);
+}
+.n8n-markdown ol:not(:where(.not-prose, .not-prose *)) li:not(:where(.not-prose, .not-prose *))::marker {
+  font-family: var(--font-family--monospace);
+  color: var(--color--text);
+}
+.n8n-markdown ul:not(:where(.not-prose, .not-prose *)) {
+  padding-left: calc(var(--n8n-markdown--spacing) * 4);
+  list-style-type: disc;
+  list-style-position: outside;
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown ul:not(:where(.not-prose, .not-prose *)) li + li:not(:where(.not-prose, .not-prose *)) {
+  margin-top: var(--n8n-markdown--spacing);
+}
+.n8n-markdown ul:not(:where(.not-prose, .not-prose *)) li:not(:where(.not-prose, .not-prose *))::marker {
+  color: var(--color--foreground--shade-1);
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) {
+  padding-left: 0;
+  list-style: none;
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) li:not(:where(.not-prose, .not-prose *)) {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) li > label:not(:where(.not-prose, .not-prose *)) {
+  flex: 0 0 auto;
+  -webkit-user-select: none;
+          user-select: none;
+}
+.n8n-markdown ul[data-type=taskList]:not(:where(.not-prose, .not-prose *)) li > div:not(:where(.not-prose, .not-prose *)) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.n8n-markdown ul ul:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown ol ol:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown ul ol:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown ol ul:not(:where(.not-prose, .not-prose *)) {
+  margin-top: var(--n8n-markdown--spacing);
+  margin-bottom: 0;
+  padding-left: calc(var(--n8n-markdown--spacing) * 3);
+}
+.n8n-markdown .n8n-markdown-footnote-ref:not(:where(.not-prose, .not-prose *)) {
+  display: inline-block;
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.625);
+  line-height: 1;
+  color: var(--color--text);
+  background: var(--color--foreground--tint-1);
+  border-radius: var(--n8n-markdown--radius);
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  margin-inline: var(--spacing--5xs);
+  vertical-align: middle;
+  white-space: nowrap;
+  font-weight: var(--font-weight--regular);
+}
+.n8n-markdown .n8n-markdown-table-container:not(:where(.not-prose, .not-prose *)) {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--n8n-markdown--radius);
+  background-color: var(--background--surface);
+  box-shadow: var(--shadow--xs);
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown .n8n-markdown-table-container:not(:where(.not-prose, .not-prose *)) > table:not(:where(.not-prose, .not-prose *)) {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+.n8n-markdown table:not(:where(.not-prose, .not-prose *)) {
+  width: 100%;
+  min-width: min-content;
+  word-break: normal;
+  overflow-wrap: normal;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border-color);
+  background-clip: padding-box;
+  border-radius: var(--n8n-markdown--radius);
+  background-color: var(--background--surface);
+  box-shadow: var(--shadow--xs);
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+  /** Tables should be slightly smaller font-size from base **/
+  font-size: 90%;
+  line-height: var(--line-height--lg);
+}
+.n8n-markdown thead:not(:where(.not-prose, .not-prose *)) {
+  background: var(--background--subtle);
+  font-size: inherit;
+}
+.n8n-markdown thead th:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+  vertical-align: bottom;
+  padding: var(--spacing--xs) var(--spacing--sm);
+  border-bottom: var(--border);
+  text-align: start;
+}
+.n8n-markdown tbody tr + tr td:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown tfoot td:not(:where(.not-prose, .not-prose *)) {
+  border-top: var(--border);
+  border-color: var(--border-color--subtle);
+  font-size: inherit;
+}
+.n8n-markdown tbody td:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown tfoot td:not(:where(.not-prose, .not-prose *)) {
+  vertical-align: baseline;
+  padding: var(--spacing--xs) var(--spacing--sm);
+}
+.n8n-markdown :is(th, td) :is(a, code):not(:where(.not-prose, .not-prose *)) {
+  white-space: nowrap;
+}
+.n8n-markdown td code:not(:where(.not-prose, .not-prose *)) {
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.8125);
+}
+.n8n-markdown th:not(:where(.not-prose, .not-prose *)),
+.n8n-markdown td:not(:where(.not-prose, .not-prose *)) {
+  text-align: start;
+}
+.n8n-markdown figure:not(:where(.not-prose, .not-prose *)) {
+  margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+}
+.n8n-markdown figcaption:not(:where(.not-prose, .not-prose *)) {
+  margin-top: calc(var(--n8n-markdown--spacing) * 1.5);
+  text-align: center;
+  font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 0.875);
+  font-style: italic;
+  color: var(--color--text--tint-1);
+}
+.n8n-markdown img:not(:where(.not-prose, .not-prose *)) {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--n8n-markdown--radius);
+}
+.n8n-markdown .label:not(:where(.not-prose, .not-prose *)) {
+  color: var(--color--text);
+}
+.n8n-markdown input[type=checkbox]:not(:where(.not-prose, .not-prose *)) {
+  accent-color: var(--color--primary);
+}
+.n8n-markdown input[type=checkbox] + label:not(:where(.not-prose, .not-prose *)) {
+  cursor: pointer;
+}
+.n8n-markdown iframe:not(:where(.not-prose, .not-prose *)) {
+  aspect-ratio: 16/9 auto;
+}
+.n8n-markdown summary:not(:where(.not-prose, .not-prose *)) {
+  cursor: pointer;
+}
+.n8n-markdown[data-v-8d1b97e4] .n8n-markdown-footnote-block {
+	display: none;
+}

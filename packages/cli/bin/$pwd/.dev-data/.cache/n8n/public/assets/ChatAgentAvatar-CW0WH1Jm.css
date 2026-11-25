@@ -1,0 +1,50 @@
+._container_1f340_1 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._n8nIcon_1f340_8 {
+  outline: none;
+}
+._n8nIcon_1f340_8._lg_1f340_11 {
+  width: 24px;
+  height: 24px;
+}
+._n8nIcon_1f340_8._lg_1f340_11 g, ._n8nIcon_1f340_8._lg_1f340_11 path {
+  stroke-width: 1.25;
+}
+._n8nIcon_1f340_8._xl_1f340_18 {
+  width: 40px;
+  height: 40px;
+}
+._emoji_1f340_23 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+._emoji_1f340_23._sm_1f340_28 {
+  width: 16px;
+  height: 16px;
+}
+._emoji_1f340_23._md_1f340_32 {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+._emoji_1f340_23._lg_1f340_11 {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+._emoji_1f340_23._xl_1f340_18 {
+  width: 40px;
+  height: 40px;
+  font-size: 40px;
+}
+._credentialsIcon_1f340_48 {
+  visibility: hidden;
+}
+._credentialsIcon_1f340_48._isReady_1f340_51 {
+  visibility: visible;
+}

@@ -1,0 +1,27 @@
+._tile_1n4jg_1 {
+  --agent-personalisation-squircle-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='black' d='M32 0C55.5 0 64 8.5 64 32C64 55.5 55.5 64 32 64C8.5 64 0 55.5 0 32C0 8.5 8.5 0 32 0Z'/%3E%3C/svg%3E");
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color--white-alpha-950);
+  position: relative;
+  isolation: isolate;
+}
+._tile_1n4jg_1::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--agent-personalisation-gradient-angle), var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop), var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop));
+  mask: var(--agent-personalisation-squircle-mask) center/contain no-repeat;
+  z-index: 0;
+}
+@supports (background: linear-gradient(90deg in oklch, red, blue)) {
+._tile_1n4jg_1::before {
+    background: linear-gradient(var(--agent-personalisation-gradient-angle) in oklch, var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop), var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop));
+}
+}
+._tile_1n4jg_1 > * {
+  position: relative;
+  z-index: 1;
+}

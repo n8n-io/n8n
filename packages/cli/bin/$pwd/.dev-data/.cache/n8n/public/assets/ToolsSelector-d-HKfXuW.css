@@ -1,0 +1,65 @@
+._container_wpk22_1 {
+  display: flex;
+  align-items: center;
+}
+._toolsButton_wpk22_6 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._toolsButton_wpk22_6._transparentBg_wpk22_11 {
+  background-color: transparent !important;
+}
+._iconStack_wpk22_15 {
+  display: flex;
+  align-items: center;
+  position: relative;
+  /* maintain component height regardless of icon */
+  margin-block: -4px;
+}
+._icon_wpk22_15 {
+  padding: var(--spacing--4xs);
+  background-color: var(--color--background--light-2);
+  border-radius: 50%;
+  outline: 2px var(--color--background--light-3) solid;
+}
+._iconOverlap_wpk22_30 {
+  margin-left: -5px;
+}
+._countBadge_wpk22_34 {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: var(--font-size--3xs);
+  color: var(--color--text);
+  box-sizing: border-box;
+}
+._settingsButton_wpk22_47 {
+  color: var(--button--color--text--secondary);
+  margin-right: -2px;
+}
+._settingsButton_wpk22_47:hover {
+  color: var(--button--color--text--secondary--hover-active-focus);
+}
+._itemSettingsButton_wpk22_55 {
+  opacity: 0;
+}
+._restricted_wpk22_59 [class*=item-label],
+._restrictedIcon_wpk22_60 {
+  opacity: 0.45;
+}
+._checkPlaceholder_wpk22_64 {
+  width: 16px;
+  flex-shrink: 0;
+}.tools-selector-dropdown {
+  z-index: 10000;
+  min-width: 330px;
+}
+.tools-selector-dropdown [data-highlighted] [class*=itemSettingsButton],
+.tools-selector-dropdown [data-virtual-highlighted] [class*=itemSettingsButton] {
+  opacity: 1;
+}

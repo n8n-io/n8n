@@ -1,0 +1,8 @@
+._formContainer_1enki_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+}
+._inputWrapper_1enki_7 {
+  width: 100%;
+}

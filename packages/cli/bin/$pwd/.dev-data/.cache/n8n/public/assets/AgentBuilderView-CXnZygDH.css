@@ -1,0 +1,7138 @@
+@charset "UTF-8";/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1ota1_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1ota1_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1ota1_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1ota1_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1ota1_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1ota1_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1ota1_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1ota1_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1ota1_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1ota1_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1ota1_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1ota1_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1ota1_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1ota1_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1ota1_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1ota1_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1ota1_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1ota1_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1ota1_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1ota1_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1ota1_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1ota1_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1ota1_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1ota1_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1ota1_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1ota1_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1ota1_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1ota1_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._track_1ota1_450 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+  padding: calc(var(--spacing--3xs) / 2);
+  border-radius: var(--radius--full);
+  background: light-dark(var(--color--neutral-100), var(--background--subtle));
+}
+._mode_1ota1_459 {
+  height: var(--height--sm);
+  padding: 0 0.8125rem;
+  border-radius: var(--radius--full);
+  font-size: var(--font-size--xs);
+  font-weight: var(--font-weight--medium);
+  --button--color: var(--text-color--subtler);
+}
+._mode_1ota1_459:hover {
+  --button--color--background-hover: transparent;
+  --button--color: var(--text-color);
+}
+@container (max-width: 400px) {
+._mode_1ota1_459 {
+    padding-inline: var(--spacing--2xs);
+}
+}
+._active_1ota1_477,
+._active_1ota1_477:hover {
+  --button--color--background: light-dark(var(--color--purple-50), var(--color--purple-950));
+  --button--color--background-hover: var(--button--color--background);
+  --button--color--background-active: var(--button--color--background);
+  --button--color: light-dark(var(--color--purple-500), var(--color--purple-300));
+  font-weight: var(--font-weight--bold);
+}
+._discovery_1ota1_486 ._active_1ota1_477 {
+  animation: _discover_1ota1_486 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._discovery_1ota1_486 ._active_1ota1_477 {
+    animation: none;
+    transition: none;
+}
+}
+@keyframes _discover_1ota1_486 {
+0%, 100% {
+    box-shadow: 0 0 0 0 var(--color--purple-alpha-200), 0 0 calc(var(--spacing--2xs) + var(--spacing--5xs)) 0 var(--color--purple-alpha-200);
+}
+50% {
+    box-shadow: 0 0 0 calc(var(--spacing--3xs) / 2) var(--color--purple-alpha-200), 0 0 calc(var(--spacing--sm) + var(--spacing--5xs)) var(--spacing--5xs) var(--color--purple-alpha-200);
+}
+}._disclaimer_1y4o0_1 {
+  margin: 0;
+  text-align: center;
+  color: var(--color--text--tint-1);
+  font-size: var(--font-size--2xs);
+  line-height: var(--line-height--md);
+}._buttonGroup_xtizb_1 {
+  display: inline-flex;
+  border: var(--border);
+  border-radius: var(--radius--full);
+}
+._groupButtonLeft_xtizb_7,
+._groupButtonLeft_xtizb_7:disabled,
+._groupButtonLeft_xtizb_7:hover:disabled {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+._groupButtonLeft_xtizb_7:hover {
+  border-right-color: inherit;
+}
+._groupButtonRight_xtizb_19 {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: var(--border);
+}
+._buttonGroup_xtizb_1:has(._groupButtonLeft_xtizb_7:not(:disabled):hover) ._groupButtonRight_xtizb_19 {
+  border-left-color: transparent;
+}
+._indicatorDot_xtizb_29 {
+  height: var(--spacing--2xs);
+  width: var(--spacing--2xs);
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: var(--spacing--2xs);
+}
+._indicatorPublished_xtizb_37 {
+  background-color: var(--color--mint-600);
+}
+._indicatorPublishedText_xtizb_41 {
+  color: var(--color--text--tint-1);
+}
+._indicatorChanges_xtizb_45 {
+  background-color: var(--color--yellow-500);
+}
+._flex_xtizb_49 {
+  display: flex;
+  align-items: center;
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+/* Break-points
+ -------------------------- */
+/* Scrollbar
+ -------------------------- */
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+/* Placeholder
+ -------------------------- */
+/* BEM
+ -------------------------- */
+/* Focus State
+ -------------------------- */
+/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1f3vs_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1f3vs_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1f3vs_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1f3vs_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1f3vs_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1f3vs_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1f3vs_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1f3vs_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1f3vs_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1f3vs_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1f3vs_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1f3vs_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1f3vs_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1f3vs_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1f3vs_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1f3vs_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1f3vs_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1f3vs_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1f3vs_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1f3vs_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1f3vs_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1f3vs_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1f3vs_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1f3vs_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1f3vs_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1f3vs_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1f3vs_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1f3vs_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._popoverContent_1f3vs_573 {
+  padding: 0;
+}
+._trigger_1f3vs_577 {
+  --animation--fade-in--translate: 0;
+  --animation--fade-in--blur: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  width: -moz-fit-content;
+  width: fit-content;
+  border: 1px solid transparent;
+  padding-inline: var(--spacing--3xs);
+  height: var(--height--md);
+  border-radius: var(--radius--full);
+  background-color: light-dark(var(--color--purple-100), color-mix(in oklch, var(--color--purple-500), transparent 50%));
+  color: light-dark(var(--color--purple-900), var(--text-color));
+  animation: _fadeIn_1f3vs_1 var(--animation--fade-in--duration, var(--duration--snappy)) var(--easing--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+._trigger_1f3vs_577 {
+    animation: none;
+}
+}
+._trigger_1f3vs_577 {
+  animation-delay: calc(var(--duration--slow) / 2);
+  animation-fill-mode: both;
+}
+._trigger_1f3vs_577:hover, ._trigger_1f3vs_577[data-state=open] {
+  background-color: light-dark(var(--color--purple-100), color-mix(in oklch, var(--color--purple-500), transparent 30%));
+}
+._trigger_1f3vs_577:focus-visible, ._trigger_1f3vs_577[data-state=open] {
+  background-color: light-dark(var(--color--purple-100), color-mix(in oklch, var(--color--purple-500), transparent 30%));
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  border-color: var(--focus--border-color);
+}
+._trigger_1f3vs_577 > .n8n-text {
+  padding-inline-end: var(--spacing--2xs);
+}
+._triggerLabel_1f3vs_615 {
+  --animation--blur-swap--blur: var(--spacing--5xs);
+  display: inline-grid;
+}
+._triggerLabel_1f3vs_615 > span {
+  grid-area: 1/1;
+}
+._labelEnter_1f3vs_623 {
+  animation: _blurSwapIn_1f3vs_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._labelEnter_1f3vs_623 {
+    animation: none;
+}
+}
+._labelLeave_1f3vs_632 {
+  animation: _blurSwapOut_1f3vs_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._labelLeave_1f3vs_632 {
+    animation: none;
+}
+}
+._triggerShimmer_1f3vs_641::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 20%, light-dark(var(--color--pink-300), color-mix(in oklch, var(--color--pink-500), transparent 50%)) 38%, light-dark(var(--color--blue-300), color-mix(in oklch, var(--color--blue-500), transparent 50%)) 50%, light-dark(var(--color--orange-300), color-mix(in oklch, var(--color--orange-500), transparent 50%)) 62%, transparent 80%);
+  mix-blend-mode: screen;
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  opacity: 0;
+  pointer-events: none;
+  /** Use 1s for the sweep and hide the shimmer for 4s. */
+  animation: _triggerShimmer_1f3vs_641 calc(var(--duration--slow) * 5) cubic-bezier(0.15, 0.5, 0.85, 0.5) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._triggerShimmer_1f3vs_641::after {
+    animation: none;
+    transition: none;
+}
+}
+._triggerShimmer_1f3vs_641:hover::after {
+  animation-play-state: paused;
+}
+@keyframes _triggerShimmer_1f3vs_641 {
+0% {
+    background-position: 100% 0;
+    opacity: 0;
+}
+2%, 18% {
+    opacity: 1;
+}
+20%, 100% {
+    background-position: -100% 0;
+    opacity: 0;
+}
+}
+._container_1f3vs_679 {
+  --n8n-agent-setup-task-list--padding: var(--spacing--xs);
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow: hidden;
+}
+._header_1f3vs_687 {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--n8n-agent-setup-task-list--padding);
+  padding-block-end: 0;
+  -webkit-user-select: none;
+          user-select: none;
+}
+._headerContent_1f3vs_697 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+}
+._progressWheel_1f3vs_704 {
+  flex-shrink: 0;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+}
+._progressTrack_1f3vs_710 {
+  stroke: var(--border-color);
+}
+._progressValue_1f3vs_714 {
+  stroke: light-dark(var(--color--purple-500), var(--color--purple-200));
+  animation: _progressFill_1f3vs_1 var(--duration--snappy) var(--easing--ease-out) var(--duration--slow) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+._progressValue_1f3vs_714 {
+    animation: none;
+    transition: none;
+}
+}
+@keyframes _progressFill_1f3vs_1 {
+from {
+    stroke-dashoffset: 100;
+}
+}
+._list_1f3vs_730 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  padding-block: calc(var(--n8n-agent-setup-task-list--padding) / 2);
+  padding-inline: var(--n8n-agent-setup-task-list--padding);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._list_1f3vs_730::-webkit-scrollbar {
+  z-index: 11;
+  width: 6px;
+}
+._list_1f3vs_730::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+._list_1f3vs_730::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  width: 6px;
+  background-color: var(--color--text--tint-2);
+}
+._list_1f3vs_730::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color--text--tint-1);
+}
+._list_1f3vs_730::-webkit-scrollbar-corner, ._list_1f3vs_730::-webkit-scrollbar-track, ._list_1f3vs_730::-webkit-scrollbar-track-piece {
+  background-color: transparent;
+}
+._list_1f3vs_730 {
+  scrollbar-color: transparent transparent;
+}
+._list_1f3vs_730:hover {
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._listMove_1f3vs_765 {
+  transition: transform var(--duration--base) var(--easing--ease-out-quart);
+}
+@media (prefers-reduced-motion: reduce) {
+._listMove_1f3vs_765 {
+    animation: none;
+    transition: none;
+}
+}
+._listMove_1f3vs_765 {
+  /** TransitionGroup needs to add custom transition to children. But svg icon needs to stay hidden unless we focus/hover **/
+}
+._listMove_1f3vs_765 > *:not(.n8n-icon) {
+  animation: _taskMoveBlur_1f3vs_1 var(--duration--base) var(--easing--ease-out-quart);
+}
+@media (prefers-reduced-motion: reduce) {
+._listMove_1f3vs_765 > *:not(.n8n-icon) {
+    animation: none;
+    transition: none;
+}
+}
+._listItem_1f3vs_787 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--n8n-agent-setup-task-list--padding) / 1.5);
+  padding-inline: calc(var(--n8n-agent-setup-task-list--padding) / 2);
+  height: var(--height--md);
+  border-radius: var(--radius);
+  margin-inline: calc(var(--n8n-agent-setup-task-list--padding) / 2 * -1);
+  background-color: transparent;
+  -webkit-user-select: none;
+          user-select: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+._listItem_1f3vs_787 ._taskActionIcon_1f3vs_800 {
+  margin-inline-start: auto;
+  opacity: 0;
+  flex-shrink: 0;
+  min-width: 0;
+}
+._listItem_1f3vs_787:not(._isComplete_1f3vs_806):focus-visible, ._listItem_1f3vs_787:not(._isComplete_1f3vs_806)[data-selected=true] {
+  background-color: var(--background--hover);
+}
+._listItem_1f3vs_787:not(._isComplete_1f3vs_806):focus-visible ._taskActionIcon_1f3vs_800, ._listItem_1f3vs_787:not(._isComplete_1f3vs_806)[data-selected=true] ._taskActionIcon_1f3vs_800 {
+  opacity: 1;
+}
+._listItem_1f3vs_787._isComplete_1f3vs_806 {
+  opacity: 0.6;
+  pointer-events: none;
+}
+._listItem_1f3vs_787._isComplete_1f3vs_806 > .n8n-text {
+  text-decoration: line-through;
+}
+._taskTitle_1f3vs_820 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._taskIcon_1f3vs_826 {
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius--full);
+  border: var(--border);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+  flex-shrink: 0;
+  min-width: 0;
+}
+._taskIcon_1f3vs_826._isComplete_1f3vs_806 {
+  background-color: var(--color--neutral-200);
+  border-color: var(--color--neutral-200);
+  box-shadow: none;
+}
+@keyframes _taskMoveBlur_1f3vs_1 {
+0%, 100% {
+    filter: blur(0);
+    opacity: 1;
+}
+50% {
+    filter: blur(var(--spacing--5xs));
+    opacity: 0.2;
+}
+}._header_qyqic_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs) var(--spacing--md);
+  background-color: var(--background--surface);
+  border-bottom: var(--border);
+  flex-shrink: 0;
+  height: var(--n8n--agent-builder-header-height, var(--height--4xl));
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+._left_qyqic_16 {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+._left_qyqic_16 .n8n-breadcrumbs {
+  min-width: max-content;
+}
+._left_qyqic_16 .n8n-breadcrumbs [data-test-id='breadcrumbs-item'] {
+  display: flex;
+  align-items: center;
+  min-height: var(--height--md);
+  padding: var(--spacing--2xs) var(--spacing--xs);
+}
+._left_qyqic_16 .n8n-breadcrumbs [data-test-id='breadcrumbs-item'] * {
+  line-height: var(--line-height--sm);
+}
+._crumbSeparator_qyqic_38 {
+  color: var(--border-color);
+  margin-inline: var(--spacing--4xs);
+  -webkit-user-select: none;
+          user-select: none;
+  font-size: var(--font-size--xl);
+}
+._switcherButton_qyqic_45 {
+  font-size: var(--font-size--sm);
+  gap: var(--spacing--4xs);
+  flex-shrink: 0;
+}
+._switcherLabel_qyqic_51 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--line-height--sm);
+}
+._agentSwitcherLabel_qyqic_59 {
+  max-width: 240px;
+}
+._switcherFooter_qyqic_63 {
+  border-top: var(--border);
+  padding: var(--spacing--3xs);
+}
+._right_qyqic_68 {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._saveStatus_qyqic_77 {
+  font-size: var(--font-size--2xs);
+  color: var(--text-color--subtle);
+  -webkit-user-select: none;
+          user-select: none;
+}
+._headerActionsMenu_qyqic_83 {
+  --n8n--dropdown-menu-width: var(--spacing--5xl);
+}
+._destructiveItem_qyqic_87,
+._destructiveItem_qyqic_87 * {
+  color: var(--text-color--danger) !important;
+}
+._documentationLink_qyqic_92 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  padding: var(--spacing--xs);
+  border-radius: var(--radius--xs);
+  color: var(--text-color);
+}
+._documentationLink_qyqic_92:hover, ._documentationLink_qyqic_92:focus-visible {
+  background-color: var(--background--hover);
+}
+._documentationTitle_qyqic_104 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}._banner_1z0ue_1 {
+  flex-shrink: 0;
+}
+._callout_1z0ue_5 {
+  padding: var(--spacing--2xs) var(--spacing--md);
+}
+._takeOverButton_1z0ue_9 {
+  margin-inline-start: var(--spacing--2xs);
+}
+._panels_hon1a_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+}
+._content_hon1a_8 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+._settingGroup_hon1a_15 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+._subSettings_hon1a_21 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
+	border-left: var(--border);
+}
+._switchControl_hon1a_29:not([data-disabled]) {
+	cursor: pointer;
+}
+._slider_61frl_1 {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}._body_aeuc2_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+._amountRow_aeuc2_10 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._amountInput_aeuc2_16 {
+  flex: 1;
+  min-width: 0;
+}
+._suffix_aeuc2_21 {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._hint_aeuc2_26 {
+  color: var(--text-color--subtler);
+}
+._alert_aeuc2_30 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._alertCopy_aeuc2_37 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+._slider_aeuc2_43 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}._body_sadhh_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._amountRow_sadhh_7 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._amountInput_sadhh_13 {
+  flex: 1;
+  min-width: 0;
+}
+._suffix_sadhh_18 {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._hint_sadhh_23 {
+  color: var(--text-color--subtler);
+}._body_19lrm_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._usageSection_19lrm_7 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._usageHeader_19lrm_13 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._usageHeader_19lrm_13 > :last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._spent_19lrm_25 {
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--lg);
+}
+._amount_19lrm_31 {
+  color: var(--text-color);
+  font-weight: var(--font-weight--bold);
+}
+._usageLine_19lrm_36 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--spacing--xs);
+}
+._rowValue_19lrm_44 {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--spacing--xs);
+}
+._rowValueStack_19lrm_51 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing--4xs);
+  white-space: nowrap;
+}
+._track_19lrm_59 {
+  height: var(--spacing--2xs);
+  border-radius: var(--radius--sm);
+  background: var(--background--subtle);
+  overflow: hidden;
+}
+._fill_19lrm_66 {
+  height: 100%;
+  background: var(--background--brand);
+}
+._row_19lrm_44 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  width: 100%;
+  padding: var(--spacing--2xs) 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+._row_19lrm_44:disabled {
+  cursor: default;
+}
+._rowLabel_19lrm_88 {
+  opacity: var(--agent-row-label-opacity, 1);
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  min-width: 0;
+}._container_glpbh_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}/* Focus State
+ -------------------------- */
+._channelItem_1bqmp_3 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  padding-block: var(--spacing--sm);
+}
+._iconWrapper_1bqmp_10 {
+  flex-shrink: 0;
+  width: var(--spacing--xl);
+  height: var(--spacing--xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._channelIcon_1bqmp_19 {
+  color: var(--icon-color--strong);
+}
+._nameSkeleton_1bqmp_23 {
+  width: 30%;
+}
+._descriptionSkeleton_1bqmp_27 {
+  width: 70%;
+}
+._buttonSkeleton_1bqmp_31 {
+  height: var(--spacing--xl);
+  width: calc(var(--spacing--xl) * 2.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._buttonSkeleton_1bqmp_31 div {
+  height: 100%;
+}
+._content_1bqmp_42 {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}
+._name_1bqmp_23 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--line-height--md);
+}
+._channelActions_1bqmp_57 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  flex-shrink: 0;
+}
+._connectedTrigger_1bqmp_64 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--4xs) var(--spacing--3xs);
+  border: 0;
+  border-radius: var(--radius--2xs);
+  background: none;
+  color: var(--color--text--tint-1);
+  font-family: inherit;
+  font-size: var(--font-size--2xs);
+  font-weight: var(--font-weight--regular);
+  white-space: nowrap;
+  cursor: pointer;
+}
+._connectedTrigger_1bqmp_64:hover {
+  background: var(--color--background--light-1);
+}
+._connectedTrigger_1bqmp_64:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+}
+._connectedIcon_1bqmp_86 {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color--success);
+}
+._notRunningIndicator_1bqmp_92 {
+  flex-shrink: 0;
+  width: var(--spacing--3xs);
+  height: var(--spacing--3xs);
+  border-radius: var(--radius--full);
+  background: var(--color--danger);
+}._container_1rmo9_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._listView_1rmo9_7 {
+  display: flex;
+  flex-direction: column;
+}
+._channelList_1rmo9_12 {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--spacing--xs);
+}
+._setupView_1rmo9_18,
+._editView_1rmo9_19 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}._scheduleRow_wt2nk_1 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+}
+._rowLabel_wt2nk_7 {
+  opacity: var(--agent-row-label-opacity, 1);
+  --n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
+  flex: 0 0 var(--n8n--row-label-width);
+  line-height: var(--line-height--sm);
+  margin-top: var(--spacing--3xs);
+}
+._chips_wt2nk_15 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing--3xs);
+  flex: 1;
+  min-width: 0;
+}
+._chipGroup_wt2nk_24 {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+  max-width: min(var(--spacing--5xl), 100%);
+}
+._scheduleChip_wt2nk_33 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+._addButtonEmpty_wt2nk_38 {
+  --button--color: var(--text-color--subtler);
+  margin-left: calc(-1 * var(--spacing--xs));
+  margin-top: calc(-1 * var(--spacing--4xs));
+  /** TODO: Consider making this style a generic N8nButton style. DS-652 **/
+}
+._addButtonEmpty_wt2nk_38:hover {
+  --button--color: var(--text-color);
+  background-color: transparent;
+}
+._error_wt2nk_49 {
+  color: var(--color--danger);
+}
+@media (max-width: 768px) {
+._scheduleRow_wt2nk_1 {
+    flex-direction: column;
+    gap: var(--spacing--xs);
+}
+._rowLabel_wt2nk_7 {
+    flex-basis: auto;
+    line-height: var(--line-height--sm);
+}
+}._row_1ktn1_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._disabled_1ktn1_7 {
+  opacity: 0.5;
+}
+._channelChip_1ktn1_11 {
+  max-width: min(var(--spacing--5xl), 100%);
+}._text_1xf3k_1 {
+  --agent-personalisation-squircle-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='black' d='M32 0C55.5 0 64 8.5 64 32C64 55.5 55.5 64 32 64C8.5 64 0 55.5 0 32C0 8.5 8.5 0 32 0Z'/%3E%3C/svg%3E");
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--md);
+  flex: 1;
+  min-width: 0;
+}
+._personalisationPicker_1xf3k_10 {
+  width: var(--height--3xl);
+  height: var(--height--3xl);
+  overflow: visible;
+}
+._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16 {
+  --button--height: var(--height--3xl);
+  --button--padding: 0;
+  --button--radius: 16px;
+  --button--color--background: transparent;
+  --button--color--background-hover: transparent;
+  --button--color--background-active: transparent;
+  --button--shadow: none;
+  --button--shadow--hover: none;
+  --button--shadow--active: none;
+  --button--border--shadow: none;
+  --button--border--shadow--hover: none;
+  --button--border--shadow--active: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--3xl);
+  height: var(--height--3xl);
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  color: var(--color--white-alpha-950);
+  background: transparent;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  filter: drop-shadow(0 8px 8px var(--shadow-color));
+}
+._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16:focus-visible {
+  outline: none;
+}
+._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16:focus-visible::before, ._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16[aria-expanded=true]::before {
+  background-color: var(--focus--border-color);
+}
+._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16:focus-visible::after, ._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16[aria-expanded=true]::after {
+  inset: 2px;
+}
+._personalisationIcon_1xf3k_16::before,
+._personalisationIcon_1xf3k_16::after {
+  content: "";
+  position: absolute;
+  mask: var(--agent-personalisation-squircle-mask) center/contain no-repeat;
+}
+._personalisationIcon_1xf3k_16::before {
+  inset: 0;
+  background: var(--color--black-alpha-200);
+  z-index: 0;
+}
+._personalisationIcon_1xf3k_16::after {
+  inset: 0.5px;
+  background: linear-gradient(var(--agent-personalisation-gradient-angle), var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop), var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop));
+  z-index: 1;
+}
+@supports (background: linear-gradient(90deg in oklch, red, blue)) {
+._personalisationIcon_1xf3k_16::after {
+    background: linear-gradient(var(--agent-personalisation-gradient-angle) in oklch, var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop), var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop));
+}
+}
+._personalisationIcon_1xf3k_16 > *,
+._personalisationIcon_1xf3k_16 .n8n-icon {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 8px 8px var(--shadow-color));
+}
+._personalisationIcon_1xf3k_16._personalisationIcon_1xf3k_16 svg {
+  width: var(--height--md);
+  height: var(--height--md);
+  color: var(--color--white-alpha-950);
+  stroke-width: 2;
+}
+._title_1xf3k_97 {
+  font-size: var(--font-size--2xl);
+  font-weight: var(--font-weight--medium);
+  line-height: var(--line-height--lg);
+  text-align: left;
+  color: var(--text-color);
+}._panel_1unrq_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  width: 100%;
+}
+._toolbar_1unrq_8 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--xs);
+  padding-inline: var(--spacing--4xs);
+  width: 100%;
+}
+._fileInput_1unrq_17 {
+  display: none;
+}
+._tableContainer_1unrq_21 {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+._titleCell_1unrq_28 {
+  width: 42%;
+  max-width: 0;
+}
+._fileTitle_1unrq_33 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._fileIcon_1unrq_40 {
+  flex-shrink: 0;
+  color: var(--text-color--subtler);
+}
+._fileName_1unrq_45 {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._originCell_1unrq_57,
+._dateCell_1unrq_58,
+._typeCell_1unrq_59,
+._sizeCell_1unrq_60 {
+  width: 1%;
+  white-space: nowrap;
+}
+._originPill_1unrq_65 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  padding: var(--spacing--5xs) var(--spacing--xs);
+  border: var(--border);
+  border-radius: var(--radius--xl);
+  color: var(--text-color);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  line-height: var(--line-height--sm);
+  white-space: nowrap;
+}
+._dateCell_1unrq_58,
+._typeCell_1unrq_59,
+._sizeCell_1unrq_60 {
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+}
+._actionCell_1unrq_87 {
+  width: 1%;
+  min-width: var(--spacing--2xl);
+  color: var(--text-color--subtler);
+  text-align: right;
+  white-space: nowrap;
+}
+._fileRow_1unrq_95 td {
+  color: var(--text-color--subtler);
+}
+._fileRow_1unrq_95:hover {
+  background-color: var(--background--hover);
+}
+._lastRow_1unrq_102 td {
+  padding: var(--spacing--lg);
+  text-align: center;
+}
+._lastRow_1unrq_102:hover {
+  background-color: var(--background--surface) !important;
+}
+._emptyMessage_1unrq_110 {
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+}._root_193nw_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+._toolbar_193nw_8 {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: var(--spacing--xs);
+}
+._backRow_193nw_14 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._header_193nw_20 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--xs);
+}
+._copy_193nw_26 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  flex: 1;
+  min-width: 0;
+}
+._list_193nw_34 {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+._row_193nw_42 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  padding-block: var(--spacing--xs);
+  border-top: var(--border);
+}
+._entryCopy_193nw_50 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  flex: 1;
+  min-width: 0;
+}
+._content_193nw_58 {
+  overflow-wrap: anywhere;
+}
+._meta_193nw_62 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  color: var(--text-color--subtler);
+}._panel_1j4m9_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  width: 100%;
+}
+._toolbar_1j4m9_8 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--xs);
+  width: 100%;
+}
+._headerText_1j4m9_16 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  min-width: 0;
+}
+._headerText_1j4m9_16 > span {
+  text-wrap: balance;
+}
+._tableContainer_1j4m9_26 {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+._titleCell_1j4m9_33 {
+  width: 24%;
+  max-width: 0;
+}
+._rowTitle_1j4m9_38 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._rowIcon_1j4m9_45 {
+  flex-shrink: 0;
+  color: var(--text-color--subtler);
+}
+._rowName_1j4m9_50 {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._locatorCell_1j4m9_62,
+._useWhenCell_1j4m9_63 {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+}
+._actionCell_1j4m9_73 {
+  width: 1%;
+  min-width: var(--spacing--2xl);
+  color: var(--text-color--subtler);
+  text-align: right;
+  white-space: nowrap;
+}
+._row_1j4m9_38 td {
+  color: var(--text-color--subtler);
+}
+._row_1j4m9_38:hover {
+  background-color: var(--background--hover);
+}._mcpPanel_1s67g_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+._fields_ihuhd_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+._field_ihuhd_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+._container_1bdzt_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
+}
+._titleGroup_1bdzt_13 {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+._dialogContent_1bdzt_21 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+}
+._dialogContent_1bdzt_21 ._row_1bdzt_27 {
+	flex-direction: column;
+	align-items: stretch;
+}
+._dialogContent_1bdzt_21 ._credentialPicker_1bdzt_32 {
+	flex-basis: auto;
+	width: 100%;
+	max-width: none;
+	margin-left: 0;
+}
+._credentialPicker_1bdzt_32 input {
+	min-height: 36px;
+	height: 36px;
+}
+._row_1bdzt_27 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+._changeCredentialButton_1bdzt_51 {
+	align-self: flex-start;
+}
+._episodicControls_1bdzt_55 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+._credentialPicker_1bdzt_32 {
+	display: flex;
+	flex: 0 1 280px;
+	justify-content: flex-end;
+	margin-left: auto;
+	min-width: min(280px, 100%);
+}
+._credentialPicker_1bdzt_32 > * {
+	width: 100%;
+}
+._subAgentsPanel_1q141_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+._inlineModelsSection_1q141_8 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  width: 100%;
+}
+._difficultyRows_1q141_15 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  padding-left: var(--spacing--sm);
+  border-left: var(--border);
+}._tabPanel_128q6_1 {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+  width: 100%;
+  padding: 0 0 var(--spacing--2xl);
+}._editor_kvs0q_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm);
+  background-color: var(--background--light-2);
+}
+._actions_kvs0q_9 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._spacer_kvs0q_15 {
+  flex: 1;
+}._row_f1sro_1 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm);
+}
+
+/* Fixed measure so the requests line up regardless of how many cases there are. */
+._index_f1sro_9 {
+  flex-shrink: 0;
+  min-width: var(--spacing--sm);
+}
+._body_f1sro_14 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  flex: 1;
+  min-width: 0;
+}
+._check_f1sro_22 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--4xs);
+}
+._checkIcon_f1sro_28 {
+  flex-shrink: 0;
+  color: var(--color--success);
+}/* Padding is per-section so the row dividers can span the full card width, as in
+   the design, rather than stopping short at a card-level inset. */
+._card_1xs0p_3 {
+  --card--padding: 0;
+  width: 100%;
+}
+._header_1xs0p_8 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  padding: var(--spacing--sm);
+}
+._headerRow_1xs0p_15 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  margin-bottom: var(--spacing--3xs);
+}
+._tag_1xs0p_22 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+}
+._title_1xs0p_28 {
+  margin: 0;
+}
+._spacer_1xs0p_32 {
+  flex: 1;
+}
+._notice_1xs0p_36 {
+  margin: 0 var(--spacing--sm) var(--spacing--sm);
+}
+._loading_1xs0p_40 {
+  padding: 0 var(--spacing--sm) var(--spacing--sm);
+}
+._rows_1xs0p_44 {
+  display: flex;
+  flex-direction: column;
+}
+._rows_1xs0p_44 > * + * {
+  border-top: var(--border);
+}
+._footer_1xs0p_52 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm);
+  border-top: var(--border);
+}._avatar_1dv1y_1 {
+  --avatar-size: 22px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: calc(var(--avatar-size) * 0.3);
+  box-shadow: inset 0 0 0 1px var(--ring-color, var(--border-color));
+  background: var(--fill-color, var(--background--subtle));
+  color: var(--icon-color, var(--text-color--subtle));
+}
+._icon_1dv1y_16 {
+  --c: currentColor;
+  width: 80%;
+  height: 80%;
+}
+._xs_1dv1y_22 {
+  --avatar-size: 18px;
+}
+._row_1dv1y_26 {
+  --avatar-size: 20px;
+}
+._sm_1dv1y_30 {
+  --avatar-size: 22px;
+}
+._md_1dv1y_34 {
+  --avatar-size: 30px;
+}
+._lg_1dv1y_38 {
+  --avatar-size: 34px;
+}
+._good_1dv1y_42 {
+  --fill-color: var(--color--success--tint-4);
+  --ring-color: var(--color--success--tint-2);
+  --icon-color: var(--color--success);
+}
+._warn_1dv1y_48 {
+  --fill-color: var(--callout--color--background--secondary);
+  --ring-color: var(--callout--border-color--secondary);
+  --icon-color: var(--callout--color--text--secondary);
+}
+._bad_1dv1y_54 {
+  --fill-color: var(--color--danger--tint-4);
+  --ring-color: var(--color--danger--tint-2);
+  --icon-color: var(--color--danger);
+}
+._none_1dv1y_60 {
+  --fill-color: var(--background--subtle);
+  --ring-color: var(--border-color);
+  --icon-color: var(--text-color--subtle);
+}
+._neutral_1dv1y_66 {
+  --fill-color: var(--background--subtle);
+  --ring-color: var(--border-color);
+}
+._sparkle_1dv1y_71 {
+  position: absolute;
+  top: calc(var(--avatar-size) * -0.18);
+  right: calc(var(--avatar-size) * -0.18);
+  font-size: calc(var(--avatar-size) * 0.4);
+  line-height: 1;
+  color: var(--color--success);
+}
+[data-waiting] ._icon_1dv1y_16 {
+  animation: _agent-avatar-bob_1dv1y_1 1.6s infinite;
+}
+[data-waiting] ._icon_1dv1y_16 .eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: _agent-avatar-eyes-look_1dv1y_1 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.83s);
+}
+@media (prefers-reduced-motion: reduce) {
+[data-waiting] ._icon_1dv1y_16 {
+    animation: none;
+}
+[data-waiting] ._icon_1dv1y_16 .eyes {
+    animation: none;
+}
+}
+@keyframes _agent-avatar-bob_1dv1y_1 {
+0% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+}
+35% {
+    transform: translateY(-12%);
+    animation-timing-function: ease-in;
+}
+100% {
+    transform: translateY(0);
+}
+}
+@keyframes _agent-avatar-eyes-look_1dv1y_1 {
+0%, 18% {
+    transform: translateX(0);
+}
+26%, 40% {
+    transform: translateX(-3px);
+}
+48%, 52% {
+    transform: translateX(-3px) scaleY(0.15);
+}
+58%, 72% {
+    transform: translateX(3px);
+}
+80%, 100% {
+    transform: translateX(0);
+}
+}._panel_mjcab_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--sm);
+  background-color: var(--background--surface);
+  border: var(--border);
+  border-radius: var(--radius--xl);
+}
+._header_mjcab_11 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._ruleRow_mjcab_18 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) var(--spacing--xs);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+}
+._ruleInput_mjcab_27 {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: auto;
+  background: transparent;
+  font-size: var(--font-size--sm);
+  color: var(--text-color--dark);
+}
+._ruleInput_mjcab_27:focus, ._ruleInput_mjcab_27:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+._loading_mjcab_43 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._prepared_mjcab_49 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._list_mjcab_55 {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  overflow: hidden;
+}
+._row_mjcab_66 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border-bottom: var(--border);
+}
+._row_mjcab_66:last-of-type {
+  border-bottom: none;
+}
+._rowText_mjcab_78 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+._moreToggle_mjcab_85 {
+  align-self: flex-start;
+  padding: var(--spacing--4xs) var(--spacing--xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+}._card_r5w5w_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--xs);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  background-color: var(--background--surface);
+}
+._text_r5w5w_11 {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+._actions_r5w5w_16 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--2xs);
+}._root_v80w3_1 {
+  background-color: var(--background--surface);
+  padding: var(--spacing--2xs);
+  border: var(--border);
+  border-radius: var(--radius--xl);
+}._root_1qaer_1 {
+  width: 100%;
+  display: flex;
+  align-items: start;
+  gap: var(--spacing--2xs);
+}
+._content_1qaer_8 {
+  max-height: 105px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  line-height: var(--line-height--lg);
+  font-family: var(--font-family);
+  font-size: var(--font-size--md);
+}/* The chat renderer carries a bottom margin for its message flow; the row
+   controls its own spacing with a flex gap. */
+._toolCalls_7ue9k_3 > * {
+  margin-bottom: 0;
+}._evalPreview_pz96z_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--sm);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  background-color: var(--run-data--color--background);
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-color) 3%, transparent) 0 5px, transparent 5px 10px);
+}
+._evalPreviewUserMessage_pz96z_11 {
+  max-width: 300px;
+  width: 100%;
+  align-self: flex-end;
+}
+._joinedBelow_pz96z_17 {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+._tools_pz96z_22 {
+  margin-left: 35px;
+}
+._callout_pz96z_26 {
+  margin-left: 30px;
+  margin-top: -10px;
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 100%;
+}._header_uvhlt_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  cursor: pointer;
+}
+._headerTitle_uvhlt_8 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  flex: 1;
+  min-width: 0;
+}
+._statusWarning_uvhlt_16 {
+  color: var(--callout--color--text--secondary);
+}
+._headerTitleText_uvhlt_20 {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+._inputText_uvhlt_27 {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+._whatToCheck_uvhlt_34 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  padding-bottom: var(--spacing--lg);
+}
+._whatToCheckBody_uvhlt_42 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+._whatToCheckEdit_uvhlt_49 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._whatToCheckEdit_uvhlt_49 > :first-child {
+  flex: 1;
+}
+._expandToggle_uvhlt_59 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color--subtler);
+}
+._sample_uvhlt_70 {
+  border-left: var(--border);
+  padding: var(--spacing--lg) var(--spacing--sm) var(--spacing--sm) 32px;
+  margin-left: var(--spacing--xs);
+}
+._correctionHint_uvhlt_76 {
+  display: block;
+  margin-top: var(--spacing--sm);
+  margin-bottom: var(--spacing--2xs);
+}
+._fixSuggestion_uvhlt_82 {
+  margin-top: var(--spacing--sm);
+}
+._correctionActions_uvhlt_86 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing--xs);
+}
+._primaryActions_uvhlt_93 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._practiceBanner_uvhlt_99 {
+  margin-top: -10px;
+  border: var(--border);
+  border-color: var(--callout--border-color--warning);
+  background-color: var(--callout--color--background--warning);
+  color: var(--callout--color--text--warning);
+  display: flex;
+  gap: 1em;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 var(--radius--lg) var(--radius--lg);
+  display: flex;
+  padding: 9px 10px 9px 12px;
+}._panel_1p1m1_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+._header_1p1m1_8 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._filterOption_1p1m1_15 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+
+/* 16px, between the avatar's xs and row sizes, so it fits the segment height. */
+._filterOption_1p1m1_15 > ._filterAvatar_1p1m1_22 {
+  --avatar-size: 16px;
+}
+._actions_1p1m1_26 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._list_1p1m1_32 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: var(--radius--xl);
+  border: var(--border);
+  background-color: var(--background--surface);
+}
+._list_1p1m1_32 > * {
+  padding: 11px 16px;
+  border-bottom: var(--border);
+}
+._list_1p1m1_32 > *:first-of-type {
+  border-radius: var(--radius--xl) var(--radius--xl) 0 0;
+}
+._list_1p1m1_32 > *:last-of-type {
+  border-radius: 0 0 var(--radius--xl) var(--radius--xl);
+  border-bottom: none;
+}
+
+/* A single row is both first and last, so it keeps all four corners. */
+._list_1p1m1_32 > *:only-of-type {
+  border-radius: var(--radius--xl);
+}
+._list_1p1m1_32 > *:hover {
+  background-color: var(--color--background);
+}
+._loadMore_1p1m1_64 {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--spacing--xs);
+}._votes_konl3_1 {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--spacing--4xs);
+}
+
+/* The chosen side is tinted by what it means, not filled with the brand colour:
+   the design reads agreement and disagreement off the hue. The `destructive` and
+   `success` variants are solid fills, which is far heavier than the design asks
+   for, so the tint comes from the background token instead.
+
+   `!important` is load-bearing, not laziness: every variant sets
+   `--button--color--background` from a `.button.outline`-style selector, so a
+   single class here loses on specificity and the highlight silently never
+   appears. Importance is the only way to win without reaching for the
+   component's hashed class names. */
+._selectedUp_konl3_17 {
+  --button--color--background: var(--background--success) !important;
+}
+._selectedDown_konl3_21 {
+  --button--color--background: var(--background--danger) !important;
+}._row_o3qpl_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm) var(--spacing--md);
+  border-top: var(--border);
+}
+
+/* A review still being typed is tinted whole, so an unsaved row can't be
+   mistaken for a saved one at a glance. */
+._editing_o3qpl_11 {
+  background-color: var(--background--warning);
+}
+._header_o3qpl_15 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._request_o3qpl_22 {
+  min-width: 0;
+}
+._headerActions_o3qpl_26 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._savedPill_o3qpl_33 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+}
+._blockLabel_o3qpl_39 {
+  text-transform: uppercase;
+}
+._answer_o3qpl_43 {
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  background-color: var(--background--subtle);
+  border-radius: var(--radius);
+}
+._answerMuted_o3qpl_49 {
+  opacity: 0.7;
+}
+._noAnswer_o3qpl_53 {
+  font-style: italic;
+}
+._awaiting_o3qpl_57 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._correction_o3qpl_63 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+._correctionFooter_o3qpl_72,
+._panelFooter_o3qpl_73,
+._note_o3qpl_74 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._panel_o3qpl_73 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs);
+  background-color: var(--background--surface);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+._panelActions_o3qpl_91 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._note_o3qpl_74 {
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  background-color: var(--background--subtle);
+  border-radius: var(--radius);
+}
+._footer_o3qpl_103 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._footerEdit_o3qpl_110 {
+  margin-left: auto;
+}
+._card_4pp6l_2 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--background--surface);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+/* Rows and the footer carry their own top border, so the card needs no dividers
+   of its own — and adding a case can't get the separators wrong. */
+._header_4pp6l_14 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm) var(--spacing--md);
+}
+._headerRow_4pp6l_21 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+}
+._title_4pp6l_28 {
+  margin: 0;
+}
+._progressChip_4pp6l_32 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+}
+._meta_4pp6l_38 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._loadMore_4pp6l_45 {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing--xs);
+  border-top: var(--border);
+}
+._footer_4pp6l_52 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--md);
+  padding: var(--spacing--sm) var(--spacing--md);
+  border-top: var(--border);
+}
+._progress_4pp6l_32 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  min-width: 0;
+}._root_an1h3_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+@keyframes _exr-in_an1h3_1 {
+0% {
+    opacity: 0;
+    translate: 0 -4px;
+    background: var(--color--orange-alpha-100);
+}
+100% {
+    opacity: 1;
+    translate: 0 0;
+}
+}
+._loadingRow_an1h3_20 {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._sliderRow_an1h3_26 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+._slider_an1h3_26 {
+  --n8n-slider--fill: var(--background--brand);
+  --n8n-slider--background: var(--run-data--color--background);
+  flex: 1;
+  min-width: 0;
+}
+._sliderCount_an1h3_40 {
+  flex-shrink: 0;
+  color: var(--text-color--dark);
+}
+._exampleList_an1h3_45 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  overflow: hidden;
+}
+._exampleList_an1h3_45 > * {
+  border-bottom: var(--border);
+  padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
+  animation: _exr-in_an1h3_1 220ms var(--easing--ease-out) both;
+}
+._exampleList_an1h3_45 > *:last-of-type {
+  border-bottom: none;
+}
+._toggleRow_an1h3_64 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--3xs);
+  width: 100%;
+  background-color: var(--run-data--color--background);
+  border: none;
+  cursor: pointer;
+  color: var(--text-color--dark);
+}
+._addOwnForm_an1h3_76 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+}
+._addOwnFormHeader_an1h3_85 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+._addOwnInput_an1h3_91 {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-size--2xs);
+  color: var(--text-color--dark);
+}
+._addOwnInput_an1h3_91:focus, ._addOwnInput_an1h3_91:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}._root_5scsn_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--xs);
+  width: 100%;
+  max-width: 420px;
+  margin: var(--spacing--md) auto;
+}
+._actions_5scsn_11 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  width: 100%;
+}
+._avatars_5scsn_17 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._title_5scsn_23 {
+  margin: 0;
+}
+._description_5scsn_27 {
+  display: block;
+  max-width: 260px;
+  line-height: 1.5;
+  text-align: center;
+  margin-bottom: var(--spacing--xs);
+}
+._section_uhu7z_2 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+  width: 100%;
+}
+
+/* Vertical rhythm is a single uniform gap, matching the design — no per-child
+   margins, so adding the case list later can't inherit odd spacing. */
+._emptyState_uhu7z_11 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--xs);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing--2xl) var(--spacing--lg);
+  border: var(--border-width) dashed var(--border-color);
+  border-radius: var(--radius);
+  text-align: center;
+}
+._iconBadge_uhu7z_24 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing--xs);
+  color: var(--color--text);
+  background-color: var(--background--active);
+  border-radius: var(--radius);
+}
+._title_uhu7z_34 {
+  margin: 0;
+}
+
+/* Caps the measure at the design's 400px so the copy wraps to three lines
+   instead of stretching the full panel width. */
+._description_uhu7z_40 {
+  display: block;
+  max-width: 25rem;
+}/* Focus State
+ -------------------------- */
+/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+/* Break-points
+ -------------------------- */
+/* Scrollbar
+ -------------------------- */
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+/* Placeholder
+ -------------------------- */
+/* BEM
+ -------------------------- */
+._advancedTrigger_1r9hm_124 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid transparent;
+  margin: calc(var(--spacing--2xs) * -1);
+  padding: 0 var(--spacing--2xs);
+  height: var(--height--lg);
+  outline: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius--lg);
+}
+._advancedTrigger_1r9hm_124:hover {
+  background-color: var(--background--hover);
+}
+._advancedTrigger_1r9hm_124:focus-visible {
+  background-color: var(--background--hover);
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  border-color: var(--focus--border-color);
+}
+._advancedContent_1r9hm_148 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+._embeddedAiBuilding_1r9hm_154 {
+  --agent-panel-header-opacity: 0.5;
+  --agent-row-label-opacity: 0.5;
+}
+._editorColumn_1r9hm_159 {
+  display: flex;
+  flex-direction: column;
+  background-color: light-dark(var(--background--surface), var(--background));
+  min-height: 0;
+  min-width: 0;
+  container: agent-editor/inline-size;
+}
+._panelArea_1r9hm_168 {
+  --agent-builder-content-max-width: 56rem;
+  --agent-builder-content-padding-inline: var(--spacing--2xl);
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._panelArea_1r9hm_168::-webkit-scrollbar {
+  z-index: 11;
+  width: 6px;
+}
+._panelArea_1r9hm_168::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+._panelArea_1r9hm_168::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  width: 6px;
+  background-color: var(--color--text--tint-2);
+}
+._panelArea_1r9hm_168::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color--text--tint-1);
+}
+._panelArea_1r9hm_168::-webkit-scrollbar-corner, ._panelArea_1r9hm_168::-webkit-scrollbar-track, ._panelArea_1r9hm_168::-webkit-scrollbar-track-piece {
+  background-color: transparent;
+}
+._panelArea_1r9hm_168 {
+  scrollbar-color: transparent transparent;
+}
+._panelArea_1r9hm_168:hover {
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+@container agent-editor (max-width: 40rem) {
+._panelArea_1r9hm_168 {
+    --agent-builder-content-padding-inline: var(--spacing--sm);
+}
+}
+._preventScroll_1r9hm_211 {
+  overflow: hidden;
+}
+._panelAreaContainer_1r9hm_215 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  max-width: var(--agent-builder-content-max-width);
+  width: 100%;
+  padding: var(--spacing--lg) var(--agent-builder-content-padding-inline);
+  margin: 0 auto;
+}
+._settingsCards_1r9hm_228 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+  width: 100%;
+}
+._settingsCard_1r9hm_228._settingsCard_1r9hm_228 {
+  --card--padding: var(--spacing--sm);
+  align-items: stretch;
+  background-color: var(--background--surface);
+}
+._identityHeaderRow_1r9hm_241 {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+._identityHeader_1r9hm_241 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--agent-builder-content-max-width);
+  margin: 0 auto;
+  padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+._chatFirst_1r9hm_260 ._identityContent_1r9hm_260 {
+  flex-direction: column;
+  text-align: center;
+  gap: var(--spacing--xs);
+}
+._tabsRow_1r9hm_266 {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+._tabsRule_1r9hm_273 {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--agent-builder-content-max-width);
+  margin: 0 auto;
+  padding: 0 var(--agent-builder-content-padding-inline);
+}
+._mainTabs_1r9hm_281 {
+  width: 100%;
+  border-bottom: var(--border);
+}
+._mainTabs_1r9hm_281 [data-test-id='tab-agent'] > * {
+  padding-left: 0;
+}
+._setupTasks_1r9hm_289 {
+  padding-inline: var(--agent-builder-content-padding-inline);
+  padding-block-end: var(--spacing--lg);
+  max-width: var(--agent-builder-content-max-width);
+  margin: 0 auto;
+  width: 100%;
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_mlnyb_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_mlnyb_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_mlnyb_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_mlnyb_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_mlnyb_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_mlnyb_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_mlnyb_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_mlnyb_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_mlnyb_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_mlnyb_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_mlnyb_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_mlnyb_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_mlnyb_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_mlnyb_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_mlnyb_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_mlnyb_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_mlnyb_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_mlnyb_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_mlnyb_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_mlnyb_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_mlnyb_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_mlnyb_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_mlnyb_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_mlnyb_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_mlnyb_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_mlnyb_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_mlnyb_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_mlnyb_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._intro_mlnyb_450 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._introHeader_mlnyb_456 {
+  animation: _fadeInUp_mlnyb_1 var(--animation--fade-in-up--duration, var(--duration--snappy)) var(--animation--fade-in-up--easing, var(--easing--ease-out));
+}
+@media (prefers-reduced-motion: reduce) {
+._introHeader_mlnyb_456 {
+    animation: none;
+}
+}
+._introHeader_mlnyb_456 {
+  animation-delay: calc(var(--intro-index, 0) * var(--duration--snappy) / 4);
+  animation-fill-mode: backwards;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}._header_u10y0_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  height: var(--height--4xl);
+  padding: var(--spacing--xs) var(--spacing--md);
+  background-color: var(--background--surface);
+  border-bottom: var(--border);
+  flex-shrink: 0;
+}
+._titleGroup_u10y0_12 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+  flex: 1;
+}
+._sessionTitle_u10y0_20 {
+  min-width: 0;
+  max-width: 40rem;
+  padding-inline: var(--spacing--2xs);
+}
+._sessionTitleLabel_u10y0_26 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size--sm);
+}
+._crumbSeparator_u10y0_34 {
+  color: var(--border-color);
+  margin-inline: var(--spacing--4xs);
+  -webkit-user-select: none;
+          user-select: none;
+  font-size: var(--font-size--xl);
+}
+._actions_u10y0_41 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}._previewPage_dda05_1 {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  background-color: transparent;
+  overflow: hidden;
+}
+._pageLayout_dda05_10 {
+  background-color: var(--background--surface);
+}
+._chatFrame_dda05_14 {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+}._moreMenu_28k5h_1 {
+  min-width: 12rem;
+}
+._layoutSwitch_28k5h_5 {
+  pointer-events: none;
+}
+._metrics_28k5h_9 {
+  font-variant-numeric: tabular-nums;
+}
+._sessionMetadata_28k5h_13 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--sm) var(--spacing--xs);
+  border-top: var(--border);
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--xs);
+  list-style: none;
+}
+._sessionMetadata_28k5h_13 li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  margin: 0;
+  -webkit-user-select: none;
+          user-select: none;
+}._dock_1v6s7_1 {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--agent-preview-chat-column-width, 30rem);
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+._dock_1v6s7_1:has(._fullpage_1v6s7_13) {
+  width: 100%;
+}
+._dockInner_1v6s7_17 {
+  display: flex;
+  flex-direction: column;
+  width: var(--agent-preview-chat-column-width, 30rem);
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--background--surface);
+  border-left: var(--border);
+  pointer-events: none;
+  transform: translateX(100%);
+  transition: transform var(--duration--snappy) var(--easing--ease-out);
+  will-change: transform;
+}
+._open_1v6s7_30 ._dockInner_1v6s7_17 {
+  pointer-events: auto;
+  transform: translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+._dockInner_1v6s7_17 {
+    transition: none;
+    will-change: auto;
+}
+}
+._inline_1v6s7_41 ._dockInner_1v6s7_17 {
+  transform: none;
+  transition: none;
+  border-left: 0;
+}
+._inline_1v6s7_41:not(._open_1v6s7_30) {
+  visibility: hidden;
+}
+._fullpage_1v6s7_13 {
+  width: 100%;
+  border-left: 0;
+}
+._overlay_1v6s7_55 {
+  width: 100%;
+}
+._overlay_1v6s7_55 ._dockInner_1v6s7_17 {
+  width: 100%;
+  border-left: 0;
+  transform: translateX(-100%);
+}
+._overlay_1v6s7_55._open_1v6s7_30 ._dockInner_1v6s7_17 {
+  transform: translateX(0);
+}
+._header_1v6s7_67 {
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._sessionHistory_1v6s7_75 {
+  min-width: 0;
+}
+._actions_1v6s7_79 {
+  margin-inline-start: auto;
+  min-width: max-content;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}._indicator_a6dzc_1 {
+  display: inline-block;
+  width: var(--spacing--2xs);
+  height: var(--spacing--2xs);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+._indicator-published_a6dzc_9 {
+  background-color: var(--color--mint-600);
+}
+._indicator-latest_a6dzc_13 {
+  background-color: var(--color--yellow-500);
+}
+._indicator-default_a6dzc_17 {
+  border: var(--border);
+  border-color: var(--color--text--tint-2);
+}._timeline_zdhzp_1 {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing--2xs);
+}
+._empty_zdhzp_8 {
+  padding: var(--spacing--lg);
+  text-align: center;
+}
+._entries_zdhzp_13 {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+._entry_zdhzp_19 {
+  position: relative;
+  border-radius: var(--radius);
+  padding: var(--spacing--xs) var(--spacing--2xs);
+}
+._entry_zdhzp_19:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--spacing--2xs) + var(--spacing--lg) / 2);
+  top: calc(100% - var(--spacing--xs));
+  height: var(--spacing--lg);
+  border-left: var(--border);
+  pointer-events: none;
+}
+._active_zdhzp_35 {
+  background: var(--background--subtle);
+}
+._entryContent_zdhzp_39 {
+  min-width: 0;
+}
+._duration_zdhzp_43 {
+  display: block;
+  padding-left: calc(var(--spacing--lg) + var(--spacing--2xs));
+  margin-bottom: var(--spacing--xs);
+}
+._row_zdhzp_49 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._marker_zdhzp_56 {
+  width: var(--spacing--lg);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+._title_zdhzp_63 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+._date_zdhzp_70 {
+  flex-shrink: 0;
+}
+._sentinel_zdhzp_74 {
+  height: var(--spacing--5xs);
+}._item_liarv_1 {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs) var(--spacing--2xs);
+  line-height: var(--line-height--xl);
+  border-radius: var(--radius);
+}
+._item_liarv_1:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--spacing--2xs) + var(--spacing--lg) / 2);
+  top: calc(50% + var(--spacing--xs));
+  bottom: calc(-50% + var(--spacing--xs));
+  border-left: var(--border);
+  pointer-events: none;
+}
+._item_liarv_1 + ._item_liarv_1 {
+  margin-top: var(--spacing--xs);
+}
+._current_liarv_23 {
+  background: var(--background--subtle);
+}
+._description_liarv_27 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+._timelineColumn_liarv_36 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing--lg);
+  min-width: var(--spacing--lg);
+}
+._content_liarv_44 {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+._mainRow_liarv_51 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._mainLine_liarv_57 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+._metaRow_liarv_63 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+}
+._metaAuthor_liarv_71 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+._metaTime_liarv_78 {
+  flex-shrink: 0;
+}
+._actions_liarv_82 {
+  flex-shrink: 0;
+  margin-right: var(--spacing--3xs);
+}._list_1ep4u_1 {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing--2xs);
+}
+._empty_1ep4u_8 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--spacing--lg);
+  text-align: center;
+}
+._items_1ep4u_19 {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+._sentinel_1ep4u_25 {
+  padding: var(--spacing--xs) 0;
+}._panel_av5oz_1 {
+  display: flex;
+  flex-direction: column;
+  /* The design tokens have no sidebar width. Keep this panel inside narrow viewports. */
+  --agent-history-width: 22rem;
+  width: min(var(--agent-history-width), 100vw);
+  max-width: 100%;
+  flex-shrink: 0;
+  height: 100%;
+  background-color: var(--background--surface);
+  border-left: var(--border);
+}
+._header_av5oz_14 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing--xs);
+  border-bottom: var(--border);
+  flex-shrink: 0;
+}
+._closeButton_av5oz_23 {
+  flex-shrink: 0;
+  margin-right: var(--spacing--3xs);
+}/* Matches the message list padding of `InstanceAiConversation`. */
+._emptyState_oyl2e_2 {
+  padding: var(--spacing--sm) var(--spacing--lg);
+}
+._buttonLike_1rc9v_2 {
+	min-height: var(--height--sm);
+	padding: 0 var(--spacing--xs);
+	border-radius: var(--radius--3xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--tint-1);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+.n8n-icon {
+		flex-shrink: 0;
+		align-self: baseline;
+		margin-top: var(--spacing--2xs);
+}
+}
+._json_dhcoz_1 {
+  font-family: monospace;
+  font-size: var(--font-size--xs);
+  line-height: var(--line-height--xl);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  color: var(--color--text--tint-1);
+}
+._truncatedNotice_dhcoz_11 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--4xs) 0;
+}
+._truncatedText_dhcoz_18 {
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-2);
+}.json-key {
+  color: var(--color--primary);
+}
+.json-string {
+  color: var(--color--success);
+}
+.json-number {
+  color: var(--color--warning);
+}
+.json-bool {
+  color: var(--color--text--tint-1);
+  font-style: italic;
+}._wrapper_q87hj_1 {
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+}
+._table_q87hj_7 {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size--3xs);
+  font-family: monospace;
+}
+._th_q87hj_14 {
+  text-align: left;
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  font-weight: var(--font-weight--medium);
+  color: var(--color--text--tint-1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--color--background);
+}
+._tr_q87hj_28:nth-child(even) {
+  background: var(--color--background--shade-1);
+}
+._td_q87hj_32 {
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  color: var(--color--text--tint-1);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._more_q87hj_41 {
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  font-size: var(--font-size--3xs);
+  color: var(--color--text--tint-1);
+  font-style: italic;
+  text-align: center;
+  border-top: var(--border);
+}._wrapper_fhwvd_1 {
+  position: relative;
+}
+._copyBtn_fhwvd_5 {
+  position: absolute;
+  top: var(--spacing--4xs);
+  right: var(--spacing--4xs);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+._wrapper_fhwvd_1:hover ._copyBtn_fhwvd_5 {
+  opacity: 1;
+}
+._code_fhwvd_16 {
+  font-family: monospace;
+  font-size: var(--font-size--2xs);
+  line-height: var(--line-height--xl);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: var(--spacing--xs);
+  color: var(--color--text--tint-1);
+}
+._image_1l1xi_2 {
+	max-width: 100%;
+	display: block;
+}
+
+._file_vywdb_2 {
+	width: 100%;
+	height: 480px;
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius);
+}
+
+._text_1xlo6_2 {
+	white-space: pre-wrap;
+	margin: 0;
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+}
+
+._contentList_1ooyo_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+._timeline_1i3pw_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._toggleContent_1i3pw_7 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+._toggleTrigger_1i3pw_12 {
+  --button--padding: 0;
+  --button--font-size: var(--font-size--sm);
+  padding-inline: 0;
+  font-size: var(--font-size--sm);
+}
+._streamingMarkdown_1i3pw_19 {
+  display: flex;
+  flex-direction: column-reverse;
+  overflow-y: auto;
+  max-height: 120px;
+  flex: 1 1 auto;
+  min-width: 0;
+  scrollbar-width: none;
+}._content_17ze8_1 {
+  padding-left: var(--spacing--2xs);
+  border-left: var(--border);
+  margin-left: var(--spacing--xs);
+}._wrapper_h78l6_1 {
+  display: flex;
+  justify-content: flex-end;
+  margin-block: var(--spacing--lg);
+}
+._userBubble_h78l6_7 {
+  background: var(--assistant--color--background--user-bubble);
+  padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
+  border-radius: var(--radius--xl);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 90%;
+}
+._answerItem_h78l6_16 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}
+._answerItem_h78l6_16:not(:last-child) {
+  margin-bottom: var(--spacing--xs);
+}
+._question_h78l6_25 {
+  line-height: var(--line-height--md);
+}
+._skipped_h78l6_29 {
+  color: var(--text-color);
+  font-style: italic;
+}._card_q5f0n_1 {
+  cursor: pointer;
+}
+._cardArchived_q5f0n_5 {
+  opacity: 0.55;
+}
+._archivedBadge_q5f0n_9 {
+  margin-left: var(--spacing--2xs);
+}
+._icon_q5f0n_13 {
+  color: var(--icon-color--strong);
+  flex-shrink: 0;
+}
+._name_q5f0n_18 {
+  font-size: var(--font-size--md);
+  font-weight: var(--font-weight--regular);
+  color: var(--color--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._metadata_q5f0n_27 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}._form_hk1n5_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--sm) 0;
+  border-bottom: var(--border-width) dashed var(--color--foreground);
+  margin-bottom: var(--spacing--sm);
+}
+._counter_hk1n5_10 {
+  align-self: flex-end;
+  margin-top: calc(-1 * var(--spacing--xs));
+}
+._emoji_hk1n5_15 {
+  line-height: 1;
+}
+
+/* Removal sits apart from Cancel and Save. */
+._remove_hk1n5_20 {
+  margin-right: auto;
+}/* Same row as "Finished thinking" (AiThinkingBlock.vue): one muted line, an
+   inline chevron, and no surface of its own. */
+._header_2mkrn_3 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  max-width: 90%;
+  border: 0;
+  background: transparent;
+  padding: var(--spacing--4xs) 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--regular);
+  line-height: var(--line-height--lg);
+}
+._header_2mkrn_3:hover {
+  color: var(--text-color--subtle);
+}
+._title_2mkrn_22 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same content rule as the thinking traces (AiThinkingBlock.vue): inline text with
+   a left rule, and no surface of its own. */
+._card_2mkrn_32 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--3xs) 0 var(--spacing--3xs) var(--spacing--2xs);
+  border-left: var(--border);
+  margin-left: var(--spacing--xs);
+}
+
+/* The same color the thinking trace above it uses for its text (ThinkingBlock.vue). */
+._text_2mkrn_42 {
+  color: var(--color--text--tint-1);
+}
+._link_2mkrn_46 {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  /* A button stretches to the row width and centers its label: keep it at the text's edge. */
+  align-self: flex-start;
+  text-align: left;
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--2xs);
+  line-height: var(--line-height--lg);
+}
+._link_2mkrn_46:hover {
+  color: var(--text-color--subtle);
+}
+._removedText_2mkrn_62 {
+  text-decoration: line-through;
+}
+
+/* A refused text can be far over the cap, so clamp it. */
+._attemptedText_2mkrn_67 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}._content_2j7xp_1 {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}
+._detail_2j7xp_8 {
+  line-height: var(--font-line-height-regular);
+}
+._lineThrough_2j7xp_12 {
+  text-decoration: line-through;
+}._thought_rj7w5_1 {
+  --n8n-markdown--font-size--base: var(--font-size--sm);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--xl);
+  color: var(--color--text--tint-1);
+  max-width: 95%;
+}._timeline_15sl0_1 {
+  /** Keep the activity rail extension equal to the gap between blocks. */
+  --n8n--ai-activity-step-gap: var(--spacing--2xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--n8n--ai-activity-step-gap);
+}
+._answerGroup_15sl0_9 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  margin-block: calc(var(--spacing--sm) - var(--n8n--ai-activity-step-gap));
+}
+._answerGroup_15sl0_9:first-child {
+  margin-top: 0;
+}
+._answerGroup_15sl0_9:last-child {
+  margin-bottom: 0;
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_11q2a_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_11q2a_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_11q2a_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_11q2a_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_11q2a_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_11q2a_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_11q2a_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_11q2a_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_11q2a_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_11q2a_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_11q2a_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_11q2a_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_11q2a_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_11q2a_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_11q2a_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_11q2a_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_11q2a_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_11q2a_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_11q2a_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_11q2a_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_11q2a_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_11q2a_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_11q2a_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_11q2a_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_11q2a_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_11q2a_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_11q2a_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_11q2a_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._fileAttachments_11q2a_450 {
+  min-width: 0;
+  width: 100%;
+}
+._userAttachmentsAfterText_11q2a_455 {
+  margin-top: var(--spacing--2xs);
+}
+._userAttachments_11q2a_455 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs);
+}
+._statusIndicator_11q2a_465 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+  padding: var(--spacing--4xs) 0;
+  animation: _status-fade-in_11q2a_1 0.2s ease;
+}
+._cancelledIndicator_11q2a_475 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+}
+._statusDot_11q2a_483 {
+  --animation--opacity-pulse--duration: 1.5s;
+  --animation--opacity-pulse--opacity-end: 0.3;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color--primary);
+  animation: _opacityPulse_11q2a_1 var(--animation--opacity-pulse--duration, var(--duration--slow)) var(--animation--opacity-pulse--easing, ease-in-out) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._statusDot_11q2a_483 {
+    animation: none;
+}
+}
+@keyframes _status-fade-in_11q2a_1 {
+from {
+    opacity: 0;
+}
+to {
+    opacity: 1;
+}
+}
+._blinkingCursor_11q2a_506 {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background: var(--color--text);
+  animation: _cursor-blink_11q2a_1 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+@keyframes _cursor-blink_11q2a_1 {
+0%, 100% {
+    opacity: 1;
+}
+50% {
+    opacity: 0;
+}
+}
+._runLevelError_11q2a_523 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._runLevelErrorDetails_11q2a_529 {
+  margin-top: var(--spacing--4xs);
+  padding: var(--spacing--2xs);
+  font-family: monospace;
+  font-size: var(--font-size--3xs);
+  line-height: var(--line-height--xl);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+._errorDetailsSummary_11q2a_541 {
+  cursor: pointer;
+  -webkit-user-select: none;
+          user-select: none;
+  opacity: 0.7;
+}
+._errorDetailsSummary_11q2a_541:hover {
+  opacity: 1;
+}
+._debugJson_11q2a_550 {
+  margin-top: var(--spacing--2xs);
+  padding: var(--spacing--xs);
+  background: var(--color--foreground--tint-2);
+  border-radius: var(--radius);
+  font-family: monospace;
+  font-size: var(--font-size--3xs);
+  line-height: var(--line-height--xl);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  color: var(--color--text--tint-1);
+}
+/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_loruz_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_loruz_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_loruz_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_loruz_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_loruz_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_loruz_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_loruz_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_loruz_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_loruz_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_loruz_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_loruz_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_loruz_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_loruz_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_loruz_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_loruz_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_loruz_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_loruz_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_loruz_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_loruz_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_loruz_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_loruz_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_loruz_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_loruz_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_loruz_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_loruz_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_loruz_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_loruz_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_loruz_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/* Styled to match the thinking block's subline — the bar hands off to it
+ * once trace content arrives, so the two must read as the same element. */
+._bar_loruz_453 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing--4xs);
+  padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs) 0;
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--lg);
+  color: var(--text-color--subtler);
+  pointer-events: none;
+}
+._label_loruz_464 {
+  --animation--shimmer--duration: 1.5s;
+  --animation--shimmer--background: color-mix(
+  	in srgb,
+  	var(--text-color--subtler) 30%,
+  	var(--background--subtle) 70%
+  );
+  --animation--shimmer--foreground: var(--text-color--subtler);
+  background: linear-gradient(135deg, var(--animation--shimmer--background, var(--background--surface)), var(--animation--shimmer--foreground, var(--text-color--subtle)), var(--animation--shimmer--background, var(--background--surface)));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: _shimmer_loruz_1 var(--animation--shimmer--duration, var(--duration--slow)) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._label_loruz_464 {
+    animation: none;
+}
+}
+._elapsed_loruz_485 {
+  font-variant-numeric: tabular-nums;
+}.status-bar-enter-from,
+.status-bar-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.status-bar-enter-active {
+  transition: all 0.2s ease-out;
+}
+.status-bar-leave-active {
+  transition: all 0.15s ease-in;
+}._credentialDescription_15ywj_1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+._textInputRow_15ywj_7 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--2xs);
+}
+._continueRow_15ywj_14 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--2xs);
+}
+._testListenerUrl_15ywj_21 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--2xs);
+  word-break: break-all;
+  -webkit-user-select: all;
+          user-select: all;
+}
+._textCard_15ywj_30 {
+  border: 0;
+  background-color: var(--color--background--light-3);
+  box-shadow: var(--shadow--sm), var(--shadow--outline);
+}.confirmation-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.confirmation-slide-enter-active {
+  transition: all var(--animation--duration--snappy) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.confirmation-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.confirmation-slide-leave-active {
+  transition: all var(--animation--duration--snappy) var(--easing--ease-in);
+}@property --instance-ai-artifacts-layout-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0;
+}
+._chatContent_1v198_6 {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+._olderMessagesStatus_1v198_14 {
+  position: absolute;
+  top: var(--spacing--sm);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+._olderMessagesError_1v198_22 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) var(--spacing--sm);
+  background-color: var(--background--surface);
+  border: var(--border);
+  border-radius: var(--radius--full);
+  box-shadow: var(--shadow--xs);
+}
+._scrollArea_1v198_33 {
+  flex: 1;
+  min-height: 0;
+  --n8n-chat-scroll-area--x-offset--end: var(--instance-ai-artifacts-layout-width);
+}
+._messageList_1v198_39 {
+  width: calc(100% - var(--instance-ai-artifacts-layout-width));
+  max-width: min(var(--instance-ai-chat-max-width, 800px), 100%);
+  margin: 0 auto;
+  padding: var(--spacing--sm) var(--spacing--lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+}
+._builderAgents_1v198_50 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--xs);
+}
+._inputContainer_1v198_57 {
+  align-self: stretch;
+  padding: var(--instance-ai-input-padding, 0 var(--spacing--lg) var(--spacing--sm));
+  pointer-events: none;
+}
+._inputContainer_1v198_57 > * {
+  pointer-events: auto;
+}
+._inputConstraint_1v198_66 {
+  width: calc(100% - var(--instance-ai-artifacts-layout-width));
+  max-width: var(--instance-ai-input-max-width, 750px);
+  margin: 0 auto;
+  transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._stopBrowserTasks_1v198_76 {
+  width: 320px;
+  padding: var(--spacing--sm);
+}
+._stopBrowserTasks_1v198_76 p + p {
+  margin-top: var(--spacing--xs);
+}
+._stopBrowserTasksActions_1v198_84 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+  margin-top: var(--spacing--sm);
+}
+._inputSwap_1v198_91 {
+  position: relative;
+}
+._greetingLines_1v198_95 p {
+  animation: _greeting-rise_1v198_1 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both;
+}
+._greetingLines_1v198_95 p:nth-of-type(2) {
+  animation: _greeting-rise_1v198_1 280ms ease-out 780ms both;
+}
+._greetingLines_1v198_95 p:nth-of-type(3) {
+  animation: _greeting-rise_1v198_1 280ms ease-out 1380ms both;
+}
+@keyframes _greeting-rise_1v198_1 {
+from {
+    opacity: 0;
+    transform: translateY(9px);
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+}
+}
+@media (prefers-reduced-motion: reduce) {
+._greetingLines_1v198_95 p:nth-of-type(n) {
+    animation: none;
+}
+}.message-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.message-slide-enter-active {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.input-swap-enter-from,
+.input-swap-leave-to {
+  opacity: 0;
+}
+.input-swap-enter-active,
+.input-swap-leave-active {
+  transition: opacity 120ms ease;
+}
+.input-swap-leave-active {
+  position: absolute;
+  inset: 0;
+}._panel_1bb5c_1 {
+  --instance-ai-conversation-background: var(--background--surface);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+._body_1bb5c_10 {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+._conversation_1bb5c_17 {
+  flex: 1;
+  min-width: 0;
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1938q_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1938q_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1938q_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1938q_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1938q_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1938q_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1938q_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1938q_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1938q_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1938q_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1938q_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1938q_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1938q_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1938q_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1938q_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1938q_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1938q_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1938q_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1938q_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1938q_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1938q_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1938q_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1938q_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1938q_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1938q_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1938q_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1938q_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1938q_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._wave_1938q_450 {
+  --n8n-wave--duration: calc(var(--duration--slowest) * 2);
+  --n8n-wave--size: var(--spacing--xl);
+  --n8n-wave--border: var(--border-width, 1px);
+  --n8n-wave--glow: var(--spacing--lg);
+  --n8n-wave--color-1: var(--color--red-500);
+  --n8n-wave--color-2: var(--color--blue-400);
+  --n8n-wave--color-3: var(--color--green-500);
+  --n8n-wave--color-4: var(--color--purple-500);
+  --n8n-wave--color-5: var(--color--gold-400);
+  --n8n-wave--color-6: var(--color--purple-600);
+  --n8n-wave--color-7: var(--color--blue-500);
+  --n8n-wave--color-8: var(--color--pink-500);
+  --n8n-wave--color-9: var(--color--mint-500);
+  display: grid;
+  place-items: center;
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: 10;
+  isolation: isolate;
+  border-bottom: 1px solid var(--n8n-wave--border);
+  pointer-events: none;
+  animation: _fadeInUp_1938q_1 var(--animation--fade-in-up--duration, var(--duration--snappy)) var(--animation--fade-in-up--easing, var(--easing--ease-out));
+}
+@media (prefers-reduced-motion: reduce) {
+._wave_1938q_450 {
+    animation: none;
+}
+}
+._wave_1938q_450 {
+  animation-fill-mode: backwards;
+}
+.agent-building-indicator-leave-active {
+  animation: none;
+  transition: opacity var(--duration--snappy) var(--easing--ease-in);
+}
+@media (prefers-reduced-motion: reduce) {
+.agent-building-indicator-leave-active {
+    animation: none;
+    transition: none;
+}
+}
+.agent-building-indicator-leave-to {
+  opacity: 0;
+}
+._buildingIndicator_1938q_499 {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding-inline: var(--spacing--sm);
+  height: var(--height--xl);
+  border-radius: var(--radius--full);
+  background: var(--color--neutral-black);
+  color: var(--color--neutral-white);
+  box-shadow: inset 0 0 0 1px light-dark(var(--color--white-alpha-200), var(--color--white-alpha-100)), 0 0 0 1px var(--color--neutral-black), var(--shadow--xl);
+  pointer-events: none;
+  white-space: nowrap;
+  width: -moz-fit-content;
+  width: fit-content;
+  transition: transform var(--duration--base);
+  --animation--fade-in-up--end: calc(var(--spacing--lg) * -1);
+  transform: translateY(var(--animation--fade-in-up--end));
+  animation: _fadeInUp_1938q_1 var(--animation--fade-in-up--duration, var(--duration--snappy)) var(--animation--fade-in-up--easing, var(--easing--ease-out));
+}
+@media (prefers-reduced-motion: reduce) {
+._buildingIndicator_1938q_499 {
+    animation: none;
+}
+}
+._buildingIndicator_1938q_499 {
+  animation-delay: 1s;
+  animation-fill-mode: backwards;
+}
+._buildingLabel_1938q_529 {
+  display: grid;
+  padding-right: var(--spacing--5xs);
+}
+._labelWord_1938q_534 {
+  grid-area: 1/1;
+}
+._labelEnterActive_1938q_538,
+._labelLeaveActive_1938q_539 {
+  transition: opacity var(--duration--snappy) var(--easing--ease-out), transform var(--duration--snappy) var(--easing--ease-out), filter var(--duration--snappy) var(--easing--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+._labelEnterActive_1938q_538,
+  ._labelLeaveActive_1938q_539 {
+    animation: none;
+    transition: none;
+}
+}
+._labelEnterFrom_1938q_550,
+._labelLeaveTo_1938q_551 {
+  opacity: 0;
+  filter: blur(var(--spacing--3xs));
+}
+._labelEnterFrom_1938q_550 {
+  transform: translateY(var(--spacing--2xs));
+}
+._labelLeaveTo_1938q_551 {
+  transform: translateY(calc(-1 * var(--spacing--2xs)));
+}
+._waveLayer_1938q_564 {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+._ring_1938q_572 {
+  z-index: 3;
+  padding: var(--n8n-wave--border);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+}
+._inner_1938q_581 {
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+._inner_1938q_581 ._waveLight_1938q_585 {
+  filter: blur(var(--spacing--5xs));
+}
+._bloom_1938q_589 {
+  z-index: 1;
+  filter: blur(var(--n8n-wave--glow));
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+._highlight_1938q_596 {
+  z-index: 4;
+  filter: blur(var(--spacing--2xs));
+  opacity: 0.95;
+  mix-blend-mode: screen;
+}
+._highlight_1938q_596 ._waveLight_1938q_585 {
+  background: radial-gradient(ellipse calc(var(--wave-width) * 0.4) calc(var(--n8n-wave--size) * var(--wave-depth) * 1.25) at var(--wave-position), #fff 0%, light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5)) 12%, rgba(255, 255, 255, 0.35) 42%, transparent 100%);
+  mix-blend-mode: screen;
+}
+._waveLight_1938q_585 {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse var(--wave-width) calc(var(--n8n-wave--size) * var(--wave-depth)) at var(--wave-position), var(--wave-color) 0%, color-mix(in srgb, var(--wave-color) 45%, transparent) 35%, transparent 100%);
+  transform-origin: var(--wave-position);
+  animation: _wave-breathe_1938q_1 var(--wave-duration) ease-in-out infinite;
+  animation-delay: var(--wave-delay);
+  mix-blend-mode: multiply;
+}
+@keyframes _wave-breathe_1938q_1 {
+0%, 100% {
+    transform: scaleY(0.25);
+    opacity: 0.5;
+}
+25% {
+    transform: scaleY(0.85);
+    opacity: 0.9;
+}
+50% {
+    transform: scaleY(0.45);
+    opacity: 0.65;
+}
+75% {
+    transform: scaleY(1);
+    opacity: 1;
+}
+}
+@media (prefers-reduced-motion: reduce) {
+._waveLight_1938q_585 {
+    animation: none;
+}
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1xxmg_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1xxmg_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1xxmg_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1xxmg_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1xxmg_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1xxmg_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1xxmg_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1xxmg_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1xxmg_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1xxmg_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1xxmg_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1xxmg_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1xxmg_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1xxmg_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1xxmg_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1xxmg_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1xxmg_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1xxmg_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1xxmg_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1xxmg_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1xxmg_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1xxmg_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1xxmg_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1xxmg_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1xxmg_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1xxmg_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1xxmg_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1xxmg_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+#content:has(._fullscreen_1xxmg_562) {
+  isolation: auto;
+}
+body:has(._fullscreen_1xxmg_562) #sidebar {
+  visibility: hidden;
+}
+._root_1xxmg_570._fullscreen_1xxmg_562 {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--background--surface);
+}
+._standalone_1xxmg_577 {
+  width: 100%;
+  min-width: 0;
+}
+._root_1xxmg_570 {
+  --n8n--agent-builder-header-height: var(--height--4xl);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+._builder_1xxmg_591 {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding-right: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+  transition: padding-left var(--duration--snappy) var(--easing--ease-out), padding-right var(--duration--snappy) var(--easing--ease-out);
+}
+._builder_1xxmg_591._previewOpen_1xxmg_602 {
+  padding-right: var(--agent-preview-chat-column-width, 30rem);
+}
+._builder_1xxmg_591._aiPanelOpen_1xxmg_605 {
+  padding-left: var(--agent-ai-panel-width);
+}
+._builder_1xxmg_591._previewResizing_1xxmg_608 {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+._builder_1xxmg_591 {
+    animation: none;
+    transition: none;
+}
+}
+._chatFirst_1xxmg_618 {
+  --instance-ai-chat-max-width: 100%;
+  --instance-ai-input-max-width: 100%;
+  --agent-chat-max-width: 100%;
+  --instance-ai-input-padding: 0 var(--spacing--sm) var(--spacing--sm);
+  --agent-chat-input-padding: 0 var(--spacing--sm) var(--spacing--sm);
+}
+._chatFirst_1xxmg_618 ._aiDock_1xxmg_625,
+._chatFirst_1xxmg_618 ._previewResizeWrapper_1xxmg_626 {
+  container-type: inline-size;
+}
+._inlineTestChat_1xxmg_630 {
+  --agent-builder-composer-height: calc(
+  	var(--height--5xl) + var(--height--4xl) + var(--height--xs)
+  );
+}
+._inlineTestChat_1xxmg_630 ._previewResizeWrapper_1xxmg_626 {
+  left: 0;
+  right: auto;
+}
+._compactChatLayout_1xxmg_640,
+._compactChatLayout_1xxmg_640._aiPanelOpen_1xxmg_605 {
+  padding-left: 0;
+  padding-right: 0;
+}
+._mobileNavigation_1xxmg_646 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--2xs);
+  border-bottom: var(--border);
+}
+._previewResizeWrapper_1xxmg_626 {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--agent-preview-chat-column-width);
+  max-width: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+._previewResizeWrapper_1xxmg_626:has([data-preview-layout=fullpage]) {
+  width: 100%;
+}
+._previewResizeWrapper_1xxmg_626:has([data-preview-layout=fullpage]) [data-dir=left] {
+  display: none;
+}
+._previewOverlay_1xxmg_670 {
+  width: 100%;
+  z-index: 5;
+}
+._previewResizeOpen_1xxmg_675 {
+  pointer-events: auto;
+}
+._loading_1xxmg_679 {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._showBuildChatButton_1xxmg_686 {
+  position: absolute;
+  top: var(--spacing--2xs);
+  left: var(--spacing--2xs);
+  z-index: 3;
+}
+._editorColumn_1xxmg_693 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+._activityArea_1xxmg_698 {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+._aiDock_1xxmg_625 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--agent-ai-panel-width);
+  border-right: var(--border);
+  background: var(--background--surface);
+  z-index: 1;
+}
+._testModeActive_1xxmg_716 {
+  z-index: 3;
+  background: transparent;
+  pointer-events: none;
+}
+._testModeActive_1xxmg_716 [data-dir=right] {
+  pointer-events: auto;
+}
+._externalUpdateNotice_1xxmg_725 {
+  position: absolute;
+  top: var(--height--4xl);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--spacing--sm);
+  pointer-events: none;
+}
+._externalUpdatePill_1xxmg_737 {
+  max-width: 100%;
+  height: auto;
+  min-height: var(--height--xl);
+  margin-block: var(--spacing--xs);
+  padding-block: var(--spacing--2xs);
+  color: var(--color--neutral-white);
+}
+._externalUpdateContent_1xxmg_746 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._externalUpdateText_1xxmg_752 {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+._externalUpdateDismiss_1xxmg_757 {
+  flex-shrink: 0;
+  color: var(--color--neutral-white);
+  pointer-events: auto;
+}
+._aiToggleBar_1xxmg_763 {
+  position: absolute;
+  top: calc(var(--n8n--agent-builder-header-height) + var(--spacing--2xs));
+  left: var(--spacing--2xs);
+  z-index: 1;
+}

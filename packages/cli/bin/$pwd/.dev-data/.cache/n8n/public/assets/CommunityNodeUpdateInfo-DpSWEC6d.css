@@ -1,0 +1,13 @@
+._container_2erah_1 {
+  display: flex;
+  justify-content: right;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm);
+}
+._separator_2erah_9 {
+  height: var(--border-width);
+  background: var(--color--foreground);
+  margin-right: var(--spacing--sm);
+  margin-left: var(--spacing--sm);
+}

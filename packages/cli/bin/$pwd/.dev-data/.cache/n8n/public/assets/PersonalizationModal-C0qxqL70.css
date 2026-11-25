@@ -1,0 +1,4 @@
+._container_2zzx1_1 > div,
+._container_2zzx1_1 section > div:not(:last-child) {
+  margin-bottom: var(--spacing--md);
+}

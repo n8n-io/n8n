@@ -1,0 +1,46 @@
+._container_1xhl3_1 {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: var(--content-container--width);
+  padding: var(--spacing--xl);
+  gap: var(--spacing--xl);
+  overflow-y: auto;
+  position: relative;
+}
+._menuButton_1xhl3_14 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: var(--spacing--sm);
+}
+._isMobileDevice_1xhl3_20 ._menuButton_1xhl3_14 {
+  margin: var(--spacing--2xs);
+}
+._header_1xhl3_24 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing--lg);
+  width: 100%;
+}
+._headerContent_1xhl3_32 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+}
+._empty_1xhl3_38 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  flex: 1;
+  width: 100%;
+}
+._agentsGrid_1xhl3_47 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}

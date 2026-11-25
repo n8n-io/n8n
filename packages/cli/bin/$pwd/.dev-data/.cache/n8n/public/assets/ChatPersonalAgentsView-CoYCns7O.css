@@ -1,0 +1,37 @@
+._container_clrtw_1 {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: var(--content-container--width);
+  padding: var(--spacing--xl);
+  gap: var(--spacing--xl);
+  overflow-y: auto;
+  position: relative;
+}
+._header_clrtw_14 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing--lg);
+  width: 100%;
+}
+._headerContent_clrtw_22 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+}
+._empty_clrtw_28 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  flex: 1;
+  width: 100%;
+}
+._agentsGrid_clrtw_37 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}

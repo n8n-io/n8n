@@ -1,0 +1,18 @@
+body {
+  background-color: var(--color--background--light-2);
+}
+._container_1l1y2_5 {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding-top: var(--spacing--2xl);
+}
+._container_1l1y2_5 > * {
+  width: 352px;
+}
+._textContainer_1l1y2_15 {
+  text-align: center;
+}
+._formContainer_1l1y2_19 {
+  padding-bottom: var(--spacing--xl);
+}

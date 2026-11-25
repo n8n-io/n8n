@@ -1,0 +1,143 @@
+._location-container_yz6mi_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  color: var(--color--text);
+  min-width: 0;
+  overflow: hidden;
+}
+._ellipsis_yz6mi_10 {
+  padding-right: var(--spacing--4xs);
+}
+._ellipsis_yz6mi_10,
+._separator_yz6mi_15 {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  color: var(--color--text--tint-1);
+}
+._grandparent_yz6mi_20 {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+._parent-folder_yz6mi_26 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  min-width: 0;
+  overflow: hidden;
+}
+._truncate_yz6mi_34 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+._location-link_yz6mi_42 {
+  color: var(--color--text);
+}
+._workflow-name_yz6mi_46 {
+  color: var(--color--text--shade-1);
+}._header_luegg_1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+._table-container_luegg_7 ._selection-bar_luegg_7 {
+  position: sticky;
+  bottom: var(--spacing--3xl);
+  left: auto;
+  transform: none;
+  width: -moz-fit-content;
+  width: fit-content;
+  margin: 0 auto;
+}
+._workflow-table_luegg_16 {
+  margin-bottom: var(--spacing--sm);
+}
+._workflow-table_luegg_16 .table-scroll {
+  overflow-y: hidden;
+}
+._workflow-table_luegg_16 tr:last-child {
+  border-bottom: none !important;
+}
+._empty-state_luegg_26 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--lg) 0;
+  min-height: 250px;
+}
+._workflow-cell_luegg_36 {
+  display: flex;
+  padding: var(--spacing--2xs) 0;
+  min-width: 0;
+  overflow: hidden;
+}
+._location-cell_luegg_43 {
+  padding: var(--spacing--2xs) 0;
+}
+._description-cell_luegg_47 {
+  display: inline-block;
+  max-width: 100%;
+  color: var(--color--text);
+  padding: var(--spacing--2xs) 0;
+  cursor: pointer;
+}
+._description-cell_luegg_47:hover span {
+  color: var(--color--text--shade-1);
+}
+._description-text_luegg_58 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  word-break: break-word;
+}
+._empty-description_luegg_67 {
+  display: flex;
+  align-items: center;
+}
+._table-link_luegg_72 {
+  color: var(--color--text);
+}
+._truncate_luegg_76 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}._mcp-workflows-select-loading_l8bd8_1,
+._mcp-workflows-select-empty_l8bd8_2 {
+  display: flex;
+  min-height: var(--spacing--5xl);
+  align-items: center;
+  justify-content: space-around;
+}
+._empty-option_l8bd8_9 {
+  cursor: default !important;
+  color: var(--color--text) !important;
+}/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+._layout_1rja6_2 {
+  padding-top: 0;
+}
+
+/* Pin the back action to the top-left of the settings area (the shell's
+   content container is position: relative), independent of the centered column. */
+._layout_1rja6_2 > div:first-child {
+  position: absolute;
+  top: var(--spacing--lg);
+  left: var(--spacing--lg);
+  width: auto;
+}
+._actions_1rja6_15 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+  margin-bottom: var(--spacing--xs);
+}

@@ -1,0 +1,10 @@
+
+.connection-lost[data-v-6825e866] {
+	display: flex;
+	align-items: center;
+}
+.connection-lost-content[data-v-6825e866] {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}

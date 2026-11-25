@@ -1,0 +1,2535 @@
+@charset "UTF-8";._emptyStateWrapper_j3370_1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+._emptyStateWrapper_j3370_1 ._emptyState_j3370_1 {
+  border: none;
+  padding: 0;
+}._dot_1jjrv_1 {
+  flex-shrink: 0;
+  width: var(--font-size--3xs);
+  height: var(--font-size--3xs);
+  border-radius: 50%;
+}
+._small_1jjrv_8 {
+  width: var(--spacing--2xs);
+  height: var(--spacing--2xs);
+}
+._pending_1jjrv_13 {
+  background-color: var(--color--blue-500);
+}
+._changesRequested_1jjrv_17 {
+  background-color: var(--color--yellow-500);
+}
+._approved_1jjrv_21 {
+  background-color: var(--color--green-500);
+}
+._closed_1jjrv_25 {
+  background-color: var(--color--neutral-500);
+}._card_vwrpj_1 {
+  cursor: pointer;
+  padding: var(--spacing--xs);
+  align-items: stretch;
+  border: var(--border-width) solid var(--border-color);
+}
+._card_vwrpj_1:hover:not(._selected_vwrpj_8) {
+  background-color: var(--background--hover);
+  border-color: transparent;
+}
+._selected_vwrpj_8 {
+  background-color: var(--background--active);
+  border-color: transparent;
+}
+._card_vwrpj_1:focus-visible {
+  border-color: var(--focus--border-color);
+}
+._cardContent_vwrpj_22 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+  width: 100%;
+}
+._cardHeader_vwrpj_31 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+  width: 100%;
+  min-width: 0;
+}
+._cardTitle_vwrpj_40 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: var(--font-size--sm);
+}
+._assistantTitle_vwrpj_48 {
+  flex: 1;
+}
+._assistantAvatar_vwrpj_52 {
+  flex-shrink: 0;
+}
+._meta_vwrpj_56 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  width: 100%;
+  min-width: 0;
+}
+._workflowBadge_vwrpj_65 {
+  flex: 0 1 auto;
+  min-width: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  color: var(--color--text);
+}
+._workflowBadge_vwrpj_65 > span {
+  max-width: 100%;
+}
+._metaActions_vwrpj_77 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+._time_vwrpj_85 {
+  white-space: nowrap;
+}
+._statusDot_vwrpj_89 {
+  /* The tooltip trigger is not a flex container, so the dot sets its own box. */
+  display: block;
+  flex-shrink: 0;
+  width: var(--font-size--3xs);
+  height: var(--font-size--3xs);
+  border-radius: 50%;
+}
+._fixReady_vwrpj_98 {
+  background-color: var(--color--blue-500);
+}
+._needsAttention_vwrpj_102 {
+  background-color: var(--color--yellow-500);
+}
+._closed_vwrpj_106 {
+  background-color: var(--color--neutral-500);
+}
+._open_vwrpj_110 {
+  background-color: var(--color--blue-500);
+}
+._changes_requested_vwrpj_114 {
+  background-color: var(--color--yellow-500);
+}
+._merged_vwrpj_118 {
+  background-color: var(--color--green-500);
+}._section_4s8j7_1,
+._group_4s8j7_2 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._sectionHeader_4s8j7_9 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  width: 100%;
+  padding: var(--spacing--3xs) var(--spacing--2xs);
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+._sectionHeader_4s8j7_9:hover {
+  background-color: var(--background--active);
+}
+._sectionHeader_4s8j7_9:focus-visible {
+  outline: var(--border-width) solid var(--focus--border-color);
+}
+._chevron_4s8j7_30 {
+  transition: transform var(--duration--snappy) ease;
+  color: var(--color--text--tint-1);
+}
+._chevronCollapsed_4s8j7_35 {
+  transform: rotate(-90deg);
+}
+._notice_4s8j7_39 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+  padding: 0 var(--spacing--2xs);
+}
+._loadMore_4s8j7_47 {
+  align-self: center;
+}
+._loadingMore_4s8j7_51 {
+  padding: var(--spacing--sm);
+}._sidebar_1szp8_1 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border-right: var(--border-width) solid var(--border-color);
+}
+._title_1szp8_10 {
+  display: flex;
+  align-items: center;
+  min-height: var(--spacing--2xl);
+  padding: 0 var(--spacing--md) var(--spacing--sm) 0;
+}
+._header_1szp8_17 {
+  display: flex;
+  align-items: flex-end;
+  margin: 0 var(--spacing--md) var(--spacing--sm) 0;
+  /* The divider follows the bottom of the tabs, so the tab badges can change their height. */
+  border-bottom: var(--border);
+}
+._header_1szp8_17 > .n8n-tabs {
+  /* The active-tab indicator covers the divider, as in the detail tab bars. */
+  margin-bottom: calc(-1 * var(--border-width));
+}
+._list_1szp8_29 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  min-width: 0;
+  overflow-y: auto;
+  padding: 0 var(--spacing--md) var(--spacing--md) 0;
+}
+._sectionError_1szp8_39 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+  padding: 0 var(--spacing--2xs);
+}
+._sentinel_1szp8_47 {
+  height: var(--border-width);
+}
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+._avatar_70nmw_10 {
+  flex-shrink: 0;
+  margin-block-start: calc((var(--review-activity--line-height) - var(--review-activity--avatar-size)) / 2);
+}
+
+/* Sized and centred exactly like the avatar, so the two columns cannot drift apart. */
+._deletedActor_70nmw_16 {
+  flex-shrink: 0;
+  margin-block-start: calc((var(--review-activity--line-height) - var(--review-activity--avatar-size)) / 2);
+  display: flex;
+  width: var(--review-activity--avatar-size);
+  height: var(--review-activity--avatar-size);
+  align-items: center;
+  justify-content: center;
+}
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+/* A comment is prose, so it gets the same card as a decision that carries a note. */
+._entry_rdsw0_11 {
+  margin-inline: calc(-1 * var(--spacing--sm));
+  padding: var(--spacing--xs) calc(var(--spacing--sm) - var(--border-width, 1px));
+  border: var(--border);
+  border-radius: var(--radius--2xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._message_rdsw0_21 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+}
+._content_rdsw0_27 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+}
+._header_rdsw0_34 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  flex-wrap: wrap;
+}
+._line_rdsw0_41 {
+  line-height: var(--review-activity--line-height);
+}
+._timeStamp_rdsw0_45 {
+  padding-left: var(--spacing--4xs);
+}
+._body_rdsw0_49 {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+._deleted_rdsw0_54 {
+  font-style: italic;
+}
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+._entry_ls3mo_10 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+}
+._icon_ls3mo_16 {
+  flex-shrink: 0;
+  margin-block-start: calc((var(--review-activity--line-height) - var(--review-activity--avatar-size)) / 2);
+  display: flex;
+  width: var(--review-activity--avatar-size);
+  height: var(--review-activity--avatar-size);
+  align-items: center;
+  justify-content: center;
+}
+._line_ls3mo_26 {
+  line-height: var(--review-activity--line-height);
+}._icon_1w4u3_1 {
+  margin-left: var(--spacing--4xs);
+  margin-right: var(--spacing--4xs);
+  /* Inline with the sentence; the offset optically centres the icon on the text. */
+  vertical-align: -0.15em;
+}
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+._entry_ov45x_10 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+}
+._systemIcon_ov45x_16 {
+  flex-shrink: 0;
+  margin-block-start: calc((var(--review-activity--line-height) - var(--review-activity--avatar-size)) / 2);
+  display: flex;
+  width: var(--review-activity--avatar-size);
+  height: var(--review-activity--avatar-size);
+  align-items: center;
+  justify-content: center;
+}
+._content_ov45x_26 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+}
+
+/* The separator carries its own wider spacing. */
+._headline_ov45x_34 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  flex-wrap: wrap;
+}
+._separator_ov45x_41 {
+  margin-inline: var(--spacing--3xs);
+  color: var(--text-color--disabled);
+}
+._unknownWorkflow_ov45x_46 {
+  font-style: italic;
+}
+._timeStamp_ov45x_50 {
+  padding-left: var(--spacing--4xs);
+}
+
+/* A decision that carries a note sits in a card, as a comment always does. */
+._boxed_ov45x_55 {
+  margin-inline: calc(-1 * var(--spacing--sm));
+  padding: var(--spacing--xs) calc(var(--spacing--sm) - var(--border-width, 1px));
+  border: var(--border);
+  border-radius: var(--radius--2xs);
+}
+
+/* line up the callout's edges line up with the comment cards */
+._closedCallout_ov45x_63 {
+  margin-inline: calc(-1 * var(--spacing--sm));
+}
+._closedCalloutContent_ov45x_67 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}
+
+/* The same line the avatar beside it is centred on, so the two cannot drift apart. */
+._line_ov45x_74 {
+  line-height: var(--review-activity--line-height);
+}
+._body_ov45x_78 {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_klsxi_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_klsxi_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_klsxi_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_klsxi_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_klsxi_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_klsxi_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_klsxi_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_klsxi_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_klsxi_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_klsxi_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_klsxi_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_klsxi_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_klsxi_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_klsxi_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_klsxi_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_klsxi_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_klsxi_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_klsxi_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_klsxi_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_klsxi_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_klsxi_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_klsxi_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_klsxi_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_klsxi_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_klsxi_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_klsxi_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_klsxi_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_klsxi_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._feed_klsxi_450 {
+  /* Set here so the list, its rail and the composer share them. */
+  --review-activity--gap: var(--spacing--md);
+  /* Every entry leads with an `xxsmall` avatar (`N8nAvatar/avatarSizes.ts`), and a boxed
+  	entry's negative margin and padding cancel out, so all avatars share this column. The
+  	rail below is centred on it. */
+  --review-activity--avatar-size: 16px;
+  --review-activity--line-height: 20px;
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--spacing--5xs) var(--spacing--sm);
+}
+
+/* Same inset the list gives its entries, so a card here starts on the avatar column. */
+._header_klsxi_464 {
+  padding-inline: var(--spacing--sm);
+  padding-bottom: var(--spacing--sm);
+}
+._list_klsxi_469 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--review-activity--gap);
+  /* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
+  padding-inline: var(--spacing--sm);
+}
+._item_klsxi_477 {
+  position: relative;
+}
+
+/* Keeps focused entry links above the composer. Not scroll padding on the feed: that also
+	scrolls the feed for the caret while typing. */
+._list_klsxi_469 * {
+  scroll-margin-bottom: var(--review-activity--composer-height, 0);
+}
+._itemEntering_klsxi_487 {
+  --animation--fade-in-up--translate: var(--spacing--2xs);
+  --animation--fade-in-up--easing: var(--easing--ease-out-quint);
+  animation: _fadeInUp_klsxi_1 var(--animation--fade-in-up--duration, var(--duration--snappy)) var(--animation--fade-in-up--easing, var(--easing--ease-out));
+}
+@media (prefers-reduced-motion: reduce) {
+._itemEntering_klsxi_487 {
+    animation: none;
+}
+}
+
+/* Threads the entries into one timeline. Drawn in the gap above each entry rather than
+	inside it, because the line belongs to the space between two entries and only the list
+	knows that gap. The first entry has nothing above it to join. */
+._item_klsxi_477:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  /* Floats clear of both neighbours instead of butting into them, as the design does. The
+  	row is taller than its avatar, so the same inset reads as a wider gap at the top. */
+  bottom: calc(100% + var(--spacing--5xs));
+  height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
+  left: calc(var(--review-activity--avatar-size) / 2);
+  border-left: var(--border);
+}
+
+/* The composer holds the bottom space, so it sticks flush to the edge. */
+._feedWithComposer_klsxi_513 {
+  padding-block-end: 0;
+}
+
+/* Sticks to the bottom when the entries overflow. The background hides entries under it. */
+._composer_klsxi_518 {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  padding-block: var(--review-activity--gap) var(--spacing--sm);
+  /* Room for the input's focus ring, which the scroll container would clip. */
+  padding-inline: var(--focus--border-width);
+  background-color: var(--color--background--light-2);
+}
+._errorRow_klsxi_529 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--md);
+  padding-block: var(--spacing--xs);
+}
+._sentinel_klsxi_536 {
+  height: var(--spacing--4xs);
+  flex-shrink: 0;
+}._callout_19xza_1 {
+  max-width: var(--review-callout--max-width, 34rem);
+  margin: var(--spacing--xs);
+}
+._versionBadge_19xza_6 {
+  /* Keep the existing Reviews badge sizes when the root font changes. */
+  --review-version-badge--spacing: 12px;
+  --review-version-badge--radius: 4px;
+  --review-version-badge--height: 30px;
+  --review-version-badge--gap: 8px;
+  position: absolute;
+  top: var(--review-version-badge--spacing);
+  left: var(--review-version-badge--spacing);
+  z-index: 1;
+  border-radius: var(--review-version-badge--radius);
+  border: var(--border-width) solid var(--color--foreground--tint-1);
+  background: var(--color--foreground--tint-2);
+  display: flex;
+  height: var(--review-version-badge--height);
+  padding: 0 var(--review-version-badge--spacing);
+  align-items: center;
+  gap: var(--review-version-badge--gap);
+  align-self: stretch;
+}
+._statusDot_19xza_27 {
+  height: var(--spacing--2xs);
+  width: var(--spacing--2xs);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+._statusDotPublished_19xza_35 {
+  background-color: var(--color--mint-600);
+}
+._statusDotInReview_19xza_39 {
+  background-color: var(--color--yellow-500);
+}
+._statusDotSuperseded_19xza_43 {
+  background-color: var(--color--text--tint-1);
+}
+._diff_19xza_47 {
+  flex: 1;
+  min-height: 0;
+}._list_16lzz_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  /* A definite height, so the diff canvas can size itself with percentages. */
+  height: 100%;
+}
+._item_16lzz_9 {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border: var(--border);
+  border-radius: var(--radius--2xs);
+  overflow: hidden;
+  /* Only a diff takes the free height. A callout keeps its natural size. */
+}
+._item_16lzz_9[data-state=open]:has([data-review-diff]) {
+  flex: 1 0 auto;
+  min-height: var(--review-diff--min-height, 28rem);
+}
+._header_16lzz_23 {
+  margin: 0;
+}
+._trigger_16lzz_27 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  width: 100%;
+  padding: var(--spacing--xs) var(--spacing--sm);
+  border: none;
+  background: var(--color--background--light-3);
+  text-align: left;
+  cursor: pointer;
+}
+._trigger_16lzz_27:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  outline-offset: calc(-1 * var(--focus--border-width));
+}
+._trigger_16lzz_27[data-state=open] {
+  border-bottom: var(--border);
+}
+._chevron_16lzz_46 {
+  flex-shrink: 0;
+  color: var(--color--text--tint-1);
+  transition: transform 0.15s ease;
+}
+[data-state=closed] > ._chevron_16lzz_46 {
+  transform: rotate(-90deg);
+}
+._name_16lzz_55,
+._version_16lzz_56 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._version_16lzz_56 {
+  flex-shrink: 0;
+  max-width: 40%;
+}
+._content_16lzz_67 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}._composer_1g329_1 {
+  display: block;
+}
+._srOnly_1g329_5 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}._popover_v2y1m_1 {
+  padding: var(--spacing--xs);
+}
+._content_v2y1m_5 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._input_v2y1m_11 textarea {
+  max-height: 50dvh;
+}
+._actions_v2y1m_15 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}._metadata_ferqb_1 {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  display: flex;
+  flex: 0 0 min(18rem, 30%);
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  min-width: 14rem;
+  padding-top: var(--spacing--5xs);
+}
+._card_ferqb_13 {
+  --card--padding: var(--spacing--xs);
+  --n8n--card-body--gap: var(--spacing--2xs);
+  align-items: stretch;
+  border-color: var(--border-color);
+  background-color: transparent;
+}
+._card_ferqb_13 > div {
+  gap: var(--spacing--4xs);
+}
+._status_ferqb_24 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._section_ferqb_30,
+._workflows_ferqb_31 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._statusSeparator_ferqb_38 {
+  margin-inline: var(--spacing--3xs);
+  color: var(--text-color--subtler);
+}
+._peopleCard_ferqb_43 {
+  --n8n--card-body--gap: var(--spacing--sm);
+}
+._person_ferqb_47 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+  /* Names wrap at spaces; an email breaks mid-word only when it does not fit. */
+  overflow-wrap: anywhere;
+}
+._workflow_ferqb_31 {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+._workflow_ferqb_31 > span,
+._workflow_ferqb_31 > span > span {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  min-width: 0;
+}
+._workflowName_ferqb_69 {
+  flex: 1;
+  min-width: 0;
+  /* A name with no spaces still has to break somewhere. */
+  overflow-wrap: anywhere;
+}
+._workflowIcon_ferqb_76 {
+  flex-shrink: 0;
+  margin-right: var(--spacing--4xs);
+  /* Optically centre the icon on the first line of text. */
+  margin-top: calc((1lh - 1em) / 2);
+}
+@media (max-width: 75rem) {
+._metadata_ferqb_1 {
+    flex-basis: 15rem;
+    min-width: 12rem;
+}
+}
+@container review-detail (max-width: 44rem) {
+._metadata_ferqb_1 {
+    flex-basis: auto;
+    width: 100%;
+    min-width: 0;
+}
+}
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+._container_1utw9_10 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  container-name: review-detail;
+  container-type: inline-size;
+}
+._tabRow_1utw9_19 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  margin-right: var(--spacing--md);
+  /* Holds the active-tab indicator, so the border sits under it. */
+  padding-bottom: var(--review-tab-bar--indicator-overhang);
+  border-bottom: var(--border);
+}
+._tabRow_1utw9_19 > .n8n-tabs {
+  transform: translateY(var(--spacing--sm));
+}
+._detailBody_1utw9_33 {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing--sm);
+  min-height: 0;
+  overflow: auto;
+  /* Inside the scroll area, so the content keeps clear of the scrollbar. */
+  padding: var(--spacing--sm) var(--spacing--md) 0 0;
+}
+._panel_1utw9_43 {
+  flex: 1;
+  min-width: 0;
+}
+._activityPanel_1utw9_48 {
+  flex: 1;
+  min-width: 0;
+  max-width: var(--review-activity--max-width, 45rem);
+  margin-inline: auto;
+}
+._descriptionCard_1utw9_55 {
+  margin-inline: calc(-1 * var(--spacing--sm));
+  padding: var(--spacing--xs) calc(var(--spacing--sm) - var(--border-width, 1px));
+  border: var(--border);
+  border-radius: var(--radius--2xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+._callout_1utw9_65 {
+  max-width: var(--review-callout--max-width, 34rem);
+}
+
+/* line up the summary's edges with the entry cards above it. */
+._closedCallout_1utw9_70 {
+  margin-inline: calc(-1 * var(--spacing--sm));
+}
+._closedCalloutContent_1utw9_74 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}
+
+/* `pre-wrap` alone does not break a pasted URL, which is the one thing that could scroll the
+	card sideways. */
+._description_1utw9_55 {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+._decisionActions_1utw9_87 {
+  flex-shrink: 0;
+}
+@container review-detail (max-width: 44rem) {
+._detailBody_1utw9_33 {
+    flex-direction: column;
+}
+  /* Auto margins would stop the stacked column from stretching. */
+._activityPanel_1utw9_48 {
+    margin-inline: 0;
+}
+}._detail_6qj8w_1 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+._columnTitle_6qj8w_8 {
+  display: flex;
+  align-items: center;
+  min-height: var(--spacing--2xl);
+  padding-bottom: var(--spacing--sm);
+}
+._reviewTitle_6qj8w_15 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._mainBody_6qj8w_22 {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+._detailSkeleton_6qj8w_28 {
+  max-width: var(--review-activity--max-width);
+}
+._emptyStateWrapper_6qj8w_32 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+._emptyStateWrapper_6qj8w_32 ._emptyState_6qj8w_32 {
+  border: none;
+  padding: 0;
+}._detail_ax3lo_1 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  min-height: 0;
+}
+._tabRow_ax3lo_9 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  /* Holds the active-tab indicator, so the border sits under it. */
+  padding-bottom: var(--review-tab-bar--indicator-overhang);
+  border-bottom: var(--border);
+}
+._tabRow_ax3lo_9 > .n8n-tabs {
+  transform: translateY(var(--spacing--sm));
+}
+._changesArea_ax3lo_22 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  /* The tab row border already separates the changes from the header. */
+  margin-top: calc(-1 * var(--spacing--md));
+}
+._newCommits_ax3lo_31 {
+  /* The same space as the warnings of the changes. */
+  margin-top: var(--spacing--sm);
+}
+._changes_ax3lo_22 {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The right gutter of workflow reviews, so Approve sits where their Review button does. */
+._gutter_ax3lo_42 {
+  margin-right: var(--spacing--md);
+}
+._header_ax3lo_46 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._titleRow_ax3lo_52 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  /* Matches the title row of workflow reviews, so both headings sit at the same height. */
+  min-height: var(--spacing--xl);
+}
+._title_ax3lo_52 {
+  flex: 1;
+  min-width: 0;
+  /* The font of the heading, so the tag lines up with the title text. */
+  font-size: var(--font-size--xl);
+  line-height: var(--line-height--sm);
+}
+._titleText_ax3lo_69 {
+  display: inline;
+}
+._stateBadge_ax3lo_73 {
+  margin-left: var(--spacing--xs);
+  vertical-align: middle;
+}
+._approve_ax3lo_78 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._gitlabLink_ax3lo_85 {
+  /* A standalone external link takes the font size around it. The text next to it is smaller. */
+  font-size: var(--font-size--sm);
+  white-space: nowrap;
+}
+._meta_ax3lo_91 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs) var(--spacing--lg);
+}
+._metaItem_ax3lo_97 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+._activity_1sa11_10 {
+  --review-activity--avatar-size: var(--height--3xs);
+  --review-activity--line-height: var(--height--2xs);
+  --review-activity--gap: var(--spacing--md);
+  padding-bottom: var(--spacing--md);
+}
+._heading_1sa11_17 {
+  margin: 0;
+  padding: 0 var(--spacing--sm) var(--spacing--sm);
+}
+._entries_1sa11_22 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--review-activity--gap);
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--spacing--sm);
+}
+._entry_1sa11_31 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+  position: relative;
+}
+._entry_1sa11_31 > :first-child {
+  flex-shrink: 0;
+  margin-block-start: calc((var(--review-activity--line-height) - var(--review-activity--avatar-size)) / 2);
+}
+
+/* Join consecutive events through the space between their avatars. */
+._entry_1sa11_31:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + var(--spacing--5xs));
+  height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
+  left: calc(var(--review-activity--avatar-size) / 2);
+  border-left: var(--border);
+}
+._headline_1sa11_52 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  flex-wrap: wrap;
+  min-width: 0;
+  line-height: var(--review-activity--line-height);
+}
+._headline_1sa11_52 > .n8n-text {
+  line-height: inherit;
+}
+._separator_1sa11_64 {
+  margin-inline: var(--spacing--3xs);
+  color: var(--text-color--subtler);
+}._link_19ok3_1 {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+._link_19ok3_1:hover {
+  color: var(--text-color);
+}
+._link_19ok3_1:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_p7wsa_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_p7wsa_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_p7wsa_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_p7wsa_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_p7wsa_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_p7wsa_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_p7wsa_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_p7wsa_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_p7wsa_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_p7wsa_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_p7wsa_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_p7wsa_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_p7wsa_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_p7wsa_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_p7wsa_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_p7wsa_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_p7wsa_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_p7wsa_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_p7wsa_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_p7wsa_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_p7wsa_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_p7wsa_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_p7wsa_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_p7wsa_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_p7wsa_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_p7wsa_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_p7wsa_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_p7wsa_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._panes_p7wsa_450 {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* The tree and cards copy the promotion review, so both reviews of the inbox look the same. */
+._treePane_p7wsa_458 {
+  flex-shrink: 0;
+  min-height: 0;
+  /* Takes back the inset of the tree and its rows, so the row text lines up with the heading. */
+  margin-left: calc(-2 * var(--spacing--2xs));
+  border-right: var(--border);
+}
+._tree_p7wsa_458 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing--xs) var(--spacing--2xs);
+}
+._list_p7wsa_475 {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+._heading_p7wsa_481 {
+  display: flex;
+  align-items: center;
+  min-height: var(--height--sm);
+  padding: 0 var(--spacing--2xs);
+}
+._row_p7wsa_488 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-height: var(--height--md);
+  padding: 0 var(--spacing--2xs);
+  border-radius: var(--radius--3xs);
+}
+._row_p7wsa_488:not(._project_p7wsa_496):hover {
+  background-color: var(--background--hover);
+}
+._row_p7wsa_488._inspected_p7wsa_500,
+._row_p7wsa_488._inspected_p7wsa_500:hover {
+  background-color: var(--background--active);
+}
+._name_p7wsa_505 {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+  align-self: stretch;
+  padding-left: calc(var(--changes-tree--indent, 0) * var(--spacing--xs));
+}
+._select_p7wsa_515 {
+  padding-block: 0;
+  padding-right: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+._select_p7wsa_515:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  outline-offset: calc(-1 * var(--focus--border-width));
+}
+._icon_p7wsa_528 {
+  flex-shrink: 0;
+  color: var(--icon-color);
+}
+._text_p7wsa_533 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+}
+._label_p7wsa_540 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._meta_p7wsa_547 {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._cards_p7wsa_552 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing--sm) 0 var(--spacing--sm) var(--spacing--sm);
+  scroll-behavior: smooth;
+  scroll-padding-block-start: var(--spacing--sm);
+}
+@media (prefers-reduced-motion: reduce) {
+._cards_p7wsa_552 {
+    scroll-behavior: auto;
+}
+}
+._card_p7wsa_552 {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  border: var(--border);
+  border-radius: var(--radius--xs);
+  background-color: var(--background--surface);
+  overflow: hidden;
+}
+._card_p7wsa_552._inspected_p7wsa_500 {
+  border-color: var(--border-color--strong);
+}
+._header_p7wsa_584 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-height: var(--height--xl);
+  padding: 0 var(--spacing--sm);
+}
+[data-state=open] > ._header_p7wsa_584 {
+  border-bottom: var(--border);
+}
+._headingLevel_p7wsa_595 {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  margin: 0;
+}
+._trigger_p7wsa_603 {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._toggle_p7wsa_611 {
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+._toggle_p7wsa_611:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  outline-offset: calc(-1 * var(--focus--border-width));
+}
+._cardHeading_p7wsa_623 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._chevron_p7wsa_630 {
+  flex-shrink: 0;
+  color: var(--icon-color);
+  transition: transform var(--duration--snappy) var(--easing--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+._chevron_p7wsa_630 {
+    animation: none;
+    transition: none;
+}
+}
+[data-state=closed] > ._chevron_p7wsa_630 {
+  transform: rotate(-90deg);
+}
+._openLink_p7wsa_645 {
+  flex-shrink: 0;
+}
+._openLinkText_p7wsa_649 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._body_p7wsa_655 {
+  display: flex;
+  flex-direction: column;
+}
+._diff_p7wsa_660 {
+  height: max(28rem, 70vh);
+}
+._padded_p7wsa_664 {
+  padding: var(--spacing--xs) var(--spacing--sm);
+}
+._footer_p7wsa_668 {
+  padding: var(--spacing--2xs) var(--spacing--sm);
+  border-top: var(--border);
+}
+._single_p7wsa_673 {
+  /* No tree pane is on the left, so the card starts at the edge of the content. */
+  padding-left: 0;
+}
+._single_p7wsa_673 ._card_p7wsa_552,
+._single_p7wsa_673 ._body_p7wsa_655,
+._single_p7wsa_673 ._diff_p7wsa_660 {
+  flex: 1;
+  min-height: 0;
+}
+._single_p7wsa_673 ._diff_p7wsa_660 {
+  height: auto;
+}
+
+/* The detail breakpoint of SelfHealingResultContent. Container queries cannot use CSS variables. */
+@container assistant-detail (max-width: 44rem) {
+._treePane_p7wsa_458 {
+    display: none;
+}
+._cards_p7wsa_552 {
+    padding-inline-start: 0;
+}
+}._metadata_1s9tj_1 {
+  display: flex;
+  /* Match the prototype's metadata rail. The design system has no column-width token. */
+  flex: 0 0 min(18rem, 30%);
+  min-width: 14rem;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding-top: var(--spacing--5xs);
+  overflow: auto;
+}
+._card_1s9tj_12 {
+  --card--padding: var(--spacing--xs);
+  --n8n--card-body--gap: var(--spacing--2xs);
+  align-items: stretch;
+  border-color: var(--border-color);
+  background-color: transparent;
+  /* Match the title-to-value gap of the sections inside the card body. */
+}
+._card_1s9tj_12 > div {
+  gap: var(--spacing--2xs);
+}
+
+/* Match the status row of workflow reviews. */
+._status_1s9tj_25 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._statusDot_1s9tj_31 {
+  flex-shrink: 0;
+  width: var(--font-size--3xs);
+  height: var(--font-size--3xs);
+  border-radius: 50%;
+}
+._fixReady_1s9tj_38 {
+  background-color: var(--color--blue-500);
+}
+._needsAttention_1s9tj_42 {
+  background-color: var(--color--yellow-500);
+}
+._closed_1s9tj_46 {
+  background-color: var(--color--neutral-500);
+}
+._section_1s9tj_50 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+
+/* Each later group in a card gets the same space above its title. */
+._section_1s9tj_50 + ._section_1s9tj_50 {
+  margin-top: var(--spacing--2xs);
+}
+._person_1s9tj_62,
+._link_1s9tj_63 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._link_1s9tj_63 {
+  align-items: flex-start;
+  gap: var(--spacing--3xs);
+}
+
+/* The text link theme uses a lighter shade. Values in this rail use the regular text color. */
+._plainLink_1s9tj_76 ._link_1s9tj_63 {
+  color: var(--text-color);
+}
+._plainLink_1s9tj_76:hover,
+._plainLink_1s9tj_76:focus-visible {
+  text-decoration: underline;
+}
+._linkIcon_1s9tj_85 {
+  flex-shrink: 0;
+  /* Align the icon with the first line, as in the prototype. */
+  margin-top: calc((1lh - 1em) / 2);
+}
+._linkLabel_1s9tj_91 {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+._usage_1s9tj_96 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  margin: 0;
+}
+._measurement_1s9tj_103 {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+}
+._measurement_1s9tj_103 dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Match the prototype's sidebar widths. There are no column-width tokens. */
+@media (max-width: 75rem) {
+._metadata_1s9tj_1 {
+    flex-basis: 15rem;
+    min-width: 12rem;
+}
+}
+/* Match the prototype's detail breakpoint. Container queries cannot use CSS variables. */
+@container assistant-detail (max-width: 44rem) {
+._metadata_1s9tj_1 {
+    flex: 0 0 auto;
+    min-width: 0;
+    overflow: visible;
+}
+}._detail_g7x4i_1,
+._container_g7x4i_2 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+._container_g7x4i_2 {
+  container-name: assistant-detail;
+  container-type: inline-size;
+}
+._columnTitle_g7x4i_15 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-height: var(--spacing--2xl);
+  padding-bottom: var(--spacing--sm);
+  overflow-wrap: anywhere;
+}
+._statusDot_g7x4i_24 {
+  flex-shrink: 0;
+  width: var(--font-size--3xs);
+  height: var(--font-size--3xs);
+  border-radius: 50%;
+}
+._fixReady_g7x4i_31 {
+  background-color: var(--color--blue-500);
+}
+._needsAttention_g7x4i_35 {
+  background-color: var(--color--yellow-500);
+}
+._closed_g7x4i_39 {
+  background-color: var(--color--neutral-500);
+}
+
+/* Match the tab row of workflow reviews. */
+._tabRow_g7x4i_44 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  padding-bottom: var(--review-tab-bar--indicator-overhang);
+  border-bottom: var(--border);
+}
+._tabRow_g7x4i_44 > .n8n-tabs {
+  transform: translateY(var(--spacing--sm));
+}
+._actions_g7x4i_56 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._menuNotes_g7x4i_63 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  max-width: 16rem;
+  padding: 0 var(--spacing--xs) var(--spacing--xs);
+}
+._detailBody_g7x4i_71 {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing--sm);
+  min-height: 0;
+  overflow: auto;
+  padding-top: var(--spacing--sm);
+}
+._flush_g7x4i_80 {
+  padding-top: 0;
+  /* The workflow tree takes back its inset to the left of the column. */
+  overflow: visible;
+}
+._flush_g7x4i_80 ._changesNotice_g7x4i_85 {
+  margin-top: var(--spacing--sm);
+}
+._activityPanel_g7x4i_89 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  min-width: 0;
+  max-width: var(--review-activity--max-width, 45rem);
+  margin-inline-end: auto;
+}
+._reportCard_g7x4i_99 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs) var(--spacing--sm);
+  border: var(--border);
+  border-radius: var(--radius--2xs);
+}
+
+/* The reset gives strong the medium weight, which looks like the body text. */
+._noticeTitle_g7x4i_109 {
+  display: block;
+  font-weight: var(--font-weight--bold);
+}
+
+/* The global Markdown rules size paragraphs from this root. */
+._report_g7x4i_99.n8n-markdown {
+  --markdown--spacing: var(--spacing--4xs);
+  --n8n-markdown--font-size--base: var(--font-size--sm);
+  overflow-wrap: anywhere;
+  min-width: 0;
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--xl);
+}
+._report_g7x4i_99.n8n-markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: calc(var(--markdown--spacing) * 2);
+  font-size: var(--font-size--sm);
+  line-height: inherit;
+}
+._report_g7x4i_99.n8n-markdown :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+._changesPanel_g7x4i_132 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Match the detail breakpoint of workflow reviews. Container queries cannot use CSS variables. */
+@container assistant-detail (max-width: 44rem) {
+._tabRow_g7x4i_44 {
+    flex-wrap: wrap;
+}
+  /* A full row above the tabs keeps the active-tab indicator on the row border. */
+._actions_g7x4i_56 {
+    order: -1;
+    width: 100%;
+    justify-content: flex-end;
+}
+._detailBody_g7x4i_71 {
+    flex-direction: column;
+}
+._activityPanel_g7x4i_89 {
+    flex: 0 0 auto;
+    max-width: none;
+    margin-inline-end: 0;
+}
+}._detail_10r1m_1 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+._columnTitle_10r1m_8 {
+  min-height: var(--spacing--2xl);
+  padding-bottom: var(--spacing--sm);
+}
+._error_10r1m_13 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--sm);
+  height: 100%;
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+._layout_v3l1d_113 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding-inline: var(--spacing--md);
+  box-sizing: border-box;
+}
+._content_v3l1d_122 {
+  --review-callout--max-width: 34rem;
+  --review-activity--max-width: 45rem;
+  /* Keep the existing Reviews tab alignment at every root font size. */
+  --review-tab-bar--indicator-overhang: 15px;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+._sidebarResizer_v3l1d_134 {
+  flex: 0 0 auto;
+}
+._main_v3l1d_138 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 0 var(--spacing--md) var(--spacing--md);
+}
+._sidebar_v3l1d_134,
+._main_v3l1d_138 {
+  padding-top: var(--spacing--lg);
+}
+@media screen and (max-width: 991px) {
+._sidebar_v3l1d_134,
+  ._main_v3l1d_138 {
+    padding-top: var(--spacing--sm);
+}
+}
+._columnTitle_v3l1d_159 {
+  min-height: var(--spacing--2xl);
+  padding-bottom: var(--spacing--sm);
+}
+._mainBody_v3l1d_164 {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}

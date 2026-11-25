@@ -1,0 +1,35 @@
+._form_uy89n_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._footer_uy89n_7 {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._optionContent_uy89n_15 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._iconEmoji_uy89n_21 {
+  font-size: var(--font-size--sm);
+  line-height: 1;
+}
+._globalOption_uy89n_26 {
+  position: relative;
+  margin-bottom: var(--spacing--sm);
+  overflow: visible;
+}
+._globalOption_uy89n_26::after {
+  content: "";
+  position: absolute;
+  bottom: calc(var(--spacing--sm) / -2);
+  left: var(--spacing--xs);
+  right: var(--spacing--xs);
+  height: 1px;
+  background-color: var(--color--foreground);
+}

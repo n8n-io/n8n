@@ -1,0 +1,15 @@
+._row_3wpv8_1 {
+  margin-bottom: 10px;
+}
+._container_3wpv8_5 h1 {
+  max-width: 90%;
+}
+._description_3wpv8_9 {
+  font-size: var(--font-size--sm);
+  margin: var(--spacing--sm) 0;
+}
+._footer_3wpv8_14 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  justify-content: flex-end;
+}

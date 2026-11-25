@@ -1,0 +1,9 @@
+._actionsGroup_1ddx8_1 {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  padding-right: var(--spacing--sm);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}

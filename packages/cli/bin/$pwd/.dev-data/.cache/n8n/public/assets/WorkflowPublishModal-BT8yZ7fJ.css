@@ -1,0 +1,22 @@
+._content_5ppvg_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+}
+._actions_5ppvg_7 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--xs);
+}
+._nodeLinks_5ppvg_13 {
+  list-style-type: disc;
+  margin-top: var(--spacing--4xs);
+  padding-left: var(--spacing--sm);
+}
+._nodeLinks_5ppvg_13 li {
+  margin-bottom: var(--spacing--4xs);
+}
+._nodeLinks_5ppvg_13 a span {
+  text-decoration: underline;
+  color: var(--callout--color--text--danger);
+}

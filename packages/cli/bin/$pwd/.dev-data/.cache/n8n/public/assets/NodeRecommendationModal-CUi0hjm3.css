@@ -1,0 +1,76 @@
+._nodes_1yv6a_1 {
+  display: flex;
+  flex-direction: row;
+}
+._nodeIcon_1yv6a_6 {
+  padding: var(--spacing--2xs);
+  background-color: var(--dialog--color--background);
+  border-radius: var(--radius--lg);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  margin-right: var(--spacing--3xs);
+}
+._suggestion_1yv6a_17 {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 200px;
+}
+._actions_1yv6a_24 {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+._user_1yv6a_30 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+._avatar_1yv6a_36 {
+  width: 24px;
+  height: 24px;
+  border-radius: 100%;
+  margin-right: var(--spacing--2xs);
+}._tutorial_1bouj_1 {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing--sm);
+}
+._video_1bouj_7 {
+  border-radius: var(--radius);
+}._header_1kjeh_1 {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing--sm);
+}
+._tab_1kjeh_6 {
+  padding: var(--spacing--3xs);
+}
+._suggestions_1kjeh_10 {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing--md);
+  overflow-x: auto;
+  min-height: 182px;
+}
+._title_1kjeh_18 {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+._videos_1kjeh_25 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  overflow-x: auto;
+}
+._loading_1kjeh_32 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--lg);
+  color: var(--color--text--tint-1);
+}

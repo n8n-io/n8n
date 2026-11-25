@@ -1,0 +1,178 @@
+._link_1uojm_1 {
+  display: inline-block;
+  margin-top: var(--spacing--xs);
+}._modeCell_13m38_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  /* Normalize icon wrappers so SVG baseline doesn't shift relative to tooltip spans */
+}
+._modeCell_13m38_1 :deep(svg),
+._modeCell_13m38_1 :deep(span) {
+  display: inline-flex;
+  align-items: center;
+}
+._status_13m38_13 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+tr._dangerBg_13m38_19 {
+  background-color: rgba(215, 56, 58, 0.1);
+}
+._workflowName_13m38_23 {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  max-width: 100%;
+  color: var(--color--text--shade-1);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--lg);
+  max-width: 450px;
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+._execListWrapper_9tell_113 {
+  padding: var(--spacing--lg) var(--spacing--2xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  max-width: var(--content-container--width);
+}
+@media screen and (max-width: 991px) {
+._execListWrapper_9tell_113 {
+    padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+}
+._execList_9tell_113 {
+  flex-shrink: 1; /* Allows shrinking when needed */
+  max-height: 100%; /* Prevents overflowing the parent */
+  overflow: auto; /* Scroll only when needed */
+}
+._execListHeaderControls_9tell_133 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: var(--spacing--sm);
+}
+._execTable_9tell_140 {
+  height: 100%;
+  flex: 0 1 auto;
+}
+._execHeaderRight_9tell_145 {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: var(--spacing--sm);
+}

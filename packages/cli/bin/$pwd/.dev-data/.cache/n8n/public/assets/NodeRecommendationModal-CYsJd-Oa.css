@@ -1,0 +1,85 @@
+._nodes_1ibco_1 {
+  display: flex;
+  flex-direction: row;
+}
+._nodeIcon_1ibco_6 {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--spacing--3xs);
+}
+._remainingNodes_1ibco_15 {
+  color: var(--color--text);
+  border-color: var(--color--background--light-2);
+}
+._description_1ibco_20 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--line-height--md);
+  color: var(--color--text--tint-1);
+}
+._suggestion_1ibco_30 {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 200px;
+  background-color: var(--color--background--light-2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+._suggestion_1ibco_30:hover {
+  background-color: var(--color--background);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+._content_1ibco_45 {
+  flex: 1;
+}._modal_jqnsd_1 {
+  background-color: var(--color--background--light-3);
+}
+._header_jqnsd_5 {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing--sm);
+}
+._templates_jqnsd_10 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing--md);
+  padding: var(--spacing--sm) 0;
+}
+._loading_jqnsd_17 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--lg);
+  color: var(--color--text--tint-1);
+}
+._footerCard_jqnsd_26 {
+  border: 1px solid var(--color--foreground);
+  background-color: var(--color--background--light-2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+._footerCard_jqnsd_26:hover {
+  border-color: var(--color--primary);
+  color: var(--color--primary);
+}
+._footerContent_jqnsd_37 {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  width: 100%;
+}
+._footerContent_jqnsd_37 ._footerText_jqnsd_43 {
+  display: flex;
+  flex-direction: column;
+}
+._footerIcon_jqnsd_48 {
+  color: var(--color--text--tint-1);
+}

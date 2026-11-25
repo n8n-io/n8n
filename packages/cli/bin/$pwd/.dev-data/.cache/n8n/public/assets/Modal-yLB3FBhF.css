@@ -1,0 +1,44 @@
+.dialog-wrapper.el-dialog {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--dialog--max-width, 80%);
+  min-width: var(--dialog--min-width, 420px);
+  height: var(--dialog--height);
+  min-height: var(--dialog--min-height);
+  max-height: var(--dialog--max-height);
+}
+.dialog-wrapper .el-dialog__body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.dialog-wrapper .modal-content {
+  overflow: hidden;
+  overflow-y: auto;
+  flex-grow: 1;
+  padding-inline: var(--spacing--4xs);
+  margin-inline: calc(var(--spacing--4xs) * -1);
+}
+.dialog-wrapper.scrollable .modal-content {
+  overflow-y: auto;
+}._center_44wp5_1 > div {
+  justify-content: center;
+}
+._loader_44wp5_5 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color--primary--tint-1);
+  font-size: 30px;
+  height: 80%;
+}
+._centerTitle_44wp5_14 {
+  text-align: center;
+}
+._subtitle_44wp5_18 {
+  margin-top: var(--spacing--2xs);
+}
+._footer_44wp5_22 {
+  margin-top: var(--spacing--lg);
+}

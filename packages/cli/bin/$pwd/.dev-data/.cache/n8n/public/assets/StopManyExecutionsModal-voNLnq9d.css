@@ -1,0 +1,21 @@
+._form_qw3uu_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._footer_qw3uu_7 {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._container_qw3uu_15 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding-left: var(--spacing--2xs);
+}
+._vertPadding_qw3uu_22 {
+  padding-bottom: var(--spacing--xs);
+}

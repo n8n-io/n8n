@@ -1,0 +1,594 @@
+._counts_pkrbl_1 {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--spacing--4xs);
+  font-size: var(--font-size--3xs);
+}
+._removed_pkrbl_8 {
+  color: var(--diff--color--deleted);
+}
+._added_pkrbl_12 {
+  color: var(--diff--color--new);
+}._nav_9o6h4_1 {
+  width: 240px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-right: var(--border-width) var(--border-style) var(--color--foreground);
+  padding: var(--spacing--sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  background: var(--color--background--light);
+}
+._section_9o6h4_13 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+}
+._sectionHeader_9o6h4_19 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+}
+._item_9o6h4_26 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--border-radius-base);
+  color: var(--color--text);
+  padding: var(--spacing--2xs);
+  text-align: left;
+  cursor: pointer;
+}
+._item_9o6h4_26:hover {
+  background: var(--background--hover);
+}
+._icon_9o6h4_44 {
+  flex-shrink: 0;
+}
+._referenceRow_9o6h4_48 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--border-radius-base);
+}
+._referenceRow_9o6h4_48 ._removeReference_9o6h4_56 {
+  opacity: 0;
+}
+._referenceRow_9o6h4_48:hover, ._referenceRow_9o6h4_48:focus-within {
+  background: var(--background--hover);
+}
+._referenceRow_9o6h4_48:hover ._removeReference_9o6h4_56, ._referenceRow_9o6h4_48:focus-within ._removeReference_9o6h4_56 {
+  opacity: 1;
+}
+._reference_9o6h4_48 {
+  flex: 1;
+  padding-left: var(--spacing--xs);
+}
+._reference_9o6h4_48:hover {
+  background: transparent;
+}
+._sectionTitle_9o6h4_74 {
+  padding-inline: var(--spacing--2xs);
+}
+._addReference_9o6h4_78 {
+  width: var(--spacing--lg);
+  height: var(--spacing--lg);
+}
+._removeReference_9o6h4_56 {
+  width: var(--spacing--lg);
+  height: var(--spacing--lg);
+  margin-left: auto;
+  margin-right: var(--spacing--2xs);
+  flex-shrink: 0;
+}
+._invalidIcon_9o6h4_91 {
+  color: var(--color--danger);
+}
+
+/* A translucent overlay, so the selected file stands out on a grey or a white list. A hover
+   keeps it, so the selected file does not go lighter under the pointer. */
+._selected_9o6h4_97,
+._selected_9o6h4_97:hover,
+._selected_9o6h4_97:focus-within {
+  background: var(--background--active);
+}
+._path_9o6h4_103 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+._nav_9o6h4_1 {
+    width: 100%;
+    max-height: calc(var(--height--5xl) * 2);
+    border-right: 0;
+    border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+    overflow-y: auto;
+}
+}
+._count_9o6h4_119 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  margin-left: auto;
+}
+._fileAdded_9o6h4_126 {
+  color: var(--diff--color--new);
+}
+._fileDeleted_9o6h4_130 {
+  color: var(--diff--color--deleted);
+}
+._editor_1su2z_2 {
+	container: skill-editor / inline-size;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+._body_1su2z_10 {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	scrollbar-gutter: stable;
+}
+._footer_1su2z_19 {
+	display: flex;
+	justify-content: flex-end;
+	flex-shrink: 0;
+	padding: var(--spacing--md) var(--spacing--lg);
+	border-top: var(--border);
+}
+
+._upload_5o0ud_2 {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	gap: var(--spacing--md);
+	min-width: 0;
+}
+._dropZone_5o0ud_12 {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--md);
+	width: 100%;
+	box-sizing: border-box;
+	padding: var(--spacing--3xl) var(--spacing--xl);
+	border: calc(var(--border-width) * 2) dashed var(--border-color);
+	border-radius: var(--radius--lg);
+	text-align: center;
+}
+._dragOver_5o0ud_25 {
+	border-color: var(--color--primary);
+	background: var(--color--orange-alpha-100);
+}
+._title_5o0ud_30 {
+	margin: 0;
+	font-size: var(--font-size--xl);
+	font-weight: var(--font-weight--regular);
+}
+._description_5o0ud_36 {
+	/* Use a text measure to keep the upload instructions readable. */
+	max-width: 45ch;
+	line-height: var(--line-height--xl);
+}
+._actions_5o0ud_42 {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+}
+._manual_5o0ud_50 {
+	text-align: center;
+}
+._manualButton_5o0ud_54 {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+&:hover:not(:disabled) {
+		color: var(--text-color);
+}
+&:disabled {
+		cursor: not-allowed;
+}
+}
+@media (max-width: 480px) {
+._dropZone_5o0ud_12 {
+		padding: var(--spacing--xl) var(--spacing--sm);
+}
+}
+._panel_v5izy_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+._readOnlyField_v5izy_10 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._readOnlyText_v5izy_16 {
+  margin: 0;
+  line-height: var(--line-height--xl);
+  white-space: pre-wrap;
+}
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 {
+  --n8n-markdown--font-size--base: var(--font-size--sm);
+}
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 p,
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 li {
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--xl);
+}
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 h1,
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 h2 {
+  margin: var(--spacing--sm) 0 var(--spacing--2xs);
+  font-size: var(--font-size--md);
+  line-height: var(--line-height--lg);
+}
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 h3,
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 h4,
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 h5,
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 h6 {
+  margin: var(--spacing--xs) 0 var(--spacing--3xs);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--lg);
+}
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+._panel_v5izy_1 ._readOnlyMarkdown_v5izy_22 li label {
+  display: inline;
+  line-height: inherit;
+}
+._field_v5izy_52 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+}
+._editor_v5izy_58 .n8n-markdown {
+  min-height: calc(var(--height--5xl) + var(--spacing--sm));
+}
+
+/* The user drags the bottom edge to make the box taller or shorter. Doubled, so it wins over the
+   editor's own overflow. The text scrolls inside the editor's content, which clips it by default,
+   so a shorter box still shows all of it. */
+._resizable_v5izy_65._resizable_v5izy_65 {
+  resize: vertical;
+  overflow: hidden;
+}
+._resizable_v5izy_65._resizable_v5izy_65 [data-markdown-editor-content-wrapper] {
+  overflow-y: auto;
+}
+._referenceEditor_v5izy_73 .n8n-markdown {
+  min-height: calc(var(--height--5xl) + var(--height--4xl));
+}
+._editorLabel_v5izy_77 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._editorMeta_v5izy_83 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+._characterCount_v5izy_89 {
+  text-align: right;
+}._diff_1drwg_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  flex: 1;
+  min-width: 0;
+}
+._field_1drwg_9 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._fieldHeader_1drwg_15 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+._body_1drwg_21 {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing--2xs) 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow-wrap: anywhere;
+}
+._line_1drwg_30 {
+  position: relative;
+  margin: 0;
+  padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--4xs) var(--spacing--lg);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--lg);
+  white-space: pre-wrap;
+}
+._equal_1drwg_39 {
+  padding-inline: var(--spacing--lg) var(--spacing--sm);
+}
+._marker_1drwg_43 {
+  position: absolute;
+  left: var(--spacing--xs);
+  -webkit-user-select: none;
+          user-select: none;
+}
+._removed_1drwg_49 {
+  background-color: var(--diff--color--deleted--faint);
+  box-shadow: inset 2px 0 0 var(--diff--color--deleted);
+}
+._added_1drwg_54 {
+  background-color: var(--diff--color--new--faint);
+  box-shadow: inset 2px 0 0 var(--diff--color--new);
+}
+._removed_1drwg_49 ._changedWord_1drwg_59 {
+  background-color: var(--diff--color--deleted--light);
+}
+._added_1drwg_54 ._changedWord_1drwg_59 {
+  background-color: var(--diff--color--new--light);
+}._panel_52l9c_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--md) var(--spacing--sm) var(--spacing--md) var(--spacing--md);
+}
+._header_52l9c_8 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+}
+._title_52l9c_14 {
+  margin: 0;
+}
+._list_52l9c_18 {
+  --skill-version-timeline--gap: var(--spacing--lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--skill-version-timeline--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+._row_52l9c_28 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+._row_52l9c_28:hover, ._row_52l9c_28._shown_52l9c_37 {
+  background-color: var(--background--hover);
+}
+._row_52l9c_28 {
+  /* The line that joins the dots of the rows. */
+}
+._row_52l9c_28:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--spacing--xs) + var(--spacing--5xs) - 0.5px);
+  top: calc(50% + var(--spacing--2xs));
+  /* Down to the dot of the next row, across the gap between the rows. */
+  height: calc(100% - var(--spacing--xs) + var(--skill-version-timeline--gap));
+  border-left: var(--border);
+}
+._dot_52l9c_53 {
+  width: var(--spacing--3xs);
+  height: var(--spacing--3xs);
+  flex-shrink: 0;
+  border: var(--border);
+  border-radius: 50%;
+  background-color: var(--color--background--light-3);
+}
+._draftDot_52l9c_62 {
+  border-color: var(--color--warning);
+  background-color: var(--color--warning);
+}
+._latestDot_52l9c_67 {
+  border-color: var(--color--success);
+  background-color: var(--color--success);
+}
+._publishedDot_52l9c_72 {
+  border-color: var(--color--teal);
+  background-color: var(--color--teal);
+}
+
+/* The draft and the published agent run the same version: an amber dot with a teal ring. */
+._draftDot_52l9c_62._publishedDot_52l9c_72 {
+  border-color: var(--color--teal);
+  background-color: var(--color--warning);
+}
+._versionLine_52l9c_83 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing--4xs);
+}
+._text_52l9c_89 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+._actions_52l9c_96 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+}
+._placeholder_52l9c_102 {
+  visibility: hidden;
+}
+._content_1w7o3_2 {
+	/* The Design System has no width preset between 2xlarge and full. */
+	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
+	display: flex;
+	gap: var(--spacing--lg);
+}
+._picker_1w7o3_9 {
+	width: min(calc(52rem - var(--spacing--lg) * 2), calc(100dvw - var(--spacing--lg) * 5));
+	height: 100%;
+}
+._callout_1w7o3_14 {
+	margin-bottom: var(--spacing--md);
+}
+
+/* Keep normal menu icons neutral. Mark the modal's Delete label and icon in red. */
+._menuItem_1w7o3_19 svg {
+	color: var(--color--text--tint-1);
+}
+._deleteItem_1w7o3_23:not([data-disabled]) {
+	color: var(--text-color--danger);
+svg {
+		color: var(--icon-color--danger) !important;
+}
+}
+._menuSwitchRow_1w7o3_31 {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--lg);
+}
+._menuSwitch_1w7o3_31 {
+	pointer-events: none;
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+/* A pinned skill: a warning strip over the file list and the form, as the design does. */
+._pinnedBar_1w7o3_46 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--lg);
+	min-height: var(--spacing--xl);
+	border-bottom: var(--border-width) var(--border-style) var(--callout--border-color--warning);
+	background-color: var(--callout--color--background--warning);
+}
+._pinnedIcon_1w7o3_56 {
+	flex-shrink: 0;
+	color: var(--callout--icon-color--warning);
+}
+._pinnedText_1w7o3_61 {
+	color: var(--callout--color--text--warning);
+}
+._barAction_1w7o3_65 {
+	margin-left: auto;
+}
+
+/* A full-width strip under the header, as the body of the form steps is flush. */
+._viewingBar_1w7o3_70 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--lg);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
+}
+._compareBar_1w7o3_80,
+._syncedBar_1w7o3_81 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--lg);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+}
+._syncedBar_1w7o3_81 {
+	flex-wrap: wrap;
+}
+._syncedInfo_1w7o3_94 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	min-width: 0;
+}
+._sourceLink_1w7o3_102 {
+	color: var(--color--text--shade-1);
+	text-decoration: underline;
+	overflow-wrap: anywhere;
+}
+._compareSelect_1w7o3_108 {
+	width: calc(var(--spacing--3xl) + var(--spacing--xs));
+}
+._compareDone_1w7o3_112 {
+	margin-left: auto;
+}
+._versionsButtonActive_1w7o3_116 {
+	background-color: var(--background--active);
+}
+
+/* The form steps have a flush body, so their callouts keep the body inset themselves. */
+._calloutInset_1w7o3_121 {
+	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+/* The file list runs to the edges of the modal and each column keeps its own inset. The modal has
+   a fixed size on these steps, so the columns fill it, beside the Versions panel or not. */
+._contentFlush_1w7o3_127 {
+	gap: 0;
+	align-items: stretch;
+	width: auto;
+	flex: 1;
+}
+
+/* Nested, so it wins over the file list's own background. */
+._contentFlush_1w7o3_127 ._fileColumn_1w7o3_135 {
+	background-color: var(--background--subtle);
+}
+._formColumn_1w7o3_139 {
+	flex: 1;
+	padding: var(--spacing--md) var(--spacing--lg);
+}
+._footerHint_1w7o3_144 {
+	text-align: right;
+}
+@container skill-editor (max-width: 480px) {
+._inlineContent_1w7o3_149 {
+		flex-direction: column;
+}
+._inlineContent_1w7o3_149 ._fileColumn_1w7o3_135 {
+		width: 100%;
+		border-right: none;
+		border-bottom: var(--border);
+}
+}
+._recommendedSkillSource_1w7o3_160 {
+	padding-top: var(--spacing--5xs);
+}
+@media (max-width: 480px) {
+._content_1w7o3_2 {
+		flex-direction: column;
+}
+._syncedInfo_1w7o3_94 {
+		flex-basis: 100%;
+}
+}

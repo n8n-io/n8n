@@ -1,0 +1,99 @@
+/* Focus State
+ -------------------------- */
+._bottomMenu_18d2g_3 {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+}
+._bottomMenu_18d2g_3._collapsed_18d2g_8 {
+  border-top: var(--border);
+}
+._bottomMenuItems_18d2g_12 {
+  padding: var(--spacing--3xs);
+}
+._resourceCenterMenuItem_18d2g_16 .n8n-text {
+  color: var(--color--primary);
+}
+
+/* The dropdown lays its trigger out inline, which shrinks the row to its label. */
+._bottomMenuItems_18d2g_12 ._menuTrigger_18d2g_21 {
+  display: block;
+  border-radius: var(--radius);
+  /* Same ring as the menu item draws for itself, on the wrapper that holds focus here. */
+}
+._bottomMenuItems_18d2g_12 ._menuTrigger_18d2g_21:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  outline-offset: -1px;
+}
+
+/*
+ * Doubled to outrank the menu's own scrolling. Grid rows are definite once sized, so the
+ * scroll area fills the row above the footer and scrolls inside it.
+ */
+._settingsMenu_18d2g_35._settingsMenu_18d2g_35 {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 260px;
+  overflow: hidden;
+}
+._settingsList_18d2g_42 {
+  min-height: 0;
+}
+
+/* Same inset and rhythm as the menu's own item list. */
+._settingsItems_18d2g_47 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  padding: var(--spacing--4xs);
+}
+
+/* The border runs edge to edge because the footer sits outside the list inset. */
+._settingsFooter_18d2g_55 {
+  padding: var(--spacing--4xs);
+  border-top: var(--border);
+}/* Focus State
+ -------------------------- */
+._header_1y5cs_3 {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing--2xs) var(--spacing--3xs);
+  justify-content: space-between;
+  gap: var(--spacing--4xs);
+}
+._header_1y5cs_3 img {
+  position: relative;
+  left: 1px;
+  height: 20px;
+  margin-right: auto;
+}
+._header_1y5cs_3._collapsed_1y5cs_16 {
+  flex-direction: column;
+  border-bottom: var(--border);
+}
+._logo_1y5cs_21 {
+  margin-right: auto;
+  padding-inline-start: var(--spacing--3xs);
+}
+._logo_1y5cs_21:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+}
+._readOnlyEnvironmentIcon_1y5cs_29 {
+  display: inline-block;
+  color: white;
+  background-color: var(--color--warning);
+  align-self: center;
+  padding: 2px;
+  border-radius: var(--radius--sm);
+  margin: 0 var(--spacing--xs) 0 var(--spacing--3xs);
+}
+._iconButton_1y5cs_39 {
+  margin-left: auto;
+  margin-right: 5px;
+}
+._creationLink_1y5cs_44 {
+  color: inherit;
+}
+._upgradeButton_1y5cs_48 {
+  margin-left: auto;
+}

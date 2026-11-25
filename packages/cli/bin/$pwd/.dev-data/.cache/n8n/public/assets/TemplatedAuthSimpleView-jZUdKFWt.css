@@ -1,0 +1,84 @@
+._view_rbl8e_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._field_rbl8e_7 {
+  display: flex;
+  flex-direction: column;
+}
+._empty_rbl8e_12 {
+  border: var(--border-width) dashed var(--color--foreground);
+  border-radius: var(--radius);
+  padding: var(--spacing--sm);
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+  text-align: center;
+}
+._provenance_rbl8e_21 {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--spacing--sm);
+  padding-top: var(--spacing--sm);
+  border-top: var(--border-width) solid var(--color--foreground--tint-1);
+}
+._editHead_rbl8e_29 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._section_rbl8e_35 {
+  display: flex;
+  flex-direction: column;
+}
+._mono_rbl8e_40 input,
+._mono_rbl8e_40 textarea {
+  font-family: var(--font-family--monospace);
+  font-size: var(--font-size--2xs);
+}
+._mono_rbl8e_40 textarea {
+  line-height: 1.6;
+}
+._narrow_rbl8e_49 {
+  max-width: 220px;
+}
+._defs_rbl8e_53 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._defCard_rbl8e_59 {
+  border: var(--border-width) solid var(--color--foreground--tint-1);
+  border-radius: var(--radius);
+  padding: var(--spacing--xs) var(--spacing--sm);
+  background-color: var(--color--background--light-3);
+}
+._defTop_rbl8e_66 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+  margin-bottom: var(--spacing--xs);
+}
+._chip_rbl8e_74 {
+  font-family: var(--font-family--monospace);
+  font-size: var(--font-size--3xs);
+  background-color: var(--color--background);
+  color: var(--color--text--shade-1);
+  border-radius: var(--radius--sm);
+  padding: var(--spacing--5xs) var(--spacing--3xs);
+}
+._defGrid_rbl8e_83 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing--2xs) var(--spacing--xs);
+  align-items: end;
+}
+._typePick_rbl8e_90 {
+  display: flex;
+  justify-content: flex-start;
+  padding-bottom: var(--spacing--5xs);
+}
+._defWide_rbl8e_96 {
+  grid-column: 1/-1;
+}

@@ -1,0 +1,16 @@
+._description-edit-content_q5mpa_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--s);
+}
+._field_q5mpa_8 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+}
+._popover-footer_q5mpa_14 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}

@@ -1,0 +1,57 @@
+._runText_1myg2_1 {
+  line-height: var(--line-height--xl);
+  white-space: pre-line;
+}
+._markdown_1myg2_6 {
+  white-space: pre-wrap;
+}
+._markdown_1myg2_6 h1 {
+  font-size: var(--font-size--lg);
+  line-height: var(--line-height--xl);
+}
+._markdown_1myg2_6 h2 {
+  font-size: var(--font-size--md);
+  line-height: var(--line-height--lg);
+}
+._markdown_1myg2_6 h3 {
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--md);
+}
+._markdown_1myg2_6 pre {
+  background: var(--chat--message--pre--background);
+  border-radius: var(--radius);
+  line-height: var(--line-height--xl);
+  padding: var(--spacing--sm);
+  font-size: var(--font-size--sm);
+  white-space: pre-wrap;
+}
+._compact_1myg2_29 ._markdown_1myg2_6 pre {
+  padding: var(--spacing--3xs);
+  font-size: var(--font-size--xs);
+}
+._compact_1myg2_29 ._markdown_1myg2_6 p {
+  line-height: var(--line-height--xl);
+}
+._copyToClipboard_1myg2_37 {
+  position: absolute;
+  right: var(--spacing--sm);
+  top: var(--spacing--sm);
+}
+._compact_1myg2_29 ._copyToClipboard_1myg2_37 {
+  right: var(--spacing--2xs);
+  top: var(--spacing--2xs);
+}
+._rawContent_1myg2_47 {
+  position: relative;
+}
+._contentText_1myg2_51 {
+  padding-top: var(--spacing--sm);
+  padding-left: var(--spacing--md);
+  padding-right: var(--spacing--md);
+  font-size: var(--font-size--sm);
+}
+._compact_1myg2_29 ._contentText_1myg2_51 {
+  padding-top: 0;
+  padding-inline: var(--spacing--2xs);
+  font-size: var(--font-size--2xs);
+}

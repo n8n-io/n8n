@@ -1,0 +1,14 @@
+._wrapper_12ruk_1 {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color--background--light-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+._fallback_12ruk_13 {
+  color: var(--color--text--tint-1);
+}

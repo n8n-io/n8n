@@ -1,0 +1,647 @@
+@charset "UTF-8";
+/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1rcun_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1rcun_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1rcun_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1rcun_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1rcun_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1rcun_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1rcun_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1rcun_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1rcun_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1rcun_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1rcun_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1rcun_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1rcun_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1rcun_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1rcun_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1rcun_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1rcun_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1rcun_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1rcun_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1rcun_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1rcun_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1rcun_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1rcun_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1rcun_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1rcun_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1rcun_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1rcun_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1rcun_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/* The QR code makes this the tallest of the account dialogs. On a short viewport it scrolls as a
+   whole instead of overflowing the screen, so the code field and the footer stay reachable. */
+._dialog_1rcun_453 {
+  max-height: calc(100dvh - var(--spacing--lg));
+  overflow-y: auto;
+}
+._steps_1rcun_458 {
+  position: relative;
+}
+
+/* Pinned to a height only while the steps swap: clipped, so the leaving step doesn't spill past the new height. */
+._stepsResizing_1rcun_463 {
+  overflow: hidden;
+  transition: height var(--animation--height-transition--duration, var(--duration--snappy)) var(--animation--height-transition--easing, var(--easing--ease-out));
+  will-change: height;
+}
+@media (prefers-reduced-motion: reduce) {
+._stepsResizing_1rcun_463 {
+    transition: none;
+    will-change: auto;
+}
+}
+._stepEnterActive_1rcun_475 {
+  animation: _blurSwapIn_1rcun_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._stepEnterActive_1rcun_475 {
+    animation: none;
+}
+}
+
+/* The leaving step keeps its place at the top while the next one takes over the flow. */
+._stepLeaveActive_1rcun_485 {
+  position: absolute;
+  inset: 0 0 auto;
+  animation: _blurSwapOut_1rcun_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._stepLeaveActive_1rcun_485 {
+    animation: none;
+}
+}
+._setup_1rcun_496 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--lg);
+  padding-top: var(--spacing--sm);
+}
+._scan_1rcun_503 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._scanHeader_1rcun_509 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+._scanHeader_1rcun_509 > * {
+  margin: 0;
+}
+._inset_1rcun_518 {
+  padding: var(--spacing--sm);
+  border-radius: var(--radius--xs);
+  background-color: light-dark(var(--color--neutral-100), var(--color--neutral-900));
+}
+
+/*
+ * The key's row is as tall as its copy button, which puts the key about 24px from the bottom edge.
+ * The same room above the QR code keeps the two optically balanced.
+ */
+._qrCode_1rcun_528 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding-top: var(--spacing--lg);
+}
+
+/* QR codes need dark modules on a light background to scan, also in the dark theme. */
+._qrFrame_1rcun_537 {
+  position: relative;
+  display: flex;
+  padding: var(--spacing--xs);
+  border-radius: var(--radius--3xs);
+  background-color: var(--color--neutral-white);
+}
+._qrFrame_1rcun_537 svg {
+  display: block;
+}
+._qrLoading_1rcun_548 .el-skeleton__item {
+  width: 100%;
+  height: 100%;
+}
+
+/* The skeleton leaves from the QR code's own spot, so the two overlap during the swap. */
+._qrLoadingLeaveActive_1rcun_554 {
+  position: absolute;
+  inset: var(--spacing--xs);
+  animation: _blurSwapOut_1rcun_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._qrLoadingLeaveActive_1rcun_554 {
+    animation: none;
+}
+}
+._secret_1rcun_565 {
+  display: flex;
+  justify-content: center;
+  align-self: stretch;
+  min-height: var(--height--sm);
+}
+
+/* Centre the key under the QR code and let the copy button trail it, so the button doesn't push the key off-centre. */
+._secretContent_1rcun_573 {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+  column-gap: var(--spacing--4xs);
+}
+._secretContent_1rcun_573 > :last-child {
+  justify-self: start;
+}
+._secretKey_1rcun_584 {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0.5ch;
+  font-family: var(--font-family--monospace);
+  font-size: var(--font-size--sm);
+  color: var(--text-color);
+  cursor: pointer;
+}
+._code_1rcun_596 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+
+/*
+ * The input declares its own border variable, so an ancestor value is shadowed; target the
+ * input element itself with a more specific selector to turn the border red. The input keeps
+ * the focus after a failed check, so the focus border turns red too.
+ */
+._codeInvalid_1rcun_607 .n8n-input {
+  --input--border-color: var(--color--danger);
+  --input--border-color--hover: var(--color--danger);
+  --input--border-color--focus: var(--color--danger);
+}
+
+/* Puts the description where the dialog header would: the header's own title–description gap. */
+._recovery_1rcun_614 {
+  padding-top: var(--spacing--2xs);
+}
+._recoveryCodes_1rcun_618 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  margin: var(--spacing--sm) 0 0;
+  list-style: none;
+  font-family: var(--font-family--monospace);
+  font-size: var(--font-size--2xs);
+  line-height: var(--line-height--xl);
+  color: var(--text-color);
+}
+._saveActions_1rcun_631 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  margin-inline-end: auto;
+}
+._iconSwap_1rcun_637 {
+  --animation--blur-swap--blur: 2px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+._swapEnterActive_1rcun_645 {
+  animation: _blurSwapIn_1rcun_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._swapEnterActive_1rcun_645 {
+    animation: none;
+}
+}
+._swapLeaveActive_1rcun_654 {
+  position: absolute;
+  animation: _blurSwapOut_1rcun_1 var(--animation--blur-swap--duration, 250ms) var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+}
+@media (prefers-reduced-motion: reduce) {
+._swapLeaveActive_1rcun_654 {
+    animation: none;
+}
+}

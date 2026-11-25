@@ -1,0 +1,10 @@
+._contactOwnerHint_1j0j2_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--xs);
+  border-radius: 0.25em;
+}
+._border_1j0j2_9 {
+  border: var(--border-width) solid var(--color--foreground);
+}

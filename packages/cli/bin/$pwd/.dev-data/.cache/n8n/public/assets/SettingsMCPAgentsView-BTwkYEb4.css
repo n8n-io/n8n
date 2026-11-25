@@ -1,0 +1,104 @@
+._table-container_1kf6q_1 ._selection-bar_1kf6q_1 {
+  position: sticky;
+  bottom: var(--spacing--3xl);
+  left: auto;
+  transform: none;
+  width: -moz-fit-content;
+  width: fit-content;
+  margin: 0 auto;
+}
+._agent-table_1kf6q_10 {
+  margin-bottom: var(--spacing--sm);
+}
+._agent-table_1kf6q_10 .table-scroll {
+  overflow-y: hidden;
+}
+._agent-table_1kf6q_10 tr:last-child {
+  border-bottom: none !important;
+}
+._empty-state_1kf6q_20 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--lg) 0;
+  min-height: 250px;
+}
+._agent-cell_1kf6q_30 {
+  display: flex;
+  padding: var(--spacing--2xs) 0;
+  min-width: 0;
+  overflow: hidden;
+}
+._location-cell_1kf6q_37 {
+  display: flex;
+  padding: var(--spacing--2xs) 0;
+  min-width: 0;
+  overflow: hidden;
+}
+._table-link_1kf6q_44 {
+  color: var(--color--text);
+}
+._truncate_1kf6q_48 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}._mcp-agents-select-loading_1n5y3_1,
+._mcp-agents-select-empty_1n5y3_2 {
+  display: flex;
+  min-height: var(--spacing--5xl);
+  align-items: center;
+  justify-content: space-around;
+}
+._empty-option_1n5y3_9 {
+  cursor: default !important;
+  color: var(--color--text) !important;
+}
+._option_1n5y3_14 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  min-width: 0;
+  overflow: hidden;
+}
+._separator_1n5y3_22 {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  color: var(--color--text--tint-1);
+}
+._truncate_1n5y3_27 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}._content_16gbq_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._content_16gbq_1 ._notice_16gbq_6 {
+  margin: 0;
+}/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+._layout_1rja6_2 {
+  padding-top: 0;
+}
+
+/* Pin the back action to the top-left of the settings area (the shell's
+   content container is position: relative), independent of the centered column. */
+._layout_1rja6_2 > div:first-child {
+  position: absolute;
+  top: var(--spacing--lg);
+  left: var(--spacing--lg);
+  width: auto;
+}
+._actions_1rja6_15 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+  margin-bottom: var(--spacing--xs);
+}

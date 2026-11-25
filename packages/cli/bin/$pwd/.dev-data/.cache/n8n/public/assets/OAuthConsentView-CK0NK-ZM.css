@@ -1,0 +1,198 @@
+._overlay_12b84_1 {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  /* Top-aligned so a tall consent card scrolls within the page instead of clipping. */
+  align-items: flex-start;
+  padding: var(--spacing--xl) var(--spacing--sm);
+  overflow-y: auto;
+  background: var(--background--subtle);
+  z-index: 1000;
+}
+._consent-dialog_12b84_14 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  width: 100%;
+  max-width: 36rem;
+  /* Settle the card a step below the top on tall windows, but don't waste
+     vertical space in the short popup windows OAuth clients open. */
+  margin-block-start: clamp(0px, 10vh - var(--spacing--3xl), var(--spacing--4xl));
+  padding: var(--spacing--xl);
+  background: var(--background--surface);
+  border: var(--border-width, 1px) solid var(--border-color--subtle);
+  border-radius: var(--radius--lg);
+  box-shadow: var(--shadow--sm);
+}
+._header_12b84_31 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--xs);
+}
+._logo_12b84_38 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
+  width: calc(var(--spacing--md) * 2);
+  height: calc(var(--spacing--md) * 2);
+  border: var(--border-width, 1px) solid var(--border-color--subtle);
+  border-radius: var(--radius--xs);
+  background: var(--background--surface);
+  box-shadow: var(--shadow--xs);
+  color: var(--text-color--subtle);
+}
+._connector_12b84_52 {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing--3xl);
+  height: var(--spacing--2xs);
+  color: var(--color--primary);
+}
+._connector_12b84_52 svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Dashes march toward the n8n tile (right); a whole dash period (2 + 5) keeps the loop seamless. */
+._connector-line_12b84_69 {
+  animation: _mcp-connector-dash_12b84_1 0.8s linear infinite;
+}
+@keyframes _mcp-connector-dash_12b84_1 {
+to {
+    stroke-dashoffset: -14;
+}
+}
+/* Muted spinner disc centered over the connector; the surface fill lets it overlap the line. */
+._badge_12b84_79 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  width: var(--spacing--lg);
+  height: var(--spacing--lg);
+  border-radius: var(--radius--full);
+  background: var(--background--surface);
+  color: var(--color--text--tint-1);
+  line-height: 0;
+}
+
+/* Slow, calm rotation since the spinner can sit on screen while the user decides. */
+._badge-spinner_12b84_96 {
+  transform-origin: center;
+  animation: _mcp-connector-spin_12b84_1 2s linear infinite;
+}
+@keyframes _mcp-connector-spin_12b84_1 {
+to {
+    transform: rotate(360deg);
+}
+}
+@media (prefers-reduced-motion: reduce) {
+._connector-line_12b84_69,
+  ._badge-spinner_12b84_96 {
+    animation: none;
+}
+}
+._content_12b84_112 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._success_12b84_118 {
+  padding: var(--spacing--xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  text-align: center;
+}
+._text-content_12b84_127 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._permission-list_12b84_133 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding-left: var(--spacing--lg);
+  list-style-type: disc;
+}
+._permission-list_12b84_133 li {
+  color: var(--color--text);
+  font-size: var(--font-size--2xs);
+}
+
+/* The gap gives each separator the same breathing room above the line as the
+   `.divided` padding gives below it. */
+._footer_12b84_147 {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+
+/* Hairline separators keep the redirect note and the action row as distinct steps
+   without adding more nested boxes. */
+._divided_12b84_146 {
+  padding-block-start: var(--spacing--sm);
+  border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
+}
+
+/* The `secondary` callout theme is purple; retint it to a neutral grey so the note
+   reads as information rather than as a banner users learn to skip. Retinting the
+   theme's own custom properties rather than the resolved colors keeps this working
+   regardless of whether the callout's CSS is bundled before or after this file. */
+._redirect-note_12b84_165 {
+  --callout--border-color--secondary: var(--border-color--subtle);
+  --callout--color--background--secondary: var(--background--subtle);
+  --callout--color--text--secondary: var(--text-color--subtle);
+}
+
+/* Both lines size themselves rather than restyling the callout's inner N8nText,
+   which is an implementation detail of the component. */
+._redirect-note-title_12b84_173,
+._redirect-url_12b84_174 {
+  display: block;
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--lg);
+}
+._redirect-url_12b84_174 {
+  margin-block-start: var(--spacing--4xs);
+  font-family: var(--font-family--monospace);
+  overflow-wrap: anywhere;
+}
+
+/* The trust checkbox anchors the left edge of the row and keeps its full label
+   width, so the button group is what drops to a second line when space runs out. */
+._footer-actions_12b84_188 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs) var(--spacing--sm);
+  /* The auto margin is what right-aligns the buttons, on both a shared line and a
+     wrapped one, and when there is no checkbox at all (first-party, error). */
+}
+._footer-actions_12b84_188 ._button-group_12b84_197 {
+  display: flex;
+  align-items: center;
+  margin-inline-start: auto;
+  gap: var(--spacing--2xs);
+}
+
+/* Tone the label down to match the note it refers to; the checkbox's own default is
+   the darker body color. */
+._trust-confirm_12b84_206 label {
+  color: var(--text-color--subtle);
+}

@@ -1,0 +1,47 @@
+._content_a1pmf_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._section_a1pmf_7 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+}
+._changeList_a1pmf_13 {
+  list-style-type: disc;
+  padding-left: var(--spacing--sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._change_a1pmf_13 {
+  display: flex;
+  flex-direction: column;
+}
+._reviewTitle_a1pmf_26 {
+  font-weight: var(--font-weight--medium);
+  margin-bottom: var(--spacing--3xs);
+}
+._workflowList_a1pmf_31 {
+  list-style-type: disc;
+  padding-left: var(--spacing--sm);
+  margin-top: var(--spacing--3xs);
+}
+._warningList_a1pmf_37 {
+  list-style-type: disc;
+  padding-left: var(--spacing--sm);
+  margin-bottom: var(--spacing--3xs);
+}
+._reviewNodes_a1pmf_43 {
+  margin-top: var(--spacing--3xs);
+}
+._assistantButton_a1pmf_47 {
+  display: flex;
+  margin-top: var(--spacing--2xs);
+}
+._actions_a1pmf_52 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--xs);
+}

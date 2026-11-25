@@ -1,0 +1,15 @@
+._error-text_95yr7_1 {
+  color: var(--color--danger);
+  font-size: var(--font-size--2xs);
+  margin-top: var(--spacing--2xs);
+  height: var(--spacing--sm);
+  visibility: hidden;
+}
+._footer_95yr7_9 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}
+._noScrollbar_95yr7_15 {
+  overflow: hidden;
+}

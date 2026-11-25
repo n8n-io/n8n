@@ -1,0 +1,34 @@
+._footer_1eb19_1 {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+._footer_1eb19_1 button {
+  margin-left: var(--spacing--2xs);
+}
+._content_1eb19_10 {
+  display: flex;
+  flex-direction: row;
+  align-items: start;
+  gap: var(--spacing--xs);
+}
+._icon_1eb19_17 {
+  flex-shrink: 0;
+  margin-top: var(--spacing--4xs);
+}
+._body_1eb19_22 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  min-width: 0;
+}
+._affected_1eb19_29 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._list_1eb19_35 {
+  margin: 0;
+  padding-left: var(--spacing--md);
+  list-style: disc;
+}

@@ -1,0 +1,67 @@
+._picker_1ikuy_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._srOnly_1ikuy_7 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}._form_paa8d_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._hint_paa8d_7 {
+  display: block;
+  margin-top: var(--spacing--2xs);
+}._layout_19g8y_1 {
+  padding-top: 0;
+}
+
+/* Pin the back action to the top-left of the settings area so the heading lines up with the overview. */
+._layout_19g8y_1 > div:first-child {
+  position: absolute;
+  top: var(--spacing--lg);
+  left: var(--spacing--lg);
+  width: auto;
+}
+._settings_19g8y_13 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._fields_19g8y_19 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._provider_19g8y_25 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+}
+._providerValue_19g8y_31 {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-height: var(--height--lg);
+  padding-inline: var(--spacing--xs);
+  border: var(--border);
+  border-radius: var(--radius--xs);
+  background-color: var(--background--disabled);
+}
+._hint_19g8y_43 {
+  display: block;
+  margin-top: var(--spacing--2xs);
+  line-height: var(--line-height--md);
+}
+._footer_19g8y_49 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--xs);
+}

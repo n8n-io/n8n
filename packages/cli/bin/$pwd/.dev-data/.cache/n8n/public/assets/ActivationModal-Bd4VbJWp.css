@@ -1,0 +1,11 @@
+._spaced_1jt7i_1 {
+  margin-top: var(--spacing--2xs);
+}
+._footer_1jt7i_5 {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+._footer_1jt7i_5 > button {
+  margin-left: auto;
+}

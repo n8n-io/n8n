@@ -1,0 +1,11 @@
+._credentialsList_1w1du_1 {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+._credentialsList_1w1du_1 li {
+  padding: 0 0 var(--spacing--3xs);
+}
+._credentialsList_1w1du_1 li:last-child {
+  padding-bottom: 0;
+}

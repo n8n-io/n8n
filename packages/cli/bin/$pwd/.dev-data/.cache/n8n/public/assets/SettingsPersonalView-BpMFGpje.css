@@ -1,0 +1,48 @@
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+._layout_170l4_2 {
+  padding-top: 0;
+}
+
+/* Read-only value of a locked field; long emails truncate instead of pushing the row wider. */
+._value_170l4_7 {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Input plus its validation message, filling the row's action width. */
+._field_170l4_16 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  width: 100%;
+}
+
+/*
+ * The input declares its own border variable, so an ancestor value is shadowed; target the
+ * input element itself with a more specific selector to turn the border red.
+ */
+._fieldInvalid_170l4_27 .n8n-input {
+  --input--border-color: var(--color--danger);
+  --input--border-color--hover: var(--color--danger);
+  --input--border-color--focus: var(--color--danger);
+}
+
+/* Keep the link's hover padding without making the description line taller than its neighbours. */
+._docsLink_170l4_34 {
+  margin-block: calc(-1 * var(--spacing--4xs));
+}
+
+/* The theme labels are stacked in one cell: the cell takes the widest, the hidden ones only reserve width. */
+._themeValue_170l4_39 {
+  display: inline-grid;
+}
+._themeLabel_170l4_43 {
+  grid-area: 1/1;
+  white-space: nowrap;
+}
+._themeLabelHidden_170l4_48 {
+  visibility: hidden;
+}

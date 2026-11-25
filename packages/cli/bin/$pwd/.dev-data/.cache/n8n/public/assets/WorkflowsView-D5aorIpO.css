@@ -1,0 +1,1441 @@
+/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+._folder-icon_k84r9_113 {
+  flex-shrink: 0;
+  color: var(--color--text);
+  align-content: center;
+  text-align: center;
+}
+._card-header_k84r9_120 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: var(--spacing--xs);
+  margin-bottom: var(--spacing--5xs);
+}
+._cardBadge_k84r9_128._with-breadcrumbs_k84r9_128 .n8n-badge {
+  padding-right: 0;
+}
+._cardBadge_k84r9_128._with-breadcrumbs_k84r9_128 .n8n-breadcrumbs {
+  padding-left: var(--spacing--5xs);
+}
+._card-actions_k84r9_135 {
+  display: flex;
+  gap: var(--spacing--xs);
+}
+@media screen and (max-width: 991px) {
+._card_k84r9_120 {
+    flex-wrap: wrap;
+}
+._card_k84r9_120 .n8n-card-append {
+    width: 100%;
+    margin-top: var(--spacing--3xs);
+    padding-left: 40px;
+}
+._card_k84r9_120 ._card-actions_k84r9_135 {
+    width: 100%;
+    justify-content: space-between;
+}
+}._container_mfjuf_1 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._icon_mfjuf_7 {
+  color: var(--color--text);
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+._cardLink_132rx_113 {
+  padding: 0;
+  align-items: stretch;
+}
+._cardHeading_132rx_118 {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size--sm);
+  word-break: break-word;
+  padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+._cardHeadingArchived_132rx_126 {
+  color: var(--color--text--tint-1);
+}
+._description-popper_132rx_130 {
+  min-width: 300px;
+}
+._cardDescription_132rx_134 {
+  min-height: var(--spacing--xl);
+  display: flex;
+  align-items: center;
+  padding: 0 0 var(--spacing--sm) var(--spacing--sm);
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+  gap: var(--spacing--2xs);
+}
+._cardTags_132rx_144 {
+  display: inline-block;
+  margin-top: var(--spacing--4xs);
+}
+._legacyMcpIndicator_132rx_149 {
+  display: inline-flex;
+  align-items: center;
+}
+._divider_132rx_154 {
+  -webkit-user-select: none;
+          user-select: none;
+}
+._privateCredentialIndicator_132rx_158 {
+  display: inline-flex;
+  align-items: center;
+}
+._cardActions_132rx_163 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 var(--spacing--sm) 0 0;
+  cursor: default;
+}
+._cardBadge_132rx_174 {
+  background-color: var(--color--background--light-3);
+  border-radius: var(--radius--full);
+}
+._cardBadge_132rx_174._with-breadcrumbs_132rx_179 .n8n-badge {
+  padding-right: 0;
+}
+._cardBadge_132rx_174._with-breadcrumbs_132rx_179 .n8n-breadcrumbs {
+  padding-left: var(--spacing--5xs);
+}
+._cardArchived_132rx_186 {
+  background-color: var(--color--background--light-2);
+  border-color: var(--color--foreground--tint-1);
+  color: var(--color--text);
+}
+@media screen and (max-width: 991px) {
+._cardLink_132rx_113 {
+    --card--padding: 0 var(--spacing--sm) var(--spacing--sm);
+    --card--append--width: 100%;
+    flex-direction: column;
+}
+._cardActions_132rx_163 {
+    width: 100%;
+    padding: 0 var(--spacing--sm) var(--spacing--sm);
+    justify-content: end;
+}
+._cardBadge_132rx_174,
+  ._breadcrumbs_132rx_204 {
+    margin-right: auto;
+}
+}
+@media screen and (max-width: 767px) {
+._breadcrumbs_132rx_204 > div {
+    flex-direction: column;
+}
+}._suggested-workflow-callout_1qywe_1 {
+  margin-top: var(--spacing--xs);
+  padding-left: var(--spacing--sm);
+  padding-right: var(--spacing--md);
+  border-style: dashed;
+}
+._suggested-workflow-callout_1qywe_1 ._callout-content_1qywe_7 {
+  display: flex;
+  flex-direction: column;
+}
+._suggested-workflow-callout_1qywe_1 ._callout-trailing-content_1qywe_11 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--md);
+}
+._suggested-workflow-callout_1qywe_1 a span span {
+  color: var(--callout--color--text--secondary);
+}._suggested-workflows_zdnx8_1 {
+  margin-top: var(--spacing--xs);
+}._nodeCard_6qsbl_1 {
+  width: 100px;
+  height: 80px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+._nodeIcon_6qsbl_11 {
+  font-size: var(--font-size--2xl);
+}
+._emptyStateCardContent_6qsbl_15 {
+  flex: 1;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}._nodeCardsContainer_1am3x_1 {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing--sm);
+  margin-top: var(--spacing--xl);
+}._nodeCard_6qsbl_1 {
+  width: 100px;
+  height: 80px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+._nodeIcon_6qsbl_11 {
+  font-size: var(--font-size--2xl);
+}
+._emptyStateCardContent_6qsbl_15 {
+  flex: 1;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}._nodeCardsContainer_1am3x_1 {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing--sm);
+  margin-top: var(--spacing--xl);
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1hhpo_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1hhpo_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1hhpo_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1hhpo_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1hhpo_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1hhpo_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1hhpo_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1hhpo_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1hhpo_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1hhpo_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1hhpo_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1hhpo_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1hhpo_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1hhpo_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1hhpo_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1hhpo_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1hhpo_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1hhpo_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1hhpo_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1hhpo_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1hhpo_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1hhpo_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1hhpo_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1hhpo_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1hhpo_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1hhpo_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1hhpo_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1hhpo_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._card_1hhpo_450 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--spacing--xs);
+  padding-top: var(--spacing--sm);
+  border: 2px solid var(--color--foreground);
+  border-radius: var(--radius--lg);
+  background-color: var(--color--background--light-3);
+  width: 140px;
+  height: 110px;
+  transition: all 0.2s ease;
+  cursor: default;
+  -webkit-user-select: none;
+          user-select: none;
+}
+._card_1hhpo_450._clickable_1hhpo_467 {
+  cursor: pointer;
+}
+._card_1hhpo_450._clickable_1hhpo_467:hover, ._card_1hhpo_450._clickable_1hhpo_467:focus-visible {
+  border-color: var(--color--primary);
+  background-color: var(--color--background--light-2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+._card_1hhpo_450._connected_1hhpo_477 {
+  border: 2px solid var(--color--success);
+  cursor: pointer;
+}
+._card_1hhpo_450._connected_1hhpo_477:hover, ._card_1hhpo_450._connected_1hhpo_477:focus-visible {
+  border-color: var(--color--primary);
+  background-color: var(--color--background--light-2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+._card_1hhpo_450._warning_1hhpo_488 {
+  border: 2px solid var(--color--warning);
+  cursor: pointer;
+}
+._card_1hhpo_450._warning_1hhpo_488:hover, ._card_1hhpo_450._warning_1hhpo_488:focus-visible {
+  border-color: var(--color--primary);
+  background-color: var(--color--background--light-2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+._card_1hhpo_450._error_1hhpo_499 {
+  border-color: var(--color--danger);
+}
+._card_1hhpo_450._error_1hhpo_499:hover, ._card_1hhpo_450._error_1hhpo_499:focus-visible {
+  background-color: var(--color--danger--tint-4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+._card_1hhpo_450._loading_1hhpo_507 {
+  cursor: wait;
+  border-color: var(--color--primary);
+  background-color: var(--color--background--light-2);
+}
+._card_1hhpo_450._skeleton_1hhpo_512 {
+  cursor: default;
+}
+._skeletonIcon_1hhpo_516 {
+  --animation--skeleton-pulse--duration: 1.5s;
+  --animation--skeleton-pulse--opacity-start: 0.6;
+  --animation--skeleton-pulse--opacity-end: 0.3;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--color--foreground);
+  animation: _skeleton-pulse_1hhpo_1 var(--animation--skeleton-pulse--duration, var(--duration--slowest)) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._skeletonIcon_1hhpo_516 {
+    animation: none;
+}
+}
+._skeletonText_1hhpo_532 {
+  --animation--skeleton-pulse--duration: 1.5s;
+  --animation--skeleton-pulse--opacity-start: 0.6;
+  --animation--skeleton-pulse--opacity-end: 0.3;
+  width: 80px;
+  height: 14px;
+  border-radius: var(--radius--sm);
+  background: var(--color--foreground);
+  animation: _skeleton-pulse_1hhpo_1 var(--animation--skeleton-pulse--duration, var(--duration--slowest)) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._skeletonText_1hhpo_532 {
+    animation: none;
+}
+}
+._iconContainer_1hhpo_548 {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing--2xs);
+}
+._iconContainer_1hhpo_548 :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+._icon_1hhpo_548 {
+  width: 32px;
+  height: 32px;
+}
+._connectedBadge_1hhpo_568 {
+  position: absolute;
+  top: var(--spacing--3xs);
+  right: var(--spacing--3xs);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color--success);
+  border-radius: 50%;
+}
+._warningBadgeWrapper_1hhpo_581 {
+  position: absolute;
+  top: var(--spacing--3xs);
+  right: var(--spacing--3xs);
+  z-index: 1;
+}
+._warningBadge_1hhpo_581 {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._warningBadge_1hhpo_581 ._badgeIcon_1hhpo_595 {
+  color: var(--color--warning);
+  font-size: 16px;
+}
+._badgeIcon_1hhpo_595 {
+  color: white;
+  font-size: 12px;
+}
+._name_1hhpo_605 {
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+  max-width: 100%;
+  word-break: break-word;
+}
+._installBadgeWrapper_1hhpo_617 {
+  position: absolute;
+  top: var(--spacing--3xs);
+  right: var(--spacing--3xs);
+  z-index: 1;
+}
+._installBadge_1hhpo_617 {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color--foreground);
+  border-radius: 50%;
+}
+._installBadgeIcon_1hhpo_634 {
+  color: var(--color--text--tint-1);
+  font-size: 10px;
+}
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
+}
+._container_1g6kg_1 {
+  width: 100%;
+}
+._grid_1g6kg_5 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--sm);
+  justify-content: center;
+  align-content: flex-start;
+  min-height: 400px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--spacing--xs);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+._grid_1g6kg_5::-webkit-scrollbar {
+  display: none;
+}
+._emptyState_1g6kg_22 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing--2xl);
+}._header_zefvp_1 {
+  display: flex;
+  align-items: center;
+}
+._nodeIcon_zefvp_6 {
+  --node--icon--size: 40px;
+  margin-right: var(--spacing--sm);
+}
+._title_zefvp_11 {
+  font-size: var(--font-size--xl);
+  font-weight: var(--font-weight--medium);
+  color: var(--color--text);
+}
+._officialIcon_zefvp_17 {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-left: var(--spacing--3xs);
+  color: var(--color--text--tint-1);
+  width: 16px;
+}
+._content_zefvp_25 {
+  display: flex;
+  flex-direction: column;
+}
+._description_zefvp_30 {
+  margin-top: var(--spacing--md);
+  margin-bottom: var(--spacing--xl);
+  line-height: 1.6;
+}
+._separator_zefvp_36 {
+  height: var(--border-width);
+  background: var(--color--foreground);
+  margin-bottom: var(--spacing--lg);
+}
+._info_zefvp_42 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--spacing--md);
+  flex-wrap: wrap;
+}
+._infoItem_zefvp_50 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._infoIcon_zefvp_56 {
+  color: var(--color--text--tint-1);
+  font-size: var(--font-size--sm);
+  width: 16px;
+}
+._docsLink_zefvp_62 {
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+._docsLink_zefvp_62:hover {
+  color: var(--color--primary);
+}
+._docsLink_zefvp_62:hover ._infoIcon_zefvp_56 {
+  color: var(--color--primary);
+}
+._footer_zefvp_73 {
+  display: flex;
+  justify-content: flex-end;
+}
+._installButton_zefvp_78 {
+  min-width: 100px;
+}._container_1ni2s_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding: var(--spacing--2xl);
+  padding-top: 10vh;
+}
+._content_1ni2s_11 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 800px;
+  width: 100%;
+}
+._heading_1ni2s_19 {
+  margin-bottom: var(--spacing--xs);
+  text-align: center;
+}
+._subheading_1ni2s_24 {
+  margin-bottom: var(--spacing--xl);
+  text-align: center;
+}
+._searchContainer_1ni2s_29 {
+  width: 400px;
+  min-width: 400px;
+  margin-bottom: var(--spacing--lg);
+}
+._clearIcon_1ni2s_35 {
+  cursor: pointer;
+  color: var(--color--text--tint-1);
+  transition: color 0.2s ease;
+}
+._clearIcon_1ni2s_35:hover {
+  color: var(--color--text);
+}
+._footer_1ni2s_44 {
+  margin-top: var(--spacing--xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--xs);
+}._logoRow_5zt6q_1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--2xs);
+}
+._logoChip_5zt6q_8 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius--lg);
+  background: var(--background--surface);
+  color: var(--icon-color--strong);
+  box-shadow: var(--box-shadow--light);
+}
+._claudeIcon_5zt6q_21,
+._openAiIcon_5zt6q_22 {
+  width: 20px;
+  height: 20px;
+}._card_1v1r4_1 {
+  position: relative;
+}
+._content_1v1r4_5 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing--md);
+  gap: var(--spacing--sm);
+  width: 100%;
+}
+._cta_1v1r4_15 {
+  letter-spacing: var(--letter-spacing--tight);
+}
+._newBadge_1v1r4_19,
+._badge_1v1r4_20 {
+  position: absolute;
+  top: var(--spacing--3xs);
+  right: var(--spacing--3xs);
+  z-index: 1;
+}
+._badge_1v1r4_20 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+  padding: var(--spacing--5xs) var(--spacing--3xs);
+  border-radius: var(--radius--full);
+  background: var(--color--green-100);
+  color: var(--color--green-800);
+  font-size: var(--font-size--3xs);
+  font-weight: var(--font-weight--medium);
+  letter-spacing: var(--letter-spacing--wider);
+  text-transform: uppercase;
+  line-height: 1;
+}._emptyStateLayout_173qe_1 {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-content: center;
+  height: 100%;
+  padding: 0 var(--spacing--2xl);
+  max-width: var(--content-container--width);
+  width: 100%;
+}
+@media (max-width: 1920px) {
+._emptyStateLayout_173qe_1 {
+    padding: 0 var(--spacing--xs);
+}
+}
+._emptyStateLayout_173qe_1._builderLayout_173qe_16 {
+  align-items: center;
+  max-width: none;
+  padding: var(--spacing--lg);
+}
+._content_173qe_22 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+._welcomeTitle_173qe_29 {
+  margin-bottom: var(--spacing--sm);
+}
+._fallbackContent_173qe_33 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+._fallbackDescription_173qe_41 {
+  animation: _contentDropIn_173qe_1 var(--duration--base) var(--easing--ease-out) calc(var(--duration--base) / 4) both;
+}
+._fallbackHeading_173qe_45 {
+  animation: _headingLift_173qe_1 var(--duration--base) var(--easing--ease-out) both;
+}
+._actionCardsContainer_173qe_49 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--lg);
+  justify-content: center;
+  width: 100%;
+}
+._actionCardsContainer_173qe_49._singleCard_173qe_56 {
+  max-width: 192px;
+}
+@media (max-width: 768px) {
+._actionCardsContainer_173qe_49 {
+    gap: var(--spacing--md);
+    margin-top: var(--spacing--lg);
+}
+}
+._actionCard_173qe_49 {
+  --action-card-index: 0;
+  max-width: 192px;
+  aspect-ratio: 4/3;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: _actionCardIn_173qe_1 var(--duration--base) var(--easing--ease-out) calc(160ms + var(--action-card-index) * 80ms) both;
+}
+._actionCard_173qe_49:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+._actionCard_173qe_49:hover ._cardIcon_173qe_80 svg {
+  color: var(--color--primary);
+}
+._actionCard_173qe_49:nth-child(2) {
+  --action-card-index: 1;
+}
+._actionCard_173qe_49:nth-child(3) {
+  --action-card-index: 2;
+}
+@keyframes _headingLift_173qe_1 {
+from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(var(--spacing--xs));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(calc(-1 * var(--spacing--xs)));
+}
+}
+@keyframes _contentDropIn_173qe_1 {
+from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(calc(-1 * var(--spacing--xs)));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+}
+}
+@keyframes _actionCardIn_173qe_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--spacing--2xs));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+}
+}
+@media (prefers-reduced-motion: reduce) {
+._fallbackHeading_173qe_45,
+  ._fallbackDescription_173qe_41,
+  ._actionCard_173qe_49 {
+    animation: none;
+}
+}
+._cardContent_173qe_131 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing--sm);
+}
+._cardIcon_173qe_80 {
+  font-size: 48px;
+  margin-bottom: var(--spacing--xs);
+}
+._cardIcon_173qe_80 svg {
+  transition: color 0.3s ease;
+}._easy-ai-workflow-callout_1b1no_1 {
+  margin-top: var(--spacing--xs);
+  padding-left: var(--spacing--sm);
+  padding-right: var(--spacing--md);
+}
+._easy-ai-workflow-callout_1b1no_1 ._callout-trailing-content_1b1no_6 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--md);
+}
+._breadcrumbs-container_1b1no_12 {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+}
+._breadcrumbs-loading_1b1no_18 .el-skeleton__item {
+  margin: 0;
+  height: 40px;
+  width: 400px;
+}
+._empty-folder-container_1b1no_24 button {
+  margin-top: var(--spacing--2xs);
+}
+._drag-active_1b1no_28 *,
+._drag-active_1b1no_28 .action-toggle {
+  cursor: grabbing !important;
+}
+._dragging_1b1no_33 {
+  transition: opacity 0.3s ease;
+  opacity: 0.3;
+  border-style: dashed;
+  pointer-events: none;
+}
+._drop-active_1b1no_40 .card {
+  border-color: var(--color--secondary);
+  background-color: var(--callout--color--background--secondary);
+}
+._path-separator_1b1no_45 {
+  font-size: var(--font-size--xl);
+  color: var(--color--foreground);
+  padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+}
+._name_1b1no_51 {
+  color: var(--color--text--shade-1);
+  font-size: var(--font-size--sm);
+  padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+}
+._pointer-disabled_1b1no_57 {
+  pointer-events: none;
+}.add-folder-modal {
+  width: 500px;
+  padding-bottom: 0;
+}
+.add-folder-modal .el-message-box__message {
+  font-size: var(--font-size--xl);
+}
+.add-folder-modal .el-message-box__btns {
+  padding: 0 var(--spacing--lg) var(--spacing--lg);
+}
+.add-folder-modal .el-message-box__content {
+  padding: var(--spacing--lg);
+}

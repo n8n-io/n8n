@@ -1,0 +1,39 @@
+._title_1ihzg_1 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._icon-chip_1ihzg_7 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing--xl);
+  height: var(--spacing--xl);
+  flex-shrink: 0;
+  /* fixed white tile so dark brand marks stay visible on the dark theme */
+  background-color: var(--color--neutral-white);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+._icon_1ihzg_7 {
+  width: var(--spacing--md);
+  height: var(--spacing--md);
+  /* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
+  color: var(--color--neutral-black);
+}
+._details_1ihzg_27 {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  -moz-column-gap: var(--spacing--lg);
+       column-gap: var(--spacing--lg);
+  row-gap: var(--spacing--xs);
+  align-items: start;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+._access_1ihzg_37 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+}

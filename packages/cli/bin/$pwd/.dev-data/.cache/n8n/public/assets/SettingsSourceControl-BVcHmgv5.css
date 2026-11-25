@@ -1,0 +1,82 @@
+._group_8qutv_1 {
+  padding: 0 0 var(--spacing--sm);
+  width: 100%;
+  display: block;
+}
+._group_8qutv_1 hr {
+  margin: 0 0 var(--spacing--xl);
+  border: 1px solid var(--color--foreground--tint-1);
+}
+._group_8qutv_1 > label {
+  display: inline-block;
+  padding: 0 0 var(--spacing--2xs);
+  font-size: var(--font-size--sm);
+}
+._group_8qutv_1 small {
+  display: inline-block;
+  padding: var(--spacing--2xs) 0 0;
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+}
+._readOnly_8qutv_22 span {
+  font-size: var(--font-size--sm) !important;
+}
+._groupFlex_8qutv_26 {
+  display: flex;
+  align-items: flex-start;
+}
+._groupFlex_8qutv_26 > div {
+  flex: 1;
+}
+._groupFlex_8qutv_26 > div:last-child {
+  margin-left: var(--spacing--2xs);
+}
+._groupFlex_8qutv_26 input {
+  width: 100%;
+}
+._connect_8qutv_40 {
+  margin: calc(var(--spacing--2xs) * -1) 0 var(--spacing--2xs);
+}
+._disconnectButton_8qutv_44 {
+  margin: 0 0 0 var(--spacing--2xs);
+  height: 40px;
+}
+._actionBox_8qutv_49 {
+  margin: var(--spacing--2xl) 0 0;
+}
+._sshInput_8qutv_53 {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+._sshInput_8qutv_53 > div {
+  flex: 1 1 auto;
+}
+._sshInput_8qutv_53 > button {
+  height: 42px;
+}
+._sshInput_8qutv_53 ._copyInput_8qutv_64 {
+  margin: 0 var(--spacing--2xs);
+}
+._sshKeyTypeSelect_8qutv_68 {
+  min-width: 120px;
+}
+._copyInput_8qutv_64 {
+  overflow: auto;
+}
+._branchSelection_8qutv_76 {
+  display: flex;
+}
+._branchSelection_8qutv_76 > div:first-child {
+  flex: 1;
+}
+._branchSelection_8qutv_76 > div:first-child input {
+  height: 36px;
+}
+._branchSelection_8qutv_76 button._refreshBranches_8qutv_85 {
+  margin-left: var(--spacing--xs);
+}
+._branchSelection_8qutv_76 button._refreshBranches_8qutv_85 svg {
+  width: 16px;
+  height: 16px;
+}

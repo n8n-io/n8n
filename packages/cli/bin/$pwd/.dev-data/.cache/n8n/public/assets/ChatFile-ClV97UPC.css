@@ -1,0 +1,56 @@
+.chat-file[data-v-06c7b5c1] {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 15rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  background: white;
+  color: var(--chat--color-dark);
+  border: 1px solid var(--chat--color-dark);
+}
+.chat-file[data-v-06c7b5c1]:has(.chat-file-preview) {
+  cursor: pointer;
+}
+.chat-icon[data-v-06c7b5c1] {
+  flex-shrink: 0;
+}
+.chat-file-name-tooltip[data-v-06c7b5c1] {
+  overflow: hidden;
+}
+.chat-file-name[data-v-06c7b5c1] {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+.chat-file-delete[data-v-06c7b5c1],
+.chat-file-preview[data-v-06c7b5c1] {
+  background: none;
+  border: none;
+  display: block;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.chat-file-delete[data-v-06c7b5c1] {
+  position: relative;
+}
+.chat-file-delete[data-v-06c7b5c1]:hover {
+  color: red;
+}
+.chat-file-delete[data-v-06c7b5c1] {
+  /* Increase hit area for better clickability */
+}
+.chat-file-delete[data-v-06c7b5c1]:before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  bottom: -10px;
+  left: -10px;
+}

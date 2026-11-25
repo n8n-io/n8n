@@ -1,0 +1,87 @@
+._content_1csoe_1 {
+  padding: var(--spacing--xs) 0;
+}
+._footer_1csoe_5 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--xs);
+}
+._externalIcon_1csoe_11 {
+  margin-left: var(--spacing--4xs);
+}._popoverContent_b21ji_1 {
+  min-width: 200px;
+  max-width: 280px;
+}
+._roleName_b21ji_6 {
+  margin-bottom: var(--spacing--2xs);
+}
+._permissionCount_b21ji_10 {
+  margin-bottom: var(--spacing--2xs);
+}
+._description_b21ji_14 {
+  margin-bottom: var(--spacing--xs);
+}
+._actionButton_b21ji_18 {
+  display: flex;
+  align-items: center;
+  margin-top: var(--spacing--2xs);
+}
+._externalIcon_b21ji_24 {
+  margin-left: var(--spacing--4xs);
+}/* Global styles to override default tooltip styling for role popover */
+.role-hover-popover {
+  max-width: 280px !important;
+  background: var(--color--background--light-2) !important;
+  color: var(--color--text) !important;
+  border: var(--border) !important;
+  border-radius: var(--radius--sm) !important;
+  box-shadow: var(--shadow) !important;
+  /* Must exceed N8nSelect2's SelectContent z-index ($index-popper) so the popover
+     stays visible if collision-avoidance flips it to the left side. */
+  z-index: 1000000 !important;
+}
+.role-hover-popover svg {
+  fill: var(--color--background--light-2) !important;
+}._content_1jyh4_1 {
+  padding: 0;
+}._container_wwvvw_1 {
+  display: inline-flex;
+  min-width: 0;
+  overflow: hidden;
+}
+._itemLabel_wwvvw_7 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+._upgradeBadge_wwvvw_15 {
+  cursor: pointer;
+}
+._sectionLabelContent_wwvvw_19 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._sectionUpgradeBadge_wwvvw_25 {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+}
+._addCustomRoleButton_wwvvw_32 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  width: 100%;
+  min-height: var(--height--xl);
+  padding: 0 var(--spacing--xs);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color--primary);
+}
+._addCustomRoleButton_wwvvw_32:hover {
+  background-color: var(--color--background--light-1);
+}

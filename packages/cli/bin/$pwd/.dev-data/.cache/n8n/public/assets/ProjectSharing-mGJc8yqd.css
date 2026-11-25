@@ -1,0 +1,80 @@
+._projectInfo_16qj3_1 {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--spacing--2xs) 0;
+  gap: 8px;
+  justify-content: space-between;
+}
+._projectInfo_16qj3_1 > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+._projectInfo_16qj3_1 p {
+  font-size: var(--font-size--sm);
+  color: var(--color--text--shade-1);
+  font-weight: var(--font-weight--medium);
+  line-height: var(--line-height--lg);
+}
+._projectInfo_16qj3_1 small {
+  font-size: var(--font-size--xs);
+  color: var(--color--text--tint-1);
+  line-height: var(--line-height--lg);
+}
+._text_16qj3_26 {
+  display: flex;
+  flex-direction: column;
+}
+._text_16qj3_26 p {
+  margin: 0;
+}._project_1ivyl_1 {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: var(--spacing--2xs) 0;
+  gap: var(--spacing--2xs);
+}
+._rectBadge_1ivyl_9 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  height: var(--height--sm);
+  padding-inline: var(--spacing--2xs);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: var(--font-size--xs);
+  font-weight: var(--font-weight--bold);
+  color: var(--text-color);
+}
+._trailingRow_1ivyl_23 {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--spacing--2xs);
+  white-space: nowrap;
+}
+._selectedProjects_1ivyl_31 li {
+  padding: 0;
+  border-bottom: var(--border);
+}
+._selectedProjects_1ivyl_31 li:first-child {
+  padding-top: var(--spacing--md);
+}
+._selectedProjects_1ivyl_31 li:last-child {
+  border-bottom: none;
+}
+._projectRoleSelect_1ivyl_42 {
+  width: auto;
+}
+._popper_1ivyl_46 .el-scrollbar__wrap {
+  scrollbar-width: none;
+}
+._emoji_1ivyl_50 {
+  font-size: var(--font-size--sm);
+}
+._searchNotice_1ivyl_54 {
+  cursor: default;
+  text-align: center;
+}

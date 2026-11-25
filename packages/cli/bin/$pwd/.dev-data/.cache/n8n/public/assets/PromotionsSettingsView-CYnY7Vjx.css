@@ -1,0 +1,102 @@
+._body_htak6_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}._form_mwkvu_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._table_mwkvu_7 {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  background-color: var(--background--surface);
+}
+._table_mwkvu_7 th,
+._table_mwkvu_7 td {
+  padding: var(--spacing--xs) var(--spacing--sm);
+  text-align: start;
+  vertical-align: middle;
+}
+._table_mwkvu_7 th {
+  background-color: var(--background--subtle);
+  color: var(--text-color--subtle);
+  font-size: var(--font-size--2xs);
+  font-weight: var(--font-weight--medium);
+}
+._table_mwkvu_7 td {
+  border-block-start: var(--border);
+}
+._table_mwkvu_7 th:first-child,
+._table_mwkvu_7 td:first-child {
+  width: 1px;
+  padding-inline-end: 0;
+}
+._adminColumn_mwkvu_36 {
+  width: 45%;
+}
+._project_mwkvu_40 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._status_mwkvu_46 {
+  display: block;
+}._root_17li2_1 {
+  display: contents;
+}._remote_mig1y_1 {
+  overflow-wrap: anywhere;
+}
+._connectState_mig1y_5 {
+  margin-block-start: var(--spacing--3xs);
+}
+._actions_mig1y_9 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}._layout_3cw8z_1 {
+  container-type: inline-size;
+  padding-top: 0;
+}
+._columns_3cw8z_6 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (max-width: 600px) {
+._columns_3cw8z_6 {
+    grid-template-columns: minmax(0, 1fr);
+}
+}
+._column_3cw8z_6 {
+  display: flex;
+  flex-direction: column;
+}
+._column_3cw8z_6 + ._column_3cw8z_6 {
+  border-inline-start: var(--border-width, 1px) solid var(--border-color--subtle);
+}
+@container (max-width: 600px) {
+._column_3cw8z_6 + ._column_3cw8z_6 {
+    border-inline-start: none;
+    border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
+}
+}
+._switchBack_3cw8z_30 {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+._empty_3cw8z_40 {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing--lg) var(--spacing--sm);
+}

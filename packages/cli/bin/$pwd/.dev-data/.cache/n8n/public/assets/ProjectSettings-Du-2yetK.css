@@ -1,0 +1,238 @@
+._footer_149jx_1 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--xs);
+}._label_1myfd_1 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  min-height: var(--height--sm);
+  padding: 0 var(--spacing--2xs);
+  margin-left: calc(-1 * var(--spacing--2xs));
+  border-radius: var(--radius--sm);
+  cursor: default;
+}
+._label_1myfd_1:focus-visible {
+  outline: 2px solid var(--color--primary);
+  outline-offset: -2px;
+}
+._text_1myfd_16 {
+  font-size: var(--font-size--xs);
+  line-height: var(--line-height--md);
+  color: var(--color--text);
+}
+._icon_1myfd_22 {
+  flex: none;
+}._description_a1205_1 {
+  max-width: 40rem;
+  display: block;
+}
+._secretProvidersContainer_a1205_6 {
+  margin-top: var(--spacing--sm);
+  max-width: 100%;
+  overflow: auto;
+}
+._actionsContainer_a1205_12 {
+  display: flex;
+  justify-content: space-between;
+}
+._searchContainer_a1205_17 {
+  margin-bottom: var(--spacing--sm);
+  max-width: var(--project-field--width);
+}
+._groupHeaderRow_a1205_22 {
+  background-color: var(--color--background--light-3);
+}
+._groupHeaderRow_a1205_22:hover {
+  background-color: var(--color--background--light-2);
+}
+._groupHeaderCell_a1205_29 {
+  padding: 0 !important;
+}
+._groupHeaderRow_a1205_22:not(:first-child) {
+  border-top: var(--border);
+}
+._groupHeaderRow_a1205_22:not(:last-child) {
+  border-bottom: var(--border);
+}
+._secretsCell_a1205_41 {
+  padding: 0 !important;
+}
+._secretsList_a1205_45 {
+  max-height: 10rem;
+  overflow-y: auto;
+}
+._secretRow_a1205_50 {
+  position: relative;
+  align-items: center;
+  padding: var(--spacing--xs) var(--spacing--md) var(--spacing--xs) var(--spacing--xl);
+}
+._secretRow_a1205_50:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: var(--spacing--lg);
+  right: var(--spacing--lg);
+  height: 1px;
+  background-color: var(--color--foreground);
+}
+._groupHeaderContent_a1205_65 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) var(--spacing--xl);
+  width: 100%;
+}
+._expandButton_a1205_74 {
+  position: absolute;
+  left: 0;
+  transition: transform 0.2s;
+  color: var(--color--text);
+  flex-shrink: 0;
+}
+._expandButton_a1205_74:hover {
+  background-color: transparent;
+}
+._expandButton_a1205_74:disabled {
+  cursor: not-allowed;
+}
+._secretName_a1205_88 {
+  font-family: var(--font-family--monospace);
+  font-size: var(--font-size--2xs);
+  background-color: var(--code--color--background--readonly);
+  padding: var(--spacing--4xs);
+}
+._connectionLink_a1205_95 {
+  cursor: pointer;
+  max-width: 50%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+._connectionLink_a1205_95:hover {
+  text-decoration: underline;
+}._telemetryTagContainer_152r7_1 {
+  margin-bottom: var(--spacing--2xs);
+  max-width: var(--project-field--width);
+}
+._telemetryTagRow_152r7_6 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  align-items: flex-end;
+}
+._tagErrorMessage_152r7_12 {
+  font-size: var(--font-size--3xs);
+  color: var(--color--danger);
+  line-height: var(--line-height--sm);
+  margin-top: var(--spacing--4xs);
+}
+._docsLink_152r7_19 {
+  text-decoration: underline;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+}
+._docsLink_152r7_19:hover {
+  color: var(--color--primary);
+}._input_1oor6_1 {
+  max-width: var(--project-field--width);
+}
+._help_1oor6_5 {
+  display: block;
+  margin-top: var(--spacing--3xs);
+}._projectSettings_17305_1 {
+  --project-field--width: 560px;
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  grid-auto-rows: max-content;
+}
+._projectSettings_17305_1 form {
+  width: 100%;
+  max-width: var(--content-container--width);
+  padding: 0 var(--spacing--2xl);
+}
+._projectSettings_17305_1 form fieldset {
+  padding-bottom: var(--spacing--xl);
+}
+._projectSettings_17305_1 form fieldset h3 label {
+  font-size: var(--font-size--lg);
+}
+._projectSettings_17305_1 form fieldset label {
+  display: block;
+  margin-bottom: var(--spacing--xs);
+  font-size: var(--font-size--sm);
+}
+._header_17305_25 {
+  width: 100%;
+  max-width: var(--content-container--width);
+  padding: var(--spacing--lg) var(--spacing--2xl) 0;
+}
+._headerRow_17305_31 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing--md);
+}
+._headerButtons_17305_38 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._upgrade_17305_44 {
+  cursor: pointer;
+}
+._externalSecrets_17305_48 {
+  max-width: 100%;
+  overflow: hidden;
+}
+._membersInputRow_17305_53 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing--md);
+  margin-bottom: var(--spacing--sm);
+}
+._membersTableContainer_17305_61 {
+  margin-top: var(--spacing--sm);
+}
+._membersTableContainer_17305_61 .table-scroll {
+  scrollbar-gutter: auto;
+}
+._search_17305_68 {
+  max-width: 300px;
+  flex-shrink: 0;
+}
+._projectName_17305_73 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  max-width: var(--project-field--width);
+}
+._projectName_17305_73 ._projectNameInput_17305_78 {
+  flex: 1;
+}
+._projectDescriptionInput_17305_82,
+._userSelect_17305_83 {
+  max-width: var(--project-field--width);
+  width: 100%;
+}
+
+/* N8nSelect still resolves its sizes to the legacy element-plus heights (large = 42px),
+   so it never lines up with N8nInput. Pin the picker to the token N8nInput "large" uses,
+   which is the height of every other input on this page. */
+._userSelect_17305_83 .el-select .el-input__inner {
+  height: var(--height--lg);
+  min-height: var(--height--lg);
+  line-height: var(--height--lg);
+}
+
+/* Ensure textarea uses regular UI font, not monospace */
+._projectDescriptionInput_17305_82 textarea {
+  font-family: var(--font-family);
+}
+._danger_17305_102 {
+  display: block;
+  padding-bottom: var(--spacing--lg);
+}

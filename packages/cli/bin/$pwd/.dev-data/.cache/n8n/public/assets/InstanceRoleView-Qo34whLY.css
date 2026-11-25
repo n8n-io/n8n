@@ -1,0 +1,146 @@
+._container_1frue_1 {
+  margin-top: var(--spacing--sm);
+}
+._stateBox_1frue_5 {
+  padding: var(--spacing--xl);
+  text-align: center;
+}
+._container_im31u_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	/* Opt out of the option alignment of the parent list: the callout spans the card. */
+	align-self: stretch;
+}
+._group_im31u_10 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+/* The chevron is an `xsmall` icon button, so the row is `--height--xs` tall. The
+   instance permission rows in ScopeGroupSelector reserve the same column and
+   height, so every checkbox lines up across the cards. */
+._groupHeader_im31u_19 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+._resources_im31u_25 {
+	list-style: none;
+	margin: 0;
+	/* Indent under the group checkbox: chevron width plus the header gap. */
+	padding: 0 0 0 calc(var(--height--xs) + var(--spacing--4xs));
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+._resource_im31u_25 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--height--xs);
+}
+._checkbox_im31u_42 {
+	margin-bottom: 0;
+}
+._callout_im31u_46 {
+	margin-top: var(--spacing--2xs);
+	/* The info callout is white by default. On the white card it needs the page
+	   background to read as a callout. */
+	--callout--color--background--info: var(--color--background);
+}
+
+/* The link keeps the callout's text color; the underline marks it as a link.
+   Both the callout (on the anchor) and N8nLink (on its span) set the purple
+   secondary color, so both are reset. */
+._callout_im31u_46 a.n8n-link,
+._callout_im31u_46 a.n8n-link > span {
+	color: inherit;
+}
+
+._container_rev8u_2 {
+	display: flex;
+	flex-direction: column;
+	/* The personal space card is read-only and applies to every role; the gap
+	   separates it from the permissions the role actually grants. */
+	gap: var(--spacing--lg);
+}
+._cardContainer_rev8u_10 {
+	padding: 0 var(--spacing--lg);
+	border-radius: var(--radius);
+	border: var(--border);
+	background-color: var(--color--background--light-3);
+}
+._card_rev8u_10 {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--md);
+	padding: var(--spacing--md) 0;
+}
+._card_rev8u_10:not(:last-child) {
+	border-bottom: var(--border);
+}
+._cardTitle_rev8u_28 {
+	width: 150px;
+	flex-shrink: 0;
+	/* Center on the first option row, which is `--height--xs` tall (see `.checkbox`). */
+	line-height: var(--height--xs);
+}
+._optionList_rev8u_35 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	/* Keep each tooltip trigger as wide as its option, so the tooltip opens
+	   beside the hovered option and not at the right edge of the card. */
+	align-items: flex-start;
+}
+
+/* These options have no chevron. Reserve the chevron column of the personal
+   space rows (an `xsmall` icon button plus its gap, see PersonalSpacePermissions)
+   so the checkboxes line up across the cards. */
+._optionListInset_rev8u_48 {
+	--option-inset: calc(var(--height--xs) + var(--spacing--4xs));
+}
+._checkbox_rev8u_31 {
+	margin-bottom: 0;
+	/* Same row height as a personal space row, so the two cards share one rhythm. */
+	min-height: var(--height--xs);
+	align-items: center;
+}
+._optionListInset_rev8u_48 ._checkbox_rev8u_31 {
+	margin-left: var(--option-inset);
+}
+
+/* Also opts out: the skeleton rows size themselves in percent of this wrapper,
+   which stretches from the checkbox column to the card edge. */
+._loading_rev8u_65 {
+	align-self: stretch;
+	margin-left: var(--option-inset);
+}
+._warning_rev8u_70 {
+	margin-top: var(--spacing--2xs);
+	/* Opt out of the option alignment above: the callout spans the whole card. */
+	align-self: stretch;
+}
+
+/* The link keeps the warning text color; the underline marks it as a link.
+   Both the callout (on the anchor) and N8nLink (on its span) set the purple
+   secondary color, so both are reset. */
+._warning_rev8u_70 a.n8n-link,
+._warning_rev8u_70 a.n8n-link > span {
+	color: inherit;
+}
+
+._presetsContainer_1a5k5_2 {
+	display: flex;
+	gap: 8px;
+}
+
+/* Widen the delete tooltip so the message wraps to two lines instead of three.
+   Teleported to body, so target it globally; the two-class selector outranks
+   the design-system default max-width. */
+.n8n-tooltip.instanceRoleDeleteTooltip {
+	max-width: 260px;
+}

@@ -1,0 +1,1393 @@
+@charset "UTF-8";._topBar_s7bjg_1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs) var(--spacing--md);
+  background-color: var(--background--surface);
+  border-bottom: var(--border);
+  flex-shrink: 0;
+  min-height: var(--height--4xl);
+}
+._topBarLeft_s7bjg_13 {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+._topBarLeft_s7bjg_13 .n8n-breadcrumbs {
+  min-width: 0;
+}
+._topBarLeft_s7bjg_13 .n8n-breadcrumbs > ul {
+  min-width: 0;
+}
+._topBarLeft_s7bjg_13 .n8n-breadcrumbs > ul > li:first-child {
+  display: none;
+}
+._topBarLeft_s7bjg_13 .n8n-breadcrumbs [data-test-id='breadcrumbs-item'] {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: var(--height--md);
+  padding: var(--spacing--2xs) var(--spacing--xs);
+}
+._topBarRight_s7bjg_40 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--spacing--xs);
+  font-size: var(--font-size--xs);
+  font-weight: var(--font-weight--medium);
+  -webkit-user-select: none;
+          user-select: none;
+  color: var(--text-color--subtler);
+  margin-left: auto;
+}
+._stopButton_s7bjg_54 {
+  color: var(--color--danger);
+}
+._crumbSeparator_s7bjg_58 {
+  color: var(--border-color);
+  margin-inline: var(--spacing--4xs);
+  -webkit-user-select: none;
+          user-select: none;
+  font-size: var(--font-size--xl);
+}
+._switcherButton_s7bjg_65 {
+  flex-shrink: 0;
+  font-size: var(--font-size--sm);
+  gap: var(--spacing--4xs);
+}
+._switcherLabel_s7bjg_71 {
+  display: block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._sessionDropdownMenu_s7bjg_79 {
+  min-width: 360px;
+}
+.session-dropdown-item-active,
+.session-dropdown-item-active:hover,
+.session-dropdown-item-active:focus,
+.session-dropdown-item-active[data-highlighted] {
+  background-color: var(--background--active);
+}
+._sessionDropdownName_s7bjg_90 {
+  display: block;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._sessionDropdownDate_s7bjg_98 {
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--3xs);
+  text-align: right;
+  white-space: nowrap;
+  margin-left: auto;
+}
+._numericMetadata_s7bjg_106 {
+  font-variant-numeric: tabular-nums;
+}
+._descriptionList_s7bjg_110 {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  gap: var(--spacing--sm);
+}
+._descriptionList_s7bjg_110 ._innerLabel_s7bjg_116 {
+  color: var(--text-color--subtler);
+}
+._descriptionList_s7bjg_110 li {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  height: var(--height--sm);
+  font-size: var(--font-size--sm);
+  padding-inline: var(--spacing--xs);
+  margin-inline: calc(var(--spacing--xs) * -1);
+  background-color: transparent;
+  border-radius: var(--radius);
+  -webkit-user-select: none;
+          user-select: none;
+}
+._descriptionList_s7bjg_110 li .n8n-icon {
+  flex-shrink: 0;
+  height: auto;
+}
+._descriptionList_s7bjg_110 li .n8n-text {
+  flex: 1;
+  padding-top: var(--spacing--5xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}._trigger_ek02j_1 {
+  position: relative;
+  display: inline-flex;
+}
+._activeIndicator_ek02j_6 {
+  position: absolute;
+  top: calc(var(--spacing--3xs) * -0.5);
+  right: calc(var(--spacing--3xs) * -0.5);
+  width: var(--spacing--2xs);
+  height: var(--spacing--2xs);
+  outline: var(--spacing--5xs) solid var(--background--surface);
+  border-radius: var(--radius--full);
+  background: var(--color--primary);
+  pointer-events: none;
+}
+._swatch_ek02j_18 {
+  width: var(--spacing--xs);
+  height: var(--spacing--xs);
+  border-radius: var(--radius--4xs);
+}
+._count_ek02j_24 {
+  color: var(--text-color--subtle);
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_1rnhq_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_1rnhq_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_1rnhq_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_1rnhq_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_1rnhq_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_1rnhq_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_1rnhq_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_1rnhq_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_1rnhq_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_1rnhq_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_1rnhq_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_1rnhq_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_1rnhq_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_1rnhq_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_1rnhq_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_1rnhq_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_1rnhq_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_1rnhq_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_1rnhq_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_1rnhq_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_1rnhq_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_1rnhq_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_1rnhq_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_1rnhq_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_1rnhq_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_1rnhq_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_1rnhq_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_1rnhq_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._row_1rnhq_450 ._activityButton_1rnhq_450 {
+  --ai-activity-step--padding: var(--spacing--2xs);
+  --button--color--background-hover: var(--background--hover);
+  --button--color--background-active: var(--background--active);
+}
+._row_1rnhq_450 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  --ai-activity-step--color: var(--text-color--subtle);
+}
+._header_1rnhq_463 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  margin-inline: var(--spacing--2xs);
+  padding-inline-end: var(--spacing--2xs);
+}
+._stateTransition_1rnhq_472 {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+._stateContent_1rnhq_478 {
+  grid-area: 1/1;
+  min-width: 0;
+  pointer-events: none;
+}
+._stateEnterActive_1rnhq_484,
+._stateLeaveActive_1rnhq_485 {
+  transition: opacity var(--duration--snappy) var(--easing--ease-out), transform var(--duration--snappy) var(--easing--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+._stateEnterActive_1rnhq_484,
+  ._stateLeaveActive_1rnhq_485 {
+    animation: none;
+    transition: none;
+}
+}
+._stateEnterFrom_1rnhq_496,
+._stateLeaveTo_1rnhq_497 {
+  opacity: 0;
+}
+._stateEnterFrom_1rnhq_496 {
+  transform: translateY(var(--spacing--2xs));
+}
+._stateLeaveTo_1rnhq_497 {
+  transform: translateY(calc(-1 * var(--spacing--2xs)));
+}
+._files_1rnhq_509 {
+  margin: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
+}
+._failed_1rnhq_513 {
+  --ai-activity-step--color: var(--color--text--danger);
+}
+._cancelled_1rnhq_517 {
+  --ai-activity-step--color: var(--text-color--disabled);
+}
+._cancelledIcon_1rnhq_521 {
+  color: var(--icon-color--subtle);
+}
+._icon_1rnhq_525 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+}
+._actions_1rnhq_534 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  flex-shrink: 0;
+}
+._time_1rnhq_541 {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+._approvalTimelineItem_1rnhq_547 {
+  width: 100%;
+  min-width: 0;
+}
+._approvalRail_1rnhq_552 {
+  width: 1px;
+  height: var(--spacing--sm);
+  margin-inline-start: calc(var(--spacing--lg) + var(--spacing--5xs));
+  background-color: var(--border-color);
+}._withLabel_1vkqn_1 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  font-size: var(--font-size--3xs);
+  font-weight: var(--font-weight--medium);
+  line-height: 1;
+}._step_1wtbl_1 ._activityButton_1wtbl_1 {
+  --ai-activity-step--padding: var(--spacing--2xs);
+  --button--color--background-hover: var(--background--hover);
+  --button--color--background-active: var(--background--active);
+}
+._step_1wtbl_1 {
+  margin-inline: var(--spacing--2xs);
+  --ai-activity-step--color: var(--text-color--subtle);
+}
+._header_1wtbl_12 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  padding-inline-end: var(--spacing--2xs);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+._header_1wtbl_12 > button {
+  min-width: 0;
+}
+._header_1wtbl_12 > button:disabled {
+  pointer-events: none;
+}
+._iconContainer_1wtbl_28 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+}
+._time_1wtbl_38 {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._section_1wtbl_43 {
+  background-color: transparent;
+  border: 0;
+  padding-inline: var(--spacing--md);
+  margin-block: 0;
+  border-left: var(--border);
+  border-radius: 0;
+  /** Align the rail with the icon center. */
+  transform: translateX(calc(var(--spacing--sm) + var(--spacing--5xs)));
+}
+._tasks_1wtbl_54 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  margin-block: var(--spacing--xs);
+  padding-inline-start: var(--spacing--md);
+  color: var(--text-color--subtle);
+  font-size: var(--font-size--sm);
+  overflow-wrap: anywhere;
+}._step_5p2l0_1 ._activityButton_5p2l0_1 {
+  --ai-activity-step--padding: var(--spacing--2xs);
+  --button--color--background-hover: var(--background--hover);
+  --button--color--background-active: var(--background--active);
+}
+._step_5p2l0_1 {
+  margin-inline: var(--spacing--2xs);
+  --ai-activity-step--color: var(--text-color--subtle);
+}
+._failed_5p2l0_12 {
+  --ai-activity-step--color: var(--color--text--danger);
+}
+._interrupted_5p2l0_16 {
+  --ai-activity-step--color: var(--text-color--disabled);
+}
+._interrupted_5p2l0_16 button:hover {
+  color: var(--text-color--disabled);
+}
+._interruptedIcon_5p2l0_23 {
+  color: var(--icon-color--subtle);
+}
+._iconContainer_5p2l0_27 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+}
+._header_5p2l0_37 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  padding-inline-end: var(--spacing--2xs);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+._header_5p2l0_37 > button:disabled {
+  pointer-events: none;
+}
+._outputFiles_5p2l0_50 {
+  margin: var(--spacing--4xs) 0 var(--spacing--2xs);
+}
+._content_5p2l0_54 {
+  display: flex;
+  flex-direction: column;
+}
+._toolTitle_5p2l0_59 {
+  margin-top: var(--spacing--xs);
+}
+._toolSection_5p2l0_63 {
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  border: 0;
+  padding-inline: var(--spacing--md);
+  margin-block: 0;
+  border-left: var(--border);
+  border-radius: 0;
+  /** Vertically aligns the rail with center of icon **/
+  transform: translateX(calc(var(--spacing--sm) + 2px));
+}
+._executionButton_5p2l0_77 {
+  padding-top: var(--spacing--xs);
+}
+._toolCode_5p2l0_81 {
+  background-color: var(--background--surface);
+}
+._errorCallout_5p2l0_85 {
+  margin-top: var(--spacing--xs);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}._row_p6mth_1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+  margin-inline: var(--spacing--2xs);
+  padding-inline: var(--spacing--2xs);
+  padding-inline-end: var(--spacing--2xs);
+}
+._iconContainer_p6mth_11 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+}
+._timestamp_p6mth_21 {
+  margin-inline-start: auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}._step_1cfz3_1 ._activityButton_1cfz3_1 {
+  --ai-activity-step--padding: var(--spacing--2xs);
+  --button--color--background-hover: var(--background--hover);
+  --button--color--background-active: var(--background--active);
+}
+._step_1cfz3_1 {
+  margin-inline: var(--spacing--2xs);
+  --ai-activity-step--color: var(--text-color--subtle);
+}
+._header_1cfz3_12 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing--sm);
+  padding-inline-end: var(--spacing--2xs);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+._header_1cfz3_12 > button {
+  min-width: 0;
+}
+._header_1cfz3_12 > button:disabled {
+  pointer-events: none;
+}
+._iconContainer_1cfz3_29 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+}
+._meta_1cfz3_39 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing--sm);
+  margin-inline-start: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+._section_1cfz3_49 {
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  border: 0;
+  padding-inline: var(--spacing--md);
+  margin-block: 0;
+  border-left: var(--border);
+  border-radius: 0;
+  /** Align the rail with the icon center. */
+  transform: translateX(calc(var(--spacing--sm) + var(--spacing--5xs)));
+  background-color: transparent;
+}
+._title_1cfz3_64 {
+  margin-top: var(--spacing--xs);
+}
+._code_1cfz3_68 {
+  background-color: var(--background--surface);
+}._list_9cxck_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+._card_9cxck_10 {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--sm);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  background-color: var(--background--surface);
+}
+._deleted_9cxck_20 {
+  opacity: 0.5;
+}
+._copy_9cxck_24 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing--4xs);
+  flex: 1;
+  min-width: 0;
+}
+._content_9cxck_33 {
+  overflow-wrap: anywhere;
+}
+._evidence_9cxck_37 {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}._item_146y8_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  margin-inline: var(--spacing--2xs);
+  --ai-activity-step--color: var(--text-color--subtle);
+}
+
+/* Matches the tool row header so names, icons, and times line up. */
+._activityButton_146y8_10 {
+  --ai-activity-step--padding: var(--spacing--2xs);
+}
+._iconContainer_146y8_14 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+}
+._header_146y8_24 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  padding-inline-end: var(--spacing--2xs);
+  font-variant-numeric: tabular-nums;
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+/* Break-points
+ -------------------------- */
+/* Scrollbar
+ -------------------------- */
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+/* Placeholder
+ -------------------------- */
+/* BEM
+ -------------------------- */
+._panelContainer_1l845_122 {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background--surface);
+  border-radius: var(--radius--lg);
+  border: var(--border);
+  box-shadow: var(--shadow--xs);
+}
+._panelHeader_1l845_132 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing--sm);
+  border-bottom: var(--border);
+  border-color: var(--border-color--subtle);
+}
+._panelHeaderIdentity_1l845_141 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._panelHeaderIdentity_1l845_141 ._iconContainer_1l845_146 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--height--2xs);
+  height: var(--height--2xs);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+}
+._panelHeaderIdentity_1l845_141 > span {
+  line-height: 1;
+}
+._panelContent_1l845_159 {
+  position: relative;
+  padding: var(--spacing--sm);
+}
+._panelContent_1l845_159._isCollapsed_1l845_163 {
+  mask-image: linear-gradient(to bottom, black 0, black calc(100% - var(--spacing--sm)), transparent 100%);
+  padding-block-end: 0;
+}
+._messageViewport_1l845_168 {
+  overflow: hidden;
+}
+._messageContent_1l845_172 {
+  display: flow-root;
+}
+._expandButtonContainer_1l845_176 {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--spacing--xs);
+  pointer-events: none;
+}
+._expandButton_1l845_176 {
+  opacity: 0;
+  pointer-events: auto;
+}
+._panelContent_1l845_159[data-state=closed] ._expandButton_1l845_176,
+._panelContent_1l845_159:hover ._expandButton_1l845_176,
+._panelContent_1l845_159:focus-within ._expandButton_1l845_176 {
+  opacity: 1;
+}
+._time_1l845_198 {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}._table_1js48_1 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding-block-end: var(--spacing--lg);
+}
+._rowWrapper_1js48_9 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--n8n-session-panel--container-width, none);
+  margin: 0 auto;
+}
+._approvalRow_1js48_17 {
+  width: 100%;
+  padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--xs);
+}
+._empty_1js48_22 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-color--subtler);
+  font-size: var(--font-size--sm);
+}
+._table_1js48_1 .recycle-scroller-wrapper {
+  scrollbar-width: none;
+  scroll-padding-block: var(--spacing--lg);
+}
+._table_1js48_1 .recycle-scroller-wrapper::-webkit-scrollbar {
+  display: none;
+}
+._directRows_1js48_39 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  scroll-padding-block: var(--spacing--lg);
+}
+._directRows_1js48_39::-webkit-scrollbar {
+  display: none;
+}
+._canScrollDown_1js48_51 .recycle-scroller-wrapper {
+  mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
+}
+._canScrollUp_1js48_55 .recycle-scroller-wrapper {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 100%);
+}
+._canScrollUp_1js48_55._canScrollDown_1js48_51 .recycle-scroller-wrapper {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
+}
+._canScrollDown_1js48_51 ._directRows_1js48_39 {
+  mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
+}
+._canScrollUp_1js48_55 ._directRows_1js48_39 {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 100%);
+}
+._canScrollUp_1js48_55._canScrollDown_1js48_51 ._directRows_1js48_39 {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
+}
+._divider_1js48_75 {
+  width: 100%;
+  padding-inline: var(--spacing--lg);
+  transform: translateX(2px);
+}
+._divider_1js48_75 > span {
+  display: block;
+  height: var(--height--4xs);
+  width: 1px;
+  background-color: var(--border-color);
+}
+._carousel_lnuse_2 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--spacing--4xs);
+  width: 100%;
+  min-width: 0;
+  padding-block: var(--spacing--xs);
+  max-width: var(--n8n-session-panel--container-width, none);
+  margin: 0 auto;
+}
+._chart_lnuse_15 {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  gap: 1px;
+  height: var(--height--sm);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-padding-inline: var(--spacing--lg);
+  border-radius: var(--radius);
+}
+._chart_lnuse_15::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Each segment lives inside a flex .cell that owns the inline flex sizing.
+ * Hover/focus popover positioning is handled by one shared HoverCard above,
+ * anchored to the active block/idle element.
+ */
+._cell_lnuse_32 {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: var(--height--3xs);
+  flex-shrink: 0;
+  transition: opacity, transform var(--duration--snappy) var(--easing--ease-out);
+  /** First cell is actually #2 cause we have a hidden trigger element **/
+}
+._cell_lnuse_32:nth-child(2) ._block_lnuse_45 {
+  border-top-left-radius: var(--radius);
+  border-bottom-left-radius: var(--radius);
+}
+._cell_lnuse_32:last-child ._block_lnuse_45 {
+  border-top-right-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+}
+._cell_lnuse_32[data-error=true]::before {
+  position: absolute;
+  top: calc(var(--spacing--5xs) * -1);
+  left: 0;
+  width: 100%;
+  height: var(--spacing--4xs);
+  background-color: var(--color--danger);
+  content: "";
+  /* Only needs to clear the block inside this cell. */
+  z-index: 1;
+}
+._chart_lnuse_15:has(._block_lnuse_45:hover) ._block_lnuse_45:not(:hover) {
+  opacity: 0.4;
+}
+._block_lnuse_45 {
+  position: relative;
+  flex: 1 0 0;
+  border: none;
+  margin: 4px 0;
+  padding: 0;
+  background-color: var(--session-timeline-chart-block-color);
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+/*
+ * Keep the shared hover card compact so the single-line row layout
+ * (pill · name · duration · time) doesn't wrap.
+ */
+._hoverCardContent_lnuse_85 {
+  max-width: none;
+  min-height: var(--height--sm);
+  font-size: var(--font-size--xs);
+  font-weight: var(--font-weight--medium);
+  line-height: var(--line-height--md);
+  word-wrap: break-word;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color--text);
+}
+._popoverInner_lnuse_98 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--4xs) var(--spacing--3xs);
+  white-space: nowrap;
+}
+._popoverName_lnuse_106 {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+._popoverMeta_lnuse_112 {
+  color: var(--text-color--subtler);
+  font-variant-numeric: tabular-nums;
+}._panel_5zbqm_1 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  --n8n-session-panel--container-width: 75ch;
+}
+._subHeader_5zbqm_12 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding-block-start: var(--spacing--md);
+  width: 100%;
+  flex-shrink: 0;
+  max-width: var(--n8n-session-panel--container-width, none);
+  margin: 0 auto;
+}
+._search_5zbqm_23 {
+  flex: 1;
+  min-width: 0;
+}
+._searchInput_5zbqm_28 {
+  box-shadow: var(--shadow--xs);
+}
+._section_5zbqm_32 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+._loading_5zbqm_39 {
+  padding: var(--spacing--sm);
+  color: var(--text-color--subtler);
+}._view_1afvf_1 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+._content_1afvf_8 {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}

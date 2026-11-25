@@ -1,0 +1,8 @@
+._component_1ujic_1 {
+  width: 100%;
+  background-color: var(--color--background--light-2);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+}

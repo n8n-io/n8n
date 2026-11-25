@@ -1,0 +1,9 @@
+._container_uzsk5_1 p {
+  line-height: normal;
+}
+._container_uzsk5_1 p + p {
+  margin-top: 10px;
+}
+._assistantIcon_uzsk5_8 {
+  margin-right: var(--spacing--4xs);
+}

@@ -1,0 +1,18 @@
+@charset "UTF-8";
+._logoCards_4cmib_2 {
+  /* The tiles rotate ±8deg; Modal's content area clips (overflow: hidden,
+     near-zero inline padding), so the rotated corners need breathing room. */
+  padding: var(--spacing--xs) var(--spacing--md);
+  margin-bottom: var(--spacing--xs);
+}
+._footer_4cmib_9 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+}
+._actions_4cmib_16 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}

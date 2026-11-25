@@ -1,0 +1,20 @@
+._container_11atm_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--spacing--2xl);
+}
+._card_11atm_8 {
+  margin-top: var(--spacing--xl);
+  width: 352px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing--md);
+  padding: var(--spacing--xl);
+  text-align: center;
+  background-color: var(--color--background--light-3);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  box-shadow: 0 4px 16px rgba(99, 77, 255, 0.06);
+}

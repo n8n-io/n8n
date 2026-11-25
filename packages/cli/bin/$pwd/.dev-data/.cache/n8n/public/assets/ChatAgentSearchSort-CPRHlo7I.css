@@ -1,0 +1,58 @@
+._card_1ym0e_1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--sm);
+  background-color: var(--color--background--light-3);
+  border: var(--border);
+  border-radius: var(--radius--lg);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.3s ease;
+}
+._card_1ym0e_1:hover {
+  box-shadow: var(--shadow--card-hover);
+}
+._avatar_1ym0e_17 {
+  flex-shrink: 0;
+}
+._content_1ym0e_21 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  flex: 1;
+  min-width: 0;
+}
+._badge_1ym0e_29 {
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+}
+._title_1ym0e_33 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._description_1ym0e_39 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._actions_1ym0e_45 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  flex-shrink: 0;
+}
+._actionDropdownTrigger_1ym0e_51 {
+  box-shadow: none !important;
+  outline: none !important;
+}._controls_1s82j_1 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  align-items: center;
+}
+._search_1s82j_7 {
+  flex: 1;
+  min-width: 200px;
+}
+._sort_1s82j_12 {
+  width: 200px;
+}

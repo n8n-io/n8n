@@ -1,0 +1,46 @@
+._backRow_icycf_1 {
+  display: flex;
+  margin-bottom: var(--spacing--lg);
+}
+._backButton_icycf_6 {
+  /* Pull the ghost button's inner padding so the arrow aligns with the page heading. */
+  margin-inline-start: calc(-1 * var(--spacing--xs));
+}._container_2gzn2_1 > * {
+  margin-bottom: var(--spacing--2xl);
+}
+._syncTable_2gzn2_5 {
+  margin-bottom: var(--spacing--2xl);
+}
+._header_2gzn2_9 {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+._header_2gzn2_9 *:first-child {
+  flex-grow: 1;
+}
+._enableFeatureContainer_2gzn2_18 {
+  margin-bottom: var(--spacing--xl);
+}
+._enableFeatureContainer_2gzn2_18 > span {
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  padding: 0;
+}
+._enableFeatureContainer_2gzn2_18 > * {
+  padding: 0.5em;
+}
+._sectionHeader_2gzn2_30 {
+  margin-bottom: var(--spacing--sm);
+}
+._settingsForm_2gzn2_34 .form-text {
+  margin-top: var(--spacing--xl);
+}
+._docsInfoTip_2gzn2_38, ._docsInfoTip_2gzn2_38 > div {
+  margin-bottom: var(--spacing--xl);
+}
+._buttonContainer_2gzn2_42 {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+}

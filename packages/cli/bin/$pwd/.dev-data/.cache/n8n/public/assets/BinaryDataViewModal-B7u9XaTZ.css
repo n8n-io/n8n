@@ -1,0 +1,62 @@
+.binary-data-view-dialog {
+  /* Previews size their children with percentages. A max-height alone leaves
+     the dialog at its content height, so a PDF collapses. */
+  height: 90dvh;
+  max-height: calc(100dvh - var(--spacing--lg));
+}.binary-data-modal-content[data-v-d89f8c80] {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.binary-data-modal-content.json[data-v-d89f8c80], .binary-data-modal-content.markdown .binary-data-modal-content.html[data-v-d89f8c80], .binary-data-modal-content.text[data-v-d89f8c80] {
+  overflow: auto;
+}
+.binary-data-modal-content.json .content-wrapper[data-v-d89f8c80], .binary-data-modal-content.markdown .binary-data-modal-content.html .content-wrapper[data-v-d89f8c80], .binary-data-modal-content.text .content-wrapper[data-v-d89f8c80] {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+.binary-data-modal-content .content-wrapper[data-v-d89f8c80] {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+.binary-data-modal-content img[data-v-d89f8c80],
+.binary-data-modal-content video[data-v-d89f8c80] {
+  max-height: 100%;
+  max-width: 100%;
+  display: block;
+}
+.binary-data-modal-content .binary-data[data-v-d89f8c80] {
+  height: 100%;
+  width: 100%;
+  border: 0;
+}
+.binary-data-modal-content .text-content[data-v-d89f8c80] {
+  width: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--color--text);
+  font-family: var(--font-family);
+  font-size: var(--font-size--md);
+}
+.binary-data-modal-content[data-v-d89f8c80]:not(.markdown):not(.html):not(.pdf) {
+  padding: var(--spacing--sm) var(--spacing--md);
+  border: var(--border);
+  border-radius: var(--radius);
+  background-color: var(--color--background--light-3);
+}
+.binary-data-modal-content .loading-message[data-v-d89f8c80],
+.binary-data-modal-content .error-message[data-v-d89f8c80] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color--text--shade-1);
+}

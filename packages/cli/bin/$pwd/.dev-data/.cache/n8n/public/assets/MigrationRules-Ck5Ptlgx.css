@@ -1,0 +1,98 @@
+
+._NoIssuesContainer_1o8ra_2 {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: var(--spacing--4xl) 0;
+}
+
+._CardTitleContainer_19dll_2 {
+	display: flex;
+	align-items: center;
+	margin-bottom: var(--spacing--2xs);
+	gap: var(--spacing--2xs);
+}
+._NoLineBreak_19dll_9 {
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+._Progress_19dll_16 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+}
+._ProgressTrack_19dll_23 {
+	flex: 1;
+	height: var(--height--5xs);
+	border-radius: var(--radius--3xs);
+	background-color: var(--color--foreground--tint-1);
+	overflow: hidden;
+}
+._ProgressFill_19dll_31 {
+	height: 100%;
+	border-radius: inherit;
+	background-color: var(--color--primary);
+}
+._ActionBar_19dll_37 {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--spacing--sm);
+}
+._RefreshGroup_19dll_44 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+._LoadingContainer_19dll_50 {
+	position: relative;
+}
+._SlowLoadingOverlay_19dll_54 {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: var(--spacing--sm) var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+	text-align: center;
+}
+._PLoading_19dll_66 {
+.el-skeleton__p {
+		margin-top: 0;
+}
+}
+._TitleLink_19dll_72 {
+	color: inherit;
+	text-decoration: none;
+&:hover {
+		color: var(--color--primary);
+}
+}
+._FindingCounts_19dll_81 {
+	display: flex;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--2xs);
+}
+._FindingCount_19dll_81 {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+._FindingCountDot_19dll_93 {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+&._open_19dll_98 {
+		background-color: var(--text-color--subtler);
+}
+&._wontFix_19dll_102 {
+		background-color: var(--icon-color--warning);
+}
+}

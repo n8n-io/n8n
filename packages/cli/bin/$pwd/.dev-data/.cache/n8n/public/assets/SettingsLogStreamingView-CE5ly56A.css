@@ -1,0 +1,46 @@
+._cardLink_1a6h0_1 {
+  transition: box-shadow 0.3s ease;
+  cursor: pointer;
+  padding: 0 0 0 var(--spacing--sm);
+  align-items: stretch;
+}
+._cardLink_1a6h0_1:hover {
+  box-shadow: var(--shadow--card-hover);
+}
+._activeStatusText_1a6h0_11 {
+  width: 64px;
+  padding-right: var(--spacing--2xs);
+  box-sizing: border-box;
+  display: inline-block;
+  text-align: right;
+}
+._cardHeading_1a6h0_19 {
+  font-size: var(--font-size--sm);
+  word-break: break-word;
+  padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+._cardDescription_1a6h0_25 {
+  min-height: 19px;
+  display: flex;
+  align-items: center;
+  padding: 0 0 var(--spacing--sm) var(--spacing--sm);
+}
+._cardActions_1a6h0_32 {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 0 var(--spacing--sm) 0 0;
+  cursor: default;
+}._header_brzxt_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  white-space: nowrap;
+}
+._header_brzxt_1 *:first-child {
+  flex-grow: 1;
+}
+._destinationItem_brzxt_11 {
+  margin-bottom: 0.5em;
+}

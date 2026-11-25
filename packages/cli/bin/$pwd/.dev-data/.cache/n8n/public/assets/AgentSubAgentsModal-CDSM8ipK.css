@@ -1,0 +1,28 @@
+._content_gyuq5_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._configureContent_gyuq5_7 {
+  gap: var(--spacing--lg);
+}
+._field_gyuq5_11 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  flex: 1;
+  min-height: 0;
+}
+._label_gyuq5_19 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._infoIcon_gyuq5_25 {
+  display: inline-flex;
+  color: var(--color--text--tint-1);
+  cursor: help;
+}
+._useWhenEditor_gyuq5_31 {
+  height: min(40dvh, var(--height--5xl) * 3);
+}

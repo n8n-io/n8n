@@ -1,0 +1,944 @@
+._header_1hn21_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._titleRow_1hn21_7 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+}
+._titleGroup_1hn21_14 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-width: 0;
+}
+._legend_1hn21_21 {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--xs);
+  margin-top: var(--spacing--3xs);
+}
+._chip_1hn21_28 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--4xs) var(--spacing--2xs);
+  border-radius: var(--radius--full);
+  background: var(--background--subtle);
+  border: 1px solid transparent;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--animation--duration--snappy) var(--animation--easing);
+}
+._chip_1hn21_28:hover {
+  border-color: var(--border-color--strong);
+}._wrap_14cl7_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  max-width: 320px;
+}
+._text_14cl7_8 {
+  line-height: 1.3;
+}
+._label_14cl7_12 {
+  font-weight: var(--font-weight--medium);
+}
+._toggle_14cl7_16 {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-left: var(--spacing--4xs);
+  color: var(--color--primary);
+  cursor: pointer;
+  font: inherit;
+}
+._modalBody_14cl7_26 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: var(--spacing--2xs);
+}
+._criteria_14cl7_35 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._criteriaLabel_14cl7_41 {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+._paragraph_14cl7_46 {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}._card_1to52_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius--md);
+  background: var(--background--surface);
+  padding: var(--spacing--md) var(--spacing--lg);
+}
+._header_1to52_11 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--md);
+}
+._panels_1to52_18 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--lg) var(--spacing--2xl);
+}
+._panel_1to52_18 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._panelHeading_1to52_30 {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._empty_1to52_37 {
+  padding: var(--spacing--lg);
+  text-align: center;
+}._card_dactq_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius--md);
+  background: var(--background--surface);
+  padding: var(--spacing--md) var(--spacing--lg);
+}
+._header_dactq_11 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--md);
+}
+._title_dactq_18 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._takeaways_dactq_24 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing--sm);
+}
+._takeaway_dactq_24 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  padding: var(--spacing--sm);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color--subtle);
+}
+._winner_dactq_39 {
+  background: var(--callout--color--background--success);
+}
+._regression_dactq_43 {
+  background: var(--callout--color--background--danger);
+}
+._next_dactq_47 {
+  background: var(--callout--color--background--info);
+}
+._neutral_dactq_51 {
+  background: var(--background--subtle);
+}
+._badge_dactq_55 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius--full);
+  margin-bottom: var(--spacing--3xs);
+  background: var(--background--surface);
+}
+._badgeSuccess_dactq_66 {
+  color: var(--icon-color--success);
+}
+._badgeDanger_dactq_70 {
+  color: var(--icon-color--danger);
+}
+._badgeInfo_dactq_74 {
+  color: var(--icon-color--info);
+}
+._skeleton_dactq_78 {
+  height: 96px;
+  background: var(--background--subtle);
+  border-color: transparent;
+}
+._errorCard_dactq_84 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--md);
+  padding: var(--spacing--sm) var(--spacing--md);
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius);
+  background: var(--background--subtle);
+}
+._fallbackNote_dactq_95 {
+  font-style: italic;
+}/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
+@keyframes _shimmer_14ovq_1 {
+0% {
+    background-position: 200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+100% {
+    background-position: -200% 0;
+    animation-timing-function: var(--animation--shimmer-burst--easing, var(--easing--ease-in-out));
+}
+}
+@keyframes _spin_14ovq_1 {
+from {
+    transform: rotate(0deg);
+}
+to {
+    transform: rotate(360deg);
+}
+}
+@keyframes _skeleton-pulse_14ovq_1 {
+0%, 100% {
+    opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _opacityPulse_14ovq_1 {
+0%, 100% {
+    opacity: var(--animation--opacity-pulse--opacity-start, 1);
+}
+50% {
+    opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+}
+}
+@keyframes _popoverIn_14ovq_1 {
+from {
+    opacity: 0;
+    transform: translate(var(--animation--popover-in--translate-x, 0), var(--animation--popover-in--translate-y, 0)) scale(var(--animation--popover-in--scale, 0.96));
+}
+to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+}
+}
+@keyframes _fadeIn_14ovq_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in--translate, 8px));
+    filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideDown_14ovq_1 {
+from {
+    height: 0;
+}
+to {
+    height: var(--reka-collapsible-content-height);
+}
+}
+@keyframes _collapsibleSlideUp_14ovq_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+}
+to {
+    height: 0;
+}
+}
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes _collapsibleSlideDownBlurred_14ovq_1 {
+from {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+to {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _collapsibleSlideUpBlurred_14ovq_1 {
+from {
+    height: var(--reka-collapsible-content-height);
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    height: 0;
+    opacity: 0;
+    filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+}
+}
+@keyframes _blurSwapIn_14ovq_1 {
+from {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+to {
+    opacity: 1;
+    filter: blur(0);
+}
+}
+@keyframes _blurSwapOut_14ovq_1 {
+from {
+    opacity: 1;
+    filter: blur(0);
+}
+to {
+    opacity: 0;
+    filter: blur(var(--animation--blur-swap--blur, 4px));
+}
+}
+/** Expand a small glow around a status indicator. */
+@keyframes _pulse_14ovq_1 {
+0% {
+    box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+}
+58.33% {
+    box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+}
+66.6% {
+    box-shadow: 0 0 0 var(--spacing--xs) transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
+@keyframes _pulseGlow_14ovq_1 {
+0% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+58.33% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+66.6% {
+    box-shadow: 0 0 0 66px transparent;
+}
+66.7% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+@keyframes _pulseGlowDelayed_14ovq_1 {
+0%, 16.66% {
+    box-shadow: 0 0 0 0 hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+}
+50% {
+    box-shadow: 0 0 0 60px hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+}
+83.3% {
+    box-shadow: 0 0 0 66px transparent;
+}
+83.4% {
+    box-shadow: 0 0 0 0 transparent;
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
+@keyframes _fade_14ovq_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
+@keyframes _fadeInUp_14ovq_1 {
+from {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(var(--animation--fade-in-up--end, 0));
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
+@keyframes _fadeInDown_14ovq_1 {
+from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
+@keyframes _fadeInLeft_14ovq_1 {
+from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs))));
+    filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
+@keyframes _fadeInRight_14ovq_1 {
+from {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+    filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
+}
+to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+}
+}
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
+@keyframes _fadeOut_14ovq_1 {
+from {
+    opacity: 1;
+}
+to {
+    opacity: 0;
+}
+}
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
+@keyframes _fadeOutDown_14ovq_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
+@keyframes _fadeOutUp_14ovq_1 {
+from {
+    opacity: 1;
+    transform: translateY(0);
+}
+to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
+@keyframes _fadeOutLeft_14ovq_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs))));
+}
+}
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
+@keyframes _fadeOutRight_14ovq_1 {
+from {
+    opacity: 1;
+    transform: translateX(0);
+}
+to {
+    opacity: 0;
+    transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+}
+}
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
+@keyframes _ping_14ovq_1 {
+75%, 100% {
+    transform: scale(var(--animation--ping--scale, 2));
+    opacity: 0;
+}
+}
+@keyframes _blinkBackground_14ovq_1 {
+from, to {
+    background-color: var(--animation--blink-background--color-start, transparent);
+}
+50% {
+    background-color: var(--animation--blink-background--color-end, var(--color--foreground--shade-2));
+}
+}
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
+@keyframes _typingBlink_14ovq_1 {
+0%, 80%, 100% {
+    opacity: var(--animation--typing-blink--opacity-start, 0.35);
+    transform: translateY(0);
+}
+40% {
+    opacity: var(--animation--typing-blink--opacity-end, 1);
+    transform: translateY(var(--animation--typing-blink--translate, -2px));
+}
+}
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
+._table_14ovq_450 {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size--xs);
+}
+._table_14ovq_450 th {
+  text-align: left;
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  color: var(--text-color--subtle);
+  font-weight: var(--font-weight--medium);
+  border-bottom: 1px solid var(--border-color--subtle);
+  white-space: nowrap;
+}
+._table_14ovq_450 th[role=button] {
+  cursor: pointer;
+  -webkit-user-select: none;
+          user-select: none;
+}
+._table_14ovq_450 td {
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border-bottom: 1px solid var(--border-color--subtle);
+  vertical-align: middle;
+}
+._row_14ovq_473 {
+  cursor: pointer;
+}
+._row_14ovq_473:hover {
+  background: var(--background--subtle);
+}
+._num_14ovq_480 {
+  width: 40px;
+  color: var(--text-color--subtle);
+}
+._input_14ovq_485 {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._inputSkeleton_14ovq_492 {
+  display: inline-block;
+  width: 60%;
+  min-width: 80px;
+  height: 0.9em;
+  vertical-align: middle;
+  border-radius: var(--radius);
+  background: var(--background--subtle);
+  animation: _skeleton-pulse_14ovq_1 var(--animation--skeleton-pulse--duration, var(--duration--slowest)) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+._inputSkeleton_14ovq_492 {
+    animation: none;
+}
+}
+._score_14ovq_508 {
+  text-align: center;
+  white-space: nowrap;
+}
+._chip_14ovq_513 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._dot_14ovq_519 {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius--full);
+  flex-shrink: 0;
+}
+._bestPill_14ovq_526 {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing--5xs) var(--spacing--2xs);
+  border-radius: var(--radius--full);
+  border: 1px solid var(--border-color--success);
+  white-space: nowrap;
+}
+._deltas_14ovq_535 {
+  display: inline-flex;
+  gap: var(--spacing--2xs);
+  white-space: nowrap;
+}
+._chevronCol_14ovq_541 {
+  width: 32px;
+  text-align: right;
+}._outputs_13a9t_1 {
+  display: flex;
+  gap: var(--spacing--md);
+  align-items: flex-start;
+}
+._sidebar_13a9t_7 {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  max-height: 480px;
+  overflow-y: auto;
+}
+._sidebarTitle_13a9t_17 {
+  padding: var(--spacing--2xs) var(--spacing--xs);
+}
+._caseItem_13a9t_21 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  align-items: flex-start;
+  text-align: left;
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+}
+._caseItem_13a9t_21:hover {
+  background: var(--background--subtle);
+}
+._caseItemActive_13a9t_37,
+._caseItemActive_13a9t_37:hover {
+  background: var(--color--primary--tint-3);
+  box-shadow: inset 2px 0 0 var(--color--primary);
+}
+._caseItemInput_13a9t_43 {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._main_13a9t_50 {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._inputRow_13a9t_58 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  padding: var(--spacing--sm);
+  border-radius: var(--radius);
+  background: var(--background--subtle);
+}
+._columns_13a9t_67 {
+  display: flex;
+  gap: var(--spacing--sm);
+  overflow-x: auto;
+}
+._column_13a9t_67 {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm);
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius--md);
+}
+._columnHeader_13a9t_84 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._inspect_13a9t_90 {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--5xs);
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color--primary);
+  cursor: pointer;
+  font: inherit;
+}
+._inspect_13a9t_90:hover {
+  text-decoration: underline;
+}
+._answer_13a9t_106 {
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+._metrics_13a9t_113 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing--2xs);
+  padding-top: var(--spacing--2xs);
+  border-top: 1px solid var(--border-color--subtle);
+}
+._metric_13a9t_113 {
+  display: inline-flex;
+  gap: var(--spacing--4xs);
+  align-items: baseline;
+}._table_ruwc8_1 {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size--xs);
+}
+._table_ruwc8_1 th,
+._table_ruwc8_1 td {
+  text-align: left;
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border-bottom: 1px solid var(--border-color--subtle);
+}
+._table_ruwc8_1 th {
+  color: var(--text-color--subtle);
+  font-weight: var(--font-weight--medium);
+}
+._value_ruwc8_17 {
+  text-align: center;
+  vertical-align: top;
+}
+._metric_ruwc8_22 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  max-width: 320px;
+}
+._head_ruwc8_29 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._dot_ruwc8_35 {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius--full);
+}._placeholder_aqt1p_1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing--2xl);
+  border: 1px dashed var(--border-color--subtle);
+  border-radius: var(--radius--md);
+}
+._controls_aqt1p_10 {
+  display: flex;
+  gap: var(--spacing--md);
+  margin-bottom: var(--spacing--sm);
+}
+._control_aqt1p_10 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  min-width: 220px;
+}
+._diff_aqt1p_23 {
+  height: 70vh;
+  min-height: 480px;
+  border: 1px solid var(--border-color--subtle);
+  border-radius: var(--radius--md);
+  overflow: hidden;
+}
+._state_aqt1p_31 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}._tabs_p69iv_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._panel_p69iv_7 {
+  min-height: 120px;
+}
+._runningNote_p69iv_11 {
+  display: block;
+  margin-bottom: var(--spacing--2xs);
+}._view_da66c_1 {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--spacing--lg) var(--spacing--md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._skeleton_da66c_11 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._skelHeader_da66c_17 {
+  height: 64px;
+  border-radius: var(--radius--md);
+  background: var(--background--subtle);
+}
+._skelChart_da66c_23 {
+  height: 220px;
+  border-radius: var(--radius--md);
+  background: var(--background--subtle);
+}
+._empty_da66c_29 {
+  padding: var(--spacing--2xl);
+  text-align: center;
+}

@@ -1,0 +1,6 @@
+._content_n5mc9_1 > *:not(:last-child) {
+  margin-bottom: var(--spacing--sm);
+}
+._innerContent_n5mc9_5 > * {
+  margin-bottom: var(--spacing--2xs);
+}

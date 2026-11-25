@@ -1,0 +1,219 @@
+._buttonGroup_1d8c0_1 {
+  display: inline-flex;
+}
+._buttonGroup_1d8c0_1 > .button:not(:first-child) {
+  border-radius: 0;
+}
+._buttonGroup_1d8c0_1 > .button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  /** Accounts for optical alignment as right side isn't rounded so looks bigger **/
+  padding-inline-start: var(--spacing--sm);
+}
+._buttonGroupDropdown_1d8c0_14 {
+  border-left: 1px solid var(--color--black-alpha-100);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /** Offset this icon as button is rounded so some icons optically look mis-aligned when centered **/
+}
+._buttonGroupDropdown_1d8c0_14 .n8n-icon {
+  transform: translateX(-2px);
+}/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+._projectHeader_e1k9j_113 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  min-height: var(--spacing--3xl);
+}
+._projectDetails_e1k9j_121 {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+._projectInfo_e1k9j_128 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: var(--spacing--4xs);
+}
+._projectName_e1k9j_136 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._promotionBadges_e1k9j_143 {
+  flex-shrink: 0;
+}
+._actions_e1k9j_147 {
+  padding: var(--spacing--xs) 0 var(--spacing--xs);
+}
+._projectDescriptionWrapper_e1k9j_151 {
+  position: relative;
+}
+._projectDescriptionWrapper_e1k9j_151:hover ._tooltip_e1k9j_154 {
+  display: block;
+}
+._descriptionText_e1k9j_158 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._tooltip_e1k9j_154 {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(-1 * var(--spacing--3xs));
+  background-color: var(--color--background--light-2);
+  padding: 0 var(--spacing--3xs) var(--spacing--3xs);
+  z-index: 10;
+  white-space: normal;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+._favoriteBtn_e1k9j_178 {
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--color--text--tint-2);
+  opacity: 0.8;
+}
+._favoriteBtn_e1k9j_178._favoriteBtnActive_e1k9j_184 {
+  color: var(--color--yellow-500);
+}
+._titleRow_e1k9j_188 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  min-height: var(--height--md);
+}
+._projectDetails_e1k9j_121:hover ._favoriteBtn_e1k9j_178 {
+  opacity: 1;
+}
+@media screen and (max-width: 767px) {
+._projectHeader_e1k9j_113 {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing--xs);
+}
+._projectDetails_e1k9j_121 {
+    width: 100%;
+}
+._headerActions_e1k9j_208 {
+    margin-left: auto;
+}
+}

@@ -1,0 +1,90 @@
+._page_1s7fz_1 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  max-width: var(--content-container--width);
+  margin: 0 auto;
+}
+._header_1s7fz_11 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  padding-bottom: var(--spacing--sm);
+}
+._heading_1s7fz_18 {
+  flex: 1;
+  min-width: 0;
+}
+._search_1s7fz_23 {
+  width: 240px;
+}
+._list_1s7fz_27 {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+._row_1s7fz_33 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--2xs) var(--spacing--xs);
+  border-bottom: var(--border);
+}
+._row_1s7fz_33:hover, ._row_1s7fz_33:focus-within, ._row_1s7fz_33:has([aria-expanded=true]) {
+  background-color: var(--color--background--light-1);
+}
+._row_1s7fz_33:hover ._actions_1s7fz_43, ._row_1s7fz_33:focus-within ._actions_1s7fz_43, ._row_1s7fz_33:has([aria-expanded=true]) ._actions_1s7fz_43 {
+  opacity: 1;
+}
+._link_1s7fz_47 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  flex: 1;
+  min-width: 0;
+  color: var(--color--text) !important;
+  text-decoration: none !important;
+}
+._icon_1s7fz_57 {
+  flex-shrink: 0;
+  color: var(--color--text--tint-1);
+}
+._title_1s7fz_62 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._actions_1s7fz_43 {
+  flex-shrink: 0;
+  opacity: 0;
+}
+@media (hover: none) {
+._actions_1s7fz_43 {
+    opacity: 1;
+}
+}
+._renameInput_1s7fz_78 {
+  flex: 1;
+  padding: var(--spacing--4xs) var(--spacing--3xs);
+  font-family: var(--font-family);
+  font-size: var(--font-size--sm);
+  line-height: var(--line-height--xl);
+  color: var(--color--text);
+  background: var(--color--background--light-2);
+  border: var(--border);
+  border-color: var(--color--primary);
+  border-radius: var(--radius);
+  outline: none;
+}
+._status_1s7fz_92 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--lg);
+}
+._sentinel_1s7fz_100 {
+  height: 1px;
+}

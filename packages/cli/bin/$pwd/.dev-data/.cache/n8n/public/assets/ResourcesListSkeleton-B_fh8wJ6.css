@@ -1,0 +1,34 @@
+.resource-list-loading[data-v-7c36ef5f] {
+  position: relative;
+  height: 0;
+  width: 100%;
+  overflow: hidden;
+  /*
+  Show the loading skeleton only if the loading takes longer than 300ms
+  */
+  animation: 0.01s linear 0.3s forwards changeVisibility-7c36ef5f;
+}
+.resource-list-loading[data-v-7c36ef5f] .el-skeleton {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+.resource-list-loading[data-v-7c36ef5f] .el-skeleton > div > div:first-child .el-skeleton__item {
+  height: 42px;
+  margin: 0;
+}
+.resource-list-loading[data-v-7c36ef5f] .el-skeleton .el-skeleton__item {
+  height: 69px;
+}
+.resource-list-loading-instant[data-v-7c36ef5f] {
+  animation: 0.01s linear 0s forwards changeVisibility-7c36ef5f;
+}
+@keyframes changeVisibility-7c36ef5f {
+from {
+    height: 0;
+}
+to {
+    height: 100%;
+}
+}

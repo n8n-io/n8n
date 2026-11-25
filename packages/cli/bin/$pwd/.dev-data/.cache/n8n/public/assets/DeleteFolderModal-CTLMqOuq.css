@@ -1,0 +1,14 @@
+._content_176rm_1 {
+  padding-bottom: var(--spacing--2xs);
+}
+._content_176rm_1 > * {
+  margin-bottom: var(--spacing--sm);
+}
+._innerContent_176rm_8 > * {
+  margin-bottom: var(--spacing--2xs);
+}
+._folder-select-item_176rm_12 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  align-items: center;
+}

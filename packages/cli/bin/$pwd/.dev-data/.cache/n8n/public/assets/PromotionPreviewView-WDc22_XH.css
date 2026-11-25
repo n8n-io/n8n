@@ -1,0 +1,195 @@
+._blockers_bywr8_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  padding: var(--spacing--sm) var(--spacing--lg);
+  overflow-y: auto;
+}
+._section_bywr8_9 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._sectionHeader_bywr8_15 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+}
+._sectionHeader_bywr8_15:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+  outline-offset: var(--spacing--4xs);
+}
+._groups_bywr8_31 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}
+._group_bywr8_31 {
+  display: flex;
+  flex-direction: column;
+  border: var(--border);
+  border-radius: var(--radius--xs);
+  overflow: hidden;
+}
+._group_bywr8_31 ._table_bywr8_44 {
+  border: none;
+  border-top: var(--border);
+  border-radius: 0;
+}
+._callout_bywr8_50 {
+  border: none;
+  border-radius: 0;
+}
+._table_bywr8_44 {
+  width: 100%;
+  border: var(--border);
+  border-radius: var(--radius--xs);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+._table_bywr8_44 th,
+._table_bywr8_44 td {
+  padding: var(--spacing--xs) var(--spacing--sm);
+  text-align: left;
+  vertical-align: middle;
+}
+._table_bywr8_44 th {
+  background-color: var(--background--subtle);
+  color: var(--text-color--subtle);
+  font-size: var(--font-size--2xs);
+  font-weight: var(--font-weight--medium);
+}
+._table_bywr8_44 td {
+  border-top: var(--border);
+}
+
+/* Fixed widths keep the columns in place when the last action button goes away. */
+._fixedColumns_bywr8_80 {
+  table-layout: fixed;
+}
+._nameColumn_bywr8_84 {
+  width: 36%;
+}
+._typeColumn_bywr8_88,
+._statusColumn_bywr8_89 {
+  width: 12%;
+}
+._actionColumn_bywr8_93 {
+  width: 16%;
+}
+._name_bywr8_84 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._icon_bywr8_103 {
+  flex-shrink: 0;
+  color: var(--icon-color);
+}
+._detail_bywr8_108 {
+  margin-top: var(--spacing--4xs);
+}
+._status_bywr8_89 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+  white-space: nowrap;
+}
+._warning_bywr8_119 {
+  color: var(--text-color--warning);
+}
+._success_bywr8_123 {
+  color: var(--text-color--success);
+}
+._action_bywr8_93 {
+  text-align: right;
+  white-space: nowrap;
+}._body_htak6_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}._page_1ucha_1 {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+._header_1ucha_9 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+  /* The same inset as the tree rows and the card panel, so the tab divider lines up with both. */
+  padding: var(--spacing--sm) var(--spacing--sm) 0;
+  background-color: var(--background--surface);
+}
+._title_1ucha_19 {
+  margin-bottom: var(--spacing--2xs);
+}
+._back_1ucha_23 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing--4xs);
+}
+._tabRow_1ucha_29 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing--sm);
+  width: 100%;
+  border-bottom: var(--border);
+}
+._tabs_1ucha_38 {
+  flex: 1;
+  min-width: 0;
+}
+._actions_1ucha_43 {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._state_1ucha_51 {
+  /* The empty states draw their own border, so the space goes outside them. */
+  margin: var(--spacing--sm);
+}
+._operationNotices_1ucha_56 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+._blockers_1ucha_63 {
+  flex: 1;
+  min-height: 0;
+}
+._panes_1ucha_68 {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+._tree_1ucha_74 {
+  flex-shrink: 0;
+  min-height: 0;
+  border-right: var(--border);
+  background-color: var(--background--surface);
+}
+._cards_1ucha_81 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing--sm);
+}

@@ -1,0 +1,134 @@
+._container_1ouuz_1 {
+  width: 100%;
+}
+._header_1ouuz_5 {
+  cursor: pointer;
+  display: flex;
+  padding-top: var(--spacing--sm);
+  align-items: center;
+}
+._header_1ouuz_5 ._headerText_1ouuz_11 {
+  flex-grow: 1;
+}
+._expanded_1ouuz_15 {
+  padding: var(--spacing--sm) 0 0 0;
+}
+._description_1ouuz_19 {
+  display: flex;
+  padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
+}
+._description_1ouuz_19 b {
+  font-weight: var(--font-weight--medium);
+}._accordionItems_iaa1c_1 {
+  display: flex;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100%;
+}
+._accordionItem_iaa1c_1 {
+  display: block !important;
+  text-align: left;
+  margin-bottom: var(--spacing--4xs);
+}
+._empty_iaa1c_14 {
+  display: block !important;
+  text-align: left;
+  margin-top: var(--spacing--2xs);
+  margin-left: var(--spacing--4xs);
+}._accordionItems_1wset_1 {
+  display: flex;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100%;
+  margin-top: var(--spacing--2xs);
+}
+._accordionItem_1wset_1 {
+  display: block !important;
+  text-align: left;
+  margin-bottom: var(--spacing--4xs);
+}
+._clickable_1wset_15 {
+  cursor: pointer !important;
+}
+._clickable_1wset_15:hover {
+  color: var(--color--primary);
+}._accordionItems_1ish4_1 {
+  display: flex;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100%;
+}
+._accordionItem_1ish4_1 {
+  display: block !important;
+  text-align: left;
+  margin-bottom: var(--spacing--4xs);
+}
+._charts_1ish4_14 {
+  width: 100%;
+  flex-direction: column;
+}
+._chart_1ish4_14 {
+  max-width: 100%;
+  max-height: 200px;
+  position: relative;
+}table th,
+table td {
+  text-align: left;
+  font-weight: normal;
+}
+table td {
+  font-variant-numeric: tabular-nums;
+  padding-left: 8px;
+}
+._accordion-content_dkfd8_11 {
+  padding: var(--spacing--2xs);
+}._container_dem04_1 {
+  width: 100%;
+}
+._cardLink_dem04_5 {
+  transition: box-shadow 0.3s ease;
+  cursor: pointer;
+  padding: 0;
+  align-items: stretch;
+}
+._cardLink_dem04_5:hover {
+  box-shadow: var(--shadow--card-hover);
+}
+._cardHeading_dem04_15 {
+  font-size: var(--font-size--sm);
+  word-break: break-word;
+  padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+._stale_dem04_21 {
+  opacity: 0.5;
+}
+._cardDescription_dem04_25 {
+  min-height: 19px;
+  display: flex;
+  align-items: center;
+  padding: 0 0 var(--spacing--sm) var(--spacing--sm);
+}
+._cardActions_dem04_32 {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 var(--spacing--sm) 0 0;
+  cursor: default;
+}._workerListHeader_lqauo_1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing--sm);
+}
+._card_lqauo_8 {
+  margin-bottom: var(--spacing--sm);
+}
+._tableLoader_lqauo_12 {
+  width: 100%;
+  height: 48px;
+  margin-bottom: var(--spacing--2xs);
+}._actionBox_197bz_1 {
+  margin: var(--spacing--2xl) 0 0;
+}

@@ -1,0 +1,85 @@
+._auditNotice_1r6cu_1 {
+  margin-top: var(--spacing--sm);
+}
+._checkboxWrapper_1r6cu_5 {
+  margin-top: var(--spacing--md);
+}._actionBox_dkms5_1 {
+  margin: var(--spacing--2xl) 0 0;
+}
+._spacedFlex_dkms5_5 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+._title_dkms5_11 {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing--2xl) 0 var(--spacing--md);
+}
+._quota_dkms5_17 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 54px;
+  padding: 0 var(--spacing--sm);
+  margin: 0 0 var(--spacing--xs);
+  background: var(--color--background--light-3);
+  border-radius: var(--radius--lg);
+  border: 1px solid var(--color--foreground);
+  white-space: nowrap;
+}
+._quota_dkms5_17 ._count_dkms5_29 {
+  text-transform: lowercase;
+  font-size: var(--font-size--sm);
+}
+._buttons_dkms5_34 {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing--xl) 0 0;
+}
+._buttons_dkms5_34 button {
+  margin-left: var(--spacing--xs);
+}
+._buttons_dkms5_34 button a {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+  padding: var(--spacing--xs) var(--spacing--md);
+  margin: calc(var(--spacing--xs) * -1) calc(var(--spacing--md) * -1);
+}
+._chart_dkms5_50 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-grow: 1;
+}
+._chartLine_dkms5_57 {
+  display: block;
+  height: 10px;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 var(--spacing--md);
+  border-radius: 10px;
+  background: var(--color--background);
+}
+._chartBar_dkms5_67 {
+  float: left;
+  height: 100%;
+  max-width: 100%;
+  background: var(--color--secondary);
+  border-radius: 10px;
+  transition: width 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+}
+div[class*=info] > span > span:last-child {
+  line-height: 1.4;
+  padding: 0 0 0 var(--spacing--4xs);
+}
+._titleTooltip_dkms5_81 {
+  display: flex;
+  align-items: center;
+  margin: 0 0 0 var(--spacing--2xs);
+}
+._activationSuccessDescription_dkms5_87 {
+  display: block;
+  margin-top: var(--spacing--xs);
+}

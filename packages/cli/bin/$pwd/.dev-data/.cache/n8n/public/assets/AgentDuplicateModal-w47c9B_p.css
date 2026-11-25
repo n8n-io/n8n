@@ -1,0 +1,8 @@
+._content_1vzk7_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._error_1vzk7_7 {
+  color: var(--color--danger);
+}

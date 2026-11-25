@@ -1,0 +1,14 @@
+._container_163o3_1 {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+._saved_163o3_7 {
+  color: var(--color--text--tint-1);
+  font-size: 12px;
+  font-weight: var(--font-weight--medium);
+  line-height: 12px;
+  text-align: center;
+  padding: var(--spacing--2xs) var(--spacing--2xs);
+  min-width: 53px;
+}

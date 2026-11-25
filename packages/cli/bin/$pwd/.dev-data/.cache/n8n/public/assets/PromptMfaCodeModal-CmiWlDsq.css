@@ -1,0 +1,15 @@
+._body_1uloc_1 {
+  padding-top: var(--spacing--sm);
+}
+._field_1uloc_5 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+
+/* The input declares its own border variable, so set it on the input element itself. */
+._fieldInvalid_1uloc_12 .n8n-input {
+  --input--border-color: var(--color--danger);
+  --input--border-color--hover: var(--color--danger);
+  --input--border-color--focus: var(--color--danger);
+}

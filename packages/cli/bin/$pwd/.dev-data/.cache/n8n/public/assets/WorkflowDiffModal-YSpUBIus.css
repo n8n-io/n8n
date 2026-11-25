@@ -1,0 +1,142 @@
+/* Shared styles for workflow diff components */._sourceBadge_pmpky_3 {
+	position: absolute;
+	top: 12px;
+	left: 12px;
+	z-index: 1;
+	border-radius: 4px;
+	border: 1px solid var(--color--foreground--tint-1);
+	background: var(--color--foreground--tint-2);
+	display: flex;
+	height: 30px;
+	padding: 0 12px;
+	align-items: center;
+	gap: 8px;
+	align-self: stretch;
+}/* Node status styles */._deleted_pmpky_20,
+._added_pmpky_21,
+._modified_pmpky_22 {
+	position: relative;
+	--workflow-diff--connector--color: transparent;
+.canvas-node-handle-main-output [data-test-id='canvas-handle-plus-wrapper'].source {
+		background-color: var(--canvas-node--color--background);
+}
+.canvas-node-handle-main-output [data-test-id='canvas-handle-plus-wrapper'] line.source {
+		stroke: var(--workflow-diff--connector--color) !important;
+}
+.canvas-node-handle-main-output [data-test-id='canvas-handle-plus'] rect.source {
+		fill: transparent;
+		stroke: var(--workflow-diff--connector--color);
+}
+.canvas-node-handle-main-output [data-test-id='canvas-handle-plus'] path.source {
+		stroke: var(--workflow-diff--connector--color);
+}
+.canvas-node-handle-main-output [class*='dot'].source,
+	.canvas-node-handle-main-input [class*='dot'].target {
+		background-color: var(--workflow-diff--connector--color);
+		border: none;
+}
+&::before {
+		position: absolute;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
+		color: var(--color--text--tint-3);
+		font-family: var(--font-family);
+		font-size: 10px;
+		font-weight: 700;
+		z-index: 1;
+		width: 16px;
+		height: 16px;
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+}
+}._deleted_pmpky_20 {
+	--workflow-diff--connector--color: var(--diff--color--deleted);
+	--canvas-node--color--background: var(--diff--color--deleted--faint);
+	--canvas-node--border-color: var(--diff--color--deleted);
+	--sticky--color--background: var(--diff--color--deleted--faint);
+	--sticky--border-color: var(--diff--color--deleted);
+> div {
+		--canvas-node--border-width: 2px;
+}
+&::before {
+		content: 'D';
+		background-color: var(--diff--color--deleted);
+}
+[class*='disabled'] {
+		--canvas-node--border-color: var(--diff--color--deleted) !important;
+}
+}._added_pmpky_21 {
+	--workflow-diff--connector--color: var(--diff--color--new);
+	--canvas-node--border-color: var(--diff--color--new);
+	--canvas-node--color--background: var(--diff--color--new--faint);
+	--sticky--color--background: var(--diff--color--new--faint);
+	--sticky--border-color: var(--diff--color--new);
+	position: relative;
+> div {
+		--canvas-node--border-width: 2px;
+}
+&::before {
+		content: 'N';
+		background-color: var(--diff--color--new);
+}
+[class*='disabled'] {
+		--canvas-node--border-color: var(--diff--color--new) !important;
+}
+}._equal_pmpky_111 {
+	opacity: 0.5;
+	position: relative;
+	pointer-events: none;
+	cursor: default;
+	--sticky--color--background: rgba(126, 129, 134, 0.2);
+	--canvas-node--icon-color: var(--color--foreground--shade-2);
+	--sticky--border-color: var(--color--foreground--shade-2);
+&:deep(img) {
+		filter: contrast(0) grayscale(100%);
+}
+}._modified_pmpky_22 {
+	--workflow-diff--connector--color: var(--diff--color--modified);
+	--canvas-node--border-width: 2px;
+	--canvas-node--border-color: var(--diff--color--modified);
+	--canvas-node--color--background: var(--diff--color--modified--faint);
+	--sticky--color--background: var(--diff--color--modified--faint);
+	--sticky--border-color: var(--diff--color--modified);
+	position: relative;
+> div {
+		--canvas-node--border-width: 2px;
+}
+&::before {
+		content: 'M';
+		background-color: var(--diff--color--modified);
+}
+[class*='disabled'] {
+		--canvas-node--border-color: var(--diff--color--modified) !important;
+}
+}/* Edge status styles */._edge-deleted_pmpky_148 {
+	--canvas-edge--color: var(--diff--color--deleted);
+	--edge--color--highlight: var(--diff--color--deleted--light);
+}._edge-added_pmpky_153 {
+	--canvas-edge--color: var(--diff--color--new);
+	--edge--color--highlight: var(--diff--color--new--light);
+}._edge-equal_pmpky_158 {
+	opacity: 0.5;
+}
+._workflowDiffModal_fzbmb_1 {
+  margin-bottom: 0;
+  border-radius: 0;
+}
+._workflowDiffModal_fzbmb_1 .el-dialog__header {
+  display: none;
+  padding: 0;
+  margin: 0;
+}
+._workflowDiffModal_fzbmb_1 .el-dialog__body {
+  padding: 0;
+}
+._workflowDiffModal_fzbmb_1 .el-dialog__headerbtn {
+  display: none;
+}
+._sourceBadge_fzbmb_17 {
+}

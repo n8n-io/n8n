@@ -1,0 +1,194 @@
+._sourceControlPull_q7n5m_1.el-dialog {
+  margin: 0;
+}
+._sourceControlPull_q7n5m_1 .el-dialog__header {
+  padding-bottom: var(--spacing--xs);
+}
+._filtersRow_q7n5m_8 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+._filters_q7n5m_8 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+._headerTitle_q7n5m_21 {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: 10px 16px;
+}
+._filtersApplied_q7n5m_27 {
+  border-top: var(--border);
+}
+._scroller_q7n5m_31 {
+  max-height: 100%;
+  scrollbar-color: var(--color--foreground) transparent;
+  outline: var(--border);
+}
+._listItem_q7n5m_37 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin: 0;
+  border-bottom: var(--border);
+  gap: 30px;
+}
+._folderRow_q7n5m_47 {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing--2xs) var(--spacing--sm);
+  border-bottom: var(--border);
+}
+._folderToggle_q7n5m_54 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin-left: var(--spacing--4xs);
+  cursor: pointer;
+}
+._itemContent_q7n5m_67 {
+  flex: 1;
+  min-width: 0;
+}
+._listItemName_q7n5m_72 {
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+}
+._listItemName_q7n5m_72 a {
+  color: inherit;
+  text-decoration: none;
+}
+._listItemName_q7n5m_72 a:hover {
+  text-decoration: underline;
+}
+._badges_q7n5m_89 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+._footer_q7n5m_96 {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+._dataTableWarning_q7n5m_103 > :first-child,
+._dataTableWarning_q7n5m_103 > :first-child > .n8n-text {
+  flex-grow: 1;
+}
+._warningContent_q7n5m_108 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+._dataTableList_q7n5m_114 {
+  margin: var(--spacing--4xs) 0 0 0;
+  padding-left: 0;
+  list-style-position: inside;
+}
+._dataTableList_q7n5m_114 li {
+  margin-bottom: var(--spacing--3xs);
+}
+._dataTableList_q7n5m_114 li:last-child {
+  margin-bottom: 0;
+}
+._listColumn_q7n5m_126 {
+  flex: 1;
+  contain: size;
+}
+._table_q7n5m_131 {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: var(--border);
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+._tableHeader_q7n5m_141 {
+  border-bottom: var(--border);
+  display: flex;
+  flex-direction: column;
+}
+._tabs_q7n5m_147 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 165px;
+  padding: var(--spacing--2xs);
+  border: var(--border);
+  border-right: 0;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+._tab_q7n5m_131 {
+  color: var(--color--text);
+  background-color: transparent;
+  border: 1px solid transparent;
+  padding: var(--spacing--2xs);
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+._tab_q7n5m_131:hover {
+  border-color: var(--color--background);
+}
+._tabActive_q7n5m_175 {
+  background-color: var(--color--background);
+  color: var(--color--text--shade-1);
+}
+._autoPublishSection_q7n5m_180 {
+  display: flex;
+  gap: var(--spacing--2xs);
+  align-items: center;
+  padding: var(--spacing--4xs) 0;
+  margin-bottom: var(--spacing--xs);
+}
+._select_q7n5m_188 {
+  width: 250px;
+}
+._statusLine_q7n5m_192 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._listOption_q7n5m_198 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  margin: var(--spacing--3xs) 0;
+  white-space: normal;
+  padding-right: var(--spacing--md);
+}
+._rowNoBorder_q7n5m_207 {
+  border-bottom: 0;
+}
+._policyGroupRow_q7n5m_211 {
+  padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--2xs);
+  border-bottom: var(--border);
+  background-color: var(--color--background--light-2);
+}
+._policyCard_q7n5m_217 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--xs);
+}

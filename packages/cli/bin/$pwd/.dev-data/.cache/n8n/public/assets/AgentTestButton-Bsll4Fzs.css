@@ -1,0 +1,26 @@
+._tooltip_74i0m_1 {
+  max-width: calc(var(--spacing--5xl) + var(--spacing--lg));
+  align-items: stretch;
+  white-space: normal;
+}
+._content_74i0m_7 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+._heading_74i0m_13 {
+  font-weight: var(--font-weight--bold);
+}
+._issueList_74i0m_17 {
+  margin: 0;
+  padding-inline-start: var(--spacing--md);
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}
+._previewDetails_74i0m_26 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}

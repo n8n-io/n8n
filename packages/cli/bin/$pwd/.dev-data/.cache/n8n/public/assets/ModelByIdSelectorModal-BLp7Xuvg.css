@@ -1,0 +1,7 @@
+._content_19sp2_1 {
+  gap: var(--spacing--sm);
+}
+._icon_19sp2_5 {
+  flex-shrink: 0;
+  flex-grow: 0;
+}

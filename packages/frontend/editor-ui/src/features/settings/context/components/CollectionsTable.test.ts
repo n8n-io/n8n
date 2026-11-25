@@ -261,5 +261,48 @@ describe('CollectionsTable', () => {
 			expect(emitted('edit')).toEqual([[editable]]);
 			expect(emitted('delete')).toEqual([[editable]]);
 		});
+
+		it('does not open the row when the user clicks its menu', async () => {
+			const { getByTestId, emitted } = render([editable]);
+
+			await openActions(getByTestId('collections-table'));
+			await waitFor(() => expect(menuItem('edit')).toBeInTheDocument());
+			await userEvent.click(menuItem('edit')!);
+
+			expect(emitted('open')).toBeUndefined();
+		});
+	});
+
+	describe('row click', () => {
+		it('emits open with the collection of the clicked row', async () => {
+			const first = collection({ id: 'first', name: 'Customer support' });
+			const second = collection({ id: 'second', name: 'Brand guidelines' });
+			const { getAllByTestId, emitted } = render([first, second]);
+
+			await userEvent.click(getAllByTestId('collection-name')[1]);
+
+			expect(emitted('open')).toEqual([[second]]);
+		});
+
+		it('opens a row that the user cannot change', async () => {
+			const readOnly = collection({
+				homeProject: { id: 'team-viewer', name: 'Viewers only', type: 'team' },
+			});
+			const { getByTestId, emitted } = render([readOnly]);
+
+			await userEvent.click(getByTestId('collection-updated-at'));
+
+			expect(emitted('open')).toEqual([[readOnly]]);
+		});
+
+		it('opens a collection from the keyboard', async () => {
+			const first = collection();
+			const { getByRole, emitted } = render([first]);
+
+			getByRole('button', { name: 'Customer support' }).focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(emitted('open')).toEqual([[first]]);
+		});
 	});
 });

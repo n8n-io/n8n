@@ -1,0 +1,40 @@
+._changes_2d6bz_1 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+._state_2d6bz_8 {
+  /* The empty states draw their own border, so the space goes outside them. The right space
+     matches the gutter of the inbox detail. */
+  margin: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) 0;
+}
+._notices_2d6bz_14 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  padding: var(--spacing--sm) var(--spacing--md) 0 0;
+}
+._panes_2d6bz_21 {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+._tree_2d6bz_27 {
+  flex-shrink: 0;
+  min-height: 0;
+  /* Takes back the inset of the tree and its rows, so the row text lines up with the heading. */
+  margin-left: calc(-2 * var(--spacing--2xs));
+  border-right: var(--border);
+}
+._cards_2d6bz_35 {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* The scroll bar stays at the edge, and the cards end where the tab row divider ends. */
+  padding: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) var(--spacing--sm);
+}

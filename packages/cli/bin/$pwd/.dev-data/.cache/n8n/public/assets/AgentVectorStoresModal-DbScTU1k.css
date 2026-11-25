@@ -1,0 +1,47 @@
+._content_13aji_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._configureContent_13aji_7 {
+  gap: var(--spacing--lg);
+}
+._rows_13aji_11 {
+  display: flex;
+  flex-direction: column;
+}
+._row_13aji_11 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--sm);
+  flex-shrink: 0;
+  padding-block: var(--spacing--sm);
+}
+._iconWrapper_13aji_24 {
+  flex-shrink: 0;
+  width: var(--spacing--xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+._rowBody_13aji_32 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+  min-width: 0;
+}
+._name_13aji_40 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--line-height--md);
+  max-width: 100%;
+}
+._actions_13aji_49 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  flex-shrink: 0;
+}

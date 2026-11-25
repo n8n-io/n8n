@@ -1,0 +1,217 @@
+._itemStack_16fpv_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--5xs);
+}._callout_1gzib_1 > div {
+  align-items: flex-start;
+}
+._body_1gzib_5 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._list_1gzib_11 {
+  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--2xs);
+}
+._item_1gzib_18 {
+  display: flex;
+  flex-direction: column;
+}
+._underlinedText_1gzib_23 {
+  text-decoration: underline;
+}
+._content_1ywtg_2 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
+}
+._group_1ywtg_9 {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+}
+._trigger_1ywtg_16 {
+	display: inline-flex;
+}
+._trigger_1ywtg_16[data-state='open'] button {
+	background-color: var(--button--color--background-active);
+}
+._quickFilters_1ywtg_24 {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+/* Separates the quick filters from the full filters. */
+._allFilters_1ywtg_31 {
+	padding-top: var(--spacing--sm);
+	border-top: var(--border);
+}
+._select_1ywtg_36 {
+	width: 100%;
+}
+._footer_1ywtg_40 {
+	display: flex;
+	justify-content: space-between;
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
+}
+._group_dn1km_1 {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius--full);
+}
+._group_dn1km_1 ._main_dn1km_6,
+._group_dn1km_1 ._toggle_dn1km_7 {
+  --button--border--shadow: 0 0 0 0 transparent;
+  --button--border--shadow--hover: 0 0 0 0 transparent;
+  --button--border--shadow--active: 0 0 0 0 transparent;
+}
+._group_dn1km_1 ._main_dn1km_6 {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+._group_dn1km_1 ._toggle_dn1km_7 {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid var(--border-color);
+}._content_np1jn_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+}
+._list_np1jn_7 {
+  max-height: calc(5 * var(--spacing--2xl));
+  overflow-y: auto;
+  border: var(--border);
+  border-radius: var(--radius);
+}
+._row_np1jn_14 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing--sm);
+  padding: var(--spacing--2xs) var(--spacing--sm);
+}
+._row_np1jn_14 + ._row_np1jn_14 {
+  border-top: var(--border);
+}
+._name_np1jn_25 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._actions_np1jn_31 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--xs);
+}
+/* Loading placeholder for the header: mirrors N8nSettingsPageHeader's self-capping so the
+   skeleton column stays centered while the table below spans the full-width layout. */
+._pageHeader_16y5w_4 {
+	width: 100%;
+	max-width: var(--settings-content--max-width, 45rem);
+	margin-inline: auto;
+}
+._howToFix_16y5w_10 {
+	margin-bottom: var(--spacing--md);
+}
+._unusedCallout_16y5w_14 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--md);
+	margin-bottom: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+}
+._unusedCalloutActions_16y5w_26 {
+	display: flex;
+	flex-shrink: 0;
+	gap: var(--spacing--2xs);
+}
+._cellStack_16y5w_32 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+._truncate_16y5w_39 {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* The ellipsis takes the anchor color, so match it to the link text. */
+._workflowName_16y5w_46 {
+	color: var(--color--text);
+}
+
+/* A dot before the name shows the published state, so the second line has room for the project. */
+._nameRow_16y5w_51 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+._publishedDot_16y5w_58 {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+._nameDetails_16y5w_63 {
+	display: flex;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+/* A long project name truncates, so the updated time stays in view. */
+._project_16y5w_70 {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+._updated_16y5w_77 {
+	flex-shrink: 0;
+}
+._nodeNames_16y5w_81 {
+	font-family: var(--font-family--monospace);
+}
+._actions_16y5w_85 {
+	display: flex;
+	align-items: center;
+	justify-content: end;
+	gap: var(--spacing--sm);
+}
+
+/* Sticks to the bottom of the viewport, so the floating selection bar stays in
+   view while a long table scrolls. The height holds the bar and its bottom
+   offset, so the bar does not cover the rows of a short table. */
+._selectionBar_16y5w_95 {
+	position: sticky;
+	bottom: 0;
+	height: calc(var(--spacing--3xl) + var(--spacing--2xl));
+}
+
+/* Matches the search, sort and filter row of the Overview lists. */
+._toolbar_16y5w_102 {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	align-items: center;
+	justify-content: flex-end;
+	margin-bottom: var(--spacing--md);
+}
+._search_16y5w_111 {
+	flex: 0 1 20rem;
+}
+._sort_16y5w_115 {
+	width: 196px;
+}

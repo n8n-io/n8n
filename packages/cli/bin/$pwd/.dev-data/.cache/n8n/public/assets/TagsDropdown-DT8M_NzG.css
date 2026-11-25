@@ -1,0 +1,115 @@
+.tags-container .el-select-tags-wrapper .el-tag {
+  max-height: 60px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+.tags-container .el-select-tags-wrapper input {
+  max-height: 60px;
+}
+.tags-container .el-tag,
+.tags-container .el-tag.el-tag--info {
+  height: var(--tag--height);
+  padding: var(--tag--padding);
+  line-height: var(--tag--line-height);
+  color: var(--tag--color--text);
+  background-color: var(--tag--color--background);
+  border: 1px solid var(--tag--border-color);
+  border-radius: var(--tag--radius);
+  font-size: var(--tag--font-size);
+}
+.tags-container .el-tag .el-tag__close,
+.tags-container .el-tag.el-tag--info .el-tag__close {
+  max-height: 14px;
+  max-width: 14px;
+  line-height: 14px;
+}
+.tags-container .el-tag .el-tag__close:hover,
+.tags-container .el-tag.el-tag--info .el-tag__close:hover {
+  background-color: transparent !important;
+  color: var(--color--primary--shade-1);
+}
+.tags-dropdown {
+  min-width: 224px !important;
+  max-width: 224px;
+}
+.tags-dropdown .el-tag {
+  white-space: normal;
+}
+.tags-dropdown .el-scrollbar {
+  position: relative;
+  max-height: 266px;
+}
+.tags-dropdown .el-scrollbar > div {
+  overflow: auto;
+  margin-bottom: 0 !important;
+}
+.tags-dropdown .el-scrollbar ul {
+  padding: 0;
+  max-height: 228px;
+}
+.tags-dropdown .el-scrollbar ul ::-webkit-scrollbar {
+  display: none;
+}
+.tags-dropdown-manage-enabled .tags-dropdown .el-scrollbar:after {
+  content: " ";
+  display: block;
+  min-height: 38px;
+  width: 224px;
+  padding: 10px 20px;
+}
+.tags-dropdown .el-scrollbar ::-webkit-scrollbar-thumb {
+  display: none;
+}
+.tags-dropdown li {
+  height: 38px;
+  background-color: var(--color--foreground--tint-2);
+  padding: 10px 20px;
+  margin: 0;
+  line-height: 18px;
+  font-weight: var(--font-weight--regular);
+  font-size: 14px;
+}
+.tags-dropdown li.is-disabled {
+  color: var(--color--text--tint-1);
+  cursor: default;
+}
+.tags-dropdown li.selected {
+  font-weight: var(--font-weight--medium);
+}
+.tags-dropdown li.selected > span {
+  display: inline-block;
+  width: calc(100% - 14px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tags-dropdown li.selected:after {
+  font-size: 14px !important;
+}
+.tags-dropdown li.ops {
+  color: var(--color--primary);
+  cursor: pointer;
+}
+.tags-dropdown li.ops :first-child {
+  margin-right: 5px;
+}
+.tags-dropdown li.tag {
+  border-top: none;
+}
+.tags-dropdown li.manage-tags {
+  position: absolute;
+  bottom: 0;
+  min-width: 224px;
+  border-top: 1px solid var(--color--foreground);
+}
+.tags-dropdown li.message {
+  height: auto;
+  white-space: normal;
+  flex-direction: column;
+  align-items: stretch;
+}
+.tags-dropdown .create-blocked-note {
+  display: block;
+  margin-top: var(--spacing--5xs);
+  color: var(--color--text--tint-1);
+  font-size: var(--font-size--2xs);
+}

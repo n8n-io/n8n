@@ -1,0 +1,161 @@
+._loading_zz9y8_1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--height--5xl) * 3);
+}
+._content_zz9y8_8 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--sm);
+  min-height: 0;
+  overflow-x: hidden;
+}
+._settings_zz9y8_16,
+._timeoutSection_zz9y8_17 {
+  display: flex;
+  flex-direction: column;
+}
+._settings_zz9y8_16 {
+  gap: var(--spacing--lg);
+}
+._timeoutSection_zz9y8_17 {
+  gap: var(--spacing--2xs);
+}._wrapper_1dag9_1 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+._editor_1dag9_8 {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+._editor_1dag9_8 .cm-editor {
+  border: none;
+  border-radius: 0;
+  height: 100%;
+}._fields_1mm2d_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._field_1mm2d_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--3xs);
+  min-width: 0;
+}
+._descriptionLabel_1mm2d_14 {
+  font-size: var(--font-size--2xs);
+  color: var(--color--text--tint-1);
+}/* Focus State
+ -------------------------- */
+._container_xnrdk_3 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._field_xnrdk_9 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+}
+._field_xnrdk_9 ._invalidDescription_xnrdk_15 {
+  --input--border-color: var(--color--danger);
+  --input--border-color--hover: var(--color--danger);
+  --input--border-color--focus: var(--color--danger);
+}
+._label_xnrdk_21 {
+  font-size: var(--font-size--sm);
+  font-weight: var(--font-weight--medium);
+  color: var(--color--text);
+}
+._controlRow_xnrdk_27 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--3xs);
+}
+._modeSelector_xnrdk_33 {
+  flex: 0 0 auto;
+  width: 120px;
+}
+._controlInput_xnrdk_38 {
+  flex: 1;
+  min-width: 0;
+}
+._openTarget_xnrdk_43 {
+  flex: 0 0 auto;
+}
+._popper_xnrdk_47 .el-select-dropdown__item {
+  height: auto;
+  line-height: var(--line-height--md);
+  padding-top: var(--spacing--2xs);
+  padding-bottom: var(--spacing--2xs);
+}
+._option_xnrdk_54 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--4xs);
+  min-width: 0;
+}
+._optionMeta_xnrdk_61 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+._advancedTrigger_xnrdk_67 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing--3xs) var(--spacing--2xs);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+._advancedTrigger_xnrdk_67:hover {
+  background: var(--color--background--light-2);
+}
+._advancedTrigger_xnrdk_67:focus-visible {
+  outline: var(--focus--border-width) solid var(--focus--outline-color);
+}
+._advancedContent_xnrdk_85 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--xs);
+}._contentWrapper_35uik_1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing--md);
+  overflow-x: hidden;
+}
+._contentWrapper_35uik_1 .ndv-connection-hint-notice {
+  display: none;
+}
+._codeContentWrapper_35uik_11 {
+  height: min(var(--spacing--5xl) * 2, 70dvh - var(--spacing--5xl));
+  overflow: hidden;
+}
+._configureTab_35uik_16 {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--spacing--md);
+}
+._customToolViewer_35uik_23 {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}._icon_1ygfj_1 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--color--primary);
+}

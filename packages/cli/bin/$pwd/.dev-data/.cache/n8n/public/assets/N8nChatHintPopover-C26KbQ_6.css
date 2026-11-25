@@ -1,0 +1,10 @@
+._hint_1x8pa_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing--2xs);
+  padding: var(--spacing--sm);
+}
+._hint_1x8pa_1 button {
+  margin-top: var(--spacing--3xs);
+}

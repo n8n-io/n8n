@@ -1,0 +1,5 @@
+._footer_1ybrg_1 {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing--2xs);
+}

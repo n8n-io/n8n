@@ -1,0 +1,10 @@
+._content_1hg8t_1 > *:not(:last-child) {
+  margin-bottom: var(--spacing--md);
+}
+._footer_1hg8t_5 {
+  display: flex;
+  justify-content: flex-end;
+}
+._footer_1hg8t_5 > * {
+  margin-left: var(--spacing--3xs);
+}

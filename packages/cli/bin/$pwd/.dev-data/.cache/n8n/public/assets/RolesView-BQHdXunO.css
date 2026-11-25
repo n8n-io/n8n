@@ -1,0 +1,89 @@
+
+._paywallContainer_12mtn_2 {
+	border: 2px dashed var(--color--foreground);
+	border-radius: var(--radius--lg);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: var(--spacing--3xl);
+	gap: var(--spacing--lg);
+}
+._paywallIcons_12mtn_12 {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+._iconBox_12mtn_18 {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	background: var(--color--foreground--tint-2);
+	border: 1px solid var(--color--foreground);
+	border-radius: var(--radius);
+	box-shadow:
+		0 0 0.5px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100)),
+		0 3px 8px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100)),
+		0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+}
+._iconBoxLeft_12mtn_33 {
+	transform: rotate(-8deg);
+	margin: var(--spacing--2xs) var(--spacing--5xs) 0 0;
+}
+._iconBoxCenter_12mtn_38 {
+	z-index: 1;
+	box-shadow:
+		0 0 0.5px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-200)),
+		0 5px 12px 0 light-dark(var(--color--black-alpha-300), var(--color--white-alpha-200)),
+		0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	margin: 0 -3px;
+}
+._iconBoxRight_12mtn_47 {
+	transform: rotate(8deg);
+	margin: var(--spacing--2xs) 0 0 var(--spacing--5xs);
+}
+._paywallText_12mtn_52 {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	text-align: center;
+}
+._paywallActions_12mtn_59 {
+	display: flex;
+	gap: var(--spacing--xs);
+	align-items: center;
+}
+._clickableRow_12mtn_65 {
+	cursor: pointer;
+}
+._tallRow_12mtn_69 {
+	height: var(--spacing--3xl);
+}
+._countCell_12mtn_73 {
+	text-align: right;
+	width: 120px;
+}
+._actionsCell_12mtn_78 {
+	text-align: center;
+	width: 50px;
+}
+._countLink_12mtn_83 {
+	color: var(--color--text);
+	text-decoration: underline;
+	font-weight: var(--font-weight--medium);
+}
+._countLink_12mtn_83:hover {
+	color: var(--color--primary);
+}
+
+._headerTitle_1sl7n_2 {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+._tabsRow_1sl7n_8 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}

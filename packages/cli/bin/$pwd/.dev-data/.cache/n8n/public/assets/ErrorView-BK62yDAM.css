@@ -1,0 +1,22 @@
+._container_1ubbw_1 {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+._icon_1ubbw_10 {
+  min-height: 96px;
+  min-width: 108px;
+  margin-bottom: var(--spacing--2xl);
+  color: var(--color--foreground);
+}
+._message_1ubbw_17 {
+  margin-bottom: var(--spacing--lg);
+}
+._message_1ubbw_17 * {
+  margin-bottom: var(--spacing--2xs);
+  display: flex;
+  justify-content: center;
+}

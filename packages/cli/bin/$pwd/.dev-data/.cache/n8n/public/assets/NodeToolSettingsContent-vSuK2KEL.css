@@ -1,0 +1,24 @@
+._container_1qjwu_1 {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+._tabs_1qjwu_9 {
+  flex-shrink: 0;
+  margin-bottom: var(--spacing--xs);
+  padding-right: var(--spacing--lg);
+}
+._tabContent_1qjwu_15 {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: var(--spacing--lg);
+}
+._noParameters_1qjwu_22 {
+  margin-top: var(--spacing--xs);
+}
+._commonSettings_1qjwu_26 {
+  margin-top: var(--spacing--xs);
+}

@@ -1,0 +1,432 @@
+/* BEM support Func
+ -------------------------- */
+/* Transition
+-------------------------- */
+/* Color
+-------------------------- */
+/* Link
+-------------------------- */
+/* Border
+-------------------------- */
+/* Outline
+-------------------------- */
+/* Box shadow
+-------------------------- */
+/* Fill
+-------------------------- */
+/* Typography
+-------------------------- */
+/* z-index
+-------------------------- */
+/* Disable base
+-------------------------- */
+/* Icon
+-------------------------- */
+/* Checkbox
+-------------------------- */
+/* Radio
+-------------------------- */
+/* Select
+-------------------------- */
+/* Alert
+-------------------------- */
+/* MessageBox
+-------------------------- */
+/* Message
+-------------------------- */
+/* Notification
+-------------------------- */
+/* Input
+-------------------------- */
+/* Cascader
+-------------------------- */
+/* Group
+-------------------------- */
+/* Tab
+-------------------------- */
+/* Button
+-------------------------- */
+/* cascader
+-------------------------- */
+/* Switch
+-------------------------- */
+/* Dialog
+-------------------------- */
+/* Table
+-------------------------- */
+/* Popup
+-------------------------- */
+/* Popover
+-------------------------- */
+/* Tooltip
+-------------------------- */
+/* Tag
+-------------------------- */
+/* Tree
+-------------------------- */
+/* Dropdown
+-------------------------- */
+/* Badge
+-------------------------- */
+/* Card
+--------------------------*/
+/* Slider
+--------------------------*/
+/* Steps
+--------------------------*/
+/* Menu
+--------------------------*/
+/* Rate
+--------------------------*/
+/* DatePicker
+--------------------------*/
+/* Loading
+--------------------------*/
+/* Scrollbar
+--------------------------*/
+/* Carousel
+--------------------------*/
+/* Collapse
+--------------------------*/
+/* Transfer
+--------------------------*/
+/* Header
+  --------------------------*/
+/* Footer
+--------------------------*/
+/* Main
+--------------------------*/
+/* Timeline
+--------------------------*/
+/* Backtop
+--------------------------*/
+/* Link
+--------------------------*/
+/* Calendar
+--------------------------*/
+/* Form
+-------------------------- */
+/* Avatar
+--------------------------*/
+/* Break-point
+--------------------------*/
+/* Break-points
+ -------------------------- */
+/* Scrollbar
+ -------------------------- */
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+/* Placeholder
+ -------------------------- */
+/* BEM
+ -------------------------- */
+[role=dialog]._dialog_hn7dj_122 {
+  --n8n-dialog-region--padding: 0;
+  --n8n-dialog-close--inset-block-start: calc(
+  	var(--spacing--md) + (var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
+  );
+  --n8n-dialog-close--inset-inline-end: var(--spacing--lg);
+}
+._header_hn7dj_130 {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing--md) var(--spacing--lg);
+  padding-inline-end: calc(var(--spacing--lg) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));
+}
+._headerDivider_hn7dj_137 {
+  border-bottom: var(--border);
+}
+._splitDivided_hn7dj_141 > ._main_hn7dj_141,
+._splitDivided_hn7dj_141 ._sidePanel_hn7dj_142 {
+  border-top: var(--border);
+}
+._splitDivided_hn7dj_141._dividerWarning_hn7dj_145 > ._main_hn7dj_141 {
+  border-top-color: var(--callout--border-color--warning);
+}
+._titleError_hn7dj_149 {
+  min-width: 0;
+}
+._titleErrorWithBack_hn7dj_153 {
+  padding-left: calc(var(--spacing--xl) + var(--spacing--2xs));
+}
+._headerContent_hn7dj_157 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  width: 100%;
+  min-width: 0;
+}
+._backButton_hn7dj_165 {
+  flex-shrink: 0;
+}
+._titlePrefix_hn7dj_169 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+._titleGroup_hn7dj_175 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--xs);
+  min-width: 0;
+  flex: 1;
+}
+._titleGroup_hn7dj_175:hover ._editIcon_hn7dj_182, ._titleGroup_hn7dj_175:focus-within ._editIcon_hn7dj_182 {
+  opacity: 1;
+}
+
+/* Keeps the suffix beside the title instead of at the far end of the header. */
+._titleGroupWithSuffix_hn7dj_187 {
+  flex: 0 1 auto;
+}
+._titleSuffix_hn7dj_191 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+._title_hn7dj_149 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._editableTitle_hn7dj_203 {
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+  color: inherit;
+}
+._editIcon_hn7dj_182 {
+  flex-shrink: 0;
+  opacity: 0;
+  color: var(--color--text--tint-1);
+  transition: opacity var(--duration--snappy) ease;
+}
+._headerActions_hn7dj_217 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+  margin-left: auto;
+}
+
+/* The size of the window less a margin, whatever the content. The body and the side panel scroll. */
+[role=dialog]._dialogFixed_hn7dj_225 {
+  width: min(72rem, 100dvw - var(--spacing--lg) * 2);
+  height: calc(100dvh - var(--spacing--3xl) * 2);
+  max-width: none;
+}
+[role=dialog]._dialogFixed_hn7dj_225 ._splitWithPanel_hn7dj_230 {
+  flex: 1;
+}
+[role=dialog]._dialogFixed_hn7dj_225 ._body_hn7dj_233 {
+  flex: 1;
+  max-height: none;
+}
+[role=dialog]._dialogFixed_hn7dj_225 {
+  /* The content fills the body, so a full-height column reaches the footer. */
+}
+[role=dialog]._dialogFixed_hn7dj_225 ._body_hn7dj_233 > * {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+/* Without a side panel the wrappers add no boxes, so the layout stays as before. */
+._split_hn7dj_141,
+._main_hn7dj_141 {
+  display: contents;
+}
+
+/* A side panel runs beside the body and the footer, from the header to the bottom edge. */
+._splitWithPanel_hn7dj_230 {
+  display: flex;
+  min-height: 0;
+}
+._splitWithPanel_hn7dj_230 > ._main_hn7dj_141 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+._sidePanel_hn7dj_142 {
+  --agent-modal-side-panel--size: var(
+  	--agent-modal-side-panel--width,
+  	calc(var(--spacing--5xl) * 1.25)
+  );
+  position: relative;
+  flex-shrink: 0;
+  width: var(--agent-modal-side-panel--size);
+  overflow: hidden;
+  border-left: var(--border);
+}
+
+/* The panel takes the height of the body and the footer, and a long panel scrolls. */
+._sidePanelScroll_hn7dj_277 {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: var(--agent-modal-side-panel--size);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._sidePanelScroll_hn7dj_277::-webkit-scrollbar {
+  z-index: 11;
+  width: 6px;
+}
+._sidePanelScroll_hn7dj_277::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+._sidePanelScroll_hn7dj_277::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  width: 6px;
+  background-color: var(--color--text--tint-2);
+}
+._sidePanelScroll_hn7dj_277::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color--text--tint-1);
+}
+._sidePanelScroll_hn7dj_277::-webkit-scrollbar-corner, ._sidePanelScroll_hn7dj_277::-webkit-scrollbar-track, ._sidePanelScroll_hn7dj_277::-webkit-scrollbar-track-piece {
+  background-color: transparent;
+}
+._footer_hn7dj_304 {
+  padding: var(--spacing--md) var(--spacing--lg);
+  border-top: var(--border);
+}
+._body_hn7dj_233 {
+  --agent-modal-body--padding-inline: var(--spacing--lg);
+  --agent-modal-body--padding-block-end: var(--spacing--md);
+  box-sizing: border-box;
+  min-height: 0;
+  max-height: min(70dvh, var(--height--5xl) * 6);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 0 var(--agent-modal-body--padding-inline) var(--agent-modal-body--padding-block-end);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._body_hn7dj_233::-webkit-scrollbar {
+  z-index: 11;
+  width: 6px;
+}
+._body_hn7dj_233::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+._body_hn7dj_233::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  width: 6px;
+  background-color: var(--color--text--tint-2);
+}
+._body_hn7dj_233::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color--text--tint-1);
+}
+._body_hn7dj_233::-webkit-scrollbar-corner, ._body_hn7dj_233::-webkit-scrollbar-track, ._body_hn7dj_233::-webkit-scrollbar-track-piece {
+  background-color: transparent;
+}
+._body_hn7dj_233[data-slot=dialog-body][data-scrollable] {
+  padding-block-end: var(--agent-modal-body--padding-block-end);
+  margin-block-end: 0;
+}
+._body_hn7dj_233[data-flush=true][data-slot=dialog-body][data-scrollable] {
+  padding: 0;
+  /* The base body moves up over the header to give room for a focus ring. A flush body has
+     no inset to use, so a strip at its top would cover the header divider. */
+  margin-block-start: 0;
+  /* Full-width strips reach the edge, so no space is kept for a scrollbar. */
+  scrollbar-gutter: auto;
+}
+._body_hn7dj_233[data-scrollable=false] {
+  overflow: hidden;
+}
+._body_hn7dj_233[data-scrollable=true] > * {
+  flex-shrink: 0;
+}
+._bodyStableHeight_hn7dj_362 {
+  height: min(60dvh, var(--height--5xl) * 5);
+}
+._body_hn7dj_233 .n8n-markdown {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color--text--tint-2) transparent;
+}
+._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar {
+  z-index: 11;
+  width: 6px;
+}
+._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  width: 6px;
+  background-color: var(--color--text--tint-2);
+}
+._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color--text--tint-1);
+}
+._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar-corner, ._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar-track, ._body_hn7dj_233 .n8n-markdown::-webkit-scrollbar-track-piece {
+  background-color: transparent;
+}
+._footerLayout_hn7dj_389 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing--2xs);
+  width: 100%;
+}
+._footerLeft_hn7dj_397,
+._footerActions_hn7dj_398 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing--2xs);
+}
+._footerActions_hn7dj_398 {
+  margin-left: auto;
+}
+
+/* A narrow window has no room beside the body, so the side panel goes under it. */
+@media (max-width: 768px) {
+._splitWithPanel_hn7dj_230 {
+    flex-direction: column;
+}
+._sidePanel_hn7dj_142 {
+    width: auto;
+    border-left: none;
+    border-top: var(--border);
+}
+  /* The body and the panel share the height of the window. */
+._splitWithPanel_hn7dj_230 ._body_hn7dj_233 {
+    max-height: 40dvh;
+}
+._sidePanelScroll_hn7dj_277 {
+    position: static;
+    max-height: 30dvh;
+}
+}
+@media (max-width: 480px) {
+._body_hn7dj_233 {
+    --agent-modal-body--padding-inline: var(--spacing--md);
+}
+[role=dialog]._dialog_hn7dj_122 {
+    --n8n-dialog-close--inset-inline-end: var(--spacing--md);
+}
+._header_hn7dj_130 {
+    padding-inline-start: var(--spacing--md);
+    padding-inline-end: calc(var(--spacing--md) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));
+}
+._footer_hn7dj_304 {
+    padding-inline: var(--spacing--md);
+}
+._footerLayout_hn7dj_389 {
+    align-items: stretch;
+    flex-direction: column-reverse;
+}
+._footerLeft_hn7dj_397,
+  ._footerActions_hn7dj_398 {
+    width: 100%;
+}
+._footerLeft_hn7dj_397 button:not([role=checkbox]),
+  ._footerActions_hn7dj_398 button:not([role=checkbox]) {
+    flex: 1;
+}
+}
+@media (hover: none) {
+._editIcon_hn7dj_182 {
+    opacity: 1;
+}
+}

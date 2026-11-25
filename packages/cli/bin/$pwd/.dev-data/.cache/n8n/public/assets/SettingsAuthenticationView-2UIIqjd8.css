@@ -1,0 +1,4 @@
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+._layout_121n7_2 {
+  padding-top: 0;
+}

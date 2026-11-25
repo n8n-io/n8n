@@ -1,0 +1,45 @@
+
+/* Use deep selector to access internal scroll container in N8nDataTableServer */
+[data-v-8367b8b0] .n8n-data-table-server-wrapper .table-scroll {
+	max-height: 275px;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+.status[data-v-8367b8b0] {
+	border-style: solid;
+	border-width: var(--border-width);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+}
+.active[data-v-8367b8b0] {
+	color: var(--color--primary);
+}
+.inactive[data-v-8367b8b0] {
+	color: var(--color--text--tint-1);
+}
+.ellipsis[data-v-8367b8b0] {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.2;
+	width: -moz-fit-content;
+	width: fit-content;
+	max-width: 100%;
+}
+.cardBadge[data-v-8367b8b0] {
+	margin-right: auto;
+	width: -moz-fit-content;
+	width: fit-content;
+}
+._descriptionContainer_2nx0a_1 {
+  display: flex;
+  margin: var(--spacing--sm) 0;
+  flex-direction: column;
+}
+._descriptionIcon_2nx0a_7 {
+  align-self: center;
+  color: var(--color--text--tint-2);
+}
+._descriptionText_2nx0a_12 {
+  padding: 0 var(--spacing--xs);
+}

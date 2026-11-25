@@ -1,0 +1,34 @@
+
+._container_1xdqa_2 {
+	max-width: 700px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+}
+._backButton_1xdqa_9 {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+}
+._headerContainer_1xdqa_15 {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+}
+._headingContainer_1xdqa_22 {
+	min-width: 0;
+}
+._heading_1xdqa_22 {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+._headerActions_1xdqa_32 {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+}
+._formContainer_1xdqa_38 {
+	max-width: 415px;
+}
