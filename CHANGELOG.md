@@ -1,3 +1,16 @@
+## [2.49.6](https://github.com/n8n-io/n8n/compare/n8n@2.49.5...n8n@2.49.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* **core:** Align base64, urlEncode and format results of isolate expression engines with legacy ([#44969](https://github.com/n8n-io/n8n/issues/44969)) ([7fb24bd](https://github.com/n8n-io/n8n/commit/7fb24bd79ceae45444ee9c859973bde522306a72))
+
+
+### Features
+
+* **core:** Evaluate urlEncode, base64Decode and format natively ([#44995](https://github.com/n8n-io/n8n/issues/44995)) ([e79571f](https://github.com/n8n-io/n8n/commit/e79571f6f4c38ddb347a9ff56ee2ba29e20786e0))
+
+
 ## [2.49.5](https://github.com/n8n-io/n8n/compare/n8n@2.49.4...n8n@2.49.5) (2026-11-23)
 
 
