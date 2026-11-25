@@ -183,6 +183,7 @@ export class DeploymentProbe {
 	}
 
 	async fetch(relativePath: string, options: DeploymentRequestOptions = {}): Promise<APIResponse> {
+		const method = options.method ?? 'GET';
 		const headers: Record<string, string> = {
 			'browser-id': 'deployment-probe',
 			...options.headers,
@@ -192,12 +193,14 @@ export class DeploymentProbe {
 			headers.cookie = cookie;
 		}
 
+		// Retry transient connection resets only on safe reads, never on state-changing requests.
+		const maxRetries = method === 'GET' || method === 'HEAD' ? 3 : 0;
 		const response = await this.context.fetch(normalizeRelativePath(relativePath), {
-			method: options.method ?? 'GET',
+			method,
 			headers,
 			data: options.data,
 			timeout: options.timeout,
-			maxRetries: 3,
+			maxRetries,
 		});
 		this.captureCookies(response);
 		return response;
