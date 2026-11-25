@@ -5,13 +5,15 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { PostHogClient } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { McpServer } from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
+import { WorkflowPublishedVersionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
+import type { MockInstance } from 'vitest';
 
 import { TextDraftAdapter } from '@/modules/mcp-servers/text-draft.adapter';
 
@@ -52,8 +54,8 @@ const SET: INode = {
 let editor: User;
 let viewer: User;
 let project: Project;
-let isAvailable: ReturnType<typeof vi.spyOn<TextDraftAdapter, 'isAvailable'>>;
-let draft: ReturnType<typeof vi.spyOn<TextDraftAdapter, 'draft'>>;
+let isAvailable: MockInstance<TextDraftAdapter['isAvailable']>;
+let draft: MockInstance<TextDraftAdapter['draft']>;
 
 const base = (serverId: string) => `/projects/${project.id}/mcp-servers/${serverId}`;
 
@@ -88,7 +90,12 @@ async function setup() {
 		.send({ workflowIds: [workflow.id] })
 		.expect(200);
 	const tool: McpServerToolResponse = added.body.data[0];
-	return { serverId, tool, draftUrl: `${base(serverId)}/tools/${tool.id}/draft` };
+	return {
+		serverId,
+		tool,
+		workflowId: workflow.id,
+		draftUrl: `${base(serverId)}/tools/${tool.id}/draft`,
+	};
 }
 
 beforeAll(async () => {
@@ -101,9 +108,9 @@ beforeEach(async () => {
 	project = await createTeamProject('Marketing');
 	await linkUserToProject(editor, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');
-	vi.mocked(Container.get(PostHogClient).getFeatureFlags).mockResolvedValue({
-		'155_custom_mcp_servers': 'test',
-	});
+	vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+		async (flag) => (flag === '155_custom_mcp_servers' ? 'test' : undefined),
+	);
 	const adapter = Container.get(TextDraftAdapter);
 	isAvailable = vi.spyOn(adapter, 'isAvailable').mockResolvedValue(true);
 	draft = vi.spyOn(adapter, 'draft');
@@ -251,9 +258,55 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 
 	it('reports a failed model call', async () => {
 		const { draftUrl } = await setup();
-		draft.mockRejectedValueOnce(new Error('rate limited'));
+		draft.mockRejectedValueOnce(new Error('Invalid API key: sk-ant-api03-abcdefghijklmnopqrstuv'));
 
-		await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(503);
+		const response = await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(503);
+		expect(JSON.stringify(response.body)).not.toContain('sk-ant-');
+	});
+
+	it.each([
+		['drafted', undefined, 'both'],
+		['drafted', 'toolName', 'toolName'],
+		['invalid_answer', 'description', 'description'],
+		['model_failed', undefined, 'both'],
+		['not_available', undefined, 'both'],
+	] as const)('sends the event "%s" for the field %s', async (status, field, eventField) => {
+		const { serverId, draftUrl } = await setup();
+		if (status === 'drafted') answer({ toolName: 'get_numbers', description: 'Gives numbers.' });
+		if (status === 'invalid_answer') answer({ description: '' });
+		if (status === 'model_failed') draft.mockRejectedValueOnce(new Error('rate limited'));
+		if (status === 'not_available') isAvailable.mockResolvedValue(false);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		await testServer.authAgentFor(editor).post(draftUrl).send({ field });
+
+		expect(emit).toHaveBeenCalledWith('mcp-server-tool-drafted', {
+			serverId,
+			userId: editor.id,
+			source: 'ui',
+			field: eventField,
+			status,
+		});
+	});
+
+	it('refuses a broken tool, makes no model call, and keeps the text', async () => {
+		const { serverId, tool, workflowId, draftUrl } = await setup();
+		await Container.get(WorkflowRepository).update(workflowId, {
+			activeVersionId: null,
+			active: false,
+		});
+		await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflowId);
+
+		await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(400);
+
+		expect(draft).not.toHaveBeenCalled();
+		const server = await testServer.authAgentFor(editor).get(base(serverId)).expect(200);
+		expect(server.body.data.tools[0]).toMatchObject({
+			toolName: tool.toolName,
+			description: tool.description,
+			draftSource: 'defaults',
+			brokenReason: 'not_published',
+		});
 	});
 
 	it('refuses an unknown field', async () => {

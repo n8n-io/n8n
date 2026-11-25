@@ -45,7 +45,7 @@ export class InstanceAiCustomMcpServersAdapterService {
 			);
 			// As the REST routes do on each request: the gates of a turn are read once, and an
 			// approval can resume after the flag changed.
-			await Container.get(CustomMcpServersFlagGate).assertEnabled(user);
+			await Container.get(CustomMcpServersFlagGate).assertEnabled();
 			return {
 				servers: Container.get(McpServersService),
 				tools: Container.get(McpServerToolsService),
@@ -169,6 +169,7 @@ export class InstanceAiCustomMcpServersAdapterService {
 					await writeProject(MCP_SERVER_ACTION_SCOPES.draftTool, projectId),
 					serverId,
 					toolId,
+					actor,
 					field,
 				);
 			},

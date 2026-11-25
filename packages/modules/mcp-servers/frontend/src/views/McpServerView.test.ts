@@ -21,6 +21,12 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../mcp-servers.api', () => api);
 
+const toast = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => toast }));
+
+const copy = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy }) }));
+
 const route = vi.hoisted(() => ({
 	name: 'McpServerView',
 	params: { projectId: 'project-1', serverId: '0190a8d6-4a2e-7000-8000-000000000001' },
@@ -309,23 +315,61 @@ describe('McpServerView', () => {
 			expect(await screen.findByTestId('rename-mcp-server-dialog')).toBeInTheDocument();
 		});
 
-		it('saves the description from the inline edit', async () => {
+		async function editDescription() {
+			await userEvent.click(
+				within(screen.getByTestId('mcp-server-description')).getByRole('button'),
+			);
+			const input = await waitFor(() => {
+				const textarea = screen.getByTestId('mcp-server-description').querySelector('textarea');
+				expect(textarea).toHaveFocus();
+				return textarea as HTMLTextAreaElement;
+			});
+			return input;
+		}
+
+		it('saves a description with line breaks when the field loses focus', async () => {
 			await renderPage();
 
-			const description = screen.getByTestId('mcp-server-description');
-			await userEvent.click(description);
-			const input = description.querySelector('input, textarea') as HTMLElement;
+			const input = await editDescription();
 			await userEvent.clear(input);
-			await userEvent.type(input, 'For the revenue team{Enter}');
+			await userEvent.type(input, 'For the revenue team{Enter}Ask before you send mail');
+			await userEvent.tab();
 
 			await waitFor(() =>
 				expect(api.updateMcpServer).toHaveBeenCalledWith(
 					expect.anything(),
 					'project-1',
 					server.id,
-					{ description: 'For the revenue team' },
+					{ description: 'For the revenue team\nAsk before you send mail' },
 				),
 			);
+		});
+
+		it('saves an empty description', async () => {
+			await renderPage();
+
+			const input = await editDescription();
+			await userEvent.clear(input);
+			await userEvent.tab();
+
+			await waitFor(() =>
+				expect(api.updateMcpServer).toHaveBeenCalledWith(
+					expect.anything(),
+					'project-1',
+					server.id,
+					{ description: '' },
+				),
+			);
+		});
+
+		it('keeps the description when the builder presses Escape', async () => {
+			await renderPage();
+
+			const input = await editDescription();
+			await userEvent.type(input, ' and more{Escape}');
+
+			expect(screen.getByTestId('mcp-server-description')).toHaveTextContent('Pipeline numbers');
+			expect(api.updateMcpServer).not.toHaveBeenCalled();
 		});
 
 		it('deletes the server after the confirmation and goes back to the list', async () => {
@@ -338,6 +382,33 @@ describe('McpServerView', () => {
 
 			expect(api.deleteMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id);
 			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
+			// The toast title starts with a capital letter, so it must not start with the name.
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'MCP server "Sales tools" deleted',
+			});
+		});
+
+		it.each([
+			[{ name: 'Marketing', type: 'team' }, 'Only members of the Marketing project can connect.'],
+			[
+				{ name: 'Nathan Doe <nathan@example.com>', type: 'personal' },
+				'Only the owner of this personal project can connect.',
+			],
+		] as const)('copies the URL and says who can connect, for %o', async (project, message) => {
+			api.getMcpServer.mockResolvedValue({ ...server, project });
+			await renderPage();
+
+			await openMenuItem('Copy URL');
+
+			await waitFor(() =>
+				expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-servers\/sales-tools$/)),
+			);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'URL copied',
+				message,
+			});
 		});
 
 		it('gives a project viewer no rename, no delete, and no description edit', async () => {

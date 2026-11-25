@@ -1,7 +1,10 @@
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-/** A custom MCP server of a project. A delete sets `deletedAt` and keeps the slug reserved. */
+/**
+ * A custom MCP server of a project. A delete sets `deletedAt` and keeps the slug reserved. A
+ * project delete removes the server row, so its slug is free again.
+ */
 @Entity({ name: 'mcp_server' })
 export class McpServer extends WithTimestamps {
 	@PrimaryColumn('uuid')
