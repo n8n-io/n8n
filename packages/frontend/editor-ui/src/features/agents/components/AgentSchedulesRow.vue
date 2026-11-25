@@ -83,11 +83,7 @@ defineExpose({ openAddSchedule });
 </script>
 
 <template>
-	<div
-		v-if="!props.hideAdd || taskRows.length > 0 || taskErrorMessage"
-		:class="$style.scheduleRow"
-		:inert="props.disabled || undefined"
-	>
+	<div v-if="!props.hideAdd || taskRows.length > 0 || taskErrorMessage" :class="$style.scheduleRow">
 		<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.tasks.title') }}
 		</N8nText>
