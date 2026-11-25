@@ -481,8 +481,11 @@ test.describe(
 			n8n.page.on('console', (msg) => consoleMessages.push(msg.text()));
 
 			await n8n.navigate.toWorkflow(workflow.id);
+			// This is the only Code node in the isolated queue-mode stack. The external
+			// task runner starts cold on its first task, so the run can exceed the 5s default.
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
+				{ timeout: 15_000 },
 			);
 
 			await expect

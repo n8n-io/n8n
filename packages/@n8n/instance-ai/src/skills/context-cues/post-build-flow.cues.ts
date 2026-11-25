@@ -1,4 +1,9 @@
 import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
+import { getBlockedEngineV2Limits } from '@n8n/workflow-sdk/prompts/sdk-reference';
+
+import type { InstanceAiEngineSetup } from '../../types';
+
+const ERROR_WORKFLOW_OPT_IN_CUE_ID = 'error-workflow-opt-in';
 
 /**
  * Context cues for the `post-build-flow` skill. The build tool tells
@@ -136,7 +141,7 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 			appliesWhen: 'A credential resolution note says Gateway credits are depleted.',
 		},
 		{
-			id: 'error-workflow-opt-in',
+			id: ERROR_WORKFLOW_OPT_IN_CUE_ID,
 			text: 'After a direct new primary workflow is published, load `error-workflows` and ask its explicit opt-in. Do not replace it with a generic "anything else?", publish or test question.',
 			appliesWhen: 'A new primary workflow was just published successfully.',
 		},
@@ -171,3 +176,23 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 		},
 	],
 };
+
+let engineAwareCues: ContextCueSet | undefined;
+
+/**
+ * The post-build flow cues for the engines of the instance. With the `engine-v2` module,
+ * the error workflow offer waits for the `v1-build` phase while engine v2 does not
+ * support error workflows, so a v2 workflow does not get the offer. Without the module
+ * every workflow runs on v1, so the cues stay the same.
+ */
+export function getPostBuildFlowCues(engineSetup?: InstanceAiEngineSetup): ContextCueSet {
+	if (engineSetup?.engineV2Available !== true) return POST_BUILD_FLOW_CUES;
+	if (!getBlockedEngineV2Limits().has('error-workflows')) return POST_BUILD_FLOW_CUES;
+	engineAwareCues ??= {
+		...POST_BUILD_FLOW_CUES,
+		cues: POST_BUILD_FLOW_CUES.cues.map((cue) =>
+			cue.id === ERROR_WORKFLOW_OPT_IN_CUE_ID ? { ...cue, phase: 'v1-build' } : cue,
+		),
+	};
+	return engineAwareCues;
+}

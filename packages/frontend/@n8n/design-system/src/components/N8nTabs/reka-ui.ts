@@ -1,7 +1,8 @@
-export { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
+export { TabsContent, TabsIndicator, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
 
 export type {
 	TabsContentProps,
+	TabsIndicatorProps,
 	TabsListProps,
 	TabsRootEmits,
 	TabsRootProps,

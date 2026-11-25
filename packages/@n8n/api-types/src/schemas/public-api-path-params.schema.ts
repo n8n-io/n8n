@@ -20,7 +20,7 @@ const NANOID_REGEX = /^[A-Za-z0-9]{16}$/;
 
 export const executionIdParamSchema = numericIdParamSchema('The ID of the execution.');
 
-export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
+export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow');
 export const agentIdParamSchema = stringIdParamSchema('The ID of the agent.');
 export const agentExecutionIdParamSchema = stringIdParamSchema('The ID of the agent execution.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');

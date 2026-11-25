@@ -1,9 +1,11 @@
 import { APPROVAL_SUSPEND_SCHEMA } from '@n8n/agents';
 import type { BuiltTool } from '@n8n/agents';
 import {
+	AGENT_BUILDER_TOOL_NAMES,
 	instanceAiApprovalDetailsSchema,
 	instanceAiConfirmationSeveritySchema,
 	isDataTableWriteToolAction,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type {
 	DataTableWriteToolAction,
@@ -116,6 +118,11 @@ export function routeApproval(
 	if (approval.mcp) return 'judge';
 	if (approval.toolName === DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES) {
 		return routeDataTableChanges(approval.args);
+	}
+	// Going live is the user's decision: the agent then replies and acts for real (TRUST-1197).
+	// Legacy names resolve too, so no alias of the publish tool reaches the judge.
+	if (resolveBuilderToolName(approval.toolName) === AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT) {
+		return 'always-ask';
 	}
 	if (ALWAYS_ASK_TOOLS.has(approval.toolName) || isSkillActionRequiringReview(approval)) {
 		return 'always-ask';

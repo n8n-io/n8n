@@ -89,6 +89,8 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
+		// No `apiKeyScopes`: an Apply key needs only `promotions:apply`, and the role of the user
+		// checks each write. The content comes from the configured branch, not from the caller.
 	};
 }
 

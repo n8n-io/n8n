@@ -483,6 +483,12 @@ export {
 	workflowSetupNodeSchema,
 	setupItemSchema,
 	setupItemsPayloadSchema,
+	workflowDraftPayloadSchema,
+	instanceAiWorkflowDraftSchema,
+	workflowDraftIssueSchema,
+	workflowDraftIssuesPayloadSchema,
+	WORKFLOW_DRAFT_ISSUES_MAX,
+	WORKFLOW_DRAFT_ISSUE_MESSAGE_MAX_LENGTH,
 	aiPreferencesAppliedPayloadSchema,
 	skillUpdatePayloadSchema,
 	errorPayloadSchema,
@@ -501,6 +507,8 @@ export {
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
@@ -607,10 +615,14 @@ export {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES,
+	INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES,
 } from './schemas/instance-ai.schema';
 
 export type {
 	InstanceAiPromptConfiguration,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
 	InstanceAiPrefillPayload,
@@ -672,6 +684,12 @@ export type {
 	InstanceAiAutoApprovalEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
+	InstanceAiWorkflowDraftEvent,
+	InstanceAiWorkflowDraft,
+	InstanceAiWorkflowDraftPayload,
+	InstanceAiWorkflowDraftIssue,
+	InstanceAiWorkflowDraftIssuesEvent,
+	InstanceAiWorkflowDraftIssuesPayload,
 	InstanceAiPreferencesAppliedEvent,
 	InstanceAiPreferenceCardEvent,
 	InstanceAiPreferenceCardUndoResponse,
@@ -798,6 +816,20 @@ export type {
 	AssistantThreadTabsState,
 	AssistantThreadTabsResponse,
 } from './schemas/assistant-thread-tabs.schema';
+
+export {
+	assistantPreferenceCardSchema,
+	assistantPreferenceCardsStateSchema,
+	mergeAssistantPreferenceCard,
+	MAX_ASSISTANT_PREFERENCE_CARDS,
+} from './schemas/assistant-preference-cards.schema';
+export type {
+	AssistantPreferenceCard,
+	AssistantPreferenceCardsState,
+	AssistantPreferenceCardsResponse,
+	AssistantPreferenceCardUndoResponse,
+	AssistantPreferenceCardEditResponse,
+} from './schemas/assistant-preference-cards.schema';
 
 export {
 	assistantAgentTargetSchema,
@@ -1044,9 +1076,11 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
+	agentPublishSendTargetSchema,
+	AGENT_PUBLISH_SEND_TARGETS_LIMIT,
+	type AgentPublishSendTarget,
 	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalModeSchema,
@@ -1124,3 +1158,23 @@ export {
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';
+
+export {
+	AGENT_SAFE_TESTING_FLAG,
+	toolCallRouteSchema,
+	toolCallReasonSchema,
+	toolCallSimulationSchema,
+	agentChatModeSchema,
+	type AgentChatMode,
+	toolTestKindSchema,
+	toolTestCapabilitySchema,
+} from './schemas/agent-safe-testing.schema';
+export type {
+	ToolCallRoute,
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestability,
+	ToolTestKind,
+	ToolTestCapability,
+	AgentTestRunToolsResponse,
+} from './schemas/agent-safe-testing.schema';

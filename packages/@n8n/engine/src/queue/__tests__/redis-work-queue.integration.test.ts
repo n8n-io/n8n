@@ -39,7 +39,7 @@ function createEngineProcess(key: string, concurrency = 1, blockTimeoutSeconds =
 	const consumer = new Redis(container.getConnectionUrl());
 	const queue = new RedisWorkQueue<ContractMessage>({
 		publisher,
-		consumer,
+		openConsumer: () => consumer,
 		key,
 		parse: parseContractMessage,
 		logger: silentLogger,

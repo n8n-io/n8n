@@ -25,6 +25,8 @@ interface UseAssistantArtifactThreadOptions {
 	projectId: string;
 	messages: () => ReadonlyArray<DeepReadonly<ChatMessage>>;
 	isStreaming: () => boolean;
+	/** The chat waits for the user to answer a card. The run is not over, so its turn stays live. */
+	isAwaitingUser?: () => boolean;
 	isLoadingHistory: () => boolean;
 	/**
 	 * Sends a message to the chat, for the previews that ask the Assistant
@@ -54,7 +56,10 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 	const i18n = useI18n();
 
 	const artifactTurns = computed(() =>
-		toAssistantArtifactTurns(options.messages(), options.isStreaming()),
+		toAssistantArtifactTurns(
+			options.messages(),
+			options.isStreaming() || (options.isAwaitingUser?.() ?? false),
+		),
 	);
 	const currentTasks = computed(() => findLatestAssistantTasks(options.messages()));
 	const isHydratingThread = computed(() => options.isLoadingHistory());

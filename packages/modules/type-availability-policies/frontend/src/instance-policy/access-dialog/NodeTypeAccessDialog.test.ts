@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
+	fetchCredentialTypeUsage: vi.fn(),
 }));
 
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
@@ -113,6 +115,11 @@ async function setup(
 	return rendered;
 }
 
+const usageIn = (section: HTMLElement) =>
+	within(section)
+		.queryAllByTestId('type-access-item-usage')
+		.map((line) => line.textContent?.trim());
+
 describe('NodeTypeAccessDialog', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -137,6 +144,12 @@ describe('NodeTypeAccessDialog', () => {
 			version: 2,
 			warnings: [],
 		}));
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			'n8n-nodes-base.notion': { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+		});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({
+			notionApi: { uses: 1, workflows: 1, activeWorkflows: 0, projects: 1 },
+		});
 		componentRegistry.register('node-type-icon', {
 			props: ['nodeType', 'size'],
 			template: '<span data-test-id="node-icon" :data-type="nodeType?.name" />',
@@ -196,6 +209,46 @@ describe('NodeTypeAccessDialog', () => {
 			['Notion API', 'deny'],
 			['Notion OAuth2 API', 'allow'],
 		]);
+	});
+
+	it('shows the usage of the node and of each related type', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+
+		expect(usageIn(getByTestId('node-type-access-node'))).toEqual([
+			'Used 3 times across 2 workflows · 1 active',
+		]);
+		expect(usageIn(getByTestId('node-type-access-related-node'))).toEqual([
+			'Not used in any workflow',
+		]);
+		expect(usageIn(getByTestId('node-type-access-related-credential'))).toEqual([
+			'Used 1 time across 1 workflow · 0 active',
+			'Not used in any workflow',
+		]);
+	});
+
+	it('shows no usage of credential types to a user who cannot manage them', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion', ['nodeTypePolicy:manage']);
+
+		expect(usageIn(getByTestId('node-type-access-node'))).toEqual([
+			'Used 3 times across 2 workflows · 1 active',
+		]);
+		expect(usageIn(getByTestId('node-type-access-related-credential'))).toEqual([]);
+		expect(mocks.fetchCredentialTypeUsage).not.toHaveBeenCalled();
+	});
+
+	it('shows no usage of a kind whose counts do not load, and the usage of the other kind', async () => {
+		mocks.fetchNodeTypeUsage.mockRejectedValue(new Error('offline'));
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+
+		expect(usageIn(getByTestId('node-type-access-node'))).toEqual([]);
+		expect(usageIn(getByTestId('node-type-access-related-node'))).toEqual([]);
+		expect(usageIn(getByTestId('node-type-access-related-credential'))).toEqual([
+			'Used 1 time across 1 workflow · 0 active',
+			'Not used in any workflow',
+		]);
+		expect(
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
+		).toHaveAttribute('data-value', 'allow');
 	});
 
 	it('does not relate Gmail to other Google nodes through the shared Google credential', async () => {

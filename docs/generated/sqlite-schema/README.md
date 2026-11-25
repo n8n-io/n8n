@@ -23,6 +23,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 28 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
+| [agent_execution_statistics](agent_execution_statistics.md) | 2 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
@@ -56,7 +57,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 12 |  | table |
+| [app_version](app_version.md) | 13 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -135,6 +136,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
+| [project_workflow_review_settings](project_workflow_review_settings.md) | 5 |  | table |
 | [promotion_environment](promotion_environment.md) | 9 |  | table |
 | [promotion_environment_project](promotion_environment_project.md) | 5 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
@@ -159,7 +161,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_knowledge_collection](shared_knowledge_collection.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 8 |  | table |
-| [skill_file](skill_file.md) | 5 |  | table |
+| [skill_file](skill_file.md) | 6 |  | table |
 | [skill_source](skill_source.md) | 15 |  | table |
 | [skill_source_link](skill_source_link.md) | 14 |  | table |
 | [skill_version](skill_version.md) | 12 |  | table |
@@ -291,9 +293,9 @@ erDiagram
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -402,6 +404,7 @@ erDiagram
 "project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_workflow_review_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "promotion_environment_project" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -705,6 +708,10 @@ erDiagram
   varchar_36_ executionId PK
   varchar_36_ messageId PK
   INTEGER position
+}
+"agent_execution_statistics" {
+  bigint count
+  datetime_3_ periodStart PK
 }
 "agent_execution_threads" {
   varchar_16_ accessScope
@@ -1050,6 +1057,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT description
   varchar id PK
+  BOOLEAN isScaffold
   varchar_255_ label
   INTEGER sourceArtifactId FK
   datetime_3_ updatedAt
@@ -1823,6 +1831,13 @@ erDiagram
   INTEGER secretsProviderConnectionId PK
   datetime_3_ updatedAt
 }
+"project_workflow_review_settings" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  boolean requiredByInstance
+  boolean requiredByProject
+  datetime_3_ updatedAt
+}
 "promotion_environment" {
   datetime_3_ createdAt
   varchar_16_ direction
@@ -2058,6 +2073,7 @@ erDiagram
 "skill_file" {
   TEXT content
   datetime_3_ createdAt
+  boolean isBinary
   varchar_512_ path PK
   varchar skillVersionId PK
   datetime_3_ updatedAt
