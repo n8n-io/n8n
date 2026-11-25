@@ -1484,6 +1484,37 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.authorship).toEqual(USER_TYPED_MESSAGE);
 		});
 
+		it('starts the App creation on the Assistant agent with the pending App', async () => {
+			const appId = '019a4012-272c-7313-91af-5c94a3d819a9';
+			routeQuery.pendingAppId = appId;
+			routeQuery.projectId = 'project-1';
+			routeQuery.source = 'app_builder_page';
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+			expect(pushMock).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+			expect(localStorage.setItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+				JSON.stringify({
+					projectId: 'project-1',
+					subject: { type: 'app', id: appId, projectId: 'project-1', pending: true },
+				}),
+			);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({ source: 'app_builder_page', runtime: 'agents' }),
+			);
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')?.text).toBe('hello');
+		});
+
 		it('drops the first message and restores the draft when the navigation fails', async () => {
 			pushMock.mockResolvedValueOnce(new Error('navigation aborted'));
 			const { getByTestId } = renderView();

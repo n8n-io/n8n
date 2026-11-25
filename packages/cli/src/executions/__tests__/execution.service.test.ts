@@ -33,6 +33,7 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
+import type { ExecutionCancelService } from '@/executions/execution-cancel.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExecutionService } from '@/executions/execution.service';
@@ -59,6 +60,7 @@ describe('ExecutionService', () => {
 	const annotationTagMappingRepository = mock<AnnotationTagMappingRepository>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const executionCancelService = mock<ExecutionCancelService>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
@@ -95,6 +97,7 @@ describe('ExecutionService', () => {
 		engineV2ExecutionReader,
 		engineDataPlane,
 		new WorkflowVersionedSettingsService(moduleRegistry),
+		executionCancelService,
 	);
 
 	beforeEach(() => {
@@ -331,6 +334,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				new WorkflowVersionedSettingsService(moduleRegistry),
+				executionCancelService,
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -415,6 +419,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				new WorkflowVersionedSettingsService(moduleRegistry),
+				executionCancelService,
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -549,6 +554,17 @@ describe('ExecutionService', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({ callerAwaitsOutcome: 'completion' }),
 			);
+		});
+
+		it('should not carry the root execution mode of the original run into the retry', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			const execution = buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} });
+			execution.data.rootExecutionMode = 'manual';
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run.mock.calls[0][0].executionData?.rootExecutionMode).toBeUndefined();
 		});
 
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
@@ -958,7 +974,10 @@ describe('ExecutionService', () => {
 					executionPersistence.findWithUnflattenedData
 						.mockResolvedValueOnce(execution)
 						.mockResolvedValue({ ...execution, status });
-					executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+					executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+						updated: false,
+						ended: false,
+					});
 					concurrencyControl.has.mockReturnValue(false);
 					activeExecutions.has.mockReturnValue(false);
 					waitTracker.has.mockReturnValue(false);
@@ -969,7 +988,7 @@ describe('ExecutionService', () => {
 					} else {
 						await expect(stop).rejects.toThrow(`currently ${status}`);
 					}
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledExactlyOnceWith(
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledExactlyOnceWith(
 						execution.id,
 						execution,
 						{ requireStatus: 'running' },
@@ -988,9 +1007,9 @@ describe('ExecutionService', () => {
 				executionPersistence.findWithUnflattenedData
 					.mockResolvedValueOnce(execution)
 					.mockResolvedValue({ ...execution, status: 'running' });
-				executionPersistence.updateExistingExecution
-					.mockResolvedValueOnce(false)
-					.mockResolvedValue(true);
+				executionPersistence.saveExecutionOutcome
+					.mockResolvedValueOnce({ updated: false, ended: false })
+					.mockResolvedValue({ updated: true, ended: true });
 				concurrencyControl.has.mockReturnValue(false);
 				activeExecutions.has.mockReturnValue(false);
 				waitTracker.has.mockReturnValue(false);
@@ -998,13 +1017,13 @@ describe('ExecutionService', () => {
 				await expect(executionService.stop(execution.id, ['workflow-1'])).resolves.toMatchObject({
 					status: 'canceled',
 				});
-				expect(executionPersistence.updateExistingExecution).toHaveBeenNthCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenNthCalledWith(
 					1,
 					execution.id,
 					expect.objectContaining({ status: 'canceled' }),
 					{ requireStatus: 'waiting' },
 				);
-				expect(executionPersistence.updateExistingExecution).toHaveBeenNthCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenNthCalledWith(
 					2,
 					execution.id,
 					expect.objectContaining({ status: 'canceled' }),
@@ -1099,7 +1118,7 @@ describe('ExecutionService', () => {
 				concurrencyControl.has.mockReturnValue(false);
 				activeExecutions.has.mockReturnValue(true);
 				waitTracker.has.mockReturnValue(false);
-				executionPersistence.updateExistingExecution.mockResolvedValue(true);
+				executionPersistence.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: true });
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
@@ -1117,12 +1136,43 @@ describe('ExecutionService', () => {
 					expect.any(ManualExecutionCancelledError),
 				);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					execution.id,
 					execution,
 					{ requireStatus: 'running' },
 				);
 			});
+
+			it.each([
+				{ ended: false, records: false },
+				{ ended: true, records: true },
+			])(
+				'records the ended row when the write ended the run: $ended',
+				async ({ ended, records }) => {
+					const execution = mock<IExecutionResponse>({
+						id: '123',
+						workflowId: 'workflow-1',
+						status: 'running',
+						mode: 'trigger',
+						startedAt: undefined,
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					concurrencyControl.has.mockReturnValue(false);
+					activeExecutions.has.mockReturnValue(true);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({ updated: true, ended });
+
+					await executionService.stop(execution.id, ['workflow-1']);
+
+					expect(executionCancelService.recordEnded).toHaveBeenCalledTimes(records ? 1 : 0);
+					if (records) {
+						expect(executionCancelService.recordEnded).toHaveBeenCalledWith([
+							expect.objectContaining({ id: '123', workflowId: 'workflow-1', startedAt: null }),
+						]);
+					}
+				},
+			);
 
 			it('should stop a `waiting` execution in regular mode', async () => {
 				/**
@@ -1137,7 +1187,7 @@ describe('ExecutionService', () => {
 				concurrencyControl.has.mockReturnValue(false);
 				activeExecutions.has.mockReturnValue(true);
 				waitTracker.has.mockReturnValue(true);
-				executionPersistence.updateExistingExecution.mockResolvedValue(true);
+				executionPersistence.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: true });
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
@@ -1155,7 +1205,7 @@ describe('ExecutionService', () => {
 					expect.any(ManualExecutionCancelledError),
 				);
 				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					execution.id,
 					execution,
 					{ requireStatus: 'waiting' },
@@ -1172,9 +1222,10 @@ describe('ExecutionService', () => {
 				activeExecutions.has.mockReturnValue(false);
 				waitTracker.has.mockReturnValue(false);
 				const stoppedAt = new Date();
-				executionRepository.markAsCanceled.mockResolvedValue([
-					{ id: '123', workflowId: 'wf', mode: 'trigger', startedAt: null, stoppedAt },
-				]);
+				executionCancelService.markAsCanceled.mockResolvedValue({
+					canceled: [{ id: '123', workflowId: 'wf', mode: 'trigger', startedAt: null, stoppedAt }],
+					recorded: Promise.resolve(),
+				});
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
@@ -1192,8 +1243,8 @@ describe('ExecutionService', () => {
 				});
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
-				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
-				expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['123']);
+				expect(executionPersistence.saveExecutionOutcome).not.toHaveBeenCalled();
+				expect(executionCancelService.markAsCanceled).toHaveBeenCalledWith(['123']);
 				expect(result).toMatchObject({ status: 'canceled', stoppedAt });
 			});
 
@@ -1204,7 +1255,10 @@ describe('ExecutionService', () => {
 					.mockResolvedValueOnce(execution)
 					.mockResolvedValueOnce(finished);
 				concurrencyControl.has.mockReturnValue(true);
-				executionRepository.markAsCanceled.mockResolvedValue([]);
+				executionCancelService.markAsCanceled.mockResolvedValue({
+					canceled: [],
+					recorded: Promise.resolve(),
+				});
 
 				const result = await executionService.stop('123', ['wf']);
 
@@ -1233,7 +1287,10 @@ describe('ExecutionService', () => {
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({
+						updated: true,
+						ended: true,
+					});
 					const stopInRegularModeSpy = vi.spyOn(executionService, 'stopInRegularMode');
 
 					/**
@@ -1249,7 +1306,7 @@ describe('ExecutionService', () => {
 						execution.id,
 						expect.any(ManualExecutionCancelledError),
 					);
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 						execution.id,
 						execution,
 						{ requireStatus: 'running' },
@@ -1278,7 +1335,10 @@ describe('ExecutionService', () => {
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({
+						updated: true,
+						ended: true,
+					});
 
 					/**
 					 * Act
@@ -1292,7 +1352,7 @@ describe('ExecutionService', () => {
 					expect(activeExecutions.stopExecution).toHaveBeenCalled();
 					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
 					expect(scalingService.stopJob).not.toHaveBeenCalled();
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalled();
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalled();
 				});
 
 				it('should stop a `waiting` execution in scaling mode', async () => {
@@ -1311,7 +1371,10 @@ describe('ExecutionService', () => {
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({
+						updated: true,
+						ended: true,
+					});
 
 					/**
 					 * Act
@@ -1324,7 +1387,7 @@ describe('ExecutionService', () => {
 					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
 					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
 					expect(scalingService.stopJob).not.toHaveBeenCalled();
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalled();
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalled();
 				});
 			});
 
@@ -1343,7 +1406,10 @@ describe('ExecutionService', () => {
 					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
 					activeExecutions.has.mockReturnValue(false);
 					waitTracker.has.mockReturnValue(false);
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({
+						updated: true,
+						ended: true,
+					});
 
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
@@ -1352,7 +1418,7 @@ describe('ExecutionService', () => {
 					expect(executionStopService.requestStop).toHaveBeenCalledWith(execution.id);
 					expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 					// The canceled status is still persisted by the main process.
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 						execution.id,
 						execution,
 						{ requireStatus: 'running' },
@@ -1369,12 +1435,14 @@ describe('ExecutionService', () => {
 					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
 					activeExecutions.has.mockReturnValue(false);
 					waitTracker.has.mockReturnValue(false);
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({
+						updated: true,
+						ended: true,
+					});
 
 					await executionService.stop(execution.id, [execution.id]);
 
-					const [updateOrder] =
-						executionPersistence.updateExistingExecution.mock.invocationCallOrder;
+					const [updateOrder] = executionPersistence.saveExecutionOutcome.mock.invocationCallOrder;
 					const [broadcastOrder] = executionStopService.requestStop.mock.invocationCallOrder;
 					expect(updateOrder).toBeLessThan(broadcastOrder);
 				});
@@ -1389,7 +1457,7 @@ describe('ExecutionService', () => {
 					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
 					activeExecutions.has.mockReturnValue(false);
 					waitTracker.has.mockReturnValue(false);
-					executionPersistence.updateExistingExecution.mockRejectedValue(
+					executionPersistence.saveExecutionOutcome.mockRejectedValue(
 						new Error('database unavailable'),
 					);
 
@@ -1576,6 +1644,74 @@ describe('ExecutionService', () => {
 					deleteConditions: { deleteBefore: undefined, ids: ['1', '2'] },
 				}),
 			);
+		});
+
+		describe('engine filter', () => {
+			const deleteBefore = '2026-01-01T00:00:00.000Z';
+
+			// A delete by date reaches only the engine v1 table, so a v2 filter must not
+			// fall through to deleting the v1 rows that match the other filters.
+			it('should delete nothing by date for the engine v2 filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('should delete nothing by date for the engine v2 filter when another field is invalid', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2', status: 123 } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+			});
+
+			// An unknown engine fails the schema, which drops every filter. A delete by
+			// date would then match every v1 execution before the date.
+			it.each([['v3'], [123], [null]])(
+				'should reject an unknown engine %s instead of deleting without filters',
+				async (engine) => {
+					await expect(
+						executionService.delete(
+							user,
+							DeleteExecutionsDto.parse({ deleteBefore, filters: { engine, mode: 'manual' } }),
+							['wf-1'],
+						),
+					).rejects.toThrow(BadRequestError);
+
+					expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should keep the engine v1 filter when deleting by date', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v1', mode: 'manual' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ filters: { engine: 'v1', mode: 'manual' } }),
+				);
+			});
+
+			it('should delete by ids whatever the engine filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ ids: ['1'], filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ deleteConditions: { deleteBefore: undefined, ids: ['1'] } }),
+				);
+			});
 		});
 	});
 

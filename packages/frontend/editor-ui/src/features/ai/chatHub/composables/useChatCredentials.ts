@@ -3,6 +3,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { credentialsMapSchema, type CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import {
 	chatHubProviderSchema,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
@@ -40,8 +41,14 @@ export function useChatCredentials(userId: string) {
 		},
 	);
 
+	// The credentials by type need the credential types too. Without them, the auto-selection
+	// would pick no credential for each provider.
+	const credentialTypes = useCredentialTypesLoad();
+
 	const isCredentialsReady = computed(
-		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+		() =>
+			isInitialized.value ||
+			(credentialsStore.allCredentials.length > 0 && !credentialTypes.isLoading.value),
 	);
 
 	const autoSelectCredentials = computed<CredentialsMap>(() =>
@@ -101,10 +108,16 @@ export function useChatCredentials(userId: string) {
 		() => projectStore.personalProject,
 		async (personalProject) => {
 			if (personalProject) {
-				await Promise.all([
-					credentialsStore.fetchCredentialTypes(false),
+				// Continue after a failed request, so the chat does not wait for credentials forever.
+				const results = await Promise.allSettled([
+					credentialTypes.whenSettled(),
 					credentialsStore.fetchUsableCredentials({ projectId: personalProject.id }),
 				]);
+				for (const result of results) {
+					if (result.status === 'rejected') {
+						console.error('Failed to load chat credentials', result.reason);
+					}
+				}
 
 				isInitialized.value = true;
 			}

@@ -75,6 +75,7 @@ describe('CredentialsController', () => {
 		mock(), // policyEnforcementService
 		credentialDescriptions,
 		mock(), // credentialsPermissionChecker
+		mock(), // credentialRestrictions
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -291,6 +292,19 @@ describe('CredentialsController', () => {
 				chunkCount: 1,
 				publicApi: false,
 			});
+		});
+
+		it('passes the request for restrictions to the service', async () => {
+			const getMany = vi.spyOn(credentialsService, 'getMany').mockResolvedValue([]);
+
+			await credentialsController.getMany(requestFor(), res, {
+				includeRestrictions: true,
+			} as CredentialsGetManyRequestQuery);
+
+			expect(getMany).toHaveBeenCalledWith(
+				req.user,
+				expect.objectContaining({ includeRestrictions: true }),
+			);
 		});
 
 		it('should split the ids into chunks of 100 and record every id', async () => {

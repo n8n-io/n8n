@@ -301,7 +301,7 @@ describe('inline sub-agent tool filtering', () => {
 	it('omits resolver provider tools when the matching provider tool is blocked', async () => {
 		const runner = createInlineRunner({
 			inlineSubAgentBlockedTools: ['anthropic.web_search_20250305'],
-			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-5-5' },
 			resolveInlineSubAgentProviderTools: () => [anthropicWebSearchProviderTool],
 		});
 
@@ -326,7 +326,7 @@ describe('inline sub-agent tool filtering', () => {
 			deferredTools: [],
 			modelConfig: 'openai/gpt-4o-mini',
 			tools: [makeTool('lookup')],
-			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-5-5' },
 		});
 
 		await runner({
@@ -339,7 +339,7 @@ describe('inline sub-agent tool filtering', () => {
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
-		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-5-5');
 		expect(runtimeConfigs[0]?.thinking).toBeUndefined();
 	});
 
@@ -373,7 +373,7 @@ describe('inline sub-agent tool filtering', () => {
 			deferredTools: [],
 			modelConfig: 'openai/gpt-4o-mini',
 			tools: [makeTool('lookup')],
-			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-5-5' },
 		});
 
 		await runner({
@@ -386,7 +386,7 @@ describe('inline sub-agent tool filtering', () => {
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
-		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-5-5');
 		expect(runtimeConfigs[0]?.reasoning).toBe('high');
 	});
 
@@ -427,7 +427,7 @@ describe('inline sub-agent tool filtering', () => {
 			}),
 		});
 		const runner = createInlineRunner({
-			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-5-5' },
 		});
 
 		const output = await runner({
@@ -441,7 +441,7 @@ describe('inline sub-agent tool filtering', () => {
 
 		expect(output).toMatchObject({
 			status: 'failed',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			error: 'model failed',
 		});
 	});
@@ -455,7 +455,7 @@ describe('inline sub-agent tool filtering', () => {
 			.instructions('Help')
 			.tool(
 				createDelegateSubAgentTool({
-					inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+					inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-5-5' },
 					resolveInlineSubAgentProviderTools,
 				}),
 			);
@@ -478,7 +478,7 @@ describe('inline sub-agent tool filtering', () => {
 		);
 
 		expect(runtimeConfigs).toHaveLength(2);
-		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-5');
+		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-5-5');
 		expect(providerToolNames(runtimeConfigs[1])).toEqual(['anthropic.web_search_20250305']);
 	});
 
@@ -567,6 +567,26 @@ describe('inline sub-agent transport inheritance', () => {
 
 		expect(runtimeConfigs).toHaveLength(1);
 		expect(runtimeConfigs[0].modelFetch).toBe(parentFetch);
+	});
+
+	it('passes the parent tool call interceptor to inline child runtimes', async () => {
+		const interceptor = vi.fn();
+		const agent = new Agent('parent');
+		agent.toolCallInterceptor(interceptor as never);
+		const runInline = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+		});
+
+		await runInline({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: ['research'],
+		} as unknown as DelegateSubAgentRequest);
+
+		expect(runtimeConfigs[0].toolCallInterceptor).toBe(interceptor);
 	});
 
 	it('names inline child runtimes after the parent functionId', async () => {

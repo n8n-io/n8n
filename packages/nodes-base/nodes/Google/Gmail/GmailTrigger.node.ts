@@ -52,6 +52,7 @@ export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail Trigger',
 		name: 'gmailTrigger',
+		schemaPath: 'Google/Gmail',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
@@ -356,6 +357,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		const simple = this.getNodeParameter('simple') as boolean;
 
 		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		if (shouldLimitMessages) this.declareBoundedPoll?.();
 		// How far this tick may reach before it must return — bounds scanning and
 		// fetching time, not delivery volume (maxResults stays the per-tick bound).
 		// Only consulted on shouldLimitMessages paths; pre-1.4 and manual polls are

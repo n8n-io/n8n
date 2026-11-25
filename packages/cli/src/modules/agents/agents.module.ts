@@ -8,6 +8,8 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		const { registerApprovalRuntime } = await import('./approval/register-approval-runtime.js');
+		registerApprovalRuntime();
 		const { FolderContentService } = await import('@/services/folder-content.service.js');
 		const { AgentFolderService } = await import('./agent-folder.service.js');
 		Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
@@ -41,11 +43,13 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./knowledge-collection-agents.controller.js');
 		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./approval/agent-hitl-channels.controller.js');
 		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
@@ -79,9 +83,7 @@ export class AgentsModule implements ModuleInterface {
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { ExecutionDataJsonStore } = await import(
-			'@/executions/execution-data/execution-data-json-store.js'
-		);
+		const { ExecutionDataJsonStore } = await import('@n8n/backend-services');
 		const { registerAgentBlobByteStores } = await import('./register-blob-byte-stores.js');
 		await registerAgentBlobByteStores({
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),

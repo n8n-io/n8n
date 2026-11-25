@@ -5,10 +5,21 @@ import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/back
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	RoleRepository,
+	TransactionRunner,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	type ApiKeyScope,
+} from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
@@ -25,7 +36,9 @@ import { PromotionEnvironmentLockService } from '@/modules/promotions.ee/promoti
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.service';
+import { PromotionSettingsService } from '@/modules/promotions.ee/promotion-settings.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import {
 	createAdminWithApiKey,
 	createMember,
@@ -80,6 +93,15 @@ describe('Promotions in Public API', () => {
 		});
 		expect(response.status, JSON.stringify(response.body)).toBe(201);
 		return response.body.id as string;
+	}
+
+	/** Makes the on-demand clone fail without a network call to the test remote. */
+	function failClone() {
+		const clone = vi
+			.spyOn(Container.get(PromotionsGitService), 'clone')
+			.mockRejectedValue(new BadRequestError('Clone stopped for test'));
+		onTestFinished(() => clone.mockRestore());
+		return clone;
 	}
 
 	beforeAll(async () => {
@@ -198,6 +220,128 @@ describe('Promotions in Public API', () => {
 
 		expect(environment.status).toBe(400);
 		expect(missingProjects.status).toBe(400);
+	});
+
+	describe('settings', () => {
+		const scopesOf = async (slug: string) =>
+			(await Container.get(RoleRepository).findBySlug(slug))?.scopes.map((s) => s.slug) ?? [];
+
+		// The settings change the system project roles, which other tests in this file share.
+		afterEach(async () => {
+			await Container.get(PromotionSettingsService).update(
+				owner,
+				{
+					whoCanPromote: 'instanceAdmins',
+					whoCanApprove: 'instanceAdmins',
+					whoCanApply: 'instanceAdmins',
+				},
+				{},
+			);
+		});
+
+		it('changing the settings updates the project admin and editor roles and leaves custom project roles alone', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const customRole = await createCustomRoleWithScopeSlugs([
+				'promotions:promote',
+				'promotions:apply',
+				'workflow:read',
+			]);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			onTestFinished(() => emit.mockRestore());
+
+			const widened = await agent.put('/promotions/settings').send({
+				whoCanPromote: 'projectAdminsAndEditors',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'projectAdminsAndEditors',
+			});
+			expect(widened.status, JSON.stringify(widened.body)).toBe(200);
+			expect(await scopesOf(PROJECT_EDITOR_ROLE_SLUG)).toEqual(
+				expect.arrayContaining(['promotions:promote', 'promotions:apply']),
+			);
+			emit.mockClear();
+
+			const narrowed = await agent.put('/promotions/settings').send({
+				whoCanPromote: 'projectAdmins',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'instanceAdmins',
+			});
+			expect(narrowed.status, JSON.stringify(narrowed.body)).toBe(200);
+
+			const adminScopes = await scopesOf(PROJECT_ADMIN_ROLE_SLUG);
+			const editorScopes = await scopesOf(PROJECT_EDITOR_ROLE_SLUG);
+			expect(adminScopes).not.toContain('promotions:apply');
+			expect(editorScopes).not.toContain('promotions:apply');
+			expect(adminScopes).toEqual(
+				expect.arrayContaining([
+					'promotions:promote',
+					'promotions:readReviews',
+					'promotions:approveReviews',
+				]),
+			);
+			// Approve still gives editors readReviews after Promote no longer does.
+			expect(editorScopes).toEqual(
+				expect.arrayContaining(['promotions:readReviews', 'promotions:approveReviews']),
+			);
+			expect(editorScopes).not.toContain('promotions:promote');
+			expect(await scopesOf(customRole.slug)).toEqual(
+				expect.arrayContaining(['promotions:promote', 'promotions:apply', 'workflow:read']),
+			);
+
+			const read = await agent.get('/promotions/settings');
+			expect(read.body).toEqual({
+				whoCanPromote: 'projectAdmins',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'instanceAdmins',
+			});
+
+			const user = expect.objectContaining({ id: owner.id });
+			expect(emit).toHaveBeenCalledWith('promotion-settings-updated', {
+				user,
+				before: {
+					whoCanPromote: 'projectAdminsAndEditors',
+					whoCanApply: 'projectAdminsAndEditors',
+				},
+				after: { whoCanPromote: 'projectAdmins', whoCanApply: 'instanceAdmins' },
+			});
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_who_can_promote',
+				value: 'projectAdmins',
+			});
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_who_can_apply',
+				value: 'instanceAdmins',
+			});
+		});
+
+		it('rejects a change without securitySettings:manage on the role or the key, or with an unknown option', async () => {
+			// The member's key holds the scope, so the role check must reject it.
+			const member = await createMemberWithApiKey({ scopes: ['securitySettings:manage'] });
+			// The owner's role holds the scope, so the key check must reject it.
+			const promotionsOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:promote'] });
+			const owners = testServer.publicApiAgentFor(owner);
+			const before = (await owners.get('/promotions/settings')).body;
+			const widened = {
+				whoCanPromote: 'projectAdminsAndEditors',
+				whoCanApprove: 'projectAdminsAndEditors',
+				whoCanApply: 'projectAdminsAndEditors',
+			};
+
+			for (const caller of [member, promotionsOnlyOwner]) {
+				const response = await testServer
+					.publicApiAgentFor(caller)
+					.put('/promotions/settings')
+					.send(widened);
+				expect(response.status).toBe(403);
+			}
+			const unknownOption = await owners
+				.put('/promotions/settings')
+				.send({ ...widened, whoCanApply: 'everyone' });
+			expect(unknownOption.status).toBe(400);
+
+			expect((await owners.get('/promotions/settings')).body).toEqual(before);
+		});
 	});
 
 	describe('GitLab provider validation', () => {
@@ -1389,13 +1533,16 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(routes)(
-			'requires the API-key discovery scope and user permission for %s',
+			'requires the provider manage scope and user permission for %s',
 			async (route) => {
 				const id = await savedProvider();
-				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:read'] });
-				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:list'] });
-				const member = await createMemberWithApiKey({ scopes: ['promotions:discover'] });
-				for (const user of [readOnlyOwner, listOnlyOwner, member]) {
+				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:readProviders'] });
+				// Managing environments does not grant access to a provider's repositories.
+				const environmentManager = await createOwnerWithApiKey({
+					scopes: ['promotions:manageEnvironments'],
+				});
+				const member = await createMemberWithApiKey({ scopes: ['promotions:manageProviders'] });
+				for (const user of [readOnlyOwner, environmentManager, member]) {
 					const response = await testServer
 						.publicApiAgentFor(user)
 						.get(`/promotions/providers/${id}/${route}`);
@@ -1405,7 +1552,9 @@ describe('Promotions in Public API', () => {
 					(await testServer.publicApiAgentFor(readOnlyOwner).get(`/promotions/providers/${id}`))
 						.status,
 				).toBe(200);
-				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['promotions:discover'] });
+				const discoveryOwner = await createOwnerWithApiKey({
+					scopes: ['promotions:manageProviders'],
+				});
 				const admin = await createAdminWithApiKey();
 				for (const user of [discoveryOwner, admin]) {
 					const api = (
@@ -1754,17 +1903,39 @@ describe('Promotions in Public API', () => {
 		);
 	});
 
-	it('rejects a key that has no promotion scope', async () => {
-		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
-		const agent = testServer.publicApiAgentFor(unscopedOwner);
+	it.each([
+		{ name: 'no promotion scope', scopes: ['tag:list'] },
+		{
+			// A key saved before the upgrade keeps the old scope names. They grant nothing now.
+			name: 'only the promotion scopes from before the upgrade',
+			scopes: [
+				'promotions:create',
+				'promotions:read',
+				'promotions:update',
+				'promotions:delete',
+				'promotions:list',
+				'promotions:discover',
+				'promotions:connect',
+				'promotions:manageProjects',
+			],
+		},
+	])('rejects a key that has $name', async ({ scopes }) => {
+		const staleOwner = await createOwnerWithApiKey({
+			scopes: scopes as unknown as ApiKeyScope[],
+		});
+		const agent = testServer.publicApiAgentFor(staleOwner);
 
 		const list = await agent.get('/promotions/environments');
+		const createProvider = await agent
+			.post('/promotions/providers')
+			.send({ name: 'Deploy key', type: 'git', auth: { authType: 'ssh-key' } });
 		const apply = await agent.post(`/promotions/environments/${randomUUID()}/apply`);
 		const missingProjects = await agent.get(
 			`/promotions/environments/${randomUUID()}/missing-projects`,
 		);
 
 		expect(list.status).toBe(403);
+		expect(createProvider.status).toBe(403);
 		expect(apply.status).toBe(403);
 		expect(missingProjects.status).toBe(403);
 	});
@@ -1874,39 +2045,6 @@ describe('Promotions in Public API', () => {
 		expect(response.status).toBe(400);
 		expect(response.body.message).toBe('request/body At least one field is required');
 	});
-
-	it.each([false, true])(
-		'passes the API key variable permission to Promote: %s',
-		async (canExportVariableValues) => {
-			const scopedOwner = await createOwnerWithApiKey({
-				scopes: canExportVariableValues
-					? ['promotions:promote', 'variable:list']
-					: ['promotions:promote'],
-			});
-			const environmentId = randomUUID();
-			const promote = vi
-				.spyOn(Container.get(PromotionsService), 'promote')
-				.mockRejectedValueOnce(new BadRequestError('Operation stopped for test'));
-			try {
-				const response = await testServer
-					.publicApiAgentFor(scopedOwner)
-					.post(`/promotions/environments/${environmentId}/promote`)
-					.send({ commitMessage: 'Export projects' });
-
-				expect(response.status).toBe(400);
-				expect(promote).toHaveBeenCalledWith(
-					environmentId,
-					expect.objectContaining({ id: scopedOwner.id }),
-					{
-						commitMessage: 'Export projects',
-						canExportVariableValues,
-					},
-				);
-			} finally {
-				promote.mockRestore();
-			}
-		},
-	);
 
 	it('accepts a Promote without a commit message', async () => {
 		const environmentId = randomUUID();
@@ -2315,6 +2453,7 @@ describe('Promotions in Public API', () => {
 			const preview = {
 				commitSha: 'a'.repeat(40),
 				source: { environmentId: 'env1', branchName: 'main' },
+				environment: { name: 'Production', providerType: 'git' as const },
 				resources: [],
 				dependencies: [],
 				revision: 'b'.repeat(64),
@@ -2363,15 +2502,17 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('explains that the direction needs a clone first', async () => {
+		it('clones the direction on demand and reports a failed clone', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			await createEnvironment(agent);
 			const project = await createTeamProject('Team project', owner);
+			const clone = failClone();
 
 			const response = await agent.get(`/promotions/projects/${project.id}/changes/apply`);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not connected');
+			expect(response.body.message).toBe('Clone stopped for test');
+			expect(clone).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -2434,20 +2575,17 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
-		it('forwards the selection and the variable-list grant to the service', async () => {
+		it('forwards the selection to the service', async () => {
 			const project = await createTeamProject('Team project', owner);
 			const promote = vi
 				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
 				.mockResolvedValue(promoteResult);
 			try {
-				const withVars = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['promotions:promote', 'variable:list'] }),
-				);
-				const withoutVars = testServer.publicApiAgentFor(
+				const promoteOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
-				const first = await withVars.post(`/promotions/projects/${project.id}/promote`).send({
+				const first = await promoteOnly.post(`/promotions/projects/${project.id}/promote`).send({
 					workflowIds: ['w1', 'w2'],
 					folderIds: ['f1'],
 					commitMessage: 'Promote checkout flow',
@@ -2457,15 +2595,14 @@ describe('Promotions in Public API', () => {
 				expect(promote).toHaveBeenLastCalledWith(
 					project.id,
 					expect.objectContaining({ id: expect.any(String) }),
-					expect.objectContaining({
+					{
 						workflowIds: ['w1', 'w2'],
 						folderIds: ['f1'],
 						commitMessage: 'Promote checkout flow',
-						canExportVariableValues: true,
-					}),
+					},
 				);
 
-				const second = await withoutVars
+				const second = await promoteOnly
 					.post(`/promotions/projects/${project.id}/promote`)
 					.send({ workflowIds: ['w1'] });
 				expect(second.status, JSON.stringify(second.body)).toBe(200);
@@ -2473,7 +2610,7 @@ describe('Promotions in Public API', () => {
 					project.id,
 					expect.anything(),
 					// No commitMessage key when the client omits it; the service applies the default.
-					expect.objectContaining({ canExportVariableValues: false }),
+					expect.not.objectContaining({ commitMessage: expect.anything() }),
 				);
 			} finally {
 				promote.mockRestore();
@@ -2754,7 +2891,7 @@ describe('Promotions in Public API', () => {
 				expect(initial).toHaveBeenCalledWith(
 					id,
 					expect.objectContaining({ id: owner.id }),
-					undefined,
+					{},
 					'other',
 					undefined,
 				);
@@ -2826,25 +2963,26 @@ describe('Promotions in Public API', () => {
 				const service = Container.get(PromotionsService);
 				const initial = vi.spyOn(service, 'apply').mockResolvedValue(result);
 				const continuation = vi.spyOn(service, 'continueApply').mockResolvedValue(result);
+				const reviewedBody = { ...continueBody, expectedPreviewRevision: 'b'.repeat(64) };
 				try {
 					for (const route of ['apply', 'apply/continue']) {
 						const response = await agent
 							.post(`/promotions/environments/${id}/${route}`)
-							.send(continueBody);
+							.send(reviewedBody);
 						expect(response.status, JSON.stringify(response.body)).toBe(200);
 						expect(response.body).toEqual(result);
 					}
 					expect(initial).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
-						continueBody.expectedSource,
+						reviewedBody,
 						'other',
 						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
-						continueBody,
+						reviewedBody,
 						'other',
 						undefined,
 					);
@@ -2855,29 +2993,33 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('explains that Promote needs a clone first', async () => {
+		it('clones on demand for Promote and reports a failed clone', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createEnvironment(agent, promoteEnvironment);
+			const clone = failClone();
 
 			const response = await agent
 				.post(`/promotions/environments/${id}/promote`)
 				.send({ commitMessage: 'sync projects' });
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not connected');
+			expect(response.body.message).toBe('Clone stopped for test');
+			expect(clone).toHaveBeenCalledTimes(1);
 		});
 
-		it('explains that Apply needs a clone first', async () => {
+		it('clones on demand for Apply and Continue and reports a failed clone', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createEnvironment(agent);
+			const clone = failClone();
 
 			const response = await agent.post(`/promotions/environments/${id}/apply`);
 			const continued = await agent
 				.post(`/promotions/environments/${id}/apply/continue`)
 				.send(continueBody);
-			expect(continued.status).toBe(400);
-			expect(continued.body.message).toContain('not connected');
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not connected');
+			expect(response.body.message).toBe('Clone stopped for test');
+			expect(continued.status).toBe(400);
+			expect(continued.body.message).toBe('Clone stopped for test');
+			expect(clone).toHaveBeenCalledTimes(2);
 		});
 
 		it('returns 423 and keeps the environment while another operation holds its lock', async () => {

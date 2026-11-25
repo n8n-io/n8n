@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { OperationContext, Transaction } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -8,6 +7,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import type {
 	KnowledgeFileService,
 	KnowledgeFileUploadResult,
@@ -60,7 +60,7 @@ describe('AgentKnowledgeService', () => {
 	let knowledgeFileService: Mocked<KnowledgeFileService>;
 	let knowledgeRetrievalService: Mocked<KnowledgeRetrievalService>;
 	let projectDeletion: Mocked<AgentProjectDeletionRepository>;
-	let logger: Mocked<Logger>;
+	let knowledgeFileCleanupService: Mocked<KnowledgeFileCleanupService>;
 	let service: AgentKnowledgeService;
 
 	function makeService(
@@ -72,7 +72,7 @@ describe('AgentKnowledgeService', () => {
 			knowledgeRetrievalService,
 			knowledgeAvailabilityService,
 			projectDeletion,
-			logger,
+			knowledgeFileCleanupService,
 		);
 	}
 
@@ -86,7 +86,7 @@ describe('AgentKnowledgeService', () => {
 		projectDeletion.withWritableProject.mockImplementation(
 			async (_projectId, write, ctx = {}) => await write(ctx),
 		);
-		logger = mock<Logger>();
+		knowledgeFileCleanupService = mock<KnowledgeFileCleanupService>();
 		service = makeService();
 	});
 
@@ -158,6 +158,7 @@ describe('AgentKnowledgeService', () => {
 		await expect(service.deleteAllFilesForAgent(projectId, agentId)).resolves.toBeUndefined();
 
 		expect(knowledgeFileService.deleteAll).toHaveBeenCalledWith(scope);
+		expect(knowledgeFileCleanupService.deleteStoredBytes).not.toHaveBeenCalled();
 	});
 
 	it('destroys the knowledge sandbox on request', async () => {
@@ -240,14 +241,11 @@ describe('AgentKnowledgeService', () => {
 			expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
 		});
 
-		it('keeps the stored blobs on agent deletion and warns, because the file entity is not registered', async () => {
+		it('deletes stored bytes without the file entity before the agent deletion cascade', async () => {
 			await service.deleteAllFilesForAgent(projectId, agentId);
 
 			expect(knowledgeFileService.deleteAll).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Knowledge module is inactive'),
-				{ agentId },
-			);
+			expect(knowledgeFileCleanupService.deleteStoredBytes).toHaveBeenCalledWith(scope);
 		});
 
 		it('still destroys the sandbox, which needs no module entity', async () => {

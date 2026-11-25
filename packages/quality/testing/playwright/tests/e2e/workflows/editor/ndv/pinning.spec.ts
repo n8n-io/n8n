@@ -222,7 +222,8 @@ test.describe(
 				await expect(hint).toContainText('pairedItem');
 			});
 
-			test('should use pin data in manual webhook executions', async ({
+			// Engine v2 cannot plan a test webhook run of a workflow with two triggers yet (CET-1273).
+			test('should use pin data in manual webhook executions @engine:v2-pending', async ({
 				n8n,
 				setupRequirements,
 			}) => {

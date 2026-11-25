@@ -160,7 +160,7 @@ function handleLinkClick(event: MouseEvent) {
 					size="small"
 					icon="plus"
 					icon-size="large"
-					aria-label="Add new item"
+					:aria-label="i18n.baseText('mainSidebar.header.addNewItem')"
 					@click="trackOpen"
 				/>
 			</template>
@@ -251,7 +251,7 @@ function handleLinkClick(event: MouseEvent) {
 				size="small"
 				icon="search"
 				icon-size="large"
-				aria-label="Open command palette"
+				:aria-label="i18n.baseText('mainSidebar.header.openCommandPalette')"
 				@click="openCommandBar"
 			/>
 		</KeyboardShortcutTooltip>
@@ -272,7 +272,7 @@ function handleLinkClick(event: MouseEvent) {
 				size="small"
 				icon="panel-left"
 				icon-size="large"
-				aria-label="Toggle sidebar"
+				:aria-label="i18n.baseText('mainSidebar.header.toggleSidebar')"
 				@click="toggleCollapse"
 			/>
 		</KeyboardShortcutTooltip>

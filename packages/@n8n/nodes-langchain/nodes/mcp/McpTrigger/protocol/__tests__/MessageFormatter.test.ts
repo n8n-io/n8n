@@ -208,6 +208,35 @@ describe('MessageFormatter', () => {
 				});
 			});
 
+			it('should pass through a stringified MCP error result with isError', () => {
+				const content = [{ type: 'text', text: '{"error":"invalid_request"}' }];
+				const result = JSON.stringify({ isError: true, content });
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
+					isError: true,
+					content,
+				});
+			});
+
+			it('should wrap a stringified MCP error result from a non-MCP tool', () => {
+				const result = JSON.stringify({
+					isError: true,
+					content: [{ type: 'text', text: 'failed' }],
+				});
+				expect(MessageFormatter.formatToolResult(result, false, false)).toEqual({
+					content: [{ type: 'text', text: result }],
+				});
+			});
+
+			it('should wrap a stringified result whose isError is not true', () => {
+				const result = JSON.stringify({
+					isError: false,
+					content: [{ type: 'text', text: 'ok' }],
+				});
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
+					content: [{ type: 'text', text: result }],
+				});
+			});
+
 			it('should preserve isError alongside a stringified MCP content array', () => {
 				const result = '[{"type":"text","text":"Error occurred"}]';
 				expect(MessageFormatter.formatToolResult(result, true, true)).toEqual({

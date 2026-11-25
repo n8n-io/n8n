@@ -1,3 +1,4 @@
+import { AgentHitlOptionsQuerySchema } from './agent-hitl.schema';
 import { jsonParse } from 'n8n-workflow';
 import { z, type ZodRawShape } from 'zod';
 
@@ -219,6 +220,26 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 	cursor: z.string().max(512).optional(),
 	limit: z.string().optional(),
 	search: threadTitleSearchSchema,
+}) {}
+
+/** The largest number of turns in one page of a chat thread's messages. */
+const MAX_CHAT_HISTORY_PAGE_TURNS = 100;
+
+/**
+ * One page of a chat thread's messages. Without `limit`, the route returns the
+ * whole thread. With `limit`, it returns the newest turns before `cursor`.
+ */
+export class AgentChatMessagesQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().min(1).max(512).optional(),
+	// No default: a request without `limit` asks for the whole thread.
+	limit: z
+		.string()
+		.regex(/^\d+$/, 'Param `limit` must be a positive integer')
+		.transform(Number)
+		.refine((limit) => limit >= 1, { message: 'Param `limit` must be a positive integer' })
+		.transform((limit) => Math.min(limit, MAX_CHAT_HISTORY_PAGE_TURNS))
+		.optional(),
 }) {}
 
 /** A new title for a thread of a system agent. */
@@ -826,11 +847,26 @@ export const lowercaseUuidSchema = z
 	.refine((value) => value === value.toLowerCase(), { message: 'The UUID must be lowercase' });
 
 /**
+ * Raised character limit for chat surfaces where users paste long,
+ * externally-drafted prompts (agent builder, Assistant). The system agent
+ * chat routes enforce it on the backend.
+ */
+export const EXTENDED_PROMPT_MAX_LENGTH = 25_000;
+
+const systemAgentMessageSchema = z
+	.string()
+	.max(
+		EXTENDED_PROMPT_MAX_LENGTH,
+		`Message must be ${EXTENDED_PROMPT_MAX_LENGTH} characters or fewer`,
+	);
+
+/**
  * A system agent session ID is a lowercase UUID. System agents derive
  * resource names, such as sandbox names, from it.
  */
 const systemAgentChatMessageShape = {
 	...agentChatMessageShape,
+	message: systemAgentMessageSchema,
 	sessionId: lowercaseUuidSchema.optional(),
 };
 
@@ -861,8 +897,9 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 /**
  * The chat message of a system agent. Same as {@link AgentChatMessageDto},
- * but the session ID must be a lowercase UUID. Validate via `parse`/`safeParse`,
- * for the same reason as `AgentChatMessageDto`.
+ * but the session ID must be a lowercase UUID and the message has a maximum
+ * length. Validate via `parse`/`safeParse`, for the same reason as
+ * `AgentChatMessageDto`.
  */
 export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageShape) {
 	constructor(data: z.infer<typeof systemAgentChatMessageSchema>) {
@@ -880,6 +917,11 @@ export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageSha
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+/** Same as {@link AgentChatQueueUpdateDto}, with the system agent message limit. */
+export class SystemAgentChatQueueUpdateDto extends Z.class({
+	message: systemAgentMessageSchema,
 }) {}
 
 export class AgentChatQueueSteerDto extends Z.class({
@@ -1041,3 +1083,5 @@ export class AgentChatCancelDto extends Z.class({
 export class AgentTaskCancellationDto extends Z.class({
 	planId: z.string().uuid().toLowerCase().nullable(),
 }) {}
+
+export class AgentHitlOptionsQueryDto extends Z.class(AgentHitlOptionsQuerySchema.shape) {}

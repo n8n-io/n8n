@@ -14,6 +14,7 @@ import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/ag
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { createAgent } from '../shared/db/agents';
 import { createMember } from '../shared/db/users';
 
 describe('Agent attention flags', () => {
@@ -43,12 +44,8 @@ describe('Agent attention flags', () => {
 
 	beforeEach(async () => {
 		projectId = (await createTeamProject()).id;
-		agentId = (
-			await agents.save(agents.create({ name: 'Agent', projectId, integrations: [], tools: {} }))
-		).id;
-		otherAgentId = (
-			await agents.save(agents.create({ name: 'Other', projectId, integrations: [], tools: {} }))
-		).id;
+		agentId = (await createAgent({ name: 'Agent', projectId })).id;
+		otherAgentId = (await createAgent({ name: 'Other', projectId })).id;
 	});
 
 	afterEach(async () => {
@@ -75,7 +72,7 @@ describe('Agent attention flags', () => {
 	it('reverts and reapplies the attention flag schema', async () => {
 		const dataSource = Container.get(DataSource);
 		const migration = [...sqliteMigrations, ...postgresMigrations].find(
-			(candidate) => candidate.name === 'CreateAgentAttentionFlags1794932995699',
+			(candidate) => candidate.name === 'CreateAgentAttentionFlags1795546358454',
 		);
 		if (!migration) throw new Error('Attention flag migration not found');
 		// Template databases skip startup migration wrapping in this worker.

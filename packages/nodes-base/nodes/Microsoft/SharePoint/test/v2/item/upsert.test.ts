@@ -145,6 +145,36 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(result).toEqual([[{ json: created, pairedItem: { item: 0 } }]]);
 	});
 
+	it('sends the collection type with a multi-choice value when it creates', async () => {
+		setParams(
+			baseParams({
+				value: { Title: 'Title 2', Tags: ['A', 'B'] } as unknown as ResourceMapperValue['value'],
+				matchingColumns: ['Title'],
+			}),
+		);
+		apiRequestAllItems.mockResolvedValueOnce([]);
+		apiRequest.mockResolvedValueOnce({ id: '2' });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			ITEMS_PATH,
+			{
+				fields: {
+					Title: 'Title 2',
+					'Tags@odata.type': 'Collection(Edm.String)',
+					Tags: ['A', 'B'],
+				},
+			},
+			{},
+			undefined,
+			{},
+		);
+	});
+
 	it('throws and does neither when several items match (AC#2)', async () => {
 		setParams(baseParams({ value: { Title: 'Duplicate' }, matchingColumns: ['Title'] }));
 		apiRequestAllItems.mockResolvedValueOnce([{ id: 'a' }, { id: 'b' }]);

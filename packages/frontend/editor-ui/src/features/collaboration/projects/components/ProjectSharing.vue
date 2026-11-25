@@ -388,6 +388,7 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 							</N8nText>
 							<N8nTooltip
 								v-if="canRemoveProject(entry.project)"
+								as-child
 								:content="locale.baseText('projects.sharing.removeAccess')"
 								placement="top"
 							>
@@ -398,6 +399,7 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 									icon="trash-2"
 									:aria-label="locale.baseText('projects.sharing.removeAccess')"
 									:disabled="props.readonly"
+									focusable-when-disabled
 									data-test-id="project-sharing-remove"
 									@click="onRoleAction(entry.project, 'remove')"
 								/>
@@ -427,6 +429,7 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 					</N8nSelect>
 					<N8nTooltip
 						v-if="!props.static && !showStaticRole && canRemoveProject(entry.project)"
+						as-child
 						:content="locale.baseText('projects.sharing.removeAccess')"
 						placement="top"
 					>
@@ -437,6 +440,7 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 							icon="trash-2"
 							:aria-label="locale.baseText('projects.sharing.removeAccess')"
 							:disabled="props.readonly"
+							focusable-when-disabled
 							data-test-id="project-sharing-remove"
 							@click="onRoleAction(entry.project, 'remove')"
 						/>

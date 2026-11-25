@@ -131,4 +131,46 @@ describe('n8nDefaultFailedAttemptHandler', () => {
 			expect(error).not.toHaveProperty('retryAfterMs');
 		});
 	});
+
+	describe('Ollama response errors', () => {
+		it.each([400, 401, 402, 403, 404, 405, 406, 407, 409, 413])(
+			'should stop retries for HTTP %s',
+			(statusCode) => {
+				const error = Object.assign(new Error('Request rejected'), {
+					name: 'ResponseError',
+					status_code: statusCode,
+				});
+
+				expect(() => n8nDefaultFailedAttemptHandler(error)).toThrow(error);
+			},
+		);
+
+		it('should stop retries for an exhausted quota with HTTP 429', () => {
+			const error = Object.assign(new Error('Your credit balance is too low'), {
+				name: 'ResponseError',
+				status_code: 429,
+			});
+
+			expect(() => n8nDefaultFailedAttemptHandler(error)).toThrow(error);
+		});
+
+		it('should retain the retry delay for HTTP 429', () => {
+			const error = Object.assign(new Error('Rate limited. Please try again in 20 seconds.'), {
+				name: 'ResponseError',
+				status_code: 429,
+			});
+
+			expect(() => n8nDefaultFailedAttemptHandler(error)).not.toThrow();
+			expect(error).toHaveProperty('retryAfterMs', 20000);
+		});
+
+		it('should prefer the standard status field', () => {
+			const error = Object.assign(new Error('Service unavailable'), {
+				status: 503,
+				status_code: 402,
+			});
+
+			expect(() => n8nDefaultFailedAttemptHandler(error)).not.toThrow();
+		});
+	});
 });

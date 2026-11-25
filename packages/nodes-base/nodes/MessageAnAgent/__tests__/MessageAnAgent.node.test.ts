@@ -77,6 +77,52 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getExecutionId.mockReturnValue('exec-123');
 	});
 
+	it('stops before later items when an invocation suspends', async () => {
+		mockParams();
+		executeFunctions.getNode.mockReturnValue({ ...executeFunctions.getNode(), typeVersion: 4 });
+		const context = { agentInvocations: { runIndex: 0, items: [] } };
+		executeFunctions.getContext.mockReturnValue(context);
+		executeFunctions.getInputData.mockReturnValue([
+			{ json: { item: 0 } },
+			{ json: { item: 1 } },
+			{ json: { item: 2 } },
+		]);
+		executeFunctions.executeAgent.mockResolvedValueOnce(mockAgentResult).mockResolvedValueOnce({
+			...mockAgentResult,
+			waiting: { runId: 'run', executionIds: ['decision'] },
+		});
+		const result = await node.execute.call(executeFunctions);
+		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(2);
+		expect(result[0]).toHaveLength(1);
+		expect(context).toHaveProperty('agentInvocations');
+	});
+
+	it('keeps invocation results when a version 4 invocation suspends', async () => {
+		executeFunctions.getNode.mockReturnValue({ ...executeFunctions.getNode(), typeVersion: 4 });
+		mockParams();
+		executeFunctions.getInputData.mockReturnValue([{ json: { item: 0 } }, { json: { item: 1 } }]);
+		executeFunctions.executeAgent.mockResolvedValueOnce(mockAgentResult).mockResolvedValueOnce({
+			...mockAgentResult,
+			waiting: { runId: 'run', executionIds: ['decision'] },
+		});
+		const result = await node.execute.call(executeFunctions);
+		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(2);
+		expect(result[0]).toHaveLength(1);
+		expect(executeFunctions.setMetadata).not.toHaveBeenCalledWith({ agentInvocations: undefined });
+	});
+
+	it('drops temporary invocation results when version 4 finishes its items', async () => {
+		executeFunctions.getNode.mockReturnValue({ ...executeFunctions.getNode(), typeVersion: 4 });
+		const context = { agentInvocations: { runIndex: 0, items: [] }, otherState: 'preserved' };
+		executeFunctions.getContext.mockReturnValue(context);
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParams();
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+		await node.execute.call(executeFunctions);
+		expect(context).toEqual({ otherState: 'preserved' });
+		expect(executeFunctions.setMetadata).toHaveBeenCalledWith({ resumeMode: undefined });
+	});
+
 	it('should send a message and return the agent response', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockParams();
@@ -1088,11 +1134,11 @@ describe('MessageAnAgent versioning', () => {
 		);
 	});
 
-	it('exposes v1, v2, v3, and v3.1 with v3.1 as the default', () => {
+	it('keeps version 3.1 as the default and exposes version 4 explicitly', () => {
 		const versioned = new MessageAnAgent();
 
 		expect(versioned.description.defaultVersion).toBe(3.1);
-		expect(Object.keys(versioned.nodeVersions)).toEqual(['1', '2', '3', '3.1']);
+		expect(Object.keys(versioned.nodeVersions).sort()).toEqual(['1', '2', '3', '3.1', '4']);
 	});
 
 	// `hidden` marks a node as retired for the AI builder, the editor and the website.
@@ -1142,12 +1188,12 @@ describe('MessageAnAgent versioning', () => {
 		});
 	});
 
-	it('serves v2, v3, and v3.1 from the same class with the agentSelector picker', () => {
+	it('serves v2 through v4 from the same class with the agentSelector picker', () => {
 		const v2 = new MessageAnAgentV2(baseDescription);
 		const agentId = v2.description.properties.find((p) => p.name === 'agentId');
 		const schemaType = v2.description.properties.find((p) => p.name === 'schemaType');
 
-		expect(v2.description.version).toEqual([2, 3, 3.1]);
+		expect(v2.description.version).toEqual([2, 3, 3.1, 4]);
 		expect(agentId?.type).toBe('agentSelector');
 		expect(schemaType?.default).toBe('fromJson');
 	});

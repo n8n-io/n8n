@@ -531,6 +531,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'agent-result-delivered': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) agent.resultDelivered = true;
+			break;
+		}
+
+		case 'cloud-browser-window-changed': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) agent.cloudBrowserWindowChanges = (agent.cloudBrowserWindowChanges ?? 0) + 1;
+			break;
+		}
+
 		case 'confirmation-request': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];

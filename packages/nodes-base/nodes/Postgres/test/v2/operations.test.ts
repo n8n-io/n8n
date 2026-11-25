@@ -1,4 +1,5 @@
 import get from 'lodash/get';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -16,6 +17,9 @@ import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
+
+const { copyRows } = vi.hoisted(() => ({ copyRows: vi.fn() }));
+vi.mock('../../v2/helpers/copy', () => ({ copyRows }));
 
 const { yieldToEventLoop } = vi.hoisted(() => ({ yieldToEventLoop: vi.fn(async () => {}) }));
 vi.mock('@n8n/utils/promise/create-event-loop-yielder', () => ({
@@ -1118,6 +1122,171 @@ describe('Test PostgresV2, insert operation', () => {
 				pairedItem: { item: 0 },
 			},
 		]);
+	});
+});
+
+describe('Test PostgresV2, insert operation with COPY', () => {
+	const columnsInfo: ColumnInfo[] = [
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		{ column_name: 'tags', data_type: 'ARRAY', is_nullable: 'YES', udt_name: '_text' },
+		{ column_name: 'name', data_type: 'text', is_nullable: 'YES', udt_name: '' },
+	];
+
+	const nodeParameters = (options: IDataObject): IDataObject => ({
+		schema: { __rl: true, mode: 'list', value: 'public' },
+		table: { __rl: true, mode: 'list', value: 'my_table' },
+		columns: { mappingMode: 'autoMapInputData', value: null },
+		options,
+	});
+
+	const inputItems = [
+		{ json: { id: 1, tags: ['a', 'b'], name: 'first' } },
+		{ json: { id: 2, name: 'second' } },
+		{ json: { id: 3, tags: [], name: null } },
+	];
+
+	const runInsert = async (
+		options: IDataObject,
+		input: typeof inputItems | Array<{ json: IDataObject }> = inputItems,
+		continueOnFail = false,
+	) => {
+		const parameters = nodeParameters(options);
+		const executeFunctions = createMockExecuteFunction(parameters);
+		executeFunctions.continueOnFail = () => continueOnFail;
+		const db = createMockDb(columnsInfo);
+		const pgp = pgPromise();
+		const result = await insert.execute.call(
+			executeFunctions,
+			runQueries,
+			input,
+			{ ...options, nodeVersion: 2.8 },
+			db,
+			pgp,
+		);
+		return { result, db, pgp };
+	};
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should load all rows with COPY and output one summary item', async () => {
+		copyRows.mockResolvedValue(3);
+
+		const { result, db, pgp } = await runInsert({ useCopy: true });
+
+		expect(runQueries).not.toHaveBeenCalled();
+		expect(copyRows).toHaveBeenCalledWith(node, db, pgp, [
+			{
+				itemIndex: 0,
+				schema: 'public',
+				table: 'my_table',
+				item: { id: 1, tags: '{"a","b"}', name: 'first' },
+			},
+			{ itemIndex: 1, schema: 'public', table: 'my_table', item: { id: 2, name: 'second' } },
+			{
+				itemIndex: 2,
+				schema: 'public',
+				table: 'my_table',
+				item: { id: 3, tags: '{}', name: null },
+			},
+		]);
+		expect(result).toEqual([
+			{ json: { rows: 3 }, pairedItem: [{ item: 0 }, { item: 1 }, { item: 2 }] },
+		]);
+	});
+
+	it.each([{}, { useCopy: false }])(
+		'should keep one INSERT statement per item when COPY is off (%o)',
+		async (options) => {
+			await runInsert({ ...options, skipOnConflict: true });
+
+			expect(copyRows).not.toHaveBeenCalled();
+			expect(runQueries).toHaveBeenCalledWith(
+				inputItems.map(() => ({
+					query:
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv) ON CONFLICT DO NOTHING RETURNING *',
+					values: expect.any(Array),
+				})),
+				expect.any(Object),
+			);
+		},
+	);
+
+	it('should ignore Skip on Conflict and Output Columns when COPY is on', async () => {
+		copyRows.mockResolvedValue(3);
+
+		const { result } = await runInsert({
+			useCopy: true,
+			skipOnConflict: true,
+			outputColumns: ['id'],
+			queryBatching: 'independently',
+		});
+
+		expect(runQueries).not.toHaveBeenCalled();
+		expect(result).toEqual([expect.objectContaining({ json: { rows: 3 } })]);
+	});
+
+	it('should throw for an item without values when COPY is on', async () => {
+		await expect(runInsert({ useCopy: true }, [{ json: { id: 1 } }, { json: {} }])).rejects.toThrow(
+			'Load Rows With COPY needs at least one column value in each item',
+		);
+		expect(copyRows).not.toHaveBeenCalled();
+	});
+
+	it('should not run COPY when an item fails the checks and Continue On Fail is on', async () => {
+		const { result } = await runInsert(
+			{ useCopy: true },
+			[{ json: { id: 1 } }, { json: { unknown: 1 } }],
+			true,
+		);
+
+		expect(copyRows).not.toHaveBeenCalled();
+		expect(result).toEqual([
+			{ json: { error: expect.any(NodeOperationError) }, pairedItem: { item: 1 } },
+		]);
+	});
+
+	it('should return the COPY error for the failed item when Continue On Fail is on', async () => {
+		copyRows.mockRejectedValue(
+			new NodeOperationError(node, 'duplicate key value violates unique constraint', {
+				itemIndex: 1,
+				description: 'Key (id)=(1) already exists.',
+			}),
+		);
+
+		const { result } = await runInsert({ useCopy: true }, inputItems, true);
+
+		expect(result).toEqual([
+			{
+				json: {
+					error: expect.objectContaining({
+						message: 'duplicate key value violates unique constraint',
+						description: 'Key (id)=(1) already exists.',
+					}),
+				},
+				pairedItem: { item: 1 },
+			},
+		]);
+	});
+
+	it('should pair a COPY error that names no item with all items when Continue On Fail is on', async () => {
+		copyRows.mockRejectedValue(new NodeOperationError(node, 'violates foreign key constraint'));
+
+		const { result } = await runInsert({ useCopy: true }, inputItems, true);
+
+		expect(result).toEqual([
+			{
+				json: { error: expect.objectContaining({ message: 'violates foreign key constraint' }) },
+				pairedItem: [{ item: 0 }, { item: 1 }, { item: 2 }],
+			},
+		]);
+	});
+
+	it('should throw the COPY error when Continue On Fail is off', async () => {
+		copyRows.mockRejectedValue(new NodeOperationError(node, 'duplicate key', { itemIndex: 1 }));
+
+		await expect(runInsert({ useCopy: true })).rejects.toThrow('duplicate key');
 	});
 });
 
