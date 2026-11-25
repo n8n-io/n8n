@@ -10,7 +10,7 @@ const BLOCK_TABLE = 'mcp_server_block';
  * project connect AI clients to it. The tool table has the columns of the later tool kinds
  * (node, agent, skill) from the start.
  */
-export class CreateMcpServerTables1795535783698 implements ReversibleMigration {
+export class CreateMcpServerTables1795631969949 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createServerTable(context);
 		await this.createToolTable(context);
