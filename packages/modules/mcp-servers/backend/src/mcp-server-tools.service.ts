@@ -3,6 +3,7 @@ import {
 	mcpServerSchema,
 	type McpServerToolBrokenReason,
 	type McpServerToolCandidate,
+	type McpServerToolDraftSource,
 	type McpServerToolDraftField,
 	type McpServerToolDraftResponse,
 	type McpServerToolResponse,
@@ -280,19 +281,23 @@ export class McpServerToolsService {
 		return saved.map((tool) => toToolResponse(tool, null));
 	}
 
-	/** An edit by the builder marks the text as `edited`, so the analysis of AI drafts sees it. */
+	/**
+	 * `draftSource` says who wrote the new text, so the analysis of AI drafts sees it: `edited`
+	 * for the builder in the UI, `ai` for the n8n Assistant after the approval of the builder.
+	 */
 	async updateTool(
 		projectId: string,
 		serverId: string,
 		toolId: string,
 		changes: UpdateMcpServerToolDto,
+		draftSource: Extract<McpServerToolDraftSource, 'ai' | 'edited'> = 'edited',
 	): Promise<McpServerToolResponse> {
 		const tool = await this.findTool(projectId, serverId, toolId);
 		const hasChanges = changes.toolName !== undefined || changes.description !== undefined;
 		const updated = hasChanges
 			? await this.tools.updateInServer(tool.serverId, tool.id, {
 					...changes,
-					draftSource: 'edited',
+					draftSource,
 				})
 			: tool;
 		if (!updated) throw new NotFoundError('Tool not found');

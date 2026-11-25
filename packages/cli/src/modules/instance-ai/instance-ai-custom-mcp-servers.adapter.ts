@@ -158,6 +158,8 @@ export class InstanceAiCustomMcpServersAdapterService {
 					serverId,
 					toolId,
 					dto,
+					// The Assistant wrote the text, so it counts as an AI draft, not as an edit by the builder.
+					'ai',
 				);
 			},
 			generateTool: async ({ serverId, projectId }, toolId, field) => {

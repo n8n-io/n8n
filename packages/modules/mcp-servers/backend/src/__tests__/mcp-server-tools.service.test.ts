@@ -122,3 +122,54 @@ describe('McpServerToolsService reads for an approval card', () => {
 		expect(ports.check).not.toHaveBeenCalled();
 	});
 });
+
+describe('McpServerToolsService.updateTool', () => {
+	const TOOL_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a02';
+
+	function setupTool() {
+		const servers = mock<McpServerRepository>();
+		const tools = mock<McpServerToolRepository>();
+		const tool = mock<McpServerTool>({
+			id: TOOL_ID,
+			serverId: SERVER_ID,
+			kind: 'workflow',
+			targetId: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		servers.findInProject.mockResolvedValue(mock<McpServer>({ id: SERVER_ID }));
+		tools.findInServer.mockResolvedValue(tool);
+		tools.updateInServer.mockResolvedValue(tool);
+		const service = new McpServerToolsService(
+			servers,
+			tools,
+			mock<WorkflowToolPort>(),
+			mock<TextDraftPort>(),
+			mock<EventService>(),
+			mock<Logger>(),
+		);
+		return { service, tools };
+	}
+
+	it('marks an edit of the builder as edited', async () => {
+		const { service, tools } = setupTool();
+
+		await service.updateTool(PROJECT_ID, SERVER_ID, TOOL_ID, { description: 'New' });
+
+		expect(tools.updateInServer).toHaveBeenCalledWith(SERVER_ID, TOOL_ID, {
+			description: 'New',
+			draftSource: 'edited',
+		});
+	});
+
+	it('keeps the draft source that the caller gives, such as ai for the Assistant', async () => {
+		const { service, tools } = setupTool();
+
+		await service.updateTool(PROJECT_ID, SERVER_ID, TOOL_ID, { description: 'New' }, 'ai');
+
+		expect(tools.updateInServer).toHaveBeenCalledWith(SERVER_ID, TOOL_ID, {
+			description: 'New',
+			draftSource: 'ai',
+		});
+	});
+});

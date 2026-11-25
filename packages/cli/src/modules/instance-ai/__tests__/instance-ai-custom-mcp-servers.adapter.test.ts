@@ -271,9 +271,14 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 			['workflow-1'],
 			actor,
 		);
-		expect(tools.updateTool).toHaveBeenCalledWith('project-1', SERVER_ID, TOOL_ID, {
-			toolName: 'campaign_stats',
-		});
+		// The Assistant wrote the text, so the tool keeps the draft source of an AI draft.
+		expect(tools.updateTool).toHaveBeenCalledWith(
+			'project-1',
+			SERVER_ID,
+			TOOL_ID,
+			{ toolName: 'campaign_stats' },
+			'ai',
+		);
 		expect(tools.draftTool).toHaveBeenCalledWith(
 			user,
 			'project-1',
