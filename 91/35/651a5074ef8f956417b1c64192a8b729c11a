@@ -1,0 +1,21 @@
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.test.ts
+  s_4a494bfdece475::t_e9c9edd1948534 175,192-195
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.vue
+  s_4a494bfdece475::t_73b49d1f5e5997 7,24-25,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9135651a5074ef8f956417b1c64192a8b729c11a",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
