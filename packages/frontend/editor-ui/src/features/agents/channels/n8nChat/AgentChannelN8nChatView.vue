@@ -18,7 +18,7 @@ const i18n = useI18n();
 const router = useRouter();
 const { projectName } = useAgentProjectBreadcrumb(computed(() => props.projectId));
 const chatUrl = computed(() =>
-	props.mode === 'edit' && props.isPublished && props.availableInChat && props.agentId
+	props.isPublished && props.availableInChat && props.agentId
 		? router.resolve({ name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agentId } }).href
 		: undefined,
 );

@@ -104,8 +104,8 @@ describe('AgentChannelN8nChatView', () => {
 		expect(wrapper.text()).toContain('Personal');
 	});
 
-	it('links to the agent in a new tab when the published channel is available', () => {
-		const wrapper = renderView({ mode: 'edit', availableInChat: true });
+	it.each(['setup', 'edit'])('links to the published channel in %s mode', (mode) => {
+		const wrapper = renderView({ mode, availableInChat: true });
 
 		const link = wrapper.get('[role="alert"] a');
 		expect(link.text()).toBe('Talk to agent');
@@ -114,8 +114,8 @@ describe('AgentChannelN8nChatView', () => {
 	});
 
 	it.each([
-		{ mode: 'setup', isPublished: true, availableInChat: true },
-		{ mode: 'edit', isPublished: false, availableInChat: false },
+		{ mode: 'setup', isPublished: true, availableInChat: false },
+		{ mode: 'edit', isPublished: false, availableInChat: true },
 		{ mode: 'edit', isPublished: true, availableInChat: false },
 	])('hides the chat link for %j', (props) => {
 		expect(renderView(props).find('[role="alert"] a').exists()).toBe(false);
