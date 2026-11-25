@@ -840,9 +840,9 @@ describe('NodeSettings', () => {
 			const renderAndUpdate = async () => {
 				const rendered = renderVersioned();
 				const settingsTab = await rendered.findByTestId('tab-settings');
-				await fireEvent.click(settingsTab.querySelector<HTMLElement>('.tab')!);
+				await fireEvent.mouseDown(settingsTab.querySelector<HTMLElement>('.tab')!);
 				await waitFor(() => {
-					expect(settingsTab.querySelector('.tab')?.className).toContain('activeTab');
+					expect(settingsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
 				});
 				const [parametersBefore] = await rendered.findAllByTestId('parameters-stub');
 				const hiddenIssuesBefore = parametersBefore.getAttribute('data-hidden-issues');
@@ -882,7 +882,7 @@ describe('NodeSettings', () => {
 
 				const paramsTab = await findByTestId('tab-params');
 				await waitFor(() => {
-					expect(paramsTab.querySelector('.tab')?.className).toContain('activeTab');
+					expect(paramsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
 				});
 
 				const [parameters] = await findAllByTestId('parameters-stub');
