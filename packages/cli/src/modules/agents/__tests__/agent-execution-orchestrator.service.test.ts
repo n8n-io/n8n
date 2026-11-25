@@ -2368,7 +2368,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	describe('test chat isolation', () => {
 		async function runTestTurn() {
-			const { service, runtimeCacheService } = makeService();
+			const { service, runtimeCacheService, wakeService } = makeService();
 			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			await collect(
@@ -2381,7 +2381,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					simulation: vi.fn().mockResolvedValue(mock<SimulationSession>()),
 				}),
 			);
-			return { runtime, runtimeCacheService };
+			return { runtime, runtimeCacheService, wakeService };
 		}
 
 		it("runs in the test chat's own sandbox, never the user's live draft sandbox", async () => {
@@ -2410,11 +2410,57 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 
 		it('cannot start background jobs, so no background sub-agent runs outside the test run', async () => {
-			const { runtimeCacheService } = await runTestTurn();
+			const { runtimeCacheService, wakeService } = await runTestTurn();
 
 			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ allowBackgroundTasks: false }),
 			);
+			// A wake is a new agent turn without a simulation session, so it would run live.
+			expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
+		});
+
+		it('still delivers background results after a live draft turn', async () => {
+			const { service, runtimeCacheService, wakeService } = makeService();
+			runtimeCacheService.getRuntime.mockResolvedValue(
+				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
+			);
+			await collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					simulation: vi.fn().mockResolvedValue(undefined),
+				}),
+			);
+
+			expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
+		});
+
+		it('never runs a background wake on a test chat', async () => {
+			const { service, executionService, runtimeCacheService } = makeService();
+			executionService.findThreadById.mockResolvedValue({
+				id: 'thread-1',
+				projectId,
+				agentId,
+				accessScope: 'project',
+				ownerId: null,
+				testChat: true,
+			} as never);
+
+			await expect(
+				service.executeForWake({
+					backgroundJobSignal,
+					agentId,
+					projectId,
+					message: 'Wake',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					abortSignal: new AbortController().signal,
+				}),
+			).rejects.toThrow('A test chat does not run background wakes');
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 		});
 
 		it('keeps live draft chats in the shared draft sandbox with episodic memory on', async () => {
