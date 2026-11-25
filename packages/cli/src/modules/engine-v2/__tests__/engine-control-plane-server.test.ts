@@ -19,6 +19,7 @@ import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
 import { EngineMtls } from '../engine-mtls';
+import type { ResolveErrorWorkflowRequest } from '../engine-workflow-resolve.contract';
 import type { EngineWorkflowResolveController } from '../engine-workflow-resolve.controller';
 
 const authSecret = 'a'.repeat(32);
@@ -227,7 +228,17 @@ describe('EngineControlPlaneServer', () => {
 	});
 
 	describe('workflow resolve route', () => {
-		const body = { kind: 'error-workflow', executionId: 'exec-1' };
+		const body: ResolveErrorWorkflowRequest = {
+			kind: 'error-workflow',
+			executionId: '01a03900-0000-7000-8000-00000000000b',
+			source: {
+				executionId: '01a03900-0000-7000-8000-00000000000a',
+				workflowId: 'failed-wf',
+				workflow: { id: 'failed-wf', nodes: [] },
+				hostMode: 'trigger',
+				hasParent: false,
+			},
+		};
 
 		const postResolve = (token?: string) => {
 			const req = request(baseUrl).post('/internal/workflows/resolve');

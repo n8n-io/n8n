@@ -3,7 +3,7 @@ import type { NodeTypesProxy, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowRepository } from '@n8n/db';
 import type { JsonObject } from '@n8n/engine';
-import { OperationalError, ResponseError } from '@n8n/errors';
+import { OperationalError, ResponseError, UserError } from '@n8n/errors';
 import type { INode, INodeType, IWorkflowBase } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -14,11 +14,17 @@ import type {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import type { OwnershipService } from '@/services/ownership.service';
-import { getPublishedWorkflowData } from '@/workflow-execute-additional-data';
+import {
+	getDraftWorkflowData,
+	getPublishedWorkflowData,
+	triggerReturnsLastRunOnly,
+} from '@/workflow-execute-additional-data';
 
 import type {
 	ResolvedErrorWorkflow,
 	ResolveErrorWorkflowRequest,
+	ResolvedSubWorkflow,
+	ResolveSubWorkflowRequest,
 } from '../engine-workflow-resolve.contract';
 import { EngineWorkflowResolveService } from '../engine-workflow-resolve.service';
 
@@ -401,5 +407,128 @@ describe('EngineWorkflowResolveService, for an error workflow', () => {
 
 			await expect(service.resolve(source())).rejects.toThrow('db down');
 		});
+	});
+});
+
+describe('EngineWorkflowResolveService, for a sub-workflow', () => {
+	const EXECUTE_WORKFLOW_TRIGGER = node(
+		'When Executed by Another Workflow',
+		'n8n-nodes-base.executeWorkflowTrigger',
+	);
+	const CALLER = node('Execute Workflow', 'n8n-nodes-base.executeWorkflow');
+
+	const workflowRepository = mock<WorkflowRepository>();
+	const policyChecker = mock<SubworkflowPolicyChecker>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const nodeTypes = mock<NodeTypesProxy>();
+	const logger = mock<Logger>();
+
+	let service: EngineWorkflowResolveService;
+
+	const subWorkflow = (overrides: Partial<IWorkflowBase> = {}): IWorkflowBase => ({
+		id: 'sub-wf',
+		name: 'Sub-workflow',
+		active: true,
+		isArchived: false,
+		activeVersionId: 'v1',
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		nodes: [EXECUTE_WORKFLOW_TRIGGER, SET],
+		connections: { [EXECUTE_WORKFLOW_TRIGGER.name]: main(SET.name) },
+		settings: { engineType: 'v2' },
+		...overrides,
+	});
+
+	const request = (mode: 'manual' | 'trigger' = 'trigger'): ResolveSubWorkflowRequest => ({
+		kind: 'sub-workflow',
+		workflowId: 'sub-wf',
+		executionId: errorExecutionId,
+		parent: {
+			executionId: failedExecutionId,
+			workflowId: 'parent-wf',
+			mode,
+			node: { id: CALLER.id, name: CALLER.name, type: CALLER.type, typeVersion: 1 },
+		},
+		context: { userId: 'user-1', projectId: 'project-1' },
+		items: [{ json: { value: 1 } }],
+	});
+
+	const resolveStart = async (body = request()): Promise<ResolvedSubWorkflow> =>
+		await service.resolve(body);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		workflowRepository.exists.mockResolvedValue(true);
+		policyChecker.check.mockResolvedValue(undefined);
+		credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
+		vi.mocked(getPublishedWorkflowData).mockResolvedValue(subWorkflow());
+		vi.mocked(getDraftWorkflowData).mockResolvedValue(subWorkflow());
+		vi.mocked(triggerReturnsLastRunOnly).mockReturnValue(false);
+		// No execute method: the items pass through to the trigger outputs.
+		nodeTypes.getByNameAndVersion.mockReturnValue({ description: {} } as INodeType);
+		service = new EngineWorkflowResolveService(
+			workflowRepository,
+			policyChecker,
+			credentialsPermissionChecker,
+			nodeTypes,
+			mock<OwnershipService>(),
+			mock<UrlService>(),
+			mock<GlobalConfig>({ nodes: { errorTriggerType: ERROR_TRIGGER_TYPE } }),
+			logger,
+		);
+	});
+
+	it('roots the graph at the sub-workflow trigger, with the items as its output', async () => {
+		const start = await resolveStart();
+
+		expect(start.kind).toBe('sub-workflow');
+		expect(start.workflowId).toBe('sub-wf');
+		expect(start.graph.nodes[0]).toEqual(
+			expect.objectContaining({ name: EXECUTE_WORKFLOW_TRIGGER.name, type: 'trigger' }),
+		);
+		expect(start.triggerOutputs).toEqual([[{ json: { value: 1 } }]]);
+	});
+
+	it('loads the draft for a manual parent', async () => {
+		await resolveStart(request('manual'));
+
+		expect(getDraftWorkflowData).toHaveBeenCalledWith({ id: 'sub-wf' }, 'parent-wf');
+		expect(getPublishedWorkflowData).not.toHaveBeenCalled();
+	});
+
+	it('loads the published version for a production parent', async () => {
+		await resolveStart(request('trigger'));
+
+		expect(getPublishedWorkflowData).toHaveBeenCalledWith({ id: 'sub-wf' }, 'parent-wf');
+		expect(getDraftWorkflowData).not.toHaveBeenCalled();
+	});
+
+	it('checks the credentials of the sub-workflow for the user the parent runs for', async () => {
+		await resolveStart();
+
+		expect(credentialsPermissionChecker.check).toHaveBeenCalledExactlyOnceWith(
+			'sub-wf',
+			subWorkflow().nodes,
+			'user-1',
+		);
+	});
+
+	it('refuses with 403 when the credential check refuses', async () => {
+		credentialsPermissionChecker.check.mockRejectedValue(
+			new UserError('No access to a credential'),
+		);
+
+		const error: unknown = await resolveStart().catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(ResponseError);
+		expect((error as ResponseError).httpStatusCode).toBe(403);
+	});
+
+	it('reports whether the trigger returns only the last run', async () => {
+		vi.mocked(triggerReturnsLastRunOnly).mockReturnValue(true);
+
+		expect((await resolveStart()).returnLastRunOnly).toBe(true);
+		expect(triggerReturnsLastRunOnly).toHaveBeenCalledWith(subWorkflow().nodes);
 	});
 });
