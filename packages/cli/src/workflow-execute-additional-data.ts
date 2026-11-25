@@ -53,6 +53,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ManualExecutionCancelledError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -607,6 +608,29 @@ export function buildSubWorkflowOutput(
 	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
+/**
+ * Stop an awaited sub-workflow when its parent is cancelled.
+ *
+ * Returns a function that removes the listener.
+ */
+function cancelWithParent(parentSignal: AbortSignal | undefined, executionId: string) {
+	if (!parentSignal) return () => {};
+
+	const stop = () =>
+		Container.get(ActiveExecutions).stopExecution(
+			executionId,
+			new ManualExecutionCancelledError(executionId),
+		);
+
+	if (parentSignal.aborted) {
+		stop();
+		return () => {};
+	}
+
+	parentSignal.addEventListener('abort', stop, { once: true });
+	return () => parentSignal.removeEventListener('abort', stop);
+}
+
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -790,7 +814,14 @@ async function startExecution(
 		// The engine marks its own early failures once it has started.
 		blockedReason = undefined;
 		activeExecutions.attachWorkflowExecution(executionId, execution);
-		data = await execution;
+		const stopWithParent = options.doNotWaitToFinish
+			? () => {}
+			: cancelWithParent(options.abortSignal, executionId);
+		try {
+			data = await execution;
+		} finally {
+			stopWithParent();
+		}
 	} catch (error) {
 		const executionError = error as ExecutionError;
 		const fullRunData = Container.get(FailedRunFactory).generateFailedExecutionFromError(

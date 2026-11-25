@@ -29,7 +29,7 @@ function createQueue(
 ) {
 	const queue = new RedisWorkQueue<ContractMessage>({
 		publisher: redis,
-		consumer: redis,
+		openConsumer: () => redis,
 		key: KEY,
 		parse: parseContractMessage,
 		logger: silentLogger,
