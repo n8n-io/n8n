@@ -542,6 +542,14 @@ export function addStartAfterBind(
 				'n8n rounds a number with a fraction and more than 15 digits in the output, so the next page can skip rows. In Options, turn on Output Numbers As String.',
 		});
 	}
+	// A NUMBER with no scale holds any fraction, so the output can round the value to fewer digits
+	if (!numbersAsString && text.includes('.') && typeof colInfo.scale !== 'number') {
+		throw new NodeOperationError(node, 'The Start After value has a fraction that can be rounded', {
+			itemIndex,
+			description:
+				'The column has no fixed number of decimals, so n8n can round a number with a fraction in the output and the next page can repeat rows. In Options, turn on Output Numbers As String.',
+		});
+	}
 
 	const format = text.replace('-', '').replace(/\d/g, '9').replace('.', 'D');
 	bindParameters.push({ type: oracledb.STRING, val: text }, { type: oracledb.STRING, val: format });

@@ -1885,7 +1885,13 @@ VALUES (
 					});
 					const runQueries = getRunQueriesFn(mockThis, pool);
 
-					await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+					await select.execute.call(
+						mockThis,
+						runQueries,
+						items,
+						{ largeNumbersOutputAsString: true },
+						pool,
+					);
 
 					expect(runQueries.mock.calls[0][0][0].values).toEqual([
 						{ type: oracleDBTypes.STRING, val },
@@ -1999,10 +2005,10 @@ VALUES (
 							),
 						};
 					});
-				const run = async (options: IDataObject) => {
+				const run = async (options: IDataObject, value = '') => {
 					const mockThis = createMockExecuteFunction({
 						...baseParameters,
-						startAfter: { values: { column: 'ID', value: '' } },
+						startAfter: { values: { column: 'ID', value } },
 					});
 					const runQueries = getRunQueriesFn(mockThis, pool);
 					await select.execute.call(mockThis, runQueries, items, options, pool);
@@ -2033,6 +2039,27 @@ VALUES (
 					withIdColumn(precision, scale);
 
 					expect(await run(options)).toHaveBeenCalled();
+				});
+
+				it('should throw for a value with a fraction on a NUMBER with no scale', async () => {
+					withIdColumn(null, null);
+
+					await expect(run({}, '0.3')).rejects.toThrow(
+						'The Start After value has a fraction that can be rounded',
+					);
+				});
+
+				it.each([
+					['a whole value', '5', {}],
+					[
+						'a value with a fraction when numbers are output as text',
+						'0.3',
+						{ largeNumbersOutputAsString: true },
+					],
+				])('should page by a NUMBER with no scale for %s', async (_, value, options) => {
+					withIdColumn(null, null);
+
+					expect(await run(options, value)).toHaveBeenCalled();
 				});
 			});
 
