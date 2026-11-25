@@ -18,8 +18,6 @@ const { push, replace, api } = vi.hoisted(() => ({
 	replace: vi.fn(),
 	api: {
 		fetchInstanceAccess: vi.fn(),
-		fetchInstancePolicy: vi.fn(),
-		fetchNodeTypeSummaries: vi.fn(),
 	},
 }));
 
@@ -39,7 +37,6 @@ const access = (types: InstanceTypeAccessResponse['types']): InstanceTypeAccessR
 const NODE_ACCESS = access([
 	{ name: 'n8n-nodes-base.slack', access: 'deny', matchedRuleId: 'rule-1' },
 	{ name: 'n8n-nodes-base.httpRequest', access: 'allow', matchedRuleId: null },
-	{ name: 'n8n-nodes-base.internal', access: 'allow', matchedRuleId: null },
 ]);
 
 const CREDENTIAL_ACCESS = access([
@@ -65,19 +62,6 @@ describe('PoliciesLandingView', () => {
 		vi.clearAllMocks();
 		api.fetchInstanceAccess.mockImplementation(async (_context, kind: string) =>
 			kind === 'node' ? NODE_ACCESS : CREDENTIAL_ACCESS,
-		);
-		api.fetchInstancePolicy.mockResolvedValue({
-			scopeId: 'scope-1',
-			rules: [],
-			defaultAction: 'allow',
-			version: 1,
-		});
-		api.fetchNodeTypeSummaries.mockResolvedValue(
-			new Map([
-				['n8n-nodes-base.slack', { displayName: 'Slack', hidden: false }],
-				['n8n-nodes-base.httpRequest', { displayName: 'HTTP Request', hidden: false }],
-				['n8n-nodes-base.internal', { displayName: 'Internal', hidden: true }],
-			]),
 		);
 	});
 
@@ -123,27 +107,23 @@ describe('PoliciesLandingView', () => {
 		).toBeInTheDocument();
 	});
 
-	it('shows how many node and credential types the instance policy restricts', async () => {
+	it('shows how many types the instance policy restricts, and opens to project opt-in when it does', async () => {
 		const { findByTestId } = renderForAdmin();
 
-		// The hidden node type is not listed on the instance policy page, so it is not counted.
 		expect(await findByTestId('policies-landing-instance-counts')).toHaveTextContent(
-			'1 of 2 nodes restricted · 2 of 4 credentials restricted',
+			'1 of 2 nodes restricted · 2 of 4 credentials restricted, 1 open to project opt-in',
 		);
 	});
 
-	it.each(['fetchInstanceAccess', 'fetchInstancePolicy', 'fetchNodeTypeSummaries'] as const)(
-		'shows no counts when %s fails',
-		async (request) => {
-			api[request].mockRejectedValue(new Error('Request failed'));
-			const { queryByTestId } = renderForAdmin();
+	it('shows no counts when the access list fails to load', async () => {
+		api.fetchInstanceAccess.mockRejectedValue(new Error('Request failed'));
+		const { queryByTestId } = renderForAdmin();
 
-			await waitFor(() => expect(api[request]).toHaveBeenCalled());
-			// Lets the other requests settle, so that counts would render if the failure were swallowed.
-			await new Promise((resolve) => setTimeout(resolve, 0));
-			expect(queryByTestId('policies-landing-instance-counts')).not.toBeInTheDocument();
-		},
-	);
+		await waitFor(() => expect(api.fetchInstanceAccess).toHaveBeenCalled());
+		// Lets the other request settle, so that counts would render if the failure were swallowed.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(queryByTestId('policies-landing-instance-counts')).not.toBeInTheDocument();
+	});
 
 	it('opens the instance policy page from the Global instance policy row', async () => {
 		const { getByTestId } = renderDefault();
