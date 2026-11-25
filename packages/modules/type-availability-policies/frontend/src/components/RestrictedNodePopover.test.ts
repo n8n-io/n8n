@@ -502,6 +502,22 @@ describe('RestrictedNodePopover', () => {
 			});
 		});
 
+		it('reports the first opening by focus in the anchor row', async () => {
+			const button = document.createElement('button');
+			anchor.appendChild(button);
+			renderPopover({ anchor, restriction: { scope: 'instance' } });
+
+			button.focus();
+			await screen.findByTestId('node-restricted-popover');
+
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith(openedEvent, {
+				kind: 'node-types',
+				scope: 'instance',
+				source: 'node_creator',
+			});
+		});
+
 		it('reports a credential card with an unknown scope', async () => {
 			renderPopover({ anchor, kind: 'credential', restriction: null });
 

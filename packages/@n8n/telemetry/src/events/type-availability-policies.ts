@@ -46,6 +46,7 @@ export const RESTRICTED_TYPE_SURFACES = [
 	'chat_hub_tools',
 	'chat_hub_tool_settings',
 	'chat_hub_tools_manager',
+	'chat_hub_agent_editor',
 	'agent_model_selector',
 	'agent_tool_config',
 	'agent_chat',
