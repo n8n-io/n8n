@@ -1397,7 +1397,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					const toolResultEvent = event as typeof event & { canceled?: boolean };
 					found.tc.output = event.output;
-					if (event.simulation) found.tc.simulation = event.simulation;
 					const failed =
 						event.isError ||
 						isFailedDelegateOutput(found.tc.tool, event.output) ||

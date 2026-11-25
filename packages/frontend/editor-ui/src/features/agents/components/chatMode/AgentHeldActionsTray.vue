@@ -76,8 +76,7 @@ const resultByActionId = computed(() => {
 
 const committedSucceededCount = computed(() => {
 	if (!props.committed) return 0;
-	const succeeded = props.committed.results.filter((item) => item.status !== 'failed').length;
-	return succeeded > 0 ? succeeded : props.actions.length;
+	return props.committed.results.filter((item) => item.status !== 'failed').length;
 });
 
 const committedTime = computed(() =>
@@ -151,7 +150,7 @@ function onRunClick() {
 					:class="[$style.trigger, props.committed && $style.triggerDone]"
 					data-testid="agent-held-actions-toggle"
 				>
-					<template v-if="props.committed" #prefix>
+					<template v-if="committedSucceededCount > 0" #prefix>
 						<N8nIcon icon="check" size="small" :class="$style.doneIcon" aria-hidden="true" />
 					</template>
 					<span

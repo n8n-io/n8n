@@ -8050,4 +8050,38 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 		expect(modal.props('open')).toBe(true);
 		wrapper.unmount();
 	});
+
+	it('sends a starter prompt from the standalone preview page', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		const sendMessageFromOutside = vi.fn();
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentChatPanel: {
+					name: 'AgentChatPanel',
+					template: '<div><slot name="empty-state" /></div>',
+					emits: ['initial-consumed'],
+					methods: { sendMessageFromOutside },
+				},
+			},
+		});
+
+		const page = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const firstChip = wrapper.findAll('[data-testid="agent-test-run-starter-chip"]')[0];
+		expect(firstChip).toBeDefined();
+		await firstChip.trigger('click');
+		await flushPromises();
+
+		expect(page.props('initialPrompt')).toBe(firstChip.text());
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith(firstChip.text());
+
+		// The panel accepts the message, so the same starter can be sent again.
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
+		await nextTick();
+
+		expect(page.props('initialPrompt')).toBeUndefined();
+		wrapper.unmount();
+	});
 });

@@ -99,6 +99,21 @@ describe('heldActions helpers', () => {
 		});
 	});
 
+	it('keeps the verb of a tool name that starts with a verb', () => {
+		const [held] = extractHeldActions([
+			{
+				tool: 'edit_message',
+				toolCallId: 'write-1',
+				state: TOOL_CALL_STATE.DONE,
+				simulation: { route: 'simulated', reason: 'served_from_world', evidence: ['world_write'] },
+			},
+		]);
+
+		expect(held.actionLabel).toBe('Edit message');
+		expect(actionObject(held)).toBe('message');
+		expect(actionOutcome(held)).toBe('saved');
+	});
+
 	it('formats committedAt timestamps as HH:MM', () => {
 		const date = new Date(2026, 10, 20, 9, 5, 0);
 		expect(formatCommitTime(date.toISOString())).toBe('09:05');
@@ -113,6 +128,9 @@ describe('actionObject and actionOutcome', () => {
 		['Append row', 'Google Sheets', 'row', 'saved'],
 		['Create contact', 'HubSpot', 'contact', 'saved'],
 		['Reply', 'Gmail', 'reply', 'sent'],
+		['Send', 'Gmail', 'action', 'sent'],
+		['Edit message', 'Slack', 'message', 'saved'],
+		['Update message', 'Telegram', 'message', 'saved'],
 		['Gmail', 'Gmail', 'action', 'saved'],
 	] as const)('%s in %s is a %s that is %s', (actionLabel, appName, object, outcome) => {
 		expect(actionObject({ actionLabel, appName })).toBe(object);
@@ -229,6 +247,9 @@ describe('AgentHeldActionsTray', () => {
 		});
 
 		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('2 actions done');
+		expect(
+			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
+		).toBeInTheDocument();
 		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
 			'Done in your real apps at 14:07.',
 		);
@@ -255,6 +276,29 @@ describe('AgentHeldActionsTray', () => {
 		expect(rows[1]).not.toHaveTextContent('Linear: issue saved');
 		expect(getByTestId('agent-held-action-failed')).toHaveTextContent('Failed');
 		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('1 action done');
+	});
+
+	it('does not show a replay as a success when every action failed', async () => {
+		const { getByTestId, getAllByTestId } = renderTray({
+			props: {
+				actions: sampleActions,
+				committed: {
+					committedAt: new Date(2026, 10, 20, 14, 7, 0).toISOString(),
+					results: [
+						{ actionId: 'call-1', toolName: 'slack__post_message', status: 'failed' },
+						{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'failed' },
+					],
+				},
+			},
+		});
+
+		await waitFor(() => expect(getAllByTestId('agent-held-action-failed')).toHaveLength(2));
+		const banner = getByTestId('agent-held-actions-committed-banner');
+		expect(banner).toHaveTextContent('0 actions done');
+		expect(banner).not.toHaveTextContent('2 actions done');
+		expect(
+			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
+		).not.toBeInTheDocument();
 	});
 
 	it('shows a saved row for an action that changed data', async () => {

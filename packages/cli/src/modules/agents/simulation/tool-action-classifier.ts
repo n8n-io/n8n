@@ -107,7 +107,44 @@ const WRITE_TOKENS: ReadonlySet<string> = new Set([
 	'detach',
 	'share',
 	'revoke',
+	'replace',
+	'rename',
+	'restore',
+	'revert',
+	'rollback',
+	'undo',
+	'destroy',
+	'drop',
+	'truncate',
+	'erase',
+	'wipe',
+	'overwrite',
+	'push',
+	'apply',
+	'convert',
+	'generate',
+	'deploy',
+	'notify',
+	'forward',
+	'grant',
+	'deny',
+	'accept',
+	'decline',
+	'follow',
+	'unfollow',
+	'mute',
+	'unmute',
+	'vote',
+	'increment',
+	'decrement',
+	'purchase',
+	'checkout',
+	'rotate',
 ]);
+
+// A name that joins two operations, for example `find_and_replace`. The verb list above cannot
+// name every write verb, so a joined name is held even when no write verb in it is known.
+const COMPOUND_TOKENS: ReadonlySet<string> = new Set(['and', 'or', 'then']);
 
 const READ_TOKENS: ReadonlySet<string> = new Set([
 	'get',
@@ -158,6 +195,7 @@ function tokenizeIdentifier(value: string): string[] {
 function classifyTokens(tokens: string[]): ToolActionMode {
 	if (tokens.length === 0) return 'write_hold';
 	if (tokens.some((token) => WRITE_TOKENS.has(token))) return 'write_hold';
+	if (tokens.some((token) => COMPOUND_TOKENS.has(token))) return 'write_hold';
 	if (tokens.some((token) => READ_TOKENS.has(token))) return 'read_through';
 	return 'write_hold';
 }

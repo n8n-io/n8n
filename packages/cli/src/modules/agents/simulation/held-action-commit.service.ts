@@ -7,10 +7,16 @@ import { NotFoundError } from '@n8n/errors';
 import { redactText } from '@n8n/utils/redaction/redact-text';
 
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import type { HeldActionDescriptor } from './simulation-session';
 import { SimulationSessionService } from './simulation-session.service';
 
 const MAX_SAFE_ERROR_LENGTH = 500;
+
+const DEFAULT_ERROR_MESSAGE = 'Action execution failed.';
+
+const ALREADY_FAILED_PREFIX =
+	'This action failed earlier and did not run again, because the service may have received it.';
 
 export interface CommitHeldActionsInput {
 	agentId: string;
@@ -29,6 +35,7 @@ interface PendingCommitItem {
 /**
  * Replays held write actions from a test chat once against the agent's real built tools.
  * Enforces session ownership and an idempotent one-shot guard so no action executes twice.
+ * A replay that started and failed does not run again: the service may have accepted the write.
  */
 @Service()
 export class HeldActionCommitService {
@@ -66,6 +73,15 @@ export class HeldActionCommitService {
 				};
 				continue;
 			}
+			if (claim.status === 'already_failed') {
+				results[index] = {
+					actionId,
+					toolName: claim.action.toolName,
+					status: 'failed',
+					error: `${ALREADY_FAILED_PREFIX} ${claim.action.error ?? DEFAULT_ERROR_MESSAGE}`,
+				};
+				continue;
+			}
 			if (claim.status === 'not_found') {
 				results[index] = {
 					actionId,
@@ -87,6 +103,12 @@ export class HeldActionCommitService {
 					projectId: input.projectId,
 					user: input.user,
 					usePublishedVersion: false,
+					// The sandbox scope of the test chat. A sandboxed runtime does not build without it.
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'test-chat',
+						userId: input.user.id,
+						threadId: input.testChatId,
+					}),
 				});
 			} catch (error) {
 				for (const item of pending) {
@@ -127,8 +149,10 @@ export class HeldActionCommitService {
 							status: 'done',
 						};
 					} catch (error) {
-						session.abortCommitAction(action.actionId);
 						const safeError = toSafeErrorMessage(error);
+						// The handler can reject after the service accepted the write, for example on a
+						// response timeout. Keep the claim, so a retry cannot send the write twice.
+						session.failCommitAction(action.actionId, new Date().toISOString(), safeError);
 						this.logger.warn('[SafeTesting] Held action replay failed', {
 							agentId: input.agentId,
 							testChatId: input.testChatId,
@@ -164,9 +188,9 @@ function toSafeErrorMessage(error: unknown): string {
 			? error.message
 			: typeof error === 'string'
 				? error
-				: 'Action execution failed.';
+				: DEFAULT_ERROR_MESSAGE;
 	const firstLine = raw.split('\n')[0]?.trim() ?? '';
-	const message = firstLine.length > 0 ? firstLine : 'Action execution failed.';
+	const message = firstLine.length > 0 ? firstLine : DEFAULT_ERROR_MESSAGE;
 	const redacted = redactText(message).text;
 	return redacted.length > MAX_SAFE_ERROR_LENGTH
 		? `${redacted.slice(0, MAX_SAFE_ERROR_LENGTH)}...`
