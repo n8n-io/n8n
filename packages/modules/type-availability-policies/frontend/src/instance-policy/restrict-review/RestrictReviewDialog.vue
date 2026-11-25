@@ -66,9 +66,9 @@ function answer(confirmed: boolean) {
 		kind: TELEMETRY_POLICY_KIND[request.kind],
 		type_name: request.name,
 		decision: confirmed ? 'confirm' : 'cancel',
-		uses: request.usage?.uses ?? null,
-		workflows: request.usage?.workflows ?? null,
-		active_workflows: request.usage?.activeWorkflows ?? null,
+		use_count: request.usage?.uses ?? null,
+		workflow_count: request.usage?.workflows ?? null,
+		active_workflow_count: request.usage?.activeWorkflows ?? null,
 	});
 	review.resolve(confirmed);
 }

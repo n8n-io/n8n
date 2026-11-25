@@ -111,7 +111,7 @@ const detailsTypeUnknown = computed(() => {
 	);
 });
 
-// A name from the table or from a link reports only once the server lists the type.
+// A name from the table or from a link reports only once a read of this visit lists the type.
 let detailsOpenedFromTable: string | undefined;
 let trackedDetails: string | undefined;
 
@@ -119,7 +119,9 @@ watch(
 	() => {
 		if (!details.value) return undefined;
 		const { kind, name } = details.value;
-		return { kind, name, entry: instancePolicy.typeAccess[kind]?.types.get(name) };
+		const access = instancePolicy.typeAccess[kind];
+		const entry = access !== accessBeforeVisit[kind] ? access?.types.get(name) : undefined;
+		return { kind, name, entry };
 	},
 	(opened) => {
 		const key = opened && `${opened.kind}:${opened.name}`;

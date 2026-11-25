@@ -161,9 +161,9 @@ describe('RestrictReviewDialog', () => {
 				kind: 'node-types',
 				type_name: 'n8n-nodes-base.notion',
 				decision: 'confirm',
-				uses: 3,
-				workflows: 2,
-				active_workflows: 0,
+				use_count: 3,
+				workflow_count: 2,
+				active_workflow_count: 0,
 			});
 		});
 
@@ -178,9 +178,35 @@ describe('RestrictReviewDialog', () => {
 					kind: 'credential-types',
 					type_name: 'notionApi',
 					decision: 'cancel',
-					uses: null,
-					workflows: null,
-					active_workflows: null,
+					use_count: null,
+					workflow_count: null,
+					active_workflow_count: null,
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			[
+				'the Cancel button',
+				async () => {
+					await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+				},
+			],
+			['a click outside', clickReviewOverlay],
+		])('reports a cancel by %s, with the usage', async (_, cancel) => {
+			open(notion);
+
+			await cancel();
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(reviewedEvent, {
+					kind: 'node-types',
+					type_name: 'n8n-nodes-base.notion',
+					decision: 'cancel',
+					use_count: 3,
+					workflow_count: 2,
+					active_workflow_count: 0,
 				}),
 			);
 			expect(track).toHaveBeenCalledTimes(1);

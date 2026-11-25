@@ -541,6 +541,39 @@ describe('InstancePolicyView', () => {
 					current_access: 'deny',
 				}),
 			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports each opening of the same type, and a link after a table click as a link', async () => {
+			const followReplace = ({ query }: { query: Record<string, string> }) => {
+				reactiveRoute.query = query;
+			};
+			replace.mockImplementationOnce(followReplace).mockImplementationOnce(followReplace);
+			fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi', 'airtableApi']));
+			const { findByTestId } = setup(BOTH_SCOPES, { tab: 'credential' });
+
+			await fireEvent.click(await findByTestId('instance-policy-open-bitlyApi'));
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(1));
+			reactiveRoute.query = { tab: 'credential' };
+			await nextTick();
+			await fireEvent.click(await findByTestId('instance-policy-open-bitlyApi'));
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(2));
+			reactiveRoute.query = { tab: 'credential', details: 'airtableApi' };
+
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(3));
+			expect(track.mock.calls.map(([, { type_name, source }]) => [type_name, source])).toEqual([
+				['bitlyApi', 'table'],
+				['bitlyApi', 'table'],
+				['airtableApi', 'link'],
+			]);
+		});
+
+		it('does not report a link that only the access of an earlier visit lists', async () => {
+			fetchInstanceAccess.mockResolvedValue(credentialAccess([]));
+			await setupAfterEarlierVisit({ tab: 'credential', details: 'bitlyApi' });
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+			expect(track).not.toHaveBeenCalledWith(openedEvent, expect.anything());
 		});
 	});
 });

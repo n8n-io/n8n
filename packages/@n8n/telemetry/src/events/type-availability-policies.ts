@@ -153,12 +153,20 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 			decision: z
 				.enum(['confirm', 'cancel'])
 				.describe("'cancel' also covers Escape and a click outside the review"),
-			uses: z
+			use_count: z
 				.number()
 				.nullable()
 				.describe('Nodes that use the type. Null when the review could not load the counts'),
-			workflows: z.number().nullable().describe('Workflows that use the type'),
-			active_workflows: z.number().nullable().describe('Active workflows that use the type'),
+			workflow_count: z
+				.number()
+				.nullable()
+				.describe('Workflows that use the type. Null when the review could not load the counts'),
+			active_workflow_count: z
+				.number()
+				.nullable()
+				.describe(
+					'Active workflows that use the type. Null when the review could not load the counts',
+				),
 		}),
 	},
 });
