@@ -4,10 +4,9 @@
  * own images.
  *
  * A refresh PR that changes DHI_REF or DEBIAN_DHI_REF makes master publish a
- * new n8nio/base. Its pin PR changes an input of node-pc and node-patched, so
- * master publishes them too, and a last PR pins them (see docker/AGENTS.md).
- * The script reads the images that the publishing commit tagged, and updates
- * their pins in docker/docker-bake.hcl.
+ * new n8nio/base, and a second PR pins it (see docker/AGENTS.md). The script
+ * reads the images that the publishing commit tagged, and updates their pins
+ * in docker/docker-bake.hcl.
  *
  * Usage: node base-image-chain-pr.mjs --workflow <file> --sha <commit>
  *   --subject <commit subject> --run-url <url> --body <file> [--any-commit]
@@ -24,12 +23,6 @@ import { readPin } from './base-image-candidates.mjs';
 import { updatePins } from './base-image-pin-pr.mjs';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
-
-const readVariable = (hcl, name) => {
-	const match = hcl.match(new RegExp(`^variable "${name}" \\{\\s*default = "([^"]+)"`, 'm'));
-	if (!match) throw new Error(`${BAKE_FILE} has no plain string default for ${name}`);
-	return match[1];
-};
 
 /** The bake file's dhi_node_version(): dhi.io/node:26.13.0-alpine3.24-dev@... -> 26.13.0 */
 const dhiNodeVersion = (ref) => /^dhi\.io\/node:([0-9.]+)-/.exec(ref)[1];
@@ -48,18 +41,6 @@ export const CHAIN = {
 				tag: `n8nio/base:${dhiNodeVersion(readPin(hcl, 'DEBIAN_DHI_REF').ref)}-debian-${sha}`,
 			},
 		],
-	},
-	'build-node-pc-image.yml': {
-		title: 'build: Pin the node-pc and node-patched images that master published',
-		pins: (hcl, sha) => {
-			const version = readVariable(hcl, 'NODE_VERSION');
-			return [
-				{ name: 'N8N_RUNTIME_IMAGE', tag: `n8nio/node-patched:${version}-${sha}` },
-				{ name: 'N8N_BUILDER_IMAGE', tag: `n8nio/node-patched:${version}-${sha}-dev` },
-				{ name: 'PC_RUNTIME_IMAGE', tag: `n8nio/node-pc:${version}-${sha}` },
-				{ name: 'PC_BUILDER_IMAGE', tag: `n8nio/node-pc:${version}-${sha}-dev` },
-			];
-		},
 	},
 };
 

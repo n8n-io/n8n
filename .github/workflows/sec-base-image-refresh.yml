@@ -8,7 +8,7 @@ on:
     - cron: '0 2 * * *'
   # Master published our own images, so the next pin PR of a chain is due.
   workflow_run:
-    workflows: ['Build: Base Image', 'Build: Node PC Image']
+    workflows: ['Build: Base Image']
     types: [completed]
     branches: [master]
   # Runs a change to the workflow before it merges. A dispatch needs the file
@@ -204,21 +204,19 @@ jobs:
             --sha "$RUN_SHA" --subject="${RUN_MESSAGE%%$'\n'*}" --run-url "$RUN_URL" --body chain-pr.md
           echo "branch=base-image-refresh/chain-$(basename "$RUN_PATH" .yml)" >> "$GITHUB_OUTPUT"
 
-      # A preview shows the chain PR for the last publish of each workflow, and opens none.
-      - name: Preview the chain PRs
+      # A preview shows the chain PR for the last publish of the base, and opens none.
+      - name: Preview the chain PR
         if: github.event_name != 'workflow_run'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          for workflow in build-base-image.yml build-node-pc-image.yml; do
-            run=$(gh run list --workflow "$workflow" --branch master --event push --status success \
-              --limit 1 --json headSha,url --jq '.[0]')
-            node .github/scripts/docker/base-image-chain-pr.mjs --workflow "$workflow" \
-              --sha "$(jq -r .headSha <<<"$run")" --run-url "$(jq -r .url <<<"$run")" \
-              --body "chain-pr-${workflow%.yml}.md" --any-commit
-            git checkout -- docker/docker-bake.hcl
-          done
+          run=$(gh run list --workflow build-base-image.yml --branch master --event push --status success \
+            --limit 1 --json headSha,url --jq '.[0]')
+          node .github/scripts/docker/base-image-chain-pr.mjs --workflow build-base-image.yml \
+            --sha "$(jq -r .headSha <<<"$run")" --run-url "$(jq -r .url <<<"$run")" \
+            --body chain-pr.md --any-commit
+          git checkout -- docker/docker-bake.hcl
 
       - name: Generate GitHub App token
         id: app-token

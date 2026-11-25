@@ -39,22 +39,6 @@ describe('planPins', () => {
 		assert.match(changes[0].newest, new RegExp(`^n8nio/base:[0-9.]+-${sha}@${digest('b')}$`));
 	});
 
-	it('pins the runtime and dev images of node-pc and node-patched', async () => {
-		const changes = await planPins(hcl, 'build-node-pc-image.yml', sha, {
-			resolve: () => digest('c'),
-			contains: async () => true,
-		});
-		assert.deepEqual(
-			changes.map((change) => change.newest.split('@')[0].replace(/:[0-9.]+-/, ':V-')),
-			[
-				`n8nio/node-patched:V-${sha}`,
-				`n8nio/node-patched:V-${sha}-dev`,
-				`n8nio/node-pc:V-${sha}`,
-				`n8nio/node-pc:V-${sha}-dev`,
-			],
-		);
-	});
-
 	it('skips the images that the run did not publish', async () => {
 		const changes = await planPins(hcl, 'build-base-image.yml', sha, {
 			resolve: (tag) => (tag.includes('-debian-') ? digest('d') : null),
@@ -80,15 +64,15 @@ describe('planPins', () => {
 
 	it('reads the tag versions from the bake file of the published commit', async () => {
 		const tags = [];
-		await planPins(hcl, 'build-node-pc-image.yml', sha, {
-			publishedHcl: hcl.replace(/(variable "NODE_VERSION" \{ default = )"[^"]+"/, '$1"1.2.3"'),
+		await planPins(hcl, 'build-base-image.yml', sha, {
+			publishedHcl: hcl.replaceAll(/dhi\.io\/node:[0-9.]+-/g, 'dhi.io/node:1.2.3-'),
 			resolve: (tag) => {
 				tags.push(tag);
 				return null;
 			},
 			contains: async () => true,
 		});
-		assert.equal(tags.length, 4);
+		assert.equal(tags.length, 2);
 		assert.ok(tags.every((tag) => tag.includes(':1.2.3-')));
 	});
 
@@ -106,7 +90,7 @@ describe('planPins', () => {
 	});
 
 	it('covers every publishing workflow', () => {
-		assert.deepEqual(Object.keys(CHAIN), ['build-base-image.yml', 'build-node-pc-image.yml']);
+		assert.deepEqual(Object.keys(CHAIN), ['build-base-image.yml']);
 	});
 });
 
