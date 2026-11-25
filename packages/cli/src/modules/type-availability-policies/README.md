@@ -218,6 +218,9 @@ A policy lives in three tables:
 reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
 version by exactly one, whatever it changed.
 
+Only a team project can have a scope row. A personal project always follows the instance policy.
+A write for a personal project fails with 400, and a write for an unknown project fails with 404.
+
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
 never by a project's bare default. `policy-evaluator.ts` owns that law and is pure, so it is

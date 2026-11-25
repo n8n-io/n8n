@@ -4,8 +4,8 @@ import type {
 	ProjectPolicyEffectiveCounts,
 	ProjectPolicyKindSummary,
 } from '@n8n/api-types';
-import { EventService, loginIdOf } from '@n8n/backend-services';
-import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { EventService, loginIdOf, ProjectNotFoundError } from '@n8n/backend-services';
+import { ProjectRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
@@ -91,6 +91,9 @@ function rulesContainDelegate(rules: readonly PolicyRule[]): boolean {
 }
 
 const DELEGATE_RULE_AT_PROJECT_SCOPE = 'A rule cannot use action "delegate" at project scope';
+
+export const PERSONAL_PROJECT_POLICY =
+	'Only a team project can have a policy. A personal project follows the instance policy.';
 
 /**
  * `delegate` is only satisfiable at instance scope. A project write never accepts it — not in
@@ -197,7 +200,22 @@ export class TypeAvailabilityPolicyService {
 		private readonly snapshot: TypeAvailabilityPolicySnapshot,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly nodeTypes: NodeTypes,
+		private readonly projectRepository: ProjectRepository,
 	) {}
+
+	/**
+	 * Only a team project can own a scope row. A global scope passes the project scope check
+	 * for any project id, so the write path checks the project type itself.
+	 */
+	private async assertTeamProject(projectId: string | null): Promise<void> {
+		if (projectId === null) return;
+
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		if (project.type !== 'team') {
+			throw new UserError(PERSONAL_PROJECT_POLICY);
+		}
+	}
 
 	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
@@ -237,6 +255,7 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
 		assertNoDelegateAtProjectScope(projectId, defaultAction);
+		await this.assertTeamProject(projectId);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -645,6 +664,7 @@ export class TypeAvailabilityPolicyService {
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
 		const warnings = this.validateAndLintRules(kind, input.rules);
+		await this.assertTeamProject(projectId);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
