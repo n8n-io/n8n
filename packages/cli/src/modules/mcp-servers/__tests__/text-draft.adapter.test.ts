@@ -2,6 +2,7 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
@@ -24,7 +25,7 @@ function setup({
 	moduleActive?: boolean;
 	enabled?: boolean;
 	modelConfigured?: boolean;
-	scopes?: Array<{ slug: string }>;
+	scopes?: Array<{ slug: Scope }>;
 } = {}) {
 	const moduleRegistry = mock<ModuleRegistry>();
 	moduleRegistry.isActive.mockImplementation((name) => moduleActive && name === 'instance-ai');

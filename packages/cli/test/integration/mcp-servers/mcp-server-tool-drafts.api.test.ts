@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
+import type { MockInstance } from 'vitest';
 
 import { TextDraftAdapter } from '@/modules/mcp-servers/text-draft.adapter';
 
@@ -52,8 +53,8 @@ const SET: INode = {
 let editor: User;
 let viewer: User;
 let project: Project;
-let isAvailable: ReturnType<typeof vi.spyOn<TextDraftAdapter, 'isAvailable'>>;
-let draft: ReturnType<typeof vi.spyOn<TextDraftAdapter, 'draft'>>;
+let isAvailable: MockInstance<TextDraftAdapter['isAvailable']>;
+let draft: MockInstance<TextDraftAdapter['draft']>;
 
 const base = (serverId: string) => `/projects/${project.id}/mcp-servers/${serverId}`;
 
