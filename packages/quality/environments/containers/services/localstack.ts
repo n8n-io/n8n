@@ -156,7 +156,11 @@ export function encodeS3Key(key: string): string {
 	if (!key) {
 		throw new Error('S3 object key must not be empty');
 	}
-	return key.split('/').map(encodeRfc3986).join('/');
+	const segments = key.split('/');
+	if (segments.some((segment) => segment === '.' || segment === '..')) {
+		throw new Error(`S3 object key '${key}' must not contain '.' or '..' path segments`);
+	}
+	return segments.map(encodeRfc3986).join('/');
 }
 
 export function escapeXml(value: string): string {

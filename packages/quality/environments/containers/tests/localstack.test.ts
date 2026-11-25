@@ -114,6 +114,24 @@ describe('S3 key encoding and XML helpers', () => {
 		expect(() => encodeS3Key('')).toThrow(/must not be empty/);
 	});
 
+	test.each([
+		'.',
+		'..',
+		'./file.bin',
+		'../file.bin',
+		'dir/./file.bin',
+		'dir/../file.bin',
+		'dir/.',
+		'dir/..',
+	])('rejects object keys with dot-only path segments: %s', (key) => {
+		expect(() => encodeS3Key(key)).toThrow(/must not contain '\.' or '\.\.' path segments/);
+	});
+
+	test('allows dots inside object key segment names', () => {
+		expect(encodeS3Key('.hidden/a..b/.../file.bin')).toBe('.hidden/a..b/.../file.bin');
+		expect(encodeS3Key('dir/%2e/file.bin')).toBe('dir/%252e/file.bin');
+	});
+
 	test('decodes XML entities in one pass without double-decoding', () => {
 		expect(decodeXmlEntities('a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos; &#x2F; &#38;')).toBe(
 			'a & b <c> "d" \'e\' / &',
@@ -282,33 +300,100 @@ describe('S3Client', () => {
 		expect(fetchMock.mock.calls[0][1]?.method).toBe('DELETE');
 	});
 
-	test('clear lists all buckets and deletes each one', async () => {
+	test('clear empties non-empty buckets before deleting them', async () => {
+		const bucketObjects = new Map<string, string[]>([
+			['bucket-one', ['dir/a.bin']],
+			['bucket-two', ['dir/b.bin', 'dir/c.bin']],
+		]);
+		const methodsByBucket: Record<string, string[]> = {
+			'bucket-one': [],
+			'bucket-two': [],
+		};
+
 		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-			if (init?.method === 'GET' && url === `${ENDPOINT}/`) {
+			const parsed = new URL(url);
+			const method = init?.method ?? 'GET';
+
+			if (method === 'GET' && parsed.pathname === '/') {
 				return xmlResponse(`
-						<ListAllMyBucketsResult>
-							<Buckets>
-								<Bucket><Name>bucket-one</Name></Bucket>
-								<Bucket><Name>bucket-two</Name></Bucket>
-							</Buckets>
-						</ListAllMyBucketsResult>
-					`);
+					<ListAllMyBucketsResult>
+						<Buckets>
+							<Bucket><Name>bucket-one</Name></Bucket>
+							<Bucket><Name>bucket-two</Name></Bucket>
+						</Buckets>
+					</ListAllMyBucketsResult>
+				`);
 			}
-			if (init?.method === 'GET') {
-				return xmlResponse('<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>');
+
+			const bucket = parsed.pathname.slice(1);
+			methodsByBucket[bucket]?.push(method);
+
+			if (method === 'GET' && parsed.searchParams.get('list-type') === '2') {
+				const contents = (bucketObjects.get(bucket) ?? [])
+					.map((key) => `<Contents><Key>${escapeXml(key)}</Key><Size>1</Size></Contents>`)
+					.join('');
+				return xmlResponse(
+					`<ListBucketResult><IsTruncated>false</IsTruncated>${contents}</ListBucketResult>`,
+				);
 			}
-			return new Response(null, { status: 204 });
+
+			if (method === 'POST' && parsed.searchParams.has('delete')) {
+				const body = new TextDecoder().decode(init?.body as Uint8Array);
+				const deletedKeys = new Set(
+					Array.from(body.matchAll(/<Key>([\s\S]*?)<\/Key>/g), (match) =>
+						decodeXmlEntities(match[1]),
+					),
+				);
+				bucketObjects.set(
+					bucket,
+					(bucketObjects.get(bucket) ?? []).filter((key) => !deletedKeys.has(key)),
+				);
+				return xmlResponse('<DeleteResult/>');
+			}
+
+			if (method === 'DELETE') {
+				if ((bucketObjects.get(bucket)?.length ?? 0) > 0) {
+					return xmlResponse(
+						'<Error><Code>BucketNotEmpty</Code><Message>The bucket is not empty</Message></Error>',
+						409,
+					);
+				}
+				return new Response(null, { status: 204 });
+			}
+
+			throw new Error(`Unexpected S3 request: ${method} ${url}`);
 		});
 		vi.stubGlobal('fetch', fetchMock);
 
 		await new S3Client(ENDPOINT).clear();
 
-		const deletedUrls = fetchMock.mock.calls
-			.filter(([, init]) => init?.method === 'DELETE')
-			.map(([url]) => url)
-			.sort();
-		expect(deletedUrls).toEqual([`${ENDPOINT}/bucket-one`, `${ENDPOINT}/bucket-two`]);
+		expect(methodsByBucket).toEqual({
+			'bucket-one': ['GET', 'POST', 'DELETE'],
+			'bucket-two': ['GET', 'POST', 'DELETE'],
+		});
+		expect(bucketObjects.get('bucket-one')).toEqual([]);
+		expect(bucketObjects.get('bucket-two')).toEqual([]);
+	});
+
+	test('rejects object operations with dot-only path segments before calling fetch', async () => {
+		const fetchMock = vi.fn<typeof fetch>();
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new S3Client(ENDPOINT);
+		await expect(client.putObject('test-bucket', 'dir/../escape.bin', 'data')).rejects.toThrow(
+			/must not contain '\.' or '\.\.' path segments/,
+		);
+		await expect(client.getObject('test-bucket', './file.bin')).rejects.toThrow(
+			/must not contain '\.' or '\.\.' path segments/,
+		);
+		await expect(client.objectExists('test-bucket', 'dir/.')).rejects.toThrow(
+			/must not contain '\.' or '\.\.' path segments/,
+		);
+		await expect(client.deleteObject('test-bucket', '..')).rejects.toThrow(
+			/must not contain '\.' or '\.\.' path segments/,
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	test('bucketExists and objectExists return false on 404 and rethrow server errors', async () => {
