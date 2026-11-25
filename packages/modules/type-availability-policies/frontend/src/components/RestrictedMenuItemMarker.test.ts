@@ -11,7 +11,15 @@ vi.mock('./RestrictedNodePopover.vue', async () => {
 	const { defineComponent: define, h: hyper } = await import('vue');
 	return {
 		default: define({
-			props: ['nodeTypeName', 'restriction', 'kind', 'anchor', 'side', 'markerSize'],
+			props: [
+				'nodeTypeName',
+				'restriction',
+				'kind',
+				'anchor',
+				'side',
+				'markerSize',
+				'telemetrySource',
+			],
 			emits: ['contactAdmin'],
 			setup(props, { emit }) {
 				return () => {
@@ -45,6 +53,7 @@ describe('RestrictedMenuItemMarker', () => {
 			kind: 'credential',
 			nodeTypeName: 'Anthropic credentials',
 			restriction: { scope: 'instance' },
+			telemetrySource: 'agent_model_selector',
 			onContactAdmin,
 		});
 
@@ -55,6 +64,7 @@ describe('RestrictedMenuItemMarker', () => {
 				markerSize: 'xsmall',
 				nodeTypeName: 'Anthropic credentials',
 				restriction: { scope: 'instance' },
+				telemetrySource: 'agent_model_selector',
 				anchor: screen.getByTestId('row'),
 			});
 		});
@@ -65,7 +75,11 @@ describe('RestrictedMenuItemMarker', () => {
 	});
 
 	it('defaults to a node type', () => {
-		renderInRow({ nodeTypeName: 'Wikipedia', restriction: { scope: 'instance' } });
+		renderInRow({
+			nodeTypeName: 'Wikipedia',
+			restriction: { scope: 'instance' },
+			telemetrySource: 'chat_hub_tools',
+		});
 
 		expect(popoverProps.current.kind).toBe('node');
 	});
@@ -73,7 +87,12 @@ describe('RestrictedMenuItemMarker', () => {
 	it('does not select the row when the lock is clicked', async () => {
 		const onRowClick = vi.fn();
 		renderInRow(
-			{ nodeTypeName: 'Wikipedia', restriction: { scope: 'instance' }, onContactAdmin: vi.fn() },
+			{
+				nodeTypeName: 'Wikipedia',
+				restriction: { scope: 'instance' },
+				telemetrySource: 'chat_hub_tools',
+				onContactAdmin: vi.fn(),
+			},
 			onRowClick,
 		);
 

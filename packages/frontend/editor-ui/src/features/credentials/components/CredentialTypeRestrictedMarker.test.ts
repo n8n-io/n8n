@@ -33,6 +33,7 @@ describe('CredentialTypeRestrictedMarker', () => {
 						h(CredentialTypeRestrictedMarker, {
 							name: 'Slack API',
 							restriction: { name: 'slackApi', available: false, scope: 'project' },
+							telemetrySource: 'credential_select',
 							onContactAdmin,
 						}),
 					]),

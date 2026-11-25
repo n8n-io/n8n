@@ -15,6 +15,7 @@ import {
 	ContactAdminModal,
 	RestrictedMenuItemMarker,
 	type ContactAudience,
+	type RestrictedTypeSurface,
 	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 
@@ -24,6 +25,7 @@ const props = defineProps<{
 	customAgentId?: string;
 	disabledTooltip?: string;
 	stacked?: boolean;
+	telemetrySource: RestrictedTypeSurface;
 }>();
 
 const emit = defineEmits<{
@@ -293,6 +295,7 @@ onMounted(async () => {
 			<template #item-trailing="{ item }">
 				<template v-if="item.id !== CREATE_NEW_TOOL_ID">
 					<RestrictedMenuItemMarker
+						:telemetry-source="telemetrySource"
 						v-if="item.data?.restriction"
 						:node-type-name="restrictedTypeName(item)"
 						:restriction="item.data.restriction"
@@ -312,6 +315,7 @@ onMounted(async () => {
 			</template>
 		</N8nDropdownMenu>
 		<ContactAdminModal
+			:telemetry-source="telemetrySource"
 			:type-name="contactAdmin?.typeName ?? ''"
 			:audience="contactAdmin?.audience ?? 'instance'"
 			:open="contactAdmin !== null"

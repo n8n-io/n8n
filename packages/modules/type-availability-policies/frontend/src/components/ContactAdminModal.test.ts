@@ -4,6 +4,7 @@ import type { Project } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
@@ -11,6 +12,12 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import ContactAdminModal from './ContactAdminModal.vue';
 import { mockPolicyProject } from '../__tests__/mocks';
+
+const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
@@ -62,7 +69,7 @@ function mockCustomProjectRole(slug: string) {
 }
 
 const renderComponent = createComponentRenderer(ContactAdminModal, {
-	props: { open: true, typeName: 'Slack', audience: 'instance' },
+	props: { open: true, typeName: 'Slack', audience: 'instance', telemetrySource: 'node_creator' },
 });
 
 function setup(policyManagers: IUser[], fetchUsers = vi.fn().mockResolvedValue(policyManagers)) {
@@ -418,6 +425,54 @@ describe('ContactAdminModal', () => {
 					'No project admin is listed here.',
 				);
 				expect(queryByText('Grace Hopper')).not.toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('telemetry', () => {
+		const { USER_OPENED_CONTACT_ADMIN_DIALOG, USER_CLICKED_ADMIN_EMAIL } =
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES;
+
+		afterEach(() => {
+			track.mockClear();
+		});
+
+		it('reports the opening of the dialog', async () => {
+			setup([owner]);
+			const { findByTestId } = renderComponent({
+				props: { kind: 'credential', typeName: ['Slack API', 'Gmail OAuth2'] },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith(USER_OPENED_CONTACT_ADMIN_DIALOG, {
+				kind: 'credential-types',
+				audience: 'instance',
+				source: 'node_creator',
+				restricted_type_count: 2,
+			});
+		});
+
+		it('does not report a closed dialog', () => {
+			setup([owner]);
+			renderComponent({ props: { open: false } });
+
+			expect(track).not.toHaveBeenCalled();
+		});
+
+		it('reports a click on the email of an admin', async () => {
+			setup([owner]);
+			const { findByTestId, getByText } = renderComponent();
+			await findByTestId('contact-admin-list');
+
+			await fireEvent.click(getByText('ada@example.com'));
+
+			expect(track).toHaveBeenCalledWith(USER_CLICKED_ADMIN_EMAIL, {
+				kind: 'node-types',
+				audience: 'instance',
+				source: 'node_creator',
+				admin_count: 1,
 			});
 		});
 	});

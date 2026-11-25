@@ -2,6 +2,7 @@ import { h } from 'vue';
 import type { PolicyViolation } from '@n8n/api-types';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	PolicyViolationList,
 	type PolicyViolationListItem,
@@ -76,7 +77,13 @@ export function usePolicyViolationToast() {
 						nodeIdsFor(violation, documentId).length > 0,
 					onJump: (violation: PolicyViolationListItem) => {
 						const ids = nodeIdsFor(violation, documentId);
-						if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
+						if (ids.length === 0) return;
+						canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
+						telemetry.track(TELEMETRY_EVENT.POLICIES.USER_JUMPED_TO_POLICY_VIOLATION, {
+							refused_action: refusedAction,
+							violation_kind: violation.kind,
+							violation_count: violations.length,
+						});
 					},
 				}),
 			},

@@ -278,6 +278,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		</template>
 		<template v-if="restriction" #trailing>
 			<RestrictedNodePopover
+				telemetry-source="node_creator"
 				:node-type-name="displayName"
 				:restriction="restriction"
 				:anchor="rowRef"

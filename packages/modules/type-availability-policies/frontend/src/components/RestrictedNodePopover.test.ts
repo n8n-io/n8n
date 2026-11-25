@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { render, screen, waitFor } from '@testing-library/vue';
 import userEvent, { PointerEventsCheckLevel, type UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
@@ -7,11 +8,21 @@ import { defineComponent, h, ref } from 'vue';
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
 import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
 
+const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
 const DESCRIPTION =
 	'An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.';
 
 const renderComponent = createComponentRenderer(RestrictedNodePopover, {
-	props: { nodeTypeName: 'Gmail', restriction: { scope: 'instance' } },
+	props: {
+		nodeTypeName: 'Gmail',
+		restriction: { scope: 'instance' },
+		telemetrySource: 'node_creator',
+	},
 	global: {
 		stubs: {
 			ContactAdminModal: contactAdminModalStub,
@@ -254,6 +265,7 @@ describe('RestrictedNodePopover', () => {
 						ref: popover,
 						nodeTypeName: 'Gmail',
 						restriction: { scope: 'instance' },
+						telemetrySource: 'node_creator',
 						active: true,
 					}),
 					h('button', {
@@ -290,7 +302,7 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('uses the credential type copy', async () => {
-		renderPopover({ active: true, kind: 'credential', restriction: undefined });
+		renderPopover({ active: true, kind: 'credential', restriction: null });
 
 		expect(await screen.findByText('This credential type is restricted')).toBeInTheDocument();
 		expect(
@@ -460,5 +472,79 @@ describe('RestrictedNodePopover', () => {
 		expect(screen.getByTestId('node-restricted-contact-admin')).toHaveTextContent(
 			'Contact project admin',
 		);
+	});
+
+	describe('telemetry', () => {
+		const openedEvent =
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_RESTRICTED_TYPE_DETAILS;
+
+		beforeEach(() => {
+			track.mockClear();
+		});
+
+		it('reports the first opening by hover, with the kind, scope and source', async () => {
+			renderPopover({ anchor, restriction: { scope: 'project' } });
+
+			await user.hover(anchor);
+			await screen.findByTestId('node-restricted-popover');
+			await user.unhover(anchor);
+			await waitFor(() =>
+				expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+			);
+			await user.hover(anchor);
+			await screen.findByTestId('node-restricted-popover');
+
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith(openedEvent, {
+				kind: 'node-types',
+				scope: 'project',
+				source: 'node_creator',
+			});
+		});
+
+		it('reports the first opening by focus in the anchor row', async () => {
+			const button = document.createElement('button');
+			anchor.appendChild(button);
+			renderPopover({ anchor, restriction: { scope: 'instance' } });
+
+			button.focus();
+			await screen.findByTestId('node-restricted-popover');
+
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith(openedEvent, {
+				kind: 'node-types',
+				scope: 'instance',
+				source: 'node_creator',
+			});
+		});
+
+		it('reports a credential card with an unknown scope', async () => {
+			renderPopover({ anchor, kind: 'credential', restriction: null });
+
+			await user.hover(anchor);
+			await screen.findByTestId('node-restricted-popover');
+
+			expect(track).toHaveBeenCalledWith(openedEvent, {
+				kind: 'credential-types',
+				scope: null,
+				source: 'node_creator',
+			});
+		});
+
+		it('reports a card with overridden copy', async () => {
+			renderPopover({ anchor, scopeLabel: 'Nodes restricted', description: 'Used by Gmail' });
+
+			await user.hover(anchor);
+			await screen.findByTestId('node-restricted-popover');
+
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not report a card that a list opens only by selecting its row', async () => {
+			renderPopover({ active: true });
+			await screen.findByTestId('node-restricted-popover');
+
+			expect(track).not.toHaveBeenCalled();
+		});
 	});
 });

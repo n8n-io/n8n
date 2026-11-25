@@ -105,6 +105,7 @@ function handleNodeNameUpdate(name: string) {
 		<N8nDialogBody>
 			<div :class="$style.contentWrapper">
 				<RestrictedTypeCallout
+					telemetry-source="chat_hub_tool_settings"
 					v-if="isRestricted"
 					surface="chatTool"
 					:type-name="typeName"

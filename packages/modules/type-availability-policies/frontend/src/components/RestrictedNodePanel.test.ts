@@ -1,11 +1,18 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import RestrictedNodePanel from './RestrictedNodePanel.vue';
 import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
+
+const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 const renderComponent = createComponentRenderer(RestrictedNodePanel, {
 	props: { nodeTypeName: 'Slack' },
@@ -61,6 +68,18 @@ describe('RestrictedNodePanel', () => {
 		await fireEvent.click(getByTestId('node-restricted-replace'));
 
 		expect(emitted('replaceNode')).toHaveLength(1);
+	});
+
+	it('reports a replace with the scope of the restriction', async () => {
+		const { getByTestId } = renderComponent({ props: { restriction: { scope: 'project' } } });
+
+		await fireEvent.click(getByTestId('node-restricted-replace'));
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_CLICKED_REPLACE_RESTRICTED_NODE,
+			{ scope: 'project' },
+		);
 	});
 
 	it('sends a project restriction to the project admins', async () => {
