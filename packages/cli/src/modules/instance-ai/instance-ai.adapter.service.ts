@@ -266,6 +266,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
+import { appNamespaceCandidates } from './app-namespace-candidates';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
 	isEngineV2ExecutionUnsettled,
@@ -3823,17 +3824,21 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				try {
-					return await apps.createApp(
-						projectId,
-						CreateAppDto.parse({ name, namespace, visibility }),
-						{ id, actor },
-					);
-				} catch (error) {
-					// The namespace is the only unique field that the user picks.
-					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
-					throw error;
+				// The user doesn't see the namespace on the plan card, so a taken
+				// namespace moves on to the next numbered one instead of failing.
+				for (const candidate of appNamespaceCandidates(namespace)) {
+					try {
+						return await apps.createApp(
+							projectId,
+							CreateAppDto.parse({ name, namespace: candidate, visibility }),
+							{ id, actor },
+						);
+					} catch (error) {
+						// The namespace is the only unique field that the Assistant picks.
+						if (!(error instanceof ConflictError)) throw error;
+					}
 				}
+				throw new AppNamespaceTakenError(namespace);
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');

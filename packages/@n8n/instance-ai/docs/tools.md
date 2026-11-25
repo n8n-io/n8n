@@ -1544,8 +1544,10 @@ the `apps` tool group, which the skill lists in `recommended_tool_groups`.
 | `commit_app` | `app:update` | Save the folder as one version and wait for its build |
 | `discard_app_changes` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
 
-Only `create_app` suspends. A namespace that is taken shows the blueprint again
-with a field error, instead of an error result.
+Only `create_app` suspends. The plan card shows the app title only, and
+approval always sets the visibility to `project`. When the namespace is taken,
+n8n uses the next free numbered namespace (`todos-2`, `todos-3` and so on). When
+all of them are taken, the tool returns an error result.
 
 The model edits the folder with the workspace tools and runs `npm ci` and
 `npm run build` there before it commits. The source moves in and out of the
