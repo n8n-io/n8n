@@ -29,6 +29,8 @@ packages/cli/src/modules/promotions.ee/package-references.ts
   s_4a494bfdece475::t_1c85721c5a9321 43-45,134,137,148,158
   s_4a494bfdece475::t_8929e9e0e30206 43-45,134,137,148
   s_4a494bfdece475::t_9ff24f70886612 158
+  s_4a494bfdece475::t_72c9aa36e158f2 22,79
+  s_4a494bfdece475::t_395ecb5822f548 18-21
 packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
   s_4a494bfdece475::t_598f6407dd22ca 1-39,40-46,47-76,77-121,123-124,129-130
   s_4a494bfdece475::t_9580a88273f633 1-39,40-46,47-76,77-121,123,130
@@ -73,6 +75,14 @@ packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.ge
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
   s_4a494bfdece475::t_bb8a8dcc9b79a8 341-343
   s_4a494bfdece475::t_e55aa5339f1a51 341-343
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_f261afbb75af3e 3791-3848
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_6e6371042f1eb5 1-5,7,140,149-151
+  s_4a494bfdece475::t_cbd261ca00206c 476-587
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_4a494bfdece475::t_72c9aa36e158f2 485-491,494,498-499,549,620
+  s_4a494bfdece475::t_395ecb5822f548 615,627,643
 ---
 {
   "schema_version": "authorship/3.0.0",

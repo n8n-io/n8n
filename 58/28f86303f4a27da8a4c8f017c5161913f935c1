@@ -4,6 +4,10 @@ packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vu
   s_4a494bfdece475::t_4cb09fe4f6834d 320,331
 packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
   s_4a494bfdece475::t_075f9366e5ad42 1335-1348,1360-1375
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_4a494bfdece475::t_81c2b751a9e7d5 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_4a494bfdece475::t_bc463decbf9774 8
 ---
 {
   "schema_version": "authorship/3.0.0",

@@ -1,0 +1,61 @@
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
+  s_4a494bfdece475::t_48d0a027d8e8b3 95-138
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_4a494bfdece475::t_6348db6491b2df 273-274,285-289,320,336-339
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
+  s_4a494bfdece475::t_17592b84fb7ace 47-50,55,57,63,65,72-74,76,79,84-88,93,111-112,116-139,215,217-219,223,226-234,237,246,259-261,263,267-319
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.test.ts
+  s_4a494bfdece475::t_410de012dbd952 96-97,249,256-257,407-645,698,705-712,717-726
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_54403030a287d3 96-97,403,677,696,740,746-781
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_f0e565ed567989 6,41,2614-2641,2643,2645-2647,2649,2675-2715,2717-2752,2760-2773,2972-2973,2981,3006,3014-3029,3030-3036,3038-3049,3051,3053-3086,3088-3096,3169,3185,3225-3242,3245-3280,3317-3318
+packages/cli/src/modules/promotions.ee/apply-dependency-check.service.ts
+  s_4a494bfdece475::t_3f037a3afe4a7f 34,45-46,51-53,62,73-76,84-85,87,91-97,102,110-111,113,144-156
+packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
+  s_4a494bfdece475::t_7d6aff65e8263e 43-54,94-108,113-115,139-140,142-174,178-239,242,245-248,250,291
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_4a494bfdece475::t_81300e8b9c01e8 188,190,345-347,354,378
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_4a494bfdece475::t_ca16ee1d54788c 723
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  s_4a494bfdece475::t_c10ba7a24e5e6f 8
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.generated.yml
+  s_4a494bfdece475::t_6de353224f99c3 26,57-62
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_b6cdb4858cd86a 11706,11745,11769,11772,11774
+packages/modules/promotions/frontend/src/__tests__/missingDependencies.fixtures.ts
+  s_4a494bfdece475::t_2c19ece18fa07e 131-132,134-142,144-203
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_741c35b9d61bb7 45,135,143,345-352,361-367,386-404,412-432,444,446-447,458,462-467
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_4a494bfdece475::t_c4a2db0ce1cc86 7-8,12,230,244,363-370,371-374,376-380,381-385,386,388-393,395-396
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_4a494bfdece475::t_8e145322226b49 74
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_4a494bfdece475::t_aea74a6e0bf4f5 112-114,120-123,124,129,131
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_4a494bfdece475::t_859df4728a7155 10-11,40-41,255,330,351-365
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_4a494bfdece475::t_6b91bdfcb8ca0c 128-132,137-145
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_3f56fc1e0ff808 32-33,36-37,41-42,1914,1919-1949,1951-1957,1959-1965,1975-2011,2014-2017,2019-2020,2022-2029,2031-2040,2042-2069,2072-2073,2077,2081-2083,2084-2090,2092-2096,2098-2099,2101-2102,2107-2111,2124,2126-2127,2145-2147,2148,2175,2183-2186,2187,2216-2217,2248-2260,2262-2266,2268-2273,2274-2279,2281-2286,2287-2291
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_750848a0f0a7fd 23,58,91,94,110,116,136-143,146-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fc0db30e65e20a4076564e7930deabd6fd5d5bb",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
