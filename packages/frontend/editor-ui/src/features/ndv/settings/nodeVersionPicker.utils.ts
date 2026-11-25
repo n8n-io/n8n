@@ -1,12 +1,15 @@
 import {
+	NodeHelpers,
 	isINodeProperties,
 	isINodePropertyCollection,
 	isINodePropertyOptions,
 	type INodeProperties,
 	type INodePropertyCollection,
 	type INodePropertyOptions,
+	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
+import pickBy from 'lodash/pickBy';
 import { MASK } from '@/app/utils/maskSecret';
 
 /**
@@ -90,4 +93,67 @@ export function formatVersionChangeValue(
 	}
 
 	return String(value);
+}
+
+const isVersionRule = (_: unknown, key: string) => key.startsWith('@');
+
+/** Returns the parameters that a version can show. Only the `@` rules count, not the node values. */
+function availableIn(
+	properties: INodeProperties[],
+	version: number,
+	type: INodeTypeDescription,
+): INodeProperties[] {
+	return properties.filter(
+		(property) =>
+			property.type !== 'hidden' &&
+			NodeHelpers.displayParameter(
+				{},
+				{
+					...property,
+					displayOptions: {
+						show: pickBy(property.displayOptions?.show, isVersionRule),
+						hide: pickBy(property.displayOptions?.hide, isVersionRule),
+					},
+				},
+				{ typeVersion: version },
+				type,
+			),
+	);
+}
+
+const collectionOptions = (property: INodeProperties): INodeProperties[] =>
+	property.type === 'collection' ? (property.options ?? []).filter(isINodeProperties) : [];
+
+/**
+ * Returns the paths of the parameters that the new version can show and the old version cannot.
+ * A path is a top-level name, or `collection.option` for a direct option of a top-level collection.
+ */
+export function getNewParameterPaths(
+	oldType: INodeTypeDescription,
+	oldVersion: number,
+	newType: INodeTypeDescription,
+	newVersion: number,
+): string[] {
+	// ponytail: names are compared as a union over same-named parameters, so an option that is
+	// new for one resource and old for another gets no tag. Match the variants by their
+	// displayOptions if that becomes a problem.
+	const oldProperties = availableIn(oldType.properties, oldVersion, oldType);
+	const oldNames = new Set(oldProperties.map((property) => property.name));
+	const paths = new Set<string>();
+
+	for (const property of availableIn(newType.properties, newVersion, newType)) {
+		if (!oldNames.has(property.name)) paths.add(property.name);
+
+		const oldOptionNames = new Set(
+			oldProperties
+				.filter((old) => old.name === property.name)
+				.flatMap((old) => availableIn(collectionOptions(old), oldVersion, oldType))
+				.map((option) => option.name),
+		);
+		for (const option of availableIn(collectionOptions(property), newVersion, newType)) {
+			if (!oldOptionNames.has(option.name)) paths.add(`${property.name}.${option.name}`);
+		}
+	}
+
+	return [...paths];
 }
