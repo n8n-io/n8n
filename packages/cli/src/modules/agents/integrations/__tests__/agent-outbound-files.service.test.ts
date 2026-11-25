@@ -46,7 +46,7 @@ function createService() {
 	});
 	attachmentService.getBuffer.mockResolvedValue(Buffer.from('png'));
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new SlackIntegration(mock<AgentRepository>()));
+	registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 	registry.register(
 		new DiscordIntegration(
 			mock<Logger>(),
