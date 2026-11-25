@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/NextCloud/test/createFromText.operation.test.ts
+  s_69d18b007d0835::t_fed9256d0353a7 325,394,405
+packages/nodes-base/nodes/NextCloud/actions/file/createFromText.operation.ts
+  s_69d18b007d0835::t_fed9256d0353a7 115-117,175
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_69d18b007d0835::t_fed9256d0353a7 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6d01155b7774265021d0e6d582258a2b5c44c4c",
+  "prompts": {},
+  "sessions": {
+    "s_69d18b007d0835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2742f16a-41df-4d0f-909f-e67f21d45770",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

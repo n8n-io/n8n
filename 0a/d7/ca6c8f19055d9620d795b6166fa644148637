@@ -1,0 +1,51 @@
+packages/cli/src/modules/skills/__tests__/integration/skill-source-move.integration.test.ts
+  s_85b66e82a3fbc8::t_06217cb762643b 35,249-253,255-261,263-284,286-292,294,301-302
+packages/cli/src/modules/skills/__tests__/test-utils/skill-source-client.contract.ts
+  s_85b66e82a3fbc8::t_ad11d97a864b26 186,189,192
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_85b66e82a3fbc8::t_ad11d97a864b26 61-63,236,319,372,515,661,910,1185,1193-1198,1200,1206,1212-1222,1224
+  s_85b66e82a3fbc8::t_e761238f94f9f8 1241-1247
+packages/cli/src/modules/skills/__tests__/integration/skill-source-credentials.integration.test.ts
+  s_85b66e82a3fbc8::t_ba398cff8fb28e 521,531-534,541-542,548,553,558-562
+  s_85b66e82a3fbc8::t_0e972a7a9e6c4f 522-530,535-540,543-547,549-552,554-557
+packages/cli/src/modules/skills/sources/skill-source-client.ts
+  s_85b66e82a3fbc8::t_ad11d97a864b26 1-2,15,23-24,200-201,205-225
+packages/cli/src/modules/skills/__tests__/skill-source-identity.test.ts
+  s_85b66e82a3fbc8::t_172cdaaebc6727 1-23,26-35,37-57
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_85b66e82a3fbc8::t_ad11d97a864b26 11-19,21,44-45,110-115,117-118,257,267
+packages/cli/src/modules/skills/AGENTS.md
+  s_85b66e82a3fbc8::t_ad11d97a864b26 89-103
+packages/cli/src/modules/skills/sources/github/github-skill-source-client.ts
+  s_85b66e82a3fbc8::t_ad11d97a864b26 209-210
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_85b66e82a3fbc8::t_477b22bf89391b 188-195,197-215,217,220,233,235-236
+  s_85b66e82a3fbc8::t_0e972a7a9e6c4f 218-219,221-232
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_85b66e82a3fbc8::t_ba398cff8fb28e 1664-1665,1670-1674,1678,1682-1684
+  s_85b66e82a3fbc8::t_477b22bf89391b 1572-1574,1576-1590,1592-1596,1598-1603,1605,1610-1612,1614-1620,1622-1624,1626-1639,1641-1656,1658-1663
+  s_85b66e82a3fbc8::t_0e972a7a9e6c4f 1666-1669,1675-1677,1679-1681
+  s_85b66e82a3fbc8::t_d6bde707d81480 1685-1689,1694-1695
+  s_85b66e82a3fbc8::t_e761238f94f9f8 1690-1693
+  s_85b66e82a3fbc8::t_aa426038deec92 1606-1609
+packages/cli/src/modules/skills/__tests__/github-skill-source-client.test.ts
+  s_85b66e82a3fbc8::t_172cdaaebc6727 382-383,385-386,388-389,391-396
+packages/cli/src/modules/skills/database/entities/skill-source-connection.entity.ts
+  s_85b66e82a3fbc8::t_ad11d97a864b26 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ad7ca6c8f19055d9620d795b6166fa644148637",
+  "prompts": {},
+  "sessions": {
+    "s_85b66e82a3fbc8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20937-db03-72f1-8f78-1d67cb12e032",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

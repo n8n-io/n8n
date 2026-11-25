@@ -1,0 +1,66 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c3fb44d7ad272c::t_d07ac2c95fb5ba 6562
+  s_956556de941645::t_eaabfd9e26cba9 238,6563-6591
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c3fb44d7ad272c::t_a23a05140c3a2c 10001-10015
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_c3fb44d7ad272c::t_ce8b9b770b12dd 7,272-273,285,720,744,7883-8003
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  s_c3fb44d7ad272c::t_c4995cb2b8b45a 1-256
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_c3fb44d7ad272c::t_acee1064efe8cb 8,736-758
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentSafeTestingFlag.test.ts
+  s_c3fb44d7ad272c::t_8cebf7ae73a59d 1-31
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_c3fb44d7ad272c::t_9f7b177388534c 118-119,827-832,1087-1096
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_956556de941645::t_8a46ec86dc37bd 34,78-82,153-154,218,305-306,361,2045,2365-2367
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_956556de941645::t_a49bbb2932db44 2,40-43,52-53,66,73,131-132,142-150
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_956556de941645::t_ebfc56570c5d0c 2,70-73,83-84,101,356-357,366,368-376
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  s_c3fb44d7ad272c::t_651e87cad4ab0a 1-448
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentRunHeldActionsModal.vue
+  s_c3fb44d7ad272c::t_9c1a4a12a64ba8 1-151
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentTestRunEmptyState.vue
+  s_c3fb44d7ad272c::t_1bae2367bd6441 1-154
+packages/frontend/editor-ui/src/features/agents/components/chatMode/heldActions.ts
+  s_c3fb44d7ad272c::t_6dc7cc2c15c424 1-173
+packages/frontend/editor-ui/src/features/agents/components/chatMode/useAgentHeldActions.ts
+  s_c3fb44d7ad272c::t_9900fac86adfb7 1-122
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c3fb44d7ad272c::t_d081dd1816c9b5 1308-1332
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c3fb44d7ad272c::t_44893f3a4cc0f9 11,100-105,1400,1872-1874
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSafeTestingFlag.ts
+  s_c3fb44d7ad272c::t_6391ba63987d2f 1-13
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_c3fb44d7ad272c::t_a1e148fe680c48 168-173,1120-1138,3742,3747-3763,3906,3918-3932,3952-3960
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_c3fb44d7ad272c::t_21996f525d4973 54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9a01195efbbfb81ba9fd19edf4b2dbbf304b049",
+  "prompts": {},
+  "sessions": {
+    "s_956556de941645": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dfb-545c-7140-8254-fbb8cd26ad4e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_c3fb44d7ad272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd5-b561-70c9-800f-e58948d8542a",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/sub-workflow-paired-item.test.ts
+  s_ee257bd3aa5f17::t_7ffe9f74661cd0 83,183-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed0c6975d1f16acd3af7775349ec9011890f710f",
+  "prompts": {},
+  "sessions": {
+    "s_ee257bd3aa5f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9afdedee-89bd-4956-bc5d-7218bb0f47a5",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

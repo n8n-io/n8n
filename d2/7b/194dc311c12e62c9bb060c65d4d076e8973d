@@ -1,0 +1,23 @@
+packages/modules/promotions/frontend/src/components/PromotionProjectAccessRows.test.ts
+  s_287727b48c8850::t_8331ba3c01ea3c 70,85,88
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_287727b48c8850::t_e3bda601b980cf 5124,5126
+  s_287727b48c8850::t_3f582c572a7345 5134-5137
+  s_287727b48c8850::t_02d0126be02429 5131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d27b194dc311c12e62c9bb060c65d4d076e8973d",
+  "prompts": {},
+  "sessions": {
+    "s_287727b48c8850": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "473a9714-15c3-496b-9c5d-1f34daa36075",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_4e8100d4ba14d2::t_ebaeb4d72a5d30 29-32
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_4e8100d4ba14d2::t_19bce6a0d7bc96 25,73-80,301-302,322-323,326-329,333-336,338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4152f8dfaf6d111d3b15f5c725f338525cbd3bfc",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

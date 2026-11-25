@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_50172fbd2ecafb::t_23f4bc79212744 5296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "71a29dc62be0f5c3c0634af33825e2af6fa435d7",
+  "prompts": {},
+  "sessions": {
+    "s_50172fbd2ecafb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce4c2817-0b81-4cf3-a412-66b31cd3f0f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
