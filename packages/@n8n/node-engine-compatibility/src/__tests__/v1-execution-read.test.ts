@@ -291,6 +291,57 @@ describe('toV1RunExecutionData', () => {
 		});
 	});
 
+	describe('a slot that several edges feed', () => {
+		// Trigger ──► If ─true──► A ─┐
+		//               └false──► B ─┴──► C
+		const converging: WorkflowGraph = {
+			nodes: [
+				{ id: 't', name: 'Trigger', type: 'trigger' },
+				{ id: 'i', name: 'If', type: 'v1-node' },
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+				{ id: 'c', name: 'C', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 't', to: 'i', outputIndex: 0, inputIndex: 0 },
+				{ from: 'i', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'i', to: 'b', outputIndex: 1, inputIndex: 0 },
+				{ from: 'a', to: 'c', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'c', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const at = (id: string, nodeId: string, overrides: Partial<StepDetail> = {}) =>
+			step({ id, nodeId, ...overrides });
+
+		it('names the first live edge as the source when the first edge is dead', () => {
+			const data = toV1RunExecutionData(converging, [
+				at('s-t', 't'),
+				at('s-i', 'i', { outputs: [null, [{ json: { n: 2 } }]] }),
+				at('s-a', 'a', { status: 'skipped', outputs: null }),
+				at('s-b', 'b'),
+				at('s-c', 'c'),
+			]);
+
+			expect(data.resultData.runData.C[0].source).toEqual([
+				{ previousNode: 'B', previousNodeOutput: 0 },
+			]);
+		});
+
+		it('names the first edge in concatenation order when every edge is live', () => {
+			const data = toV1RunExecutionData(converging, [
+				at('s-t', 't'),
+				at('s-i', 'i', { outputs: [[{ json: { n: 1 } }], [{ json: { n: 2 } }]] }),
+				at('s-a', 'a'),
+				at('s-b', 'b'),
+				at('s-c', 'c'),
+			]);
+
+			expect(data.resultData.runData.C[0].source).toEqual([
+				{ previousNode: 'A', previousNodeOutput: 0 },
+			]);
+		});
+	});
+
 	describe('parallel branches', () => {
 		// Two branches off the trigger. Row creation order says nothing about
 		// which branch settled first.
