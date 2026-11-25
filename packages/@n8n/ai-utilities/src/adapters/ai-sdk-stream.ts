@@ -16,14 +16,13 @@ import type { FinishReason, StreamChunk, TokenUsage } from '../types/output';
 const DEFAULT_TEXT_ID = 'text';
 const DEFAULT_REASONING_ID = 'reasoning';
 
-type TextKind = 'text' | 'reasoning';
+const TEXT_KINDS = ['text', 'reasoning'] as const;
+
+type TextKind = (typeof TEXT_KINDS)[number];
 
 type ToolCallState = {
 	readonly id: string;
-	/**
-	 * The AI SDK opens a tool input with its name, so the input starts when the
-	 * name arrives. A call without a name has not started.
-	 */
+	/** The AI SDK opens a tool input with its name, so the input starts with the name. */
 	name?: string;
 	input: string;
 	/** Chat model metadata of all chunks of the call. */
@@ -37,9 +36,8 @@ type ReceivedFinish = {
 };
 
 /**
- * The first finish chunk closes the open parts. The AI SDK finish waits for
- * the end of the chat model stream, because a later finish chunk can carry
- * the usage.
+ * The first finish chunk closes the open parts. The AI SDK finish waits for the
+ * end of the stream, because a later finish chunk can carry the usage.
  */
 type Phase =
 	| { readonly kind: 'streaming' }
@@ -49,27 +47,22 @@ type Phase =
 type ContentChunk = Exclude<StreamChunk, { type: 'finish' }>;
 
 /**
- * Turns the flat chat model stream into the AI SDK stream, which brackets
- * every text, reasoning and tool input with start and end parts.
- *
- * Tool call deltas are matched by id, so parallel tool calls can interleave.
- * A delta without an id is rejected: without an index on `tool-call-delta`,
- * nothing tells which parallel call it belongs to.
- *
- * A complete text, reasoning or tool call block closes the open part with its
- * id, or the only open part when it has no id. Only the part of the block that
- * was not streamed yet is sent.
- *
- * Complete tool calls are held back until the finish. A tool result from the
- * chat model releases its call first, marked as executed by the provider.
+ * Turns the flat chat model stream into the AI SDK stream, which brackets every
+ * text, reasoning and tool input with start and end parts. Tool call deltas are
+ * matched by id. A complete block closes the open part with its id, or the only
+ * open part, and sends only what was not streamed yet. Complete tool calls are
+ * held back until the finish, or until a tool result of the chat model.
  */
 export class AiSdkStreamConverter {
 	/** Open text and reasoning parts, with the text sent for each so far. */
-	private readonly openText = new Map<string, string>();
-
-	private readonly openReasoning = new Map<string, string>();
+	private readonly openTextParts: Record<TextKind, Map<string, string>> = {
+		text: new Map(),
+		reasoning: new Map(),
+	};
 
 	private readonly openToolCalls = new Map<string, ToolCallState>();
+
+	private lastToolCallId?: string;
 
 	private readonly readyToolCalls = new Map<string, LanguageModelV4ToolCall>();
 
@@ -145,32 +138,28 @@ export class AiSdkStreamConverter {
 					chunk.delta,
 					providerMetadata,
 				);
-			case 'tool-call-delta':
-				if (!chunk.id) {
-					throw new UserError(
-						`The chat model "${this.provider}/${this.modelId}" streamed a tool call without an id`,
-						{
-							description:
-								'Every tool-call-delta chunk must carry the id of its tool call. Update the community node to a version that sends it.',
-						},
-					);
-				}
+			case 'tool-call-delta': {
+				const id = chunk.id || this.continuedToolCallId();
+				this.lastToolCallId = id;
 				return this.appendToolInput(
-					this.openToolCall(chunk.id),
+					this.openToolCall(id),
 					chunk.name,
 					chunk.argumentsDelta,
 					chunk.providerMetadata,
 				);
+			}
 			case 'content':
 				return this.content(chunk.content, chunk.id, chunk.providerMetadata);
 			case 'error':
 				this.failed = true;
 				return [{ type: 'error', error: chunk.error }];
+			// A community node built against another SDK version can send a chunk
+			// type that the contract does not have.
+			default:
+				throw new UserError(
+					`The chat model "${this.provider}/${this.modelId}" streamed a chunk of an unknown type`,
+				);
 		}
-	}
-
-	private openParts(kind: TextKind): Map<string, string> {
-		return kind === 'text' ? this.openText : this.openReasoning;
 	}
 
 	private delta(
@@ -179,7 +168,7 @@ export class AiSdkStreamConverter {
 		delta: string,
 		providerMetadata: SharedV4ProviderMetadata | undefined,
 	): LanguageModelV4StreamPart[] {
-		const open = this.openParts(kind);
+		const open = this.openTextParts[kind];
 		const sent = open.get(id);
 		open.set(id, (sent ?? '') + delta);
 
@@ -200,7 +189,7 @@ export class AiSdkStreamConverter {
 		id: string,
 		providerMetadata: SharedV4ProviderMetadata | undefined,
 	): LanguageModelV4StreamPart {
-		this.openParts(kind).delete(id);
+		this.openTextParts[kind].delete(id);
 		return kind === 'text'
 			? { type: 'text-end', id, providerMetadata }
 			: { type: 'reasoning-end', id, providerMetadata };
@@ -212,7 +201,7 @@ export class AiSdkStreamConverter {
 		text: string,
 		providerMetadata: SharedV4ProviderMetadata | undefined,
 	): LanguageModelV4StreamPart[] {
-		const open = this.openParts(kind);
+		const open = this.openTextParts[kind];
 		const openId = id ?? onlyKey(open);
 		const sent = openId === undefined ? undefined : open.get(openId);
 		const parts: LanguageModelV4StreamPart[] = [];
@@ -237,6 +226,15 @@ export class AiSdkStreamConverter {
 		}
 		parts.push(this.endPart(kind, partId, providerMetadata));
 		return parts;
+	}
+
+	/**
+	 * Many providers send the id only in the first chunk of a tool call. Like in
+	 * the LangChain adapter, a delta without an id continues the last call.
+	 */
+	private continuedToolCallId(): string {
+		const last = this.lastToolCallId;
+		return last !== undefined && this.openToolCalls.has(last) ? last : randomUUID();
 	}
 
 	private openToolCall(id: string): ToolCallState {
@@ -267,18 +265,14 @@ export class AiSdkStreamConverter {
 
 		// The name is not streamed in fragments: chat models send it whole, and
 		// some repeat it on every delta. The first name wins.
-		const started = state.name !== undefined;
-		switch (true) {
-			case started:
-				return argumentsDelta
-					? [{ type: 'tool-input-delta', id: state.id, delta: argumentsDelta }]
-					: [];
-			// The input that arrived before the start is sent in one delta.
-			case !started && name !== undefined && name !== '':
-				return this.startToolInput(state, name);
-			default:
-				return [];
+		if (state.name !== undefined) {
+			return argumentsDelta
+				? [{ type: 'tool-input-delta', id: state.id, delta: argumentsDelta }]
+				: [];
 		}
+		// The input that arrived before the start is sent in one delta.
+		if (name) return this.startToolInput(state, name);
+		return [];
 	}
 
 	/** A complete content block is sent as a bracketed part of its own. */
@@ -293,10 +287,13 @@ export class AiSdkStreamConverter {
 		);
 		const parts: LanguageModelV4StreamPart[] = [];
 
-		for (const part of toAiSdkContent(
+		// A stream sends its warnings in stream-start, before the first chunk, so
+		// the warnings for dropped blocks have no place here.
+		const { content } = toAiSdkContent(
 			{ role: 'assistant', content: [withChunkMetadata] },
 			this.provider,
-		)) {
+		);
+		for (const part of content) {
 			switch (part.type) {
 				case 'text':
 				case 'reasoning':
@@ -361,8 +358,11 @@ export class AiSdkStreamConverter {
 
 	private closeToolCall(state: ToolCallState): LanguageModelV4StreamPart[] {
 		this.openToolCalls.delete(state.id);
-		// Without a name there is no tool to call.
-		if (state.name === undefined) return [];
+		// Without a name there is no tool to call, so the call is lost.
+		if (state.name === undefined) {
+			const message = `The chat model "${this.provider}/${this.modelId}" streamed a tool call without a name`;
+			return [{ type: 'error', error: new UserError(message) }];
+		}
 
 		this.readyToolCalls.set(state.id, {
 			type: 'tool-call',
@@ -393,9 +393,10 @@ export class AiSdkStreamConverter {
 	/** Ends the open parts and sends the held tool calls, unless the turn failed. */
 	private closeAll(): LanguageModelV4StreamPart[] {
 		const parts: LanguageModelV4StreamPart[] = [];
-		for (const id of [...this.openText.keys()]) parts.push(this.endPart('text', id, undefined));
-		for (const id of [...this.openReasoning.keys()]) {
-			parts.push(this.endPart('reasoning', id, undefined));
+		for (const kind of TEXT_KINDS) {
+			for (const id of [...this.openTextParts[kind].keys()]) {
+				parts.push(this.endPart(kind, id, undefined));
+			}
 		}
 		for (const state of [...this.openToolCalls.values()]) parts.push(...this.closeToolCall(state));
 		if (!this.failed) parts.push(...this.readyToolCalls.values());

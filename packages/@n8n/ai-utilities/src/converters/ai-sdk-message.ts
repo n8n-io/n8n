@@ -153,8 +153,14 @@ function toJsonFileData(data: SharedV4FileData): JSONValue {
 	}
 }
 
-/** Converts a generated chat model message into AI SDK content parts. */
-export function toAiSdkContent(message: Message, provider: string): LanguageModelV4Content[] {
+/**
+ * Converts a generated chat model message into AI SDK content parts. A block
+ * that the AI SDK cannot take is dropped with a warning.
+ */
+export function toAiSdkContent(
+	message: Message,
+	provider: string,
+): { content: LanguageModelV4Content[]; warnings: SharedV4Warning[] } {
 	// A chat model tool result carries no tool name. Take it from the tool call
 	// with the same id in the same message.
 	const toolNames = new Map<string, string>();
@@ -167,8 +173,9 @@ export function toAiSdkContent(message: Message, provider: string): LanguageMode
 	}
 
 	const content: LanguageModelV4Content[] = [];
+	const warnings: SharedV4Warning[] = [];
 	for (const block of message.content) {
-		const part = toAiSdkContentPart(block, toolNames, provider);
+		const part = toAiSdkContentPart(block, toolNames, provider, warnings);
 		if (part?.type === 'tool-call' && toolResultIds.has(part.toolCallId)) {
 			// The model produced the result itself, so the caller must not run the tool.
 			content.push({ ...part, providerExecuted: true });
@@ -176,13 +183,14 @@ export function toAiSdkContent(message: Message, provider: string): LanguageMode
 			content.push(part);
 		}
 	}
-	return content;
+	return { content, warnings };
 }
 
 function toAiSdkContentPart(
 	block: MessageContent,
 	toolNames: Map<string, string>,
 	provider: string,
+	warnings: SharedV4Warning[],
 ): LanguageModelV4Content | undefined {
 	const providerMetadata = toAiSdkProviderMetadata(provider, block.providerMetadata);
 
@@ -214,7 +222,7 @@ function toAiSdkContentPart(
 			// The AI SDK validates tool input itself and reports a bad call to the
 			// caller, so the call is forwarded as is. Without a name there is
 			// nothing to forward.
-			if (!block.name) return undefined;
+			if (!block.name) return drop(warnings, 'invalid tool call without a name', block.error);
 			return withMetadata(
 				{
 					type: 'tool-call',
@@ -236,14 +244,23 @@ function toAiSdkContentPart(
 				providerMetadata,
 			);
 		case 'citation':
-			if (!block.url) return undefined;
+			if (!block.url) return drop(warnings, 'citation without a URL');
 			return withMetadata(
 				{ type: 'source', sourceType: 'url', id: randomUUID(), url: block.url, title: block.title },
 				providerMetadata,
 			);
 		case 'provider':
-			return undefined;
+			return drop(warnings, 'provider content');
 	}
+}
+
+function drop(warnings: SharedV4Warning[], feature: string, details?: string): undefined {
+	warnings.push(
+		details === undefined
+			? { type: 'unsupported', feature }
+			: { type: 'unsupported', feature, details },
+	);
+	return undefined;
 }
 
 function withMetadata<T extends LanguageModelV4Content>(
@@ -261,10 +278,8 @@ function toJsonResult(result: unknown): NonNullable<JSONValue> {
 }
 
 /**
- * A round trip through JSON turns class instances such as a Date into plain
- * JSON. `isJSONValue` alone lets them pass, because it only inspects own
- * enumerable properties. `JSON.stringify` returns undefined for a function or
- * a symbol.
+ * A round trip through JSON turns class instances such as a Date into plain JSON.
+ * `isJSONValue` lets them pass. `JSON.stringify` drops a function or a symbol.
  */
 function toJsonValue(value: unknown): NonNullable<JSONValue> | undefined {
 	const serialized: string | undefined = JSON.stringify(value);

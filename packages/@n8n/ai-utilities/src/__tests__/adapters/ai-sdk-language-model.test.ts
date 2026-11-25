@@ -7,6 +7,7 @@ import type { GenerateResult, StreamChunk } from 'src/types/output';
 import type { Tool } from 'src/types/tool';
 
 import { AiSdkLanguageModelAdapter } from '../../adapters/ai-sdk-language-model';
+import { BaseChatModel } from '../../chat-model/base';
 
 interface FakeCall {
 	messages: Message[];
@@ -390,6 +391,30 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(result.warnings).toEqual([]);
 		});
 
+		it('sends the tools bound before the adapter on every call, also with tool choice none', async () => {
+			const sentTools: string[][] = [];
+			class RecordingChatModel extends BaseChatModel {
+				async generate(): Promise<GenerateResult> {
+					sentTools.push(this.tools.map((tool) => tool.name));
+					return { message: { role: 'assistant', content: [] } };
+				}
+
+				async *stream(): AsyncIterable<StreamChunk> {}
+			}
+			const model = new RecordingChatModel('fake', 'fake-model').withTools([
+				{ type: 'function', name: 'bound', inputSchema: { type: 'object' } },
+			]);
+			const adapter = new AiSdkLanguageModelAdapter(model);
+			const tools = [
+				{ type: 'function' as const, name: 'lookup', inputSchema: { type: 'object' as const } },
+			];
+
+			await adapter.doGenerate(callOptions({ tools }));
+			await adapter.doGenerate(callOptions({ tools, toolChoice: { type: 'none' } }));
+
+			expect(sentTools).toEqual([['bound', 'lookup'], ['bound']]);
+		});
+
 		it('uses structured output for a json response format when the model offers it', async () => {
 			const model = createFakeChatModel({ structuredOutput: true });
 			const adapter = new AiSdkLanguageModelAdapter(model);
@@ -471,6 +496,11 @@ describe('AiSdkLanguageModelAdapter', () => {
 					mediaType: 'application/octet-stream',
 					data: { type: 'data', data: 'aGk=' },
 				},
+			]);
+			expect(result.warnings).toEqual([
+				{ type: 'unsupported', feature: 'invalid tool call without a name', details: 'no name' },
+				{ type: 'unsupported', feature: 'citation without a URL' },
+				{ type: 'unsupported', feature: 'provider content' },
 			]);
 		});
 
@@ -819,52 +849,85 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
-		it('rejects a tool call delta without an id and stops the chat model stream', async () => {
+		it('continues the last tool call with a delta without an id', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{"q":' },
+						{ type: 'tool-call-delta', argumentsDelta: '1}' },
+						{ type: 'tool-call-delta', id: 'b', name: 'search', argumentsDelta: '{"r":' },
+						{ type: 'tool-call-delta', argumentsDelta: '2}' },
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+
+			expect(parts).toEqual([
+				{ type: 'tool-input-start', id: 'a', toolName: 'lookup' },
+				{ type: 'tool-input-delta', id: 'a', delta: '{"q":' },
+				{ type: 'tool-input-delta', id: 'a', delta: '1}' },
+				{ type: 'tool-input-start', id: 'b', toolName: 'search' },
+				{ type: 'tool-input-delta', id: 'b', delta: '{"r":' },
+				{ type: 'tool-input-delta', id: 'b', delta: '2}' },
+				{ type: 'tool-input-end', id: 'a' },
+				{ type: 'tool-input-end', id: 'b' },
+				{ type: 'tool-call', toolCallId: 'a', toolName: 'lookup', input: '{"q":1}' },
+				{ type: 'tool-call', toolCallId: 'b', toolName: 'search', input: '{"r":2}' },
+			]);
+		});
+
+		it('gives a tool call an id when its first delta has none', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', name: 'lookup', argumentsDelta: '{"q":' },
+						{ type: 'tool-call-delta', argumentsDelta: '1}' },
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+			const id = parts[0].type === 'tool-input-start' ? parts[0].id : undefined;
+
+			expect(id).toEqual(expect.any(String));
+			expect(parts).toEqual([
+				{ type: 'tool-input-start', id, toolName: 'lookup' },
+				{ type: 'tool-input-delta', id, delta: '{"q":' },
+				{ type: 'tool-input-delta', id, delta: '1}' },
+				{ type: 'tool-input-end', id },
+				{ type: 'tool-call', toolCallId: id, toolName: 'lookup', input: '{"q":1}' },
+			]);
+		});
+
+		it('stops and closes the chat model stream when a chunk breaks the contract', async () => {
+			const onStreamClose = vi.fn();
 			const model = createFakeChatModel({
 				chunks: [
-					{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{"q":' },
-					{ type: 'tool-call-delta', argumentsDelta: '1}' },
-					{ type: 'finish', finishReason: 'tool-calls' },
+					{ type: 'text-delta', delta: 'hi' },
+					{ type: 'unknown-chunk' } as unknown as StreamChunk,
+					{ type: 'text-delta', delta: 'never read' },
 				],
+				onStreamClose,
 			});
 			const adapter = new AiSdkLanguageModelAdapter(model);
 
 			const { stream } = await adapter.doStream(callOptions());
 			const parts = (await readAll(stream)).slice(2);
-			const error = parts.find((part) => part.type === 'error');
 
 			expect(parts.map((part) => part.type)).toEqual([
-				'tool-input-start',
-				'tool-input-delta',
+				'text-start',
+				'text-delta',
 				'error',
-				'tool-input-end',
+				'text-end',
 				'finish',
 			]);
 			expect(parts.at(-1)).toMatchObject({ finishReason: { unified: 'error' } });
-			expect(error?.type === 'error' && error.error).toBeInstanceOf(UserError);
-			expect(error).toMatchObject({
-				error: {
-					message: 'The chat model "fake/fake-model" streamed a tool call without an id',
-				},
-			});
 			expect(model.calls[0].config?.abortSignal?.aborted).toBe(true);
-		});
-
-		it('closes the chat model stream when a chunk breaks the contract', async () => {
-			const onStreamClose = vi.fn();
-			const adapter = new AiSdkLanguageModelAdapter(
-				createFakeChatModel({
-					chunks: [
-						{ type: 'tool-call-delta', name: 'lookup', argumentsDelta: '{}' },
-						{ type: 'text-delta', delta: 'never read' },
-					],
-					onStreamClose,
-				}),
-			);
-
-			const { stream } = await adapter.doStream(callOptions());
-			await readAll(stream);
-
 			await vi.waitFor(() => expect(onStreamClose).toHaveBeenCalled(), { timeout: 1000 });
 		});
 
@@ -1034,7 +1097,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(parts.at(-1)).toMatchObject({ providerMetadata: { fake: { status: 'done' } } });
 		});
 
-		it('drops a streamed tool call that never got a name', async () => {
+		it('sends an error for a streamed tool call that never got a name', async () => {
 			const adapter = new AiSdkLanguageModelAdapter(
 				createFakeChatModel({
 					chunks: [
@@ -1046,8 +1109,13 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 			const { stream } = await adapter.doStream(callOptions());
 			const parts = (await readAll(stream)).slice(2);
+			const error = parts.find((part) => part.type === 'error');
 
-			expect(parts.map((part) => part.type)).toEqual(['finish']);
+			expect(parts.map((part) => part.type)).toEqual(['error', 'finish']);
+			expect(error?.type === 'error' && error.error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				error: { message: 'The chat model "fake/fake-model" streamed a tool call without a name' },
+			});
 		});
 
 		it('passes complete content chunks through as bracketed parts', async () => {

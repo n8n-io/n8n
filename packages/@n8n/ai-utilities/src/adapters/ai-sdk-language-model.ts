@@ -22,27 +22,18 @@ import {
 import type { ChatModel } from '../types/chat-model';
 
 /**
- * Runs an AI Node SDK `ChatModel` as a Vercel AI SDK language model.
- *
- * The adapter targets specification version v4, the native version of the
- * `@ai-sdk/provider` release that `ai` depends on. The AI SDK accepts v3
- * models only for compatibility.
+ * Runs an AI Node SDK `ChatModel` as a Vercel AI SDK language model. It targets
+ * v4, the native specification of the `ai` release. v3 runs only for compatibility.
  */
 export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 	readonly specificationVersion = 'v4';
 
-	/**
-	 * The chat model contract has no notion of URL inputs, so no URL is
-	 * declared as supported. The AI SDK then downloads every file URL and
-	 * passes the bytes to the model.
-	 */
+	/** The contract has no URL inputs, so the AI SDK downloads every file URL. */
 	readonly supportedUrls: Record<string, RegExp[]> = {};
 
 	/**
-	 * Takes a chat model without bound tools. Each call binds the tools of the
-	 * AI SDK call, and binding adds to the tools that are already bound, so a
-	 * tool bound before would reach the model on every call, even with tool
-	 * choice `none`.
+	 * Takes a chat model without bound tools. Binding adds to the bound tools, so
+	 * a tool bound before reaches every call, also with tool choice `none`.
 	 */
 	constructor(private readonly chatModel: ChatModel) {}
 
@@ -57,25 +48,26 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 	async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
 		const { model, messages, config, warnings } = this.prepareCall(options);
 		const result = await model.generate(messages, config);
+		const { content, warnings: contentWarnings } = toAiSdkContent(result.message, this.provider);
 
 		return {
-			content: toAiSdkContent(result.message, this.provider),
+			content,
 			finishReason: toAiSdkFinishReason(result.finishReason),
 			usage: toAiSdkUsage(result.usage),
 			providerMetadata: toAiSdkProviderMetadata(this.provider, result.providerMetadata),
 			response: { id: result.id, modelId: this.modelId },
-			warnings,
+			warnings: [...warnings, ...contentWarnings],
 		};
 	}
 
 	async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
 		const { model, messages, config, warnings } = this.prepareCall(options);
 		// Closing the iterator waits for a chunk that is in flight. Aborting the
-		// call lets a cancel of the stream end that wait.
-		const cancellation = new AbortController();
+		// request lets a cancel of the stream end that wait.
+		const request = new AbortController();
 		const abortSignal = options.abortSignal
-			? AbortSignal.any([options.abortSignal, cancellation.signal])
-			: cancellation.signal;
+			? AbortSignal.any([options.abortSignal, request.signal])
+			: request.signal;
 		const abortError = () => {
 			const { reason } = abortSignal;
 			return reason instanceof Error
@@ -83,9 +75,15 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 				: new Error('The call was aborted', { cause: reason });
 		};
 		const iterator = model.stream(messages, { ...config, abortSignal })[Symbol.asyncIterator]();
+		// Closing the iterator frees the request when the model ignores the signal.
+		const stopRequest = async () => {
+			request.abort();
+			await Promise.resolve(iterator.return?.()).catch(() => undefined);
+		};
 		const modelId = this.modelId;
 		const converter = new AiSdkStreamConverter(this.provider, modelId);
 		let reading = false;
+		let cancelled = false;
 
 		const stream = new ReadableStream<LanguageModelV4StreamPart>({
 			start(controller) {
@@ -107,7 +105,7 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 						void read.catch(() => undefined);
 						const next = await raceAbort(read, abortSignal, abortError);
 						// After a cancel the stream is closed, so a late chunk is dropped.
-						if (cancellation.signal.aborted) return;
+						if (cancelled) return;
 						if (next.done) {
 							for (const part of converter.end()) controller.enqueue(part);
 							controller.close();
@@ -115,11 +113,9 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 						}
 						parts = converter.convert(next.value);
 					} catch (error) {
-						if (cancellation.signal.aborted) return;
+						if (cancelled) return;
 						// A chunk that breaks the contract also stops the request it came from.
-						// Closing the iterator frees the request when the model ignores the signal.
-						cancellation.abort();
-						void Promise.resolve(iterator.return?.()).catch(() => undefined);
+						void stopRequest();
 						for (const part of converter.fail(error)) controller.enqueue(part);
 						controller.close();
 						return;
@@ -132,11 +128,11 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 				}
 			},
 			async cancel() {
-				cancellation.abort();
+				cancelled = true;
 				// The iterator closes only after a pending read settles, and a chat
 				// model that ignores the signal may never settle it. Do not wait then.
-				const closing = Promise.resolve(iterator.return?.()).catch(() => undefined);
-				if (!reading) await closing;
+				const stopping = stopRequest();
+				if (!reading) await stopping;
 			},
 		});
 
