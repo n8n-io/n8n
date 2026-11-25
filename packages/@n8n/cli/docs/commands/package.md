@@ -230,8 +230,8 @@ against the shared skill schema:
 - All files of a skill total 2,097,152 characters or fewer. A binary file
   counts with its Base64 length.
 
-An Agent reads text files through `load_skill`. For a binary file, `load_skill`
-returns only the path and the Base64 length. It does not return the contents.
+An Agent reads text files through `load_skill`. An Agent run does not load
+binary files, so `load_skill` does not list them or return their contents.
 
 ## `package import-selection`
 
