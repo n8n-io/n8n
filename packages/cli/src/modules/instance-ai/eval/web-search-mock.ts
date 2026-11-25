@@ -63,6 +63,12 @@ const SEARCH_PROMPT = [
 
 const MAX_PRIOR_SEARCH_CONTEXT_CHARS = 4000;
 
+class WebSearchStoppedError extends OperationalError {
+	constructor() {
+		super('The web search was stopped.');
+	}
+}
+
 function validateSearchResults(parsed: unknown): WebSearchMockResult['results'] | undefined {
 	if (parsed === null || typeof parsed !== 'object') return undefined;
 	const results = (parsed as Record<string, unknown>).results;
@@ -92,7 +98,10 @@ export function createWebSearchMock(
 	const cache = new Map<string, Promise<WebSearchMockResult>>();
 	const priorSearches: string[] = [];
 
-	return async (args, callOptions) => {
+	const search = async (
+		args: WebSearchMockArgs,
+		callOptions?: WebSearchMockCallOptions,
+	): Promise<WebSearchMockResult> => {
 		const signal = callOptions?.signal;
 		const cacheKey = JSON.stringify(args);
 		let cached = cache.get(cacheKey);
@@ -131,7 +140,7 @@ export function createWebSearchMock(
 				// A stopped search is not a failed generation. Do not keep it for a later call.
 				if (!results && signal?.aborted) {
 					cache.delete(cacheKey);
-					throw new OperationalError('The web search was stopped.');
+					throw new WebSearchStoppedError();
 				}
 				if (!results) {
 					logger.warn(`[EvalWebSearchMock] generation failed for query "${args.query}"`);
@@ -171,7 +180,17 @@ export function createWebSearchMock(
 			})();
 			cache.set(cacheKey, cached);
 		}
-		const result = await cached;
+		let result: WebSearchMockResult;
+		try {
+			result = await cached;
+		} catch (error) {
+			// The call that started this generation stopped. A call that did not stop runs the
+			// search again: the stopped generation is no longer in the cache.
+			if (error instanceof WebSearchStoppedError && !signal?.aborted) {
+				return await search(args, callOptions);
+			}
+			throw error;
+		}
 		// Carry titles, URLs, and snippet leads so later searches can stay
 		// consistent with the facts already served, not just the headlines.
 		const entry = `- search(${JSON.stringify(args.query).slice(0, 300)}) -> ${result.results
@@ -188,4 +207,5 @@ export function createWebSearchMock(
 		options.onSearch(args, result);
 		return result;
 	};
+	return search;
 }
