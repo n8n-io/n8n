@@ -29,6 +29,21 @@ describe.each([
 		expect(read(value)).toBe(value);
 	});
 
+	it.each([
+		Object('ab') as object,
+		Object(5) as object,
+		Object(true) as object,
+		Object(1n) as object,
+	])('returns boxed primitive %p directly', (value) => {
+		expect(read(value)).toBe(value);
+	});
+
+	it('describes an object inheriting String.prototype without a slot as a plain object', () => {
+		const fake = Object.create(String.prototype) as object;
+
+		expect(read(fake)).toEqual({ __isObject: true, __keys: [] });
+	});
+
 	it('returns undefined for functions without calling them', () => {
 		const value = vi.fn();
 

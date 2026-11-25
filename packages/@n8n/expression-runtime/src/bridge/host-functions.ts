@@ -1,6 +1,7 @@
 import type { NodeProxy } from '../types/evaluator';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import {
+	isBoxedPrimitive,
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_VALUE_KEY,
@@ -129,8 +130,12 @@ export function toHostMetadata(value: unknown): unknown {
 		};
 	}
 
-	// Dates have no enumerable own keys. Transfer the value directly.
-	if (value instanceof Date) {
+	// Dates and boxed primitives store their value in internal slots, not
+	// enumerable own keys. Transfer them directly.
+	if (
+		value instanceof Date ||
+		(value !== null && typeof value === 'object' && isBoxedPrimitive(value))
+	) {
 		return value;
 	}
 

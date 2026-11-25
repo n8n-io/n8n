@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { DateTime, Duration, Interval } from 'luxon';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -440,6 +441,232 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect((result as Date).getFullYear()).toBe(2024);
 			expect((result as Date).getMonth()).toBe(0);
 			expect((result as Date).getDate()).toBe(15);
+		});
+
+		describe('Boxed primitives', () => {
+			it.each([
+				{ expr: 'new String("ab")', expected: 'ab' },
+				{ expr: 'new String("")', expected: '' },
+				{ expr: 'new String("x\\u0000y")', expected: 'x\0y' },
+				{ expr: 'new String("\\ud800")', expected: '\ud800' },
+			])('should return $expr as a String object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(String);
+				expect((result as { valueOf(): string }).valueOf()).toBe(expected);
+			});
+
+			it.each([
+				{ expr: 'new Number(5)', expected: 5 },
+				{ expr: 'new Number(0)', expected: 0 },
+				{ expr: 'new Number(-0)', expected: -0 },
+				{ expr: 'new Number(NaN)', expected: NaN },
+				{ expr: 'new Number(Infinity)', expected: Infinity },
+				{ expr: 'new Number(-Infinity)', expected: -Infinity },
+			])('should return $expr as a Number object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(Number);
+				expect(Object.is((result as { valueOf(): number }).valueOf(), expected)).toBe(true);
+			});
+
+			it.each([
+				{ expr: 'new Boolean(true)', expected: true },
+				{ expr: 'new Boolean(false)', expected: false },
+			])('should return $expr as a Boolean object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(Boolean);
+				expect((result as { valueOf(): boolean }).valueOf()).toBe(expected);
+			});
+
+			it.each([
+				{ expr: 'Object(1n)', expected: 1n },
+				{ expr: 'Object(-9007199254740993n)', expected: -9007199254740993n },
+			])('should return $expr as a BigInt object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(BigInt);
+				expect((result as { valueOf(): bigint }).valueOf()).toBe(expected);
+			});
+
+			it('should preserve boxed primitives in objects, arrays, Maps, Sets, Errors and class instances', () => {
+				const inObject = evaluator.evaluate(
+					'{{ ({ s: new String("ab"), n: new Number(-0), b: new Boolean(false), bi: Object(1n) }) }}',
+					{ $json: {} },
+					caller,
+				) as Record<string, { valueOf(): unknown }>;
+				expect(inObject.s).toBeInstanceOf(String);
+				expect(inObject.s.valueOf()).toBe('ab');
+				expect(inObject.n).toBeInstanceOf(Number);
+				expect(Object.is(inObject.n.valueOf(), -0)).toBe(true);
+				expect(inObject.b).toBeInstanceOf(Boolean);
+				expect(inObject.b.valueOf()).toBe(false);
+				expect(inObject.bi).toBeInstanceOf(BigInt);
+				expect(inObject.bi.valueOf()).toBe(1n);
+
+				const inArray = evaluator.evaluate(
+					'{{ [new String("ab"), new Number(NaN), new Boolean(true), Object(2n)] }}',
+					{ $json: {} },
+					caller,
+				) as Array<{ valueOf(): unknown }>;
+				expect(inArray[0]).toBeInstanceOf(String);
+				expect(inArray[0].valueOf()).toBe('ab');
+				expect(inArray[1]).toBeInstanceOf(Number);
+				expect(Number.isNaN(inArray[1].valueOf())).toBe(true);
+				expect(inArray[2]).toBeInstanceOf(Boolean);
+				expect(inArray[2].valueOf()).toBe(true);
+				expect(inArray[3]).toBeInstanceOf(BigInt);
+				expect(inArray[3].valueOf()).toBe(2n);
+
+				const inMap = evaluator.evaluate(
+					'{{ new Map([[new String("k"), new Number(5)]]) }}',
+					{ $json: {} },
+					caller,
+				) as Map<{ valueOf(): unknown }, { valueOf(): unknown }>;
+				const [[mapKey, mapVal]] = [...inMap.entries()];
+				expect(mapKey).toBeInstanceOf(String);
+				expect(mapKey.valueOf()).toBe('k');
+				expect(mapVal).toBeInstanceOf(Number);
+				expect(mapVal.valueOf()).toBe(5);
+
+				const inSet = evaluator.evaluate(
+					'{{ new Set([new Boolean(false)]) }}',
+					{ $json: {} },
+					caller,
+				) as Set<{ valueOf(): unknown }>;
+				const [setVal] = [...inSet.values()];
+				expect(setVal).toBeInstanceOf(Boolean);
+				expect(setVal.valueOf()).toBe(false);
+
+				const inError = evaluator.evaluate(
+					'{{ Object.assign(new Error("e", { cause: new String("c") }), { s: new String("ab"), n: new Number(5), b: new Boolean(true), bi: Object(3n) }) }}',
+					{ $json: {} },
+					caller,
+				) as Error & Record<string, { valueOf(): unknown }>;
+				expect(inError).toBeInstanceOf(Error);
+				expect(inError.cause).toBeInstanceOf(String);
+				expect((inError.cause as { valueOf(): unknown }).valueOf()).toBe('c');
+				expect(inError.s).toBeInstanceOf(String);
+				expect(inError.s.valueOf()).toBe('ab');
+				expect(inError.n).toBeInstanceOf(Number);
+				expect(inError.n.valueOf()).toBe(5);
+				expect(inError.b).toBeInstanceOf(Boolean);
+				expect(inError.b.valueOf()).toBe(true);
+				expect(inError.bi).toBeInstanceOf(BigInt);
+				expect(inError.bi.valueOf()).toBe(3n);
+
+				const inClass = evaluator.evaluate(
+					'{{ (() => { class Box { constructor() { this.s = new String("ab"); this.n = new Number(5); this.b = new Boolean(true); } } return new Box(); })() }}',
+					{ $json: {} },
+					caller,
+				) as Record<string, { valueOf(): unknown }>;
+				expect(inClass.s).toBeInstanceOf(String);
+				expect(inClass.s.valueOf()).toBe('ab');
+				expect(inClass.n).toBeInstanceOf(Number);
+				expect(inClass.n.valueOf()).toBe(5);
+				expect(inClass.b).toBeInstanceOf(Boolean);
+				expect(inClass.b.valueOf()).toBe(true);
+			});
+
+			it('should keep real subclasses and ignore overridden valueOf or extra marker keys', () => {
+				const subclasses = evaluator.evaluate(
+					'{{ (() => { class S extends String {} class N extends Number {} class B extends Boolean {} return [new S("ab"), new N(5), new B(false)]; })() }}',
+					{ $json: {} },
+					caller,
+				) as Array<{ valueOf(): unknown }>;
+				expect(subclasses[0]).toBeInstanceOf(String);
+				expect(subclasses[0].valueOf()).toBe('ab');
+				expect(subclasses[1]).toBeInstanceOf(Number);
+				expect(subclasses[1].valueOf()).toBe(5);
+				expect(subclasses[2]).toBeInstanceOf(Boolean);
+				expect(subclasses[2].valueOf()).toBe(false);
+
+				const mutated = evaluator.evaluate(
+					'{{ Object.assign(new String("ab"), { valueOf: () => "fake", __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z", __isError: true }) }}',
+					{ $json: {} },
+					caller,
+				);
+				expect(mutated).toBeInstanceOf(String);
+				expect(mutated).not.toBeInstanceOf(DateTime);
+				expect((mutated as { valueOf(): string }).valueOf()).toBe('ab');
+				expect(Object.keys(mutated as object)).toEqual(['0', '1']);
+			});
+
+			it('should return prototype-only wrapper mimics as plain objects', () => {
+				for (const proto of ['String', 'Number', 'Boolean', 'BigInt']) {
+					const result = evaluator.evaluate(
+						`{{ Object.create(${proto}.prototype) }}`,
+						{ $json: {} },
+						caller,
+					);
+					expect(result).toStrictEqual({});
+				}
+
+				const spoof = evaluator.evaluate(
+					'{{ Object.assign(Object.create(String.prototype), { __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }) }}',
+					{ $json: {} },
+					caller,
+				);
+				expect(spoof).not.toBeInstanceOf(DateTime);
+				expect(spoof).toStrictEqual({
+					__n8nType: 'DateTime',
+					__isoString: '2024-01-15T00:00:00.000Z',
+				});
+			});
+
+			it('should read boxed primitives from workflow data through lazy proxies and host calls', () => {
+				const err = Object.assign(new Error('from host', { cause: Object('cause') }), {
+					s: Object('ab'),
+				});
+				const json = {
+					s: Object('x\0y'),
+					n: Object(-0),
+					nan: Object(NaN),
+					b: Object(false),
+					bi: Object(9007199254740993n),
+					xr: runInNewContext('new String("xr")') as object,
+					arr: [Object('item')],
+					err,
+				};
+				const data = { $json: json, $input: { first: () => ({ json }) } };
+
+				for (const root of ['$json', '$input.first().json']) {
+					const s = evaluator.evaluate(`{{ ${root}.s }}`, data, caller);
+					expect(s).toBeInstanceOf(String);
+					expect((s as { valueOf(): string }).valueOf()).toBe('x\0y');
+
+					const n = evaluator.evaluate(`{{ ${root}.n }}`, data, caller);
+					expect(n).toBeInstanceOf(Number);
+					expect(Object.is((n as { valueOf(): number }).valueOf(), -0)).toBe(true);
+
+					const nan = evaluator.evaluate(`{{ ${root}.nan }}`, data, caller);
+					expect(nan).toBeInstanceOf(Number);
+					expect(Number.isNaN((nan as { valueOf(): number }).valueOf())).toBe(true);
+
+					const b = evaluator.evaluate(`{{ ${root}.b }}`, data, caller);
+					expect(b).toBeInstanceOf(Boolean);
+					expect((b as { valueOf(): boolean }).valueOf()).toBe(false);
+
+					const bi = evaluator.evaluate(`{{ ${root}.bi }}`, data, caller);
+					expect(bi).toBeInstanceOf(BigInt);
+					expect((bi as { valueOf(): bigint }).valueOf()).toBe(9007199254740993n);
+
+					const xr = evaluator.evaluate(`{{ ${root}.xr }}`, data, caller);
+					expect(xr).toBeInstanceOf(String);
+					expect((xr as { valueOf(): string }).valueOf()).toBe('xr');
+
+					const arrItem = evaluator.evaluate(`{{ ${root}.arr[0] }}`, data, caller);
+					expect(arrItem).toBeInstanceOf(String);
+					expect((arrItem as { valueOf(): string }).valueOf()).toBe('item');
+
+					const errStr = evaluator.evaluate(`{{ ${root}.err.s }}`, data, caller);
+					expect(errStr).toBeInstanceOf(String);
+					expect((errStr as { valueOf(): string }).valueOf()).toBe('ab');
+
+					expect(evaluator.evaluate(`{{ ${root}.s instanceof String }}`, data, caller)).toBe(true);
+				}
+			});
 		});
 	});
 
@@ -964,6 +1191,24 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			__isEscaped: true,
 			__value: 1,
 		});
+		expect(
+			evaluator.evaluate(
+				'{{ ({ __isBoxedPrimitive: "bigint", __value: "not-a-bigint" }) }}',
+				data,
+				caller,
+			),
+		).toEqual({
+			__isBoxedPrimitive: 'bigint',
+			__value: 'not-a-bigint',
+		});
+		const mixed = evaluator.evaluate(
+			'{{ ({ __isBoxedPrimitive: "string", __value: new String("real") }) }}',
+			data,
+			caller,
+		) as { __isBoxedPrimitive: string; __value: unknown };
+		expect(mixed.__isBoxedPrimitive).toBe('string');
+		expect(mixed.__value).toBeInstanceOf(String);
+		expect((mixed.__value as { valueOf(): string }).valueOf()).toBe('real');
 	});
 
 	it('should keep an __isUndefined key on a class instance property that also has __isError', () => {

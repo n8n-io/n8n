@@ -15,6 +15,7 @@ const data = {
 		list: ['a', 'b'],
 		payload,
 		error: Object.assign(new Error('from host'), { code: 400 }),
+		boxed: Object('from host') as object,
 	},
 };
 
@@ -66,6 +67,20 @@ const probes: Array<{ expression: string; check: (result: unknown) => void }> = 
 	{
 		expression: '{{ $now }}',
 		check: (result) => expect(DateTime.isDateTime(result)).toBe(true),
+	},
+	{
+		expression: '{{ [new String("ab"), new Number(-0), new Boolean(true), $json.boxed] }}',
+		check: (result) => {
+			const values = result as Array<{ valueOf(): unknown }>;
+			expect(values[0]).toBeInstanceOf(String);
+			expect(values[0].valueOf()).toBe('ab');
+			expect(values[1]).toBeInstanceOf(Number);
+			expect(Object.is(values[1].valueOf(), -0)).toBe(true);
+			expect(values[2]).toBeInstanceOf(Boolean);
+			expect(values[2].valueOf()).toBe(true);
+			expect(values[3]).toBeInstanceOf(String);
+			expect(values[3].valueOf()).toBe('from host');
+		},
 	},
 ];
 
@@ -134,5 +149,42 @@ describe(`Replaced built-ins (${engineName})`, () => {
 				options,
 			),
 		).toStrictEqual(['Europe/Paris', 'Europe/Paris', '00:00:00.000']);
+	});
+
+	it.each([
+		'String.prototype.valueOf',
+		'Number.prototype.valueOf',
+		'Boolean.prototype.valueOf',
+		'BigInt.prototype.valueOf',
+		'BigInt.prototype.toString',
+		'Object.prototype.isPrototypeOf',
+		'Number.isFinite',
+	])('keeps boxed primitives correct after an expression replaces %s', (name) => {
+		expect(
+			evaluator.evaluate(
+				`{{ (${name} = function () { throw new Error('replaced'); }, 'x') }}`,
+				data,
+				caller,
+				options,
+			),
+		).toBe('x');
+
+		const values = evaluator.evaluate(
+			'{{ [new String("ab"), new Number(-0), new Boolean(false), Object(1n), $json.boxed] }}',
+			data,
+			caller,
+			options,
+		) as Array<{ valueOf(): unknown }>;
+
+		expect(values[0]).toBeInstanceOf(String);
+		expect(values[0].valueOf()).toBe('ab');
+		expect(values[1]).toBeInstanceOf(Number);
+		expect(Object.is(values[1].valueOf(), -0)).toBe(true);
+		expect(values[2]).toBeInstanceOf(Boolean);
+		expect(values[2].valueOf()).toBe(false);
+		expect(values[3]).toBeInstanceOf(BigInt);
+		expect(values[3].valueOf()).toBe(1n);
+		expect(values[4]).toBeInstanceOf(String);
+		expect(values[4].valueOf()).toBe('from host');
 	});
 });
