@@ -12,7 +12,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import type { InstanceAiQuestion } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { questionDrafts } from '@/features/ai/instanceAi/questionDrafts';
+import { questionDrafts, saveQuestionsDraft } from '@/features/ai/instanceAi/questionDrafts';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
@@ -201,7 +201,7 @@ onBeforeUnmount(() => {
 	if (!props.draftKey) return;
 	if (isSubmitted.value) questionDrafts.delete(props.draftKey);
 	else {
-		questionDrafts.set(props.draftKey, {
+		saveQuestionsDraft(props.draftKey, {
 			currentIndex: currentIndex.value,
 			answers: answers.value,
 		});
