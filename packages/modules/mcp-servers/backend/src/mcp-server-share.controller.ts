@@ -23,7 +23,9 @@ export class McpServerShareController {
 		return share;
 	}
 
-	@Get('/:slug/public', { skipAuth: true, ipRateLimit: true })
+	// A link in a team channel gets many page loads behind one office IP. The login default of
+	// 5 requests in 5 minutes would refuse the sixth colleague.
+	@Get('/:slug/public', { skipAuth: true, ipRateLimit: { limit: 60, windowMs: 60_000 } })
 	async publicShare(req: Request<{ slug: string }>) {
 		const share = await this.service.publicShare(req.params.slug);
 		if (!share) throw new NotFoundError('MCP server not found');
