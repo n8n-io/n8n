@@ -598,5 +598,15 @@ describe('custom-mcp-servers tool', () => {
 			});
 			expect(suspend).not.toHaveBeenCalled();
 		});
+
+		it('fails when AI drafts turned off between the card and the approval', async () => {
+			service.generateTool.mockResolvedValue({ status: 'not_available', tool });
+
+			await expect(
+				executeTool(createCustomMcpServersTool(createContext(service)), input, resumeCtx(true)),
+			).rejects.toThrow(
+				'AI drafts are not available for this user. Write the text with update-tool.',
+			);
+		});
 	});
 });
