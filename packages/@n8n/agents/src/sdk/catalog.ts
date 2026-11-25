@@ -45,9 +45,9 @@ export interface ModelModalities {
 
 /** Information about a single model. */
 export interface ModelInfo {
-	/** Model ID (e.g. 'claude-sonnet-4-5'). */
+	/** Model ID (e.g. 'claude-sonnet-5-5'). */
 	id: string;
-	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
+	/** Human-readable name (e.g. 'Claude Sonnet 5.5'). */
 	name: string;
 	/** AI SDK package selected by the model or its parent provider. */
 	sdk?: string;
@@ -176,7 +176,7 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  *
  * const catalog = await fetchProviderCatalog({ fetch });
  * console.log(Object.keys(catalog)); // ['anthropic', 'openai', ...]
- * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
+ * console.log(catalog.anthropic.models['claude-sonnet-5-5'].reasoning); // true
  * ```
  */
 export async function fetchProviderCatalog(options: {
@@ -299,7 +299,7 @@ export async function getCachedCatalog(options?: {
 }
 
 /**
- * Look up cost info for a model by its full ID (e.g. 'anthropic/claude-sonnet-4-5').
+ * Look up cost info for a model by its full ID (e.g. 'anthropic/claude-sonnet-5-5').
  * Returns undefined if catalog is unavailable or model not found.
  * @internal
  */
@@ -313,6 +313,23 @@ export async function getModelCost(
 	const { provider, model: modelName } = splitModelId(modelId);
 
 	return catalog[provider]?.models[modelName]?.cost;
+}
+
+/**
+ * Look up a model's context window size by its full ID.
+ * Returns undefined if catalog is unavailable or the model has no limit.
+ * @internal
+ */
+export async function getModelContextWindow(
+	modelId: string,
+	fetch?: typeof globalThis.fetch,
+): Promise<number | undefined> {
+	const catalog = await getCachedCatalog({ fetch });
+	if (!catalog) return undefined;
+
+	const { provider, model: modelName } = splitModelId(modelId);
+
+	return catalog[provider]?.models[modelName]?.limits?.context;
 }
 
 /**

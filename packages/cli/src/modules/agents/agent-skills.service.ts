@@ -22,6 +22,7 @@ import {
 	type SkillTelemetryMethod,
 	type SkillTelemetrySource,
 	withTrimmedName,
+	withUnsentSkillFiles,
 } from '@/modules/skills';
 
 import {
@@ -36,7 +37,11 @@ import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
-import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
+import {
+	assertAgentNotArchived,
+	markAgentDraftDirty,
+	saveAgentDraftFenced,
+} from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	applySkillInstructionEdits,
@@ -226,6 +231,8 @@ export class AgentSkillsService {
 			projectId,
 			'Agent not found',
 		);
+		// An unpinned skill update does not save the draft, so the draft fence does not see it.
+		assertAgentNotArchived(entity);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 		const ref = skillRefs.find((candidate) => candidate.id === skillId);
@@ -238,13 +245,22 @@ export class AgentSkillsService {
 		// Skills ignore `allowedTools`.
 		const { allowedTools: _allowedTools, ...changes } = updates;
 		const updated: AgentSkill = { ...existing, ...changes };
+		// A model reads no binary content, so it cannot send a binary file back. The builder
+		// prompt also says to send Markdown only, so its files replace only the Markdown files.
+		if (context.modifiedBy !== 'user' && 'references' in updates) {
+			updated.references = withUnsentSkillFiles(
+				existing.references ?? [],
+				updates.references ?? [],
+				{ keepNonMarkdown: context.modifiedBy === 'builder' },
+			);
+		}
 		if (instructionEdits?.length) {
 			if (updates.instructions !== undefined) {
 				throw new UserError('Pass either instructions or instructionEdits, not both.');
 			}
 			updated.instructions = applySkillInstructionEdits(existing.instructions, instructionEdits);
 		}
-		if ('references' in updates && !updates.references?.length) delete updated.references;
+		if ('references' in updates && !updated.references?.length) delete updated.references;
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
@@ -306,7 +322,7 @@ export class AgentSkillsService {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
 			}
-			return await this.skillService.saveTrusted(
+			const result = await this.skillService.saveTrusted(
 				skillId,
 				{
 					name: updated.name,
@@ -318,6 +334,10 @@ export class AgentSkillsService {
 				context.user.id,
 				ctx,
 			);
+			if (pinned) {
+				await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
+			}
+			return result;
 		});
 
 		await this.skillService.refreshFollowingAgents(

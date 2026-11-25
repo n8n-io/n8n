@@ -2,7 +2,7 @@ import { Client } from 'ldapts';
 import type { ClientOptions, Entry } from 'ldapts';
 import type { ICredentialDataDecryptedObject, IDataObject, Logger } from 'n8n-workflow';
 
-import { getResolvables } from '@utils/utilities';
+import { resolveExpressions } from '@utils/utilities';
 
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
@@ -83,21 +83,7 @@ export function escapeResolvables(
 	evaluateExpression: (resolvable: string) => unknown,
 ): string {
 	// A raw expression-capable value keeps the leading `=` that marks it as an expression
-	let value = rawValue.replace(/^=+/, '');
-	// Everything before this index is already resolved, so it is never rescanned
-	let searchFrom = 0;
-
-	for (const resolvable of getResolvables(value)) {
-		const start = value.indexOf(resolvable, searchFrom);
-		if (start === -1) continue;
-
-		const resolvedValue = escapeValue(String(evaluateExpression(resolvable)));
-		// Splice by index instead of `String.replace`. That keeps a resolved value
-		// which itself looks like an expression from being substituted again, and
-		// keeps `$` sequences from expanding into the surrounding filter.
-		value = value.slice(0, start) + resolvedValue + value.slice(start + resolvable.length);
-		searchFrom = start + resolvedValue.length;
-	}
-
-	return value;
+	return resolveExpressions(rawValue.replace(/^=+/, ''), (resolvable) =>
+		escapeValue(String(evaluateExpression(resolvable))),
+	);
 }

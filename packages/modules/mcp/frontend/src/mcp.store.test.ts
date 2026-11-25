@@ -58,8 +58,8 @@ describe('mcp.store', () => {
 			expect(fetchSpy).toHaveBeenCalledWith(
 				{},
 				{
-					skip: 25,
-					take: 25,
+					offset: 25,
+					limit: 25,
 					availableInMCP: true,
 				},
 			);
@@ -71,9 +71,9 @@ describe('mcp.store', () => {
 				count: 0,
 			});
 
-			await store.getMcpEligibleAgents({ take: 10, query: 'sales' });
+			await store.getMcpEligibleAgents({ limit: 10, query: 'sales' });
 
-			expect(fetchSpy).toHaveBeenCalledWith({}, { take: 10, query: 'sales' });
+			expect(fetchSpy).toHaveBeenCalledWith({}, { limit: 10, query: 'sales' });
 		});
 	});
 
@@ -551,11 +551,19 @@ describe('mcp.store', () => {
 		it.each([
 			{
 				desc: 'syncs both values from the response when enabling (auto-expose surfaced)',
-				response: { mcpAccessEnabled: true, autoExposeNewWorkflows: true },
+				response: {
+					mcpAccessEnabled: true,
+					autoExposeNewWorkflows: true,
+					preferencesEnabled: true,
+				},
 			},
 			{
 				desc: 'syncs both values from the response when disabling (auto-expose gated to false)',
-				response: { mcpAccessEnabled: false, autoExposeNewWorkflows: false },
+				response: {
+					mcpAccessEnabled: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			},
 		])('$desc', async ({ response }) => {
 			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue(response);
@@ -565,6 +573,7 @@ describe('mcp.store', () => {
 				mcpAccessEnabled: !response.mcpAccessEnabled,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: !response.autoExposeNewWorkflows,
+				preferencesEnabled: true,
 				serverUrl: 'https://example.com/mcp',
 			};
 
@@ -578,6 +587,7 @@ describe('mcp.store', () => {
 				mcpAccessEnabled: response.mcpAccessEnabled,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: response.autoExposeNewWorkflows,
+				preferencesEnabled: true,
 				serverUrl: 'https://example.com/mcp',
 			});
 			// The response carries both values, so no follow-up module-settings fetch.
@@ -588,6 +598,7 @@ describe('mcp.store', () => {
 			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({
 				mcpAccessEnabled: true,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			});
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings.mcp = undefined;
@@ -599,20 +610,24 @@ describe('mcp.store', () => {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			});
 		});
 	});
 
 	describe('autoExposeNewWorkflows', () => {
 		it('patches only autoExposeNewWorkflows and syncs both values from the response', async () => {
-			const updateSpy = vi
-				.spyOn(mcpApi, 'updateMcpSettings')
-				.mockResolvedValue({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
+			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: true,
+				preferencesEnabled: true,
+			});
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings.mcp = {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			};
 
 			const result = await useMCPStore().setAutoExposeNewWorkflows(true);
@@ -623,6 +638,29 @@ describe('mcp.store', () => {
 			expect(result).toBe(true);
 			expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
 			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
+		});
+	});
+
+	describe('setPreferencesEnabled', () => {
+		it('patches only preferencesEnabled and syncs every value from the response', async () => {
+			const response = {
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: false,
+				preferencesEnabled: false,
+			};
+			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue(response);
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
+			};
+
+			await useMCPStore().setPreferencesEnabled(false);
+
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { preferencesEnabled: false });
+			expect(settingsStore.moduleSettings.mcp).toEqual({ ...response, mcpManagedByEnv: false });
 		});
 	});
 });

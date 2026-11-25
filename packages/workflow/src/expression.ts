@@ -1,7 +1,9 @@
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import {
 	classifyExpressionError,
+	errorOriginOf,
 	EXPRESSION_METRICS,
+	HostCallError,
 	MemoryLimitError,
 	SecurityViolationError,
 	TimeoutError,
@@ -41,6 +43,15 @@ const isExpressionError = (error: unknown): error is ExpressionError =>
 
 export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
 
+const JSON_STRING_OR_SEPARATOR = /"(?:[^"\\]|\\.)*"|:|,(?=")/g;
+
+/**
+ * Adds a space after each key colon and before each string or key that follows a comma.
+ * The contents of string values and keys stay unchanged.
+ */
+const addReadableJsonSpacing = (json: string): string =>
+	json.replace(JSON_STRING_OR_SEPARATOR, (token) => (token.startsWith('"') ? token : `${token} `));
+
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
@@ -49,10 +60,13 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
-/** What one engine did with one expression. `errorClass` names the failure without its message. */
+/**
+ * What one engine did with one expression. `errorClass` names the failure without its message.
+ * `errorOrigin` tells where a QuickJS failure started, when the bridge knows it.
+ */
 export type ExpressionEvaluationOutcome =
 	| { ok: true; value: unknown }
-	| { ok: false; error: unknown; errorClass: string };
+	| { ok: false; error: unknown; errorClass: string; errorOrigin?: string };
 
 export interface ExpressionShadowContext {
 	/** The expression after `extendSyntax`, as the engines receive it. */
@@ -90,7 +104,7 @@ export interface ShadowEvaluator {
 const KNOWN_ERROR_CLASSES = new Set(
 	[
 		'Error AggregateError EvalError InternalError RangeError ReferenceError SyntaxError',
-		'TypeError URIError ExpressionError ExpressionExtensionError UserError',
+		'TypeError URIError ExpressionError ExpressionExtensionError UserError RuntimeError',
 	]
 		.join(' ')
 		.split(' '),
@@ -99,9 +113,11 @@ const KNOWN_ERROR_CLASSES = new Set(
 function errorClassOf(error: unknown): string {
 	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
 	// `mapVmError` wraps them in an ExpressionError and keeps them as `cause`.
-	const runtimeClass = classifyExpressionError(
-		error instanceof ExpressionError && error.cause ? error.cause : error,
-	);
+	const vmError = error instanceof ExpressionError && error.cause ? error.cause : error;
+	if (vmError instanceof HostCallError) {
+		return `host_error:${hostErrorClass(vmError.hostErrorName)}`;
+	}
+	const runtimeClass = classifyExpressionError(vmError);
 	if (runtimeClass !== 'unknown') return runtimeClass;
 	// A minified build renames classes, and n8n errors take their `name` from the
 	// constructor, so check the class before the name. The subclass comes first.
@@ -109,7 +125,30 @@ function errorClassOf(error: unknown): string {
 	if (error instanceof ExpressionError) return 'ExpressionError';
 	if (error instanceof UserError) return 'UserError';
 	if (!(error instanceof Error)) return typeof error;
-	return KNOWN_ERROR_CLASSES.has(error.name) ? error.name : 'other';
+	return knownErrorClass(error.name);
+}
+
+/** Keeps the error classes in telemetry to a fixed set. Any other name becomes `other`. */
+function knownErrorClass(name: string): string {
+	return KNOWN_ERROR_CLASSES.has(name) ? name : 'other';
+}
+
+const TYPEOF_NAMES = new Set(
+	'bigint boolean function number object string symbol undefined'.split(' '),
+);
+
+/** Like `knownErrorClass`, but keeps the `typeof` name that the bridge gives a thrown non-Error. */
+function hostErrorClass(name: string): string {
+	return TYPEOF_NAMES.has(name) ? name : knownErrorClass(name);
+}
+
+/** Where a bridge error started, as `<kind>` or `<kind>:<class>`. The class is kept to a fixed set. */
+function errorOriginLabelOf(error: unknown): string | undefined {
+	const origin = errorOriginOf(error);
+	if (origin?.errorName !== undefined) {
+		return `${origin.kind}:${hostErrorClass(origin.errorName)}`;
+	}
+	return origin?.kind;
 }
 
 /**
@@ -501,7 +540,12 @@ export class Expression {
 				try {
 					return { ok: true, value: evaluator.evaluate(expression, data, caller, { timezone }) };
 				} catch (error) {
-					return { ok: false, error: mapVmError(error), errorClass: errorClassOf(error) };
+					return {
+						ok: false,
+						error: mapVmError(error),
+						errorClass: errorClassOf(error),
+						errorOrigin: errorOriginLabelOf(error),
+					};
 				}
 			},
 			dispose: async () => {
@@ -823,12 +867,8 @@ export class Expression {
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();
 		} else {
-			result = JSON.stringify(value);
+			result = addReadableJsonSpacing(JSON.stringify(value));
 		}
-
-		result = result
-			.replace(/,"/g, ', "') // spacing for
-			.replace(/":/g, '": '); // readability
 
 		return `[${typeName}: ${result}]`;
 	}

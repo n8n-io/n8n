@@ -1,5 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
-import { WORKSPACE_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
+import { INSTANCE_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { InstanceAiContext } from '../../types';
@@ -21,8 +21,8 @@ export function createWorkspaceToolRouter(context: InstanceAiContext): BuiltTool
 		handler: async (input, ctx) => {
 			const action = isRecord(input) ? input.action : undefined;
 			const toolName =
-				typeof action === 'string' && Object.hasOwn(WORKSPACE_TOOL_NAME_BY_ACTION, action)
-					? WORKSPACE_TOOL_NAME_BY_ACTION[action as keyof typeof WORKSPACE_TOOL_NAME_BY_ACTION]
+				typeof action === 'string' && Object.hasOwn(INSTANCE_TOOL_NAME_BY_ACTION, action)
+					? INSTANCE_TOOL_NAME_BY_ACTION[action as keyof typeof INSTANCE_TOOL_NAME_BY_ACTION]
 					: undefined;
 			const tool = toolName ? toolsByName.get(toolName) : undefined;
 			if (!tool?.handler) throw new Error(`No workspace tool for action "${String(action)}"`);

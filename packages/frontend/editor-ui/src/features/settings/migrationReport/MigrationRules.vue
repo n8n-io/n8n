@@ -253,7 +253,7 @@ const sortedInstanceResults = computed(() => {
 				</N8nText>
 			</div>
 			<div :class="$style.ActionBar">
-				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
+				<N8nTabs v-model="currentTab" :options="tabs" :class="$style.Tabs" />
 				<div :class="$style.RefreshGroup">
 					<N8nText
 						v-if="state?.report.generatedAt"
@@ -495,13 +495,22 @@ const sortedInstanceResults = computed(() => {
 
 .ActionBar {
 	display: flex;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: center;
+	row-gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--sm);
+}
+
+/* N8nTabs fills the row by default. That would push the refresh group to its own line at every width. */
+.ActionBar .Tabs {
+	width: auto;
+	max-width: 100%;
 }
 
 .RefreshGroup {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--xs);
 }

@@ -11,8 +11,14 @@ pnpm turbo test --filter=@n8n/backend-module-execution-limits
 
 Go through Turbo. It builds this package's workspace dependencies first.
 
-Read `scripts/backend-module/backend-module-guide.md` for the module lifecycle, REST controller,
+Read `docs/backend/how-to/build-a-backend-module.md` for the module lifecycle, REST controller,
 service, repository, entity, configuration, and testing patterns.
+
+## Licence
+
+The module has no licence flag. Its `init` registers the fold step that counts runs in
+`execution_limit_usage`, and that step must run on every instance. Gate each licensed part
+(a controller, the limit check) with `@Licensed` or `LicenseState`.
 
 ## Import rules
 

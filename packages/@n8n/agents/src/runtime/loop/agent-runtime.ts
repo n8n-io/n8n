@@ -51,7 +51,14 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
-import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import { isRuntimeContextCue } from '../../sdk/message';
+import { detectLoadedSkills, detectSeenSkillVersions } from '../../skills/loaded-skills';
+import type {
+	AgentMessage,
+	ContentToolCall,
+	CustomAgentMessage,
+	CustomAgentMessages,
+} from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
@@ -59,10 +66,13 @@ import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-memory';
 import { generateThreadTitle } from '../memory/title-generation';
+import {
+	isEncryptedReasoningRejected,
+	withoutEncryptedReasoning,
+} from '../model/encrypted-reasoning';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
-import { ActiveSkills } from '../skills/active-skills';
+import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
@@ -71,9 +81,15 @@ import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
-import { DeferredToolManager } from '../tools/deferred-tool-manager';
+import { resolveNativeToolDeferral } from '../model/model-factory';
+import { ToolCatalog } from '../tools/tool-catalog';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
+import {
+	buildToolMap,
+	reportedToolCall,
+	resolveToolCallTarget,
+	resolveToolForCall,
+} from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -83,16 +99,28 @@ import type {
 
 export type {
 	AgentRuntimeConfig,
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from '../../types/runtime/agent-runtime';
 
 const MAX_LOOP_ITERATIONS = 100;
 
+/** The tool that ran a call. A tool from the tool catalog can run under its own name or call_tool. */
+function toolThatRan(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	input: unknown,
+): BuiltTool | undefined {
+	return resolveToolCallTarget(toolMap, toolName, input)?.tool;
+}
+
 function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
 	return batch.results.some(
 		({ toolName, input, toolEntry }) =>
-			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
+			toolThatRan(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
 	);
 }
 
@@ -115,9 +143,18 @@ function resumedTurnEnds(
 			(c) =>
 				c.type === 'tool-call' &&
 				c.state === 'resolved' &&
-				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
+				toolThatRan(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
+}
+
+/**
+ * Provider tool search is the default for deferred tools. The tool catalog is used
+ * when the agent asks for it, or when the model or endpoint has no tool search.
+ */
+function usesNativeToolDeferral(config: AgentRuntimeConfig): boolean {
+	if (config.toolDeferral?.mode === 'tool-catalog') return false;
+	return resolveNativeToolDeferral(config.model) !== undefined;
 }
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
@@ -187,7 +224,7 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
-	private deferredToolManager: DeferredToolManager | undefined;
+	private toolCatalog: ToolCatalog | undefined;
 
 	private runId: string;
 
@@ -198,31 +235,43 @@ export class AgentRuntime {
 	private context: RuntimeContextBuilder;
 
 	private toolExecutor: ToolCallExecutor;
-	private activeSkills?: ActiveSkills;
+	/** The message list of the current loop. The tool catalog reads it to find loaded skills. */
+	private loopList?: AgentMessageList;
 
 	constructor(runtimeConfig: AgentRuntimeConfig) {
-		const config = activateSkillDependencyTools(runtimeConfig);
+		// Copied: the deferral choice below writes `nativeToolDeferral`.
+		const config = { ...activateSkillDependencyTools(runtimeConfig) };
 		this.config = config;
-		// Keep full tool results when the memory backend cannot persist active skill IDs.
-		if (config.skillSource && (!config.memory || config.memory.skillState)) {
-			this.activeSkills = new ActiveSkills(
-				config.skillSource,
-				config.name,
-				config.memory?.skillState,
-			);
-		}
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
-		if (!config.nativeToolDeferral && config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
-				...config.toolSearch,
-				// Let the discovery tools recognize the always-available toolset, so a
-				// `load_tool` call for one of those answers `already_loaded`.
-				activeTools: config.tools,
-			});
+		if (config.deferredTools && config.deferredTools.length > 0) {
+			if (usesNativeToolDeferral(config)) {
+				// Provider tool search is the default. Without an explicit eager list,
+				// the tools added with `.tool()` stay eager and only deferred tools are searched.
+				config.nativeToolDeferral ??= {
+					eagerToolNames: (config.tools ?? []).map((tool) => tool.name),
+				};
+			} else {
+				config.nativeToolDeferral = undefined;
+				this.toolCatalog = new ToolCatalog(config.deferredTools, {
+					...config.toolSearch,
+					toolGroups: config.deferredToolGroups,
+					toolGroupDescriptions: config.deferredToolGroupDescriptions,
+					// A lookup for an always-available tool says to call it directly.
+					activeTools: config.tools,
+					unloadedSkillsForGroup: (group) => {
+						const loaded = detectLoadedSkills(this.loopList?.llmVisibleMessages() ?? []);
+						return (config.skillSource?.registry.skills ?? [])
+							.filter(
+								(skill) => skill.recommendedToolGroups?.includes(group) && !loaded.has(skill.id),
+							)
+							.map((skill) => skill.id);
+					},
+				});
+			}
 		}
-		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
+		this.context = new RuntimeContextBuilder(config, this.toolCatalog);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
 		this.memory = new MemoryOrchestrator(
@@ -239,7 +288,7 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
-			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
+			...(config.toolCallInterceptor ? { toolCallInterceptor: config.toolCallInterceptor } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -440,7 +489,7 @@ export class AgentRuntime {
 	): Promise<StreamResult> {
 		this.runId = options.runId;
 		const state = await this.runState.resume(this.runId);
-		if (!state || state.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
+		if (state?.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
 			throw new StaleResumeError('This run is not paused');
 		}
 		if (options.hostMetadata !== undefined && !state.persistence) {
@@ -544,14 +593,14 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		// A skill dependency loads a deferred tool without a `load_tool` record, and
-		// skills restore only when the loop starts. Accept any registered deferred tool.
+		// A suspended call can name a tool from the tool catalog directly, for example from an
+		// older conversation. Accept any registered deferred tool.
 		const tool =
 			resolveToolForCall(
 				buildToolMap(this.context.getCurrentTools(state.persistence)),
 				toolCall.toolName,
 				toolCall.input,
-			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
+			) ?? this.toolCatalog?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -590,7 +639,6 @@ export class AgentRuntime {
 		state: SerializableAgentState,
 	): Promise<AgentMessageList> {
 		const list = AgentMessageList.deserialize(state.messageList);
-		this.context.hydrateDeferredToolsFromList(list);
 		await hydrateFileParts(list.messages(), this.config.fileStore, {
 			threadId: state.persistence?.threadId,
 		});
@@ -666,6 +714,8 @@ export class AgentRuntime {
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
+		// Before the input, so a new tool catalog list reads at the start of the user's turn.
+		this.context.synchronizeToolCatalog(list);
 		list.addInput(input);
 
 		// Persist input now (after history load, so the prompt isn't polluted) so it
@@ -810,6 +860,16 @@ export class AgentRuntime {
 	 * those throws into their terminal contract.
 	 */
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
+		this.loopList = ctx.list;
+		try {
+			return await this.runAgentLoopBody(ctx, sink);
+		} finally {
+			// Do not let a finished run's messages leak into a later run's tool catalog.
+			if (this.loopList === ctx.list) this.loopList = undefined;
+		}
+	}
+
+	private async runAgentLoopBody<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { prepared, state } = await this.prepareLoop(ctx);
 		if (prepared.pendingResume) {
 			const settlement = await this.resumePendingTools(
@@ -906,11 +966,6 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence, {
-			freshRun: ctx.isFreshRun,
-			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
-		});
-		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
@@ -1005,6 +1060,9 @@ export class AgentRuntime {
 			state.iterationCount,
 		);
 		if (settlement.suspended) return settlement;
+		// Save the resumed results before the next model call, so a reader of memory during
+		// the rest of the turn sees them settled, such as the user's answers in a question card.
+		await this.memory.persistTurnDelta(ctx.list, ctx.options);
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
 		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
@@ -1025,8 +1083,8 @@ export class AgentRuntime {
 		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
 			threadId: ctx.options?.persistence?.threadId,
 		});
-		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
-		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+		const { toolMap, modelCallContext, skillUpdates } = await this.prepareModelCall(ctx);
+		for (const update of skillUpdates) {
 			await sink.emitMessage?.(update);
 		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
@@ -1038,6 +1096,8 @@ export class AgentRuntime {
 			return { suspended: false };
 		}
 		this.assertNotAborted(ctx.abortScope);
+		// Before the response joins the list, so the measurement matches the request.
+		await this.memory.recordModelCallUsage(ctx.list, turn.usage);
 		for (const message of ctx.list.inputDelta()) ctx.acceptedInputIds.add(message.id);
 
 		state.lastFinishReason = turn.finishReason;
@@ -1084,13 +1144,14 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+		const skillUpdates = this.addSkillUpdates(ctx);
+		await this.addContextCues(ctx);
 		const prompt = this.context.buildModelPrompt({
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
 			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
-			activeSkills: this.activeSkills,
 		});
 		const modelCallContext: ModelCallContext = {
 			model: staticContext.model,
@@ -1109,7 +1170,54 @@ export class AgentRuntime {
 			onToolInputStart: this.createWorkspacePrewarmHandler(tools.toolMap),
 		};
 
-		return { toolMap: tools.toolMap, modelCallContext };
+		return { toolMap: tools.toolMap, modelCallContext, skillUpdates };
+	}
+
+	/**
+	 * Tell the model when a skill it loaded changed or became unavailable since
+	 * it last saw it. Each note records the hash it announces, so the note is not
+	 * sent again. Only loads that the model can still see are checked. When
+	 * compaction hid a load, the model must call `load_skill` again, and that call
+	 * returns the current state.
+	 */
+	private addSkillUpdates(ctx: PreparedLoopContext): CustomAgentMessage[] {
+		const source = this.config.skillSource;
+		const shouldCheck = source?.shouldAppendSkillUpdates;
+		if (!source || !shouldCheck) return [];
+		const seenVersions = detectSeenSkillVersions(ctx.list.llmVisibleMessages());
+		const updates: CustomAgentMessage[] = [];
+		for (const [skillId, seen] of seenVersions) {
+			if (!shouldCheck(skillId)) continue;
+			const entry = source.registry.skills.find((skill) => skill.id === skillId);
+			const current = entry?.hash ?? null;
+			// An older load result without a hash line cannot show a change.
+			if (current === seen || (seen === undefined && current !== null)) continue;
+			const label = JSON.stringify(entry?.name ?? skillId);
+			const id = JSON.stringify(skillId);
+			let skillUpdate: CustomAgentMessages['runtimeSkillUpdate']['skillUpdate'];
+			if (current === null) {
+				skillUpdate = {
+					skillId,
+					version: null,
+					change: 'unavailable',
+					content: `Skill ${label} (id ${id}) is no longer available. Do not follow its earlier instructions or reference content.`,
+				};
+			} else {
+				const restored = seen === null;
+				skillUpdate = {
+					skillId,
+					version: current,
+					name: entry?.name,
+					change: restored ? 'restored' : 'updated',
+					content: restored
+						? `Skill ${label} (id ${id}) is available again. Load it with load_skill before you follow it.`
+						: `Skill ${label} (id ${id}) changed after you loaded it. Load it again with load_skill before you follow it. Do not use the earlier copy.`,
+				};
+			}
+			updates.push({ type: 'custom', data: { type: 'n8n:runtime-skill-update', skillUpdate } });
+		}
+		if (updates.length > 0) ctx.list.addInput(updates);
+		return updates;
 	}
 
 	/** Prepare the workspace while the model streams the input of a tool that uses it. */
@@ -1161,8 +1269,31 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
-			this.activeSkills?.reportContext();
-			const turn = await sink.callModel(modelCallContext);
+			let turn: ModelTurnResult;
+			try {
+				turn = await sink.callModel(modelCallContext).catch(async (error: unknown) => {
+					if (!isEncryptedReasoningRejected(error)) throw error;
+					// The history holds reasoning from another org (for example after a
+					// change from Gateway credits to an own key). Retry once without it.
+					this.assertNotAborted(ctx.abortScope);
+					await this.memory.stripRejectedReasoning(ctx.list, ctx.options);
+					this.updateState({ messageList: ctx.list.serialize() });
+					modelCallContext.messages = withoutEncryptedReasoning(modelCallContext.messages);
+					return await sink.callModel(modelCallContext);
+				});
+			} catch (error) {
+				// A cancellation wins over error classification: an aborted run
+				// must end on the existing cancelled path, not as a guardrail stop.
+				this.assertNotAborted(ctx.abortScope);
+				// A host-mapped failure (e.g. a gateway 402) ends the run like a
+				// guardrail stop instead of a generic error finish.
+				const stop = ctx.options?.classifyModelError?.(error);
+				if (stop) {
+					state.guardrailStop = stop;
+					return undefined;
+				}
+				throw error;
+			}
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.
 			turn.usage = this.applyCost(turn.usage);
@@ -1227,7 +1358,7 @@ export class AgentRuntime {
 				suspendRunId: this.runId,
 				list,
 				usage: state.totalUsage,
-				suspensions: batch.suspensions,
+				suspensions: batch.suspensions.map((suspension) => reportedToolCall(toolMap, suspension)),
 			});
 			this.assertNotAborted(abortScope);
 			completed = true;
@@ -1274,6 +1405,55 @@ export class AgentRuntime {
 				state.iterationCount + 1,
 			);
 		}
+	}
+
+	/**
+	 * Ask the context cue providers for cues and append the new ones as one
+	 * message. Cues already in the visible conversation are not sent again. After
+	 * compaction hides a cue, a provider can send it again.
+	 */
+	private async addContextCues(ctx: PreparedLoopContext): Promise<void> {
+		const providers = this.config.contextCueProviders;
+		if (!providers?.length) return;
+		const { list, options, abortScope } = ctx;
+		const messages = list.llmVisibleMessages();
+		const sentCueIds = new Set(
+			messages.filter(isRuntimeContextCue).flatMap((message) => message.data.cueIds),
+		);
+		const request = {
+			messages,
+			loadedSkillIds: list.loadedSkillIds(),
+			sentCueIds,
+			persistence: options?.persistence,
+			abortSignal: abortScope.signal,
+		};
+		const results = await Promise.all(
+			providers.map(async (provider) => {
+				try {
+					return await provider(request);
+				} catch (error) {
+					// Cues are optional guidance: a failed provider must not fail the run.
+					logger.warn('Failed to resolve context cues', { runId: this.runId, error });
+					return [];
+				}
+			}),
+		);
+		const cues = new Map<string, string>();
+		for (const cue of results.flat()) {
+			if (sentCueIds.has(cue.id) || cues.has(cue.id) || !cue.content.trim()) continue;
+			cues.set(cue.id, cue.content.trim());
+		}
+		if (cues.size === 0) return;
+		list.addInput([
+			{
+				type: 'custom',
+				data: {
+					type: 'n8n:runtime-context-cue',
+					cueIds: [...cues.keys()],
+					content: [...cues.values()].join('\n'),
+				},
+			},
+		]);
 	}
 
 	private async resolveVolatileInstructions(

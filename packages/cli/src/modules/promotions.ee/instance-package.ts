@@ -12,7 +12,7 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 
-/** The project as this instance would export it, without writing any file. */
+/** The projects as this instance would export them, without writing any file. */
 export type InstancePackage = {
 	files: readonly PackageFile[];
 	manifest: PackageManifest;
@@ -24,21 +24,18 @@ export type InstancePackage = {
 export function instancePromotionExportRequest({
 	user,
 	projectIds,
-	canExportVariableValues,
 }: {
 	user: User;
 	projectIds: string[];
-	canExportVariableValues: boolean;
 }): ExportPackageRequest {
 	return {
 		user,
 		projectIds,
 		includeAgents: false,
 		includeVariableValues: true,
-		canExportVariableValues,
 		includeTags: true,
 		// Archived workflows travel too, so the target archives them instead of removing them.
-		includeArchivedWorkflows: true,
+		includeArchived: true,
 		// personal projects are excluded, so a team workflow calling a personal
 		// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
 		dependencyPolicy: ExportDependencyPolicy.Fail,
@@ -49,17 +46,25 @@ export function instancePromotionExportRequest({
 export async function exportInstancePackage(
 	packagesService: N8nPackagesService,
 	user: User,
-	projectId: string,
-	{ keepContent }: { keepContent?: (path: string) => boolean } = {},
+	projectIds: string[],
+	{
+		keepContent,
+		credentialIds,
+	}: {
+		keepContent?: (path: string) => boolean;
+		/** Credentials of the exported projects to write although no workflow uses them. */
+		credentialIds?: string[];
+	} = {},
 ): Promise<InstancePackage> {
 	const writer = new HashingPackageWriter();
 	const contents = new Map<string, string>();
 	const { manifest } = await packagesService.exportPackageToWriter(
 		{
 			user,
-			projectIds: [projectId],
+			projectIds,
+			projectCredentialIds: credentialIds,
 			includeAgents: false,
-			includeArchivedWorkflows: true,
+			includeArchived: true,
 			includeTags: true,
 			includeVariableValues: true,
 			versionPolicy: ExportVersionPolicy.Latest,
@@ -79,7 +84,7 @@ export async function exportInstancePackage(
 			...file,
 			path: `${PACKAGE_SUBFOLDER}/${file.path}`,
 		})),
-		{ exportRoot: PACKAGE_SUBFOLDER, projectId },
+		{ exportRoot: PACKAGE_SUBFOLDER, projectIds },
 	);
 	return { files, manifest, contents };
 }

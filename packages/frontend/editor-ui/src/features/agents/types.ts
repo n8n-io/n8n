@@ -8,7 +8,8 @@ import type {
 	AgentSkillReference,
 	AgentTokenUsage,
 } from '@n8n/api-types';
-import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
+import type { Agent, ToolDescriptor, CustomToolEntry, AgentListItem } from './agent.types';
+import type { TimelineTokenBreakdown } from './session-timeline.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
@@ -19,7 +20,11 @@ export interface SessionTimelineMetadata {
 		label: string;
 	};
 	totalTokens: number;
+	/** Where the tokens of the saved turns went. Hovering the token total shows it. */
+	usage?: TimelineTokenBreakdown & { turns: number };
 	totalCost: number | null;
+	/** Assistant credits that the session used. When set, the header shows it instead of the cost. */
+	totalCredits?: number;
 	durationLabel: string;
 }
 
@@ -66,12 +71,22 @@ export type AgentResource = BaseResource &
 		resourceType: 'agent';
 	};
 
+/**
+ * The list endpoints' projection, wrapped as a resource so the shared list
+ * layout accepts it. The wrapper exists only at render time; the list cache
+ * stores plain `AgentListItem` values.
+ */
+export type AgentListRowResource = BaseResource &
+	AgentListItem & {
+		resourceType: 'agent';
+	};
+
 export type AgentCreationResource = AgentResource & AgentCreationState;
 
 // Extend the ModuleResources interface to include Agent
 declare module '@/Interface' {
 	interface ModuleResources {
-		agent: AgentResource;
+		agent: AgentResource | AgentListRowResource;
 	}
 }
 

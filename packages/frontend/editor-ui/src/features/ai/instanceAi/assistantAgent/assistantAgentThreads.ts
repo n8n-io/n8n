@@ -1,8 +1,10 @@
-import type {
-	InstanceAiAttachment,
-	InstanceAiThreadOrigin,
-	InstanceAiThreadSource,
-	ProviderAttachmentCapabilities,
+import {
+	acceptedMimeTypesFromCapabilities,
+	instanceAiThreadSubjectSchema,
+	type InstanceAiAttachment,
+	type InstanceAiThreadSubject,
+	type InstanceAiThreadOrigin,
+	type InstanceAiThreadSource,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,15 +13,44 @@ import { jsonParse } from 'n8n-workflow';
 import type { InjectionKey } from 'vue';
 import { z } from 'zod';
 
+import type { AssistantMentionCounts } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+
+import type { InstanceAiMessageAuthorship } from '../prefills';
+
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
 
-/** The file types that the Assistant agent thread view accepts. */
-export const ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES: ProviderAttachmentCapabilities = {
-	image: true,
-	pdf: true,
-	audio: false,
-};
+/**
+ * The file types that the Assistant agent chat accepts: the images and PDFs
+ * that the model reads, and the files that the `parse-file` tool reads.
+ * Extensions cover browsers that report another MIME type, such as
+ * `application/vnd.ms-excel` for a CSV file.
+ */
+export const ASSISTANT_AGENT_ACCEPTED_MIME_TYPES = [
+	acceptedMimeTypesFromCapabilities({ image: true, pdf: true, audio: false }),
+	'text/csv',
+	'application/csv',
+	'text/tab-separated-values',
+	'application/json',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'text/plain',
+	'text/markdown',
+	'text/x-markdown',
+	'text/html',
+	'application/xhtml+xml',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'.csv',
+	'.tsv',
+	'.json',
+	'.xlsx',
+	'.txt',
+	'.md',
+	'.markdown',
+	'.html',
+	'.htm',
+	'.pdf',
+	'.docx',
+].join(',');
 
 /** The id of the open Assistant agent thread, for cards that report it in telemetry. */
 export const ASSISTANT_AGENT_THREAD_ID: InjectionKey<string> = Symbol('assistantAgentThreadId');
@@ -55,7 +86,11 @@ export function isKnownAssistantAgentThread(threadId: string): boolean {
 	return knownAgentThreads.has(threadId);
 }
 
-const launchMarkerSchema = z.object({ projectId: z.string().min(1) });
+const launchMarkerSchema = z.object({
+	projectId: z.string().min(1),
+	// An invalid subject must not drop the marker, which says which runtime runs the thread.
+	subject: instanceAiThreadSubjectSchema.optional().catch(undefined),
+});
 
 /** A new Assistant agent thread: its project, and where it came from for telemetry. */
 export interface AssistantAgentThreadLaunch {
@@ -63,6 +98,23 @@ export interface AssistantAgentThreadLaunch {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	templateId?: string;
+	/** Hand-off context. Only the launch telemetry reads it. */
+	sourceContext?: Record<string, unknown>;
+	/** The resource that the thread starts on. The first message binds it on the server. */
+	subject?: InstanceAiThreadSubject;
+}
+
+/** Link a thread that starts from a self-healing result to that result. */
+export function selfHealingLaunchTelemetry(launch: {
+	source: InstanceAiThreadSource;
+	sourceContext?: Record<string, unknown>;
+}) {
+	const { resultId, outcome } = launch.sourceContext ?? {};
+	if (launch.source !== 'self_healing_result' || typeof resultId !== 'string') return {};
+	return {
+		result_id: resultId,
+		...(typeof outcome === 'string' ? { result_kind: outcome } : {}),
+	};
 }
 
 const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`;
@@ -79,20 +131,40 @@ const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`
  * fields into the hand-off stash and remove the marker (AST-1898).
  */
 export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
-	rememberAssistantAgentThread(threadId, launch.projectId);
-	localStorage.setItem(launchKey(threadId), JSON.stringify({ projectId: launch.projectId }));
+	markAssistantAgentLaunch(threadId, launch);
 	useTelemetry().track('User launched Instance AI thread', {
 		thread_id: threadId,
 		instance_id: useRootStore().instanceId,
 		source: launch.source,
 		origin: launch.origin,
 		...(launch.templateId ? { template_id: launch.templateId } : {}),
+		...selfHealingLaunchTelemetry(launch),
 		runtime: 'agents',
 	});
 }
 
-/** The project of a new thread that the server does not know yet. */
-export function getAssistantAgentLaunch(threadId: string): { projectId: string } | undefined {
+/**
+ * Marks a new thread as an Assistant agent thread without the launch telemetry,
+ * for a thread whose launch another place tracks.
+ */
+export function markAssistantAgentLaunch(
+	threadId: string,
+	launch: Pick<AssistantAgentThreadLaunch, 'projectId' | 'subject'>,
+): void {
+	rememberAssistantAgentThread(threadId, launch.projectId);
+	localStorage.setItem(
+		launchKey(threadId),
+		JSON.stringify({
+			projectId: launch.projectId,
+			...(launch.subject ? { subject: launch.subject } : {}),
+		}),
+	);
+}
+
+/** The project and the subject of a new thread that the server does not know yet. */
+export function getAssistantAgentLaunch(
+	threadId: string,
+): { projectId: string; subject?: InstanceAiThreadSubject } | undefined {
 	const raw = localStorage.getItem(launchKey(threadId));
 	if (!raw) return undefined;
 	const parsed = launchMarkerSchema.safeParse(jsonParse(raw, { fallbackValue: null }));
@@ -148,6 +220,9 @@ export interface PendingAssistantAgentMessage {
 	files: File[];
 	/** Workflow and other resource references. They go to the agent in the client context. */
 	references: InstanceAiAttachment[];
+	/** Who wrote the text, for the message telemetry of the thread view. */
+	authorship: InstanceAiMessageAuthorship;
+	mentionCounts?: AssistantMentionCounts;
 }
 
 let pendingMessage: PendingAssistantAgentMessage | undefined;

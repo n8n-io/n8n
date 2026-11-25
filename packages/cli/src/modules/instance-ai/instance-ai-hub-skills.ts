@@ -12,7 +12,6 @@ import {
 	agentSkillReferencePathSchema,
 	hasSkillInstructions,
 	skillNameKey,
-	type InstanceAiEvent,
 } from '@n8n/api-types';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { createHash } from 'node:crypto';
@@ -24,15 +23,12 @@ import type {
 	AssistantSkillSummary,
 } from '@/modules/skills';
 
-import { createHubSkillDisplayMapper } from './instance-ai-skill-display';
-
 const HUB_SKILL_DIRECTORY = '.n8n/skills/hub';
 const HUB_SKILL_ID_PREFIX = 'hub-';
 const HUB_UNAVAILABLE_NOTICE = 'Hub skills are temporarily unavailable. Do not use earlier copies.';
 
 export interface HubRunSkills {
 	source: RuntimeSkillSource;
-	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 }
 
 /** The skill reads of one Assistant run. Every read checks availability and the user's access. */
@@ -76,7 +72,6 @@ function createDeferredHubSource(
 	const hubSkills = createHubCatalog(builtIns, summaries ?? []);
 	const entries = [...hubSkills.values()].map(({ entry }) => entry);
 	const pending = new Map<string, Promise<LoadedHubSkill | null>>();
-	const loaded = new Map<string, LoadedHubSkill>();
 	const errors = new Map<string, RuntimeSkillLoadError>();
 	const load = async (id: string) => {
 		const selected = hubSkills.get(id);
@@ -92,7 +87,6 @@ function createDeferredHubSource(
 				}
 				errors.delete(id);
 				entry.linkedFiles = skill.linkedFiles;
-				loaded.set(id, skill);
 				return skill;
 			});
 			pending.set(id, result);
@@ -118,7 +112,10 @@ function createDeferredHubSource(
 								: 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.',
 					}
 				: undefined,
+		// Hub skills can change or be revoked while a thread is open. Skip the check
+		// when the Hub list failed: the catalog notice covers that case.
 		shouldAppendSkillUpdates: (id) =>
+			summaries !== null &&
 			id.startsWith(HUB_SKILL_ID_PREFIX) &&
 			!builtIns.registry.skills.some((entry) => entry.id === id),
 		loadSkill: async (id) => (hubSkills.has(id) ? await load(id) : await builtIns.loadSkill(id)),
@@ -158,10 +155,7 @@ function createDeferredHubSource(
 		};
 	}
 
-	return {
-		source,
-		mapSkillEventForDisplay: createHubSkillDisplayMapper(loaded),
-	};
+	return { source };
 }
 
 function createHubCatalog(builtIns: RuntimeSkillSource, summaries: AssistantSkillSummary[]) {
@@ -248,13 +242,6 @@ async function readHubReference(
 	}
 	const content = scrubSecretsInText(file.content);
 	const bytes = Buffer.byteLength(content, 'utf8');
-	if (bytes === 0) return { message: 'This Hub reference is empty.', retryable: false };
-	if (bytes > RUNTIME_SKILL_MAX_OUTPUT_BYTES) {
-		return {
-			message: `This reference exceeds ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} UTF-8 bytes.`,
-			retryable: false,
-		};
-	}
 	return { skillId, filePath: path, content, bytes, sha256: hash(content) };
 }
 
@@ -305,8 +292,7 @@ function prepareSkill(
 		paths.some((path) => !agentSkillReferencePathSchema.safeParse(path).success)
 	) {
 		return {
-			message:
-				'Unsupported or invalid references. Use Markdown files under references/ within the custom Agent reference limits.',
+			message: 'The skill has invalid file paths or too many files.',
 			retryable: false,
 		};
 	}

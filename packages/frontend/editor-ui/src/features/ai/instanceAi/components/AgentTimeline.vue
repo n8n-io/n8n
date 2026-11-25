@@ -7,7 +7,6 @@ import {
 	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
@@ -18,10 +17,13 @@ import {
 	type ArtifactInfo,
 	type TimelineBlock,
 } from '../agentTimeline.utils';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { formatArtifactMetadata } from '@/features/ai/instanceAi/artifactCardMetadata';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
+import { toAnsweredQuestionsToolCall } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiAppBlueprint from './InstanceAiAppBlueprint.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
@@ -31,7 +33,6 @@ import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
-const i18n = useI18n();
 const thread = useThread();
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
@@ -39,50 +40,6 @@ const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 function resolveArtifactName(artifact: ArtifactInfo): string {
 	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
-}
-
-function formatRelativeTime(isoTime: string): string {
-	const diffMs = Date.now() - new Date(isoTime).getTime();
-	const diffMin = Math.floor(diffMs / 60_000);
-	if (diffMin < 1) {
-		return i18n.baseText('instanceAi.artifactCard.updatedJustNow');
-	}
-	const diffHours = Math.floor(diffMin / 60);
-	if (diffHours < 1) {
-		const key =
-			diffMin === 1 ? 'instanceAi.artifactCard.minute' : 'instanceAi.artifactCard.minutes';
-		const time = i18n.baseText(key, {
-			interpolate: { count: `${diffMin}` },
-		});
-		return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
-	}
-	const key = diffHours === 1 ? 'instanceAi.artifactCard.hour' : 'instanceAi.artifactCard.hours';
-	const time = i18n.baseText(key, {
-		interpolate: { count: `${diffHours}` },
-	});
-	return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
-}
-
-function formatCreatedDate(isoTime: string): string {
-	const date = new Date(isoTime);
-	const day = date.getDate();
-	const month = date.toLocaleString('en', { month: 'long' });
-	return i18n.baseText('instanceAi.artifactCard.createdAt', {
-		interpolate: { date: `${day} ${month}` },
-	});
-}
-
-function formatArtifactMetadata(artifact: ArtifactInfo): string {
-	const parts: string[] = [];
-
-	if (artifact.completedAt) {
-		parts.push(formatRelativeTime(artifact.completedAt));
-		parts.push(formatCreatedDate(artifact.completedAt));
-	} else {
-		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
-	}
-
-	return parts.join(' │ ');
 }
 
 const props = withDefaults(
@@ -115,6 +72,8 @@ const canActOnPreferenceCard = computed(
 		props.messageId !== undefined &&
 		props.messageId === thread.messages.at(-1)?.id,
 );
+
+const preferencesEnabled = computed(() => isContextPreferencesEnabled());
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
@@ -156,6 +115,7 @@ const renderBlocks = computed(() =>
 		toolCallsById.value,
 		childrenById.value,
 		props.agentNode.status,
+		preferencesEnabled.value,
 	),
 );
 
@@ -225,6 +185,48 @@ function blockArtifacts(block: TimelineBlock): ArtifactInfo[] {
 	return builtArtifactsByBlock.value.get(block.key) ?? [];
 }
 
+type AnswerItem =
+	| { type: 'artifact'; key: string; artifact: ArtifactInfo }
+	| Extract<TimelineBlock, { type: 'text' }>;
+
+type RenderGroup =
+	| { type: 'activity'; key: string; block: TimelineBlock }
+	| { type: 'answer'; key: string; items: AnswerItem[] };
+
+/** Keep cards and adjacent answer text together without changing activity spacing. */
+const renderGroups = computed(() => {
+	const groups: RenderGroup[] = [];
+
+	function appendAnswerItem(item: AnswerItem) {
+		const previous = groups.at(-1);
+		if (previous?.type === 'answer') {
+			previous.items.push(item);
+		} else {
+			groups.push({ type: 'answer', key: item.key, items: [item] });
+		}
+	}
+
+	for (const block of renderBlocks.value) {
+		if (block.type === 'text') {
+			appendAnswerItem(block);
+			continue;
+		}
+
+		groups.push({ type: 'activity', key: block.key, block });
+		if (block.type === 'child' && props.visibleEntries) continue;
+
+		for (const artifact of blockArtifacts(block)) {
+			appendAnswerItem({
+				type: 'artifact',
+				key: `${block.key}-${artifact.resourceId}`,
+				artifact,
+			});
+		}
+	}
+
+	return groups;
+});
+
 /** An in-transcript card is read-only once its tool call has settled OR its
  *  confirmation was resolved client-side. Without the resolvedConfirmationIds
  *  check, a freshly-loading tool call could briefly re-enable the old
@@ -234,6 +236,11 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	if (!tc.isLoading) return true;
 	const requestId = tc.confirmation?.requestId;
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
+}
+
+/** Approval went through, but n8n could not create the app. */
+function hasAppCreateError(tc: InstanceAiToolCallState): boolean {
+	return isRecord(tc.result) && tc.result.approved === true && typeof tc.result.error === 'string';
 }
 
 function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefined {
@@ -247,104 +254,89 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 
 <template>
 	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
-		<template v-for="block in renderBlocks" :key="block.key">
-			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
-			<template v-if="block.type === 'thinking'">
-				<ThinkingBlock
-					:agent-node="props.agentNode"
-					:entries="block.entries"
-					:active="block.active"
-					:awaiting-input="block.active && thread.isAwaitingConfirmation"
-				/>
-				<ArtifactCard
-					v-for="artifact in blockArtifacts(block)"
-					:key="artifact.resourceId"
-					:type="artifact.type"
-					:name="resolveArtifactName(artifact)"
-					:resource-id="artifact.resourceId"
-					:project-id="artifact.projectId"
-					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-					:metadata="formatArtifactMetadata(artifact)"
-				/>
-			</template>
-
-			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
-			<TimelineTextSegment
-				v-else-if="block.type === 'text'"
-				:entry="block.entry"
-				:compact="props.compact"
-				:streaming="isStreamingTimelineEntry(props.agentNode, block.entry)"
-				:class="$style.timelineItem"
-			/>
-
-			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
-
-			<InstanceAiMcpConnect
-				v-else-if="block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest"
-				:key="block.toolCall.confirmation.requestId"
-				:request-id="block.toolCall.confirmation.requestId"
-				:input-thread-id="block.toolCall.confirmation.inputThreadId"
-				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
-				:read-only="isCardReadOnly(block.toolCall)"
-				:expired="block.toolCall.confirmation.expired"
-			/>
-
-			<InstanceAiAppBlueprint
-				v-else-if="block.type === 'app-blueprint' && block.toolCall.confirmation?.appBlueprint"
-				:key="block.toolCall.confirmation.requestId"
-				:request-id="block.toolCall.confirmation.requestId"
-				:input-thread-id="block.toolCall.confirmation.inputThreadId"
-				:blueprint="resolveAppBlueprint(block.toolCall)!"
-				:read-only="isCardReadOnly(block.toolCall)"
-				:expired="block.toolCall.confirmation.expired"
-			/>
-
-			<!-- Answered questions (read-only after resolution) -->
-			<template v-else-if="block.type === 'questions'">
-				<AnsweredQuestions :tool-call="block.toolCall" />
-				<ArtifactCard
-					v-for="artifact in blockArtifacts(block)"
-					:key="artifact.resourceId"
-					:type="artifact.type"
-					:name="resolveArtifactName(artifact)"
-					:resource-id="artifact.resourceId"
-					:project-id="artifact.projectId"
-					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-					:metadata="formatArtifactMetadata(artifact)"
-				/>
-			</template>
-
-			<!-- A preference the assistant saved: edit or undo it from the latest turn -->
-			<PreferenceCard
-				v-else-if="block.type === 'preference'"
-				:tool-call="block.toolCall"
-				:run-id="props.runId ?? ''"
-				:read-only="!canActOnPreferenceCard"
-				:class="$style.timelineItem"
-			/>
-
-			<!-- The run is live but a committed answer settled the block behind it -->
-			<TimelineActivityIndicator
-				v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
-				:progress-token="progressToken"
-			/>
-
-			<!-- Child agent — flat section -->
-			<template v-else-if="block.type === 'child'">
-				<AgentSection :agent-node="block.child" />
-
-				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
-				<template v-if="!props.visibleEntries">
+		<template v-for="group in renderGroups" :key="group.key">
+			<div v-if="group.type === 'answer'" :class="$style.answerGroup">
+				<template v-for="item in group.items" :key="item.key">
 					<ArtifactCard
-						v-for="artifact in blockArtifacts(block)"
-						:key="artifact.resourceId"
-						:type="artifact.type"
-						:name="resolveArtifactName(artifact)"
-						:resource-id="artifact.resourceId"
-						:project-id="artifact.projectId"
-						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-						:metadata="formatArtifactMetadata(artifact)"
+						v-if="item.type === 'artifact'"
+						:type="item.artifact.type"
+						:name="resolveArtifactName(item.artifact)"
+						:resource-id="item.artifact.resourceId"
+						:project-id="item.artifact.projectId"
+						:archived="thread.producedArtifacts.get(item.artifact.resourceId)?.archived"
+						:metadata="formatArtifactMetadata(item.artifact.completedAt)"
 					/>
+					<TimelineTextSegment
+						v-else
+						:entry="item.entry"
+						:compact="props.compact"
+						:streaming="isStreamingTimelineEntry(props.agentNode, item.entry)"
+						:class="$style.timelineItem"
+					/>
+				</template>
+			</div>
+			<template v-else>
+				<template v-for="block in [group.block]" :key="block.key">
+					<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
+					<template v-if="block.type === 'thinking'">
+						<ThinkingBlock
+							:agent-node="props.agentNode"
+							:entries="block.entries"
+							:active="block.active"
+							:awaiting-input="block.active && thread.isAwaitingConfirmation"
+						/>
+					</template>
+
+					<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
+
+					<InstanceAiMcpConnect
+						v-else-if="
+							block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest
+						"
+						:key="block.toolCall.confirmation.requestId"
+						:request-id="block.toolCall.confirmation.requestId"
+						:input-thread-id="block.toolCall.confirmation.inputThreadId"
+						:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
+						:read-only="isCardReadOnly(block.toolCall)"
+						:expired="block.toolCall.confirmation.expired"
+					/>
+
+					<InstanceAiAppBlueprint
+						v-else-if="block.type === 'app-blueprint' && block.toolCall.confirmation?.appBlueprint"
+						:key="block.toolCall.confirmation.requestId"
+						:request-id="block.toolCall.confirmation.requestId"
+						:input-thread-id="block.toolCall.confirmation.inputThreadId"
+						:blueprint="resolveAppBlueprint(block.toolCall)!"
+						:errors="block.toolCall.confirmation.appBlueprintErrors"
+						:failed="hasAppCreateError(block.toolCall)"
+						:read-only="isCardReadOnly(block.toolCall)"
+						:expired="block.toolCall.confirmation.expired"
+					/>
+
+					<!-- Answered questions (read-only after resolution) -->
+					<template v-else-if="block.type === 'questions'">
+						<AnsweredQuestions :tool-call="toAnsweredQuestionsToolCall(block.toolCall)" />
+					</template>
+
+					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
+					<PreferenceCard
+						v-else-if="block.type === 'preference'"
+						:tool-call="block.toolCall"
+						:run-id="props.runId ?? ''"
+						:read-only="!canActOnPreferenceCard"
+						:class="$style.timelineItem"
+					/>
+
+					<!-- The run is live but a committed answer settled the block behind it -->
+					<TimelineActivityIndicator
+						v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
+						:progress-token="progressToken"
+					/>
+
+					<!-- Child agent — flat section -->
+					<template v-else-if="block.type === 'child'">
+						<AgentSection :agent-node="block.child" />
+					</template>
 				</template>
 			</template>
 		</template>
@@ -353,14 +345,25 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 
 <style lang="scss" module>
 .timeline {
-	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
+	/** Keep the activity rail extension equal to the gap between blocks. */
 	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
 	gap: var(--n8n--ai-activity-step-gap);
 }
 
-.timelineItem {
-	max-width: 90%;
+.answerGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	margin-block: calc(var(--spacing--sm) - var(--n8n--ai-activity-step-gap));
+
+	&:first-child {
+		margin-top: 0;
+	}
+
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 </style>

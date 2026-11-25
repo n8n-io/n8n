@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
@@ -19,20 +18,13 @@ const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
 @Service()
 export class PollCursorService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly schedulerConfig: SchedulerConfig,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly eventService: EventService,
-	) {
-		if (this.schedulerConfig.durableCursorsEnabled && !this.schedulerChainEnabled) {
-			this.logger.warn(
-				'N8N_POLLER_DURABLE_CURSORS_ENABLED requires N8N_SCHEDULER_ENABLED, N8N_SCHEDULER_POLL_TRIGGERS_ENABLED and N8N_USE_WORKFLOW_PUBLICATION_SERVICE; durable poll cursors stay disabled.',
-			);
-		}
-	}
+	) {}
 
 	/**
 	 * Cursors additionally require the publication service because cursor rows
@@ -139,6 +131,7 @@ export class PollCursorService {
 	 * @param args.nodeId - Poll trigger node whose cursor is advancing.
 	 * @param args.cursor - New cursor value to store.
 	 * @param args.payload - Execution row to insert for the poll's result.
+	 * @param args.projectId - Owner project of the workflow, when the caller has it.
 	 * @param args.fence - Lease to check before writing; see `advanceCursor`.
 	 * @returns The new execution's id, or `null` if the cursor didn't advance.
 	 * @remarks A `null` result doesn't mean someone else already did this work, only that someone else now owns it.
@@ -148,9 +141,10 @@ export class PollCursorService {
 		nodeId: string;
 		cursor: PollCursor;
 		payload: CreateExecutionPayload;
+		projectId?: string;
 		fence?: PollLeaseFence;
 	}): Promise<{ executionId: string } | null> {
-		const { workflowId, nodeId, cursor, payload, fence } = args;
+		const { workflowId, nodeId, cursor, payload, projectId, fence } = args;
 
 		return await this.measureCommit('with_execution', async () => {
 			if (this.enabled) {
@@ -163,7 +157,7 @@ export class PollCursorService {
 						fence,
 					);
 					if (advanced) {
-						const executionId = await this.executionPersistence.create(payload, ctx);
+						const executionId = await this.executionPersistence.create(payload, ctx, { projectId });
 						return { value: { executionId }, advanced };
 					}
 					return { value: null, advanced };
@@ -178,17 +172,14 @@ export class PollCursorService {
 				fence,
 			);
 			if (advanced) {
-				const executionId = await this.executionPersistence.create(payload, {});
+				const executionId = await this.executionPersistence.create(payload, {}, { projectId });
 				return { value: { executionId }, advanced };
 			}
 			return { value: null, advanced };
 		});
 	}
 
-	/**
-	 * Commits an advance made by a poll that emitted no items, so a source that only
-	 * ever moves the cursor is not re-fetched forever.
-	 */
+	/** Commits a cursor advance that has no execution row. */
 	async commitCursorOnly(args: {
 		workflowId: string;
 		nodeId: string;

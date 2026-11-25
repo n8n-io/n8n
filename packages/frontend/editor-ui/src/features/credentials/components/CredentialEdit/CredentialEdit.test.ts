@@ -6,6 +6,8 @@ import { getActivePinia, setActivePinia } from 'pinia';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
+import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -30,6 +32,13 @@ import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 import { getCredentialOptions } from '../../credentials.api';
+import { getResourceDependencyCounts } from '@/app/api/workflow-dependencies';
+
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
+	getFolderDependencies: vi.fn().mockResolvedValue([]),
+}));
 
 vi.mock('../../credentials.api', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -623,6 +632,176 @@ describe('CredentialEdit', () => {
 					.length,
 			).toBeGreaterThan(0),
 		);
+	});
+
+	describe('credential types in edit mode', () => {
+		// createTestingPinia makes its pinia the active one; the tests after these ones
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		let rendererPinia: ReturnType<typeof getActivePinia>;
+
+		beforeEach(() => {
+			rendererPinia = getActivePinia();
+		});
+
+		afterEach(() => {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		});
+
+		const typeWithDefault = {
+			name: 'defaultsApi',
+			displayName: 'Defaults API',
+			properties: [{ displayName: 'Region', name: 'region', type: 'string', default: 'eu' }],
+		} as ICredentialType;
+
+		const setupStores = () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalStateById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } },
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValue(
+				createCredentialResponse({ id: 'cred-defaults', type: typeWithDefault.name }),
+			);
+			return { credentialsStore, pinia };
+		};
+
+		test('loads the credential only after the credential types are in the store', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+
+			credentialsStore.state.credentialTypes = { [typeWithDefault.name]: typeWithDefault };
+			resolve();
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(screen.getByDisplayValue('eu')).toBeInTheDocument());
+		});
+
+		test('does not load the credential when the modal closes while the types load', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: false },
+			} as never;
+			resolve();
+			await new Promise((r) => setTimeout(r, 0));
+
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+		});
+
+		test('still loads the credential when the credential types fail to load', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const { credentialsStore, pinia } = setupStores();
+			credentialsStore.fetchCredentialTypes.mockRejectedValueOnce(new Error('credential types'));
+			const onInitializeError = vi.fn();
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, showAuthSelector: false, onInitializeError },
+			} as never;
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			expect(onInitializeError).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('dependency pill', () => {
+		const emptyCounts = {
+			agentUsage: 0,
+			credentialId: 0,
+			dataTableId: 0,
+			errorWorkflow: 0,
+			errorWorkflowParent: 0,
+			workflowCall: 0,
+			workflowParent: 0,
+		};
+
+		const loadCredential = (id: string) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				id,
+				name: 'Test credential',
+				type: 'testApi',
+				data: {},
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:read'],
+				createdAt: '2025-05-13T10:45:45.588Z',
+				updatedAt: '2025-05-15T12:36:01.826Z',
+			});
+		};
+
+		test('shows the pill when workflows use the credential', async () => {
+			vi.mocked(getResourceDependencyCounts).mockResolvedValueOnce({
+				'cred-used': { ...emptyCounts, credentialId: 2 },
+			});
+
+			loadCredential('cred-used');
+			const { findByTestId } = renderComponent({
+				props: { activeId: 'cred-used', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			});
+
+			expect(await findByTestId('credential-edit-dependents')).toHaveTextContent('2');
+			expect(getResourceDependencyCounts).toHaveBeenCalledWith(
+				expect.anything(),
+				['cred-used'],
+				'credential',
+			);
+		});
+
+		test('hides the pill when nothing uses the credential', async () => {
+			loadCredential('cred-unused');
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { activeId: 'cred-unused', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			});
+
+			await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
+			await waitFor(() =>
+				expect(getResourceDependencyCounts).toHaveBeenCalledWith(
+					expect.anything(),
+					['cred-unused'],
+					'credential',
+				),
+			);
+			expect(queryByTestId('credential-edit-dependents')).not.toBeInTheDocument();
+		});
+
+		test('does not fetch dependencies for a new credential', async () => {
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await retry(() => expect(getByTestId('editCredential-modal')).toBeInTheDocument());
+			expect(getResourceDependencyCounts).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('external secrets', () => {
@@ -1428,6 +1607,140 @@ describe('CredentialEdit', () => {
 					sharedWithProjects: [{ id: 'project-2', name: 'Acme team', type: 'team' }],
 				});
 			});
+		});
+	});
+
+	describe('automatic OAuth mode', () => {
+		const automaticOAuthApi: ICredentialType = {
+			name: 'automaticOAuthApi',
+			extends: ['oAuth2Api'],
+			displayName: 'Automatic OAuth2 API',
+			dynamicClientRegistration: true,
+			properties: [
+				{
+					displayName: 'Server URL',
+					name: 'serverUrl',
+					type: 'hidden',
+					default: 'https://auth.example.com',
+				},
+				{
+					displayName: 'Grant Type',
+					name: 'grantType',
+					type: 'hidden',
+					default: 'authorizationCode',
+				},
+				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: false,
+				},
+				{
+					displayName: 'Client ID',
+					name: 'clientId',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
+				},
+				// Shows in both modes, so it marks a rendered form.
+				{ displayName: 'Workspace', name: 'workspace', type: 'string', default: '' },
+			],
+			iconUrl: '',
+			supportedNodes: [],
+		};
+
+		const setupStores = (credentialData?: Record<string, unknown>) => {
+			// Other tests leave stores behind in the shared pinia, for example an active node.
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: { modalStateById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } } },
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+					[STORES.PROJECTS]: {
+						personalProject: {
+							id: 'personal-project',
+							type: 'personal',
+							scopes: ['credential:create'],
+						},
+					},
+				},
+			});
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[automaticOAuthApi.name]: automaticOAuthApi,
+			};
+			credentialsStore.getNewCredentialName.mockResolvedValue('Automatic account');
+			if (credentialData) {
+				credentialsStore.getCredentialData.mockResolvedValueOnce({
+					// @ts-expect-error data is decrypted
+					data: credentialData,
+					createdAt: '2026-10-30T10:00:00.000Z',
+					updatedAt: '2026-10-30T10:00:00.000Z',
+					id: 'cred-automatic',
+					name: 'Automatic account',
+					type: automaticOAuthApi.name,
+					isManaged: false,
+					sharedWithProjects: [],
+					scopes: ['credential:update'],
+					oauthTokenData: false,
+				});
+			}
+			return { credentialsStore, pinia };
+		};
+
+		const waitForForm = async (view: ReturnType<typeof renderComponent>) =>
+			await retry(() => expect(view.queryByText('Workspace')).toBeInTheDocument());
+
+		test('starts a new credential in Automatic mode', async () => {
+			const { pinia } = setupStores();
+
+			const view = renderComponent({
+				props: {
+					activeId: automaticOAuthApi.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+			await waitForForm(view);
+
+			expect(view.queryByText('Client ID')).not.toBeInTheDocument();
+		});
+
+		test('opens a credential without a stored choice in Custom mode', async () => {
+			const { credentialsStore, pinia } = setupStores({
+				clientId: 'own-client-id',
+				clientSecret: 'own-client-secret',
+			});
+
+			const view = renderComponent({
+				props: { activeId: 'cred-automatic', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			await retry(() => expect(view.queryByText('Client ID')).toBeInTheDocument());
+		});
+
+		test('opens a credential saved in Automatic mode in Automatic mode', async () => {
+			const { credentialsStore, pinia } = setupStores({
+				useDynamicClientRegistration: true,
+				clientId: 'registered-client-id',
+			});
+
+			const view = renderComponent({
+				props: { activeId: 'cred-automatic', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitForForm(view);
+
+			expect(view.queryByText('Client ID')).not.toBeInTheDocument();
 		});
 	});
 
@@ -2951,5 +3264,174 @@ describe('CredentialEdit', () => {
 				expect(queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
 			});
 		});
+	});
+});
+
+describe('CredentialEdit - restricted credential types', () => {
+	const OPEN_AI_TYPE: ICredentialType = {
+		name: 'openAiApi',
+		displayName: 'OpenAI',
+		properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+	};
+
+	const setup = () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, showAuthSelector: false },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: true, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read', 'credential:update'],
+					},
+				},
+			},
+		});
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.state.credentialTypes = { [OPEN_AI_TYPE.name]: OPEN_AI_TYPE };
+		credentialsStore.getNewCredentialName.mockResolvedValue('OpenAI account');
+		return { pinia, credentialsStore };
+	};
+
+	it('explains the restriction when an existing credential is opened', async () => {
+		const { pinia, credentialsStore } = setup();
+		mockRestrictedCredentialTypes({ openAiApi: 'instance' });
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			data: {},
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		const { findByTestId } = renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		expect(await findByTestId('restricted-credential-callout')).toHaveTextContent(
+			"OpenAI credentials are restricted on this instance. Workflows can't use them.",
+		);
+		expect(await findByTestId('restricted-credential-contact-admin')).toBeInTheDocument();
+	});
+
+	it('reads the policy of the credential project, not of the open project', async () => {
+		const { pinia, credentialsStore } = setup();
+		const fetchForProject = vi
+			.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+			.mockResolvedValue();
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			isManaged: false,
+			homeProject: {
+				id: 'team-project',
+				name: 'Acme',
+				type: 'team',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('team-project'));
+		expect(fetchForProject).not.toHaveBeenCalledWith('personal-project');
+	});
+
+	it('falls back to the open project when the credential has no home project', async () => {
+		const { pinia, credentialsStore } = setup();
+		const fetchForProject = vi
+			.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+			.mockResolvedValue();
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			data: {},
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('personal-project'));
+	});
+
+	it('puts the policy back to the open project when the modal closes', async () => {
+		const { pinia, credentialsStore } = setup();
+		const policiesStore = useTypeAvailabilityPoliciesStore();
+		policiesStore.requestedProjectId = 'canvas-project';
+		const fetchForProject = vi.spyOn(policiesStore, 'fetchForProject').mockResolvedValue();
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			isManaged: false,
+			homeProject: {
+				id: 'team-project',
+				name: 'Acme',
+				type: 'team',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		const { unmount } = renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('team-project'));
+		unmount();
+
+		expect(fetchForProject).toHaveBeenLastCalledWith('canvas-project');
+	});
+
+	it('shows no callout for an unrestricted type', async () => {
+		const { pinia } = setup();
+		mockRestrictedCredentialTypes({});
+
+		const { queryByTestId, findByTestId } = renderComponent({
+			props: { activeId: OPEN_AI_TYPE.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			pinia,
+		});
+		await findByTestId('node-credentials-config-container');
+
+		expect(queryByTestId('restricted-credential-callout')).not.toBeInTheDocument();
 	});
 });

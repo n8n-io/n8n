@@ -20,22 +20,30 @@ describe('buildInstancePromotionCommitMessage', () => {
 describe('buildSelectionPromotionCommitMessage', () => {
 	const projectName = 'Marketing Ops';
 
-	it('lists added, updated and removed workflows', () => {
+	it('lists added, updated and removed workflows, and the selected folders', () => {
 		expect(
 			buildSelectionPromotionCommitMessage({
 				projectName,
 				added: [{ id: 'w1', name: 'Lead intake' }],
 				updated: [{ id: 'w2', name: 'Daily digest' }],
 				removed: [{ id: 'w3', name: 'Legacy sync' }],
+				folders: [{ id: 'f1', name: 'Campaigns' }],
 			}),
 		).toBe(
 			[
-				'Promote 3 workflows from "Marketing Ops"',
+				'Promote 3 workflows and 1 folder from "Marketing Ops"',
 				'Added:\n- Lead intake (w1)',
 				'Updated:\n- Daily digest (w2)',
 				'Removed:\n- Legacy sync (w3)',
+				'Folders:\n- Campaigns (f1)',
 			].join('\n\n'),
 		);
+	});
+
+	it('names the project when only the project is promoted', () => {
+		expect(
+			buildSelectionPromotionCommitMessage({ projectName, added: [], updated: [], removed: [] }),
+		).toBe('Promote project "Marketing Ops"');
 	});
 
 	it('leaves out empty sections', () => {
@@ -61,5 +69,19 @@ describe('buildSelectionPromotionCommitMessage', () => {
 
 		expect(message).toContain('- WF 49 (w49)\n- …and 2 more');
 		expect(message).not.toContain('WF 50');
+	});
+
+	it('counts the selected credentials in the title and lists them', () => {
+		expect(
+			buildSelectionPromotionCommitMessage({
+				projectName,
+				added: [],
+				updated: [],
+				removed: [],
+				credentials: [{ id: 'c1', name: 'CRM key' }],
+			}),
+		).toBe(
+			['Promote 1 credential from "Marketing Ops"', 'Credentials:\n- CRM key (c1)'].join('\n\n'),
+		);
 	});
 });

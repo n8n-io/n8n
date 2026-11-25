@@ -119,6 +119,20 @@ export type AppBindingsResponse = {
 	warnings: AppBindingWarning[];
 };
 
+export type AppPublishPreviewResource = {
+	key: string;
+	kind: 'workflow' | 'agent';
+	resourceId: string;
+	name: string;
+	published: boolean;
+	hasChanges: boolean;
+	canPublish: boolean;
+};
+
+export type AppPublishPreviewResponse = {
+	resources: AppPublishPreviewResource[];
+};
+
 /** What the app frontend can learn about its bindings. Resource IDs stay on the server. */
 export type AppRuntimeBinding =
 	| { key: string; kind: 'workflow' }
@@ -144,6 +158,7 @@ export const APP_RUNTIME_ERROR_CODES = [
 	'workflow_not_published',
 	'workflow_incompatible',
 	'workflow_not_callable',
+	'credentials_required',
 	'agent_not_published',
 	'agents_disabled',
 	'run_in_progress',
@@ -158,10 +173,22 @@ export const APP_RUNTIME_ERROR_CODES = [
 ] as const;
 export type AppRuntimeErrorCode = (typeof APP_RUNTIME_ERROR_CODES)[number];
 
+/** An end-user credential that a bound workflow needs from the visitor. */
+export type AppRuntimeCredentialConnection = {
+	name: string;
+	type: string;
+	status: 'missing' | 'configured' | 'resolver_missing';
+	/** Opens in n8n and connects the visitor's account. Only on a `missing` credential. */
+	connectUrl?: string;
+	iconUrl?: string;
+};
+
 export type AppRuntimeErrorBody = {
 	code: AppRuntimeErrorCode;
 	message: string;
 	issues?: Array<{ path: string[]; code: string }>;
+	/** With `credentials_required`: every credential that the run needs, connected or not. */
+	credentials?: AppRuntimeCredentialConnection[];
 };
 
 /** Every runtime request must send this header. It forces a CORS preflight on cross-origin calls. */

@@ -21,6 +21,7 @@ import type {
 	LOG_LEVELS,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
+	WORKFLOW_ENGINE_TYPES,
 } from './constants';
 
 import type {
@@ -45,6 +46,7 @@ import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import type { RequestPath, RequestUrl } from './request-target';
 
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
@@ -462,12 +464,14 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
+	/** Lets n8n register the OAuth2 client at the `serverUrl` property, so users need no app of their own. */
+	dynamicClientRegistration?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
-	test?: ICredentialTestRequest;
+	test?: ICredentialTestRequest | ICredentialTestFunction;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
@@ -597,6 +601,7 @@ export type IHttpRequestMethods =
 	| 'MOVE'
 	| 'COPY'
 	| 'REPORT'
+	| 'SEARCH'
 	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {
@@ -604,6 +609,16 @@ export type IgnoreStatusErrorConfig = {
 	/** Ignore HTTP status errors except for the specified status codes */
 	except: number[];
 };
+
+type RequestTargetField = 'url' | 'uri';
+
+export type WithRequestTarget<T, K extends RequestTargetField = 'url'> = Omit<
+	T,
+	RequestTargetField | 'baseURL'
+> & { [P in Exclude<RequestTargetField, K> & keyof T]?: undefined } & (
+		| ({ baseURL: string } & Record<K, RequestPath>)
+		| ({ baseURL?: undefined } & Record<K, RequestUrl>)
+	);
 
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
@@ -1045,17 +1060,24 @@ export interface NodeEgressFilter {
 	validateRedirectSync(url: string): void;
 }
 
+export type LegacyRequestOptions =
+	| IRequestOptions
+	| WithRequestTarget<IRequestOptions, 'uri'>
+	| WithRequestTarget<IRequestOptions, 'url'>;
+
 export interface RequestHelperFunctions {
-	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+	httpRequest(
+		requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+	): Promise<any>;
 	httpRequestWithAuthentication(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IHttpRequestOptions,
+		requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
 		this: IAllExecuteFunctions,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		itemIndex: number,
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
@@ -1067,7 +1089,7 @@ export interface RequestHelperFunctions {
 	 * @deprecated Use .httpRequest instead
 	 * @see RequestHelperFunctions.httpRequest
 	 */
-	request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
+	request(uriOrObject: string | LegacyRequestOptions, options?: LegacyRequestOptions): Promise<any>;
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
 	 * @see RequestHelperFunctions.requestWithAuthentication
@@ -1075,7 +1097,7 @@ export interface RequestHelperFunctions {
 	requestWithAuthentication(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 		itemIndex?: number,
 	): Promise<any>;
@@ -1086,7 +1108,7 @@ export interface RequestHelperFunctions {
 	requestOAuth1(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 	): Promise<any>;
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
@@ -1095,7 +1117,7 @@ export interface RequestHelperFunctions {
 	requestOAuth2(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
 	refreshOAuth2Token(
@@ -1428,8 +1450,18 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		 * a restart. Without the option the engine suspends and persists the execution.
 		 */
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
+		/**
+		 * Builds the signed reference that an approval button carries, for example
+		 * Telegram's `callback_data` (64 bytes at most). The reference carries the
+		 * decision. The node never reads the secret that signs it.
+		 */
+		getApprovalCallbackReference(decision: 'approve' | 'decline'): string;
 		sendMessageToUI(message: any): void;
-		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		/**
+		 * Whether the run's resolved redaction policy redacts output that leaves the
+		 * execution-data pipeline (console output, AI event payloads) for this
+		 * execution's mode
+		 */
 		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
@@ -1595,6 +1627,8 @@ export interface IPollFunctions
 	 * runs out, return what it has, and leave the rest to the next poll.
 	 */
 	getPollBudgetMs(): number;
+	/** Marks this poll as fetching in bounded batches, so it keeps its cursor when its run is refused. */
+	declareBoundedPoll?(): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -2546,6 +2580,10 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
  * must be treated as read-only.
  */
 export interface ExecuteAgentWorkflowContext {
+	/** The caller can persist and resume an Agent invocation. */
+	supportsSuspension?: boolean;
+	/** Private continuation from the previous segment of this item. */
+	continuation?: AgentWorkflowSuspension;
 	workflowId?: string;
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
@@ -2586,7 +2624,14 @@ export interface ExecuteAgentOptions {
 	executionMode?: WorkflowExecuteMode;
 }
 
+export interface AgentWorkflowSuspension {
+	runId: string;
+	executionIds: string[];
+}
+
 export interface ExecuteAgentData {
+	/** Private engine state. Never include it in node output. */
+	waiting?: AgentWorkflowSuspension;
 	/** The agent's text response extracted from the last assistant message. */
 	response: string;
 	/** Parsed structured output if the agent has a structuredOutput schema. */
@@ -3592,12 +3637,16 @@ export interface RelatedExecution {
  * Stamped by the agent workflow tool onto the sub-executions it starts.
  */
 export interface RelatedAgentRun {
+	/** Workflow caller to resume through the existing parent-wait path. */
+	workflowCaller?: RelatedExecution;
 	agentId: string;
 	projectId: string;
 	/** Agent memory thread the run belongs to; addresses the chat thread to reply in. */
 	threadId: string;
 	runId: string;
 	toolCallId: string;
+	/** Use the same published or draft runtime when a task resumes. */
+	published?: boolean;
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**
@@ -3611,8 +3660,20 @@ export interface RelatedAgentRun {
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
+	 * Workflow log events report it as `agentRunUserId`.
 	 */
 	userId?: string;
+	/**
+	 * The agent's service account (`agents.identityId`), for attribution in workflow
+	 * log events only: the execution does not run as this account. Set only when
+	 * agent service accounts are enabled and the agent has one.
+	 */
+	agentServiceAccountId?: string;
+	/**
+	 * For a tool run of a sub-agent, the top-level agent that delegated to it.
+	 * Attribution only. Set only together with `agentServiceAccountId`.
+	 */
+	delegatingAgentId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -3623,6 +3684,12 @@ type SubNodeExecutionDataAction = {
 };
 
 export interface ITaskMetadata {
+	/**
+	 * Waiting nodes normally resume by forwarding the child output without running again.
+	 * Use 'reexecute' when a node must restore its own progress and finish its input items.
+	 * The engine keeps its input unchanged and lets the node handle child results and errors.
+	 */
+	resumeMode?: 'reexecute';
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
@@ -3836,6 +3903,7 @@ interface IWorkflowHistory {
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];
 	authors: string;
+	settings?: IWorkflowSettings;
 	name: string | null;
 	description: string | null;
 	createdAt: Date;
@@ -3867,6 +3935,8 @@ export type WorkflowExecutionMockDataSource =
 
 export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
+	/** Credentials the run uses only through the acting user's own access, not the workflow's project. */
+	personalCredentialsCount?: number;
 }
 
 /**
@@ -3899,6 +3969,8 @@ export interface IWorkflowExecutionDataProcess {
 	pinData?: IPinData;
 	retryOf?: string | null;
 	pushRef?: string;
+	/** The user who owns `pushRef`, set only on a worker from the job data. */
+	pushRefUserId?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId?: string;
@@ -3999,6 +4071,8 @@ export interface ExecuteWorkflowOptions {
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
 	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+	/** Aborts when the calling execution is cancelled, so an awaited sub-workflow stops with it. */
+	abortSignal?: AbortSignal;
 }
 
 export type AiEvent =
@@ -4198,6 +4272,8 @@ export namespace WorkflowSettings {
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
 
+export type WorkflowEngineType = (typeof WORKFLOW_ENGINE_TYPES)[number];
+
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
 	errorWorkflow?: 'DEFAULT' | string;
@@ -4209,7 +4285,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
-	engineType?: 'v1' | 'v2';
+	engineType?: WorkflowEngineType;
 	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
@@ -4374,6 +4450,8 @@ export interface INodeGraphItem {
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	agent_source?: 'inline' | 'referenced'; // n8n-nodes-base.messageAnAgent(Tool)
+	agent_id?: string; // n8n-nodes-base.messageAnAgent(Tool), referenced agent with a fixed id
 	response_mode?: string; // @n8n/n8n-nodes-langchain.chatTrigger, n8n-nodes-base.webhook selected response mode
 	public_chat?: boolean; // @n8n/n8n-nodes-langchain.chatTrigger
 	runs?: number;
@@ -4662,9 +4740,19 @@ export interface IUserSettings {
 	instanceAi?: {
 		credentialId?: string | null;
 		modelName?: string;
+		/** How the n8n Assistant treats actions set to Ask first. Unset means the rollout default. */
+		approvalMode?: 'manual' | 'auto';
 	};
 	mcpJsonNudge?: {
 		impressions: number;
+	};
+	mcpPreferencesNote?: {
+		impressions: number;
+		lastShownAt?: number;
+	};
+	assistantPreferencesNote?: {
+		impressions: number;
+		lastShownAt: number;
 	};
 }
 

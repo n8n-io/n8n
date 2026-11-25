@@ -10,7 +10,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -50,6 +50,7 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		// loop from a finite budget.
 		readonly getPollBudgetMs: IPollFunctions['getPollBudgetMs'] = () =>
 			5 * Time.minutes.toMilliseconds,
+		readonly declareBoundedPoll: NonNullable<IPollFunctions['declareBoundedPoll']> = () => {},
 	) {
 		super(workflow, node, additionalData, mode);
 

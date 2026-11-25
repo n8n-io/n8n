@@ -3,7 +3,9 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	RequestPath,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -186,7 +188,7 @@ export async function execute(
 
 	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
 	// so a pasted Workbook/Site address is resolved once, not once per item.
-	const workbookRootCache = new Map<string, string>();
+	const workbookRootCache = new Map<string, RequestPath>();
 	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {
@@ -201,15 +203,15 @@ export async function execute(
 			}
 
 			const workbookRoot = await resolveWorkbookRoot.call(this, i, workbookRootCache, siteIdCache);
-			const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
+			const sheetPath = requestPath`${workbookRoot}/workbook/worksheets/${settings.worksheetId}`;
 			// Typed here instead of cast at the call site below. Parens are required:
 			// a generic instantiation can't be followed directly by a property access.
 			const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 				this,
 				'GET',
 				settings.range
-					? `${sheetPath}/range(address='${encodeURIComponent(settings.range)}')`
-					: `${sheetPath}/usedRange`,
+					? requestPath`${sheetPath}/range(address='${settings.range}')`
+					: requestPath`${sheetPath}/usedRange`,
 				{},
 				qs,
 			);

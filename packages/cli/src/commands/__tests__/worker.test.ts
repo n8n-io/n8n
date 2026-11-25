@@ -1,6 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
-import { type EventService, JwtService, RedisClientService } from '@n8n/backend-services';
+import {
+	type EventService,
+	JwtService,
+	NodeTypesProxy,
+	RedisClientService,
+	PostHogClient,
+	Subscriber,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -12,6 +19,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -24,14 +32,13 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { HooksApiService } from '@/hooks-api/hooks-api.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
@@ -69,7 +76,7 @@ const activeExecutions = mockInstance(ActiveExecutions);
 
 // Mocks for services reached by the full `init()` path, as in start.test.ts
 mockInstance(ErrorReporter);
-mockInstance(NodeTypes);
+const nodeTypes = mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
@@ -104,6 +111,7 @@ describe('Worker', () => {
 			sentry: { backendDsn: '' },
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			outboundProxy: { mode: 'main-only' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			queue: { bull: { gracefulShutdownTimeout: 20 }, workerPool: { enabled: false, name: '' } },
@@ -207,6 +215,20 @@ describe('Worker', () => {
 			vi.unstubAllEnvs();
 		});
 
+		it('should register node types on the node types proxy before the modules initialize', async () => {
+			const nodeTypesProxy = mockInstance(NodeTypesProxy);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModules = worker.moduleRegistry.initModules as Mock;
+			expect(nodeTypesProxy.registerProvider).toHaveBeenCalledWith(nodeTypes);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
+		});
+
 		it.each([
 			{ envValue: '45', expected: 45, case: 'the parsed value' },
 			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
@@ -246,6 +268,7 @@ describe('Worker', () => {
 				mock<ExecutionsConfig>({ mode: 'queue' }),
 				mock<InstanceSettings>({ instanceType: 'worker', isWorker: true }),
 				mock<UnsavedManualExecutionService>(),
+				mock(),
 			);
 
 			const drainLoopInterval = 500;
@@ -333,6 +356,22 @@ describe('Worker', () => {
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
 			// The job processor is registered regardless of whether endpoints are enabled.
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
+		});
+
+		it('should register hook files before taking jobs when the worker server is not started', async () => {
+			const hooksApi = mock<HooksApiService>();
+			hooksApi.register.mockResolvedValue(undefined);
+			Container.set(HooksApiService, hooksApi);
+			const worker = createWorkerForRun();
+			Object.assign(worker, { externalHooks: { registerFunctions: [vi.fn()] } });
+
+			await worker.run();
+
+			expect(mockWorkerServer.init).not.toHaveBeenCalled();
+			expect(hooksApi.register).toHaveBeenCalledTimes(1);
+			expect(hooksApi.register.mock.invocationCallOrder[0]).toBeLessThan(
+				mockScalingService.setupWorker.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should initialize WorkerServer for E2E diagnostics when no other endpoints are enabled', async () => {

@@ -10,6 +10,7 @@ import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { mock } from 'vitest-mock-extended';
 
 import { createSelfHealingAgent } from '../self-healing-agent';
+import { getSelfHealingWorkflowEngineSection } from '../workflow-engine-prompt';
 import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { SelfHealingCandidateVerifier } from '../../self-healing';
 import { loadInstanceAiSkills } from '../../skills/skills';
@@ -102,7 +103,7 @@ describe('createSelfHealingAgent', () => {
 			report:
 				'**What happened**\n\nThe node used the wrong field.\n\n' +
 				'**What changed**\n\nThe proposed mapping passed verification. Nothing has been applied.',
-			candidateFilePath: 'self-healing/candidate.workflow.ts',
+			candidateWorkflowIds: ['workflow'],
 		};
 		const turns = [
 			modelTurn(
@@ -122,7 +123,10 @@ describe('createSelfHealingAgent', () => {
 						type: 'tool-call',
 						toolCallId: 'verify',
 						toolName: 'verify_candidate',
-						input: JSON.stringify({ filePath: output.candidateFilePath }),
+						input: JSON.stringify({
+							workflowId: output.candidateWorkflowIds[0],
+							filePath: 'src/workflows/candidate.workflow.ts',
+						}),
 					},
 				],
 				true,
@@ -226,7 +230,7 @@ describe('createSelfHealingAgent', () => {
 					outcome: 'could_not_fix',
 					summary: 'No fix found',
 					report: 'No changes were made.',
-					candidateFilePath: null,
+					candidateWorkflowIds: [],
 				}),
 		});
 		const agent = await createSelfHealingAgent({
@@ -241,9 +245,9 @@ describe('createSelfHealingAgent', () => {
 		expect(request.responseFormat).toMatchObject({
 			type: 'json',
 			schema: {
-				required: ['outcome', 'summary', 'report', 'candidateFilePath'],
+				required: ['outcome', 'summary', 'report', 'candidateWorkflowIds'],
 				properties: {
-					candidateFilePath: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
+					candidateWorkflowIds: { type: 'array', items: { type: 'string', minLength: 1 } },
 				},
 			},
 		});
@@ -287,13 +291,36 @@ describe('createSelfHealingAgent', () => {
 		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
 	});
 
+	it('adds the engine section only with the engine-v2 module', async () => {
+		const setInstructions = vi.spyOn(Agent.prototype, 'instructions');
+		const instructionsFor = async (engineSetup?: InstanceAiContext['engineSetup']) => {
+			setInstructions.mockClear();
+			await createAgent({ ...createContext(), engineSetup });
+			return setInstructions.mock.calls[0][0];
+		};
+
+		const withoutSetup = await instructionsFor();
+		const withoutModule = await instructionsFor({
+			engineV2Available: false,
+			newWorkflowEngine: 'v1',
+		});
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' } as const;
+		const withModule = await instructionsFor(engineSetup);
+		setInstructions.mockRestore();
+
+		expect(withoutModule).toBe(withoutSetup);
+		expect(withoutSetup).not.toContain('## Workflow Engine');
+		expect(withModule).toBe(
+			`${withoutSetup}\n\n${getSelfHealingWorkflowEngineSection(engineSetup)}`,
+		);
+	});
+
 	it('does not declare workflow tools that change a workflow', async () => {
 		const names = (await createAgent()).declaredTools.map((tool) => tool.name);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW_STEP);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.STOP_EXECUTION);
-		expect(names).not.toContain(DOMAIN_TOOL_IDS.CREATE_DATA_TABLE);
-		expect(names).not.toContain(DOMAIN_TOOL_IDS.INSERT_DATA_TABLE_ROWS);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.SETUP_WORKFLOW);
 	});
@@ -428,13 +455,15 @@ describe('createSelfHealingAgent', () => {
 			});
 			const tool = findTool(agent.declaredTools, 'verify_candidate');
 			const input = {
-				filePath: 'self-healing/candidate.workflow.ts',
+				workflowId: 'workflow',
+				filePath: 'src/workflows/candidate.workflow.ts',
 				validationOnly: true,
 				...options,
 			};
 			expect(parseToolInput(tool, input).success).toBe(true);
 			expect(parseToolInput(tool, { ...input, triggerNodeName: '' }).success).toBe(false);
-			expect(parseToolInput(tool, { ...input, workflowId: 'other' }).success).toBe(false);
+			expect(parseToolInput(tool, { ...input, workflowId: undefined }).success).toBe(false);
+			expect(parseToolInput(tool, { ...input, projectId: 'other' }).success).toBe(false);
 			await expect(executeTool(tool, input)).resolves.toEqual({ valid: true });
 			expect(verifyCandidate).toHaveBeenCalledWith(input, controller.signal);
 			controller.abort();

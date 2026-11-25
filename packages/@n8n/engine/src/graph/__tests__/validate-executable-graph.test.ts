@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { UnimplementedError } from '../../common';
 import { GraphValidationError } from '../graph-validation.error';
 import { validateExecutableGraph } from '../validate-executable-graph';
 import type { WorkflowGraph } from '../workflow-graph';
@@ -46,7 +45,7 @@ describe('validateExecutableGraph', () => {
 		};
 
 		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
-		expect(() => validateExecutableGraph(graph)).toThrow('would wait on r forever');
+		expect(() => validateExecutableGraph(graph)).toThrow('"A" would wait on "R" forever');
 	});
 
 	it('accepts a disconnected island that feeds nothing reachable', () => {
@@ -82,6 +81,7 @@ describe('validateExecutableGraph', () => {
 
 		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
 		expect(() => validateExecutableGraph(graph)).toThrow('non-negative integer');
+		expect(() => validateExecutableGraph(graph)).toThrow('Edge "T" -> "A"');
 	});
 
 	it('rejects an edge whose input slot index is above 100', () => {
@@ -92,6 +92,7 @@ describe('validateExecutableGraph', () => {
 
 		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
 		expect(() => validateExecutableGraph(graph)).toThrow('above 100');
+		expect(() => validateExecutableGraph(graph)).toThrow('Edge "T" -> "A"');
 	});
 
 	it('accepts a fan-out across output slots (If/Switch shape)', () => {
@@ -121,7 +122,41 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
-	it('rejects two edges into the same input slot of one node as unimplemented', () => {
+	it('rejects two edges with the same ends and slots', () => {
+		const graph: WorkflowGraph = {
+			nodes: validGraph.nodes,
+			edges: [...validGraph.edges, ...validGraph.edges],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow(
+			'Edge "T" -> "A" from output slot 0 into input slot 0 appears more than once',
+		);
+	});
+
+	it('accepts two outputs of one node into the same input slot', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
+			edges: [
+				...validGraph.edges,
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 },
+			],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
+	it('accepts one output into two input slots of one node', () => {
+		const graph: WorkflowGraph = {
+			...validGraph,
+			edges: [...validGraph.edges, { from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 1 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
+	it('accepts two edges into the same input slot of one node', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
 			edges: [
@@ -131,8 +166,7 @@ describe('validateExecutableGraph', () => {
 			],
 		};
 
-		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
-		expect(() => validateExecutableGraph(graph)).toThrow('more than one edge');
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
 	it('accepts a well-formed loop', () => {

@@ -174,6 +174,16 @@ export type AgentSseEvent =
 			payload: unknown;
 	  }
 	| {
+			/**
+			 * A short-lived event from a system-agent provider during a turn, such
+			 * as a live preview. The runtime does not record it, so history does not
+			 * return it. A client that does not know the name ignores it.
+			 */
+			type: 'transient-host-event';
+			name: string;
+			payload: unknown;
+	  }
+	| {
 			/** A warning message from the MCP server when it fails to connect or initialize. */
 			type: 'warning';
 			message: string;
@@ -226,7 +236,11 @@ export const AGENT_CHAT_ERROR_CODES = {
 export type AgentChatErrorCode =
 	(typeof AGENT_CHAT_ERROR_CODES)[keyof typeof AGENT_CHAT_ERROR_CODES];
 
-export type AgentBudgetNoticeCode = 'budget.alert' | 'budget.session' | 'budget.monthly';
+export type AgentBudgetNoticeCode =
+	| 'budget.alert'
+	| 'budget.session'
+	| 'budget.monthly'
+	| 'budget.credits';
 
 /** A budget alert or stop. `agentId` is the budget owner; absent for the run's own agent. */
 export interface AgentBudgetNotice {
@@ -235,5 +249,10 @@ export interface AgentBudgetNotice {
 }
 
 export function isAgentBudgetNoticeCode(code: string): code is AgentBudgetNoticeCode {
-	return code === 'budget.alert' || code === 'budget.session' || code === 'budget.monthly';
+	return (
+		code === 'budget.alert' ||
+		code === 'budget.session' ||
+		code === 'budget.monthly' ||
+		code === 'budget.credits'
+	);
 }

@@ -339,6 +339,23 @@ describe('createEngineRequests', () => {
 	});
 
 	describe('HITL (Human-in-the-Loop) tools handling', () => {
+		// Same schema shape as the gated tools built by createHitlToolkit
+		const createHitlTool = (name: string, metadata: ToolMetadata) =>
+			new DynamicStructuredTool({
+				name,
+				description: `A gated tool named ${name}`,
+				schema: z.object({
+					toolParameters: z.object({}).passthrough(),
+					hitlParameters: z.object({
+						hitlParam1: z.string(),
+						hitlParam2: z.string(),
+						query: z.unknown(),
+					}),
+				}),
+				func: async () => '',
+				metadata,
+			});
+
 		it('should extract HITL metadata when gatedToolNodeName is present', async () => {
 			const tools = [
 				createMockTool('gated_tool', {
@@ -378,7 +395,7 @@ describe('createEngineRequests', () => {
 
 		it('should merge hitlParameters into input when HITL metadata is present', async () => {
 			const tools = [
-				createMockTool('gated_tool', {
+				createHitlTool('gated_tool', {
 					sourceNodeName: 'ToolNode',
 					gatedToolNodeName: 'HITLNode',
 				}),
@@ -405,6 +422,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				toolParameters: { param1: 'value1' },
+				tool: 'gated_tool',
 				hitlParam1: 'hitlValue1',
 				hitlParam2: 'hitlValue2',
 			});
@@ -438,7 +456,7 @@ describe('createEngineRequests', () => {
 
 		it('should handle HITL tool with toolkit flag', async () => {
 			const tools = [
-				createMockTool('gated_toolkit_tool', {
+				createHitlTool('gated_toolkit_tool', {
 					sourceNodeName: 'ToolkitNode',
 					gatedToolNodeName: 'HITLNode',
 					isFromToolkit: true,
@@ -507,9 +525,9 @@ describe('createEngineRequests', () => {
 					param1: 'value1',
 				},
 			});
-			// Input should remain the same when hitlParameters is missing
 			expect(result[0].input).toEqual({
 				toolParameters: { param1: 'value1' },
+				tool: 'gated_tool',
 			});
 		});
 

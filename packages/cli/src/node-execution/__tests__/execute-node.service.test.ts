@@ -209,10 +209,10 @@ describe('ExecuteNodeService', () => {
 		});
 
 		it('clamps the timeout to the maximum', async () => {
-			await service.run(user, baseRequest({ timeoutMs: 120_000 }));
+			await service.run(user, baseRequest({ timeoutMs: 900_000 }));
 
 			const savedWorkflow = workflowRepository.createWorkflowWithOwner.mock.calls[0][0];
-			expect(savedWorkflow.settings?.executionTimeout).toBe(60);
+			expect(savedWorkflow.settings?.executionTimeout).toBe(600);
 		});
 
 		it('runs through WorkflowRunner in manual mode with a seeded execution stack', async () => {
@@ -344,6 +344,31 @@ describe('ExecuteNodeService', () => {
 				},
 			});
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
+		it('refuses a credential the user can use only through an instance-wide grant, before running', async () => {
+			credentialsPermissionChecker.checkForUser.mockRejectedValueOnce(
+				new UserError('Node "Node" uses the credential "Bot", which you cannot use'),
+			);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledWith(
+				'user-1',
+				[expect.objectContaining({ name: 'Node' })],
+				{ ignoreGlobalUseScope: true },
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ status: 'error', error: { refused: true } });
+		});
+
+		it('does not run when the own-access check fails for another reason', async () => {
+			credentialsPermissionChecker.checkForUser.mockRejectedValueOnce(new Error('connection lost'));
+
+			const result = await service.run(user, baseRequest());
+
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ status: 'error' });
 		});
 
 		it('lets the runner decide when the credential check fails for another reason', async () => {

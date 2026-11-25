@@ -3,12 +3,19 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
+import type { AgentSkillReference } from './agent-skill.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted'
+	| 'awaiting';
 
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;
@@ -209,9 +216,9 @@ export interface AgentWhatsAppVerifyTokenResponse {
 	verifyToken: string;
 }
 
-export interface AgentSkillReference {
-	path: string;
-	content: string;
+/** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
+export interface AgentWebhookUrlResponse {
+	url: string;
 }
 
 export interface AgentSkill {
@@ -414,6 +421,11 @@ export interface AgentVersionListItemDto {
 	description?: string | null;
 	isCurrent?: boolean;
 	lastPublished?: Pick<AgentPublishHistoryItemDto, 'author' | 'createdAt' | 'isLegacy'>;
+	/**
+	 * Whether this version's config adds the agent to n8n Chat. Only the
+	 * single-version endpoint sets it, so the publish modal can say so before it publishes.
+	 */
+	includesN8nChat?: boolean;
 }
 
 export interface AgentPublishHistoryItemDto {
@@ -435,7 +447,7 @@ export interface AgentPublishHistoryItemDto {
 export interface AgentCapabilityModel {
 	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
 	provider: string;
-	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	/** Model name, e.g. 'claude-sonnet-5-5'. */
 	model: string;
 }
 
@@ -516,6 +528,19 @@ export interface AgentToolOutputFile {
 	sizeBytes: number;
 }
 
+/** A file of an agent session, for the session files list. */
+export interface AgentSessionFile extends AgentToolOutputFile {
+	/** Where the file came from, e.g. 'chat', 'tool' or 'sandbox'. */
+	source: string;
+	/** ISO 8601 time when the file was stored. */
+	createdAt: string;
+}
+
+export interface AgentSessionFilesResponse {
+	/** Newest first. One entry for each content, plus each older file without a hash. */
+	files: AgentSessionFile[];
+}
+
 /** A tool output file that was not stored. The model gets the reason in the tool result. */
 export interface AgentToolSkippedFile {
 	fileName: string;
@@ -569,6 +594,12 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 	/** Set on user turns that came in through a chat integration. */
 	author?: AgentMessageAuthor;
+	/**
+	 * Resources that the user sent with a user turn, for example mentioned
+	 * workflows. The system agent provider reads them from the stored model
+	 * input, and the chat host shows them. The shape belongs to that provider.
+	 */
+	references?: unknown[];
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
@@ -657,6 +688,11 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the endpoint does not report execution state.
 	 */
 	activeExecutionId?: string | null;
+	/**
+	 * Cursor of the next older page. `null` means that no older turns exist.
+	 * An omitted value means that the response holds the whole thread.
+	 */
+	nextCursor?: string | null;
 }
 
 /**
@@ -755,6 +791,11 @@ export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
  * except `control` turns them on.
  */
 export const AGENTS_N8N_CHAT_FLAG = '125_agents_n8n_chat';
+/**
+ * Instance-level PostHog flag for the sandbox files of agents and the session
+ * files panel in the agent chat.
+ */
+export const AGENT_SANDBOX_FILES_FLAG = '137_agent_sandbox_files';
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;

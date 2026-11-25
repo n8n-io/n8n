@@ -1,11 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
-import type {
-	Role,
-	Scope as DbScope,
-	SharedWorkflowRepository,
-	User,
-	WorkflowRepository,
-} from '@n8n/db';
+import type { Role, Scope as DbScope, SharedWorkflowRepository, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +7,8 @@ import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.ser
 
 import type { ApplyPreviewService } from '../apply-preview.service';
 import type { LocalPackageEntities } from '../local-package-entities.service';
+import type { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
+import { PromotePreviewService } from '../promote-preview.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionReviewGateService } from '../promotion-review-gate.service';
@@ -36,6 +31,8 @@ const nobody = userWith();
 const branched = (createBranchOnPromotion: boolean) =>
 	mock<PromotionOperationInput>({
 		environmentId: 'env-1',
+		environmentName: 'Staging',
+		providerType: 'gitlab',
 		config: {
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion },
@@ -46,21 +43,22 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	const promotionsService = mock<PromotionsService>();
 	const environmentResolver = mock<PromotionEnvironmentResolver>();
 	const reviewGate = mock<PromotionReviewGateService>();
-	const logger = mock<Logger>();
-	logger.scoped.mockReturnValue(logger);
 
 	const service = new PromotionChangeService(
 		promotionsService,
 		mock<N8nPackagesService>(),
 		mock<ApplyPreviewService>(),
-		mock<WorkflowRepository>(),
-		mock<SharedWorkflowRepository>(),
+		new PromotePreviewService(
+			mock<N8nPackagesService>(),
+			mock<SharedWorkflowRepository>(),
+			reviewGate,
+			mock<PromotionCredentialSelectionService>(),
+		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,
-		reviewGate,
-		logger,
+		mock(),
+		mock<PromotionCredentialSelectionService>(),
 	);
-	const query = { sort: 'name', order: 'asc' } as const;
 
 	beforeEach(() => {
 		// The Git work starts with this read, so a test that expects no Git work asserts it is not called.
@@ -74,15 +72,16 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	it('returns an empty preview with the blocker and skips the git work', async () => {
 		reviewGate.findPromoteBlocker.mockResolvedValue({ code: 'reviewOpen', reviewId: 'review-1' });
 
-		const preview = await service.getPreview(pusher, 'project-1', 'promote', query);
+		const preview = await service.getPreview(pusher, 'project-1', 'promote');
 
 		expect(preview).toEqual({
 			commitSha: null,
 			source: { environmentId: 'env-1', branchName: 'staging' },
-			changes: [],
+			environment: { name: 'Staging', providerType: 'gitlab', createBranchOnPromotion: true },
 			resources: [],
 			dependencies: [],
 			blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+			revision: expect.any(String),
 		});
 		expect(reviewGate.findPromoteBlocker).toHaveBeenCalledWith('project-1', 'env-1');
 		expect(promotionsService.readBranchPackage).not.toHaveBeenCalled();
@@ -91,24 +90,20 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	it('does not run the gate when the promote pushes directly', async () => {
 		environmentResolver.resolveForProject.mockResolvedValue(branched(false));
 
-		await expect(service.getPreview(pusher, 'project-1', 'promote', query)).rejects.toThrow(
-			'compare ran',
-		);
+		await expect(service.getPreview(pusher, 'project-1', 'promote')).rejects.toThrow('compare ran');
 
 		expect(reviewGate.findPromoteBlocker).not.toHaveBeenCalled();
 	});
 
 	it('does not run the gate for an apply preview', async () => {
-		await expect(service.getPreview(puller, 'project-1', 'apply', query)).rejects.toThrow(
-			'compare ran',
-		);
+		await expect(service.getPreview(puller, 'project-1', 'apply')).rejects.toThrow('compare ran');
 
 		expect(environmentResolver.resolveForProject).not.toHaveBeenCalled();
 		expect(reviewGate.findPromoteBlocker).not.toHaveBeenCalled();
 	});
 
 	it('checks the permission before the gate', async () => {
-		await expect(service.getPreview(nobody, 'project-1', 'promote', query)).rejects.toThrow(
+		await expect(service.getPreview(nobody, 'project-1', 'promote')).rejects.toThrow(
 			ForbiddenError,
 		);
 

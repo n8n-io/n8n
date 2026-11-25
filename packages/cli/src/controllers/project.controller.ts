@@ -5,8 +5,9 @@ import {
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
+	ListSharingCandidatesQueryDto,
 } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
+import { accountSummary, AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Get,
 	Post,
@@ -31,6 +32,19 @@ import {
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
+
+/** A member as the project lists it. */
+function memberFields(user: User) {
+	// The response type needs strings.
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return {
+		id,
+		email: email ?? '',
+		firstName: firstName ?? '',
+		lastName: lastName ?? '',
+		kind: user.kind,
+	};
+}
 
 @RestController('/projects')
 export class ProjectController {
@@ -75,7 +89,7 @@ export class ProjectController {
 	async getSharingCandidates(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query payload: ListProjectsQueryDto,
+		@Query payload: ListSharingCandidatesQueryDto,
 	) {
 		const { projects, count } = await this.projectsService.getShareableProjectsAndCount(
 			req.user,
@@ -155,17 +169,11 @@ export class ProjectController {
 			customTelemetryTags,
 			creatorId: project.creatorId ?? null,
 			relations: relations.map((r) => ({
-				id: r.user.id,
-				email: r.user.email,
-				firstName: r.user.firstName,
-				lastName: r.user.lastName,
+				...memberFields(r.user),
 				role: r.role.slug,
 			})),
 			implicitMembers: implicitMembers.map((user) => ({
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
+				...memberFields(user),
 				globalRole: { slug: user.role.slug, displayName: user.role.displayName },
 			})),
 			scopes: [

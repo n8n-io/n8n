@@ -76,9 +76,9 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 	},
 	ContactAdminModal: {
 		name: 'ContactAdminModal',
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		props: ['open', 'typeName', 'kind', 'audience'],
 		emits: ['update:open'],
-		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
+		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ typeName }}</div>',
 	},
 }));
 
@@ -419,7 +419,7 @@ describe('CredentialsSelect — restricted credential types', () => {
 		const modal = wrapper.findComponent({ name: 'ContactAdminModal' });
 		expect(modal.props()).toMatchObject({
 			open: true,
-			nodeTypeName: 'Slack',
+			typeName: 'Slack',
 			kind: 'credential',
 			audience: 'project',
 		});
@@ -444,7 +444,7 @@ describe('CredentialsSelect — restricted credential types', () => {
 		// The dialog fades out after the close, so it must not fall back to an empty subject.
 		expect(modal.props()).toMatchObject({
 			open: false,
-			nodeTypeName: 'Slack',
+			typeName: 'Slack',
 			audience: 'project',
 		});
 	});
@@ -461,7 +461,7 @@ describe('CredentialsSelect — restricted credential types', () => {
 		expect(selectBlur).toHaveBeenCalled();
 		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toMatchObject({
 			open: true,
-			nodeTypeName: 'Slack',
+			typeName: 'Slack',
 			kind: 'credential',
 			audience: 'project',
 		});
@@ -481,6 +481,47 @@ describe('CredentialsSelect — restricted credential types', () => {
 			genericType('httpBearerAuth', 'Bearer Auth'),
 			genericType('httpHeaderAuth', 'Header Auth'),
 		];
+
+		// nodes-base tests the metadata. The picker also needs to handle types with an authenticator.
+		it.each([
+			{ ...genericType('httpHeaderAuth', 'Header Auth'), authenticate: vi.fn() },
+			{ ...genericType('httpMultipleHeadersAuth', 'Multiple Headers Auth'), authenticate: vi.fn() },
+		])(
+			'lists $displayName only under generic authentication for HTTP Request',
+			async (credential) => {
+				const wrapper = mountSelect('n8n-nodes-base.httpRequest', [credential, slackApi], {
+					parameter: genericAuthParameter,
+				});
+
+				expect.soft(renderedCredentialNames(wrapper)).toContain(credential.name);
+				expect(renderedCredentialNames(wrapper)).not.toContain('slackApi');
+
+				await wrapper.setProps({ parameter: baseParameter });
+
+				expect(renderedCredentialNames(wrapper)).toContain('slackApi');
+				expect(renderedCredentialNames(wrapper)).not.toContain(credential.name);
+			},
+		);
+
+		it.each([baseParameter, genericAuthParameter])(
+			'keeps a saved Multiple Headers Auth selection in $name',
+			(parameter) => {
+				const wrapper = mountSelect(
+					'n8n-nodes-base.httpRequest',
+					[genericType('httpMultipleHeadersAuth', 'Multiple Headers Auth')],
+					{
+						parameter,
+						parameters: { [parameter.name]: 'httpMultipleHeadersAuth' },
+						displayValue: 'Multiple Headers Auth',
+					},
+				);
+
+				expect(wrapper.findComponent({ name: 'N8nSelect' }).props('modelValue')).toBe(
+					'Multiple Headers Auth',
+				);
+				expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+			},
+		);
 
 		it('puts a restricted generic type last and disables it', () => {
 			mockRestrictedCredentialTypes({ httpBasicAuth: 'instance' });

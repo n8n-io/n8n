@@ -16,6 +16,7 @@ import {
 	AiPreferenceService,
 	buildAppliedPreferencesPayload,
 	renderAiPreferencesBlock,
+	type ApplicableAiPreferences,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
@@ -45,6 +46,8 @@ import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import type { AssistantTurnRuntime } from './assistant-turn-runtime';
 import { assertAgentTestHandoffScopes, resolveAgentTestHandoff } from '../agent-test-handoff';
@@ -57,10 +60,12 @@ import {
 	shouldTraceContextInjection,
 	type InstanceContextResult,
 } from '../instance-context.service';
+import { InstanceAiPreferencesNoteService } from '../instance-ai-preferences-note.service';
 import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
 	buildAppTargetsBlock,
+	buildAutoApprovalModeBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
@@ -78,6 +83,10 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from '../internal-messages';
+import {
+	buildMigrationReportContextBlock,
+	resolveMigrationReportFinding,
+} from '../migration-report-handoff';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import { type OrchestratorResumeReason } from '../tracing';
 
@@ -170,6 +179,8 @@ export interface AssistantTurnInputParams {
  */
 export const OPENED_METADATA_KEY = 'assistantOpened';
 
+const NO_APPLICABLE_PREFERENCES: ApplicableAiPreferences = { instance: [], user: [], projects: [] };
+
 export interface AssistantTurnInput {
 	/** The model input text: handoff and setup blocks, thread context, then the user message. */
 	fullMessage: string;
@@ -178,7 +189,13 @@ export interface AssistantTurnInput {
 	turnHadFileAttachments: boolean;
 	instanceContext: InstanceContextResult;
 	contextInjection: InstanceContextInjection;
-	aiPreferencesTurn?: { block: string | undefined; payload: AiPreferencesAppliedPayload };
+	aiPreferencesTurn?: AiPreferencesTurn;
+}
+
+export interface AiPreferencesTurn {
+	block: string | undefined;
+	payload: AiPreferencesAppliedPayload;
+	noneSaved?: true;
 }
 
 /**
@@ -229,6 +246,8 @@ export class AssistantTurnInputBuilder {
 		private readonly skillsService: InstanceAiSkillsService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
+		private readonly preferencesNoteService: InstanceAiPreferencesNoteService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -269,9 +288,9 @@ export class AssistantTurnInputBuilder {
 			memory,
 			taskStorage,
 			conversationHistory,
-			aiPreferencesEnabled,
 			instanceContextEnabled,
 			skillScope,
+			preferencesNoteVariant,
 		} = environment;
 		const { eventBus } = runtime;
 		const {
@@ -333,6 +352,16 @@ export class AssistantTurnInputBuilder {
 			});
 		} else if (handoffContext?.source === 'setup-panel-execute' && isSetupPanelEnabled(context)) {
 			handoffContextBlock = buildWorkflowTestRequestBlock(handoffContext.workflowId);
+		} else if (handoffContext?.source === 'migration-report') {
+			const [finding, skill] = await Promise.all([
+				resolveMigrationReportFinding(handoffContext, user),
+				this.skillsService.loadSkill(SKILLS.v3Migration, skillScope),
+			]);
+			handoffContextBlock = buildMigrationReportContextBlock(
+				handoffContext,
+				finding,
+				skill.instructions,
+			);
 		} else {
 			handoffContextBlock = buildHandoffContextBlock(handoffContext);
 		}
@@ -478,8 +507,15 @@ export class AssistantTurnInputBuilder {
 		// same way they skip the other ambient context: the block from the user turn is
 		// already in the history the follow-up replays.
 		const aiPreferencesTurn =
-			aiPreferencesEnabled && resumeReason === undefined
-				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
+			resumeReason === undefined
+				? await this.resolveAiPreferencesTurn(user, boundProject, threadId, loadReplayedHistory)
+				: undefined;
+		const canSavePreferences =
+			context.aiPreferenceService !== undefined &&
+			context.permissions?.createPreference !== 'blocked';
+		const preferencesNoteBlock =
+			aiPreferencesTurn?.noneSaved && canSavePreferences
+				? await this.preferencesNoteService.takeNote(user, preferencesNoteVariant, threadId)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([
 			instanceContext.state === 'injected' ? instanceContext.block : '',
@@ -497,6 +533,10 @@ export class AssistantTurnInputBuilder {
 				: undefined,
 			pastConversationsSection ? buildPastConversationsBlock(pastConversationsSection) : undefined,
 			aiPreferencesTurn?.block,
+			preferencesNoteBlock,
+			resumeReason === undefined && context.approvalReviewer
+				? buildAutoApprovalModeBlock()
+				: undefined,
 			buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 		]);
 		const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
@@ -657,19 +697,18 @@ export class AssistantTurnInputBuilder {
 	 * turn — and reports an empty payload, which is an answer, not a missing one.
 	 */
 	private async resolveAiPreferencesTurn(
-		userId: string,
+		user: User,
 		project: ProjectSummary | undefined,
 		threadId: string,
 		loadHistory: () => Promise<AgentDbMessage[]>,
-	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
+	): Promise<AiPreferencesTurn> {
 		const resolved = await this.bestEffort(
 			'Assistant failed to read the AI preferences for this turn',
-			{ userId },
+			{ userId: user.id },
 			async () => {
-				const preferences = await this.aiPreferenceService.getApplicable(
-					userId,
-					project ? [project] : [],
-				);
+				const preferences = this.aiPreferenceSettingsService.isEnabled
+					? await this.aiPreferenceService.getApplicable(user, project ? [project] : [])
+					: NO_APPLICABLE_PREFERENCES;
 				return { preferences, rendered: renderAiPreferencesBlock(preferences) };
 			},
 		);
@@ -701,6 +740,7 @@ export class AssistantTurnInputBuilder {
 					renderedLength: 0,
 					injectedThisTurn: false,
 				}),
+				noneSaved: true,
 			};
 		}
 

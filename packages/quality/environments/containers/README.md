@@ -33,6 +33,9 @@ pnpm stack --tunnel
 
 When started, you'll see the URL: `http://localhost:[port]`
 
+To run a persistent topology from your checkout as local processes, with
+env vars for each component, use [`rig`](../../../../scripts/experimental/rig/README.md).
+
 ## Using in Playwright Tests
 
 ### Basic Test
@@ -114,6 +117,77 @@ test.use({ capability: 'oidc' });
 
 // Instead of: { services: ['gitea'] }
 test.use({ capability: 'source-control' });
+```
+
+### File-Based Configuration
+
+The `files` option adds files to each main, worker, and webhook container.
+Use `unsetEnv` to remove variables after the stack merges its defaults and overrides.
+This lets n8n read a value from a `_FILE` variable when the stack normally sets the direct variable.
+
+```typescript
+test.use({
+  capability: {
+    files: [{ target: '/tmp/encryption-key', content: 'test-key-from-file' }],
+    env: { N8N_ENCRYPTION_KEY_FILE: '/tmp/encryption-key' },
+    unsetEnv: ['N8N_ENCRYPTION_KEY'],
+  },
+});
+```
+
+### Shared Storage
+
+Use `sharedStorage` to give the mains, workers, and webhook processors one writable storage directory.
+The stack sets `N8N_STORAGE_PATH` to the mount path and removes the directory when it stops.
+In queue mode, set `N8N_DEFAULT_BINARY_DATA_MODE` in `env` to override the `filesystem` default.
+
+```typescript
+test.use({ capability: { workers: 1, sharedStorage: true } });
+```
+
+### Container Hardening
+
+Use `n8nContainer` to configure the main, worker, and webhook containers.
+Set `readOnlyRootfs` to make the root filesystem read-only.
+Use `tmpfs` to give the runtime user writable paths.
+Mount `/home/node` so n8n can write its settings and editor asset cache.
+
+Use a writable root filesystem if the stack copies files through `files`, a service such as Keycloak, or `engine: 'container'`.
+Keep copied files outside tmpfs mount paths. Docker mounts tmpfs after Testcontainers copies the files, so the mount hides files at or below its path.
+The stack treats `/var/run` and `/run` as the same path. Use resolved paths for other symlinks in the image.
+
+Set `platform` to select a Docker image platform, such as `linux/arm64`.
+Set `image` to a platform-specific tag or digest that is available on the Docker daemon.
+The stack does not pull the image when `platform` is set, because that pull can change a tag that other stacks use.
+
+```typescript
+test.use({
+  capability: {
+    user: '12345:0',
+    env: { N8N_USER_FOLDER: '/home/node' },
+    n8nContainer: {
+      readOnlyRootfs: true,
+      tmpfs: {
+        '/home/node': 'rw,uid=12345,gid=0,mode=0700',
+        '/tmp': 'rw,mode=1777',
+      },
+    },
+  },
+});
+```
+
+### Path Prefix
+
+Set `pathPrefix` to serve n8n under an absolute subpath such as `/n8n/`.
+Caddy strips the prefix before it forwards requests to n8n.
+The stack includes the prefix and a trailing slash in `baseUrl`.
+Use relative paths to resolve URLs against `baseUrl`.
+Use `n8n-playwright/containers` for prefixed tests. The standard `n8n-playwright` fixture sends root-relative requests, which Caddy rejects with HTTP 404.
+
+```typescript
+import { test } from 'n8n-playwright/containers';
+
+test.use({ capability: { pathPrefix: '/n8n/' } });
 ```
 
 ## Architecture
@@ -361,11 +435,78 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `kafka` | ✓ | Kafka broker for message queue testing |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
-| `loadBalancer` | - | Caddy for multi-main |
+| `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |
+| `loadBalancer` | - | Caddy for multi-main, webhook processors, or a path prefix |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
+| `litellm` | - | OpenAI-compatible AI gateway (LiteLLM) with four logins |
 
 **Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
 The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
+
+## AI Gateway (LiteLLM)
+
+Use this service to test nodes against an OpenAI-compatible AI gateway, for
+example with the Custom Model Endpoint credential. LiteLLM is an open-source AI
+gateway. A small Caddy proxy in front of it adds the logins that LiteLLM does
+not have.
+
+```bash
+pnpm --filter n8n-containers services --services litellm
+```
+
+The first start downloads about 2.5 GB. Each start takes about one minute. The
+summary shows the base URL and the login for each method:
+
+| Login | Base URL | Value |
+|-------|----------|-------|
+| Bearer token | `http://localhost:4000/v1` | Key `sk-n8n-test-gateway` |
+| API key in header | `http://localhost:4000/v1` | Header `Ocp-Apim-Subscription-Key`, key `sk-n8n-test-gateway` |
+| Basic auth | `http://localhost:4001/basic/v1` | User `n8n`, password `test-password` |
+| None | `http://localhost:4001/none/v1` | No login |
+
+The ports listen on 127.0.0.1 only. This service has no OAuth2 client
+credentials login. Test that login against a real identity provider, for
+example Azure OpenAI with Microsoft Entra ID.
+
+Stop the gateway with `pnpm --filter n8n-containers services:clean`. This
+command removes the containers whose names start with `n8n-svc-`, which is the
+default for `pnpm services`. If you started the gateway with `--name <name>`,
+remove it with `docker rm -f <name>-litellm <name>-litellm-front-door`.
+
+### Models
+
+- `mock-model` is always available. It returns a fixed reply, also as a stream.
+  It costs nothing.
+- To add a real model, set the variables below before you start the service.
+  The gateway then serves an Azure OpenAI deployment under its deployment name.
+  It signs in to Microsoft Entra ID with a client secret. The app registration
+  needs the "Cognitive Services OpenAI User" role on the resource.
+
+| Variable | Value |
+|----------|-------|
+| `LITELLM_AZURE_API_BASE` | The resource URL, for example `https://<resource>.openai.azure.com` |
+| `LITELLM_AZURE_DEPLOYMENT` | The deployment name |
+| `LITELLM_AZURE_TENANT_ID` | The directory (tenant) ID |
+| `LITELLM_AZURE_CLIENT_ID` | The application (client) ID |
+| `LITELLM_AZURE_CLIENT_SECRET` | The client secret |
+| `LITELLM_AZURE_API_VERSION` | Optional. The default is `2025-03-01-preview` |
+
+Set all five required variables, or none. Do not write the secret to a file.
+Type it into the shell instead:
+
+```bash
+read -rs LITELLM_AZURE_CLIENT_SECRET && export LITELLM_AZURE_CLIENT_SECRET
+```
+
+### Known limits
+
+- LiteLLM runs without a database. A request with a wrong key gets 400
+  "No connected db", not 401. A request with no key gets 401.
+- LiteLLM logs "Could not identify azure model" on each Azure call. The calls
+  work. LiteLLM does not guess the model from the deployment name, so it tracks
+  no cost.
+- The default image pre-pull in CI skips this image. Pull it with
+  `pnpm --filter n8n-containers exec tsx pull-test-images.ts litellm`.
 
 ## CLI Options
 

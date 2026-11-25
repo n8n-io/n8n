@@ -69,68 +69,116 @@ import {
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
-import AboutModal from '@/app/components/AboutModal.vue';
-import ActivationModal from '@/features/workflows/components/ActivationModal.vue';
-import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
-import NewAssistantSessionModal from '@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue';
-import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
-import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
-import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
-import CommunityPlusEnrollmentModal from '@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue';
-import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
-import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
-import DebugPaywallModal from '@/features/execution/executions/components/DebugPaywallModal.vue';
-import DeleteFolderModal from '@/features/core/folders/components/DeleteFolderModal.vue';
-import MoveToFolderModal from '@/features/core/folders/components/MoveToFolderModal.vue';
-import DeleteUserModal from '@/features/settings/users/components/DeleteUserModal.vue';
-import DuplicateWorkflowDialog from '@/features/workflows/components/DuplicateWorkflowDialog.vue';
-import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
-import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
-import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue';
-import FromAiParametersModal from '@/features/ndv/parameters/components/FromAiParametersModal.vue';
-import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
-import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
-import ImportWorkflowUrlModal from '@/features/workflows/components/ImportWorkflowUrlModal.vue';
-import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
-import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
-import ProjectMoveResourceModal from '@/features/collaboration/projects/components/ProjectMoveResourceModal.vue';
-import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
-import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
-import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
-import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
-import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
-import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
-import WhatsNewModal from '@/app/components/WhatsNewModal.vue';
-import WorkflowActivationConflictingWebhookModal from '@/features/workflows/components/WorkflowActivationConflictingWebhookModal.vue';
-import WorkflowExtractionNameModal from '@/features/workflows/components/WorkflowExtractionNameModal.vue';
-import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
-import WorkflowVersionFormModal, {
-	type WorkflowVersionFormModalData,
-} from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
-import WorkflowSettings from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
-import WorkflowShareModal from '@/features/workflows/components/WorkflowShareModal.ee.vue';
-import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
+import type { WorkflowVersionFormModalData } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
-import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
-import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
-import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
-import StopManyExecutionsModal from '@/features/execution/executions/components/StopManyExecutionsModal.vue';
-import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
-import WorkflowDescriptionModal from '@/features/workflows/components/WorkflowDescriptionModal.vue';
-import WorkflowPublishModal from '@/features/workflows/components/WorkflowPublishModal.vue';
-import MigrateWorkflowModal from '@/features/settings/migrationReport/MigrateWorkflowModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
-import CredentialResolverEditModal from '@/features/resolvers/components/CredentialResolverEditModal.vue';
-import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
-import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
 import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { defineAsyncComponent } from 'vue';
+import { lazyModalLoaders } from '@/app/modals/lazyModals';
 
-const TrialIntroModal = defineAsyncComponent(
-	async () => await import('@/experiments/trialIntroModal/components/TrialIntroModal.vue'),
+const AboutModal = defineAsyncComponent(lazyModalLoaders[ABOUT_MODAL_KEY]);
+const ActivationModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_ACTIVE_MODAL_KEY]);
+const ApiKeyCreateOrEditModal = defineAsyncComponent(
+	lazyModalLoaders[API_KEY_CREATE_OR_EDIT_MODAL_KEY],
 );
+const NewAssistantSessionModal = defineAsyncComponent(
+	lazyModalLoaders[NEW_ASSISTANT_SESSION_MODAL],
+);
+const ChatEmbedModal = defineAsyncComponent(lazyModalLoaders[CHAT_EMBED_MODAL_KEY]);
+const CommunityPackageInstallModal = defineAsyncComponent(
+	lazyModalLoaders[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY],
+);
+const CommunityPackageManageConfirmModal = defineAsyncComponent(
+	lazyModalLoaders[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY],
+);
+const CommunityPlusEnrollmentModal = defineAsyncComponent(
+	lazyModalLoaders[COMMUNITY_PLUS_ENROLLMENT_MODAL],
+);
+const CredentialEdit = defineAsyncComponent(lazyModalLoaders[CREDENTIAL_EDIT_MODAL_KEY]);
+const CredentialsSelectModal = defineAsyncComponent(lazyModalLoaders[CREDENTIAL_SELECT_MODAL_KEY]);
+const DebugPaywallModal = defineAsyncComponent(lazyModalLoaders[DEBUG_PAYWALL_MODAL_KEY]);
+const DeleteFolderModal = defineAsyncComponent(lazyModalLoaders[DELETE_FOLDER_MODAL_KEY]);
+const MoveToFolderModal = defineAsyncComponent(lazyModalLoaders[MOVE_FOLDER_MODAL_KEY]);
+const DeleteUserModal = defineAsyncComponent(lazyModalLoaders[DELETE_USER_MODAL_KEY]);
+const DuplicateWorkflowDialog = defineAsyncComponent(lazyModalLoaders[DUPLICATE_MODAL_KEY]);
+const ExternalSecretsProviderModal = defineAsyncComponent(
+	lazyModalLoaders[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY],
+);
+const SecretsProviderConnectionModal = defineAsyncComponent(
+	lazyModalLoaders[SECRETS_PROVIDER_CONNECTION_MODAL_KEY],
+);
+const DeleteSecretsProviderModal = defineAsyncComponent(
+	lazyModalLoaders[DELETE_SECRETS_PROVIDER_MODAL_KEY],
+);
+const FromAiParametersModal = defineAsyncComponent(lazyModalLoaders[FROM_AI_PARAMETERS_MODAL_KEY]);
+const ImportCurlModal = defineAsyncComponent(lazyModalLoaders[IMPORT_CURL_MODAL_KEY]);
+const BinaryDataViewModal = defineAsyncComponent(lazyModalLoaders[BINARY_DATA_VIEW_MODAL_KEY]);
+const ImportWorkflowUrlModal = defineAsyncComponent(
+	lazyModalLoaders[IMPORT_WORKFLOW_URL_MODAL_KEY],
+);
+const InviteUsersModal = defineAsyncComponent(lazyModalLoaders[INVITE_USER_MODAL_KEY]);
+const PersonalizationModal = defineAsyncComponent(lazyModalLoaders[PERSONALIZATION_MODAL_KEY]);
+const ProjectMoveResourceModal = defineAsyncComponent(
+	lazyModalLoaders[PROJECT_MOVE_RESOURCE_MODAL],
+);
+const SetupWorkflowCredentialsModal = defineAsyncComponent(
+	lazyModalLoaders[SETUP_CREDENTIALS_MODAL_KEY],
+);
+const SourceControlPullModal = defineAsyncComponent(
+	lazyModalLoaders[SOURCE_CONTROL_PULL_MODAL_KEY],
+);
+const SourceControlPullResultModal = defineAsyncComponent(
+	lazyModalLoaders[SOURCE_CONTROL_PULL_RESULT_MODAL_KEY],
+);
+const SourceControlPushModal = defineAsyncComponent(
+	lazyModalLoaders[SOURCE_CONTROL_PUSH_MODAL_KEY],
+);
+const AnnotationTagsManager = defineAsyncComponent(
+	lazyModalLoaders[ANNOTATION_TAGS_MANAGER_MODAL_KEY],
+);
+const WorkflowTagsManager = defineAsyncComponent(lazyModalLoaders[TAGS_MANAGER_MODAL_KEY]);
+const WhatsNewModal = defineAsyncComponent(lazyModalLoaders[WHATS_NEW_MODAL_KEY]);
+const WorkflowActivationConflictingWebhookModal = defineAsyncComponent(
+	lazyModalLoaders[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY],
+);
+const WorkflowExtractionNameModal = defineAsyncComponent(
+	lazyModalLoaders[WORKFLOW_EXTRACTION_NAME_MODAL_KEY],
+);
+const WorkflowHistoryVersionUnpublishModal = defineAsyncComponent(
+	lazyModalLoaders[WORKFLOW_HISTORY_VERSION_UNPUBLISH],
+);
+const WorkflowVersionFormModal = defineAsyncComponent(
+	lazyModalLoaders[WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY],
+);
+const WorkflowSettings = defineAsyncComponent(lazyModalLoaders[WORKFLOW_SETTINGS_MODAL_KEY]);
+const WorkflowShareModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_SHARE_MODAL_KEY]);
+const WorkflowDiffModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_DIFF_MODAL_KEY]);
+const NodeRecommendationModalV2 = defineAsyncComponent(
+	lazyModalLoaders[EXPERIMENT_TEMPLATE_RECO_V2_KEY],
+);
+const NodeRecommendationModalV3 = defineAsyncComponent(
+	lazyModalLoaders[EXPERIMENT_TEMPLATE_RECO_V3_KEY],
+);
+const VariableModal = defineAsyncComponent(lazyModalLoaders[VARIABLE_MODAL_KEY]);
+const StopManyExecutionsModal = defineAsyncComponent(
+	lazyModalLoaders[STOP_MANY_EXECUTIONS_MODAL_KEY],
+);
+const AddExecutionToDatasetModal = defineAsyncComponent(
+	lazyModalLoaders[ADD_EXECUTION_TO_DATASET_MODAL_KEY],
+);
+const WorkflowDescriptionModal = defineAsyncComponent(
+	lazyModalLoaders[WORKFLOW_DESCRIPTION_MODAL_KEY],
+);
+const WorkflowPublishModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_PUBLISH_MODAL_KEY]);
+const MigrateWorkflowModal = defineAsyncComponent(lazyModalLoaders[MIGRATE_WORKFLOW_MODAL_KEY]);
+const CredentialResolverEditModal = defineAsyncComponent(
+	lazyModalLoaders[CREDENTIAL_RESOLVER_EDIT_MODAL_KEY],
+);
+const AIBuilderDiffModal = defineAsyncComponent(lazyModalLoaders[AI_BUILDER_DIFF_MODAL_KEY]);
+const AiGatewayTopUpModal = defineAsyncComponent(lazyModalLoaders[AI_GATEWAY_TOP_UP_MODAL_KEY]);
+const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_KEY]);
 </script>
 
 <template>

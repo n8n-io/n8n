@@ -1,13 +1,18 @@
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { registerShellCapabilities } from './capabilities.manifest';
 
 import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -16,6 +21,11 @@ import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflow
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 
 const {
 	openDocumentStores,
@@ -46,6 +56,7 @@ vi.mock(
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useExistingWorkflowDocumentStore: vi.fn((id: string) => openDocumentStores.get(id)),
 	createWorkflowDocumentId: (id: string) => id,
+	injectWorkflowDocumentStore: vi.fn(),
 }));
 
 describe('registerShellCapabilities', () => {
@@ -219,6 +230,214 @@ describe('registerShellCapabilities', () => {
 			mockedStore(useSourceControlStore).preferences = mock({ branchReadOnly: true });
 
 			expect(capabilityRegistry.use(capabilities.projectPermissions).isReadOnly()).toBe(true);
+		});
+	});
+
+	describe('project context', () => {
+		beforeEach(() => {
+			registerShellCapabilities();
+		});
+
+		it('reads and sets the project that the shell shows', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			const project = mock<Project>({ id: 'project-1' });
+			projectsStore.currentProject = project;
+			const context = capabilityRegistry.use(capabilities.projectContext);
+
+			expect(context.currentProject()).toBe(project);
+
+			const changed = mock<Project>({ id: 'project-1', name: 'Renamed' });
+			context.setCurrentProject(changed);
+
+			expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(changed);
+		});
+
+		it('reloads the project lists and counts', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			const context = capabilityRegistry.use(capabilities.projectContext);
+
+			await Promise.all([
+				context.getMyProjects(),
+				context.getProjectsCount(),
+				context.getAllProjects(),
+			]);
+
+			expect(projectsStore.getMyProjects).toHaveBeenCalled();
+			expect(projectsStore.getProjectsCount).toHaveBeenCalled();
+			expect(projectsStore.getAllProjects).toHaveBeenCalled();
+		});
+	});
+
+	describe('resource editors', () => {
+		beforeEach(() => {
+			registerShellCapabilities();
+		});
+
+		it('opens the credential editor in manual mode with the options', () => {
+			const uiStore = mockedStore(useUIStore);
+			const options = { initialName: 'Billing API', appendToBody: true };
+
+			capabilityRegistry
+				.use(capabilities.resourceEditors)
+				.openCredentialEditor('httpBasicAuth', options);
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'httpBasicAuth',
+				false,
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				options,
+			);
+		});
+
+		it('opens the variable editor for a new variable', () => {
+			const uiStore = mockedStore(useUIStore);
+
+			capabilityRegistry
+				.use(capabilities.resourceEditors)
+				.openVariableEditor({ fixedKey: true, projectId: null });
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: VARIABLE_MODAL_KEY,
+				data: { fixedKey: true, projectId: null, mode: 'new' },
+			});
+		});
+
+		it('reads and closes the editor modals', () => {
+			const uiStore = mockedStore(useUIStore);
+			uiStore.modalsById = { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } };
+			const editors = capabilityRegistry.use(capabilities.resourceEditors);
+
+			expect(editors.isEditorOpen('credential')).toBe(true);
+			expect(editors.isEditorOpen('variable')).toBe(false);
+
+			editors.closeEditor('variable');
+
+			expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY);
+		});
+	});
+
+	describe('environments settings', () => {
+		beforeEach(() => {
+			registerShellCapabilities();
+		});
+
+		it('reads and saves the protected instance setting', async () => {
+			const sourceControlStore = mockedStore(useSourceControlStore);
+			sourceControlStore.preferences = mock({ branchReadOnly: true });
+			const settings = capabilityRegistry.use(capabilities.environmentsSettings);
+
+			expect(settings.isProtected()).toBe(true);
+
+			await settings.setProtected(false);
+
+			expect(sourceControlStore.updatePreferences).toHaveBeenCalledWith({ branchReadOnly: false });
+		});
+	});
+
+	describe('apps feedback form URL', () => {
+		it('reads the URL from the PostHog flag payload', () => {
+			registerShellCapabilities();
+			const posthog = mockedStore(usePostHog);
+			posthog.getFeatureFlagPayload.mockReturnValue('https://forms.example.com/apps');
+			const readFormUrl = capabilityRegistry.use(capabilities.appsFeedbackFormUrl);
+
+			expect(readFormUrl()).toBe('https://forms.example.com/apps');
+			expect(posthog.getFeatureFlagPayload).toHaveBeenCalledWith('config_apps_feedback_form_url');
+		});
+
+		it('ignores a payload that is not a string', () => {
+			registerShellCapabilities();
+			mockedStore(usePostHog).getFeatureFlagPayload.mockReturnValue({ url: 'https://example.com' });
+
+			expect(capabilityRegistry.use(capabilities.appsFeedbackFormUrl)()).toBeUndefined();
+		});
+	});
+
+	describe('tag names', () => {
+		it('reads the names from the tags store', () => {
+			registerShellCapabilities();
+			mockedStore(useTagsStore).tagsById = { tag: { id: 'tag', name: 'Billing' } };
+			const tags = capabilityRegistry.use(capabilities.tagNames);
+
+			expect(tags.nameOf('tag')).toBe('Billing');
+			expect(tags.nameOf('unknown')).toBeUndefined();
+		});
+	});
+
+	describe('type descriptions', () => {
+		it('loads the node and credential types and reads them from their stores', async () => {
+			registerShellCapabilities();
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const notion = mock<INodeTypeDescription>({ name: 'n8n-nodes-base.notion' });
+			nodeTypesStore.allNodeTypes = [notion];
+			credentialsStore.getCredentialTypeByName = vi.fn((name: string) =>
+				name === 'notionApi' ? mock<ICredentialType>({ displayName: 'Notion API' }) : undefined,
+			);
+			const types = capabilityRegistry.use(capabilities.typeDescriptions);
+
+			await types.load();
+
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+			expect(types.nodeTypes()).toEqual([notion]);
+			expect(types.credentialTypeDisplayName('notionApi')).toBe('Notion API');
+		});
+
+		it.each([
+			{ first: 'nodeTypes', last: 'credentialTypes' },
+			{ first: 'credentialTypes', last: 'nodeTypes' },
+		] as const)('waits for $last after $first loads', async ({ first, last }) => {
+			registerShellCapabilities();
+			const loads = {
+				nodeTypes: createDeferredPromise(),
+				credentialTypes: createDeferredPromise(),
+			};
+			mockedStore(useNodeTypesStore).loadNodeTypesIfNotLoaded.mockReturnValue(
+				loads.nodeTypes.promise,
+			);
+			mockedStore(useCredentialsStore).fetchCredentialTypes.mockReturnValue(
+				loads.credentialTypes.promise,
+			);
+			let loaded = false;
+
+			const load = capabilityRegistry
+				.use(capabilities.typeDescriptions)
+				.load()
+				.then(() => (loaded = true));
+			loads[first].resolve();
+			await flushPromises();
+
+			expect(loaded).toBe(false);
+
+			loads[last].resolve();
+			await load;
+
+			expect(loaded).toBe(true);
+		});
+
+		it('shares a failed load with a retry until both stores answer', async () => {
+			registerShellCapabilities();
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credentialTypes = createDeferredPromise();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockRejectedValue(new Error('offline'));
+			credentialsStore.fetchCredentialTypes.mockReturnValue(credentialTypes.promise);
+			const types = capabilityRegistry.use(capabilities.typeDescriptions);
+
+			const first = types.load();
+			await flushPromises();
+			const retry = types.load();
+			credentialTypes.resolve();
+
+			await expect(first).rejects.toThrow('offline');
+			await expect(retry).rejects.toThrow('offline');
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledTimes(1);
 		});
 	});
 });

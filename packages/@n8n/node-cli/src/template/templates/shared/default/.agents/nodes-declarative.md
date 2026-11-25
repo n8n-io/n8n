@@ -50,7 +50,7 @@ Example parameter with `routing`:
   routing: {
     request: {
       method: 'GET',
-      url: '=/mars-photos/api/v1/rovers/{{$value}}/photos',
+      url: '=/mars-photos/api/v1/rovers/{{ toPathSegment($value) }}/photos',
     },
   },
   default: 'curiosity',
@@ -96,6 +96,9 @@ You can also use `routing.send.preSend` to change the request before
 sending (e.g. add custom headers or body transformations).
 
 ## Guidelines
+- Wrap every parameter value in a URL path with `toPathSegment(...)`.
+  `toPathSegment` needs n8n 2.46.1 or later.
+  Send query values with `routing.send` (`type: 'query'`), not in the URL.
 - Prefer **declarative transformations** like `setKeyValue`, `sort`, etc
   (there are other transformations that are not in the example).
 - Only add custom functions when necessary.

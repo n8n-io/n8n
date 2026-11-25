@@ -1,11 +1,21 @@
+import type { SerializedCredentialData } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
 
+import { CredentialTypes } from '@/credential-types';
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+
+import {
+	findDisplayControllers,
+	isConfirmedControllerValue,
+	resolveCredentialProperties,
+} from './credential-display-controllers';
 import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
 import type { CredentialRequirement } from './credential.types';
@@ -28,6 +38,11 @@ export interface CredentialExportRequest {
 	credentialExportPolicy: CredentialExportPolicy;
 	/** Target directory of each exported project (`projects/<slug>-<id>`), keyed by project id. */
 	projectTargetsById?: Map<string, string>;
+	/**
+	 * Credentials to write although no workflow of the package requires them. They get a file and a
+	 * manifest entry but no requirement row. An id that a requirement already covers is skipped.
+	 */
+	additionalCredentialIds?: string[];
 }
 
 export interface CredentialExportResult {
@@ -40,11 +55,14 @@ export class CredentialExporter {
 	constructor(
 		private readonly credentialsFinder: CredentialsFinderService,
 		private readonly credentialSerializer: CredentialSerializer,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
+		const includeDescription = await this.credentialDescriptions.isEnabled();
 
 		for (const [credentialId, { fallback, usedBy }] of this.groupByCredentialId(
 			request.requirements,
@@ -63,34 +81,7 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
-				let decryptedData: ICredentialDataDecryptedObject | undefined;
-				const data = await selectCredentialDataForExport(
-					request.credentialExportPolicy,
-					async () => {
-						decryptedData = await new Credentials(
-							{ id: credential.id, name: credential.name },
-							credential.type,
-							credential.data,
-						).getData();
-						return decryptedData;
-					},
-				);
-				entries.push(
-					await writeManifestEntry(
-						request.writer,
-						'credentials',
-						projectScopedDirectory(
-							'credentials',
-							this.ownerProjectId(credential),
-							request.projectTargetsById,
-						),
-						{ id: credential.id, name: credential.name },
-						this.credentialSerializer.serialize(credential, {
-							data,
-							...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
-						}),
-					),
-				);
+				entries.push(await this.writeCredential(credential, request, includeDescription));
 			}
 
 			requirements.push({
@@ -101,7 +92,82 @@ export class CredentialExporter {
 			});
 		}
 
+		const required = new Set(requirements.map(({ id }) => id));
+		for (const credentialId of new Set(request.additionalCredentialIds)) {
+			if (required.has(credentialId)) continue;
+			const credential = await this.credentialsFinder.findCredentialForUser(
+				credentialId,
+				request.user,
+				['credential:read'],
+			);
+			// A selected credential must not drop out of the package without a trace. A missing credential
+			// looks the same as an unreadable one, so the response does not reveal that it exists.
+			if (!credential) {
+				throw new ForbiddenError(`You cannot read the credential "${credentialId}"`);
+			}
+			entries.push(await this.writeCredential(credential, request, includeDescription));
+		}
+
 		return { entries, requirements };
+	}
+
+	private async writeCredential(
+		credential: CredentialsEntity,
+		request: CredentialExportRequest,
+		includeDescription: boolean,
+	): Promise<ManifestEntry> {
+		let decryptedData: ICredentialDataDecryptedObject | undefined;
+		const expressionData = await selectCredentialDataForExport(
+			request.credentialExportPolicy,
+			async () => {
+				decryptedData = await new Credentials(
+					{ id: credential.id, name: credential.name },
+					credential.type,
+					credential.data,
+				).getData();
+				return decryptedData;
+			},
+		);
+		const data = this.withDisplayControllers(credential.type, expressionData, decryptedData);
+		return await writeManifestEntry(
+			request.writer,
+			'credentials',
+			projectScopedDirectory(
+				'credentials',
+				this.ownerProjectId(credential),
+				request.projectTargetsById,
+			),
+			{ id: credential.id, name: credential.name },
+			this.credentialSerializer.serialize(credential, {
+				data,
+				includeDescription,
+				...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
+			}),
+		);
+	}
+
+	/**
+	 * An imported expression in a hidden field is lost when the destination shows another field set.
+	 * Add the plain values that decide which fields show, so the destination shows the same ones.
+	 * A secret never qualifies, and an unknown credential type adds nothing.
+	 */
+	private withDisplayControllers(
+		type: string,
+		expressionData: SerializedCredentialData | undefined,
+		decryptedData: ICredentialDataDecryptedObject | undefined,
+	): SerializedCredentialData | undefined {
+		if (expressionData === undefined || decryptedData === undefined) return expressionData;
+
+		const properties = resolveCredentialProperties(this.credentialTypes, type);
+		if (properties === undefined) return expressionData;
+
+		const exported: SerializedCredentialData = { ...expressionData };
+		for (const name of findDisplayControllers(properties, Object.keys(expressionData))) {
+			const value = decryptedData[name];
+			if (name in exported || !isConfirmedControllerValue(properties, name, value)) continue;
+			exported[name] = value;
+		}
+		return exported;
 	}
 
 	/** A credential has no owner column: its owner is the project on the `credential:owner` sharing. */

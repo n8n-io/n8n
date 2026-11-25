@@ -1,13 +1,16 @@
-import { toBase64, fromBase64 } from 'js-base64';
+import { toBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
-import { transliterate } from 'transliteration';
 
+import { decodeBase64 } from './base64';
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { toDateTime as numberToDateTime } from './number-extensions';
+import { toAscii } from './to-ascii';
+import { urlPathname } from './url-pathname';
+import { decodeUtf8, toWellFormed } from './utf8';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -24,13 +27,16 @@ const CURRENCY_REGEXP =
 	/(\u004c\u0065\u006b|\u060b|\u0024|\u0192|\u20bc|\u0042\u0072|\u0042\u005a\u0024|\u0024\u0062|\u004b\u004d|\u0050|\u043b\u0432|\u0052\u0024|\u17db|\u00a5|\u20a1|\u006b\u006e|\u20b1|\u004b\u010d|\u006b\u0072|\u0052\u0044\u0024|\u00a3|\u20ac|\u00a2|\u0051|\u004c|\u0046\u0074|\u20b9|\u0052\u0070|\ufdfc|\u20aa|\u004a\u0024|\u20a9|\u20ad|\u0434\u0435\u043d|\u0052\u004d|\u20a8|\u20ae|\u004d\u0054|\u0043\u0024|\u20a6|\u0042\u002f\u002e|\u0047\u0073|\u0053\u002f\u002e|\u007a\u0142|\u006c\u0065\u0069|\u20bd|\u0414\u0438\u043d\u002e|\u0053|\u0052|\u0043\u0048\u0046|\u004e\u0054\u0024|\u0e3f|\u0054\u0054\u0024|\u20ba|\u20b4|\u0024\u0055|\u0042\u0073|\u20ab|\u005a\u0024)/gu;
 
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/(?:[^\s/?#\\]*@)?)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 const DOMAIN_REGEXP =
 	/^(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 const EMAIL_REGEXP =
-	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|("(?:[^"\\\r\n]|\\.)+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+(?:[xX][nN]--[a-zA-Z0-9-]+|[a-zA-Z]{2,})))/;
+
+// Tabs and line breaks around the address stay accepted to keep existing workflows working
+const EMAIL_REGEXP_EXACT = new RegExp(`^\\s*(?:${EMAIL_REGEXP.source})\\s*$`);
 
 const URL_REGEXP_EXACT =
 	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
@@ -88,7 +94,7 @@ function hash(value: string, extraArgs: string[]): string {
 	const algorithm = extraArgs[0]?.toLowerCase() ?? 'md5';
 	switch (algorithm) {
 		case 'base64':
-			return toBase64(value);
+			return base64Encode(value);
 		case 'md5':
 			return MD5(value);
 		case 'sha1':
@@ -285,14 +291,8 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	const result = EMAIL_REGEXP.test(value);
-
 	// email regex is loose so check manually for now
-	if (result && value.includes(' ')) {
-		return false;
-	}
-
-	return result;
+	return EMAIL_REGEXP_EXACT.test(value) && !value.includes(' ');
 }
 
 function toTitleCase(value: string) {
@@ -300,7 +300,7 @@ function toTitleCase(value: string) {
 }
 
 function replaceSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	return toAscii(value);
 }
 
 function toSentenceCase(value: string) {
@@ -329,7 +329,8 @@ function toSentenceCase(value: string) {
 function toSnakeCase(value: string) {
 	return value
 		.toLocaleLowerCase()
-		.replace(/[ \-]/g, '_')
+		.replace(/\uFEFF/g, '')
+		.replace(/[\p{White_Space}-]/gu, '_')
 		.replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,.\/:;<=>?@\[\]^`{|}~]/g, '');
 }
 
@@ -341,22 +342,17 @@ function extractEmail(value: string) {
 	return matched[0];
 }
 
+/** Returns the domain of the first email address in a value that has no space. */
+function extractEmailDomain(value: string) {
+	return value.includes(' ') ? undefined : EMAIL_REGEXP.exec(value)?.groups?.domain;
+}
+
 function extractDomain(value: string) {
 	if (isEmail(value)) {
-		const matched = EMAIL_REGEXP.exec(value);
-		// This shouldn't happen
-		if (!matched) {
-			return undefined;
-		}
-		return matched.groups?.domain;
+		return extractEmailDomain(value);
 	}
 
-	const domainMatch = value.match(DOMAIN_EXTRACT_REGEXP);
-	if (domainMatch) {
-		return domainMatch[1];
-	}
-
-	return undefined;
+	return value.match(DOMAIN_EXTRACT_REGEXP)?.[1] ?? extractEmailDomain(value);
 }
 
 function extractUrl(value: string) {
@@ -367,57 +363,8 @@ function extractUrl(value: string) {
 	return matched[0];
 }
 
-function isLetter(ch: number): boolean {
-	return (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122);
-}
-
-function isDigit(ch: number): boolean {
-	return ch >= 48 && ch <= 57;
-}
-
-// DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
-// The original uses the URL constructor which is a Web API unavailable inside
-// the V8 isolate. A simple imperative parser extracts the pathname instead.
-// It requires a scheme (e.g. "https://") followed by a non-empty host, then
-// returns everything from the first "/" up to "?" or "#" (or "/" if no path).
 function extractUrlPath(value: string) {
-	const protoEnd = value.indexOf('://');
-	if (protoEnd < 1) return undefined;
-
-	// Validate scheme per RFC 3986: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
-	if (!isLetter(value.charCodeAt(0))) return undefined;
-	for (let i = 1; i < protoEnd; i++) {
-		const ch = value.charCodeAt(i);
-		if (!isLetter(ch) && !isDigit(ch) && ch !== 43 && ch !== 45 && ch !== 46) {
-			// 43 = '+', 45 = '-', 46 = '.'
-			return undefined;
-		}
-	}
-
-	const hostStart = protoEnd + 3;
-	if (hostStart >= value.length) return undefined;
-
-	// Find where host ends (first /, ?, or #)
-	let pathStart = hostStart;
-	while (
-		pathStart < value.length &&
-		value[pathStart] !== '/' &&
-		value[pathStart] !== '?' &&
-		value[pathStart] !== '#'
-	) {
-		pathStart++;
-	}
-
-	// No path segment found
-	if (pathStart >= value.length || value[pathStart] !== '/') return '/';
-
-	// Find where path ends (first ? or #)
-	let pathEnd = pathStart;
-	while (pathEnd < value.length && value[pathEnd] !== '?' && value[pathEnd] !== '#') {
-		pathEnd++;
-	}
-
-	return value.slice(pathStart, pathEnd) || '/';
+	return urlPathname(value);
 }
 
 function parseJson(value: string): unknown {
@@ -437,12 +384,17 @@ function toBoolean(value: string): boolean {
 	return normalized.length > 0 && !FALSY.has(normalized);
 }
 
+// DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
+// js-base64 relies on Buffer, TextEncoder and TextDecoder, which the isolate
+// does not have. Its fallback keeps lone surrogates and invalid UTF-8 bytes,
+// where the original gives U+FFFD. It also throws on characters that are not
+// base64, where the original skips them.
 function base64Encode(value: string): string {
-	return toBase64(value);
+	return toBase64(toWellFormed(value));
 }
 
 function base64Decode(value: string): string {
-	return fromBase64(value);
+	return decodeUtf8(decodeBase64(value));
 }
 
 removeMarkdown.doc = {
@@ -657,7 +609,8 @@ isDomain.doc = {
 
 isEmail.doc = {
 	name: 'isEmail',
-	description: 'Returns <code>true</code> if the string is an email.',
+	description:
+		'Returns <code>true</code> if the whole string is one email address. If the string also contains other content, try using <code>extractEmail()</code> first.',
 	section: 'validation',
 	returnType: 'boolean',
 	docURL:
@@ -665,6 +618,8 @@ isEmail.doc = {
 	examples: [
 		{ example: '"me@example.com".isEmail()', evaluated: 'true' },
 		{ example: '"It\'s me@example.com".isEmail()', evaluated: 'false' },
+		{ example: '"mailto:me@example.com".isEmail()', evaluated: 'false' },
+		{ example: '"https://medium.com/@jane.doe".isEmail()', evaluated: 'false' },
 		{ example: '"hello".isEmail()', evaluated: 'false' },
 	],
 };
@@ -764,6 +719,8 @@ extractDomain.doc = {
 	examples: [
 		{ example: '"me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{ example: '"http://n8n.io/workflows".extractDomain()', evaluated: "'n8n.io'" },
+		{ example: '"https://medium.com/@jane.doe".extractDomain()', evaluated: "'medium.com'" },
+		{ example: '"mailto:me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{
 			example: '"It\'s me@example.com".extractEmail().extractDomain()',
 			evaluated: "'example.com'",

@@ -4,7 +4,7 @@ import { Container, Service } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { PubSubEventBus } from '../pubsub.eventbus';
+import { PubSubEventBus } from '@n8n/backend-services';
 import { PubSubRegistry } from '../pubsub.registry';
 
 describe('PubSubRegistry', () => {

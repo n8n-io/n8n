@@ -1,3 +1,4 @@
+import { principalTypeSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
 export const roleMemberSchema = z.object({
@@ -6,4 +7,5 @@ export const roleMemberSchema = z.object({
 	lastName: z.string().nullable(),
 	email: z.string(),
 	role: z.string(),
+	kind: principalTypeSchema,
 });

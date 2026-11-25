@@ -4,9 +4,10 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	executeTool,
 	isSuspendedToolResult,
-	resolveToolForCall,
+	resolveToolCallTarget,
 	type SuspendedToolResult,
 } from './tool-adapter';
+import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from './tool-catalog';
 import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
@@ -70,6 +71,18 @@ function getToolResumeJsonSchema(
 	return isZodSchema(resolvedSchema) ? zodSchemaToJsonSchema(resolvedSchema) : resolvedSchema;
 }
 
+/**
+ * The tool name and input that a call asked for, before a former name or
+ * `call_tool` resolved it. The input keeps fields such as `action`.
+ */
+function requestedCall(toolName: string, input: JSONValue): { name: string; input: JSONValue } {
+	const isObject = typeof input === 'object' && input !== null && !Array.isArray(input);
+	if (toolName !== CALL_TOOL_TOOL_NAME || !isObject || typeof input.tool !== 'string') {
+		return { name: toolName, input };
+	}
+	return { name: input.tool, input: input.arguments ?? {} };
+}
+
 /** Execute one tool call and keep its result, cancellation, and lifecycle events together. */
 export class ToolCallRunner {
 	private offloadedToolResults = false;
@@ -98,13 +111,31 @@ export class ToolCallRunner {
 	 * error tool-result message to the list so the LLM can self-correct, and returns
 	 * `{ outcome: 'error' }` — never re-throws.
 	 */
-	async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
-		const { toolName, toolMap, list, toolCallId, resumeData } = params;
-		const builtTool = resolveToolForCall(toolMap, toolName, params.input);
+	async processToolCall(callParams: ProcessToolCallParams): Promise<ToolCallOutcome> {
+		const { toolName, toolMap, list, toolCallId, resumeData } = callParams;
+		// A tool from the tool catalog called by its own name runs as if it came through
+		// call_tool. Skills and tool results name tool catalog tools directly, and some
+		// models then call them by that name. Invalid input returns the schema.
+		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
-		if (!builtTool) {
-			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
+		if (!target) return await this.toolNotFound(callParams, toolName);
+		// A dispatcher (the tool catalog's call_tool) hands the call to the tool it
+		// names. That tool's schema, approval, and suspension then apply.
+		const builtTool = target.tool;
+		const requested = requestedCall(toolName, callParams.input);
+		const resumeOnly = requested.name === builtTool.name ? undefined : builtTool.legacyResumeOnly;
+		// Former names of this tool are for stored calls only. A new call fails as unknown.
+		if (resumeOnly && !callParams.previouslySuspended) {
+			return await this.toolNotFound(callParams, requested.name);
 		}
+		const params: ProcessToolCallParams = resumeOnly
+			? {
+					...callParams,
+					input: resumeOnly.convert(requested.name, requested.input),
+				}
+			: target.dispatchedBy
+				? { ...callParams, input: target.input as JSONValue }
+				: callParams;
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
 		// lifecycle end and skip re-execution.
@@ -126,14 +157,15 @@ export class ToolCallRunner {
 			incrementToolCallCount(params.executionCounter);
 		}
 
-		const validation = await this.validateToolInput(params, builtTool);
+		const validation = await this.validateToolInput(params, builtTool, !!target.dispatchedBy);
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
 		const guardrails = GuardrailRunner.from(params.guardrails);
+		// Guardrails check the tool that runs, so a dispatched call reports that tool, not call_tool.
 		const guardCtx = guardrails?.toolCallContext({
 			toolCallId,
-			toolName,
+			toolName: builtTool.name,
 			input,
 			runId: params.runId,
 		});
@@ -175,14 +207,21 @@ export class ToolCallRunner {
 			payload: undefined,
 		};
 		try {
-			toolResult = await this.runToolHandler(params, builtTool, input, async (payload, options) => {
-				suspension.didSuspend = true;
-				suspension.payload = payload;
-				suspension.options = options;
-				if (suspension.abortObserved || params.abortSignal?.aborted) {
-					await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
-				}
-			});
+			toolResult = await this.runToolHandler(
+				params,
+				builtTool,
+				input,
+				async (payload, options) => {
+					suspension.didSuspend = true;
+					suspension.payload = payload;
+					suspension.options = options;
+					if (suspension.abortObserved || params.abortSignal?.aborted) {
+						await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
+					}
+				},
+				guardrails,
+				guardCtx,
+			);
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
 				suspension.abortObserved = true;
@@ -201,8 +240,6 @@ export class ToolCallRunner {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
 
-		// Final result only: a call that suspended reports once, after resume.
-		if (guardrails && guardCtx) await guardrails.afterTool(guardCtx, toolResult);
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
@@ -361,17 +398,35 @@ export class ToolCallRunner {
 		};
 	}
 
+	private async toolNotFound(
+		params: ProcessToolCallParams,
+		toolName: string,
+	): Promise<ToolCallOutcome> {
+		const hint = params.toolMap.has(CALL_TOOL_TOOL_NAME)
+			? ` Find the right name with ${FIND_TOOLS_TOOL_NAME} (query), then run it with ${CALL_TOOL_TOOL_NAME}.`
+			: '';
+		return await this.toolError(params, new Error(`Tool ${toolName} not found.${hint}`));
+	}
+
 	/** Validate input against the tool's input schema (if any). */
 	private async validateToolInput(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
+		dispatched: boolean,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
-				: `Invalid tool input: ${result.error}`;
+				: !dispatched && params.toolName === builtTool.name
+					? `Invalid tool input: ${result.error}`
+					: // Dispatched calls carry no schema in the request, so return it to retry with.
+						`Invalid arguments for ${builtTool.name}: ${result.error}\nInput schema: ${JSON.stringify(
+							isZodSchema(builtTool.inputSchema)
+								? zodSchemaToJsonSchema(builtTool.inputSchema)
+								: builtTool.inputSchema,
+						)}`;
 			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
@@ -383,10 +438,11 @@ export class ToolCallRunner {
 		builtTool: BuiltTool,
 		input: JSONValue,
 		onSuspend: (payload: unknown, options?: ToolSuspendOptions) => void,
+		guardrails: GuardrailRunner | undefined,
+		guardCtx: ReturnType<GuardrailRunner['toolCallContext']> | undefined,
 	): Promise<unknown> {
 		const {
 			toolCallId,
-			toolName,
 			runId,
 			persistence,
 			resumeData,
@@ -398,18 +454,20 @@ export class ToolCallRunner {
 			continuation,
 			resumeSchema,
 		} = params;
+		// Name the span after the tool that runs, so a call_tool dispatch shows the real tool.
 		return await this.telemetry.withToolSpan(
 			toolCallId,
-			toolName,
+			builtTool.name,
 			input,
 			resolvedTelemetry,
 			async () =>
-				await raceWithAbort(
-					async () =>
-						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
+				await raceWithAbort(async () => {
+					const run = async () => {
+						// An interceptor can await before it calls `run`; the run may be aborted by then.
+						abortSignal?.throwIfAborted();
+						return await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
-							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,
@@ -419,9 +477,25 @@ export class ToolCallRunner {
 							resumeSchema,
 							onSuspend,
 							onGuardrailNotice: params.guardrails?.onNotice,
-						}),
-					abortSignal,
-				),
+						});
+					};
+					const interceptor = this.deps.toolCallInterceptor;
+					// Guard the result the model receives, also when an interceptor replaces it.
+					const result = interceptor
+						? await interceptor({ tool: builtTool, toolCallId, input }, run)
+						: await run();
+					// Final result only: a call that suspended reports once,
+					// after resume. The after-stage check runs inside the span
+					// so a refused result is recorded as the refusal, never as
+					// span output; the throw becomes a tool error upstream.
+					if (guardrails && guardCtx && !isSuspendedToolResult(result)) {
+						const stop = await guardrails.afterTool(guardCtx, result);
+						if (stop) {
+							throw new Error(`Tool result blocked by guardrail: ${stop.code}`);
+						}
+					}
+					return result;
+				}, abortSignal),
 		);
 	}
 

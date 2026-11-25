@@ -1,6 +1,14 @@
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import type {
+	CreateEnvironmentVariable,
+	CredentialEditorOptions,
+	ResourceEditorKind,
+	VariableEditorOptions,
+} from '@n8n/frontend-module-sdk';
 
 import type { IWorkflowSettings, ModalKey } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
@@ -8,7 +16,14 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
+import { isPromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
@@ -16,6 +31,7 @@ import { useAppAssistantHandoff } from '@/features/ai/instanceAi/composables/use
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { mcpDiscoverySettings } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings';
 // EOF Experiment cleanup
+import { mcpPreferencesEntryPoints } from '@/experiments/mcpPreferencesEntryPoints/mcpPreferencesEntryPoints';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -62,6 +78,14 @@ const mcpExposeAllOffer = {
 	},
 };
 
+// The flag payload holds the form address, so the form can change without a release.
+const APPS_FEEDBACK_FORM_URL_REMOTE_CONFIG_KEY = 'config_apps_feedback_form_url';
+
+const appsFeedbackFormUrl = () => {
+	const payload = usePostHog().getFeatureFlagPayload(APPS_FEEDBACK_FORM_URL_REMOTE_CONFIG_KEY);
+	return typeof payload === 'string' ? payload : undefined;
+};
+
 const projectPermissions = {
 	scopesFor: (projectId: string) => [
 		...(useUsersStore().currentUser?.globalScopes ?? []),
@@ -72,14 +96,122 @@ const projectPermissions = {
 	isReadOnly: () => useSourceControlStore().preferences.branchReadOnly,
 };
 
+const projectContext = {
+	currentProject: () => useProjectsStore().currentProject,
+	currentProjectId: () => useProjectsStore().currentProjectId,
+	setCurrentProject: (project: Project) => useProjectsStore().setCurrentProject(project),
+	hasTeamProjectQuota: () => useProjectsStore().hasTeamProjectQuota,
+	getMyProjects: async () => await useProjectsStore().getMyProjects(),
+	getProjectsCount: async () => await useProjectsStore().getProjectsCount(),
+	getAllProjects: async () => await useProjectsStore().getAllProjects(),
+};
+
+const editorModalKeys = {
+	credential: CREDENTIAL_EDIT_MODAL_KEY,
+	variable: VARIABLE_MODAL_KEY,
+} as const;
+
+// The credentials and variables stores load lazily: the boot chunk does not need them.
+const resourceEditors = {
+	hasCredentialType: async (type: string) => {
+		const { useCredentialsStore } = await import('@/features/credentials/credentials.store');
+		const credentialsStore = useCredentialsStore();
+		await credentialsStore.fetchCredentialTypes(false);
+		return credentialsStore.getCredentialTypeByName(type) !== undefined;
+	},
+	loadVariables: async () => {
+		const { useEnvironmentsStore } = await import(
+			'@/features/settings/environments.ee/environments.store'
+		);
+		await useEnvironmentsStore().fetchAllVariables();
+	},
+	createVariable: async (variable: CreateEnvironmentVariable) => {
+		const { useEnvironmentsStore } = await import(
+			'@/features/settings/environments.ee/environments.store'
+		);
+		return await useEnvironmentsStore().createVariable(variable);
+	},
+	openCredentialEditor: (type: string, options: CredentialEditorOptions) =>
+		useUIStore().openNewCredential(
+			type,
+			false,
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			options,
+		),
+	openVariableEditor: (options: VariableEditorOptions) =>
+		useUIStore().openModalWithData({
+			name: VARIABLE_MODAL_KEY,
+			data: { ...options, mode: 'new' },
+		}),
+	isEditorOpen: (editor: ResourceEditorKind) =>
+		useUIStore().modalsById[editorModalKeys[editor]]?.open === true,
+	closeEditor: (editor: ResourceEditorKind) => useUIStore().closeModal(editorModalKeys[editor]),
+};
+
+const environmentsSettings = {
+	isPromotionsEnabled,
+	isProtected: () => useSourceControlStore().preferences.branchReadOnly,
+	loadPreferences: async () => {
+		await useSourceControlStore().getPreferences();
+	},
+	setProtected: async (value: boolean) => {
+		await useSourceControlStore().updatePreferences({ branchReadOnly: value });
+	},
+	useVersionSwitch: useEnvironmentsVersionSwitch,
+};
+
+const tagNames = {
+	load: async () => {
+		await useTagsStore().fetchAll();
+	},
+	nameOf: (id: string) => useTagsStore().tagsById[id]?.name,
+};
+
+// The stores share a load that runs, so callers that start together send one request per type list. This promise
+// waits for both requests, also after one fails, so a retry does not repeat a request that still runs.
+let typeDescriptionsLoad: Promise<void> | undefined;
+
+const typeDescriptions = {
+	load: async () => {
+		typeDescriptionsLoad ??= Promise.allSettled([
+			useNodeTypesStore().loadNodeTypesIfNotLoaded(),
+			useCredentialsStore().fetchCredentialTypes(false),
+		])
+			.then((results) => {
+				const failed = results.find(
+					(result): result is PromiseRejectedResult => result.status === 'rejected',
+				);
+				if (failed) throw failed.reason;
+			})
+			.finally(() => {
+				typeDescriptionsLoad = undefined;
+			});
+		await typeDescriptionsLoad;
+	},
+	nodeTypes: () => useNodeTypesStore().allNodeTypes,
+	credentialTypeDisplayName: (name: string) =>
+		useCredentialsStore().getCredentialTypeByName(name)?.displayName,
+};
+
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, useSelfHealingChatHandoff);
+	capabilityRegistry.provide(capabilities.projectContext, projectContext);
+	capabilityRegistry.provide(capabilities.resourceEditors, resourceEditors);
+	capabilityRegistry.provide(capabilities.environmentsSettings, environmentsSettings);
+	capabilityRegistry.provide(capabilities.tagNames, tagNames);
+	capabilityRegistry.provide(capabilities.typeDescriptions, typeDescriptions);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
+	capabilityRegistry.provide(capabilities.appsFeedbackFormUrl, appsFeedbackFormUrl);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup
+	capabilityRegistry.provide(capabilities.mcpPreferencesEntryPoints, mcpPreferencesEntryPoints);
 };

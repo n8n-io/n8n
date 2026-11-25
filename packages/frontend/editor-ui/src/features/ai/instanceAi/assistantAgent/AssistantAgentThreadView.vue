@@ -1,18 +1,25 @@
 <script setup lang="ts">
-import type {
-	AgentJsonConfig,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiNodesAttachment,
-	InstanceAiWorkflowAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type AgentSseEvent,
+	type AssistantAgentTargetsState,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
+	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
+	N8nChatRating,
 	N8nIconButton,
-	N8nLink,
 	N8nResizeWrapper,
-	N8nText,
+	N8nTabsRoot,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
@@ -20,14 +27,25 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
-import { TabsRoot } from 'reka-ui';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { isString } from '@/app/utils/typeGuards';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
+import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
+import type { WorkflowArtifactReference } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
+import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
+import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
+import AttachmentPreview from '../components/AttachmentPreview.vue';
+import InstanceAiCanvasRunOverlay from '../components/InstanceAiCanvasRunOverlay.vue';
+import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
@@ -35,7 +53,14 @@ import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
+import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
+import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
+import { useDraftWorkflowPreview } from '../composables/useDraftWorkflowPreview';
+import { useToolLabel } from '../toolLabels';
+import { AGENT_TOOL_STEP_LABEL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
+import { isRecord } from '@n8n/utils/is-record';
+import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from '../components/InstanceAiWorkflowPreview.vue';
@@ -46,7 +71,10 @@ import {
 	usePreviewPanelWidth,
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
+import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
+import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import {
+	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingWorkflowAttachment,
@@ -57,19 +85,29 @@ import {
 	getPendingWorkflowAttachment,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
-import { INSTANCE_AI_VIEW } from '../constants';
+import {
+	INSTANCE_AI_APP_ID_QUERY,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
+	INSTANCE_AI_VIEW,
+} from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
+import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle } from '../instanceAi.threadRuntime';
+import {
+	firstMessageTitle,
+	getAppTargetsFromThreadMetadata,
+	threadTargetsAgent,
+} from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { buildThreadArtifactsContext } from '../threadArtifacts';
-import { useCanvasPreview } from '../useCanvasPreview';
+import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
+import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
 	saveAssistantAgentThreadTabs,
 } from './assistantAgentTabs.api';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
@@ -78,30 +116,69 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAnsweredQuestionsExtension } from './assistantAnsweredQuestions';
+import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
+import { assistantCodeToolResultExtension } from './assistantCodeToolResults';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from './assistantPreferenceCards';
+import { assistantSharedFilesExtension } from './assistantSharedFiles';
+import { provideAssistantArtifactCards } from './assistantArtifactCards';
+import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
+import {
+	mentionChipId,
+	readMessageReferences,
+	toMentionComposerAttachment,
+} from './assistantMentionAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
+import {
+	useAssistantAgentMessageTelemetry,
+	type AssistantAgentSendingMessage,
+} from './useAssistantAgentMessageTelemetry';
+import { useAssistantAgentTurnTelemetry } from './useAssistantAgentTurnTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from './useAssistantAgentSetupSavedTelemetry';
+import { useAssistantAgentMentions } from './useAssistantAgentMentions';
+import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
+import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
+import { useAssistantWorkflowDrafts } from './useAssistantWorkflowDrafts';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	isRunning: () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
+	isReady: () => panel.value?.isLoadingHistory === false,
+	turn: () => getCurrentTurn(thread.artifactTurns),
+});
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
 const threadsStore = useAssistantAgentThreadsStore();
+const toast = useToast();
+const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 
 // A new thread has a launch marker until the server accepts its first message.
 // The server does not know the thread before then.
@@ -115,16 +192,24 @@ const isNewSession = ref(isNewThread);
 let pendingReferences: InstanceAiAttachment[] = handoff.references;
 let pendingHandoffContext: InstanceAiHandoffContext | undefined = handoff.context;
 // The lists show a thread opened by URL even when it is older than the recent page.
-if (!isNewThread) void threadsStore.loadThread(props.threadId);
+if (!isNewThread) {
+	void threadsStore.loadThread(props.threadId);
+	void threadsStore.loadThreadCredits(props.threadId);
+}
 
 /** The first message to send, from the empty view or from a hand-off. */
 function firstMessageOf(
 	fromEmptyView: PendingAssistantAgentMessage | undefined,
 	fromHandoff: PendingFirstMessage | null,
-): { text: string; files: File[]; references: InstanceAiAttachment[] } | undefined {
+): Omit<PendingAssistantAgentMessage, 'threadId'> | undefined {
 	if (fromEmptyView) return fromEmptyView;
 	if (fromHandoff) {
-		return { text: fromHandoff.message, files: [], references: fromHandoff.attachments ?? [] };
+		return {
+			text: fromHandoff.message,
+			files: [],
+			references: fromHandoff.attachments ?? [],
+			authorship: fromHandoff.authorship,
+		};
 	}
 	return undefined;
 }
@@ -135,24 +220,24 @@ function readPendingHandoff() {
 	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
 	const fromHandoff = consumePendingFirstMessage(props.threadId);
 	const firstMessage = firstMessageOf(fromEmptyView, fromHandoff);
-	const workflow = getPendingWorkflowAttachment(props.threadId);
+	// The handed-off workflow shows as a composer chip, so the user sees it and can remove it.
+	const workflowChip = getPendingWorkflowAttachment(props.threadId) ?? undefined;
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
 	const context = fromHandoff?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
-	const references: InstanceAiAttachment[] = [
-		...(firstMessage?.references ?? []),
-		...(workflow ? [workflow] : []),
-	];
+	const references: InstanceAiAttachment[] = firstMessage?.references ?? [];
 	return {
 		firstMessage,
-		draft: draft?.text,
+		draft,
 		nodes,
 		context,
 		references,
+		workflowChip,
 		// The preview opens the handed-off workflow before the first message.
-		workflow: references.find(
-			(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
-		),
+		workflow:
+			references.find(
+				(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
+			) ?? workflowChip,
 	};
 }
 
@@ -160,7 +245,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 /** The Assistant reads the same request fields as from its current runtime. */
@@ -171,6 +255,8 @@ function clientContext(): Record<string, unknown> {
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
 		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
+		// The server binds the subject on the first turn. Until then, every send carries it.
+		...(launch?.subject && isNewSession.value ? { subject: launch.subject } : {}),
 		...threadArtifactsContext(),
 	};
 }
@@ -185,7 +271,8 @@ function threadArtifactsContext(): Record<string, unknown> {
 	const threadArtifacts = buildThreadArtifactsContext(
 		thread.producedArtifacts.values(),
 		activeId,
-		preview.openTabs.value,
+		preview.openTabs.value.filter(isSavedArtifactTab),
+		createDisplayedExecutionReader(thread.artifactTurns, thread.getRememberedManualExecution),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
 }
@@ -201,25 +288,96 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 			runtime: 'agents',
 		});
 	}
+	// A mentioned workflow shows only now that the message is sent, not when it
+	// was picked. The first mention is the one shown, as on the current runtime.
+	const mentioned = mentions.firstSentMentionedWorkflow(
+		readMessageReferences(clientContext?.attachments),
+	);
+	if (mentioned) {
+		preview.openTab({ id: mentioned.id, type: 'workflow', name: mentioned.name, icon: 'workflow' });
+	}
 	pendingReferences = [];
 	pendingHandoffContext = undefined;
 }
 
-const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
+/** The resources that a sent message shows: the ones its client context attaches. */
+function messageReferences(context: Record<string, unknown> | undefined): unknown[] {
+	return readMessageReferences(context?.attachments);
+}
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
+
+// --- Credits ---
+// The InstanceAiView parent loads the balance, and a push event keeps it current.
+const creditsStore = useAssistantCreditsStore();
+const creditBanner = useCreditWarningBanner(() => creditsStore.isLowCredits);
+const { goToUpgrade } = usePageRedirectionHelper();
+
+/**
+ * The server refuses a turn when no credits are left. The composer is disabled
+ * then, and this also refuses host sends, such as a hand-off or Fix with AI.
+ */
+function assertCreditsAvailable(): void {
+	if (creditsStore.isOutOfCredits) throw new Error('No Assistant credits are left');
+}
 
 const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
 
+const feedback = useAssistantAgentFeedback({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
+const turnTelemetry = useAssistantAgentTurnTelemetry({
+	threadId: props.threadId,
+	isStreaming: () => panel.value?.isStreaming ?? false,
+	isStreamAttached: () => panel.value?.isStreamAttached ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
+	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
+});
+
+function onMessageSending(message: AssistantAgentSendingMessage): void {
+	mentions.close();
+	const sent = readMessageReferences(message.clientContext?.attachments);
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message, mentions.sentMentionCounts(sent)));
+}
+
+function onStreamEvent(event: AgentSseEvent): void {
+	trace.recordEvent(event);
+	turnTelemetry.handleStreamEvent(event);
+	workflowDrafts.handleStreamEvent(event);
+}
+
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
+
 watch(panel, (current) => {
 	if (!current) return;
+	if (handoff.workflowChip) {
+		const { chip, clientContextPatch } = toMentionComposerAttachment(handoff.workflowChip);
+		current.addComposerAttachment(chip, clientContextPatch);
+	}
 	if (handoff.firstMessage) {
+		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
 	} else if (handoff.draft) {
-		current.setDraft(handoff.draft);
+		messageTelemetry.setPrefill(handoff.draft);
+		current.setDraft(handoff.draft.text);
 	}
 });
 
@@ -237,37 +395,145 @@ function onSessionCreated(): void {
 	// The thread exists once the server accepts its first message. Show it in the lists
 	// now, not only after the first reply ends.
 	void threadsStore.loadThread(props.threadId);
+	void agentTargets.refresh();
 }
 
 // A finished turn can add the thread to the lists, or give it a title.
 let wasStreaming = false;
 function onStreamingChange(streaming: boolean): void {
-	if (wasStreaming && !streaming) void threadsStore.fetchRecent();
+	if (wasStreaming && !streaming) {
+		void threadsStore.fetchRecent();
+		// The builder tools bind the agents that the turn built or edited.
+		void agentTargets.refresh();
+	}
 	wasStreaming = streaming;
 }
 
 // --- Artifacts ---
+const agentTargets = useAssistantAgentTargets({
+	threadId: props.threadId,
+	canLoad: () => !isNewSession.value,
+});
+void agentTargets.refresh();
+provideArtifactAgentTargets(agentTargets.agentTargets);
+// Set from the preview tabs below, which need the thread first.
+const activeArtifactId = ref<string>();
+
+// The preview shows the subject of a new thread until the server has its bindings, which the
+// first message writes. Only a saved resource: a pending one needs a thread that the server knows.
+const launchSubject = launch?.subject?.pending ? undefined : launch?.subject;
+const projectAndName = ({ projectId, name }: { projectId: string; name?: string }) => ({
+	projectId,
+	...(name ? { name } : {}),
+});
+
+// The agent of the launch subject. The server state replaces it once it loads.
+const launchAgentTargets: AssistantAgentTargetsState | null =
+	launchSubject?.type === 'agent'
+		? {
+				bound: { agentId: launchSubject.id, ...projectAndName(launchSubject) },
+				pending: null,
+				targets: [],
+				previewSession: null,
+			}
+		: null;
+
+// The Agent Builder panel attaches its agent to each message it sends, so the
+// agent that the thread builds is not a reference that the user chose.
+const threadAgentIds = computed(() => {
+	const targets = agentTargets.state.value ?? launchAgentTargets;
+	return new Set([targets?.bound?.agentId, targets?.pending?.agentId].filter(isString));
+});
+
+/** The references that a user message shows, without the agent of the thread. */
+function shownReferences(message: ChatMessage): InstanceAiResourceAttachment[] {
+	return readMessageReferences(message.references).filter(
+		(reference) => reference.type !== 'agent' || !threadAgentIds.value.has(reference.id),
+	);
+}
+
+// The apps of the thread metadata, and the app of the launch subject.
+const appTargets = computed(() => {
+	const targets = getAppTargetsFromThreadMetadata(
+		threadsStore.threadsById.get(props.threadId)?.metadata,
+	);
+	if (launchSubject?.type !== 'app') return targets;
+	if (targets.some(({ appId }) => appId === launchSubject.id)) return targets;
+	return [...targets, { appId: launchSubject.id, ...projectAndName(launchSubject) }];
+});
+// An app page opens its chat with `?appId=`. Only an app of this thread opens.
+const requestedAppId = computed(() => {
+	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
+	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
+		? appId
+		: undefined;
+});
+
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,
 	projectId: props.projectId,
 	messages: () => panel.value?.messages ?? [],
 	isStreaming: () => panel.value?.isStreaming ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
 	// The hand-off context, for example a credential to set up, goes with this message only.
-	sendMessage: (text, handoffContext) =>
+	sendMessage: (text, authorship, handoffContext) => {
+		messageTelemetry.expectHostSend({ text, authorship });
 		panel.value?.sendMessageFromOutside(
 			text,
 			[],
 			handoffContext ? { context: handoffContext } : undefined,
-		),
+		);
+	},
 	pendingWorkflowAttachment: handoff.workflow,
+	agentTargets: () => agentTargets.state.value ?? launchAgentTargets,
+	appTargets: () => appTargets.value,
+	activeArtifactId: () => activeArtifactId.value,
 });
 provideArtifactThread(thread);
+
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
+	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
+	...assistantHostEventExtensions,
+	assistantToolResultTableExtension,
+	assistantCodeToolResultExtension,
+	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
+];
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const isAwaitingUser = () => panel.value?.isAwaitingUserAnswer ?? false;
+// A run that waits on a card can end its stream, but the build is not over.
+const isAgentRunning = () =>
+	(panel.value?.isStreaming || panel.value?.isSubmitting || isAwaitingUser()) ?? false;
+const workflowDrafts = useAssistantWorkflowDrafts({
+	liveRunId: () => thread.artifactTurns.find((turn) => turn.isLive)?.id,
+});
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
+	turns: () => thread.artifactTurns,
+	workflowDrafts: () => workflowDrafts.drafts.value,
+	dismissWorkflowDrafts: workflowDrafts.dismiss,
+	isRunning: isAgentRunning,
+	isAwaitingUser,
+	isAwaitingApproval: () => panel.value?.isAwaitingUserApproval ?? false,
+});
+// The tool steps of the chat name what a node lookup or a workflow source write works on.
+const { getSpecificToolLabel } = useToolLabel();
+provide(AGENT_TOOL_STEP_LABEL_KEY, (toolName, input) =>
+	getSpecificToolLabel(toolName, isRecord(input) ? input : undefined),
+);
+// EOF Experiment cleanup
 
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () => launchAgentTargets?.bound?.agentId,
+	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
 		load: async () =>
@@ -278,10 +544,67 @@ const preview = useCanvasPreview({
 			await saveAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	...draftPreview.canvasOptions,
 });
+
+const canvasRunState = draftPreview.useCanvasRunState(preview);
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
+provide('openSkillPreview', preview.openSkillPreview);
+provide('openAgentPreview', preview.openAgentPreview);
+provide('openAgentChatPreview', openAgentChatPreview);
+watch(
+	[requestedAppId, () => preview.tabsLoaded.value],
+	([appId, tabsLoaded]) => {
+		if (appId && tabsLoaded) preview.openAppPreview(appId);
+	},
+	{ immediate: true },
+);
+
+const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
+
+// --- Mentions ---
+const mentionPicker =
+	useTemplateRef<InstanceType<typeof AssistantAtMentionPicker>>('mentionPicker');
+const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
+	[...thread.producedArtifacts.values()]
+		.filter((artifact) => artifact.type === 'workflow' && artifact.archived !== true)
+		.map(({ id, name }) => ({ id, name })),
+);
+const mentionActiveWorkflowId = computed(() => {
+	const activeId = activeArtifactId.value;
+	return activeId && thread.producedArtifacts.get(activeId)?.type === 'workflow'
+		? activeId
+		: undefined;
+});
+const mentions = useAssistantAgentMentions({
+	threadId: props.threadId,
+	projectId: () => props.projectId,
+	panel: () => panel.value,
+	picker: () => mentionPicker.value,
+	artifacts: () => mentionArtifacts.value,
+	reservedAttachmentCount: () => pendingReferences.length,
+	isBlocked: () => panel.value?.isSubmitting ?? true,
+});
+// The picker opens over the whole composer, like the menu of the current runtime.
+const mentionInput = computed(() =>
+	mentions.menuOpen.value ? panel.value?.getInputElement() : null,
+);
+const mentionReference = computed(
+	() => mentionInput.value?.closest<HTMLElement>('[data-testid="chat-input"]') ?? null,
+);
+
+watch(
+	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
+	([tabId, previewVisible]) => {
+		const isDraft = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isArtifactTab(tab) && tab.draft,
+		);
+		activeArtifactId.value = previewVisible && !isDraft ? tabId : undefined;
+	},
+	{ immediate: true },
+);
 
 // --- Fix-with-AI offer (failure data emitted by the workflow preview) ---
 const failedRun = ref<WorkflowFailuresReport | null>(null);
@@ -291,6 +614,8 @@ const activeFixWithAiOffer = computed(() => {
 	const run = failedRun.value;
 	if (!run || run.executionId === dismissedExecutionId.value) return null;
 	if (panel.value?.isBusy) return null;
+	// The send would be refused, so the offer comes back once credits do.
+	if (creditsStore.isOutOfCredits) return null;
 	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
 });
 
@@ -307,33 +632,115 @@ function dismissFixWithAiOffer(): void {
 	if (offer) dismissedExecutionId.value = offer.executionId;
 }
 
-function handleFixWithAiFromOffer(): void {
+async function handleFixWithAiFromOffer(): Promise<void> {
 	const offer = activeFixWithAiOffer.value;
-	if (!offer) return;
+	if (!offer || !panel.value) return;
+	// Hidden before the send settles, so a second click cannot send it twice.
 	dismissedExecutionId.value = offer.executionId;
-	// Names the failed run, so the agent reads that execution instead of
-	// guessing from the list. A run that n8n did not save has no list entry.
-	panel.value?.sendMessageFromOutside(
-		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		[],
-		{
-			attachments: [
-				{
-					type: 'workflow',
-					id: offer.workflowId,
-					...(offer.workflowName ? { name: offer.workflowName } : {}),
-					executionId: offer.executionId,
-				},
-			],
-		},
-	);
+	// Sent past the composer, so the user's draft and staged chips stay. Names the
+	// failed run, so the agent reads that execution instead of guessing from the
+	// list. A run that n8n did not save has no list entry.
+	const text = buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors });
+	messageTelemetry.expectHostSend({
+		text,
+		authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+	});
+	const result = await panel.value.sendHostMessage(text, {
+		attachments: [
+			{
+				type: 'workflow',
+				id: offer.workflowId,
+				...(offer.workflowName ? { name: offer.workflowName } : {}),
+				executionId: offer.executionId,
+			},
+		],
+	});
+	// A refused send leaves the user nothing to retry with, so offer it again.
+	if (result !== 'sent' && dismissedExecutionId.value === offer.executionId) {
+		dismissedExecutionId.value = null;
+	}
 }
 
-const activeAgentHref = computed(() => {
+// --- Agent preview ---
+// The test chat of the agent preview docks over the chat column.
+const isAgentTestDockOpen = ref(false);
+const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
+
+function openAgentChatPreview(agentId: string, projectId: string): boolean {
+	preview.openAgentPreview(agentId, projectId);
+	isAgentTestDockOpen.value = true;
+	return true;
+}
+
+watch(
+	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
+	([tabId, visible], [previousTabId]) => {
+		if (tabId !== previousTabId || !visible) isAgentTestDockOpen.value = false;
+	},
+	{ flush: 'sync' },
+);
+
+function handleAgentTestDockOpenChange(open: boolean): void {
+	const wasOpen = isAgentTestDockOpen.value;
+	isAgentTestDockOpen.value = open;
+	if (open) {
+		isPreviewExpanded.value = false;
+	} else if (wasOpen) {
+		panel.value?.focusInput();
+	}
+}
+
+// The session of the last hand-off. The turn stores it only after the message
+// is sent, so the stored session is older until the targets load again.
+const lastHandoffSession = ref<{ agentId: string; threadId: string }>();
+
+/** The test chat session that the preview shows: the last hand-off, else the stored one. */
+const activeAgentPreviewSessionId = computed(() => {
 	const agentId = preview.activeAgentId.value;
-	const projectId = preview.activeAgentProjectId.value ?? props.projectId;
-	return agentId ? `/projects/${projectId}/agents/${agentId}` : undefined;
+	// Check the agent of each session, so a hand-off for one agent keeps the stored session of another.
+	return [lastHandoffSession.value, agentTargets.state.value?.previewSession].find(
+		(session) => session?.agentId === agentId,
+	)?.threadId;
 });
+
+/** The user asks the Assistant about a test chat of the agent preview. */
+function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): void {
+	if (
+		params.agentId !== preview.activeAgentId.value ||
+		params.projectId !== preview.activeAgentProjectId.value
+	) {
+		return;
+	}
+	const current = panel.value;
+	if (!current) return;
+	if (current.isDirty()) {
+		toast.showMessage({
+			title: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.title'),
+			message: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.message'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	// The request now belongs to the Assistant composer, so close the test chat.
+	isAgentTestDockOpen.value = false;
+	const context = buildInstanceAiAgentPreviewHandoffContext(params);
+	if (context.source !== 'agent-preview') return;
+	const label = formatAgentPreviewContextLabel(
+		context,
+		(key, options) => i18n.baseText(key, options),
+		thread.producedArtifacts.get(context.agentId)?.name,
+	);
+	lastHandoffSession.value = { agentId: context.agentId, threadId: context.threadId };
+	const { chip, clientContextPatch } = toAgentPreviewComposerAttachment(context, label);
+	current.addComposerAttachment(chip, clientContextPatch);
+	if (params.initialDraft) {
+		messageTelemetry.setPrefill(params.initialDraft);
+		current.setDraft(params.initialDraft.text);
+	}
+	current.focusInput();
+	params.onAccepted?.();
+}
 
 const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
@@ -342,7 +749,7 @@ const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 const threadTitle = computed(() => {
 	const title = threadsStore.threadsById.get(props.threadId)?.title;
 	if (title) return title;
-	const firstUserMessage = thread.messages.find((message) => message.role === 'user');
+	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
 	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
 });
 
@@ -350,17 +757,32 @@ function startNewThread(): void {
 	void router.push({ name: INSTANCE_AI_VIEW });
 }
 
+function viewSessionTrace(): void {
+	void router.push({
+		name: INSTANCE_AI_THREAD_SESSION_VIEW,
+		params: { threadId: props.threadId },
+	});
+}
+
 // --- Layout ---
 const threadArea = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadArea);
 const isPreviewExpanded = ref(false);
+
+function togglePreviewExpanded(): void {
+	isPreviewExpanded.value = !isPreviewExpanded.value;
+	if (isPreviewExpanded.value) isAgentTestDockOpen.value = false;
+}
 
 const isArtifactsPanelInLayout = computed(
 	() => threadAreaWidth.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
 // A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
-	() => thread.messages.length > 0 || preview.openTabs.value.length > 0 || thread.isHydratingThread,
+	() =>
+		thread.artifactTurns.length > 0 ||
+		preview.openTabs.value.length > 0 ||
+		thread.isHydratingThread,
 );
 const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
 	useArtifactsPanelToggle({
@@ -422,29 +844,57 @@ watch(
 	},
 );
 
+/** The staged nodes chips. The panel shows the other chips as cards. */
 const stagedNodes = computed(() =>
 	(panel.value?.composerAttachments ?? []).flatMap((staged) => {
-		const attachment = readNodesAttachment(staged);
-		return attachment ? [{ id: staged.chip.id, attachment }] : [];
+		const nodes = readNodesAttachment(staged);
+		return nodes ? [{ id: staged.chip.id, nodes }] : [];
 	}),
 );
+
+/** A removed handoff workflow must not come back when the page reloads. */
+function onComposerChipRemoved(chipId: string): void {
+	mentions.handleChipRemoved(chipId);
+	if (handoff.workflowChip && chipId === mentionChipId(handoff.workflowChip)) {
+		clearPendingWorkflowAttachment(props.threadId);
+	}
+}
 
 /** The user removed some of the nodes from a chip. */
 function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 	const { chip, clientContextPatch } = toNodesComposerAttachment(attachment, []);
 	panel.value?.addComposerAttachment(chip, clientContextPatch);
 }
-
-function removeStagedNodes(chipId: string): void {
-	panel.value?.removeComposerAttachment(chipId);
-}
 </script>
 
 <template>
 	<div ref="threadArea" :class="$style.container" data-test-id="assistant-agent-thread-view">
-		<div :class="$style.chatArea">
-			<InstanceAiViewHeader :title="threadTitle" :thread-id="props.threadId">
+		<div ref="agentPreviewChatTarget" :class="$style.chatArea">
+			<InstanceAiViewHeader
+				:title="threadTitle"
+				:thread-id="props.threadId"
+				:thread-credits-used="threadsStore.threadCreditsUsed(props.threadId)"
+				:inert="isAgentTestDockOpen || undefined"
+				:aria-hidden="isAgentTestDockOpen || undefined"
+			>
 				<template #actions>
+					<!-- A new thread has no turns to show until its first message starts the session. -->
+					<N8nTooltip
+						v-if="!isNewSession"
+						:content="i18n.baseText('agents.builder.preview.viewSession')"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="list-tree"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
+							data-test-id="assistant-agent-view-session"
+							@click="viewSessionTrace"
+						/>
+					</N8nTooltip>
 					<N8nTooltip
 						:content="i18n.baseText('instanceAi.thread.new')"
 						placement="bottom"
@@ -504,7 +954,7 @@ function removeStagedNodes(chipId: string): void {
 							preview.openTabs.value.length === 0
 						"
 						:project-id="props.projectId"
-						:excluded-tabs="preview.openTabs.value"
+						:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
 						placement="bottom-end"
 						content-test-id="assistant-agent-open-resource-picker"
 						@select="preview.openTab"
@@ -548,8 +998,19 @@ function removeStagedNodes(chipId: string): void {
 				</template>
 			</InstanceAiViewHeader>
 
-			<div :class="$style.contentArea">
-				<div :class="$style.chatColumn">
+			<div
+				:class="$style.contentArea"
+				:inert="isAgentTestDockOpen || undefined"
+				:aria-hidden="isAgentTestDockOpen || undefined"
+			>
+				<div
+					:class="$style.chatColumn"
+					@keydown.capture="mentions.handleKeydown"
+					@pointerdown.capture="mentions.handlePointerDown"
+					@click.capture="mentions.handleCaretMove"
+					@keyup.capture="mentions.handleCaretMove"
+					@select.capture="mentions.handleCaretMove"
+				>
 					<AgentChatPanel
 						ref="panel"
 						:project-id="props.projectId"
@@ -558,17 +1019,28 @@ function removeStagedNodes(chipId: string): void {
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
-						:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
+						empty-state-icon="n8n-assistant"
+						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"
+						:thinking-label="draftPreview.thinkingWord.value"
 						:client-context="clientContext"
+						:message-references="messageReferences"
+						:input-draft="mentions.draft.value"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
-						@stream-event="trace.recordEvent"
+						:max-length="EXTENDED_PROMPT_MAX_LENGTH"
+						:disabled="creditsStore.isOutOfCredits"
+						:before-send="assertCreditsAvailable"
+						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
+						@message-sending="onMessageSending"
+						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
+						@update:input-draft="mentions.handleTextChange"
+						@composer-attachment-removed="onComposerChipRemoved"
 					>
 						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
 						<template v-if="activeFixWithAiOffer" #inline-offers>
@@ -580,19 +1052,78 @@ function removeStagedNodes(chipId: string): void {
 								@dismiss="dismissFixWithAiOffer"
 							/>
 						</template>
+						<template #above-input>
+							<LimitedModeNotice />
+							<CreditWarningBanner
+								v-if="creditsStore.isOutOfCredits || creditBanner.visible.value"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
+								:message="
+									creditsStore.isOutOfCredits
+										? i18n.baseText('instanceAi.error.outOfCredits.title')
+										: undefined
+								"
+								:dismissible="!creditsStore.isOutOfCredits"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBanner.dismiss()"
+							/>
+						</template>
+						<template #message-actions="{ executionId }">
+							<N8nChatRating
+								v-if="feedback.isRateable(executionId)"
+								:rating="feedback.ratingOf(executionId)"
+								@rate="feedback.rate(executionId, $event)"
+							/>
+						</template>
+						<!-- Nodes chips can drop single nodes, so they are not cards. -->
 						<template v-if="stagedNodes.length > 0" #composer-attachments>
 							<NodesAttachmentChips
-								v-for="{ id, attachment } in stagedNodes"
+								v-for="{ id, nodes } in stagedNodes"
 								:key="id"
-								:attachment="attachment"
+								:attachment="nodes"
 								is-removable
 								@update:attachment="updateStagedNodes"
-								@remove-all="removeStagedNodes(id)"
+								@remove-all="mentions.handleChipRemoved(id)"
+							/>
+						</template>
+						<template #user-message-references="{ message }">
+							<AttachmentPreview
+								v-for="(reference, index) in shownReferences(message)"
+								:key="index"
+								:attachment="reference"
+								:is-removable="false"
+							/>
+						</template>
+						<template v-if="mentions.isEnabled.value" #composer-actions>
+							<AssistantAtMentionPicker
+								ref="mentionPicker"
+								:model-value="mentions.menuOpen.value"
+								:query="mentions.query.value"
+								:project-id="props.projectId"
+								:artifacts="mentionArtifacts"
+								:active-workflow-id="mentionActiveWorkflowId"
+								:excluded-keys="mentions.excludedKeys.value"
+								:excluded-workflow-ids="mentions.excludedWorkflowIds.value"
+								:input-element="mentionInput"
+								:reference="mentionReference"
+								:disabled="!mentions.canUseMentions.value"
+								@update:model-value="mentions.handleMenuOpenChange"
+								@select="mentions.handleSelect"
+								@empty-search="mentions.handleEmptySearch"
 							/>
 						</template>
 						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
 						<template #footer-start="{ disabled }">
-							<InstanceAiInputMenu :disabled="disabled" @attach-files="panel?.openFilePicker()" />
+							<InstanceAiInputMenu
+								:disabled="disabled"
+								:project-id="props.projectId"
+								@attach-files="panel?.openFilePicker()"
+							/>
+							<!-- A thread that builds an agent always runs in Manual mode. -->
+							<ApprovalModeSelector
+								v-if="!threadTargetsAgent(threadsStore.threadsById.get(props.threadId)?.metadata)"
+								:thread-id="props.threadId"
+							/>
 						</template>
 					</AgentChatPanel>
 				</div>
@@ -626,7 +1157,7 @@ function removeStagedNodes(chipId: string): void {
 				:grid-size="8"
 				@resize="handlePreviewResize"
 			>
-				<TabsRoot
+				<N8nTabsRoot
 					:model-value="preview.activeTabId.value"
 					orientation="horizontal"
 					:class="$style.previewPanel"
@@ -639,7 +1170,7 @@ function removeStagedNodes(chipId: string): void {
 						:preview-toggle-label="previewToggleLabel"
 						:project-id="props.projectId"
 						@toggle-preview="togglePreview"
-						@toggle-expanded="isPreviewExpanded = !isPreviewExpanded"
+						@toggle-expanded="togglePreviewExpanded"
 						@close-tab="preview.closeTab"
 						@open-tab="preview.openTab"
 						@reorder-tab="preview.reorderTab"
@@ -654,6 +1185,19 @@ function removeStagedNodes(chipId: string): void {
 							:execution-result="preview.activeWorkflowExecutionResult.value"
 							@workflow-failures="handleWorkflowFailures"
 							@workflow-succeeded="handleWorkflowSucceeded"
+							@workflow-loaded="workflowDrafts.dismiss"
+						/>
+						<InstanceAiWorkflowDraftPreview
+							v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+							:key="preview.activeWorkflowDraft.value.filePath"
+							:class="$style.previewSlot"
+							:draft="preview.activeWorkflowDraft.value"
+							:building="isAgentRunning()"
+						/>
+						<InstanceAiCanvasRunOverlay
+							v-if="canvasRunState"
+							:state="canvasRunState"
+							@focus-chat="panel?.focusOpenInteraction()"
 						/>
 						<InstanceAiDataTablePreview
 							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
@@ -670,20 +1214,33 @@ function removeStagedNodes(chipId: string): void {
 							:refresh-key="preview.appRefreshKey.value"
 							@deleted="preview.closeTab"
 						/>
-						<div
-							v-if="preview.isPreviewVisible.value && activeAgentHref"
-							:class="[$style.previewSlot, $style.agentNotice]"
-							data-test-id="assistant-agent-agent-preview-notice"
-						>
-							<N8nText color="text-light">
-								{{ i18n.baseText('instanceAi.assistantAgent.agentPreviewUnavailable') }}
-							</N8nText>
-							<N8nLink :to="activeAgentHref">
-								{{ i18n.baseText('instanceAi.assistantAgent.openAgent') }}
-							</N8nLink>
-						</div>
+						<InstanceAiAgentPreview
+							v-if="
+								preview.isPreviewVisible.value &&
+								preview.activeAgentId.value &&
+								preview.activeAgentProjectId.value
+							"
+							:class="$style.previewSlot"
+							:agent-id="preview.activeAgentId.value"
+							:project-id="preview.activeAgentProjectId.value"
+							:preview-session-id="activeAgentPreviewSessionId"
+							:preview-open="isAgentTestDockOpen"
+							:preview-chat-target="agentPreviewChatTarget"
+							:pending="preview.activeAgentPending.value"
+							@preview-open-change="handleAgentTestDockOpenChange"
+							@assistant-handoff="handleAgentPreviewAssistantHandoff"
+						/>
+						<!-- Retain each open skill's draft while another artifact is visible. -->
+						<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+							<InstanceAiSkillPreview
+								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+								:class="$style.previewSlot"
+								:skill-id="tab.id"
+								:refresh-key="preview.skillRefreshKey.value"
+							/>
+						</KeepAlive>
 					</div>
-				</TabsRoot>
+				</N8nTabsRoot>
 			</N8nResizeWrapper>
 		</div>
 	</div>
@@ -700,6 +1257,7 @@ function removeStagedNodes(chipId: string): void {
 }
 
 .chatArea {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	flex: 1;
@@ -766,13 +1324,5 @@ function removeStagedNodes(chipId: string): void {
 .previewSlot {
 	position: absolute;
 	inset: 0;
-}
-
-.agentNotice {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--2xs);
 }
 </style>

@@ -171,8 +171,10 @@ defect to remove, not a contract to preserve. Detail:
 4. Don't hand-write the OpenAPI path or `x-required-scope` for a controller
    route — the generator (`v1/openapi-gen/generate.ts`) builds it from your
    decorators (`@ApiSummary`/`@ApiDescription`/`@ApiTags`/`@ApiKeyScope`/
-   `@ApiResponse`/`@ApiErrorResponse`). Run the full `pnpm build` and commit
-   the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
+   `@ApiResponse`/`@ApiErrorResponse`). The generator automatically suffixes
+   the description with a sentence indicating which API Key scopes are required
+   for the operation, do not repeat these in the `@ApiDescription`. Run the full
+   `pnpm build` and commit the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
    and `openapi.decorator-routes.generated.yml` —
    `generated-spec-drift.test.ts` fails CI if they're stale. `pnpm run
    build:data` alone is **not** enough after touching a controller: it runs

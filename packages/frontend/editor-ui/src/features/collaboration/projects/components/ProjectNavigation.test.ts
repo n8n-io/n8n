@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
+import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -451,6 +451,29 @@ describe('ProjectsNavigation', () => {
 					push_ref: expect.any(String),
 				},
 			);
+		});
+
+		it('offsets the sidebar hint popover past the sidebar border in expanded and collapsed states', async () => {
+			setupInstanceAiMember();
+			enableFlag();
+
+			const { getByTestId, rerender } = renderComponent({
+				props: { collapsed: false },
+				global: {
+					stubs: {
+						N8nChatHintPopover: {
+							props: ['sideOffset'],
+							template:
+								'<div data-test-id="sidebar-hint-popover" :data-side-offset="sideOffset"><slot /></div>',
+						},
+					},
+				},
+			});
+
+			expect(getByTestId('sidebar-hint-popover')).toHaveAttribute('data-side-offset', '13');
+
+			await rerender({ collapsed: true });
+			expect(getByTestId('sidebar-hint-popover')).toHaveAttribute('data-side-offset', '11');
 		});
 
 		it('tracks a telemetry event when a chat item is clicked', async () => {

@@ -1,4 +1,10 @@
-import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	JsonObject,
+	StepExecutionRequest,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { noopResponseEmitter } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
@@ -9,6 +15,7 @@ import type {
 	CloseFunction,
 	IConnections,
 	IDataObject,
+	INode,
 	INodeCredentials,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -21,7 +28,7 @@ import type {
 } from 'n8n-workflow';
 import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { AdditionalDataContext } from '../types';
+import type { AdditionalDataContext, SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 
 class EchoParam implements INodeType {
@@ -403,9 +410,76 @@ class RunsSubWorkflowPerItem implements INodeType {
 	}
 }
 
+/** Builds a reply link or approval button references, as a send-and-wait node does. */
+class AsksForReply implements INodeType {
+	description = {
+		displayName: 'Asks For Reply',
+		name: 'asksForReply',
+		group: ['transform'],
+		version: 1,
+		description: 'Builds a reply link or button reference',
+		defaults: { name: 'Asks For Reply' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{
+				displayName: 'Reply',
+				name: 'reply',
+				type: 'options',
+				options: [
+					{ name: 'Link', value: 'link' },
+					{ name: 'Bare Link', value: 'bareLink' },
+					{ name: 'Encoded Link', value: 'encodedLink' },
+					{ name: 'Button', value: 'button' },
+				],
+				default: 'link',
+			},
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const replies: Record<string, () => string | string[]> = {
+			link: () => this.getSignedResumeUrl({ approved: 'true' }),
+			bareLink: () => this.getSignedResumeUrl(),
+			encodedLink: () => this.getSignedResumeUrl({ note: 'a b&c', signature: 'forged' }),
+			button: () =>
+				(['approve', 'decline'] as const).map((decision) =>
+					this.getApprovalCallbackReference(decision),
+				),
+		};
+		const reference = replies[this.getNodeParameter('reply', 0) as string]();
+		const waitTill = this.getNodeParameter('waitTill', 0) as string;
+		if (waitTill) await this.putExecutionToWait(new Date(waitTill));
+		return [[{ json: { reference } }]];
+	}
+}
+
+/** Returns its input with a fresh link per item, as Set does. */
+class LinksToInput implements INodeType {
+	description = {
+		displayName: 'Links To Input',
+		name: 'linksToInput',
+		group: ['transform'],
+		version: 1,
+		description: 'Passes items through, each linked to its input position',
+		defaults: { name: 'Links To Input' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([
+			this.getInputData().map((item, i) => ({ json: item.json, pairedItem: { item: i } })),
+		]);
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
+	['test.linksToInput', new LinksToInput()],
 	['test.alwaysFails', new AlwaysFails()],
 	['test.failsWithDescription', new FailsWithDescription()],
 	['test.noExecute', new NoExecute()],
@@ -424,6 +498,7 @@ const registry = new Map<string, INodeType>([
 	['test.runsSubWorkflowPerItem', new RunsSubWorkflowPerItem()],
 	['test.callsSubWorkflowThenFails', new CallsSubWorkflowThenFails()],
 	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	['test.asksForReply', new AsksForReply()],
 	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
@@ -467,6 +542,11 @@ export const v1Workflow = (
 		typeVersion?: number;
 		parameters?: IDataObject;
 		credentials?: INodeCredentials;
+		onError?: INode['onError'];
+		disabled?: boolean;
+		retryOnFail?: boolean;
+		alwaysOutputData?: boolean;
+		executeOnce?: boolean;
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>
@@ -478,13 +558,31 @@ export const v1Workflow = (
 		connections,
 	}) as unknown as IWorkflowBase;
 
+/**
+ * A request for one step. Unless given, `inputSources` reports one source per
+ * slot, the first graph edge into it, with the slot's item count.
+ */
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
 	inputs: StepSlots,
+	inputSources: StepInputSources = inputs.map((slot, inputIndex) => {
+		const edge = graph.edges.find((e) => e.to === nodeId && e.inputIndex === inputIndex);
+		if (!edge || slot === null) return [];
+		return [
+			{
+				nodeId: edge.from,
+				outputIndex: edge.outputIndex,
+				iteration: 0,
+				offset: 0,
+				itemCount: Array.isArray(slot) ? slot.length : 1,
+			},
+		];
+	}),
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
+	inputSources,
 	context: {
 		executionId: 'exec-1',
 		stepId: nodeId,
@@ -497,6 +595,10 @@ export const stepRequest = (
 	respond: noopResponseEmitter,
 });
 
+/** For a test that calls no sub-workflow: a call is a test bug, so it fails loudly. */
+export const noSubWorkflows: SubWorkflowResolver = async () =>
+	await Promise.reject(new Error('this test resolves no sub-workflows'));
+
 export const testStepExecutor = (
 	graph: WorkflowGraph,
 	outputsByNodeId: Record<string, StepSlots> = {},
@@ -504,6 +606,7 @@ export const testStepExecutor = (
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
 		additionalDataFactory: testAdditionalDataFactory,
+		resolveSubWorkflow: noSubWorkflows,
 		// every fixture node runs once, so its outputs sit at iteration 0
 		loadStepData: async () =>
 			await Promise.resolve({

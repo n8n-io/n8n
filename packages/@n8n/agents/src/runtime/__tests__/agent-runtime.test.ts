@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
+import { APICallError } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
@@ -10,12 +11,17 @@ import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { Agent } from '../../sdk/agent';
 import { getModelCost } from '../../sdk/catalog';
 import { createCancellation } from '../../sdk/cancellation';
-import { isLlmMessage } from '../../sdk/message';
+import { isLlmMessage, isRuntimeSkillUpdate } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
-import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
+import type {
+	CheckpointStore,
+	ModelConfig,
+	SerializableAgentState,
+	ToolCallInterceptor,
+} from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { ExecutionOptions, GenerateResult, StreamChunk } from '../../types/sdk/agent';
@@ -41,7 +47,6 @@ import { MAX_HYDRATED_FILE_PARTS } from '../loop/hydrate-file-parts';
 import { StreamSink } from '../loop/stream-sink';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
-import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
 import { StaleResumeError } from '../state/run-state';
 import {
@@ -420,6 +425,118 @@ function makeInterruptibleTool(): BuiltTool {
 // ---------------------------------------------------------------------------
 // execution counters
 // ---------------------------------------------------------------------------
+
+describe('AgentRuntime — reasoning from another OpenAI org', () => {
+	const persistence = { threadId: 'reasoning-thread', resourceId: 'user-1' };
+	// OpenAI answers this when the encrypted reasoning comes from another org,
+	// for example after a change from Gateway credits to an own API key.
+	const rejection = new APICallError({
+		message: 'The encrypted content could not be verified.',
+		url: 'https://api.openai.com/v1/responses',
+		requestBodyValues: {},
+		statusCode: 400,
+		data: { error: { type: 'invalid_request_error', code: 'invalid_encrypted_content' } },
+	});
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const reply = (encrypted: string) => ({
+		role: 'assistant',
+		content: [
+			{
+				type: 'reasoning',
+				text: '',
+				providerOptions: {
+					openai: { itemId: `rs_${encrypted}`, reasoningEncryptedContent: encrypted },
+				},
+			},
+			{ type: 'text', text: 'OK' },
+		],
+	});
+
+	function answer(encrypted: string) {
+		generateText.mockResolvedValueOnce({
+			...makeGenerateSuccess(),
+			response: { messages: [reply(encrypted)] },
+		});
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			response: Promise.resolve({ messages: [reply(encrypted)] }),
+		});
+	}
+
+	function reject() {
+		generateText.mockRejectedValueOnce(rejection);
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			stream: makeChunkStream([{ type: 'error', error: rejection }]),
+			finishReason: silentReject(rejection),
+		});
+	}
+
+	async function run(memory: InMemoryMemory, mode: 'generate' | 'stream', text: string) {
+		const runtime = new AgentRuntime({
+			name: 'reasoning-test',
+			model: 'openai/gpt-5-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			checkpointStorage: 'memory',
+		});
+		if (mode === 'generate') return (await runtime.generate(text, { persistence })).error;
+		const chunks = await collectChunks((await runtime.stream(text, { persistence })).stream);
+		return chunks.find((chunk) => chunk.type === 'error');
+	}
+
+	it.each(['generate', 'stream'] as const)(
+		'%s retries once without the rejected reasoning and keeps it out of later turns',
+		async (mode) => {
+			const model = mode === 'generate' ? generateText : streamText;
+			const sent = (call: number) => JSON.stringify(model.mock.calls[call][0].messages);
+			const memory = new InMemoryMemory();
+			// A real backend returns copies, so only a save can change stored history.
+			const load = memory.getMessages.bind(memory);
+			vi.spyOn(memory, 'getMessages').mockImplementation(async (...args) =>
+				structuredClone(await load(...args)),
+			);
+
+			answer('enc_gateway');
+			expect(await run(memory, mode, 'Hi')).toBeUndefined();
+
+			// A normal turn replays earlier reasoning unchanged, which keeps the prompt cache.
+			reject();
+			answer('enc_own');
+			expect(await run(memory, mode, 'Again')).toBeUndefined();
+			expect(model).toHaveBeenCalledTimes(3);
+			expect(sent(1)).toContain('enc_gateway');
+			expect(sent(2)).not.toContain('enc_gateway');
+
+			// The stored history no longer holds the rejected reasoning: no new retry.
+			answer('enc_next');
+			expect(await run(memory, mode, 'And again')).toBeUndefined();
+			expect(model).toHaveBeenCalledTimes(4);
+			expect(sent(3)).not.toContain('enc_gateway');
+			expect(sent(3)).toContain('enc_own');
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s reports the error when the retry fails too',
+		async (mode) => {
+			const model = mode === 'generate' ? generateText : streamText;
+			const memory = new InMemoryMemory();
+			answer('enc_gateway');
+			await run(memory, mode, 'Hi');
+
+			reject();
+			reject();
+			expect(await run(memory, mode, 'Again')).toBeDefined();
+			expect(model).toHaveBeenCalledTimes(3);
+		},
+	);
+});
 
 describe('AgentRuntime — rejected attachments', () => {
 	const persistence = { threadId: 'attachment-thread', resourceId: 'user-1' };
@@ -900,6 +1017,39 @@ describe('AgentRuntime — additional input', () => {
 		);
 		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
+	});
+
+	it('makes one more model call for a host instruction at the completing boundary', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('done'));
+		const instruction: AgentDbMessage = {
+			id: crypto.randomUUID(),
+			createdAt: new Date(Date.now() + 100),
+			type: 'custom',
+			data: { type: 'n8n:host-instruction', reason: 'test', content: 'Open the setup card.' },
+		};
+		let sent = false;
+		const onInputBoundary = vi.fn(async ({ completing }: { completing: boolean }) => {
+			if (!completing || sent) return [];
+			sent = true;
+			return [instruction];
+		});
+		const { runtime } = createRuntime();
+
+		const chunks = await collectChunks((await runtime.stream('A', { onInputBoundary })).stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const messages = streamText.mock.calls[1][0].messages as Array<{
+			role: string;
+			content: Array<{ type: string; text?: string }>;
+		}>;
+		expect(messages.at(-1)).toMatchObject({
+			role: 'user',
+			content: [
+				{ type: 'text', text: expect.stringContaining('It is not a message from the user.') },
+			],
+		});
+		expect(messages.at(-1)?.content[0].text).toContain('Open the setup card.');
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
 	});
 
 	it.each([
@@ -1402,6 +1552,44 @@ describe('AgentRuntime — execution counters', () => {
 		expect(observedCtx?.suspendPayload).toEqual(suspendPayload);
 	});
 
+	it('reports a deferred tool that suspends through call_tool by its own name and input', async () => {
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [makeInterruptibleTool()],
+			toolDeferral: { mode: 'tool-catalog' },
+			checkpointStorage: 'memory',
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: 'call_tool',
+					args: { tool: 'approve', arguments: { question: 'continue?' } },
+				},
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const suspension = first.pendingSuspend![0];
+		expect(suspension).toMatchObject({ toolName: 'approve', input: { question: 'continue?' } });
+
+		// The checkpoint keeps the call_tool call, so resume still runs the tool.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		expect(resumed.error).toBeUndefined();
+		expect(resumed.pendingSuspend).toBeUndefined();
+		expect(resumed.toolCalls).toEqual(
+			expect.arrayContaining([expect.objectContaining({ output: { approved: true } })]),
+		);
+	});
+
 	it('persists dynamic suspension state privately and validates resume before claiming', async () => {
 		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
 		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });
@@ -1782,101 +1970,6 @@ describe('AgentRuntime — guardrails', () => {
 		) as Message;
 		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 	}
-
-	it.each(['generate', 'stream'] as const)(
-		'%s reports an applied skill revocation when cancellation interrupts restoration',
-		async (mode) => {
-			const memory = new InMemoryMemory();
-			const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
-			const scope = { ...persistence, agentName: 'test' };
-			await memory.skillState.save(scope, {
-				skillIds: ['revoked-skill'],
-				versions: { 'revoked-skill': 'v1' },
-			});
-			const controller = new AbortController();
-			const save = memory.skillState.save.bind(memory.skillState);
-			vi.spyOn(memory.skillState, 'save').mockImplementationOnce(async (scope, state) => {
-				controller.abort();
-				await save(scope, state);
-			});
-			const source = createRuntimeSkillSource([]);
-			const onContext = vi.fn();
-			source.onContext = onContext;
-			const runtime = new AgentRuntime({
-				name: 'test',
-				model: 'openai/gpt-4o-mini',
-				instructions: 'Test',
-				skillSource: source,
-				memory,
-			});
-			try {
-				const options = { persistence, abortSignal: controller.signal };
-				if (mode === 'stream') {
-					const { stream } = await runtime.stream('hi', options);
-					await collectChunks(stream);
-				} else {
-					await runtime.generate('hi', options);
-				}
-				expect(generateText).not.toHaveBeenCalled();
-				expect(streamText).not.toHaveBeenCalled();
-				expect(await memory.skillState.load(scope)).toEqual({
-					skillIds: [],
-					versions: { 'revoked-skill': null },
-				});
-				expect(onContext).toHaveBeenCalledExactlyOnceWith([
-					{ skillId: 'revoked-skill', kind: 'revoked' },
-				]);
-				onContext.mockClear();
-				generateText.mockResolvedValueOnce(makeGenerateSuccess());
-				await runtime.generate('continue', { persistence });
-				expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
-			} finally {
-				await runtime.dispose();
-			}
-		},
-	);
-
-	it('reports skill context only when model-call guards allow delivery', async () => {
-		const memory = new InMemoryMemory();
-		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
-		const source = createRuntimeSkillSource([
-			{
-				id: 'test-skill',
-				name: 'test-skill',
-				description: 'Test',
-				instructions: 'Test instructions',
-			},
-		]);
-		source.shouldAppendSkillUpdates = () => true;
-		const version = source.registry.skills[0].hash;
-		await memory.skillState.save(
-			{ ...persistence, agentName: 'test' },
-			{ skillIds: ['test-skill'], versions: { 'test-skill': version } },
-		);
-		const onContext = vi.fn();
-		source.onContext = onContext;
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'Test',
-			skillSource: source,
-			memory,
-		});
-		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
-		try {
-			await runtime.generate('hi', { persistence, guardrails: guardrailsOption(hook) });
-			expect(onContext).not.toHaveBeenCalled();
-			expect(generateText).not.toHaveBeenCalled();
-			generateText.mockResolvedValueOnce(makeGenerateSuccess());
-			await runtime.generate('hi', { persistence });
-			expect(onContext).toHaveBeenCalledExactlyOnceWith([
-				{ skillId: 'test-skill', version, kind: 'carried' },
-			]);
-			expect(JSON.stringify(generateText.mock.calls[0][0])).toContain('Test instructions');
-		} finally {
-			await runtime.dispose();
-		}
-	});
 
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
@@ -2321,6 +2414,68 @@ describe('AgentRuntime — volatile instruction provider', () => {
 			expect.objectContaining({ finishReason: 'stop' }),
 		);
 		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('AgentRuntime — context cue providers', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function sentText(callIndex: number): string {
+		return JSON.stringify(generateText.mock.calls[callIndex]?.[0].messages);
+	}
+
+	it('appends new cues before each model call and sends each cue once', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				...makeGenerateWithToolCall('tc-cue', 'openai.web_search', { query: 'n8n' }),
+				toolCalls: [
+					{
+						toolCallId: 'tc-cue',
+						toolName: 'openai.web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+				],
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const provider = vi.fn().mockResolvedValue([{ id: 'one', content: '- Cue one.' }]);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			contextCueProviders: [provider],
+		});
+
+		const result = await runtime.generate('search');
+
+		expect(provider).toHaveBeenCalledTimes(2);
+		expect(provider.mock.calls[0][0].sentCueIds).toEqual(new Set());
+		expect(provider.mock.calls[1][0].sentCueIds).toEqual(new Set(['one']));
+		expect(sentText(0)).toContain('<system-reminder>');
+		expect(sentText(0)).toContain('- Cue one.');
+		expect(sentText(1).split('- Cue one.')).toHaveLength(2);
+		expect(JSON.stringify(result.getState())).toContain('n8n:runtime-context-cue');
+	});
+
+	it('continues the model call when a provider fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			contextCueProviders: [
+				vi.fn().mockRejectedValue(new Error('embedder down')),
+				vi.fn().mockResolvedValue([{ id: 'two', content: '- Cue two.' }]),
+			],
+		});
+
+		await expect(runtime.generate('hello')).resolves.toEqual(
+			expect.objectContaining({ finishReason: 'stop' }),
+		);
+		expect(sentText(0)).toContain('- Cue two.');
 	});
 });
 
@@ -2779,6 +2934,49 @@ describe('AgentRuntime — eager input persistence', () => {
 
 		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
 		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+	});
+
+	it('saves the resumed tool result before the next model call of the turn', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// The model call after the resume reads memory, as a tool of the same turn can.
+		let storedState: unknown;
+		generateText.mockImplementationOnce(async () => {
+			const stored = await memory.getMessages('t1', { resourceId: 'u1' });
+			const content = stored.flatMap((m) => {
+				const parts = (m as { content?: unknown }).content;
+				return Array.isArray(parts) ? (parts as unknown[]) : [];
+			});
+			const part = content.find(
+				(c) =>
+					typeof c === 'object' &&
+					c !== null &&
+					Reflect.get(c, 'type') === 'tool-call' &&
+					Reflect.get(c, 'toolCallId') === 'tc-1',
+			);
+			storedState = part ? Reflect.get(part, 'state') : undefined;
+			return makeGenerateSuccess('done');
+		});
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(storedState).toBe('resolved');
 	});
 
 	it("persists the turn's assistant output when an active turn is aborted (generate)", async () => {
@@ -4126,19 +4324,39 @@ describe('AgentRuntime — user pause', () => {
 });
 
 describe('AgentRuntime — deferred tool loading', () => {
+	it('uses provider tool search by default when the model supports it', async () => {
+		const action = makeMockTool('lookup_total', async () => await Promise.resolve({ ok: true }));
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const runtime = new AgentRuntime({
+			name: 'native-default',
+			model: 'openai/gpt-5.4',
+			instructions: 'Use tools.',
+			deferredTools: [action],
+		});
+		await runtime.generate('Get the total.');
+		const tools = generateText.mock.calls[0][0].tools;
+		expect(tools).toHaveProperty('lookup_total');
+		expect(tools).not.toHaveProperty('find_tools');
+		expect(tools).not.toHaveProperty('call_tool');
+	});
+
 	it.each<ModelConfig>([
-		'openai/gpt-5.4',
 		'openai/gpt-4o-mini',
 		{ id: 'openai/gpt-5.4', apiStyle: 'chat' },
 		{ id: 'openai/gpt-5.4', baseURL: 'https://proxy.example/v1', apiStyle: 'responses' },
-	])('executes the complete native-mode catalog on %j', async (model) => {
+	])('falls back to the tool catalog without provider tool search on %j', async (model) => {
 		const action = new Tool('lookup_total')
 			.description('Compute the total.')
 			.input(z.object({ value: z.number() }))
 			.handler(async ({ value }) => ({ total: value * 2 }))
 			.build();
 		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall('call_1', action.name, { value: 21 }))
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('call_1', 'call_tool', {
+					tool: 'lookup_total',
+					arguments: { value: 21 },
+				}),
+			)
 			.mockResolvedValueOnce(makeGenerateSuccess('42'));
 		const runtime = new AgentRuntime({
 			name: 'native',
@@ -4148,28 +4366,55 @@ describe('AgentRuntime — deferred tool loading', () => {
 			nativeToolDeferral: { eagerToolNames: [] },
 		});
 		const result = await runtime.generate('Get the total.');
-		expect(result.finishReason).toBe('stop');
 		expect(result.toolCalls).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ tool: 'lookup_total', output: { total: 42 } }),
-			]),
+			expect.arrayContaining([expect.objectContaining({ output: { total: 42 } })]),
 		);
 		const tools = generateText.mock.calls[0][0].tools;
-		expect(tools).toHaveProperty('lookup_total');
-		expect(tools).not.toHaveProperty('search_tools');
-		expect(tools).not.toHaveProperty('load_tool');
+		expect(Object.keys(tools)).toEqual(['find_tools', 'call_tool']);
 	});
+
+	it.each<ModelConfig>(['openai/gpt-5.4'])(
+		'executes the complete native-mode catalog on %j',
+		async (model) => {
+			const action = new Tool('lookup_total')
+				.description('Compute the total.')
+				.input(z.object({ value: z.number() }))
+				.handler(async ({ value }) => ({ total: value * 2 }))
+				.build();
+			generateText
+				.mockResolvedValueOnce(makeGenerateWithToolCall('call_1', action.name, { value: 21 }))
+				.mockResolvedValueOnce(makeGenerateSuccess('42'));
+			const runtime = new AgentRuntime({
+				name: 'native',
+				model,
+				instructions: 'Use tools.',
+				deferredTools: [action],
+				nativeToolDeferral: { eagerToolNames: [] },
+			});
+			const result = await runtime.generate('Get the total.');
+			expect(result.finishReason).toBe('stop');
+			expect(result.toolCalls).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ tool: 'lookup_total', output: { total: 42 } }),
+				]),
+			);
+			const tools = generateText.mock.calls[0][0].tools;
+			expect(tools).toHaveProperty('lookup_total');
+			expect(tools).not.toHaveProperty('find_tools');
+			expect(tools).not.toHaveProperty('call_tool');
+		},
+	);
 
 	beforeEach(() => {
 		generateText.mockReset();
 		streamText.mockReset();
 	});
 
-	it('searches and loads deferred tools into the next generate iteration', async () => {
+	it('finds and calls a deferred tool through the tool catalog with a fixed toolset', async () => {
 		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
 		const deferredTool = makeMockTool(
 			'deferred_capability',
-			async () => await Promise.resolve({ ok: true }),
+			async () => await Promise.resolve({ ran: true }),
 		);
 		const runtime = new AgentRuntime({
 			name: 'test',
@@ -4177,6 +4422,7 @@ describe('AgentRuntime — deferred tool loading', () => {
 			instructions: 'You are a test assistant.',
 			tools: [coreTool],
 			deferredTools: [deferredTool],
+			toolDeferral: { mode: 'tool-catalog' },
 		});
 		const counter = makeExecutionCounter();
 
@@ -4184,8 +4430,8 @@ describe('AgentRuntime — deferred tool loading', () => {
 			.mockResolvedValueOnce(
 				makeGenerateWithToolCalls([
 					{
-						toolCallId: 'tc-search',
-						toolName: 'search_tools',
+						toolCallId: 'tc-find',
+						toolName: 'find_tools',
 						args: { query: 'deferred capability' },
 					},
 				]),
@@ -4193,9 +4439,9 @@ describe('AgentRuntime — deferred tool loading', () => {
 			.mockResolvedValueOnce(
 				makeGenerateWithToolCalls([
 					{
-						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_capability' },
+						toolCallId: 'tc-call',
+						toolName: 'call_tool',
+						args: { tool: 'deferred_capability', arguments: {} },
 					},
 				]),
 			)
@@ -4206,52 +4452,30 @@ describe('AgentRuntime — deferred tool loading', () => {
 		});
 
 		expect(generateText).toHaveBeenCalledTimes(3);
-		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(2);
-		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(3);
 
-		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
-		expect(searchCall?.output).toEqual({
-			results: [
-				{
+		const findCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'find_tools');
+		expect(findCall?.output).toEqual({
+			tools: [
+				expect.objectContaining({
 					name: 'deferred_capability',
-					description: 'Mock tool deferred_capability',
-					loaded: false,
-				},
+					inputSchema: expect.any(Object),
+				}),
 			],
 		});
-
-		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
-		expect(loadCall?.output).toEqual({
-			status: 'loaded',
-			toolName: 'deferred_capability',
-			tool: {
-				name: 'deferred_capability',
-				description: 'Mock tool deferred_capability',
-				loaded: true,
-			},
-			message: 'Tool "deferred_capability" is loaded and will be available on the next model turn.',
-		});
+		const callCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'call_tool');
+		expect(callCall?.output).toEqual({ ran: true });
 
 		const generateTextCalls = generateText.mock.calls as Array<
-			[{ tools: Record<string, unknown> }]
+			[{ tools: Record<string, unknown>; system?: unknown }]
 		>;
-		const firstCall = generateTextCalls[0][0];
-		const firstTools = Object.keys(firstCall.tools);
-		expect(firstTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
-		expect(firstTools).not.toContain('deferred_capability');
-
-		const secondTools = Object.keys(generateTextCalls[1][0].tools);
-		expect(secondTools).toEqual(expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']));
-		expect(secondTools).not.toContain('deferred_capability');
-
-		const thirdTools = Object.keys(generateTextCalls[2][0].tools);
-		expect(thirdTools).toEqual(
-			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool', 'deferred_capability']),
-		);
+		for (const [call] of generateTextCalls) {
+			expect(Object.keys(call.tools)).toEqual(['core_tool', 'find_tools', 'call_tool']);
+		}
+		expect(JSON.stringify(generateTextCalls[0][0])).toContain('- tools: deferred_capability');
 	});
 
-	it('answers already_loaded when the model tries to load an active tool', async () => {
+	it('tells the model to call an active tool directly', async () => {
 		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
 		const deferredTool = makeMockTool(
 			'deferred_capability',
@@ -4268,136 +4492,20 @@ describe('AgentRuntime — deferred tool loading', () => {
 		generateText
 			.mockResolvedValueOnce(
 				makeGenerateWithToolCalls([
-					{ toolCallId: 'tc-load', toolName: 'load_tool', args: { toolName: 'core_tool' } },
+					{ toolCallId: 'tc-call', toolName: 'call_tool', args: { tool: 'core_tool' } },
 				]),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('called it directly'));
 
-		const result = await runtime.generate('load the core tool');
+		const result = await runtime.generate('run the core tool');
 
-		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
-		expect(loadCall?.output).toEqual({
-			status: 'already_loaded',
-			toolName: 'core_tool',
-			tool: { name: 'core_tool', description: 'Mock tool core_tool', loaded: true },
-			message: 'Tool "core_tool" is already available. Call it directly.',
+		const call = result.toolCalls?.find((toolCall) => toolCall.tool === 'call_tool');
+		expect(call?.output).toEqual({
+			error: '"core_tool" is already in your toolset. Call it directly.',
 		});
 	});
 
-	it('returns active tools from search_tools, marked as loaded', async () => {
-		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
-		const deferredTool = makeMockTool(
-			'deferred_capability',
-			async () => await Promise.resolve({ ok: true }),
-		);
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			tools: [coreTool],
-			deferredTools: [deferredTool],
-		});
-
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCalls([
-					{ toolCallId: 'tc-search', toolName: 'search_tools', args: { query: 'core tool' } },
-				]),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('found it'));
-
-		const result = await runtime.generate('find the core tool');
-
-		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
-		expect(searchCall?.output).toEqual({
-			results: [
-				{ name: 'core_tool', description: 'Mock tool core_tool', loaded: true },
-				{
-					name: 'deferred_capability',
-					description: 'Mock tool deferred_capability',
-					loaded: false,
-				},
-			],
-		});
-	});
-
-	it('keeps an active tool out of the loadable set', async () => {
-		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
-		const deferredTool = makeMockTool(
-			'deferred_capability',
-			async () => await Promise.resolve({ ok: true }),
-		);
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			tools: [coreTool],
-			deferredTools: [deferredTool],
-		});
-
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCalls([
-					{ toolCallId: 'tc-load', toolName: 'load_tool', args: { toolName: 'core_tool' } },
-				]),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('done'));
-
-		await runtime.generate('load the core tool');
-
-		// `already_loaded` for an active tool must not inject a duplicate of it.
-		const generateTextCalls = generateText.mock.calls as Array<
-			[{ tools: Record<string, unknown> }]
-		>;
-		const secondTurnTools = Object.keys(generateTextCalls[1][0].tools);
-		expect(secondTurnTools.filter((name) => name === 'core_tool')).toHaveLength(1);
-		expect(secondTurnTools).not.toContain('deferred_capability');
-	});
-
-	it('does not leak loaded deferred tools into the next generate run', async () => {
-		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
-		const deferredTool = makeMockTool(
-			'deferred_capability',
-			async () => await Promise.resolve({ ok: true }),
-		);
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			tools: [coreTool],
-			deferredTools: [deferredTool],
-		});
-
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCalls([
-					{
-						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_capability' },
-					},
-				]),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('first done'));
-
-		await runtime.generate('load the deferred capability');
-
-		generateText.mockClear();
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('second done'));
-
-		await runtime.generate('start a fresh run');
-
-		const generateTextCalls = generateText.mock.calls as Array<
-			[{ tools: Record<string, unknown> }]
-		>;
-		const freshRunTools = Object.keys(generateTextCalls[0][0].tools);
-		expect(freshRunTools).toEqual(
-			expect.arrayContaining(['core_tool', 'search_tools', 'load_tool']),
-		);
-		expect(freshRunTools).not.toContain('deferred_capability');
-	});
-
-	it('resumes a suspended deferred tool after it has been loaded', async () => {
+	it('resumes a suspended deferred tool run through call_tool', async () => {
 		const deferredTool = makeSuspendingTool('deferred_approval', async (input, ctx) => {
 			if (!ctx.resumeData) {
 				return await ctx.suspend({ reason: 'approve deferred action?' });
@@ -4422,9 +4530,9 @@ describe('AgentRuntime — deferred tool loading', () => {
 			.mockResolvedValueOnce(
 				makeGenerateWithToolCalls([
 					{
-						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_approval' },
+						toolCallId: 'tc-find',
+						toolName: 'find_tools',
+						args: { tools: ['deferred_approval'] },
 					},
 				]),
 			)
@@ -4432,8 +4540,8 @@ describe('AgentRuntime — deferred tool loading', () => {
 				makeGenerateWithToolCalls([
 					{
 						toolCallId: 'tc-deferred',
-						toolName: 'deferred_approval',
-						args: { value: 'needs approval' },
+						toolName: 'call_tool',
+						args: { tool: 'deferred_approval', arguments: { value: 'needs approval' } },
 					},
 				]),
 			);
@@ -4459,11 +4567,79 @@ describe('AgentRuntime — deferred tool loading', () => {
 		expect(resumeResult.toolCalls).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					tool: 'deferred_approval',
 					output: { approved: true, value: 'needs approval' },
 				}),
 			]),
 		);
+	});
+
+	it('runs a tool catalog tool called by its own name as if through call_tool', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ ok: true }));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [makeSuspendingTool('deferred_lookup', handler)],
+			toolDeferral: { mode: 'tool-catalog' },
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-direct', toolName: 'deferred_lookup', args: { value: 'x' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('look it up');
+
+		expect(handler).toHaveBeenCalled();
+		expect(JSON.stringify(result)).not.toContain('not found');
+	});
+
+	it('returns the input schema when a direct tool catalog call has invalid input', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ ok: true }));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [makeSuspendingTool('deferred_lookup', handler)],
+			toolDeferral: { mode: 'tool-catalog' },
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-direct', toolName: 'deferred_lookup', args: { value: 1 } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('look it up');
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(JSON.stringify(result)).toContain('Input schema:');
+	});
+
+	it('ends the turn when a tool catalog tool called by its own name ends it', async () => {
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [
+				{ ...makeMockTool('silence', async () => ({ silent: true })), endsTurn: () => true },
+			],
+			toolDeferral: { mode: 'tool-catalog' },
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-direct', toolName: 'silence', args: {} }]),
+		);
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
 	});
 });
 
@@ -7901,7 +8077,7 @@ describe('reasoning', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			reasoning: 'high',
 		});
@@ -8121,7 +8297,7 @@ describe('tool systemInstruction merging', () => {
 		expect(text).toContain('You are a helpful assistant.');
 	});
 
-	it("moves a newly loaded deferred tool's systemInstruction into the uncached system message without changing the cached one", async () => {
+	it('keeps deferred tool systemInstructions in the cached system message in tool catalog mode', async () => {
 		const deferredTool: BuiltTool = {
 			name: 'deferred_capability',
 			description: 'Deferred capability',
@@ -8135,45 +8311,28 @@ describe('tool systemInstruction merging', () => {
 			model: 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
 			deferredTools: [deferredTool],
+			toolDeferral: { mode: 'tool-catalog' },
 		});
 
 		generateText
 			.mockResolvedValueOnce(
 				makeGenerateWithToolCalls([
 					{
-						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_capability' },
+						toolCallId: 'tc-call',
+						toolName: 'call_tool',
+						args: { tool: 'deferred_capability', arguments: {} },
 					},
 				]),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('done'));
 
-		await runtime.generate('load the deferred capability');
+		await runtime.generate('use the deferred capability');
 
-		const calls = generateText.mock.calls as Array<
-			[{ instructions: Array<{ content: string }> | { content: string } }]
-		>;
-		const beforeLoadSystem = calls[0][0].instructions;
-		const afterLoadSystem = calls[1][0].instructions;
-
-		const beforeFirst = Array.isArray(beforeLoadSystem)
-			? beforeLoadSystem[0].content
-			: beforeLoadSystem.content;
-		const afterFirst = Array.isArray(afterLoadSystem)
-			? afterLoadSystem[0].content
-			: afterLoadSystem.content;
-		const afterSecond = Array.isArray(afterLoadSystem) ? afterLoadSystem[1]?.content : undefined;
-
-		// Before loading, the tool's instruction appears nowhere.
-		expect(beforeFirst).not.toContain('Always confirm before using deferred_capability.');
-
-		// The cached (first) system message must stay byte-identical after the load.
-		expect(afterFirst).toBe(beforeFirst);
-
-		// After loading, the instruction reaches the model via the uncached second message.
-		expect(afterSecond).toContain('Always confirm before using deferred_capability.');
-		expect(afterFirst).not.toContain('Always confirm before using deferred_capability.');
+		const calls = generateText.mock.calls as Array<[{ instructions: unknown }]>;
+		const first = JSON.stringify(calls[0][0].instructions);
+		// The toolset is fixed, so the system prompt is the same on every turn.
+		expect(first).toContain('Always confirm before using deferred_capability.');
+		expect(JSON.stringify(calls[1][0].instructions)).toBe(first);
 	});
 });
 
@@ -8221,7 +8380,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			promptCaching: { enabled: true },
 		});
@@ -8289,7 +8448,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			tools: [toolA, toolB],
 			promptCaching: { enabled: true },
@@ -8308,7 +8467,7 @@ describe('promptCaching', () => {
 		});
 	});
 
-	it('does not add a tool cache breakpoint when deferred tools are configured (Anthropic)', async () => {
+	it('keeps the tool cache breakpoint in tool catalog mode because the toolset never changes (Anthropic)', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
 		const deferredTool = makeMockTool(
@@ -8318,10 +8477,11 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			tools: [coreTool],
 			deferredTools: [deferredTool],
+			toolDeferral: { mode: 'tool-catalog' },
 			promptCaching: { enabled: true },
 		});
 
@@ -8329,11 +8489,10 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
-		// No cache breakpoint is added, but every tool still carries the
-		// Anthropic `eagerInputStreaming: false` quirk default.
-		for (const tool of Object.values(tools)) {
-			expect(tool.providerOptions).toEqual({ anthropic: { eagerInputStreaming: false } });
-		}
+		expect(Object.keys(tools)).toEqual(['core_tool', 'find_tools', 'call_tool']);
+		expect(tools.call_tool.providerOptions).toEqual({
+			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
 	});
 
 	it('adds a tool cache breakpoint on flag_memory for an episodic Anthropic agent', async () => {
@@ -8343,7 +8502,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			memory,
 			episodicMemory: { embedder: fakeEmbedder },
@@ -8823,7 +8982,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 	});
 
-	it('loads only unobserved history when an observation cursor exists', async () => {
+	it('resumes from notes at turn start when the thread is over the limit', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
@@ -8892,8 +9051,11 @@ describe('AgentRuntime — observation log jobs', () => {
 		>;
 		const [{ messages }] = generateTextMock.mock.calls[0];
 		const serialized = JSON.stringify(messages);
+		// Over the limit at turn start: the Observer catches up on the backlog
+		// first, so the resume point moves past the recent message too.
 		expect(serialized).not.toContain('OBSERVED_OLD_MESSAGE');
-		expect(serialized).toContain('UNOBSERVED_RECENT_MESSAGE');
+		expect(serialized).not.toContain('UNOBSERVED_RECENT_MESSAGE');
+		expect(serialized).toContain('Current turn question');
 
 		await runtime.dispose();
 	});
@@ -9064,6 +9226,8 @@ describe('AgentRuntime — mid-run observation', () => {
 			observationalMemory: {
 				observerThresholdTokens: 1,
 				observationLogTailLimit: 20,
+				// These tests assert the notes in the system prompt.
+				logPlacement: 'system',
 				observe: async () => await Promise.resolve(OBSERVE_TEXT),
 			},
 		});
@@ -9086,7 +9250,9 @@ describe('AgentRuntime — mid-run observation', () => {
 		// After the first boundary's compaction the prompt is just the reminder,
 		// and the refreshed system prompt carries the observation.
 		const second = capturedCall(1);
-		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
+		// The turn's request stays visible after the swap.
+		expect(second.messages).toHaveLength(1);
+		expect(JSON.stringify(second.messages)).toContain('start work');
 		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
 		expect(second.instructions).toHaveLength(2);
 
@@ -9101,62 +9267,12 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
 
-	it('streams and persists a skill update before the model responds', async () => {
-		const memory = new InMemoryMemory();
-		await memory.skillState.save(
-			{ ...PERSISTENCE, agentName: 'mid-run-agent' },
-			{ skillIds: ['builder'], versions: { builder: 'previous-version' } },
-		);
-		const skillSource = {
-			...createRuntimeSkillSource([
-				{
-					id: 'builder',
-					name: 'Builder',
-					description: 'Build workflows.',
-					instructions: 'Use the latest guidance.',
-				},
-			]),
-			shouldAppendSkillUpdates: () => true,
-		};
-		const runtime = buildMidRunRuntime(memory, { skillSource });
-		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
-		const { stream } = await runtime.stream('Continue', { persistence: PERSISTENCE });
-		const chunks = await collectChunks(stream);
-		await runtime.dispose();
-		const notices = chunks
-			.filter((chunk) => chunk.type === 'message')
-			.filter((chunk) => chunk.message.type === 'custom');
-		expect(notices).toEqual([
-			{
-				type: 'message',
-				message: {
-					type: 'custom',
-					data: {
-						type: 'n8n:runtime-skill-update',
-						skillUpdate: expect.objectContaining({
-							skillId: 'builder',
-							name: 'Builder',
-							change: 'updated',
-						}),
-					},
-				},
-			},
-		]);
-		expect(chunks.indexOf(notices[0])).toBeLessThan(
-			chunks.findIndex((chunk) => chunk.type === 'text-delta'),
-		);
-		expect(await memory.getMessages(PERSISTENCE.threadId)).toContainEqual(
-			expect.objectContaining(notices[0].message),
-		);
-	});
-
-	it('persists full skill content when the memory adapter has no skill state store', async () => {
+	it('persists full skill content on the load_skill result', async () => {
 		const instructions = 'Wait for a real execution before extending the workflow.';
 		const source = createRuntimeSkillSource([
 			{ id: 'builder', name: 'builder', description: 'Build workflows.', instructions },
 		]);
 		const memory = new InMemoryMemory();
-		Object.defineProperty(memory, 'skillState', { value: undefined });
 		const runtime = buildMidRunRuntime(memory, {
 			skillSource: source,
 			tools: createRuntimeSkillTools(source),
@@ -9183,189 +9299,131 @@ describe('AgentRuntime — mid-run observation', () => {
 			}),
 		]);
 		expect(await memory.getCursor(PERSISTENCE.threadId)).not.toBeNull();
-		expect(flattenInstructions(capturedCall(1).instructions)).not.toContain('<active_skills>');
 	});
 
-	it('retains loaded skills through compaction and a new user turn', async () => {
+	it('tells the model once when a loaded skill changes or becomes unavailable', async () => {
+		const skillSource = (instructions?: string): RuntimeSkillSource => ({
+			...createRuntimeSkillSource(
+				instructions
+					? [{ id: 'hub-1', name: 'Triage', description: 'Triage cases.', instructions }]
+					: [],
+			),
+			shouldAppendSkillUpdates: (id) => id === 'hub-1',
+		});
+		const memory = new InMemoryMemory();
+		const run = async (source: RuntimeSkillSource, input: string) => {
+			// No observational memory: its compaction would hide the load result.
+			const runtime = new AgentRuntime({
+				name: 'skill-update-agent',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory,
+				skillSource: source,
+				tools: createRuntimeSkillTools(source),
+			});
+			await runtime.generate(input, { persistence: PERSISTENCE });
+			await runtime.dispose();
+		};
+		const sentText = () => JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages);
+
+		const original = skillSource('Use the inbox queue.');
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('load', 'load_skill', { skillId: 'hub-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'));
+		await run(original, 'Triage this');
+		expect(sentText()).not.toContain('changed after you loaded it');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Updated.'));
+		await run(skillSource('Use the review queue.'), 'Next case');
+		expect(sentText()).toContain('Skill \\"Triage\\" (id \\"hub-1\\") changed after you loaded it');
+		expect(sentText()).not.toContain('Use the review queue.');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Same.'));
+		await run(skillSource('Use the review queue.'), 'Another case');
+		expect(sentText().split('changed after you loaded it')).toHaveLength(2);
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Gone.'));
+		await run(skillSource(), 'Last case');
+		expect(sentText()).toContain('is no longer available');
+
+		const updates = (await memory.getMessages(PERSISTENCE.threadId)).flatMap((message) =>
+			isRuntimeSkillUpdate(message) ? [message.data.skillUpdate] : [],
+		);
+		expect(updates).toEqual([
+			expect.objectContaining({ skillId: 'hub-1', name: 'Triage', change: 'updated' }),
+			expect.objectContaining({ skillId: 'hub-1', version: null, change: 'unavailable' }),
+		]);
+	});
+
+	it('sends no skill update after compaction hid the load result', async () => {
+		const memory = new InMemoryMemory();
+		const run = async (source: RuntimeSkillSource, input: string) => {
+			const runtime = buildMidRunRuntime(memory, {
+				skillSource: { ...source, shouldAppendSkillUpdates: (id) => id === 'hub-1' },
+				tools: createRuntimeSkillTools(source),
+			});
+			await runtime.generate(input, { persistence: PERSISTENCE });
+			await runtime.dispose();
+		};
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('load', 'load_skill', { skillId: 'hub-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'))
+			.mockResolvedValueOnce(makeGenerateSuccess('Changed.'))
+			.mockResolvedValueOnce(makeGenerateSuccess('Gone.'));
+		const skill = { id: 'hub-1', name: 'Triage', description: 'Triage cases.' };
+		await run(createRuntimeSkillSource([{ ...skill, instructions: 'One.' }]), 'Triage this');
+		// The skill text is gone. The model must call load_skill again to use the skill.
+		await run(createRuntimeSkillSource([{ ...skill, instructions: 'Two.' }]), 'Next case');
+		expect(JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages)).not.toContain(
+			'changed after you loaded it',
+		);
+
+		await run(createRuntimeSkillSource([]), 'Last case');
+		expect(JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages)).not.toContain(
+			'is no longer available',
+		);
+		const stored = await memory.getMessages(PERSISTENCE.threadId);
+		expect(stored.filter(isRuntimeSkillUpdate)).toEqual([]);
+	});
+
+	it('keeps skill tool dependencies in the tool list before and after load_skill', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'builder',
 				name: 'builder',
 				description: 'Build workflows.',
-				instructions: 'Wait for a real execution before extending the workflow.',
+				instructions: 'Choose a model from the catalog.',
+				dependencies: { tools: ['catalog', 'unregistered'] },
+				recommendedToolGroups: ['tools'],
 			},
 		]);
+		const catalogHandler = vi.fn(async () => ({ models: [] }));
+		const catalog = makeMockTool('catalog', catalogHandler);
+		const options = {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			deferredTools: [catalog, makeMockTool('optional_tool', async () => ({ done: true }))],
+		};
 		const memory = new InMemoryMemory();
-		const options = { skillSource: source, tools: createRuntimeSkillTools(source) };
 		const runtime = buildMidRunRuntime(memory, options);
 		generateText
 			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+				makeGenerateWithToolCall('activate', 'load_skill', { skillId: 'builder' }),
 			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+			.mockResolvedValueOnce(makeGenerateSuccess('Ready to choose a model.'));
 		await runtime.generate('Build it', { persistence: PERSISTENCE });
 		await runtime.dispose();
 
-		expect(capturedCall(1).messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
-		expect(flattenInstructions(capturedCall(1).instructions)).toContain(
-			'Wait for a real execution',
-		);
+		// The tool list must not change when the skill activates, or the cached prompt is rewritten.
+		expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
+		expect(capturedCall(0).tools).toHaveProperty('catalog');
+		expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
 		const next = buildMidRunRuntime(memory, options);
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('The live test is still needed.'));
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Still ready.'));
 		await next.generate('Continue', { persistence: PERSISTENCE });
 		await next.dispose();
-		expect(flattenInstructions(capturedCall(2).instructions)).toContain(
-			'Wait for a real execution',
-		);
-		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
-	});
-
-	it('keeps the base instructions unchanged when compaction moves a skill into the system prompt', async () => {
-		const source = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Wait for a real execution before extending the workflow.',
-			},
-		]);
-		const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
-		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
-			skillSource: source,
-			tools: createRuntimeSkillTools(source),
-			model: 'anthropic/claude-sonnet-4-5',
-			instructionProviderOptions: cacheOptions,
-		});
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
-
-		await runtime.generate('Build it', { persistence: PERSISTENCE });
-		await runtime.dispose();
-
-		const before = capturedCall(0).instructions;
-		const after = capturedCall(1).instructions;
-		if (Array.isArray(before) || !Array.isArray(after)) throw new Error('Unexpected system shape');
-		expect(after[0]).toEqual(before);
-		expect(after[1]).toEqual({
-			role: 'system',
-			content: expect.stringContaining('Wait for a real execution'),
-			providerOptions: cacheOptions,
-		});
-		expect(after[2].content).toContain('Mid-run observation captured.');
-		expect(after[2]).not.toHaveProperty('providerOptions');
-	});
-
-	it.each(['load_skill', 'inspect_node'])(
-		'keeps skill tool dependencies in the tool list before and after %s',
-		async (activationTool) => {
-			const source = createRuntimeSkillSource([
-				{
-					id: 'builder',
-					name: 'builder',
-					description: 'Build workflows.',
-					instructions: 'Choose a model from the catalog.',
-					dependencies: { tools: ['catalog', 'unregistered'] },
-					recommendedTools: ['optional_tool'],
-				},
-			]);
-			const catalogHandler = vi.fn(async () => ({ models: [] }));
-			const catalog = makeMockTool('catalog', catalogHandler);
-			const inspectNode: BuiltTool = {
-				name: 'inspect_node',
-				description: 'Inspect a node.',
-				inputSchema: z.object({}),
-				handler: async (_input, ctx) => {
-					await ctx.loadSkill?.('builder');
-					return { node: 'model' };
-				},
-			};
-			const options = {
-				skillSource: source,
-				tools: [...createRuntimeSkillTools(source), inspectNode],
-				deferredTools: [catalog, makeMockTool('optional_tool', async () => ({ done: true }))],
-			};
-			const memory = new InMemoryMemory();
-			const runtime = buildMidRunRuntime(memory, options);
-			generateText
-				.mockResolvedValueOnce(
-					makeGenerateWithToolCall('activate', activationTool, { skillId: 'builder' }),
-				)
-				.mockResolvedValueOnce(makeGenerateSuccess('Ready to choose a model.'));
-			await runtime.generate('Build it', { persistence: PERSISTENCE });
-			await runtime.dispose();
-
-			// The tool list must not change when the skill activates, or the cached prompt is rewritten.
-			expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
-			expect(capturedCall(0).tools).toHaveProperty('catalog');
-			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
-			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
-				'Choose a model from the catalog.',
-			);
-
-			const next = buildMidRunRuntime(memory, options);
-			generateText.mockResolvedValueOnce(makeGenerateSuccess('Still ready.'));
-			await next.generate('Continue', { persistence: PERSISTENCE });
-			await next.dispose();
-			expect(capturedCall(2).tools).toHaveProperty('catalog');
-			expect(catalogHandler).not.toHaveBeenCalled();
-		},
-	);
-
-	it('restores active skills from a checkpoint with the newly selected content', async () => {
-		const source = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Old workflow policy.',
-			},
-		]);
-		const checkpointStore = makeClaimingCheckpointStore();
-		const memory = new InMemoryMemory();
-		const first = buildMidRunRuntime(memory, {
-			skillSource: source,
-			tools: [...createRuntimeSkillTools(source), makeInterruptibleTool()],
-			checkpointStorage: checkpointStore,
-		});
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
-			)
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('confirm', 'approve', { question: 'Set up?' }),
-			);
-		const result = await first.generate('Build it', { persistence: PERSISTENCE });
-		const suspension = result.pendingSuspend?.[0];
-		if (!suspension) throw new Error('Expected a setup confirmation');
-
-		const current = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Current workflow policy.',
-			},
-		]);
-		const resumed = buildMidRunRuntime(memory, {
-			skillSource: current,
-			tools: [...createRuntimeSkillTools(current), makeInterruptibleTool()],
-			checkpointStorage: checkpointStore,
-		});
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('Ready.'));
-		await resumed.resume(
-			'generate',
-			{ approved: true },
-			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
-		);
-		await first.dispose();
-		await resumed.dispose();
-		expect(flattenInstructions(capturedCall(2).instructions)).toContain('Current workflow policy.');
-		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
+		expect(capturedCall(2).tools).toHaveProperty('catalog');
+		expect(catalogHandler).not.toHaveBeenCalled();
 	});
 
 	it('resumes a deferred tool that a skill dependency loaded', async () => {
@@ -9481,11 +9539,9 @@ describe('AgentRuntime — mid-run observation', () => {
 		await runtime.dispose();
 
 		const resumeCall = capturedCall(2);
-		expect(JSON.stringify(resumeCall.messages)).not.toContain('start work');
-		expect(resumeCall.messages[0]).toEqual({
-			role: 'user',
-			content: OBSERVATION_CONTINUATION_REMINDER,
-		});
+		// The turn's request stays first; the observed step after it is masked.
+		expect(JSON.stringify(resumeCall.messages[0])).toContain('start work');
+		expect(JSON.stringify(resumeCall.messages)).not.toContain('tc-step');
 	});
 
 	it('observes at the resume boundary when the resumed tool results cross the budget', async () => {
@@ -9517,9 +9573,8 @@ describe('AgentRuntime — mid-run observation', () => {
 		// The first post-resume model call already sees the compacted window:
 		// the resumed tool results were observed before reaching the model.
 		const resumeCall = capturedCall(1);
-		expect(resumeCall.messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expect(resumeCall.messages).toHaveLength(1);
+		expect(JSON.stringify(resumeCall.messages)).toContain('start work');
 		expect(flattenInstructions(resumeCall.instructions)).toContain('Mid-run observation captured.');
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
@@ -9984,6 +10039,49 @@ describe('AgentRuntime — telemetry propagation', () => {
 			'gen_ai.tool.call.result': '{"ok":true}',
 		});
 		expect(toolSpan?.end).toHaveBeenCalledTimes(1);
+	});
+
+	it('names the tool span after the tool that call_tool runs', async () => {
+		const tracer = {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				const span = {
+					end: vi.fn(),
+					recordException: vi.fn(),
+					setAttributes: vi.fn(),
+					setStatus: vi.fn(),
+				};
+				return await (fn as (s: typeof span) => Promise<unknown>)(span);
+			}),
+		};
+		const action = new ToolBuilder('lookup_total')
+			.description('Compute the total.')
+			.input(z.object({ value: z.number() }))
+			.handler(async ({ value }) => await Promise.resolve({ total: value * 2 }))
+			.build();
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc1', 'call_tool', {
+					tool: 'lookup_total',
+					arguments: { value: 21 },
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('42'));
+
+		const runtime = new AgentRuntime({
+			name: 'tool-catalog-telemetry-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			deferredTools: [action],
+			nativeToolDeferral: { eagerToolNames: [] },
+			telemetry: { ...baseTelemetry, tracer },
+		});
+
+		await runtime.generate('test');
+
+		const names = tracer.startActiveSpan.mock.calls.map(([name]) => name);
+		expect(names).toContain('execute_tool lookup_total');
+		expect(names).not.toContain('execute_tool call_tool');
 	});
 
 	it('passes inherited telemetry to tool handlers for sub-agent scenarios', async () => {
@@ -12042,6 +12140,71 @@ describe('AgentRuntime — MCP tool provenance', () => {
 	});
 });
 
+describe('AgentRuntime — tool calls reported with a stop finish reason', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const toolCall = { toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'a' } };
+
+	it('runs the tool and calls the model again when generating', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ found: true }));
+		const { runtime } = createRuntimeWithTools([makeMockTool('lookup', handler)], 1);
+		generateText
+			.mockResolvedValueOnce({ ...makeGenerateWithToolCalls([toolCall]), finishReason: 'stop' })
+			.mockResolvedValueOnce(makeGenerateSuccess('Found it'));
+
+		const result = await runtime.generate('look it up');
+
+		expect(handler).toHaveBeenCalledWith({ value: 'a' });
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(result.toolCalls).toEqual([expect.objectContaining({ tool: 'lookup' })]);
+	});
+
+	it('runs the tool and calls the model again when streaming', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ found: true }));
+		const { runtime } = createRuntimeWithTools([makeMockTool('lookup', handler)], 1);
+		streamText
+			.mockReturnValueOnce({
+				...makeStreamWithToolCalls([toolCall]),
+				finishReason: Promise.resolve('stop'),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Found it'));
+
+		const chunks = await collectChunks((await runtime.stream('look it up')).stream);
+
+		expect(handler).toHaveBeenCalledWith({ value: 'a' });
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({ type: 'tool-result', toolCallId: 'tc-1' }),
+		);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
+	it('ends the run when every call ran on the provider', async () => {
+		generateText.mockResolvedValueOnce({
+			...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
+			finishReason: 'stop',
+			toolCalls: [
+				{
+					toolCallId: 'tc-provider',
+					toolName: 'openai.web_search',
+					input: { query: 'n8n' },
+					providerExecuted: true,
+				},
+			],
+		});
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('search');
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
 describe('AgentRuntime — tools that end the turn', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -12140,6 +12303,99 @@ describe('Tool builder — ending the turn', () => {
 			.toModelOutput((output) => output);
 
 		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
+	});
+});
+
+describe('AgentRuntime — model error classification', () => {
+	function depletedGatewayError() {
+		return new APICallError({
+			message: 'Payment Required',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 402,
+			responseBody: '{"error":"Your Gateway credits have been depleted"}',
+		});
+	}
+
+	const classifyAsCredits = (error: unknown) =>
+		APICallError.isInstance(error) && error.statusCode === 402
+			? { code: 'budget.credits' }
+			: undefined;
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('ends a generate run as a guardrail stop when the classifier maps the error', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { classifyModelError: classifyAsCredits });
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'budget.credits' });
+		expect(result.error).toBeUndefined();
+	});
+
+	it('ends a stream run with a guardrail finish chunk carrying the mapped code', async () => {
+		const error = depletedGatewayError();
+		streamText.mockReturnValue({
+			stream: makeChunkStream([]),
+			finishReason: silentReject(error),
+			usage: silentReject(error),
+			response: silentReject(error),
+			toolCalls: silentReject(error),
+		});
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('hi', { classifyModelError: classifyAsCredits });
+		const chunks = await collectChunks(stream);
+
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.credits' },
+		});
+	});
+
+	it('keeps the error finish when the classifier returns undefined', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			classifyModelError: () => undefined,
+		});
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('keeps the error finish when no classifier is attached', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi');
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('lets cancellation win when the run aborts while the call rejects', async () => {
+		const controller = new AbortController();
+		generateText.mockImplementation(async () => {
+			controller.abort();
+			throw depletedGatewayError();
+		});
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			abortSignal: controller.signal,
+			classifyModelError: classifyAsCredits,
+		});
+
+		expect(result.finishReason).not.toBe('guardrail');
+		expect(result.guardrail).toBeUndefined();
 	});
 });
 
@@ -12349,5 +12605,152 @@ describe('AgentRuntime — tool output files', () => {
 		expect(load).toHaveBeenCalledTimes(2);
 		expect(saved.join()).toContain('"fileRef":{"id":"file-0"}');
 		expect(saved.join()).not.toContain('"data"');
+	});
+});
+
+describe('AgentRuntime — tool call interceptor', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function createInterceptedRuntime(tools: BuiltTool[], interceptor: ToolCallInterceptor) {
+		return new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools,
+			eventBus: new AgentEventBus(),
+			toolCallInterceptor: interceptor,
+		});
+	}
+
+	it('runs the tool through the interceptor with its call id and input', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const seen: Array<{ name: string; toolCallId: string; input: unknown }> = [];
+		const runtime = createInterceptedRuntime([tool], async (call, run) => {
+			seen.push({ name: call.tool.name, toolCallId: call.toolCallId, input: call.input });
+			return await run();
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('send it');
+
+		expect(seen).toEqual([{ name: 'send_message', toolCallId: 'tc-1', input: { text: 'hi' } }]);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(result.toolCalls?.[0]?.output).toEqual({ sent: true });
+	});
+
+	it('fails the call without running the tool when the interceptor throws', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const runtime = createInterceptedRuntime([tool], async () => {
+			throw new Error('Blocked in a test run');
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('send it');
+
+		expect(handler).not.toHaveBeenCalled();
+		const secondCall = generateText.mock.calls[1][0] as { messages: Array<{ content: unknown }> };
+		expect(JSON.stringify(secondCall.messages)).toContain('Blocked in a test run');
+	});
+
+	it('hands a call_tool dispatch to the interceptor as the dispatched tool', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const deferred: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const seen: string[] = [];
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [deferred],
+			toolDeferral: { mode: 'tool-catalog' },
+			eventBus: new AgentEventBus(),
+			toolCallInterceptor: async (call) => {
+				seen.push(call.tool.name);
+				throw new Error('Blocked in a test run');
+			},
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-1',
+						toolName: 'call_tool',
+						args: { tool: 'send_message', arguments: { text: 'hi' } },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('send it');
+
+		expect(seen).toEqual(['send_message']);
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('does not start the tool when the run was aborted before the interceptor calls run', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const controller = new AbortController();
+		const runtime = createInterceptedRuntime([tool], async (_call, run) => {
+			controller.abort();
+			return await run();
+		});
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }),
+		);
+
+		await runtime.generate('send it', { abortSignal: controller.signal }).catch(() => undefined);
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('gives the model the interceptor result without running the tool', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const runtime = createInterceptedRuntime([tool], async () => {
+			return await Promise.resolve({ simulated: true, ts: '1700000000.1' });
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('send it');
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(result.toolCalls?.[0]?.output).toEqual({ simulated: true, ts: '1700000000.1' });
+		const secondCall = generateText.mock.calls[1][0] as { messages: unknown };
+		expect(JSON.stringify(secondCall.messages)).toContain('1700000000.1');
 	});
 });

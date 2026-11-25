@@ -91,6 +91,7 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	INSERT_DATA_TABLE_ROWS: 'insert_data_table_rows',
 	UPDATE_DATA_TABLE_ROWS: 'update_data_table_rows',
 	DELETE_DATA_TABLE_ROWS: 'delete_data_table_rows',
+	CHANGE_DATA_TABLES: 'change_data_tables',
 	LIST_PROJECTS: 'list_projects',
 	LIST_TAGS: 'list_tags',
 	TAG_WORKFLOW: 'tag_workflow',
@@ -103,6 +104,15 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	GET_NODE_TYPES: 'get_node_types',
 	GET_NODE_PARAMETER_OPTIONS: 'get_node_parameter_options',
 	EXECUTE_NODE: 'execute_node',
+	CREATE_APP: 'create_app',
+	LIST_APPS: 'list_apps',
+	GET_APP: 'get_app',
+	OPEN_APP: 'open_app',
+	LIST_APP_BINDINGS: 'list_app_bindings',
+	BIND_APP_RESOURCE: 'bind_app_resource',
+	UNBIND_APP_RESOURCE: 'unbind_app_resource',
+	COMMIT_APP: 'commit_app',
+	DISCARD_APP_CHANGES: 'discard_app_changes',
 } as const;
 
 export type WorkflowBuilderToolName =
@@ -226,9 +236,14 @@ export const DATA_TABLE_TOOL_NAME_BY_ACTION = {
 
 export type DataTableToolAction = keyof typeof DATA_TABLE_TOOL_NAME_BY_ACTION;
 
-export const DATA_TABLE_TOOL_NAMES: readonly string[] = Object.values(
-	DATA_TABLE_TOOL_NAME_BY_ACTION,
-);
+/** One tool that applies an ordered list of table changes behind a single approval. */
+export const CHANGE_DATA_TABLES_TOOL_NAME = SHARED_BUILDER_TOOL_NAMES.CHANGE_DATA_TABLES;
+
+/** Every data table tool name, including the batch tool that has no single action. */
+export const DATA_TABLE_TOOL_NAMES: readonly string[] = [
+	...Object.values(DATA_TABLE_TOOL_NAME_BY_ACTION),
+	CHANGE_DATA_TABLES_TOOL_NAME,
+];
 
 function isDataTableToolAction(key: string): key is DataTableToolAction {
 	return Object.hasOwn(DATA_TABLE_TOOL_NAME_BY_ACTION, key);
@@ -238,6 +253,33 @@ function isDataTableToolAction(key: string): key is DataTableToolAction {
 export const DATA_TABLE_TOOL_ACTIONS: readonly DataTableToolAction[] = Object.keys(
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 ).filter(isDataTableToolAction);
+
+export const DATA_TABLE_READ_TOOL_ACTIONS = [
+	'list',
+	'schema',
+	'query',
+] as const satisfies readonly DataTableToolAction[];
+
+export type DataTableReadToolAction = (typeof DATA_TABLE_READ_TOOL_ACTIONS)[number];
+export type DataTableWriteToolAction = Exclude<DataTableToolAction, DataTableReadToolAction>;
+
+/** Whether a value names a data table action that changes data or schema. */
+export function isDataTableWriteToolAction(value: unknown): value is DataTableWriteToolAction {
+	return (
+		typeof value === 'string' &&
+		isDataTableToolAction(value) &&
+		!DATA_TABLE_READ_TOOL_ACTIONS.some((read) => read === value)
+	);
+}
+
+/** Every action that is not a read. The batch tool now runs these. */
+export const DATA_TABLE_WRITE_TOOL_ACTIONS: readonly DataTableWriteToolAction[] =
+	DATA_TABLE_TOOL_ACTIONS.filter(isDataTableWriteToolAction);
+
+/** Former one-action write tools. Stored calls still use these names, so keep them. */
+export const DATA_TABLE_WRITE_TOOL_NAMES: readonly string[] = DATA_TABLE_WRITE_TOOL_ACTIONS.map(
+	(action) => DATA_TABLE_TOOL_NAME_BY_ACTION[action],
+);
 
 /** Returns the action that a data table tool performs. Session grant keys still use the action. */
 export function getDataTableToolAction(toolName: string): DataTableToolAction | undefined {
@@ -276,7 +318,7 @@ export const EXECUTION_TOOL_ACTIONS: readonly ExecutionToolAction[] = Object.key
 const SPLIT_EXECUTIONS_TOOL: SplitBuilderTool = { actions: EXECUTION_TOOL_NAME_BY_ACTION };
 
 /** The tool that owns each action of the former multi-action `workspace` tool. */
-export const WORKSPACE_TOOL_NAME_BY_ACTION = {
+export const INSTANCE_TOOL_NAME_BY_ACTION = {
 	'list-projects': SHARED_BUILDER_TOOL_NAMES.LIST_PROJECTS,
 	'list-tags': SHARED_BUILDER_TOOL_NAMES.LIST_TAGS,
 	'tag-workflow': SHARED_BUILDER_TOOL_NAMES.TAG_WORKFLOW,
@@ -287,19 +329,19 @@ export const WORKSPACE_TOOL_NAME_BY_ACTION = {
 	'move-workflow-to-folder': SHARED_BUILDER_TOOL_NAMES.MOVE_WORKFLOW_TO_FOLDER,
 } as const;
 
-export type WorkspaceToolAction = keyof typeof WORKSPACE_TOOL_NAME_BY_ACTION;
+export type WorkspaceToolAction = keyof typeof INSTANCE_TOOL_NAME_BY_ACTION;
 
 export const WORKSPACE_ACTION_TOOL_NAMES: readonly string[] = Object.values(
-	WORKSPACE_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 );
 
 function isWorkspaceToolAction(key: string): key is WorkspaceToolAction {
-	return Object.hasOwn(WORKSPACE_TOOL_NAME_BY_ACTION, key);
+	return Object.hasOwn(INSTANCE_TOOL_NAME_BY_ACTION, key);
 }
 
 /** Derived from the map, so a new action always gets a registered tool. */
 export const WORKSPACE_TOOL_ACTIONS: readonly WorkspaceToolAction[] = Object.keys(
-	WORKSPACE_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 ).filter(isWorkspaceToolAction);
 
 /** Folder actions. The tools exist only when the workspace service supports folders. */
@@ -310,7 +352,32 @@ export const WORKSPACE_FOLDER_TOOL_ACTIONS: readonly WorkspaceToolAction[] = [
 	'move-workflow-to-folder',
 ];
 
-const SPLIT_WORKSPACE_TOOL: SplitBuilderTool = { actions: WORKSPACE_TOOL_NAME_BY_ACTION };
+const SPLIT_WORKSPACE_TOOL: SplitBuilderTool = { actions: INSTANCE_TOOL_NAME_BY_ACTION };
+
+/** The tool for each n8n App action. */
+export const APP_TOOL_NAME_BY_ACTION = {
+	create: SHARED_BUILDER_TOOL_NAMES.CREATE_APP,
+	list: SHARED_BUILDER_TOOL_NAMES.LIST_APPS,
+	get: SHARED_BUILDER_TOOL_NAMES.GET_APP,
+	open: SHARED_BUILDER_TOOL_NAMES.OPEN_APP,
+	bindings: SHARED_BUILDER_TOOL_NAMES.LIST_APP_BINDINGS,
+	bind: SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
+	unbind: SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
+	commit: SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	discard: SHARED_BUILDER_TOOL_NAMES.DISCARD_APP_CHANGES,
+} as const;
+
+export type AppToolAction = keyof typeof APP_TOOL_NAME_BY_ACTION;
+
+export const APP_TOOL_NAMES: readonly string[] = Object.values(APP_TOOL_NAME_BY_ACTION);
+
+function isAppToolAction(key: string): key is AppToolAction {
+	return Object.hasOwn(APP_TOOL_NAME_BY_ACTION, key);
+}
+
+/** Derived from the map, so a new action always gets a registered tool. */
+export const APP_TOOL_ACTIONS: readonly AppToolAction[] =
+	Object.keys(APP_TOOL_NAME_BY_ACTION).filter(isAppToolAction);
 
 /** Former multi-action tools that became one tool for each action. Never remove an entry. */
 export const SPLIT_BUILDER_TOOLS: Readonly<Record<string, SplitBuilderTool>> = {
@@ -398,7 +465,7 @@ export function getWorkspaceCallAction(
 	if (isFormerWorkspaceTool(toolName)) {
 		return WORKSPACE_TOOL_ACTIONS.find((known) => known === action);
 	}
-	return WORKSPACE_TOOL_ACTIONS.find((known) => WORKSPACE_TOOL_NAME_BY_ACTION[known] === toolName);
+	return WORKSPACE_TOOL_ACTIONS.find((known) => INSTANCE_TOOL_NAME_BY_ACTION[known] === toolName);
 }
 
 /**
@@ -413,6 +480,30 @@ export function resolveBuilderToolName(toolName: string, action?: unknown): stri
 	return hasOwn(LEGACY_BUILDER_TOOL_NAMES, toolName)
 		? LEGACY_BUILDER_TOOL_NAMES[toolName]
 		: toolName;
+}
+
+/** Name of the tool catalog's dispatcher tool in the agents SDK. */
+export const TOOL_CATALOG_CALL_TOOL_NAME = 'call_tool';
+
+/**
+ * Returns the tool and arguments that a `call_tool` call runs, so a display
+ * shows the real tool. Returns other calls unchanged.
+ */
+export function unwrapToolCatalogCall(
+	toolName: string,
+	args: Record<string, unknown>,
+): { toolName: string; args: Record<string, unknown> } {
+	if (toolName !== TOOL_CATALOG_CALL_TOOL_NAME) return { toolName, args };
+	const target = args.tool;
+	if (typeof target !== 'string' || !target) return { toolName, args };
+	return { toolName: target, args: parseToolCatalogArguments(args.arguments) };
+}
+
+// The SDK accepts only an object for `arguments`, so show nothing for a call it rejects.
+function parseToolCatalogArguments(value: unknown): Record<string, unknown> {
+	const isObject = (v: unknown): v is Record<string, unknown> =>
+		typeof v === 'object' && v !== null && !Array.isArray(v);
+	return isObject(value) ? value : {};
 }
 
 /** Returns every former name of a builder tool. */

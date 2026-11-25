@@ -5,8 +5,6 @@ import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
 import type { SkillTarget } from '../utils/skill-content';
@@ -34,15 +32,17 @@ export class SkillAccessService {
 	): Promise<boolean> {
 		const { projectId } = skill;
 		if (projectId) {
-			return await userHasScopes(user, [`projectSkill:${operation}`], false, { projectId });
+			return await this.projectScopeService.hasScopes(user, projectId, [
+				`projectSkill:${operation}`,
+			]);
 		}
 		return this.canAccessInstanceSkill(user, operation);
 	}
 
-	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
+	/** Checks access or create permission for a list with one query for the user's projects. */
 	async accessCheck(
 		user: User,
-		operation: SkillOperation,
+		operation: SkillOperation | 'create',
 	): Promise<(skill: Pick<Skill, 'projectId'>) => boolean> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, [
 			`projectSkill:${operation}`,
@@ -139,7 +139,7 @@ export class SkillAccessService {
 		const scope = requiredSourceScope(action, projectId ? 'project' : 'global');
 		if (scope === null) return true;
 		return projectId
-			? await userHasScopes(user, [scope], false, { projectId })
+			? await this.projectScopeService.hasScopes(user, projectId, [scope])
 			: hasGlobalScope(user, scope);
 	}
 
@@ -172,7 +172,7 @@ export class SkillAccessService {
 	 */
 	async canCreate(user: User, projectId: string | null): Promise<boolean> {
 		if (projectId === null) return hasGlobalScope(user, 'skill:create');
-		return await userHasScopes(user, ['projectSkill:create'], false, { projectId });
+		return await this.projectScopeService.hasScopes(user, projectId, ['projectSkill:create']);
 	}
 
 	/** A create needs `projectSkill:create` in the project, or the global `skill:create`. */
@@ -185,7 +185,7 @@ export class SkillAccessService {
 		);
 	}
 
-	private canAccessInstanceSkill(user: User, operation: SkillOperation): boolean {
+	private canAccessInstanceSkill(user: User, operation: SkillOperation | 'create'): boolean {
 		if (operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
 	}

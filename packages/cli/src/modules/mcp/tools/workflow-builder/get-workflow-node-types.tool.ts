@@ -1,9 +1,9 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { NodeCatalogService } from '@/node-catalog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
 import { toN8nConnectCoverage } from '../../mcp-ai-gateway.helper';
@@ -63,7 +63,7 @@ type NodeRequest = z.infer<typeof nodeRequestSchema>;
 export const createGetWorkflowNodeTypesTool = (
 	user: User,
 	nodeCatalogService: NodeCatalogService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	aiGatewayService: AiGatewayService,
 	/** Resolve defs for verified community nodes not installed here. See search_nodes. */
 	includeUninstalled: boolean = false,

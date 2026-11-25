@@ -513,4 +513,71 @@ describe('getSourceDataGroups', () => {
 		// ASSERT
 		expect(groups).toHaveLength(0);
 	});
+
+	//                         ┌─────┐
+	// ┌───────┐1  ┌─────┐1  ┌─►│     │
+	// │Trigger├──►│Node1├───┘  │Node3│
+	// └───────┘   │     ├───┐  │     │
+	//             └─────┘0  └─►│     │
+	//                          └─────┘
+	test('treats an output without items as no data, even if the node ran', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node3 = createNodeData({ name: 'node3' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node3)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: node1, outputIndex: 0, to: node3, inputIndex: 0 },
+				{ from: node1, outputIndex: 1, to: node3, inputIndex: 1 },
+			);
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { nodeName: 'trigger' } }])],
+			[node1.name]: [
+				{ ...toITaskData([]), data: { main: [[{ json: { nodeName: 'node1' } }], []] } },
+			],
+		};
+		const pinData: IPinData = {};
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node3, runData, pinData);
+
+		// ASSERT
+		expect(groups).toHaveLength(1);
+		expect(groups[0].connections).toHaveLength(2);
+		expect(groups[0].complete).toEqual(false);
+	});
+
+	//               PD         ┌─────┐
+	// ┌───────┐1  ┌─────┐   ┌─►│     │
+	// │Trigger├──►│Node1├───┘  │Node3│
+	// └───────┘   │     ├───┐  │     │
+	//             └─────┘   └─►│     │
+	//                          └─────┘
+	test('treats only the first output of a pinned node as data', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node3 = createNodeData({ name: 'node3' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node3)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: node1, outputIndex: 0, to: node3, inputIndex: 0 },
+				{ from: node1, outputIndex: 1, to: node3, inputIndex: 1 },
+			);
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { nodeName: 'trigger' } }])],
+		};
+		const pinData: IPinData = { [node1.name]: [{ json: { nodeName: 'node1' } }] };
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node3, runData, pinData);
+
+		// ASSERT
+		expect(groups).toHaveLength(1);
+		expect(groups[0].connections).toHaveLength(2);
+		expect(groups[0].complete).toEqual(false);
+	});
 });

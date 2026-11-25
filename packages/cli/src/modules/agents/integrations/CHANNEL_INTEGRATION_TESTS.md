@@ -74,16 +74,17 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   (e.g. a `Comment` needs `reactions: []`; an `AgentActivity` references `agentSession`/`sourceComment`
   by id). Linear's "mention" is an **agent-session** event, not a comment — see the contract note
   below.
-- **WhatsApp** — inbound media (`fetchData`) triggers `downloadMedia`'s two plain GETs (a metadata
-  lookup, then the CDN url it returns), neither of which carries a JSON body — the stub branches on
-  `httpMethod === 'GET'` before the send-message logic, which assumes a POST. Testing that
-  media-download path meaningfully needs *real* bytes: `resolveInboundMimeType` sniffs magic bytes
-  before trusting a declared type, so `StubResponse` supports an optional `rawResponseBody` (raw
-  bytes, no `JSON.stringify`) alongside the normal JSON `responseBody` — see
-  `WHATSAPP_MEDIA_CONTENT` in whatsapp's `replay-test-context` for genuine minimal file content per
-  media kind. Attachments also need an `attachmentService` passed to `createReplayContextSetup`
-  (opt-in; `createMockAttachmentService()` echoes back a plausible stored record) — without it,
-  `AgentChatBridge`'s attachment pipeline silently no-ops for every platform, not just WhatsApp.
+- **WhatsApp** — inbound media (`fetchData`) calls `downloadMedia`. It first GETs the media
+  metadata with `fetch`, with no JSON body, so the stub branches on `httpMethod === 'GET'` before
+  the send-message logic, which assumes a POST. It then downloads the file with `https.request`.
+  The `fetch` stub cannot see that request, and nock cannot patch the adapter's ESM import of
+  `https`. So the replay context passes a transport to `downloadMedia` that serves the file. The
+  file must contain *real* bytes: `resolveInboundMimeType` sniffs magic bytes before it trusts a
+  declared type. See `WHATSAPP_MEDIA_CONTENT` in whatsapp's `replay-test-context` for genuine
+  minimal file content per media kind. Attachments also need an `attachmentService` passed to
+  `createReplayContextSetup` (opt-in; `createMockAttachmentService()` echoes back a plausible stored
+  record) — without it, `AgentChatBridge`'s attachment pipeline silently no-ops for every platform,
+  not just WhatsApp.
   It is not the default because other platforms' replay tests do not stub their file downloads.
 
 #### Teams setup, outside the adapter

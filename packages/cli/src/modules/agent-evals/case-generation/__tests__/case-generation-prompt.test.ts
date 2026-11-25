@@ -10,7 +10,7 @@ import type { DimensionTuple } from '../dimensions';
 function config(over: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'Bot',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'cred-1',
 		instructions: 'Do useful things.',
 		...over,

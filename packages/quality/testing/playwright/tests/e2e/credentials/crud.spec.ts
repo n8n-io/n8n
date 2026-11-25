@@ -115,7 +115,9 @@ test.describe(
 
 			await n8n.canvas.addNode('Pipedrive', { trigger: 'On new Pipedrive event' });
 			await n8n.ndv.selectOptionInParameterDropdown('incomingAuthentication', 'Basic Auth');
-			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toHaveCount(2);
+			// Pipedrive OAuth2 has Automatic OAuth mode, so the first slot offers quick connect.
+			await expect(n8n.ndv.getNodeCredentialsQuickConnectEmptyState()).toHaveCount(1);
+			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toHaveCount(1);
 
 			await n8n.ndv.clickCreateNewCredential(0);
 			// First credential type has multiple auth options → mode selector visible
@@ -223,23 +225,19 @@ test.describe(
 		});
 
 		test('should set a default credential when adding nodes', async ({ n8n }) => {
-			const projectId = await n8n.start.fromNewProjectBlankCanvas();
+			const userN8n = await n8n.start.withNewUser();
 			const credentialName = `My awesome Notion account ${nanoid()}`;
 
-			await n8n.api.credentials.createCredential({
+			await userN8n.api.credentials.createCredential({
 				name: credentialName,
 				type: 'notionApi',
 				data: { apiKey: '1234567890' },
-				projectId,
 			});
 
-			await n8n.canvas.addNode('Manual Trigger');
-			await n8n.canvas.addNode('Notion', { action: 'Append a block' });
-			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
-
-			const credentials = await n8n.api.credentials.getCredentials();
-			const credential = credentials.find((c) => c.name === credentialName);
-			await n8n.api.credentials.deleteCredential(credential!.id);
+			await userN8n.start.fromBlankCanvas();
+			await userN8n.canvas.addNode('Manual Trigger');
+			await userN8n.canvas.addNode('Notion', { action: 'Append a block' });
+			await expect(userN8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
 		});
 
 		test('should set a default credential when editing a node', async ({ n8n }) => {

@@ -8,6 +8,7 @@ import {
 	type PromotionReviewWarning,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -26,8 +27,13 @@ import {
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
-import { parsePackageManifest, toDetail, type DetailSide } from './promotion-change.service';
-import { buildPreview, indexProjects, type PreviewSide } from './promotion-preview';
+import { toDetail, type DetailSide } from './promotion-change.service';
+import {
+	buildPreview,
+	indexProjects,
+	parsePackageManifest,
+	type PreviewSide,
+} from './promotion-preview';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { PromotionReviewInboxService } from './promotion-review-inbox.service';
@@ -127,8 +133,14 @@ export class PromotionReviewChangesService {
 		const baseManifest = await readManifest(commits.baseline);
 		const headManifest = await readManifest(commits.head);
 		const projectIds = projectIdsOf(baseManifest, headManifest);
-		const baseIndex = indexProjects({ manifest: baseManifest, blobByPath: new Map() }, projectIds);
-		const headIndex = indexProjects({ manifest: headManifest, blobByPath: new Map() }, projectIds);
+		const baseIndex = indexProjects(
+			{ manifest: baseManifest, blobByPath: new Map(), ownedCredentials: true },
+			projectIds,
+		);
+		const headIndex = indexProjects(
+			{ manifest: headManifest, blobByPath: new Map(), ownedCredentials: true },
+			projectIds,
+		);
 		const baseContents = await commits.baseline.readFiles(
 			keys.flatMap((key) => baseIndex.get(key)?.path ?? []),
 		);
@@ -190,6 +202,12 @@ export class PromotionReviewChangesService {
  * itself, so a merged or closed review diffs against the base that the host recorded. A review
  * that n8n closed counts as finished.
  */
+/** A service account shows its name. A person without a name shows the email, else nothing. */
+function displayNameOrEmail(user: User): string | null {
+	const { firstName, lastName, email } = accountSummary(user);
+	return [firstName, lastName].filter(Boolean).join(' ') || email;
+}
+
 function baselineOf(
 	review: PromotionReview,
 	mergeRequest: GitLabMergeRequest,
@@ -231,9 +249,7 @@ function outcomeOf(
 			: mergeRequest.closed_by?.name;
 	const hostAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
 	const approver = state === 'merged' ? review.approvedBy : null;
-	const approverName = approver
-		? [approver.firstName, approver.lastName].filter(Boolean).join(' ') || approver.email
-		: null;
+	const approverName = approver ? displayNameOrEmail(approver) : null;
 	return {
 		state,
 		at: hostAt ?? null,
@@ -268,7 +284,10 @@ async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	const blobByPath = await commit.listFiles();
 	const manifest = await readManifest(commit);
 	// A commit before the first promotion has no package, so it has no manifest either.
-	return { side: { manifest, blobByPath }, manifestUnreadable: !manifest && blobByPath.size > 0 };
+	return {
+		side: { manifest, blobByPath, ownedCredentials: true },
+		manifestUnreadable: !manifest && blobByPath.size > 0,
+	};
 }
 
 /** A full promotion writes every team project, so the review can span several of them. */

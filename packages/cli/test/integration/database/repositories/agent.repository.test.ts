@@ -1,17 +1,29 @@
+import type { FolderService } from '@/services/folder.service';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner, type User, type WorkflowRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import {
+	Person,
+	TransactionRunner,
+	type ProjectRepository,
+	type WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { TagService } from '@/services/tag.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
@@ -53,7 +65,7 @@ describe('AgentRepository', () => {
 	let projectId: string;
 
 	async function createAgent(overrides: AgentFixtureOverrides = {}): Promise<Agent> {
-		const agent = agentRepo.create({
+		return await createTestAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId,
@@ -63,8 +75,7 @@ describe('AgentRepository', () => {
 			versionId: 'version-1',
 			activeVersionId: null,
 			...overrides,
-		} as Partial<Agent>);
-		return await agentRepo.save(agent);
+		} as Partial<Agent> & { projectId: string });
 	}
 
 	async function createHistory(agentId: string, versionId: string) {
@@ -182,6 +193,7 @@ describe('AgentRepository', () => {
 				mockLogger(),
 				agentRepo,
 				mock(),
+				mock<ProjectRepository>(),
 				mock(),
 				mock(),
 				mock(),
@@ -204,18 +216,27 @@ describe('AgentRepository', () => {
 					taskRepo,
 					skillRefs,
 					policy,
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
+				mock(),
+				mock<GlobalConfig>({ tags: { disabled: false } }),
+				mock<TagService>(),
+				mock<FolderService>(),
+				mock(),
+				Container.get(AgentServiceAccountService),
 			);
-			const user = mock<User>({ firstName: 'Test', lastName: 'User' });
+			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();
 			const options = {
 				id,
-				user,
-				actor: { kind: 'user', user },
+				user: person,
+				actor: { kind: 'user', user: person },
 				createdBy: 'user',
 				adoptOnCollision: true,
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
@@ -275,7 +296,7 @@ describe('AgentRepository', () => {
 		it('rolls back a config save when task cleanup fails and can retry the complete write', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help users',
 				tasks: [{ type: 'task', id: 'task-remove', enabled: false }],
 			};
@@ -300,6 +321,9 @@ describe('AgentRepository', () => {
 					taskRepo,
 					Container.get(AgentSkillRefsService),
 					mock<AgentPolicyService>(),
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				setup,
 				transactionRunner,
@@ -323,7 +347,7 @@ describe('AgentRepository', () => {
 					agent.id,
 					projectId,
 					config,
-					mock<User>({ firstName: 'Test', lastName: 'User' }),
+					Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 					options,
 				),
 			).rejects.toThrow('Task cleanup failed');
@@ -338,7 +362,7 @@ describe('AgentRepository', () => {
 				agent.id,
 				projectId,
 				config,
-				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 				options,
 			);
 			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
@@ -353,7 +377,7 @@ describe('AgentRepository', () => {
 				agent.id,
 				projectId,
 				saved.config,
-				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 				{
 					...options,
 					baseConfigHash: saved.configHash,
@@ -485,7 +509,7 @@ describe('AgentRepository', () => {
 					'task-1',
 					{ name: 'Renamed task' },
 					{
-						user: mock<User>({ firstName: 'Test', lastName: 'User' }),
+						user: Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 						modifiedBy: 'user',
 					},
 				),
@@ -676,6 +700,22 @@ describe('AgentRepository', () => {
 			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
 		});
 
+		it('rejects a draft loaded before the agent was archived unless archived updates are allowed', async () => {
+			const stale = await createAgent();
+			expect(await agentRepo.setArchived(stale.id, true)).toBe(true);
+			stale.name = 'Stale Edit';
+
+			expect(await agentRepo.saveDraftFenced(stale)).toBe(false);
+			expect((await agentRepo.findById(stale.id))?.name).not.toBe('Stale Edit');
+
+			const allowed = await agentRepo.saveDraftFenced(stale, {}, {}, { allowArchivedUpdate: true });
+			expect(allowed).toBe(true);
+			expect(await agentRepo.findById(stale.id)).toMatchObject({
+				name: 'Stale Edit',
+				isArchived: true,
+			});
+		});
+
 		it('cannot roll back a publish that won between load and save', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
@@ -778,6 +818,19 @@ describe('AgentRepository', () => {
 				publicationRevision: 1,
 			});
 		});
+
+		it('changes the archive state only when the agent has the opposite state', async () => {
+			const agent = await createAgent();
+
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				isArchived: true,
+				publicationRevision: 1,
+			});
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(false);
+		});
 	});
 
 	describe('findIntegrationState', () => {
@@ -804,7 +857,7 @@ describe('AgentRepository', () => {
 		it('writes channel state and revision without changing the definition', async () => {
 			const agent = await createAgent({
 				name: 'Original name',
-				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-5-5', instructions: 'Hi' },
 				versionId: 'version-1',
 			});
 
@@ -880,6 +933,23 @@ describe('AgentRepository', () => {
 			const reloaded = await agentRepo.findById(agent.id);
 			expect(reloaded?.integrations).toEqual([]);
 			expect(reloaded?.versionId).toBe('version-9');
+		});
+
+		it('refuses the write when the agent was archived after the read', async () => {
+			const agent = await createAgent({ versionId: 'version-1' });
+			await agentRepo.setArchived(agent.id, true);
+
+			const written = await agentRepo.updateIntegrations(
+				agent.id,
+				[{ type: 'slack', credentialId: 'slack-1' }],
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
+				'version-2',
+			);
+
+			expect(written).toBe(false);
+			const reloaded = await agentRepo.findById(agent.id);
+			expect(reloaded?.integrations).toEqual([]);
+			expect(reloaded?.versionId).toBe('version-1');
 		});
 
 		it('rejects an integration delta after a draft save with the same version ID', async () => {
@@ -1031,8 +1101,8 @@ describe('AgentRepository', () => {
 			await createAgent();
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [first.id, second.id] },
 			});
 
@@ -1045,8 +1115,8 @@ describe('AgentRepository', () => {
 			const outside = await createAgent({ projectId: otherProject.id });
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [outside.id] },
 			});
 
@@ -1093,8 +1163,8 @@ describe('AgentRepository', () => {
 
 		async function listReachable(availableInChat = true) {
 			return await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat },
 			});
 		}
@@ -1215,7 +1285,7 @@ describe('AgentRepository', () => {
 			}
 		});
 
-		it('keeps count and skip/take pagination correct with the filter applied', async () => {
+		it('keeps count and offset/limit pagination correct with the filter applied', async () => {
 			const agents: Agent[] = [];
 			for (let i = 0; i < 3; i++) {
 				agents.push(await createPublishedAgent([chatChannel]));
@@ -1223,8 +1293,8 @@ describe('AgentRepository', () => {
 			await createPublishedAgent([]);
 
 			const page = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 1,
-				take: 1,
+				offset: 1,
+				limit: 1,
 				sortBy: 'name:asc',
 				filter: { availableInChat: true },
 			});
@@ -1318,7 +1388,7 @@ describe('AgentRepository', () => {
 		async function listByUsage(usageCounts?: Map<string, number>) {
 			return await agentRepo.findByProjectIdsPaginated(
 				[projectId],
-				{ skip: 0, take: 10, sortBy: 'usage:desc' },
+				{ offset: 0, limit: 10, sortBy: 'usage:desc' },
 				{ usageCounts },
 			);
 		}

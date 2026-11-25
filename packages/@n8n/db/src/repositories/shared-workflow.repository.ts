@@ -6,12 +6,7 @@ import {
 	type WorkflowSharingRole,
 } from '@n8n/permissions';
 import { DataSource, In, Not } from '@n8n/typeorm';
-import type {
-	EntityManager,
-	FindManyOptions,
-	FindOptionsWhere,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import {
@@ -22,6 +17,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { getWithWorkflowCollections } from '../utils/workflow-collections';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -238,15 +234,21 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		);
 	}
 
-	async findWithFields(
-		workflowIds: string[],
-		{ select }: Pick<FindManyOptions<SharedWorkflow>, 'select'>,
-	) {
-		return await this.find({
-			where: {
-				workflowId: In(workflowIds),
-			},
-			select,
+	/** Assigns the imported owner. Returns true only for a transfer from another project. */
+	async syncImportedWorkflowOwner(
+		workflowId: string,
+		targetProjectId: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		return await this.runInTransaction(ctx, async (manager, txCtx) => {
+			const ownerProjectId = await this.getWorkflowOwningProjectId(workflowId, txCtx);
+			if (ownerProjectId === targetProjectId) return false;
+
+			if (ownerProjectId !== undefined) {
+				await this.deleteByIds([workflowId], ownerProjectId, manager);
+			}
+			await this.makeOwner([workflowId], targetProjectId, manager);
+			return ownerProjectId !== undefined;
 		});
 	}
 
@@ -300,6 +302,15 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		}, []);
 
 		return [...new Set(projectIds)];
+	}
+
+	/** Reads one column and no relation. Pass `ctx` inside a transaction. */
+	async getWorkflowOwningProjectId(workflowId: string, ctx: OperationContext = {}) {
+		const row = await this.managerFor(ctx).findOne(SharedWorkflow, {
+			select: { projectId: true },
+			where: { workflowId, role: 'workflow:owner' },
+		});
+		return row?.projectId;
 	}
 
 	/**
@@ -372,22 +383,26 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.managerFor(ctx),
 		} = options;
 
-		const sharedWorkflow = await em.findOne(SharedWorkflow, {
-			where: {
-				workflowId,
-				...where,
-			},
-			relations: {
-				workflow: {
-					shared: { project: true },
-					tags: includeTags,
-					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion,
-				},
-			},
-		});
+		// One statement reads the share the user reaches the workflow through, the workflow, its
+		// one-row relations, shares and tags, so the access check covers all of it.
+		const qb = em
+			.createQueryBuilder(SharedWorkflow, 'sharedWorkflow')
+			.innerJoinAndSelect('sharedWorkflow.workflow', 'workflow')
+			.setFindOptions({ where: { workflowId, ...where } })
+			// Every join has at most one row per share row, so a plain LIMIT picks one share
+			// without the extra DISTINCT query TypeORM runs for `findOne` with joins.
+			.limit(1);
+		if (includeParentFolder) qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+		if (includeActiveVersion) qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
 
-		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		const [sharedWorkflow] = await getWithWorkflowCollections(
+			qb,
+			{ shared: { project: true }, tags: includeTags },
+			({ workflow }) => workflow,
+		);
+		if (!sharedWorkflow) return null;
+
+		const activeVersion = sharedWorkflow.workflow.activeVersion;
 		if (activeVersion && publishHistory !== 'none') {
 			activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(

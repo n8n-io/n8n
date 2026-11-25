@@ -102,10 +102,14 @@ function getDenialMessage(toolName: string, toolId: string, chatInput?: string):
  * This enables the flow:
  * Agent calls tool → HITL intercepts → sendAndWait → User approves →
  * Agent generates new request for gated tool → Gated tool executes → Result to Agent
+ *
+ * @param startIndex - Index of the first item in the current batch
+ * @param itemCount - Number of items in the current batch
  */
 export function processHitlResponses(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
-	itemIndex: number,
+	startIndex: number,
+	itemCount = 1,
 ): HitlProcessingResult {
 	if (!response || !response.actionResponses || response.actionResponses.length === 0) {
 		return {
@@ -126,6 +130,11 @@ export function processHitlResponses(
 		}
 
 		const { hitl } = actionResponse.action.metadata;
+		// Each HITL response belongs to the item that requested it. Responses for items
+		// outside this batch are processed when their own batch runs.
+		const itemIndex = actionResponse.action.metadata.itemIndex ?? 0;
+		if (itemIndex < startIndex || itemIndex >= startIndex + itemCount) continue;
+
 		const approved = getApprovalStatus(actionResponse);
 		const chatInput = getChatInput(actionResponse);
 		const toolName = hitl.gatedToolNodeName;

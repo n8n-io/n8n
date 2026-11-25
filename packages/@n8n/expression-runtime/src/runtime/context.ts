@@ -11,7 +11,9 @@ import {
 	readHostResult,
 	throwIfErrorSentinel,
 } from './lazy-proxy';
+import type { ReadBatch } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { assign, defineProperty } from './intrinsics';
 import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
@@ -49,6 +51,51 @@ const INPUT_RPC_TYPES = {
 } as const satisfies Record<string, BridgeMessage['type']>;
 type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 
+/**
+ * Creates a check that returns true when a name is a valid IANA timezone.
+ * The check remembers valid names, because luxon builds a new
+ * `Intl.DateTimeFormat` for each validation.
+ */
+function createTimezoneCheck(): (timezone: string) => boolean {
+	const validTimezones = new Set<string>();
+	return (timezone) => {
+		if (!validTimezones.has(timezone) && IANAZone.isValidZone(timezone)) {
+			validTimezones.add(timezone);
+		}
+		return validTimezones.has(timezone);
+	};
+}
+
+const isValidTimezone = createTimezoneCheck();
+
+/**
+ * Defines a property whose value is created on the first read and then kept.
+ * A write replaces the value, as with a plain data property.
+ */
+function defineLazyValue(
+	target: Record<string, unknown>,
+	key: string,
+	create: () => unknown,
+): void {
+	let value: unknown;
+	let isCreated = false;
+	defineProperty(target, key, {
+		get: () => {
+			if (!isCreated) {
+				value = create();
+				isCreated = true;
+			}
+			return value;
+		},
+		set: (newValue: unknown) => {
+			value = newValue;
+			isCreated = true;
+		},
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 // ============================================================================
 // Build Context Function
 // ============================================================================
@@ -67,6 +114,7 @@ type BridgeCallback = (...args: unknown[]) => unknown;
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
  *     lazy-proxy system. Hot path; one ivm.Callback each for minimum overhead.
+ *   - `readBatch`: reads a batch of item data values in one call.
  *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
@@ -75,14 +123,49 @@ type BridgeCallback = (...args: unknown[]) => unknown;
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
  *
- * The bridge wires all three callbacks unconditionally before invoking
+ * The bridge wires all four callbacks unconditionally before invoking
  * `buildContext`, so the runtime treats them as present — no defensive
  * null/undefined checks at each call site.
  */
 export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
+	readBatch: ReadBatch;
 	callHost: BridgeCallback;
+}
+
+/**
+ * Convert a `$()` argument to the node name the host `$` resolves. An empty name means the previous node.
+ * Return `undefined` for a truthy argument that converts to an empty name, such as `[]`: it names no node.
+ */
+function toNodeName(nodeSelector: unknown): string | undefined {
+	const nodeName = nodeSelector ? String(nodeSelector) : '';
+	return nodeSelector && nodeName === '' ? undefined : nodeName;
+}
+
+/** Return the error the legacy `$` throws for a node name that matches no node. */
+function createNodeNotFoundError(callbacks: BridgeCallbacks, nodeCause: string): ExpressionError {
+	const readHostValue = (key: string) =>
+		decodeHostValue(readHostResult(callbacks.getValueAtPath([key])));
+	return Object.assign(new ExpressionError("Referenced node doesn't exist"), {
+		context: {
+			runIndex: readHostValue('$runIndex'),
+			itemIndex: readHostValue('$itemIndex'),
+			nodeCause,
+			descriptionKey: 'nodeNotFound',
+		},
+	});
+}
+
+/** Return a check that throws when a node does not exist. It asks the host once per node name. */
+function createNodeCheck(callHost: (message: unknown) => unknown): (nodeName: string) => void {
+	const checkedNodeNames = new Set<string>();
+	return (nodeName) => {
+		if (!checkedNodeNames.has(nodeName)) {
+			callHost({ type: 'checkNode', nodeName });
+			checkedNodeNames.add(nodeName);
+		}
+	};
 }
 
 /**
@@ -103,7 +186,7 @@ export function buildContext(
 	callbacks: BridgeCallbacks,
 	timezone?: string,
 ): Record<string, unknown> {
-	if (timezone && !IANAZone.isValidZone(timezone)) {
+	if (timezone && !isValidTimezone(timezone)) {
 		throw new Error(`Invalid timezone: "${timezone}"`);
 	}
 	Settings.defaultZone = timezone ?? 'system';
@@ -117,7 +200,7 @@ export function buildContext(
 	// __sanitize must be on the context because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)
 	// Use a non-writable property descriptor so override attempts throw instead of silently succeeding.
-	Object.defineProperty(target, '__sanitize', {
+	defineProperty(target, '__sanitize', {
 		get: () => __sanitize,
 		set: () => {
 			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
@@ -133,14 +216,19 @@ export function buildContext(
 	// already set via Settings.defaultZone above.
 	// -------------------------------------------------------------------------
 
-	target.$now = DateTime.now();
-	target.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+	// The dates are created on first read, because most expressions do not use them.
+	// Keep the zone now: a later evaluation can change Settings.defaultZone before that read.
+	const zone = Settings.defaultZone;
+	defineLazyValue(target, '$now', () => DateTime.now().setZone(zone));
+	defineLazyValue(target, '$today', () =>
+		DateTime.now().setZone(zone).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
+	);
 
 	// -------------------------------------------------------------------------
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	// -------------------------------------------------------------------------
 
-	Object.assign(target, extendedFunctions);
+	assign(target, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Expose globals on target so tournament's "x in this ? this.x : global.x"
@@ -173,6 +261,8 @@ export function buildContext(
 		return createDeepLazyProxy(['$item', String(itemIndex)], undefined, callbacks);
 	};
 
+	const checkNode = createNodeCheck(callHost);
+
 	// $() function for accessing other nodes.
 	//
 	// The returned object is a Proxy whose `get` trap intercepts properties
@@ -193,7 +283,12 @@ export function buildContext(
 	// The `has` trap mirrors the `get` trap for typed-RPC names so that
 	// tournament's `"first" in this.$('Foo')` check resolves true even though
 	// the inner target is empty.
-	target.$ = function (nodeName: string) {
+	target.$ = function (nodeSelector: unknown) {
+		const nodeName = toNodeName(nodeSelector);
+		if (nodeName === undefined) {
+			throw createNodeNotFoundError(callbacks, '');
+		}
+		checkNode(nodeName);
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {

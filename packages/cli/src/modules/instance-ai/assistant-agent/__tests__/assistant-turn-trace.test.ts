@@ -4,6 +4,7 @@ import {
 	continueInstanceAiTraceContext,
 	createInstanceAiTraceContext,
 	emitBuilderMetric,
+	isLangSmithTracingEnabled,
 	releaseTraceClient,
 	type InstanceAiTraceContext,
 	type InstanceAiTraceRun,
@@ -23,6 +24,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	createInstanceAiTraceContext: vi.fn(),
 	continueInstanceAiTraceContext: vi.fn(),
 	emitBuilderMetric: vi.fn(async () => {}),
+	isLangSmithTracingEnabled: vi.fn(() => true),
 	releaseTraceClient: vi.fn(),
 }));
 
@@ -114,7 +116,26 @@ describe('AssistantTurnTrace', () => {
 				otelTraceId: 'otel-1',
 				actorSpanId: 'span-1',
 				messageGroupId: 'mg-1',
+				turnRoot: { langsmithTraceId: 'ls-trace-1', runId: 'root-1' },
 			},
+		});
+	});
+
+	it('gives a resume the root of its turn, for the feedback on the answer', () => {
+		const { context } = traceContext();
+		const turnRoot = { langsmithTraceId: 'ls-trace-0', runId: 'root-0' };
+		const trace = new AssistantTurnTrace(context, 'run-1', logger(), {}, undefined, turnRoot);
+
+		expect(trace.payload).toEqual({
+			traceId: 'otel-1',
+			langsmithTraceId: 'ls-trace-1',
+			langsmithRunId: 'root-1',
+			turnLangsmithTraceId: 'ls-trace-0',
+			turnLangsmithRunId: 'root-0',
+		});
+		// A later resume of this beat keeps the same turn root.
+		expect(trace.hostMetadata()).toEqual({
+			assistantTrace: expect.objectContaining({ rootRunId: 'root-1', turnRoot }),
 		});
 	});
 
@@ -249,6 +270,36 @@ describe('AssistantTurnTrace', () => {
 		);
 	});
 
+	it('records a host instruction as a span in the turn and counts it on the root', async () => {
+		const { context, rootRun, actorRun, startChildRun, finishRun, keepOpenUntilSettled } =
+			traceContext();
+		const trace = new AssistantTurnTrace(context, 'run-1', logger());
+		await trace.startOrchestratorRun();
+
+		const instruction = { reason: 'workflow_setup', content: 'Call setup_workflow.' };
+		trace.recordHostInstruction(instruction);
+		expect(keepOpenUntilSettled).toHaveBeenCalledTimes(1);
+		await keepOpenUntilSettled.mock.calls[0][0];
+
+		expect(startChildRun).toHaveBeenLastCalledWith(actorRun, {
+			name: 'host: workflow setup',
+			canonicalName: 'instance-ai.host_instruction',
+			runType: 'chain',
+			tags: ['host-instruction'],
+			metadata: { reason: 'workflow_setup' },
+			inputs: instruction,
+		});
+		expect(finishRun).toHaveBeenCalledWith(actorRun, { outputs: instruction });
+
+		await trace.finish({ status: 'completed' });
+		expect(finishRun).toHaveBeenCalledWith(
+			rootRun,
+			expect.objectContaining({
+				metadata: expect.objectContaining({ host_instruction_count: 1 }),
+			}),
+		);
+	});
+
 	it('marks a task card from the Assistant tools as the first visible state', async () => {
 		const { context, rootRun, finishRun } = traceContext();
 		const trace = new AssistantTurnTrace(context, 'run-1', logger());
@@ -338,22 +389,47 @@ describe('AssistantTurnTracer', () => {
 		actorSpanId: 'span-0',
 	};
 
-	function tracer() {
+	function tracer(log = logger()) {
 		const browserSessionService = mock<InstanceAiBrowserSessionService>();
 		browserSessionService.getExtensionTraceContext.mockReturnValue({
 			connectionState: 'disconnected',
 		});
-		return new AssistantTurnTracer(logger(), browserSessionService);
+		return new AssistantTurnTracer(log, browserSessionService);
 	}
 
+	beforeEach(() => {
+		vi.mocked(isLangSmithTracingEnabled).mockReturnValue(true);
+	});
+
+	/** The Agents memory of the turn, with the stored metadata of the thread. */
+	function memoryWith(metadata?: Record<string, unknown>) {
+		return {
+			getThread: vi.fn(async (threadId: string) =>
+				metadata ? { id: threadId, resourceId: 'user-1', metadata } : null,
+			),
+		} as unknown as SystemAgentStartTurn['memory'];
+	}
+
+	const evalProvenance = {
+		source: 'evals',
+		sourceContext: { evalCase: 'slack-digest', evalIteration: 2 },
+	};
+	const evalProvenanceMetadata = {
+		thread_source: 'evals',
+		'source_context.evalCase': 'slack-digest',
+		'source_context.evalIteration': 2,
+	};
+
 	// Plain objects: a deep mock would add keys to the resume data that the tracer reads.
-	function startTurn(): SystemAgentStartTurn {
+	function startTurn(overrides: Partial<SystemAgentStartTurn> = {}): SystemAgentStartTurn {
 		return {
 			type: 'start',
 			user,
 			thread,
 			message: 'Hi',
+			memory: memoryWith(),
 			emitHostEvent: vi.fn(),
+			...overrides,
 		} as unknown as SystemAgentStartTurn;
 	}
 
@@ -366,6 +442,7 @@ describe('AssistantTurnTracer', () => {
 			toolCallId: 'tc-1',
 			checkpointHostMetadata: { assistantTrace: storedAnchor },
 			resumeData: { approved: true, userInput: 'Post it to #general' },
+			memory: memoryWith(),
 			emitHostEvent: vi.fn(),
 			...overrides,
 		} as unknown as SystemAgentResumeTurn;
@@ -511,6 +588,42 @@ describe('AssistantTurnTracer', () => {
 		);
 	});
 
+	it('sends the turn root of a stored anchor with the ids of a resume', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+		const turn = resumeTurn({
+			checkpointHostMetadata: {
+				assistantTrace: {
+					...storedAnchor,
+					turnRoot: { langsmithTraceId: 'ls-turn', runId: 'root-turn' },
+				},
+			},
+		});
+
+		const trace = await tracer().startForTurn(turn, setup);
+
+		expect(trace?.payload).toEqual(
+			expect.objectContaining({
+				turnLangsmithTraceId: 'ls-turn',
+				turnLangsmithRunId: 'root-turn',
+			}),
+		);
+		expect(turn.emitHostEvent).toHaveBeenCalledWith(ASSISTANT_TRACE_EVENT, trace?.payload, {
+			key: 'turn',
+		});
+	});
+
+	it('uses the root of an older anchor without a turn root as the turn root', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+
+		const trace = await tracer().startForTurn(resumeTurn(), setup);
+
+		expect(trace?.payload).toEqual(
+			expect.objectContaining({ turnLangsmithTraceId: 'ls-0', turnLangsmithRunId: 'root-0' }),
+		);
+	});
+
 	it('continues the message group of a stored anchor', async () => {
 		const { context } = traceContext();
 		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
@@ -566,11 +679,109 @@ describe('AssistantTurnTracer', () => {
 			cancelled_tool_call_id: 'tc-1',
 			assistant_runtime: 'agents',
 		});
+		// A new turn is its own turn root, so the feedback goes to this trace.
+		expect(trace?.payload).not.toHaveProperty('turnLangsmithRunId');
 		await trace?.startOrchestratorRun();
 		expect(startChildRun).toHaveBeenCalledWith(
 			context.rootRun,
 			expect.objectContaining({ inputs: { message: 'Use #general instead' } }),
 		);
+	});
+
+	it('adds the thread provenance to the root of a new turn', async () => {
+		const { context } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+		const memory = memoryWith({ ...evalProvenance, other: 'ignored' });
+
+		await tracer().startForTurn(startTurn({ memory }), setup);
+
+		expect(memory.getThread).toHaveBeenCalledTimes(1);
+		expect(memory.getThread).toHaveBeenCalledWith('thread-1');
+		const [options] = vi.mocked(createInstanceAiTraceContext).mock.calls[0];
+		expect(options.metadata).toEqual({
+			...evalProvenanceMetadata,
+			assistant_runtime: 'agents',
+		});
+	});
+
+	it('does not read the thread metadata when tracing is off', async () => {
+		vi.mocked(isLangSmithTracingEnabled).mockReturnValue(false);
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(undefined);
+		const memory = memoryWith(evalProvenance);
+
+		const trace = await tracer().startForTurn(startTurn({ memory }), setup);
+
+		expect(trace).toBeUndefined();
+		expect(isLangSmithTracingEnabled).toHaveBeenCalledWith(false);
+		expect(memory.getThread).not.toHaveBeenCalled();
+	});
+
+	it('adds the thread provenance to the root of a resumed turn', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+
+		await tracer().startForTurn(resumeTurn({ memory: memoryWith(evalProvenance) }), setup);
+
+		const [, options] = vi.mocked(continueInstanceAiTraceContext).mock.calls[0];
+		expect(options.metadata).toEqual(
+			expect.objectContaining({
+				...evalProvenanceMetadata,
+				resume_reason: 'approval',
+				pending_tool_call_id: 'tc-1',
+				assistant_runtime: 'agents',
+			}),
+		);
+	});
+
+	it('adds the thread provenance to a message typed while a card waits', async () => {
+		const { context } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+
+		await tracer().startForTurn(
+			resumeTurn({
+				memory: memoryWith(evalProvenance),
+				resumeData: { _type: 'agent.cancellation', message: 'Use #general instead' },
+			}),
+			setup,
+		);
+
+		const [options] = vi.mocked(createInstanceAiTraceContext).mock.calls[0];
+		expect(options.metadata).toEqual({
+			...evalProvenanceMetadata,
+			cancelled_tool_call_id: 'tc-1',
+			assistant_runtime: 'agents',
+		});
+	});
+
+	it('adds no provenance when the thread metadata has none', async () => {
+		const { context } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+
+		await tracer().startForTurn(startTurn({ memory: memoryWith({ other: 'value' }) }), setup);
+
+		const [options] = vi.mocked(createInstanceAiTraceContext).mock.calls[0];
+		expect(options.metadata).toEqual({ assistant_runtime: 'agents' });
+	});
+
+	it('traces the turn without provenance when the thread metadata cannot be read', async () => {
+		const { context } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+		const log = logger();
+		const memory = {
+			getThread: vi.fn(async () => {
+				throw new Error('Database is down');
+			}),
+		} as unknown as SystemAgentStartTurn['memory'];
+
+		const trace = await tracer(log).startForTurn(startTurn({ memory }), setup);
+
+		expect(trace).toBeInstanceOf(AssistantTurnTrace);
+		const [options] = vi.mocked(createInstanceAiTraceContext).mock.calls[0];
+		expect(options.metadata).toEqual({ assistant_runtime: 'agents' });
+		expect(log.debug).toHaveBeenCalledWith('Could not read thread provenance for tracing', {
+			threadId: 'thread-1',
+			error: 'Database is down',
+		});
 	});
 
 	it('runs the turn without a trace when creating it fails', async () => {

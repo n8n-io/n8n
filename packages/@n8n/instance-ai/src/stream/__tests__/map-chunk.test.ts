@@ -86,6 +86,34 @@ describe('mapAgentChunkToEvent', () => {
 		expect(map({ type: 'tool-call-delta', argumentsDelta: '{"x"' })).toBeNull();
 	});
 
+	it('reports the tool that a tool catalog call_tool call runs', () => {
+		expect(
+			map({
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'data_tables', arguments: { action: 'list' } },
+			}),
+		).toEqual({
+			type: 'tool-call',
+			runId,
+			agentId,
+			payload: { toolCallId: 'tc-1', toolName: 'data_tables', args: { action: 'list' } },
+		});
+
+		const confirmation = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-2',
+			toolName: 'call_tool',
+			input: { tool: 'workflows', arguments: { action: 'delete' } },
+			suspendPayload: { message: 'Delete it?' },
+		});
+		expect(confirmation).toMatchObject({
+			type: 'confirmation-request',
+			payload: { toolName: 'workflows', args: { action: 'delete' } },
+		});
+	});
+
 	it('maps native text deltas', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' })).toEqual({
 			type: 'text-delta',
@@ -104,13 +132,13 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
-	it('maps the skill update content delivered for the response', () => {
+	it('maps a runtime skill update note to a skill-update event', () => {
 		const update = {
 			skillId: 'hub-example',
 			name: 'Writing style',
 			version: 'v2',
 			change: 'updated',
-			content: 'Private skill instructions.',
+			content: 'Skill "Writing style" changed after you loaded it.',
 		};
 		expect(
 			map(
@@ -131,13 +159,7 @@ describe('mapAgentChunkToEvent', () => {
 			runId,
 			agentId,
 			responseId: 'response-1',
-			payload: {
-				skillId: update.skillId,
-				name: update.name,
-				version: update.version,
-				change: update.change,
-				content: update.content,
-			},
+			payload: update,
 		});
 		expect(
 			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
@@ -455,6 +477,23 @@ describe('mapAgentChunkToEvent', () => {
 		},
 	);
 
+	it('puts the reason of an Auto mode review on the confirmation request', () => {
+		const askReason = { kind: 'judge', text: 'The request does not name this workflow.' };
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'workflows',
+			suspendPayload: {
+				requestId: 'request-1',
+				message: 'Archive',
+				severity: 'warning',
+				askReason,
+			},
+		});
+
+		expect(event).toHaveProperty('payload.askReason', askReason);
+	});
+
 	it('defaults optional suspension values and filters invalid structured payloads', () => {
 		const result = map({
 			type: 'tool-call-suspended',
@@ -628,8 +667,8 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'apps',
-				input: { action: 'create', blueprint: appBlueprint },
+				toolName: 'create_app',
+				input: { blueprint: appBlueprint },
 				suspendPayload: {
 					requestId: 'request-1',
 					severity: 'info',
@@ -644,6 +683,36 @@ describe('mapAgentChunkToEvent', () => {
 				inputType: 'app-blueprint',
 				appBlueprint,
 			},
+		});
+	});
+
+	it('maps the field errors of a reopened app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'create_app',
+				input: { blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-2',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+					appBlueprintErrors: { namespace: 'taken' },
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: { appBlueprint, appBlueprintErrors: { namespace: 'taken' } },
 		});
 	});
 

@@ -5,11 +5,13 @@ import { GlobalConfig } from '@n8n/config';
 import type { TagEntity, User, ICredentialsDb, CloudHooksPeople, PublicUser } from '@n8n/db';
 import {
 	CredentialsRepository,
+	isPerson,
 	WorkflowRepository,
 	SettingsRepository,
 	PersonRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { RegisterHooks } from '@n8n/hooks-api';
 import { ErrorReporter } from 'n8n-core';
 import type {
 	IRun,
@@ -60,11 +62,13 @@ export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHook
 		return undefined;
 	}
 
+	// A service account has no email or name.
+	const person = isPerson(user) ? user : undefined;
 	return {
 		id: user.id,
-		email: user.email,
-		firstName: user.firstName,
-		lastName: user.lastName,
+		email: person?.email ?? null,
+		firstName: person?.firstName ?? null,
+		lastName: person?.lastName ?? null,
 		role: user.role?.slug,
 	};
 }
@@ -176,6 +180,12 @@ interface IExternalHooksFileData {
 	};
 }
 
+const hasRegisterFunction = (hookFile: unknown): hookFile is { register: RegisterHooks } =>
+	typeof hookFile === 'object' &&
+	hookFile !== null &&
+	'register' in hookFile &&
+	typeof hookFile.register === 'function';
+
 @Service()
 export class ExternalHooks {
 	private readonly registered: {
@@ -183,6 +193,9 @@ export class ExternalHooks {
 	} = {};
 
 	private readonly dbCollections: Repositories;
+
+	/** `register` exports of hook files that use the versioned hooks API. */
+	readonly registerFunctions: RegisterHooks[] = [];
 
 	constructor(
 		private readonly logger: Logger,
@@ -208,8 +221,11 @@ export class ExternalHooks {
 		for (let hookFilePath of externalHookFiles) {
 			hookFilePath = hookFilePath.trim();
 			try {
-				const hookFile = require(hookFilePath) as IExternalHooksFileData;
-				this.loadHooks(hookFile);
+				const hookFile: unknown = require(hookFilePath);
+				if (hasRegisterFunction(hookFile)) {
+					this.registerFunctions.push(hookFile.register);
+				}
+				this.loadHooks(hookFile as IExternalHooksFileData);
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
@@ -224,12 +240,23 @@ export class ExternalHooks {
 	private loadHooks(hookFileData: IExternalHooksFileData) {
 		const { registered } = this;
 		for (const [resource, operations] of Object.entries(hookFileData)) {
+			if (resource === 'register') continue;
 			for (const operation of Object.keys(operations)) {
 				const hookName = `${resource}.${operation}` as HookNames;
 				registered[hookName] ??= [];
 				registered[hookName].push(...operations[operation]);
 			}
 		}
+	}
+
+	/** Adds a hook at runtime, for example from the versioned hooks API. */
+	registerHook<HookName extends HookNames>(
+		hookName: HookName,
+		hookFunction: (...args: ExternalHooksMap[HookName]) => Promise<void>,
+	) {
+		const hookFunctions: Array<(...args: ExternalHooksMap[HookName]) => Promise<void>> =
+			(this.registered[hookName] ??= []);
+		hookFunctions.push(hookFunction);
 	}
 
 	hasHook<HookName extends HookNames>(hookName: HookName): boolean {

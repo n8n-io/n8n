@@ -10,6 +10,8 @@ import {
 	type StreamChunk,
 	type StreamResult,
 	type ToolApprovalContext,
+	type Agent as RuntimeAgent,
+	type Workspace,
 } from '@n8n/agents';
 import type {
 	ResolvedSubAgentSource,
@@ -46,6 +48,7 @@ import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const aiConfigMock = mock<AiConfig>();
 const toolApprovalService = mock<AgentToolApprovalService>();
@@ -56,7 +59,7 @@ const parentAgentId = 'parent-agent-1';
 
 const runnableConfig: RunnableAgentJsonConfig = {
 	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'credential-1',
 	instructions: 'Help with delegated work.',
 };
@@ -123,7 +126,7 @@ const defaultStreamChunks: StreamChunk[] = [
 	{
 		type: 'finish',
 		finishReason: 'stop',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
 	},
 ];
@@ -141,6 +144,7 @@ describe('SubAgentRunner', () => {
 	let executionRepository: Mocked<AgentExecutionRepository>;
 	let usageRelay: Mocked<SystemAgentUsageRelay>;
 	let attachmentService: Mocked<AgentChatAttachmentService>;
+	let sandboxFiles: Mocked<AgentSandboxFilesService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -166,6 +170,7 @@ describe('SubAgentRunner', () => {
 		usageRelay = mock<SystemAgentUsageRelay>();
 		attachmentService = mock<AgentChatAttachmentService>();
 		attachmentService.returnToParent.mockResolvedValue([]);
+		sandboxFiles = mock<AgentSandboxFilesService>();
 		executionRepository.findLinksForChildOf.mockResolvedValue(null);
 		executionRepository.findFirstLinksInThread.mockResolvedValue(null);
 		runner = new SubAgentRunner(
@@ -178,6 +183,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
 				knowledgeUsageTracker,
+				mock<AgentSandboxFilesService>(),
 			),
 			checkpointStorage,
 			logger,
@@ -186,6 +192,7 @@ describe('SubAgentRunner', () => {
 			executionRepository,
 			usageRelay,
 			attachmentService,
+			sandboxFiles,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -254,6 +261,64 @@ describe('SubAgentRunner', () => {
 			childThreadId: result.threadId,
 		});
 		expect(result.files).toEqual([made]);
+	});
+
+	it('stores the outputs of a child that used the workspace before it returns its files', async () => {
+		const workspace = mock<Workspace>();
+		(childAgent as unknown as Mocked<RuntimeAgent>).getWorkspace.mockReturnValue(workspace);
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'tool-call', toolCallId: 'c-1', toolName: 'workspace_write_file', input: {} },
+				{ type: 'tool-result', toolCallId: 'c-1', toolName: 'workspace_write_file', output: 'ok' },
+				...defaultStreamChunks,
+			]),
+		);
+
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+			agentId: runtimeSource.source.sourceId,
+			projectId,
+			threadId: result.threadId,
+		});
+		expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
+			attachmentService.returnToParent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('stores the outputs of a child that fails after it used the workspace', async () => {
+		const workspace = mock<Workspace>();
+		const chunks: StreamChunk[] = [
+			{ type: 'tool-call', toolCallId: 'c-1', toolName: 'workspace_write_file', input: {} },
+			{ type: 'tool-result', toolCallId: 'c-1', toolName: 'workspace_write_file', output: 'ok' },
+		];
+		(childAgent as unknown as Mocked<RuntimeAgent>).getWorkspace.mockReturnValue(workspace);
+		childAgent.stream.mockResolvedValue({
+			...makeStreamResult([]),
+			stream: new ReadableStream<StreamChunk>({
+				// Error on a later pull: an error in start() drops the queued chunks.
+				pull(controller) {
+					const chunk = chunks.shift();
+					if (chunk) controller.enqueue(chunk);
+					else controller.error(new Error('model down'));
+				},
+			}),
+		});
+
+		await expect(
+			runner.run(spawnRequest, { parentAgentId, projectId, credentialProvider, runType: 'test' }),
+		).rejects.toThrow('model down');
+
+		expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(
+			workspace,
+			expect.objectContaining({ projectId }),
+		);
+		expect(attachmentService.returnToParent).not.toHaveBeenCalled();
 	});
 
 	it('does not run the child when a passed file cannot be granted', async () => {
@@ -440,7 +505,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				},
 			}),
@@ -575,6 +640,27 @@ describe('SubAgentRunner', () => {
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
 			expect.objectContaining({ user }),
+		);
+	});
+
+	it('passes the service account of the sub-agent to its runtime for log attribution', async () => {
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			agentServiceAccountId: 'sa-child',
+		});
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentServiceAccountId: 'sa-child',
+				parentAgentIdForDelegation: parentAgentId,
+			}),
 		);
 	});
 
@@ -1087,6 +1173,36 @@ describe('SubAgentRunner', () => {
 		});
 	});
 
+	it('forwards a credits guardrail stop without a budget owner', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.credits' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.credits' },
+			},
+		});
+		// The wallet is a shared scope: no child owns it, so the notice carries
+		// no agentId — the preview chat cards it without pointing at the child.
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.credits' });
+	});
+
 	it('does not emit a budget notice for a non-budget guardrail stop', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
@@ -1179,7 +1295,7 @@ describe('SubAgentRunner', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					high: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'high-credential',
 					},
 				},
@@ -1205,7 +1321,7 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				config: {
 					...parentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'high-credential',
 					providerTools: {
 						'anthropic.web_search_20250305': { maxUses: 3 },

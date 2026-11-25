@@ -1,4 +1,4 @@
-import type { GraphNode, WorkflowGraph } from './workflow-graph';
+import type { GraphEdge, GraphNode, WorkflowGraph } from './workflow-graph';
 
 /** The trigger node (the execution's entry point), or `undefined` if there is none. */
 export function findTriggerNode(graph: WorkflowGraph): GraphNode | undefined {
@@ -6,9 +6,17 @@ export function findTriggerNode(graph: WorkflowGraph): GraphNode | undefined {
 }
 
 /**
+ * Returns a function that labels a node id for user-facing messages: the
+ * node's name in quotes, or the quoted id when no node has it. Node ids are
+ * opaque to users, so messages must name the node.
+ */
+export function createNodeLabeler(graph: WorkflowGraph): (nodeId: string) => string {
+	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	return (nodeId) => `"${namesById.get(nodeId) ?? nodeId}"`;
+}
+
+/**
  * Ids of the nodes directly downstream of `nodeId`, de-duplicated, in edge order.
- *
- * TODO(CAT-3854): validate edge endpoints against `nodes`.
  */
 export function getSuccessorNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
 	const successors: string[] = [];
@@ -43,8 +51,6 @@ export function getDescendantNodeIds(graph: WorkflowGraph, nodeId: string): stri
 
 /**
  * Ids of the nodes directly upstream of `nodeId`, de-duplicated, in edge order.
- *
- * TODO(CAT-3854): validate edge endpoints against `nodes`.
  */
 export function getPredecessorNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
 	const predecessors: string[] = [];
@@ -54,4 +60,17 @@ export function getPredecessorNodeIds(graph: WorkflowGraph, nodeId: string): str
 		}
 	}
 	return predecessors;
+}
+
+/**
+ * Orders edges the way their items concatenate when several edges feed one
+ * input slot: by the source node's position in `graph.nodes`, then by output
+ * index.
+ */
+export function compareByConcatenationOrder(
+	graph: WorkflowGraph,
+): (a: GraphEdge, b: GraphEdge) => number {
+	const nodeOrder = new Map(graph.nodes.map((node, index) => [node.id, index]));
+	return (a, b) =>
+		(nodeOrder.get(a.from) ?? 0) - (nodeOrder.get(b.from) ?? 0) || a.outputIndex - b.outputIndex;
 }

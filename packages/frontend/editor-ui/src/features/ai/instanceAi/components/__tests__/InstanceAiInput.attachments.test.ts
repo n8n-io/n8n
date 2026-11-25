@@ -1,12 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
+import type { ContextChip } from '../../instanceAi.contextChip';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -154,6 +155,33 @@ describe('attach-only composer', () => {
 		});
 	});
 
+	it('restricts the file types and keeps the "+" menu with acceptedMimeTypes', async () => {
+		const { getByTestId, queryByTestId, getByRole, container } = renderComponent({
+			props: { acceptedMimeTypes: 'text/csv,.csv' },
+		});
+
+		expect(getByTestId('instance-ai-input-menu')).toBeInTheDocument();
+		// The "+" menu has the attach action, so the composer shows no second attach button.
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).toHaveAttribute(
+			'accept',
+			'text/csv,.csv',
+		);
+
+		const file = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'archive.zip is not a supported file type',
+		});
+	});
+
 	it('hides attaching entirely when the agent accepts no file types', () => {
 		const { queryByTestId, container } = renderComponent({
 			props: { attachOnlyMimeTypes: '' },
@@ -162,6 +190,141 @@ describe('attach-only composer', () => {
 		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
 		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
+	});
+});
+
+describe('InstanceAiInput — file attachments', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	function stubObjectUrls() {
+		const createObjectURL = vi.fn((_file: Blob) => 'blob:preview');
+		const revokeObjectURL = vi.fn();
+		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+		return { createObjectURL, revokeObjectURL };
+	}
+
+	function stubNoReducedMotion() {
+		// stubGlobal, not spyOn: restoring a spy on the setup mock leaves later tests without reduced motion.
+		vi.stubGlobal(
+			'matchMedia',
+			vi.fn((query: string) => ({
+				matches: query === '(prefers-reduced-motion: reduce)' ? false : true,
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})),
+		);
+	}
+
+	it('focuses attachments with Up from an empty input and returns with Escape', async () => {
+		const { container, getByRole } = renderComponent();
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+		await userEvent.upload(fileInput, new File(['notes'], 'notes.txt', { type: 'text/plain' }));
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{ArrowUp}');
+		expect(document.activeElement).toBe(container.querySelector('.n8n-attachment'));
+		await userEvent.keyboard('{Escape}');
+		expect(textbox).toHaveFocus();
+	});
+
+	it.each([
+		{ altKey: true },
+		{ ctrlKey: true },
+		{ metaKey: true },
+		{ shiftKey: true },
+		{ isComposing: true },
+		{ keyCode: 229 },
+		{ repeat: true },
+	])('keeps input focus for modified or composing Up: %j', async (options) => {
+		const { container, getByRole } = renderComponent();
+		await userEvent.upload(
+			container.querySelector<HTMLInputElement>('input[type="file"]')!,
+			new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+		);
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await fireEvent.keyDown(textbox, { key: 'ArrowUp', ...options });
+		expect(textbox).toHaveFocus();
+	});
+
+	it('keeps Up in the input when it has text or no attachments', async () => {
+		const { container, getByRole } = renderComponent();
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{ArrowUp}');
+		expect(textbox).toHaveFocus();
+		await userEvent.upload(
+			container.querySelector<HTMLInputElement>('input[type="file"]')!,
+			new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+		);
+		await userEvent.click(textbox);
+		await userEvent.type(textbox, 'Draft');
+		await userEvent.keyboard('{ArrowUp}');
+		expect(textbox).toHaveFocus();
+	});
+
+	it('creates a preview URL for image files and revokes it when a file is removed', async () => {
+		stubNoReducedMotion();
+		const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+		const { container, findByAltText, findByTestId } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['image'], 'preview.png', { type: 'image/png' });
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+
+		await userEvent.upload(fileInput, file);
+
+		expect(createObjectURL).toHaveBeenCalledWith(file);
+		expect(await findByAltText('preview.png')).toHaveAttribute('src', 'blob:preview');
+
+		await userEvent.click(await findByTestId('attachment-remove'));
+		await waitFor(() =>
+			expect(document.body.querySelector('img[role="presentation"]')).toBeInTheDocument(),
+		);
+		const sprite = document.body.querySelector('img[role="presentation"]')!;
+		await fireEvent.error(sprite);
+
+		await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview'));
+	});
+
+	it('blocks submission until image removal finishes', async () => {
+		stubNoReducedMotion();
+		stubObjectUrls();
+		const { emitted, container, getByRole, getByTestId } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Send this message');
+
+		const file = new File(['image'], 'preview.png', { type: 'image/png' });
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+		await userEvent.upload(fileInput, file);
+
+		const sendButton = getByTestId('instance-ai-send-button');
+		await userEvent.click(getByTestId('attachment-remove'));
+		await userEvent.click(sendButton);
+
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{Enter}');
+		expect(emitted().submit).toBeUndefined();
+
+		const sprite = document.body.querySelector('img[role="presentation"]')!;
+		await fireEvent.error(sprite);
+		await waitFor(() => expect(document.querySelector('.n8n-attachment')).not.toBeInTheDocument());
+		await userEvent.click(sendButton);
+		await waitFor(() => expect(emitted().submit).toHaveLength(1));
 	});
 });
 
@@ -184,7 +347,7 @@ describe('AttachmentPreview — nodes attachment delegation', () => {
 		expect(getByTestId('nodes-chip-node')).toBeInTheDocument();
 	});
 
-	it('lets a removable workflow chip emit resource removal', async () => {
+	it('lets a removable workflow card emit resource removal', async () => {
 		const { getByTestId, emitted } = renderAttachmentPreview({
 			props: {
 				attachment: { type: 'workflow', id: 'w1', name: 'Orders' },
@@ -192,7 +355,9 @@ describe('AttachmentPreview — nodes attachment delegation', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
+		await userEvent.click(
+			within(getByTestId('attachment-preview-resource')).getByTestId('attachment-remove'),
+		);
 		expect(emitted()['remove-resource']).toHaveLength(1);
 	});
 });
@@ -247,6 +412,7 @@ const MentionPickerStub = defineComponent({
 	props: {
 		modelValue: { type: Boolean, default: false },
 		query: { type: String, default: '' },
+		excludedKeys: { type: Array, default: () => [] },
 	},
 	emits: ['select', 'update:modelValue', 'empty-search'],
 	setup(props, { emit, expose }) {
@@ -256,49 +422,57 @@ const MentionPickerStub = defineComponent({
 			flushEmptySearch: () => {},
 		});
 		return () =>
-			h('div', { 'data-test-id': 'mention-picker-stub', 'data-query': props.query }, [
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-select',
-						onClick: () => emit('select', workflowMentionSelection),
-					},
-					'Select workflow',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-select-node',
-						onClick: () => emit('select', nodeMentionSelection),
-					},
-					'Select node',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-dismiss',
-						onClick: () => emit('update:modelValue', false),
-					},
-					'Dismiss',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-empty-search',
-						onClick: () => emit('empty-search', 'Slack'),
-					},
-					'Report empty search',
-				),
-				// The real menu opens itself on its trigger and reports it through v-model.
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-open',
-						onClick: () => emit('update:modelValue', true),
-					},
-					'Open from button',
-				),
-			]);
+			h(
+				'div',
+				{
+					'data-test-id': 'mention-picker-stub',
+					'data-query': props.query,
+					'data-excluded-keys': props.excludedKeys.join(','),
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-select',
+							onClick: () => emit('select', workflowMentionSelection),
+						},
+						'Select workflow',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-select-node',
+							onClick: () => emit('select', nodeMentionSelection),
+						},
+						'Select node',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-dismiss',
+							onClick: () => emit('update:modelValue', false),
+						},
+						'Dismiss',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-empty-search',
+							onClick: () => emit('empty-search', 'Slack'),
+						},
+						'Report empty search',
+					),
+					// The real menu opens itself on its trigger and reports it through v-model.
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-open',
+							onClick: () => emit('update:modelValue', true),
+						},
+						'Open from button',
+					),
+				],
+			);
 	},
 });
 
@@ -436,16 +610,16 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('inserts quoted text, attaches the workflow, and registers a transient reference', async () => {
+	it('stages the workflow as a draft attachment without inserting text', async () => {
 		const { getByRole, getByTestId, emitted } = renderMentionsInput();
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Compare ');
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(textbox).toHaveValue('Compare "Orders"');
+		expect(textbox).toHaveValue('Compare ');
 		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
-		expect(emitted()['mention-reference-added']).toHaveLength(1);
-		expect(emitted()['mention-workflow-open']?.[0]).toEqual(['w1']);
+		// The pick stays a draft: the workflow reaches the thread with the submit only.
+		expect(emitted().submit).toBeUndefined();
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
@@ -462,12 +636,12 @@ describe('InstanceAiInput — mention attachments', () => {
 	});
 
 	it('tracks a duplicate pick as a selection without staging it twice', async () => {
-		const { getByTestId, emitted } = renderMentionsInput();
+		const { getByTestId, getAllByTestId } = renderMentionsInput();
 
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(emitted()['mention-reference-added']).toHaveLength(1);
+		expect(getAllByTestId('attachment-preview-resource')).toHaveLength(1);
 		expect(
 			telemetryTrack.mock.calls.filter(
 				([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
@@ -475,8 +649,8 @@ describe('InstanceAiInput — mention attachments', () => {
 		).toHaveLength(2);
 	});
 
-	it('keeps mention context on failed send and releases it after an accepted send', async () => {
-		const { getByTestId, findByTestId, emitted } = renderMentionsInput();
+	it('submits the mention bookkeeping, and keeps a restored mention a duplicate', async () => {
+		const { getByTestId, getAllByTestId, findByTestId, emitted } = renderMentionsInput();
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(await findByTestId('instance-ai-send-button'));
 
@@ -486,37 +660,34 @@ describe('InstanceAiInput — mention attachments', () => {
 			() => boolean,
 			unknown,
 			number,
-			() => void,
 			unknown,
 			string[],
 		];
 		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
-		expect(firstSubmit[6]).toEqual({
+		expect(firstSubmit[5]).toEqual({
 			total: 1,
 			workflow: 1,
 			node: 0,
 			group: 0,
+			agent: 0,
 		});
-		expect(firstSubmit[7]).toEqual(['w1']);
+		expect(firstSubmit[6]).toEqual(['w1']);
+
+		// A refused send gives the draft back; picking the same workflow again stages nothing new.
 		expect(firstSubmit[2]()).toBe(true);
 		await findByTestId('attachment-preview-resource');
-		expect(emitted()['mention-reference-removed']).toBeUndefined();
-
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
-		const secondSubmit = emitted().submit?.[1] as [
-			string,
-			unknown[],
-			() => boolean,
-			unknown,
-			number,
-			() => void,
-		];
-		secondSubmit[5]();
-		expect(emitted()['mention-reference-removed']).toHaveLength(1);
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(getAllByTestId('attachment-preview-resource')).toHaveLength(1);
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ thread_id: 'thread-1', kind: 'workflow' },
+			expect.anything(),
 		);
+
+		// Once sent, the same workflow can be mentioned again in the next message.
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(getAllByTestId('attachment-preview-resource')).toHaveLength(1);
+		expect(emitted().submit).toHaveLength(2);
 	});
 
 	it('adds node context with parent workflow metadata', async () => {
@@ -525,7 +696,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		});
 		await userEvent.click(getByTestId('mention-picker-select-node'));
 
-		expect(getByRole('textbox')).toHaveValue('"Validate"');
+		expect(getByRole('textbox')).toHaveValue('');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		const submit = emitted().submit?.[0] as [string, unknown[]];
 		expect(submit[1]).toEqual([
@@ -551,15 +722,36 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('removes the transient reference with the workflow chip', async () => {
-		const { getByTestId, emitted } = renderMentionsInput();
+	it('tracks the removal of a mention with its workflow card', async () => {
+		const { getByTestId, queryByTestId } = renderMentionsInput();
 		await userEvent.click(getByTestId('mention-picker-select'));
-		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
+		await userEvent.click(
+			within(getByTestId('attachment-preview-resource')).getByTestId('attachment-remove'),
+		);
 
-		expect(emitted()['mention-reference-removed']).toHaveLength(1);
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
 			{ thread_id: 'thread-1', kind: 'workflow' },
+		);
+	});
+
+	it.each<ContextChip>([
+		{ type: 'agent-artifact', label: 'Support agent', agentId: 'agent-1', projectId: 'project-1' },
+		{
+			type: 'agent-preview-session',
+			label: 'Support agent',
+			agentId: 'agent-1',
+			threadId: 'preview-thread',
+		},
+	])('hides the agent of a $type hand-off chip from the picker', (contextChip) => {
+		const { getByTestId } = renderMentionsInput({
+			props: { contextChip },
+		});
+
+		expect(getByTestId('mention-picker-stub')).toHaveAttribute(
+			'data-excluded-keys',
+			'agent:agent-1',
 		);
 	});
 });
@@ -579,7 +771,7 @@ describe('InstanceAiInput — staged element attachment', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
 
-	it('shows the picked element as a removable chip and tells the store which app it is for', async () => {
+	it('shows the picked element as a removable card and tells the store which app it is for', async () => {
 		const { findByTestId, queryByTestId } = renderComponent();
 		const store = useInstanceAiStore();
 
@@ -588,7 +780,9 @@ describe('InstanceAiInput — staged element attachment', () => {
 		expect(await findByTestId('attachment-preview-element')).toHaveTextContent('button: "Save"');
 		expect(store.hasComposerElementFor('app-1')).toBe(true);
 
-		await userEvent.click(await findByTestId('attachment-preview-remove-element'));
+		await userEvent.click(
+			within(await findByTestId('attachment-preview-element')).getByTestId('attachment-remove'),
+		);
 
 		await waitFor(() =>
 			expect(queryByTestId('attachment-preview-element')).not.toBeInTheDocument(),

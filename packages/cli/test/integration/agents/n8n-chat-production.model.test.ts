@@ -18,6 +18,7 @@ import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-ex
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { createAgent } from '../shared/db/agents';
 import { saveCredential } from '../shared/db/credentials';
 import { createOwner, createMember } from '../shared/db/users';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
@@ -246,17 +247,15 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 				}
 			: {};
 		const repository = Container.get(AgentRepository);
-		const agent = await repository.save(
-			repository.create({
-				id: randomUUID(),
-				name: schema.name,
-				projectId: project.id,
-				schema: storedAgentConfig(schema),
-				tools,
-				integrations: [chatIntegration],
-				versionId: randomUUID(),
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name: schema.name,
+			projectId: project.id,
+			schema: storedAgentConfig(schema),
+			tools,
+			integrations: [chatIntegration],
+			versionId: randomUUID(),
+		});
 		const versionId = randomUUID();
 		await Container.get(AgentHistoryRepository).saveVersion(
 			{

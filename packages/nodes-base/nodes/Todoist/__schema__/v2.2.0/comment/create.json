@@ -1,0 +1,26 @@
+{
+	"properties": {
+		"content": {
+			"type": "string"
+		},
+		"file_attachment": {},
+		"id": {
+			"type": "string"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"item_id": {
+			"type": "string"
+		},
+		"posted_at": {
+			"type": "string"
+		},
+		"posted_uid": {
+			"type": "string"
+		},
+		"reactions": {},
+		"uids_to_notify": {}
+	},
+	"type": "object"
+}
