@@ -7,5 +7,6 @@ export type {
 	SubExecutionMode,
 	StepExecutionContext,
 	StepExecutionRequest,
+	StepInputSources,
 	StepExecutionResult,
 } from './external-dependencies';

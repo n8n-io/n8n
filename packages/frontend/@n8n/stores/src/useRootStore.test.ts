@@ -1,4 +1,4 @@
-import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useRootStore } from './useRootStore';

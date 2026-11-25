@@ -268,7 +268,7 @@ function openWizard() {
 	padding: var(--spacing--sm);
 	background-color: var(--background--surface);
 	border: var(--border);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md);
 	overflow: hidden;
 }
@@ -285,7 +285,7 @@ function openWizard() {
 	padding: 0;
 	background: transparent;
 	border: none;
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--xs);
 	color: var(--color--text--tint-1);
 	cursor: pointer;
 

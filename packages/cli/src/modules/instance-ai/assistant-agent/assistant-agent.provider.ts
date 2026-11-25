@@ -1,4 +1,4 @@
-import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
+import type { AgentMessage, JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
@@ -10,11 +10,13 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
+	isAttachmentMediaTypeSupported,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, type AiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import {
 	MAX_STEPS,
 	modelConfigId,
@@ -54,6 +56,8 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { extractEditorContextResourceAttachments } from '../internal-messages';
+import { extractTextFromContent } from '../message-parser';
 import {
 	getUserFacingErrorCode,
 	getUserFacingErrorMessage,
@@ -205,6 +209,16 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	}
 
 	/**
+	 * The model input of a user turn keeps its resource attachments, such as
+	 * mentions, in the thread context block. Read them back like the current
+	 * runtime does, so the chat shows them again after a reload.
+	 */
+	readMessageReferences(modelInput: AgentMessage): InstanceAiResourceAttachment[] {
+		const content = 'content' in modelInput ? modelInput.content : undefined;
+		return extractEditorContextResourceAttachments(extractTextFromContent(content));
+	}
+
+	/**
 	 * A suspended turn does not archive the temporary workflows of the thread,
 	 * so a thread deleted during the wait still marks them. The markers are in
 	 * the thread metadata, which the deletion removes: read them first, and
@@ -341,9 +355,33 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// and parse-file reads them by id through `storedFiles`.
 			fileAttachments: [],
 		});
+		// The turn has the sandbox files of project agents only when their flag is on.
+		const { sandboxFiles } = turn;
+		// Set when the agent is built, before any tool runs. The tools are built
+		// with the agent, so `canView` must exist before then.
+		const model: { provider?: string } = {};
 		environment.context.storedFiles = {
 			read: async (fileId) => await turn.readFile(fileId),
+			// The files list of the chat has the same flag.
+			...(sandboxFiles ? { list: async () => await sandboxFiles.listFiles() } : {}),
+			// The same check as the file store, which loads only these types for the model.
+			canView: (mimeType) => isAttachmentMediaTypeSupported(model.provider, mimeType),
 		};
+		if (sandboxFiles) {
+			const { context } = environment;
+			// Read the sandbox when a tool runs: it belongs to the turn, not to this setup.
+			const workspaceOf = () => {
+				if (!context.workspace) throw new UserError('This conversation has no sandbox');
+				return context.workspace;
+			};
+			context.sandboxFiles = {
+				maxImportBytes: sandboxFiles.maxImportBytes,
+				importFiles: async (files, abortSignal) =>
+					await sandboxFiles.importFiles(workspaceOf(), files, abortSignal),
+				storeOutput: async (path, abortSignal) =>
+					await sandboxFiles.storeOutput(workspaceOf(), path, abortSignal),
+			};
+		}
 		const contextTurn = await this.createContextTurnTelemetry(turn, runId);
 		contextTurn.bind(environment.orchestrationContext.skills);
 
@@ -388,6 +426,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			generateTitle: true,
 			...(trace ? { tracing: trace.context } : {}),
 		});
+		model.provider = agent.snapshot.model.provider ?? undefined;
 		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
@@ -603,7 +642,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
 			eventBus: new AssistantEventSink(
-				turn.emitHostEvent,
+				turn,
 				this.logger,
 				trace ? (event) => trace.observeEvent(event) : undefined,
 			),

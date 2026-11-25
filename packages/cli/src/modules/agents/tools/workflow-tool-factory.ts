@@ -12,7 +12,6 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -26,6 +25,7 @@ import type {
 	INodeExecutionData,
 	IPinData,
 	IRun,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
@@ -37,12 +37,13 @@ import {
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import type { ActiveExecutions } from '@/active-executions';
+import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
@@ -66,6 +67,13 @@ import {
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import {
+	assertInstrumentedRunStaysOnMain,
+	InstrumentedRunUnsupportedError,
+	PAUSED_INSTRUMENTED_RUN_MESSAGE,
+	SIMULATED_RUN_METADATA,
+	UNINSTRUMENTED_RUN_MESSAGE,
+} from './instrumented-run-guard';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
@@ -76,6 +84,7 @@ import {
 	settlementStatusForExecution,
 } from '../background/agent-background-job.service';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
+import { readWorkflowCaller } from '../approval/workflow-caller';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -189,6 +198,10 @@ export interface WorkflowToolContext {
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	userId?: string;
+	/** See `RelatedAgentRun.agentServiceAccountId`. */
+	agentServiceAccountId?: string;
+	/** See `RelatedAgentRun.delegatingAgentId`. */
+	delegatingAgentId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
 	/** When true, an execution parked at a Wait node becomes a background job instead of polling or suspending. */
@@ -213,7 +226,7 @@ export function getFixedWorkflowToolInputs(
 	inputs: WorkflowToolInputsConfig | undefined,
 ): Record<string, unknown> {
 	if (!inputs) return {};
-	const fixed: Array<[string, unknown]> = [];
+	const fixed: [string, unknown][] = [];
 	for (const [name, binding] of Object.entries(inputs)) {
 		if (binding.mode === 'fixed') {
 			fixed.push([name, binding.value]);
@@ -301,10 +314,20 @@ async function resolveWorkflowToolInput(
 // ---------------------------------------------------------------------------
 
 export async function executeWorkflow(
-	workflow: WorkflowEntity,
+	workflow: IWorkflowBase,
 	triggerNode: INode,
 	inputData: Record<string, unknown>,
-	context: WorkflowToolRunContext,
+	context: Pick<
+		WorkflowToolRunContext,
+		| 'workflowRunner'
+		| 'subworkflowPolicyChecker'
+		| 'activeExecutions'
+		| 'projectId'
+		| 'executionMode'
+		| 'agentRun'
+		| 'abortSignal'
+		| 'instrumentToolAdditionalData'
+	> & { executionProjectId?: string },
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
@@ -324,8 +347,12 @@ export async function executeWorkflow(
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
+	const instrument = context.instrumentToolAdditionalData;
+	const instrumented = Boolean(instrument && instrumentedToolName);
+
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
+		...(context.executionProjectId ? { projectId: context.executionProjectId } : {}),
 		executionMode: context.executionMode,
 		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
@@ -333,7 +360,12 @@ export async function executeWorkflow(
 		executionData: createRunExecutionData({
 			...(context.agentRun ? { parentAgentRun: context.agentRun } : {}),
 			startData: {},
-			resultData: { pinData: triggerPinData, runData: {} },
+			resultData: {
+				pinData: triggerPinData,
+				runData: {},
+				// Saved as the execution's custom data: its requests went to a simulation or mock.
+				...(instrumented ? { metadata: { ...SIMULATED_RUN_METADATA } } : {}),
+			},
 			executionData: {
 				contextData: {},
 				metadata: {},
@@ -350,13 +382,16 @@ export async function executeWorkflow(
 		}),
 	};
 
-	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
-	// mocked credentials helper). The closure does not survive queue
-	// serialization — eval callers refuse queue mode upfront.
-	const instrument = context.instrumentToolAdditionalData;
+	// Test runs and evals decorate the sub-execution's additionalData (HTTP mock
+	// handler, node guard, credentials helper). The closure only applies in this
+	// main process, so a run that would go to a queue worker or Engine v2 is
+	// refused here, before it starts.
+	let instrumentationApplied = false;
 	if (instrument && instrumentedToolName) {
+		assertInstrumentedRunStaysOnMain(workflow, context.executionMode);
 		runData.configureAdditionalData = (additionalData) => {
 			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
+			instrumentationApplied = true;
 		};
 	}
 
@@ -375,6 +410,21 @@ export async function executeWorkflow(
 		undefined,
 		responsePromise,
 	);
+
+	// Backstop if the guard and `WorkflowRunner.run` ever disagree: `runMainProcess` awaits
+	// the closure before `run` returns, so a run that is still going without it left this
+	// process (a queue job or Engine v2). A run that failed before it started is already
+	// finalized and reports its own error below.
+	if (
+		instrumented &&
+		!instrumentationApplied &&
+		(activeExecutions.has(executionId) || isExecutionIdV2(executionId))
+	) {
+		await stopInstrumentedRun(executionId, workflow.id, 'started without its mocks');
+		throw new UnexpectedError(UNINSTRUMENTED_RUN_MESSAGE, {
+			extra: { executionId, workflowId: workflow.id },
+		});
+	}
 
 	return await withWorkflowCancellation(executionId, workflow.id, context.abortSignal, async () => {
 		// Wait for completion with timeout protection
@@ -420,6 +470,10 @@ export async function executeWorkflow(
 			completedRun && context.executionMode === 'integrated'
 				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
 				: await extractResult(executionId, allOutputs);
+		if (instrumented && result.status === 'waiting') {
+			await stopInstrumentedRun(executionId, workflow.id, 'paused');
+			throw new InstrumentedRunUnsupportedError(PAUSED_INSTRUMENTED_RUN_MESSAGE);
+		}
 		if (isWorkflowToolResponse(webhookResponse)) {
 			const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
 				webhookResponse,
@@ -432,6 +486,34 @@ export async function executeWorkflow(
 		}
 		return result;
 	});
+}
+
+/**
+ * Stops an instrumented run that would go on without its instrumentation: a paused run
+ * resumes later (Wait Tracker, resume webhook) with a fresh additionalData, and a run that
+ * left this process never had it.
+ */
+async function stopInstrumentedRun(
+	executionId: string,
+	workflowId: string,
+	reason: 'paused' | 'started without its mocks',
+): Promise<void> {
+	try {
+		const { ExecutionService } = await import('@/executions/execution.service.js');
+		await Container.get(ExecutionService).stop(executionId, [workflowId]);
+	} catch (error) {
+		// Not reported as a safe refusal: the run may still go on for real.
+		Container.get(Logger).error('Failed to stop an instrumented workflow run', {
+			executionId,
+			workflowId,
+			reason,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw new UnexpectedError(
+			`The workflow ${reason}, and its execution ${executionId} could not be stopped. Stop it in the executions list.`,
+			{ cause: error },
+		);
+	}
 }
 
 /** The foreground tool owns cancellation until it hands the workflow to a background job. */
@@ -562,14 +644,22 @@ function agentRunOf(
 
 	return {
 		agentId: context.agentId,
+		workflowCaller: readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller),
 		projectId: context.projectId,
 		threadId,
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
+		...(context.integrationType === 'task'
+			? { published: context.usePublishedWorkflowVersion === true }
+			: {}),
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
 		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
+		...(context.agentServiceAccountId
+			? { agentServiceAccountId: context.agentServiceAccountId }
+			: {}),
+		...(context.delegatingAgentId ? { delegatingAgentId: context.delegatingAgentId } : {}),
 	};
 }
 
@@ -1040,6 +1130,14 @@ function assembleWorkflowTool(
 				inputFiles = new Map(Object.entries(pending.data.inputFiles ?? {}));
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
+				if (
+					isRecord(ctx.continuation) &&
+					typeof ctx.continuation.__agentApprovalWorkflowVersion === 'string' &&
+					ctx.continuation.__agentApprovalWorkflowVersion !== current.workflow.versionId
+				)
+					throw new UserError(
+						'The tool workflow changed while approval was pending. Request approval again.',
+					);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const { files, ...rest } = input;
 				const modelInput = acceptsFiles ? rest : input;

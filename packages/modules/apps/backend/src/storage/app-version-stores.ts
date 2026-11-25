@@ -10,6 +10,12 @@ export type NewSourceVersion = {
 	expectedDraftVersionId: string | null;
 	label: string | null;
 	bindings: AppBinding[];
+	isScaffold: boolean;
+};
+
+/** The copy keeps the source of the draft, so it also keeps `isScaffold`. */
+export type CopiedDraftVersion = Omit<NewSourceVersion, 'isScaffold'> & {
+	expectedDraftVersionId: string;
 };
 
 export abstract class AppSourceVersionStore {
@@ -20,7 +26,7 @@ export abstract class AppSourceVersionStore {
 	 * Creates a version that shares the source and the build of the expected draft,
 	 * with other bindings, and advances the draft atomically.
 	 */
-	abstract copyDraft(version: NewSourceVersion & { expectedDraftVersionId: string }): Promise<void>;
+	abstract copyDraft(version: CopiedDraftVersion): Promise<void>;
 
 	abstract readSource(versionId: string): Promise<AppFiles>;
 

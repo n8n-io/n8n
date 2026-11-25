@@ -202,6 +202,7 @@ export function validateWorkflowBuilder(
 			allowNoTrigger: options.allowNoTrigger,
 			validateSchema: options.validateSchema,
 			nodeTypesProvider: options.nodeTypesProvider,
+			engine: options.engine,
 		};
 
 		const graph = workflow.validate(validationOptions);

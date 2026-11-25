@@ -180,7 +180,7 @@ describe('langchain-utils', () => {
 					input: 'test input',
 					system_message: customSystemMessage,
 				}),
-				{},
+				{ signal: expect.any(AbortSignal) },
 			);
 		});
 
@@ -442,8 +442,32 @@ describe('langchain-utils', () => {
 				expect.objectContaining({
 					input: 'test input',
 				}),
-				customInvokeOptions,
+				{ ...customInvokeOptions, signal: expect.any(AbortSignal) },
 			);
+		});
+
+		test('should abort the signal of a failed run', async () => {
+			const mockExecutor = { invoke: vi.fn().mockRejectedValue(new Error('A tool failed')) };
+
+			(getChatModel as Mock).mockResolvedValue({ name: 'primary-model' });
+			(getOptionalMemory as Mock).mockResolvedValue({ name: 'memory' });
+			(getTools as Mock).mockResolvedValue([{ name: 'tool1' }]);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue({ name: 'prompt' });
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
+				if (param === 'needsFallback') return false;
+				if (param === 'options') return {};
+				return false;
+			});
+
+			await expect(invokeAgent(nodeContext, 'test input')).rejects.toThrow('A tool failed');
+
+			const [, invokeOptions] = mockExecutor.invoke.mock.calls[0] as [
+				unknown,
+				{ signal: AbortSignal },
+			];
+			expect(invokeOptions.signal.aborted).toBe(true);
 		});
 	});
 });

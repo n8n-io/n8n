@@ -16,6 +16,11 @@ import {
 
 import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
+const ISSUE_STATE_EVENTS: Record<string, string> = {
+	closed: 'close',
+	open: 'reopen',
+};
+
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab',
@@ -1456,6 +1461,17 @@ export class Gitlab implements INodeType {
 						}
 						if (body.assignee_ids !== undefined) {
 							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data.assignee);
+						}
+
+						// API uses `state_event`, see https://docs.gitlab.com/api/issues/#edit-an-issue
+						if (
+							body.state !== undefined &&
+							typeof body.state === 'string' &&
+							Object.hasOwn(ISSUE_STATE_EVENTS, body.state)
+						) {
+							body.state_event = ISSUE_STATE_EVENTS[body.state];
+							// Remove state to avoid sending both state and state_event
+							delete body.state;
 						}
 
 						endpoint = requestPath`${baseEndpoint}/issues/${issueNumber}`;

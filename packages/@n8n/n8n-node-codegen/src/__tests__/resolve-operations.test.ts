@@ -15,6 +15,7 @@ const operation = (operationId: string, overrides: Partial<SpecOperation> = {}):
 	tag: tag('Workflow'),
 	deprecated: false,
 	paginated: false,
+	emptyResponse: false,
 	parameters: [],
 	blockers: [],
 	...overrides,
@@ -32,7 +33,7 @@ describe('resolveOperations', () => {
 					tag: tag('SettingsRateLimits', 'Settings Rate Limits'),
 				}),
 			),
-			{ exclude: {} },
+			{},
 		);
 
 		expect(rows.map((row) => row.resource)).toEqual([
@@ -48,7 +49,8 @@ describe('resolveOperations', () => {
 				operation('getExecution', { tag: tag('Execution') }),
 				operation('deleteExecution', { tag: tag('Executions') }),
 			),
-			{ exclude: {} },
+			{ getExecution: { default: true } },
+			'execution',
 		);
 
 		expect(errors).toEqual(['"execution" is the resource of 2 tags: Execution, Executions.']);
@@ -57,26 +59,29 @@ describe('resolveOperations', () => {
 	it('should set the exclude reason only on the operations in exclude', () => {
 		const { rows, errors } = resolveOperations(
 			spec(operation('getWorkflow'), operation('deleteWorkflow')),
-			{ exclude: { deleteWorkflow: 'Not reviewed yet' } },
+			{ getWorkflow: { default: true }, deleteWorkflow: { exclude: 'Not reviewed yet' } },
+			'workflow',
 		);
 
 		expect(rows.map((row) => row.excludeReason)).toEqual([undefined, 'Not reviewed yet']);
 		expect(errors).toEqual([]);
 	});
 
-	it('should report an operation in exclude that is not in the spec', () => {
-		const { errors } = resolveOperations(spec(operation('getWorkflow')), {
-			exclude: { getWorkflw: 'Not reviewed yet' },
-		});
+	it('should report an override for an operation that is not in the spec', () => {
+		const { errors } = resolveOperations(
+			spec(operation('getWorkflow')),
+			{ getWorkflow: { default: true }, getWorkflw: { exclude: 'Not reviewed yet' } },
+			'workflow',
+		);
 
 		expect(errors).toEqual([
-			'exclude: "getWorkflw" is not an operation in the spec. The spec does not contain this operation any more, or the ID is not correct.',
+			'overrides: "getWorkflw" is not an operation in the spec. The spec does not contain this operation any more, or the ID is not correct.',
 		]);
 	});
 
 	it('should report an empty reason in exclude', () => {
 		const { errors } = resolveOperations(spec(operation('getWorkflow')), {
-			exclude: { getWorkflow: '  ' },
+			getWorkflow: { exclude: '  ' },
 		});
 
 		expect(errors).toEqual(['exclude: "getWorkflow" has no reason.']);
@@ -85,7 +90,8 @@ describe('resolveOperations', () => {
 	it('should report an operation with a blocker that is not in exclude', () => {
 		const { errors } = resolveOperations(
 			spec(operation('exportPackage', { blockers: ['application/gzip response'] })),
-			{ exclude: {} },
+			{ exportPackage: { default: true } },
+			'workflow',
 		);
 
 		expect(errors).toEqual([
@@ -96,10 +102,105 @@ describe('resolveOperations', () => {
 	it('should accept an operation with a blocker that is in exclude', () => {
 		const { errors } = resolveOperations(
 			spec(operation('exportPackage', { blockers: ['application/gzip response'] })),
-			{ exclude: { exportPackage: 'The generator cannot read a gzip response' } },
+			{ exportPackage: { exclude: 'The generator cannot read a gzip response' } },
 		);
 
 		expect(errors).toEqual([]);
+	});
+
+	it('should report only a required parameter that has the name of a node field', () => {
+		const resourceParameter = (required: boolean) => ({
+			name: 'resource',
+			location: 'query' as const,
+			required,
+			deprecated: false,
+			schema: { type: 'string' },
+		});
+		const { errors } = resolveOperations(
+			spec(
+				operation('getCapabilities', { parameters: [resourceParameter(true)] }),
+				operation('getDiscover', { parameters: [resourceParameter(false)] }),
+			),
+			{ getDiscover: { default: true } },
+			'workflow',
+		);
+
+		expect(errors).toEqual([
+			'"getCapabilities" is not in exclude, but the generator cannot build it: parameter name "resource". Add it to exclude with a reason, or add support to the generator.',
+		]);
+	});
+
+	it('should replace a flattened list with the fields of one item, without read-only fields', () => {
+		const relations = {
+			name: 'relations',
+			location: 'body' as const,
+			required: true,
+			deprecated: false,
+			schema: {
+				type: 'array',
+				items: {
+					type: 'object',
+					required: ['userId'],
+					properties: {
+						id: { type: 'string', readOnly: true },
+						userId: { type: 'string' },
+						role: { type: 'string' },
+					},
+				},
+			},
+		};
+		const { rows, errors } = resolveOperations(
+			spec(operation('addUsersToProject', { parameters: [relations] })),
+			{ addUsersToProject: { flatten: 'relations', default: true } },
+			'workflow',
+		);
+
+		expect(errors).toEqual([]);
+		expect(rows[0].operation.parameters).toEqual([
+			{
+				name: 'userId',
+				location: 'body',
+				property: 'relations[0].userId',
+				required: true,
+				deprecated: false,
+				schema: { type: 'string' },
+			},
+			{
+				name: 'role',
+				location: 'body',
+				property: 'relations[0].role',
+				required: false,
+				deprecated: false,
+				schema: { type: 'string' },
+			},
+		]);
+	});
+
+	it('should report a flatten entry that the generator cannot apply', () => {
+		const list = (name: string, location: 'body' | 'wholeBody' = 'body') => ({
+			name,
+			location,
+			required: true,
+			deprecated: false,
+			schema: {
+				type: 'array',
+				items: { type: 'object', properties: { name: { type: 'string' } } },
+			},
+		});
+		const name = { ...list('name'), schema: { type: 'string' } };
+		const { errors } = resolveOperations(
+			spec(
+				operation('createUser', { parameters: [list('body', 'wholeBody')] }),
+				operation('createTags', { parameters: [name, list('tags')] }),
+			),
+			{ createUser: { flatten: 'body', default: true }, createTags: { flatten: 'tags' } },
+			'workflow',
+		);
+
+		expect(errors).toEqual([
+			'flatten: "createUser" has no body field "body" that is a list of objects.',
+			'flatten: "createTags" gets two fields with the name "name".',
+		]);
 	});
 
 	it('should report two operations in the node with the same summary in one tag', () => {
@@ -108,12 +209,26 @@ describe('resolveOperations', () => {
 				operation('activateWorkflow', { summary: 'Publish a workflow' }),
 				operation('publishWorkflow', { summary: 'Publish a workflow' }),
 			),
-			{ exclude: {} },
+			{ publishWorkflow: { default: true } },
+			'workflow',
 		);
 
 		expect(errors).toEqual([
 			'"Workflow / Publish a workflow" is the name of 2 operations: activateWorkflow, publishWorkflow.',
 		]);
+	});
+
+	it('should accept the same summary when one of the operations is deprecated', () => {
+		const { errors } = resolveOperations(
+			spec(
+				operation('activateWorkflow', { summary: 'Publish a workflow', deprecated: true }),
+				operation('publishWorkflow', { summary: 'Publish a workflow' }),
+			),
+			{ publishWorkflow: { default: true } },
+			'workflow',
+		);
+
+		expect(errors).toEqual([]);
 	});
 
 	it('should accept the same summary when one of the operations is in exclude', () => {
@@ -122,7 +237,11 @@ describe('resolveOperations', () => {
 				operation('activateWorkflow', { summary: 'Publish a workflow' }),
 				operation('publishWorkflow', { summary: 'Publish a workflow' }),
 			),
-			{ exclude: { activateWorkflow: 'Deprecated, use publishWorkflow' } },
+			{
+				activateWorkflow: { exclude: 'Deprecated, use publishWorkflow' },
+				publishWorkflow: { default: true },
+			},
+			'workflow',
 		);
 
 		expect(errors).toEqual([]);
@@ -140,9 +259,65 @@ describe('resolveOperations', () => {
 					tag: tag('NodeTypePolicy'),
 				}),
 			),
-			{ exclude: {} },
+			{
+				getCredentialTypePolicyAttachments: { default: true },
+				getNodeTypePolicyAttachments: { default: true },
+			},
+			'credentialTypePolicy',
 		);
 
 		expect(errors).toEqual([]);
+	});
+
+	it('should mark only the operation with default: true as the default', () => {
+		const { rows } = resolveOperations(spec(operation('getWorkflow'), operation('getWorkflows')), {
+			getWorkflows: { default: true },
+		});
+
+		expect(rows.map((row) => row.isDefault)).toEqual([false, true]);
+	});
+
+	it('should report a missing default resource and each resource without one default operation', () => {
+		const { errors } = resolveOperations(
+			spec(
+				operation('getWorkflow'),
+				operation('getWorkflows'),
+				operation('getTag', { tag: tag('Tag') }),
+			),
+			{ getWorkflow: { default: true }, getWorkflows: { default: true } },
+		);
+
+		expect(errors).toEqual([
+			'defaultResource must be one of the resources in the node: workflow, tag.',
+			'"workflow" needs one operation in the node with default: true. It has 2: getWorkflow, getWorkflows.',
+			'"tag" needs one operation in the node with default: true. It has none.',
+		]);
+	});
+
+	it('should need no defaults when the node has no operations', () => {
+		const { errors } = resolveOperations(spec(operation('getWorkflow')), {
+			getWorkflow: { exclude: 'Not reviewed yet' },
+		});
+
+		expect(errors).toEqual([]);
+	});
+
+	it('should give each operation the field from "*" and let the field of the operation replace it', () => {
+		const locator = { type: 'resourceLocator' as const, default: { mode: 'list', value: '' } };
+		const { rows, errors } = resolveOperations(
+			spec(operation('getWorkflow'), operation('deleteWorkflow')),
+			{
+				'*': { fields: { workflowId: locator } },
+				getWorkflow: { default: true },
+				deleteWorkflow: { fields: { workflowId: { type: 'string' } } },
+			},
+			'workflow',
+		);
+
+		expect(errors).toEqual([]);
+		expect(rows.map((row) => row.fields)).toEqual([
+			{ workflowId: locator },
+			{ workflowId: { type: 'string' } },
+		]);
 	});
 });

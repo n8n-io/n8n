@@ -1,6 +1,7 @@
 import type { DropdownMenuContentProps } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
+import type { IconSize } from '../../types';
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
@@ -17,6 +18,11 @@ export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> 
 
 /** Injection key for preserving the root menu width across portaled sub-menus. */
 export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownMenuWidth');
+
+/** Keeps content classes on nested submenus that render in separate portals. */
+export const DropdownMenuExtraPopperClassKey: InjectionKey<Ref<string | undefined>> = Symbol(
+	'DropdownMenuExtraPopperClass',
+);
 
 export interface DropdownMenuExternalNavigationController {
 	/** Handles a key for one visible menu level. */
@@ -89,6 +95,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	label: string;
 	/** Icon or emoji displayed before the label */
 	icon?: IconOrEmoji;
+	/** Size of the leading icon. */
+	iconSize?: IconSize;
 	/** Whether the item is disabled */
 	disabled?: boolean;
 	/** Whether to show a separator above the item */
@@ -166,7 +174,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */
 	loadingItemCount?: number;
-	/** Additional CSS class for the dropdown popper */
+	/** Additional CSS class for the dropdown popper and its submenu poppers. */
 	extraPopperClass?: string;
 	/** Test id rendered on the dropdown trigger element */
 	dataTestId?: string;

@@ -8,6 +8,8 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import InstancePolicyView from './InstancePolicyView.vue';
+import { useInstancePolicyStore } from './instance-policy.store';
+import { accessFilter } from '../__tests__/table';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
@@ -29,6 +31,7 @@ vi.mock('../type-availability-policies.api', () => ({
 		async () => new Map([['n8n-nodes-base.notion', { displayName: 'Notion', hidden: false }]]),
 	),
 	fetchCredentialTypeUsage: vi.fn(async () => ({})),
+	fetchNodeTypeUsage: vi.fn(async () => ({})),
 }));
 
 vi.mock('vue-router', () => ({
@@ -36,7 +39,38 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ push, replace }),
 }));
 
-const renderView = createComponentRenderer(InstancePolicyView);
+// Closes as the real dialog does: it asks to close, then announces where the focus returns.
+const closeDialog = {
+	close(this: { $emit: (event: string, ...args: unknown[]) => void }) {
+		this.$emit('update:open', false);
+		this.$emit('closeAutoFocus', new Event('focusScope.autoFocusOnUnmount', { cancelable: true }));
+	},
+};
+
+const nodeTypeAccessDialogStub = {
+	props: ['open', 'nodeType'],
+	emits: ['update:open', 'closeAutoFocus'],
+	methods: closeDialog,
+	template:
+		'<button data-test-id="node-type-access-dialog" :data-node-type="nodeType" @click="close" />',
+};
+
+const credentialTypeAccessDialogStub = {
+	props: ['open', 'credentialType'],
+	emits: ['update:open', 'closeAutoFocus'],
+	methods: closeDialog,
+	template:
+		'<button data-test-id="credential-type-access-dialog" :data-credential-type="credentialType" @click="close" />',
+};
+
+const renderView = createComponentRenderer(InstancePolicyView, {
+	global: {
+		stubs: {
+			NodeTypeAccessDialog: nodeTypeAccessDialogStub,
+			CredentialTypeAccessDialog: credentialTypeAccessDialogStub,
+		},
+	},
+});
 
 const BOTH_SCOPES: Scope[] = ['nodeTypePolicy:manage', 'credentialTypePolicy:manage'];
 
@@ -45,6 +79,24 @@ const setup = (scopes: Scope[] = BOTH_SCOPES, query: Record<string, string> = {}
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
 	useRBACStore().setGlobalScopes(scopes);
+	return renderView({ pinia });
+};
+
+const credentialAccess = (names: string[]) => ({
+	scopeId: null,
+	version: 0,
+	defaultAction: 'allow',
+	types: names.map((name) => ({ name, access: 'allow', matchedRuleId: null })),
+});
+
+/** Opens the view with the access that an earlier visit left in the store. */
+const setupAfterEarlierVisit = async (query: Record<string, string>) => {
+	route.query = query;
+	const pinia = createTestingPinia({ stubActions: false });
+	useSettingsStore().isModuleActive = vi.fn(() => true);
+	useRBACStore().setGlobalScopes(BOTH_SCOPES);
+	fetchInstanceAccess.mockResolvedValueOnce(credentialAccess(['bitlyApi']));
+	await useInstancePolicyStore().load(['credential']);
 	return renderView({ pinia });
 };
 
@@ -63,6 +115,7 @@ describe('InstancePolicyView', () => {
 			defaultAction: 'allow',
 			types: [
 				{ name: 'bitlyApi', access: 'allow', matchedRuleId: null },
+				{ name: 'airtableApi', access: 'allow', matchedRuleId: null },
 				{ name: 'n8n-nodes-base.notion', access: 'allow', matchedRuleId: null },
 			],
 		});
@@ -101,6 +154,12 @@ describe('InstancePolicyView', () => {
 			'href',
 			'https://docs.n8n.io/administer/manage-users-and-access/control-node-availability',
 		);
+	});
+
+	it('marks the page as a preview', () => {
+		const { getByTestId } = setup();
+
+		expect(getByTestId('instance-policy-preview-badge')).toBeInTheDocument();
 	});
 
 	it('goes back to the landing page', async () => {
@@ -183,5 +242,214 @@ describe('InstancePolicyView', () => {
 		await fireEvent.click(getByText('Credentials'));
 
 		expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } });
+	});
+
+	it('opens the node dialog named in the query', () => {
+		const { getByTestId } = setup(BOTH_SCOPES, { details: 'n8n-nodes-base.notion' });
+
+		expect(getByTestId('node-type-access-dialog')).toHaveAttribute(
+			'data-node-type',
+			'n8n-nodes-base.notion',
+		);
+	});
+
+	it('does not open the node dialog for a user who cannot manage node types', () => {
+		const { queryByTestId } = setup(['credentialTypePolicy:manage'], {
+			tab: 'node',
+			details: 'n8n-nodes-base.notion',
+		});
+
+		expect(queryByTestId('node-type-access-dialog')).not.toBeInTheDocument();
+		expect(queryByTestId('credential-type-access-dialog')).not.toBeInTheDocument();
+	});
+
+	it('opens no dialog for a link to a tab the user cannot see', () => {
+		const { queryByTestId } = setup(['nodeTypePolicy:manage'], {
+			tab: 'credential',
+			details: 'airtableApi',
+		});
+
+		expect(queryByTestId('node-type-access-dialog')).not.toBeInTheDocument();
+		expect(queryByTestId('credential-type-access-dialog')).not.toBeInTheDocument();
+	});
+
+	it('reads a link without a tab as a node link', () => {
+		const { queryByTestId } = setup(['credentialTypePolicy:manage'], {
+			details: 'n8n-nodes-base.notion',
+		});
+
+		expect(queryByTestId('credential-type-access-dialog')).not.toBeInTheDocument();
+	});
+
+	it('opens the credential dialog named in the query on the Credentials tab', () => {
+		const { getByTestId, queryByTestId } = setup(BOTH_SCOPES, {
+			tab: 'credential',
+			details: 'airtableApi',
+		});
+
+		expect(getByTestId('credential-type-access-dialog')).toHaveAttribute(
+			'data-credential-type',
+			'airtableApi',
+		);
+		expect(queryByTestId('node-type-access-dialog')).not.toBeInTheDocument();
+	});
+
+	it('closes the dialog of a type that the server does not list', async () => {
+		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+	});
+
+	it('keeps the dialog of a listed type open after the access loads', async () => {
+		const { getByTestId } = setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
+	});
+
+	it('keeps the dialog open when the access does not load', async () => {
+		fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+	});
+
+	it('keeps the dialog of a type installed after an earlier visit open', async () => {
+		fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi', 'newApi']));
+		const { getByTestId } = await setupAfterEarlierVisit({ tab: 'credential', details: 'newApi' });
+
+		await waitFor(() => expect(fetchInstanceAccess).toHaveBeenCalledTimes(3));
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
+	});
+
+	it('keeps the dialog open when the access of this visit does not load', async () => {
+		fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+		await setupAfterEarlierVisit({ tab: 'credential', details: 'newApi' });
+
+		// The view reads the access, and the tab reads it again after that read fails.
+		await waitFor(() => expect(fetchInstanceAccess).toHaveBeenCalledTimes(3));
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+	});
+
+	it('closes the dialog of an unknown type after an earlier visit once the access loads', async () => {
+		fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi']));
+		await setupAfterEarlierVisit({ tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+	});
+
+	it('opens the credential dialog for a user who can manage only credential types', () => {
+		const { getByTestId } = setup(['credentialTypePolicy:manage'], {
+			tab: 'credential',
+			details: 'airtableApi',
+		});
+
+		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
+	});
+
+	it('opens the credential dialog when the admin clicks a row of the Credentials tab', async () => {
+		fetchInstanceAccess.mockResolvedValue({
+			scopeId: null,
+			version: 0,
+			defaultAction: 'allow',
+			types: [{ name: 'bitlyApi', access: 'allow', matchedRuleId: null }],
+		});
+		const { findByText } = setup(BOTH_SCOPES, { tab: 'credential' });
+
+		await fireEvent.click(await findByText('Bitly API'));
+
+		expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential', details: 'bitlyApi' } });
+	});
+
+	it('opens the node dialog when the admin clicks a row of the Nodes tab', async () => {
+		fetchInstanceAccess.mockResolvedValue({
+			scopeId: null,
+			version: 0,
+			defaultAction: 'allow',
+			types: [{ name: 'n8n-nodes-base.notion', access: 'allow', matchedRuleId: null }],
+		});
+		const { findByText } = setup(BOTH_SCOPES, { tab: 'node' });
+
+		await fireEvent.click(await findByText('Notion'));
+
+		expect(replace).toHaveBeenCalledWith({
+			query: { tab: 'node', details: 'n8n-nodes-base.notion' },
+		});
+	});
+
+	it('closes the dialog when the admin changes the tab', async () => {
+		const { getByText } = setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+		await fireEvent.click(getByText('Nodes'));
+
+		expect(replace).toHaveBeenCalledWith({ query: { tab: 'node' } });
+	});
+
+	it('removes the node from the query when the dialog closes', async () => {
+		const { getByTestId } = setup(BOTH_SCOPES, { tab: 'node', details: 'n8n-nodes-base.notion' });
+
+		await fireEvent.click(getByTestId('node-type-access-dialog'));
+
+		expect(replace).toHaveBeenCalledWith({ query: { tab: 'node' } });
+	});
+
+	describe('focus when the dialog closes', () => {
+		const NODE_DIALOG = { tab: 'node', details: 'n8n-nodes-base.notion' };
+		const NOTION_ROW = 'instance-policy-open-n8n-nodes-base.notion';
+		// The focus is inside the open dialog when it closes.
+		const closeFromInside = async (dialog: HTMLElement) => {
+			dialog.focus();
+			await fireEvent.click(dialog);
+		};
+
+		it('returns the focus to the row of the type', async () => {
+			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, NODE_DIALOG);
+			const rowButton = await findByTestId(NOTION_ROW);
+
+			await closeFromInside(getByTestId('node-type-access-dialog'));
+
+			expect(rowButton).toHaveFocus();
+		});
+
+		it('moves the focus to the access filter when the row is not in the table', async () => {
+			const { getByTestId, getByRole, findByTestId, getByPlaceholderText, queryByTestId } = setup(
+				BOTH_SCOPES,
+				NODE_DIALOG,
+			);
+			await findByTestId(NOTION_ROW);
+			await fireEvent.update(getByPlaceholderText('Search nodes'), 'no match');
+			expect(queryByTestId(NOTION_ROW)).not.toBeInTheDocument();
+
+			await closeFromInside(getByTestId('node-type-access-dialog'));
+
+			expect(accessFilter(getByRole)).toHaveFocus();
+		});
+
+		it('returns the focus on the Credentials tab too', async () => {
+			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, {
+				tab: 'credential',
+				details: 'bitlyApi',
+			});
+			const rowButton = await findByTestId('instance-policy-open-bitlyApi');
+
+			await closeFromInside(getByTestId('credential-type-access-dialog'));
+
+			expect(rowButton).toHaveFocus();
+		});
 	});
 });

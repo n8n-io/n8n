@@ -1,5 +1,6 @@
 import type { PolicyViolation } from '@n8n/api-types';
 import {
+	getGeneratedToolVariantBase,
 	getRestrictionMessage,
 	getViolationVerdict,
 	type RestrictionMessage,
@@ -9,8 +10,6 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-
-const TOOL_SUFFIX = 'Tool';
 
 const REASON_KEY: Record<RestrictionMessage, BaseTextKey> = {
 	instance: 'agents.chat.toolPolicyRefusal.reason',
@@ -24,14 +23,10 @@ export function useToolPolicyRefusalText() {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 
+	// Agents run the generated tool variant of a node, so the base names the subject.
 	function nodeTypeName(type: string): string | undefined {
-		// Agents run the generated `*Tool` variant of a usable-as-tool node. Real nodes such as
-		// `agentTool` also end in `Tool`, so only a usable-as-tool base names the subject.
-		if (type.endsWith(TOOL_SUFFIX)) {
-			const base = nodeTypesStore.getNodeType(type.slice(0, -TOOL_SUFFIX.length));
-			if (base?.usableAsTool) return base.displayName;
-		}
-		return nodeTypesStore.getNodeType(type)?.displayName;
+		const base = getGeneratedToolVariantBase(type, nodeTypesStore.getNodeType);
+		return nodeTypesStore.getNodeType(base ?? type)?.displayName;
 	}
 
 	/** Undefined until the types are loaded, so callers show a readable fallback, not a type id. */

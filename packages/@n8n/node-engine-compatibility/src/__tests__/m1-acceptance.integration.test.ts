@@ -1,9 +1,9 @@
-import { createDataSource } from '@n8n/engine';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+	acceptanceRuntime,
 	branchyLoopWorkflow,
 	chainedLoopsV1Workflow,
 	chainedLoopsWorkflow,
@@ -23,21 +23,19 @@ import { toV1RunExecutionData } from '../v1-execution-read';
 
 describe('M1 acceptance (integration)', () => {
 	let container: StartedPostgreSqlContainer;
-	let dataSource: ReturnType<typeof createDataSource>;
+	const engine = acceptanceRuntime();
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer('postgres:18-alpine').start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		await engine.start(container.getConnectionUri());
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
+		await engine.stop();
 		if (container) await container.stop();
 	});
 
-	const runWorkflow = makeRunWorkflow(() => dataSource);
+	const runWorkflow = makeRunWorkflow(() => engine);
 
 	it('runs a single v1 node (Set) workflow to completion with correct rows', async () => {
 		const graph = setWorkflow([{ name: 'greeting', value: 'hello', type: 'string' }]);
@@ -190,6 +188,77 @@ describe('M1 acceptance (integration)', () => {
 				expect.objectContaining({ json: { byInput: 2, byReference: 'from-trigger' } }),
 				expect.objectContaining({ json: { byInput: 3, byReference: 'from-trigger' } }),
 			],
+		]);
+	});
+
+	it('runs a node once on the items of both edges into its input, with paired items intact', async () => {
+		// trigger -> A and B, which both feed C's only input; C -> D
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					setNode('node-a', 'A', [{ name: 'via', value: 'A', type: 'string' }]),
+					setNode('node-b', 'B', [{ name: 'via', value: 'B', type: 'string' }]),
+					setNode('node-c', 'C', [
+						{ name: 'via', value: '={{ $json.via }}', type: 'string' },
+						{
+							name: 'origin',
+							value: "={{ $('When clicking Execute').item.json.n }}",
+							type: 'number',
+						},
+					]),
+					setNode('node-d', 'D', [
+						{ name: 'via', value: '={{ $json.via }}', type: 'string' },
+						{
+							name: 'origin',
+							value: "={{ $('When clicking Execute').item.json.n }}",
+							type: 'number',
+						},
+					]),
+				],
+				{
+					[TRIGGER.name]: {
+						main: [
+							[
+								{ node: 'A', type: 'main', index: 0 },
+								{ node: 'B', type: 'main', index: 0 },
+							],
+						],
+					},
+					A: mainTo('C'),
+					B: mainTo('C'),
+					C: mainTo('D'),
+				},
+			),
+		);
+		const { execution, steps, byNode } = await runWorkflow(graph, [
+			[{ json: { n: 1 } }, { json: { n: 2 } }],
+		]);
+
+		expect(execution.status).toBe('completed');
+		expect(steps.filter((step) => step.nodeId === 'node-c')).toHaveLength(1);
+
+		// A's items first, then B's, and each item resolves the trigger item behind it,
+		// inside C through its input link and in D through C's output link.
+		const jsonOf = (nodeId: string) => {
+			const [items] = byNode(nodeId)?.outputs ?? [];
+			return (items as Array<{ json: unknown }>).map(({ json }) => json);
+		};
+		const expected = [
+			{ via: 'A', origin: 1 },
+			{ via: 'A', origin: 2 },
+			{ via: 'B', origin: 1 },
+			{ via: 'B', origin: 2 },
+		];
+		expect(jsonOf('node-c')).toEqual(expected);
+		expect(jsonOf('node-d')).toEqual(expected);
+
+		// Every item of C names the edge it came from, so a later node can walk to it.
+		expect(byNode('node-c')?.outputs?.[0]).toMatchObject([
+			{ pairedItem: { item: 0, sourceOverwrite: { previousNode: 'A', previousNodeOutput: 0 } } },
+			{ pairedItem: { item: 1, sourceOverwrite: { previousNode: 'A', previousNodeOutput: 0 } } },
+			{ pairedItem: { item: 0, sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0 } } },
+			{ pairedItem: { item: 1, sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0 } } },
 		]);
 	});
 
@@ -654,6 +723,43 @@ describe('M1 acceptance (integration)', () => {
 	// TODO(CAT-2874): slot-shaped IO and branching land as a PR series (#35672
 	// first); If/Merge routing is asserted once input slots beyond 0 exist.
 	it.todo('routes items through an If node and consolidates with Merge');
+
+	it('runs a Merge with an empty first input on the items of its second input only', async () => {
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					splitOutNode('split-out-1', 'SplitOut1', 'list'),
+					splitOutNode('split-out-2', 'SplitOut2', 'n'),
+					{
+						id: 'merge',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						parameters: {},
+					},
+				],
+				{
+					'When clicking Execute': mainTo('SplitOut1'),
+					SplitOut1: {
+						main: [
+							[
+								{ node: 'SplitOut2', type: 'main' as const, index: 0 },
+								{ node: 'Merge', type: 'main' as const, index: 1 },
+							],
+						],
+					},
+					SplitOut2: { main: [[{ node: 'Merge', type: 'main' as const, index: 0 }]] },
+				},
+			),
+		);
+
+		const { execution, byNode } = await runWorkflow(graph, [[{ json: { list: [0] } }]]);
+
+		expect(execution.status).toBe('completed');
+		expect(byNode('split-out-2')?.outputs).toEqual([null]);
+		expect(byNode('merge')?.outputs).toEqual([[expect.objectContaining({ json: { list: 0 } })]]);
+	});
 
 	it('executes a loop over a back-edge, one step per node per pass', async () => {
 		const graph = loopWorkflow(1);
