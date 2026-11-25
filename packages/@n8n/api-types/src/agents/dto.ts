@@ -204,10 +204,22 @@ export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	sourceFacetId: z.string().min(1).max(255).optional(),
 }) {}
 
-/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+const threadCursorTimestamp = z.string().datetime();
+
+/** Cross-agent n8n Chat thread list: no status, origin, or scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
-	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
-	cursor: z.string().datetime().optional(),
+	// New cursors add the thread ID to break ties at the same update time.
+	cursor: z
+		.string()
+		.refine((cursor) => {
+			const [timestamp, ...idParts] = cursor.split('|');
+			return (
+				threadCursorTimestamp.safeParse(timestamp).success &&
+				(idParts.length === 0 || idParts.join('|') !== '') &&
+				!cursor.includes('\0')
+			);
+		}, 'Invalid session cursor')
+		.optional(),
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),

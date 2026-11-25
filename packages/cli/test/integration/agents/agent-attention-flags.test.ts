@@ -294,6 +294,26 @@ describe('Agent attention flags', () => {
 		expect(page.threads.map(({ id }) => id)).toEqual([thread.id]);
 	});
 
+	it('pages through equal timestamps without a session ID filter', async () => {
+		const updatedAt = new Date('2026-01-01T00:00:00.000Z');
+		const lower = await session({ id: 'a|lower', updatedAt });
+		const higher = await session({ id: 'a|suffix', updatedAt });
+
+		const first = await threads.findByProjectIdPaginated(projectId, agentId, userId, 1);
+		expect(first.threads.map(({ id }) => id)).toEqual([higher.id]);
+		expect(first.nextCursor).not.toBeNull();
+
+		const second = await threads.findByProjectIdPaginated(
+			projectId,
+			agentId,
+			userId,
+			1,
+			first.nextCursor ?? undefined,
+		);
+		expect(second.threads.map(({ id }) => id)).toEqual([lower.id]);
+		expect(second.nextCursor).toBeNull();
+	});
+
 	it('filters hundreds of session IDs across pages with equal timestamps', async () => {
 		const included = [];
 		for (let i = 0; i < 205; i++) included.push(await session());

@@ -273,9 +273,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
-	 * Paginated thread listing sorted by updatedAt DESC.
-	 * Uses cursor-based pagination where the cursor is the updatedAt ISO string
-	 * of the last item on the previous page.
+	 * Lists threads by update time, with the thread ID as a tie-breaker.
+	 * Pass the previous page's cursor to continue the listing.
 	 */
 	async findByProjectIdPaginated(
 		projectId: string,
@@ -293,7 +292,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				{ userId },
 			);
 		this.applyListFilters(query, filters, userId, this.updatedAtExpression());
-		return await this.paginateByUpdatedAt(query, limit, cursor, filters.sessionIds !== undefined);
+		return await this.paginateByUpdatedAt(query, limit, cursor);
 	}
 
 	/**
@@ -415,15 +414,23 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		query: SelectQueryBuilder<AgentExecutionThread>,
 		limit: number,
 		cursor?: string,
-		stable = false,
 	): Promise<AgentExecutionThreadPage> {
 		const updatedAt = this.updatedAtExpression();
-		query.orderBy(stable ? updatedAt : 'thread.updatedAt', 'DESC').take(limit + 1);
-		if (stable) query.addOrderBy('thread.id', 'DESC');
+		if (updatedAt === 'thread.updatedAt') {
+			query.orderBy(updatedAt, 'DESC');
+		} else {
+			// TypeORM needs a selected alias for the SQLite expression when paginating joins.
+			query.addSelect(updatedAt, 'page_updated_at').orderBy('page_updated_at', 'DESC');
+		}
+		query.addOrderBy('thread.id', 'DESC').take(limit + 1);
 		if (cursor) {
-			const [timestamp, id] = stable ? cursor.split('|') : [cursor];
+			// Timestamp-only cursors from older clients still work.
+			const [timestamp, ...idParts] = cursor.split('|');
+			const id = idParts.join('|');
 			const date = new Date(timestamp);
-			if (Number.isNaN(date.getTime())) throw new UserError('Invalid session cursor');
+			if (Number.isNaN(date.getTime()) || cursor.includes('\0') || (idParts.length && !id)) {
+				throw new UserError('Invalid session cursor');
+			}
 			query.andWhere(
 				id
 					? `(${updatedAt} < :cursor OR (${updatedAt} = :cursor AND thread.id < :cursorId))`
@@ -435,11 +442,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
 
+		const last = threads.at(-1);
 		return {
 			threads,
-			nextCursor: hasMore
-				? `${threads[threads.length - 1].updatedAt.toISOString()}${stable ? `|${threads[threads.length - 1].id}` : ''}`
-				: null,
+			nextCursor: hasMore && last ? `${last.updatedAt.toISOString()}|${last.id}` : null,
 		};
 	}
 
