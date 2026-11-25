@@ -76,7 +76,7 @@ export class McpServerToolsService {
 		);
 	}
 
-	/** Every workflow of the project, with the reason when it cannot be a tool of this server. */
+	/** Every workflow that the project owns, with the reason when it cannot be a tool of this server. */
 	async listCandidates(projectId: string, serverId: string): Promise<McpServerToolCandidate[]> {
 		const server = await this.findServer(projectId, serverId);
 		const [workflows, tools] = await Promise.all([
