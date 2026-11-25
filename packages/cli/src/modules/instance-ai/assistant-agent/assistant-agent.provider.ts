@@ -86,6 +86,7 @@ import {
 	writeSuspendedContextTurn,
 } from './assistant-context-turn-telemetry';
 import { AssistantEventSink } from './assistant-event-sink';
+import { AssistantRunDebugService } from './assistant-run-debug.service';
 import {
 	createSnapshotTemporaryWorkflowMarkers,
 	createThreadTemporaryWorkflowMarkers,
@@ -180,6 +181,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
+		private readonly runDebug: AssistantRunDebugService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -445,6 +447,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			}
 			return await shown;
 		};
+		const runDebugHooks = this.runDebug.stepHooksForTurn({
+			runId,
+			threadId: thread.id,
+			message: turn.type === 'start' ? turn.message : undefined,
+			resumeReason: turn.type === 'resume' ? 'resume' : undefined,
+		});
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
@@ -460,6 +468,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				// Recover token usage from raw provider events, so a stopped run is still billed.
 				recoverUsageOnAbort: true,
 				...modelStreamStallOptions(this.aiConfig),
+				...runDebugHooks,
 				providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 				// The input carries context blocks before the user's words, so title the words only.
 				...(turn.type === 'start' ? { titleText: turn.message } : {}),
@@ -666,6 +675,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					});
 				}
 			},
+			recordWorkflowCodeSnapshot: this.runDebug.workflowCodeRecorderForTurn({
+				runId: options.runId,
+				threadId: turn.thread.id,
+			}),
 			readSetupItemsSnapshots: async () => [],
 			// The setup panel announces the checklist without suspending the turn.
 			markWorkflowSetupHandled: async (workflowId) =>
@@ -690,7 +703,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			setPromptConfiguration: () => {},
 			setSetupPanelEnabled: () => {},
 			getBrowserUseAvailable: () => options.request.browserUseAvailable,
-			// The Assistant agent has no threshold override. Memory uses the configured policy.
 			getObserverThresholdTokens: () => undefined,
 		};
 	}
