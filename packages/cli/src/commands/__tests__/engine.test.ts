@@ -26,7 +26,7 @@ import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
 import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
-import { createInstanceRedisWorkQueues } from '@/modules/engine-v2/work-queue/redis-work-queues';
+import { createInstanceRedisWorkQueueFactory } from '@/modules/engine-v2/work-queue/redis-work-queue-factory';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
 import { RedisClientService, PostHogClient } from '@n8n/backend-services';
@@ -36,7 +36,7 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { Engine } from '../engine';
 
 vi.mock('@/crash-journal');
-vi.mock('@/modules/engine-v2/work-queue/redis-work-queues', { spy: true });
+vi.mock('@/modules/engine-v2/work-queue/redis-work-queue-factory', { spy: true });
 
 const dbConnection = mockInstance(DbConnection);
 const encryptionBootstrap = mockInstance(EncryptionBootstrapService);
@@ -52,13 +52,10 @@ const objectStoreService = mockInstance(ObjectStoreService);
 const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
 const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
 const publisher = mock<RedisChannelPublisher & WorkQueuePublisherClient>();
-/** Stands in for each consuming connection of the work queues. */
-const workQueueConsumer = mock<{ disconnect(): void }>();
+// The runtime is mocked, so no work queue consumer starts and opens a connection.
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
-	createClient: vi.fn(({ type }: { type: string }) =>
-		type === 'publisher(n8n)' ? publisher : workQueueConsumer,
-	) as unknown as RedisClientService['createClient'],
+	createClient: vi.fn(() => publisher) as unknown as RedisClientService['createClient'],
 });
 
 // Services the base `init()` reaches, as in worker.test.ts.
@@ -115,15 +112,6 @@ describe('Engine', () => {
 	afterEach(() => {
 		process.env = originalEnv;
 	});
-
-	/** Opens the consuming connections, as the runtime does when it starts the queues. */
-	const startAndStopWorkQueues = async () => {
-		const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
-		for (const consumer of [queues?.consumers.orchestration, queues?.consumers.step]) {
-			consumer?.start(async () => {});
-			await consumer?.stop();
-		}
-	};
 
 	const createEngine = (flags: { roles?: string } = {}) => {
 		const engine = new Engine();
@@ -350,7 +338,7 @@ describe('Engine', () => {
 			expect(runtime.init).toHaveBeenCalledWith({
 				responseSender: expect.any(ExecutionChannelSender),
 				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
-				queues: expect.anything(),
+				workQueueFactory: expect.anything(),
 				roles: expect.anything(),
 			});
 		});
@@ -358,32 +346,19 @@ describe('Engine', () => {
 		it('publishes work queue messages on the execution channel connection', async () => {
 			publisher.lpush.mockResolvedValue(1);
 			await createEngine().init();
-			const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
+			const workQueueFactory = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].workQueueFactory;
 
-			await queues?.publishers.orchestration.publish({
-				type: 'step:settled',
-				executionId: 'exec-1',
-				stepId: 'step-1',
-			});
+			await workQueueFactory
+				?.createPublisher('orchestration')
+				.publish({ type: 'step:settled', executionId: 'exec-1', stepId: 'step-1' });
 
+			expect(createInstanceRedisWorkQueueFactory).toHaveBeenCalledExactlyOnceWith(publisher);
 			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
 			expect(publisher.lpush).toHaveBeenCalledWith(
 				expect.stringMatching(/:engine-v2-queue:orchestration$/),
 				expect.any(String),
 			);
-		});
-
-		it('runs each work queue at the concurrency that the engine config sets for it', async () => {
-			engineConfig.orchestrationConcurrency = 2;
-			engineConfig.stepConcurrency = 3;
-
-			await createEngine().init();
-
-			expect(createInstanceRedisWorkQueues).toHaveBeenCalledWith(publisher, expect.anything(), {
-				orchestration: 2,
-				step: 3,
-			});
 		});
 
 		it('publishes lifecycle events over Redis on the channel of their execution', async () => {
@@ -476,7 +451,6 @@ describe('Engine', () => {
 		it('shuts the data plane down before exiting, without touching the crash journal', async () => {
 			const engine = createEngine();
 			await engine.init();
-			await startAndStopWorkQueues();
 			const dispose = vi.spyOn(Expression, 'disposeExpressionEngine');
 			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 			try {
@@ -484,12 +458,8 @@ describe('Engine', () => {
 				await engine.stopProcess();
 
 				expect(runtime.shutdown).toHaveBeenCalled();
-				expect(workQueueConsumer.disconnect).toHaveBeenCalledTimes(2);
 				expect(publisher.disconnect).toHaveBeenCalledTimes(1);
 				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
-					workQueueConsumer.disconnect.mock.invocationCallOrder[0],
-				);
-				expect(workQueueConsumer.disconnect.mock.invocationCallOrder[1]).toBeLessThan(
 					publisher.disconnect.mock.invocationCallOrder[0],
 				);
 				expect(exit).toHaveBeenCalledExactlyOnceWith();
@@ -508,10 +478,37 @@ describe('Engine', () => {
 			}
 		});
 
-		it('closes every Redis connection and reports every error when the data plane fails to shut down', async () => {
+		it('disconnects the work queue consumer connections after the engine stopped and before the publisher', async () => {
 			const engine = createEngine();
 			await engine.init();
-			await startAndStopWorkQueues();
+			const consumerConnection = { brpop: vi.fn(), disconnect: vi.fn() };
+			vi.mocked(redisClientService.createClient).mockReturnValueOnce(consumerConnection as never);
+			vi.mocked(runtime.init)
+				.mock.calls.at(-1)?.[0]
+				.workQueueFactory.createConsumer('step', {
+					concurrency: 1,
+					parse: (value) => value,
+					logger: mock<Logger>(),
+				});
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(consumerConnection.disconnect).toHaveBeenCalledOnce();
+				const [engineStopped] = vi.mocked(runtime.shutdown).mock.invocationCallOrder;
+				const [consumerClosed] = consumerConnection.disconnect.mock.invocationCallOrder;
+				const [publisherClosed] = publisher.disconnect.mock.invocationCallOrder;
+				expect(engineStopped).toBeLessThan(consumerClosed);
+				expect(consumerClosed).toBeLessThan(publisherClosed);
+			} finally {
+				exit.mockRestore();
+			}
+		});
+
+		it('closes the Redis publisher and reports every error when the data plane fails to shut down', async () => {
+			const engine = createEngine();
+			await engine.init();
 			const shutdownError = new Error('shutdown failed');
 			runtime.shutdown.mockRejectedValueOnce(shutdownError);
 			const disconnectError = new Error('disconnect failed');
@@ -526,7 +523,6 @@ describe('Engine', () => {
 				await engine.stopProcess();
 
 				expect(publisher.disconnect).toHaveBeenCalledTimes(1);
-				expect(workQueueConsumer.disconnect).toHaveBeenCalledTimes(2);
 				expect(exitWithCrash).toHaveBeenCalledWith(
 					'There was an error shutting down the engine.',
 					expect.objectContaining({ errors: [shutdownError, disconnectError] }),

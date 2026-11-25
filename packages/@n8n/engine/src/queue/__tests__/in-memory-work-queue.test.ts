@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { UnexpectedError } from '../../common';
 import type { EngineLogger } from '../../logging';
-import { InMemoryWorkQueue } from '../in-memory-work-queue';
-import { describeWorkQueueContract, type ContractMessage } from './work-queue.contract';
+import { createInMemoryWorkQueueFactory, InMemoryWorkQueue } from '../in-memory-work-queue';
+import {
+	describeWorkQueueContract,
+	parseContractMessage,
+	type ContractMessage,
+} from './work-queue.contract';
 
 const silentLogger: EngineLogger = {
 	debug: () => {},
@@ -13,8 +17,57 @@ const silentLogger: EngineLogger = {
 };
 
 describeWorkQueueContract('InMemoryWorkQueue', ({ concurrency }) => {
-	const queue = new InMemoryWorkQueue<ContractMessage>(silentLogger, { concurrency });
-	return { publisher: queue, consumer: queue };
+	const factory = createInMemoryWorkQueueFactory();
+	return {
+		publisher: factory.createPublisher<ContractMessage>('test'),
+		consumer: factory.createConsumer('test', {
+			concurrency,
+			parse: parseContractMessage,
+			logger: silentLogger,
+		}),
+	};
+});
+
+describe('createInMemoryWorkQueueFactory', () => {
+	it('delivers only to the consumer of the same name in the same factory', async () => {
+		const factory = createInMemoryWorkQueueFactory();
+		const consumerOptions = { concurrency: 1, parse: parseContractMessage, logger: silentLogger };
+		const received: Record<string, number[]> = { first: [], second: [], otherFactory: [] };
+		const recordAs =
+			(consumer: string) =>
+			async ({ n }: ContractMessage) => {
+				received[consumer].push(n);
+			};
+		const publisher = factory.createPublisher<ContractMessage>('first');
+		factory.createConsumer('first', consumerOptions).start(recordAs('first'));
+		factory.createConsumer('second', consumerOptions).start(recordAs('second'));
+		createInMemoryWorkQueueFactory()
+			.createConsumer('first', consumerOptions)
+			.start(recordAs('otherFactory'));
+
+		await publisher.publish({ n: 1 });
+
+		await expect.poll(() => received.first).toEqual([1]);
+		expect(received).toEqual({ first: [1], second: [], otherFactory: [] });
+	});
+
+	it('logs a message that fails the check of the consumer, and does not hand it over', async () => {
+		const factory = createInMemoryWorkQueueFactory();
+		const logger = { ...silentLogger, error: vi.fn() };
+		const handler = vi.fn(async () => {});
+		const consumer = factory.createConsumer('test', {
+			concurrency: 1,
+			parse: parseContractMessage,
+			logger,
+		});
+		consumer.start(handler);
+
+		await factory.createPublisher<unknown>('test').publish({ n: 'not a number' });
+		await consumer.stop();
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledOnce();
+	});
 });
 
 describe('InMemoryWorkQueue', () => {

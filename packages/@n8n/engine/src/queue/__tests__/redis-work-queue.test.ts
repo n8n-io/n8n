@@ -6,7 +6,7 @@ import type { EngineLogger } from '../../logging';
 import {
 	RedisWorkQueueConsumer,
 	type RedisWorkQueueConsumerOptions,
-	type ClosableWorkQueueConsumerClient,
+	type WorkQueueConsumerClient,
 	type WorkQueuePublisherClient,
 } from '../redis-work-queue';
 import { FakeRedisList } from './fake-redis-list';
@@ -29,7 +29,7 @@ function createConsumer(
 ) {
 	const consumer = new RedisWorkQueueConsumer<ContractMessage>({
 		publisher: redis,
-		openConnection: () => redis,
+		client: redis,
 		key: KEY,
 		parse: parseContractMessage,
 		logger: silentLogger,
@@ -284,29 +284,21 @@ describe('RedisWorkQueueConsumer', () => {
 		expect(() => consumer.start(async () => {})).toThrow(UnexpectedError);
 	});
 
-	it('closes its connection in close and opens a new one on the next start', async () => {
-		const first = new FakeRedisList();
-		const second = new FakeRedisList();
-		const openConnection = vi.fn<() => ClosableWorkQueueConsumerClient>();
-		openConnection.mockReturnValueOnce(first).mockReturnValueOnce(second);
-		const consumer = createConsumer(new FakeRedisList(), { openConnection });
-
+	it('fetches again on the same client when it starts after a stop', async () => {
+		const redis = new FakeRedisList();
+		const consumer = createConsumer(redis);
 		consumer.start(async () => {});
 		await consumer.stop();
-		consumer.close();
-
-		expect(first.disconnect).toHaveBeenCalledOnce();
+		redis.brpop.mockClear();
 
 		consumer.start(async () => {});
-		await vi.waitFor(() => expect(second.brpop).toHaveBeenCalled());
 
-		expect(openConnection).toHaveBeenCalledTimes(2);
-		expect(second.disconnect).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(redis.brpop).toHaveBeenCalled());
 	});
 
 	it('accepts ioredis Redis and Cluster clients', () => {
-		expectTypeOf<Redis>().toExtend<WorkQueuePublisherClient & ClosableWorkQueueConsumerClient>();
-		expectTypeOf<Cluster>().toExtend<WorkQueuePublisherClient & ClosableWorkQueueConsumerClient>();
+		expectTypeOf<Redis>().toExtend<WorkQueuePublisherClient & WorkQueueConsumerClient>();
+		expectTypeOf<Cluster>().toExtend<WorkQueuePublisherClient & WorkQueueConsumerClient>();
 	});
 
 	it.each([

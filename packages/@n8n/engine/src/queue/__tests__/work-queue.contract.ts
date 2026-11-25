@@ -20,7 +20,7 @@ export interface WorkQueueUnderTest {
 	dispose?: () => Promise<void>;
 }
 
-export type WorkQueueFactory = (options: {
+export type CreateQueueUnderTest = (options: {
 	concurrency: number;
 }) => WorkQueueUnderTest | Promise<WorkQueueUnderTest>;
 
@@ -111,7 +111,7 @@ async function expectDeliveredExactly(received: number[], expected: number[]): P
  * The behaviour every work queue adapter must have. The contract makes no
  * promise about delivery order, so no case here asserts one.
  */
-export function describeWorkQueueContract(adapterName: string, create: WorkQueueFactory): void {
+export function describeWorkQueueContract(adapterName: string, create: CreateQueueUnderTest): void {
 	describe(`Work queue contract: ${adapterName}`, () => {
 		const disposers: Array<() => Promise<void>> = [];
 

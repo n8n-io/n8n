@@ -24,7 +24,7 @@ import {
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import {
-	createInMemoryWorkQueues,
+	createInMemoryWorkQueueFactory,
 	type OrchestrationMessage,
 	type StepMessage,
 	type WorkQueuePublisher,
@@ -884,7 +884,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {

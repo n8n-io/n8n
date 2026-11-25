@@ -127,18 +127,23 @@ export type {
 } from './admittance';
 
 export type {
-	EngineWorkQueues,
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
 	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueueConsumer,
+	WorkQueueConsumerClient,
+	WorkQueueConsumerOptions,
+	WorkQueueFactory,
 	WorkQueuePublisher,
-	RedisWorkQueues,
 	WorkQueuePublisherClient,
 } from './queue';
-export { createInMemoryWorkQueues, createRedisWorkQueues } from './queue';
+export {
+	createInMemoryWorkQueueFactory,
+	RedisWorkQueueConsumer,
+	RedisWorkQueuePublisher,
+} from './queue';
 
 export {
 	attachStepErrorDetails,

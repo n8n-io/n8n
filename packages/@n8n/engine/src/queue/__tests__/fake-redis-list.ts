@@ -1,15 +1,12 @@
 import { vi } from 'vitest';
 
-import type {
-	ClosableWorkQueueConsumerClient,
-	WorkQueuePublisherClient,
-} from '../redis-work-queue';
+import type { WorkQueueConsumerClient, WorkQueuePublisherClient } from '../redis-work-queue';
 
 /**
  * One Redis list. LPUSH adds at the head, RPUSH at the tail, and BRPOP takes
  * from the tail, so `items` reads head to tail.
  */
-export class FakeRedisList implements WorkQueuePublisherClient, ClosableWorkQueueConsumerClient {
+export class FakeRedisList implements WorkQueuePublisherClient, WorkQueueConsumerClient {
 	readonly items: string[] = [];
 
 	private wakeWaiter: (() => void) | undefined;
@@ -39,8 +36,6 @@ export class FakeRedisList implements WorkQueuePublisherClient, ClosableWorkQueu
 		const value = this.items.pop();
 		return value === undefined ? null : [key, value];
 	});
-
-	disconnect = vi.fn();
 
 	private wake() {
 		const waiter = this.wakeWaiter;

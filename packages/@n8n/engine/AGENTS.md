@@ -42,25 +42,25 @@ a deployable engine worker) without touching core logic.
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
   (`InMemoryWorkQueue`, and `RedisWorkQueuePublisher` and
   `RedisWorkQueueConsumer` on a Redis list). The Postgres/ORM
-  coupling lives *here only*. `createInMemoryWorkQueues` builds the pair of
-  in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
-  the engine sets the list names and the message schemas. The host gives the
-  Redis connections, the key prefix and the concurrency limits.
-  `RedisWorkQueuePublisher` never closes its client. `RedisWorkQueueConsumer`
-  opens its own connection on its first `start()` and closes it in `close()`,
-  so a process that only publishes to a queue opens none for it. The
-  factory's `close()` calls the `close()` of both consumers; the host closes
-  the publisher. The engine has
-  no runtime dependency on `ioredis`; the adapter declares the client commands
-  it needs as interfaces.
+  coupling lives *here only*. A host gives the engine a `WorkQueueFactory`,
+  which builds a publisher or a consumer from a queue name. A publisher and a
+  consumer with the same name use the same queue, and the adapter knows no
+  queue names. `createInMemoryWorkQueueFactory` keeps one queue for each name.
+  The `n8n engine` process builds its Redis factory in `packages/cli` from
+  `RedisWorkQueuePublisher` and `RedisWorkQueueConsumer`. Neither closes its
+  client. The host closes each consumer client after the runtime stopped, and
+  then the publisher client, so a fetch still pending fails instead of taking a
+  message. The engine has no runtime dependency on `ioredis`; the adapter
+  declares the client commands it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
-  engine, so no host repeats the wiring. The host gives it the queues. It
-  starts and stops the consumers of its roles, but never closes their
-  connections.
+  engine, so no host repeats the wiring. The host gives it a `WorkQueueFactory`
+  and the concurrency limits. The runtime decides which queues exist, with
+  their names and message schemas. It creates a publisher for each queue, and
+  creates, starts and stops a consumer only for the queues of its roles.
   A process runs one or more roles (all three by default): `api` mounts `/api`,
   `orchestrator` runs the orchestration worker and the reconciliation sweeper,
   and `step-worker` runs the step worker and the wait sweeper. Every role serves
@@ -73,8 +73,8 @@ a deployable engine worker) without touching core logic.
 - **Composition roots** — `serve.ts` (standalone) and, in integrated mode,
   `packages/cli`. These construct the concrete adapters (the `DataSource`, the
   admittance policy, the v1 step executor and, in the `n8n engine` process, the
-  Redis connections for the work queues) and hand them to the engine factories
-  (`createEngineRuntime`, `createInMemoryWorkQueues`, `createRedisWorkQueues`).
+  Redis work queue factory) and hand them to the engine factories
+  (`createEngineRuntime`, `createInMemoryWorkQueueFactory`).
   **Construction lives here, not in the core** — but the topology does not:
   that belongs to the factories.
 

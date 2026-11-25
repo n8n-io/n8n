@@ -39,7 +39,7 @@ function createEngineProcess(key: string, concurrency = 1, blockTimeoutSeconds =
 	const consumerConnection = new Redis(container.getConnectionUrl());
 	const publisher = new RedisWorkQueuePublisher<ContractMessage>(publisherConnection, key);
 	const consumer = new RedisWorkQueueConsumer<ContractMessage>({
-		openConnection: () => consumerConnection,
+		client: consumerConnection,
 		publisher: publisherConnection,
 		key,
 		parse: parseContractMessage,
@@ -48,7 +48,8 @@ function createEngineProcess(key: string, concurrency = 1, blockTimeoutSeconds =
 		blockTimeoutSeconds,
 	});
 	const dispose = async () => {
-		await Promise.all([publisherConnection.quit(), consumerConnection.quit()]);
+		consumerConnection.disconnect();
+		await publisherConnection.quit();
 	};
 	return { publisher, consumer, publisherConnection, consumerConnection, dispose };
 }

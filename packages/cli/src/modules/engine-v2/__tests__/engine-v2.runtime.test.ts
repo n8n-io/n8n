@@ -6,8 +6,8 @@ import {
 	mintResumeToken,
 	mintStepBoundResumeToken,
 	SharedSecretIdentityVerifier,
-	type EngineWorkQueues,
 	type ExecutionResponseSender,
+	type WorkQueueFactory,
 } from '@n8n/engine';
 import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import type { BinaryDataService } from 'n8n-core';
@@ -151,7 +151,7 @@ describe('EngineV2Runtime', () => {
 	const initOptions = () => ({
 		responseSender: mock<ExecutionResponseSender>(),
 		lifecycleEventSender: { send: vi.fn().mockResolvedValue(undefined) },
-		queues: mock<EngineWorkQueues>(),
+		workQueueFactory: mock<WorkQueueFactory>(),
 	});
 
 	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
@@ -238,13 +238,19 @@ describe('EngineV2Runtime', () => {
 			});
 		});
 
-		it('passes the work queues it is given to the engine', async () => {
+		it('passes the work queue factory it is given and the concurrency of the engine config to the engine', async () => {
 			const options = initOptions();
 
-			await newRuntime().init(options);
+			await newRuntime('postgres://engine', {
+				orchestrationConcurrency: 2,
+				stepConcurrency: 3,
+			}).init(options);
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
-				expect.objectContaining({ queues: options.queues }),
+				expect.objectContaining({
+					workQueueFactory: options.workQueueFactory,
+					concurrency: { orchestration: 2, step: 3 },
+				}),
 			);
 		});
 
@@ -312,7 +318,7 @@ describe('EngineV2Runtime', () => {
 		it('injects no lifecycle event callback without a lifecycle event sender', async () => {
 			await newRuntime().init({
 				responseSender: mock<ExecutionResponseSender>(),
-				queues: mock<EngineWorkQueues>(),
+				workQueueFactory: mock<WorkQueueFactory>(),
 			});
 
 			expect(

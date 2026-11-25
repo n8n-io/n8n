@@ -30,7 +30,13 @@ import {
 } from '../lifecycle-events';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
-import type { EngineWorkQueues } from '../queue';
+import {
+	orchestrationMessageSchema,
+	stepMessageSchema,
+	type WorkQueueFactory,
+	type OrchestrationMessage,
+	type StepMessage,
+} from '../queue';
 import {
 	DEFAULT_RECONCILIATION_BATCH_SIZE,
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
@@ -102,11 +108,12 @@ export interface EngineRuntimeOptions {
 	/** How often the engine searches for stuck rows. Defaults to a minute. */
 	reconciliationIntervalMs?: number;
 	/**
-	 * The queues to run on, with their concurrency already set. The runtime
-	 * starts and stops the consumers of its roles. The host closes their
-	 * connections.
+	 * Builds the work queues. The runtime asks for an orchestration queue and a
+	 * step queue, and starts and stops the consumers of its roles.
 	 */
-	queues: EngineWorkQueues;
+	workQueueFactory: WorkQueueFactory;
+	/** The maximum number of handlers that each queue runs at once. Defaults to 1 each. */
+	concurrency?: { orchestration?: number; step?: number };
 	/**
 	 * Which ended executions the engine deletes, with their files. No default:
 	 * absent, the engine deletes nothing, so no host deletes data by omission.
@@ -146,7 +153,8 @@ export function createEngineRuntime({
 	externalDependencies,
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
-	queues,
+	workQueueFactory,
+	concurrency = {},
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
 	retention,
@@ -178,7 +186,9 @@ export function createEngineRuntime({
 	// otherwise fail every write of a row that becomes `queued` or `running`.
 	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
 
-	const { publishers, consumers } = queues;
+	const orchestrationPublisher =
+		workQueueFactory.createPublisher<OrchestrationMessage>('orchestration');
+	const stepPublisher = workQueueFactory.createPublisher<StepMessage>('step');
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
@@ -196,28 +206,9 @@ export function createEngineRuntime({
 		stepStore,
 		lifecycleEventPublisherFactory,
 		responseSender,
-		publishers.step,
+		stepPublisher,
 	);
-	const orchestrationWorker = new OrchestrationWorker(
-		consumers.orchestration,
-		new ExecutionStartHandler(
-			executionStore,
-			stepStore,
-			publishers.orchestration,
-			lifecycleEventPublisherFactory,
-		),
-		new StepSettledHandler(
-			executionStore,
-			stepStore,
-			publishers.step,
-			publishers.orchestration,
-			lifecycleEventPublisherFactory,
-			responseSender,
-			cancelExecution,
-			logger,
-		),
-	);
-	const waitSweeper = new WaitSweeper(stepStore, publishers.step, logger, waitSweepIntervalMs);
+	const waitSweeper = new WaitSweeper(stepStore, stepPublisher, logger, waitSweepIntervalMs);
 	const reconciliationSweeper = new ReconciliationSweeper(
 		[
 			new QueuedExecutionDetector(
@@ -244,16 +235,16 @@ export function createEngineRuntime({
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(
 				executionStore,
-				publishers.orchestration,
+				orchestrationPublisher,
 			),
-			'step-queued-no-message': new QueuedStepRepair(stepStore, publishers.step),
+			'step-queued-no-message': new QueuedStepRepair(stepStore, stepPublisher),
 			'step-running-no-worker': new RunningStepRepair(
 				executionStore,
 				stepStore,
-				publishers.orchestration,
+				orchestrationPublisher,
 				lifecycleEventPublisherFactory,
 			),
-			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationQueue),
+			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationPublisher),
 		},
 		logger,
 	);
@@ -276,21 +267,7 @@ export function createEngineRuntime({
 		admittance,
 		executionStore,
 		stepStore,
-		publishers.orchestration,
-	);
-	const stepWorker = new StepWorker(
-		consumers.step,
-		new StepReadyHandler(
-			executionStore,
-			stepStore,
-			publishers.orchestration,
-			dependencies,
-			lifecycleEventPublisherFactory,
-			responseSender,
-			startExecution,
-			// A deadline set after the sweeper armed would otherwise wait for its next pass.
-			() => waitSweeper.noteSuspended(),
-		),
+		orchestrationPublisher,
 	);
 
 	let apiDeps: EngineServerDeps | undefined;
@@ -302,7 +279,7 @@ export function createEngineRuntime({
 			resumeRequests:
 				resumeSecret === undefined
 					? undefined
-					: new ResumeRequestService(executionStore, stepStore, publishers.step, resumeSecret),
+					: new ResumeRequestService(executionStore, stepStore, stepPublisher, resumeSecret),
 			identityVerifier,
 			logger,
 		};
@@ -311,15 +288,59 @@ export function createEngineRuntime({
 
 	const workers: Array<OrchestrationWorker | StepWorker> = [];
 	const sweepers: Array<ReconciliationSweeper | WaitSweeper | RetentionSweeper> = [];
+	// Only for the roles of this process: a consumer can hold a connection.
 	if (runs.has('orchestrator')) {
-		workers.push(orchestrationWorker);
+		workers.push(
+			new OrchestrationWorker(
+				workQueueFactory.createConsumer('orchestration', {
+					concurrency: concurrency.orchestration ?? 1,
+					parse: (value) => orchestrationMessageSchema.parse(value),
+					logger,
+				}),
+				new ExecutionStartHandler(
+					executionStore,
+					stepStore,
+					orchestrationPublisher,
+					lifecycleEventPublisherFactory,
+				),
+				new StepSettledHandler(
+					executionStore,
+					stepStore,
+					stepPublisher,
+					orchestrationPublisher,
+					lifecycleEventPublisherFactory,
+					responseSender,
+					cancelExecution,
+					logger,
+				),
+			),
+		);
 		// Not with the step worker: it repairs what a crashed step worker leaves behind.
 		sweepers.push(reconciliationSweeper);
 		// Only here: the role with the fewest replicas, so fewer processes race to delete the same rows.
 		if (retentionSweeper) sweepers.push(retentionSweeper);
 	}
 	if (runs.has('step-worker')) {
-		workers.push(stepWorker);
+		workers.push(
+			new StepWorker(
+				workQueueFactory.createConsumer('step', {
+					concurrency: concurrency.step ?? 1,
+					parse: (value) => stepMessageSchema.parse(value),
+					logger,
+				}),
+				new StepReadyHandler(
+					executionStore,
+					stepStore,
+					orchestrationPublisher,
+					dependencies,
+					lifecycleEventPublisherFactory,
+					responseSender,
+					startExecution,
+					// A deadline set after the sweeper armed would otherwise wait for its next pass.
+					() => waitSweeper.noteSuspended(),
+				),
+			),
+		);
 		// The step worker re-arms it when a step suspends, which keeps a short wait on time.
 		sweepers.push(waitSweeper);
 	}

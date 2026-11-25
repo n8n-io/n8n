@@ -2,7 +2,7 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { EngineRole, ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
+import type { EngineRole, ExecutionChannelPublisher } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import type { RedisWorkQueueFactory } from '@/modules/engine-v2/work-queue/redis-work-queue-factory';
 
 import { BaseCommand } from './base-command';
 
@@ -44,7 +45,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private channelPublisher?: ExecutionChannelPublisher;
 
-	private workQueues?: RedisWorkQueues;
+	private workQueueFactory?: RedisWorkQueueFactory;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -98,20 +99,18 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.channelPublisher = publisher;
 
 		// In Redis, so that every engine process shares the work.
-		const { createInstanceRedisWorkQueues } = await import(
-			'@/modules/engine-v2/work-queue/redis-work-queues.js'
+		const { createInstanceRedisWorkQueueFactory } = await import(
+			'@/modules/engine-v2/work-queue/redis-work-queue-factory.js'
 		);
-		this.workQueues = await createInstanceRedisWorkQueues(redisPublisher, logger, {
-			orchestration: engineConfig.orchestrationConcurrency,
-			step: engineConfig.stepConcurrency,
-		});
+		const workQueueFactory = await createInstanceRedisWorkQueueFactory(redisPublisher);
+		this.workQueueFactory = workQueueFactory;
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
 		await this.runtime.init({
 			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
-			queues: this.workQueues.queues,
+			workQueueFactory,
 			roles,
 		});
 
@@ -170,8 +169,8 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const errors: unknown[] = [];
 		const releaseSteps = [
 			async () => await this.runtime?.shutdown(),
-			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
-			async () => this.workQueues?.close(),
+			// After the consumers stopped and before the publisher closes, so a late fetch fails instead of taking a message it can no longer give back.
+			async () => this.workQueueFactory?.close(),
 			// After the engine, so a final response still has somewhere to go.
 			async () => await this.channelPublisher?.stop(),
 			async () => await Expression.disposeExpressionEngine(),

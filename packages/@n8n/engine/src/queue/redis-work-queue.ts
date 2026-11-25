@@ -20,14 +20,12 @@ export interface WorkQueueConsumerClient {
 	brpop(key: string, timeoutSeconds: number): Promise<[string, string] | null>;
 }
 
-/** A consumer connection that the engine opens through the host, and closes. */
-export interface ClosableWorkQueueConsumerClient extends WorkQueueConsumerClient {
-	disconnect(): void;
-}
-
 export interface RedisWorkQueueConsumerOptions<TMessage> {
-	/** Called on the first `start()`, so a process that only publishes holds no consumer connection. */
-	openConnection: () => ClosableWorkQueueConsumerClient;
+	/**
+	 * The caller owns it. Close it after `stop()` returns, so that a fetch still
+	 * pending fails instead of taking a message.
+	 */
+	client: WorkQueueConsumerClient;
 	/** Gives a message that a fetch returned after `stop()` back to the list. The caller owns it. */
 	publisher: WorkQueuePublisherClient;
 	/** The Redis list that holds the messages of this queue. */
@@ -79,15 +77,12 @@ export class RedisWorkQueuePublisher<TMessage> implements WorkQueuePublisher<TMe
 
 /**
  * Consumes a Redis list. One fetch loop takes from its tail (BRPOP), and only
- * when a handler slot is free. It owns the connection it opens and closes it
- * in `close()`.
+ * when a handler slot is free.
  */
 export class RedisWorkQueueConsumer<TMessage> implements WorkQueueConsumer<TMessage> {
 	private readonly publisher: WorkQueuePublisherClient;
 
-	private readonly openConnection: () => ClosableWorkQueueConsumerClient;
-
-	private connection: ClosableWorkQueueConsumerClient | undefined;
+	private readonly client: WorkQueueConsumerClient;
 
 	private readonly key: string;
 
@@ -119,7 +114,7 @@ export class RedisWorkQueueConsumer<TMessage> implements WorkQueueConsumer<TMess
 			);
 		}
 		this.publisher = options.publisher;
-		this.openConnection = options.openConnection;
+		this.client = options.client;
 		this.key = options.key;
 		this.parse = options.parse;
 		this.logger = options.logger ?? createConsoleLogger();
@@ -131,12 +126,9 @@ export class RedisWorkQueueConsumer<TMessage> implements WorkQueueConsumer<TMess
 		if (this.active) {
 			throw new UnexpectedError('work queue already has a consumer');
 		}
-		const connection = (this.connection ??= this.openConnection());
 		const stopping = new AbortController();
 		// Waits for the loop that `stop()` gave up on, so that only one loop fetches.
-		const loop = this.lastLoop.then(
-			async () => await this.consume(handler, connection, stopping.signal),
-		);
+		const loop = this.lastLoop.then(async () => await this.consume(handler, stopping.signal));
 		this.lastLoop = loop;
 		this.active = { stopping, loop };
 	}
@@ -159,22 +151,15 @@ export class RedisWorkQueueConsumer<TMessage> implements WorkQueueConsumer<TMess
 		await handlersDone;
 	}
 
-	/** Closes the connection that `start()` opened. Call it after `stop()`. */
-	close(): void {
-		this.connection?.disconnect();
-		this.connection = undefined;
-	}
-
 	private async consume(
 		handler: (message: TMessage) => Promise<void>,
-		connection: WorkQueueConsumerClient,
 		signal: AbortSignal,
 	): Promise<void> {
 		while (!signal.aborted) {
 			while (this.inFlight.size >= this.concurrency) await Promise.race(this.inFlight);
 			if (signal.aborted) return;
 
-			const value = await this.fetch(connection, signal);
+			const value = await this.fetch(signal);
 			if (value === undefined) continue;
 			if (signal.aborted) {
 				await this.giveBack(value);
@@ -187,12 +172,9 @@ export class RedisWorkQueueConsumer<TMessage> implements WorkQueueConsumer<TMess
 	}
 
 	/** Returns the next value in the list, or `undefined` if none came. */
-	private async fetch(
-		connection: WorkQueueConsumerClient,
-		signal: AbortSignal,
-	): Promise<string | undefined> {
+	private async fetch(signal: AbortSignal): Promise<string | undefined> {
 		try {
-			const popped = await connection.brpop(this.key, this.blockTimeoutSeconds);
+			const popped = await this.client.brpop(this.key, this.blockTimeoutSeconds);
 			return popped?.[1];
 		} catch (error) {
 			this.logError('fetch failed', error);

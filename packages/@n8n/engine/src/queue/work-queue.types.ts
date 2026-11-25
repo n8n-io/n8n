@@ -7,6 +7,8 @@
  * has a publisher side and a consumer side, generic over its message type.
  */
 
+import type { EngineLogger } from '../logging';
+
 export interface ExecutionEnqueuedEvent {
 	type: 'execution:enqueued';
 	executionId: string;
@@ -56,17 +58,26 @@ export interface WorkQueueConsumer<TMessage> {
 	stop(): Promise<void>;
 }
 
-/** The two queues the engine runs on, by side. */
-export interface EngineWorkQueues {
-	publishers: {
-		orchestration: WorkQueuePublisher<OrchestrationMessage>;
-		step: WorkQueuePublisher<StepMessage>;
-	};
-	/** The runtime starts and stops only the consumers of its roles. */
-	consumers: {
-		/** Feeds the orchestration worker. */
-		orchestration: WorkQueueConsumer<OrchestrationMessage>;
-		/** Feeds the step worker. */
-		step: WorkQueueConsumer<StepMessage>;
-	};
+/** What the engine asks of the consumer of one queue. */
+export interface WorkQueueConsumerOptions<TMessage> {
+	/** The maximum number of handlers that the consumer runs at once. */
+	concurrency: number;
+	/** Checks each message before the handler gets it. A throw drops the message. */
+	parse: (value: unknown) => TMessage;
+	logger: EngineLogger;
+}
+
+/**
+ * Builds both sides of the work queues. The host chooses the adapter, and the
+ * runtime decides which queues exist. A publisher and a consumer with the same
+ * name use the same queue. The adapter derives its storage from the name, for
+ * example the name of a Redis list.
+ */
+export interface WorkQueueFactory {
+	createPublisher<TMessage>(name: string): WorkQueuePublisher<TMessage>;
+	/** The runtime calls it only for the queues that the roles of its process consume. */
+	createConsumer<TMessage>(
+		name: string,
+		options: WorkQueueConsumerOptions<TMessage>,
+	): WorkQueueConsumer<TMessage>;
 }

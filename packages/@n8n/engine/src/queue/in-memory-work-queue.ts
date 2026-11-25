@@ -1,6 +1,11 @@
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { checkWorkQueueConcurrency } from './work-queue-concurrency';
-import type { WorkQueueConsumer, WorkQueuePublisher } from './work-queue.types';
+import type {
+	WorkQueueConsumer,
+	WorkQueueConsumerOptions,
+	WorkQueueFactory,
+	WorkQueuePublisher,
+} from './work-queue.types';
 
 /** Makes a synchronous throw a rejection, so `run()` cannot recurse on one stack. */
 async function callAsync<TMessage>(
@@ -18,13 +23,20 @@ async function callAsync<TMessage>(
 export class InMemoryWorkQueue<TMessage>
 	implements WorkQueuePublisher<TMessage>, WorkQueueConsumer<TMessage>
 {
-	private readonly concurrency: number;
+	private concurrency: number;
 
 	constructor(
-		private readonly logger: EngineLogger = createConsoleLogger(),
+		private logger: EngineLogger = createConsoleLogger(),
 		{ concurrency = 1 }: { concurrency?: number } = {},
 	) {
 		this.concurrency = checkWorkQueueConcurrency(concurrency);
+	}
+
+	/** For a consumer that is created after the publisher of the same queue. */
+	setConsumerOptions({ concurrency, logger }: { concurrency: number; logger: EngineLogger }): void {
+		this.concurrency = checkWorkQueueConcurrency(concurrency);
+		this.logger = logger;
+		this.fillSlots();
 	}
 
 	private pending: TMessage[] = [];
@@ -80,4 +92,37 @@ export class InMemoryWorkQueue<TMessage>
 		this.idleWaiters = [];
 		for (const resolve of waiters) resolve();
 	}
+}
+
+/**
+ * Creates work queues in the memory of this process. Only this process
+ * consumes them, and queued messages are lost when it ends. Create one factory
+ * for each engine runtime: the publisher and the consumer of a name share one
+ * queue only within the same factory.
+ */
+export function createInMemoryWorkQueueFactory(): WorkQueueFactory {
+	const queues = new Map<string, InMemoryWorkQueue<unknown>>();
+	const queueFor = (name: string): InMemoryWorkQueue<unknown> => {
+		let queue = queues.get(name);
+		if (!queue) {
+			queue = new InMemoryWorkQueue<unknown>();
+			queues.set(name, queue);
+		}
+		return queue;
+	};
+
+	return {
+		createPublisher: <TMessage>(name: string): WorkQueuePublisher<TMessage> => queueFor(name),
+		createConsumer: <TMessage>(
+			name: string,
+			{ concurrency, parse, logger }: WorkQueueConsumerOptions<TMessage>,
+		): WorkQueueConsumer<TMessage> => {
+			const queue = queueFor(name);
+			queue.setConsumerOptions({ concurrency, logger });
+			return {
+				start: (handler) => queue.start(async (message) => await handler(parse(message))),
+				stop: async () => await queue.stop(),
+			};
+		},
+	};
 }
