@@ -8,6 +8,7 @@ import { DataSource } from '@n8n/typeorm';
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
+import { ExecutionLimitUsagePruningTask } from '../execution-limit-usage-pruning.task';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
@@ -69,6 +70,12 @@ describe('ExecutionLimitsModule', () => {
 			ExecutionLimitUsage,
 			ExecutionLimitInstanceUsage,
 			ExecutionLimitAudit,
+		]);
+	});
+
+	it('declares the usage pruning task', async () => {
+		expect(await new ExecutionLimitsModule().systemTasks()).toEqual([
+			ExecutionLimitUsagePruningTask,
 		]);
 	});
 });

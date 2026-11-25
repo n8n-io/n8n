@@ -20,6 +20,14 @@ The module has no licence flag. Its `init` registers the fold step that counts r
 `execution_limit_usage`, and that step must run on every instance. Gate each licensed part
 (a controller, the limit check) with `@Licensed` or `LicenseState`.
 
+## Usage retention
+
+A daily system task deletes the rows of `execution_limit_usage` and
+`execution_limit_instance_usage` that are older than
+`N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS` (default 400, minimum 31). The task runs one
+time for the cluster and does not need a licence, because the fold step writes rows on
+every instance. If you add a limit period longer than one month, increase the minimum.
+
 ## Import rules
 
 - Do not import from `packages/cli` or from the `n8n` package.
