@@ -1,7 +1,7 @@
 import { DEFAULT_EXECUTION_LIMIT_SETTINGS } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, SettingsRepository } from '@n8n/db';
+import { ProjectRepository, SettingsRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { BadRequestError, ConflictError } from '@n8n/errors';
@@ -37,6 +37,13 @@ describe('ExecutionLimitsService', () => {
 			select: { projectId: true, field: true, oldValue: true, newValue: true, updatedBy: true },
 			order: { id: 'ASC' },
 		});
+	}
+
+	async function removeLimitInTransaction(projectId: string) {
+		return await Container.get(TransactionRunner).run(
+			{},
+			async (ctx) => await service.removeLimitOfDeletedProject(projectId, USER_ID, undefined, ctx),
+		);
 	}
 
 	afterAll(async () => {
@@ -358,12 +365,14 @@ describe('ExecutionLimitsService', () => {
 			);
 			await service.setProjectLimits([{ projectId: first.id, maxExecutions: 30 }], USER_ID);
 			await service.removeProjectLimits([second.id], USER_ID);
+			await (await removeLimitInTransaction(first.id))();
 
 			expect(events).toEqual([
 				{ ...project, projectId: first.id, oldValue: null, newValue: 10 },
 				{ ...project, projectId: second.id, oldValue: null, newValue: 20 },
 				{ ...project, projectId: first.id, oldValue: 10, newValue: 30 },
 				{ ...project, projectId: second.id, oldValue: 20, newValue: null },
+				{ ...project, projectId: first.id, oldValue: 30, newValue: null },
 			]);
 			expect(await readAuditRows()).toEqual(events);
 		});
@@ -378,6 +387,7 @@ describe('ExecutionLimitsService', () => {
 			const saved = await service.updateSettings({ instanceMaxExecutions: 1000 }, 1, USER_ID);
 			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
 			await service.removeProjectLimits(['project-with-no-limit'], USER_ID);
+			await (await removeLimitInTransaction('project-with-no-limit'))();
 
 			expect(saved.version).toBe(2);
 			expect(events).toEqual([]);

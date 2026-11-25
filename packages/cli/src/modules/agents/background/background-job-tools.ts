@@ -218,14 +218,10 @@ export function createBackgroundJobsTool(options: BackgroundJobsToolOptions): Bu
 				'Without planId, resume uses the saved stopped plan, or the latest stop group if there is no plan.',
 		)
 		.systemInstruction(
-			'Use action "check" at most once per turn, including calls made together. ' +
-				'Omit jobIds to check all jobs, or include all relevant job IDs in one call. Use the ' +
-				'results already available and continue independent work. If further progress depends ' +
-				'on running jobs, end your turn with a short progress message. Completion triggers a ' +
-				'follow-up. Do not wait, sleep, or check again in the same turn to see whether ' +
-				'a job has finished. A user status request or a completion hint can justify one check ' +
-				'in a later turn. Do not claim that running jobs are complete.\n' +
-				`Call ${BACKGROUND_JOBS_TOOL_NAME} with action "resume" first when the latest user message explicitly asks to continue stopped tasks. For a plan, pass its planId. For a selective request, pass only the requested planTaskId values in planTaskIds. A group selects its unfinished children. Selected parent-run tasks return to pending or in_progress, based on whether they had started. Unstarted parent-run tasks return to pending even when their prerequisites are unfinished. Paused jobs with unfinished prerequisites stay paused. Continue does not dispatch new work. Do not resume unrelated tasks or prerequisites. Read task statuses from the plan. A new user message does not resume paused tasks. Without a plan, Continue applies to the latest stop group. Do not resume for an unrelated message or an automatic notification. Never replace paused sub-agents with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. Resume returns cancelled workflow references separately. It does not restart those workflows. Check conversation history and current jobs before repeating a workflow call, including repeated Continue requests. Create a new plan task for a cancelled workflow before calling the normal workflow tool again. Keep the previous task cancelled. A new execution uses current configuration and starts from the beginning. Earlier actions can repeat and webhook URLs change. Continuing does not approve pending tools or bypass permissions.`,
+			'Use action "check" at most once per turn (omit jobIds for all, or pass all needed IDs in one call). ' +
+				'Continue independent work or end your turn with a short progress message; completion triggers a follow-up. Never wait, sleep, poll, or claim running jobs are complete.\n' +
+				`Call ${BACKGROUND_JOBS_TOOL_NAME} with action "resume" only when the latest user message explicitly asks to continue stopped tasks (never automatically or for unrelated messages). ` +
+				'For a plan, pass planId and only the requested planTaskIds (omit planTaskIds for the whole plan; omit both outside a plan). Never replace paused sub-agents with new jobs. Continuing does not approve pending tools or restart cancelled workflows.',
 		)
 		.input(backgroundJobsInputSchema)
 		.handler(async (input, ctx) => {
@@ -366,6 +362,11 @@ async function resumeJobs(
 				...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
 			})),
 			workflowsToRestart: candidates.workflowsToRestart,
+			...(candidates.workflowsToRestart.length > 0
+				? {
+						note: 'Cancelled workflows are not restarted automatically. Check conversation history and current jobs before repeating a workflow call; create a new plan task (keeping the cancelled task) and call the workflow tool again. A new execution uses current configuration and starts from the beginning (earlier actions can repeat and webhook URLs change).',
+					}
+				: {}),
 		};
 	} finally {
 		await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);
