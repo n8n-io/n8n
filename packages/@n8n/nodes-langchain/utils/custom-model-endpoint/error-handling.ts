@@ -178,9 +178,11 @@ function isAnswer(parsed: unknown): boolean {
 	if (isRecord(parsed.response) && parsed.response.error) return false;
 
 	return (
-		// No choices is what the client reports as an empty answer, so it is not one,
-		// except in the closing usage frame, which the client asks for by default
-		(Array.isArray(parsed.choices) && (parsed.choices.length > 0 || isRecord(parsed.usage))) ||
+		// No choices is what the client reports as an empty answer, so it is not one
+		(Array.isArray(parsed.choices) && parsed.choices.length > 0) ||
+		// The closing frame of a chat stream, which the client asks for by default. It has
+		// to name itself one and carry the count, so a refusal does not reach this arm.
+		(parsed.object === 'chat.completion.chunk' && isRecord(parsed.usage)) ||
 		modelIdsIn(parsed) !== undefined ||
 		parsed.object === 'response' ||
 		Array.isArray(parsed.output) ||

@@ -910,9 +910,18 @@ describe('every shape a gateway can answer with', () => {
 	// The client asks for this frame by default, and it carries no choices, so the rule
 	// that an empty choices list is not an answer would send it through the filter
 	it('leaves the closing usage frame of a stream alone', async () => {
-		const frame = 'data: {"choices":[],"usage":{"total_tokens":21},"model":"gpt-4.1"}\n\n';
+		const frame =
+			'data: {"object":"chat.completion.chunk","choices":[],"usage":{"total_tokens":21},"model":"gpt-4.1"}\n\n';
 
 		expect(await throughWith(frame, ['1'])).toBe(frame);
+	});
+
+	// The arm above needs both marks, so a refusal that happens to carry an empty choices
+	// list and a count does not pass as one
+	it('still filters a refusal shaped like the closing usage frame', async () => {
+		const frame = `data: {"choices":[],"usage":{"total_tokens":0},"message":"bad key ${KEY}"}\n\n`;
+
+		expect(await throughWith(frame, [KEY])).not.toContain(KEY);
 	});
 
 	// A listed value is free to be a word of the protocol, and rewriting the prefix would
