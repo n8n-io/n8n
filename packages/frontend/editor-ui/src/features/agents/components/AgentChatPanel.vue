@@ -754,7 +754,9 @@ const backgroundJobRows = computed(() =>
 			label: locale.baseText(
 				job.kind === 'workflow'
 					? 'agents.chat.backgroundTasks.workflow'
-					: 'agents.chat.backgroundTasks.subagent',
+					: job.kind === 'approval'
+						? 'agents.chat.backgroundTasks.approvalFor'
+						: 'agents.chat.backgroundTasks.subagent',
 				{ interpolate: { title: job.title } },
 			),
 			indicator,

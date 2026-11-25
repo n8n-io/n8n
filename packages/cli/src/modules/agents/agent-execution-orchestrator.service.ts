@@ -24,6 +24,11 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { ExternalHooks } from '@/external-hooks';
 
+import {
+	encodeReviewRequester,
+	reviewRequesterForUser,
+	type AgentReviewRequester,
+} from './approval/review-requester';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import {
 	AgentChatExecutionService,
@@ -301,6 +306,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	modelMessage?: string;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
 	author?: AgentMessageAuthor;
+	requester?: AgentReviewRequester;
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
@@ -1018,6 +1024,10 @@ export class AgentExecutionOrchestratorService {
 					message,
 					modelMessage,
 					author,
+					requester:
+						author && integrationType && integrationType !== 'task'
+							? { ...author, source: integrationType }
+							: undefined,
 					attachments,
 					memory,
 					projectId: runtime.projectId,
@@ -1103,6 +1113,7 @@ export class AgentExecutionOrchestratorService {
 					memory,
 					attachments,
 					userId: user.id,
+					requester: reviewRequesterForUser(user, N8N_CHAT_INTEGRATION_TYPE),
 					chatSurface: setup.surface,
 					source: setup.source,
 					telemetry: { runType: 'production', configuration: runtime.telemetryConfiguration },
@@ -1200,6 +1211,7 @@ export class AgentExecutionOrchestratorService {
 						agentId,
 						projectId,
 						user,
+						integrationType: 'task',
 						sandboxPrincipalHash,
 						allowBackgroundTasks: false,
 					},
@@ -1612,6 +1624,9 @@ export class AgentExecutionOrchestratorService {
 			runtime,
 		);
 		const messageContext = await this.resolveResumeMessageContext(config, memoryScope);
+		const taskThread = isTaskRunMemoryResourceId(memoryScope.resourceId)
+			? await this.agentExecutionService.findThreadById(memoryScope.threadId)
+			: undefined;
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
@@ -1636,7 +1651,11 @@ export class AgentExecutionOrchestratorService {
 					guardrailModel: runtime.guardrailModel,
 				},
 			),
-			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
+			recording: {
+				...this.createResumeRecording(config, checkpoint, runtime, executionSource),
+				...(taskThread?.taskId ? { taskId: taskThread.taskId } : {}),
+				...(taskThread?.taskVersionId ? { taskVersionId: taskThread.taskVersionId } : {}),
+			},
 		};
 	}
 
@@ -1948,6 +1967,10 @@ export class AgentExecutionOrchestratorService {
 			guardrailModel: runtime.guardrailModel,
 			agentId,
 			userId: user.id,
+			requester: reviewRequesterForUser(
+				user,
+				setup.surface === 'preview' ? 'preview' : (source ?? N8N_CHAT_INTEGRATION_TYPE),
+			),
 			message,
 			attachments,
 			memory,
@@ -2019,6 +2042,7 @@ export class AgentExecutionOrchestratorService {
 				? { [TASK_RUN_STARTER_USER_KEY]: config.userId }
 				: {}),
 			...encodeIntegrationMessageContext(messageContext),
+			...encodeReviewRequester(config.requester),
 			...episodicScopeHostMetadata(resourceId, config.episodicScope),
 			...(config.chatSurface !== undefined &&
 			!config.isWakeRun &&

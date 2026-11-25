@@ -783,6 +783,7 @@ describe('GlobalConfig', () => {
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
 			modules: [],
+			humanReviewEnabled: false,
 			backgroundTasksEnabled: false,
 			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
@@ -898,6 +899,8 @@ describe('GlobalConfig', () => {
 		};
 		const config = Container.get(GlobalConfig);
 
+		// structuredClone omits prototype getters.
+		const { humanReviewEnabled: _humanReviewEnabled, ...agentDefaults } = defaultConfig.agents;
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -950,7 +953,7 @@ describe('GlobalConfig', () => {
 				responseBodyReadTimeout: 300000,
 			},
 			agents: {
-				...defaultConfig.agents,
+				...agentDefaults,
 				sandboxEphemeral: true,
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 			},
