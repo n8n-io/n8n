@@ -1,0 +1,65 @@
+packages/@n8n/expression-runtime/package.json
+  s_1bf676eec36f8e::t_c350d426e10802 15-20
+packages/@n8n/expression-runtime/src/types/index.ts
+  s_1bf676eec36f8e::t_c350d426e10802 20
+packages/@n8n/expression-runtime/src/runtime/safe-globals.ts
+  s_1bf676eec36f8e::t_ab611ce20adca1 169-173
+packages/@n8n/expression-runtime/src/native-evaluation/evaluator.ts
+  s_1bf676eec36f8e::t_03ef63183a186f 1-683
+packages/frontend/editor-ui/vite/aliases.mts
+  s_1bf676eec36f8e::t_c350d426e10802 10-18
+packages/@n8n/expression-runtime/src/native-evaluation/index.ts
+  s_1bf676eec36f8e::t_03ef63183a186f 1-27,29-63,65-197
+  s_1bf676eec36f8e::t_c350d426e10802 28
+  s_1bf676eec36f8e::t_9174e0b58036e4 64
+packages/workflow/test/expression-extension-names-parity.test.ts
+  s_1bf676eec36f8e::t_9f94aeedce2588 1-22
+packages/@n8n/expression-runtime/src/types/evaluator.ts
+  s_1bf676eec36f8e::t_c350d426e10802 392-399
+packages/workflow/test/native-evaluation-corpus-coverage.test.ts
+  s_1bf676eec36f8e::t_9174e0b58036e4 20
+packages/@n8n/expression-runtime/src/native-evaluation/verify.ts
+  s_1bf676eec36f8e::t_c350d426e10802 9
+  s_1bf676eec36f8e::t_03ef63183a186f 1-8,10-205
+packages/@n8n/expression-runtime/src/native-evaluation/host.ts
+  s_1bf676eec36f8e::t_613d44299f5de8 1-16
+packages/@n8n/expression-runtime/src/native-evaluation/parser.ts
+  s_1bf676eec36f8e::t_03ef63183a186f 2-477
+  s_1bf676eec36f8e::t_6e6bdb2de69476 1
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_1bf676eec36f8e::t_9174e0b58036e4 6
+packages/workflow/test/native-evaluation-metrics.test.ts
+  s_1bf676eec36f8e::t_9174e0b58036e4 9
+packages/workflow/test/native-evaluation-fuzz.test.ts
+  s_1bf676eec36f8e::t_9174e0b58036e4 18-22
+packages/workflow/src/expressions/native-evaluation.ts
+  s_1bf676eec36f8e::t_c350d426e10802 17,39-42
+  s_1bf676eec36f8e::t_9174e0b58036e4 1-16,18-38,43-57
+packages/@n8n/expression-runtime/src/native-evaluation/grammar.ts
+  s_1bf676eec36f8e::t_6e6bdb2de69476 1
+  s_1bf676eec36f8e::t_03ef63183a186f 2-320
+packages/@n8n/tournament/src/index.ts
+  s_1bf676eec36f8e::t_6e6bdb2de69476 13-14
+packages/frontend/editor-ui/vite/expression-runtime-stub.ts
+  s_1bf676eec36f8e::t_c350d426e10802 54
+packages/@n8n/expression-runtime/src/index.ts
+  s_1bf676eec36f8e::t_c350d426e10802 18
+packages/workflow/src/expression.ts
+  s_1bf676eec36f8e::t_9174e0b58036e4 1-5,25,27,29,48-49,413,635
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8f039cd6b49ebb467316ecdd9ed39daaeb80256",
+  "prompts": {},
+  "sessions": {
+    "s_1bf676eec36f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54144f3f-3e0a-4f65-a356-dfad1490ad7a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
