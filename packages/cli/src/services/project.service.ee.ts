@@ -148,12 +148,6 @@ export class ProjectService {
 		);
 	}
 
-	private get executionLimitsService() {
-		return import('@n8n/backend-module-execution-limits').then(({ ExecutionLimitsService }) =>
-			Container.get(ExecutionLimitsService),
-		);
-	}
-
 	private get secretsProvidersConnectionsService() {
 		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
@@ -310,24 +304,16 @@ export class ProjectService {
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
 		// 9. Delete the project and its deletion marker in one transaction.
-		const loginId = loginIdOf(ctx);
-		const executionLimits = this.moduleRegistry.isActive('execution-limits')
-			? await this.executionLimitsService
-			: undefined;
-		const announceLimitRemoval = await this.txRunner.run({}, async (ctx) => {
-			const announce = await executionLimits?.removeLimitOfDeletedProject(
-				project.id,
-				user.id,
-				loginId,
-				ctx,
-			);
+		const deletion = { projectId: project.id, userId: user.id, loginId: loginIdOf(ctx) };
+		const afterProjectDeleted = await this.txRunner.run({}, async (ctx) => {
+			const afterCommit = await this.projectMutationHooks.beforeProjectDeleted(deletion, ctx);
 			await this.projectRepository.removeProjectForDeletion(project, ctx);
 			if (this.moduleRegistry.isActive('agents')) {
 				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
 			}
-			return announce;
+			return afterCommit;
 		});
-		await announceLimitRemoval?.();
+		await afterProjectDeleted();
 
 		if (targetProject) {
 			// The cascade removes the source owner rows. Invalidate after the transaction commits.

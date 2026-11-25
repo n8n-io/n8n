@@ -52,6 +52,8 @@ export {
 export { RoleService } from './services/role.service';
 export {
 	ProjectMutationHooksProxy,
+	type AfterProjectDeleted,
+	type ProjectDeletion,
 	type ProjectMutationHooks,
 } from './services/project-mutation-hooks-proxy.service';
 export { ProjectScopeService } from './services/project-scope.service';
