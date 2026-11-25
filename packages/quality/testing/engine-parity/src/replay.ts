@@ -13,7 +13,7 @@ import { resolve } from 'node:path';
 import { selectRuleSets } from './grammar/rules';
 import { checkCase } from './parity';
 import { readRepro, reproCase } from './report/repro';
-import { diffSignature, findingSignature } from './report/signature';
+import { diffSignature, findingFailsRun, findingSignature } from './report/signature';
 import { startExpressionEngine, stopExpressionEngine } from './runners/expression-engine';
 import { V1Runner } from './runners/v1-runner';
 import { V2Runner } from './runners/v2-runner';
@@ -47,7 +47,9 @@ async function main(file: string | undefined): Promise<number> {
 			...result.known.map((id) => `KNOWN ${id}`),
 		];
 		process.stdout.write(`${lines.join('\n')}\n`);
-		return result.failures.length > 0 ? 1 : 0;
+		// The same verdict as the parity run: refusals and timeouts fail it too.
+		const failed = result.failures.length > 0 || result.findings.some(findingFailsRun);
+		return failed ? 1 : 0;
 	} finally {
 		await runners.v2.stop();
 		await runners.v1.stop();

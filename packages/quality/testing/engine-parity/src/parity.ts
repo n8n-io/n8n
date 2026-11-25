@@ -242,9 +242,13 @@ async function shrinkSignature(
 	const hasSignature = (parityCase: ParityCase, result: CaseResult) =>
 		result.failures.some((diff) => diffSignature(diff, parityCase) === signature);
 
+	// The time limit stops fast-check, not the case that runs. That case still uses the runners.
+	let active: Promise<unknown> = Promise.resolve();
 	const details = await fc.check(
 		fc.asyncProperty(arbitrary, async (parityCase) => {
-			const result = await checkCase(parityCase, runners, rules);
+			const run = checkCase(parityCase, runners, rules);
+			active = run;
+			const result = await run;
 			return !hasSignature(parityCase, result);
 		}),
 		{
@@ -255,6 +259,7 @@ async function shrinkSignature(
 			markInterruptAsFailure: false,
 		},
 	);
+	await Promise.allSettled([active]);
 
 	if (details.failed && details.counterexample) {
 		const [parityCase] = details.counterexample;
