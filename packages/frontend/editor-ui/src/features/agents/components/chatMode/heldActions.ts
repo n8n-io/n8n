@@ -108,7 +108,9 @@ const ACTION_VERBS: ReadonlySet<string> = new Set([
 	'set',
 ]);
 
-function inferAppAndAction(toolName: string): { appName: string; actionLabel: string } {
+function inferAppAndAction(fullToolName: string): { appName: string; actionLabel: string } {
+	// MCP tools carry an `mcp_` prefix before the server name. It is not the app.
+	const toolName = fullToolName.replace(/^mcp_+(?=[^_])/i, '');
 	// MCP or prefixed names: e.g. "linear__create_issue", "slack:post_message", "gmail_send_email"
 	const doubleSep = toolName.split(/__|::|:/);
 	if (doubleSep.length >= 2) {

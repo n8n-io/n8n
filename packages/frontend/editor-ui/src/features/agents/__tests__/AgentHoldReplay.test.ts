@@ -96,6 +96,28 @@ describe('heldActions helpers', () => {
 		expect(actionOutcome(held)).toBe('saved');
 	});
 
+	it.each(['mcp_linear_create_issue', 'mcp__linear__create_issue'])(
+		'reads the server of the MCP tool %s as its app',
+		(tool) => {
+			const [held] = extractHeldActions([
+				{
+					tool,
+					toolCallId: 'write-mcp',
+					state: TOOL_CALL_STATE.DONE,
+					simulation: {
+						route: 'simulated',
+						reason: 'served_from_world',
+						evidence: ['world_write'],
+					},
+				},
+			]);
+
+			expect(held.appName).toBe('Linear');
+			expect(held.actionLabel).toBe('Create issue');
+			expect(held.toolName).toBe(tool);
+		},
+	);
+
 	it('formats committedAt timestamps as HH:MM', () => {
 		const date = new Date(2026, 10, 20, 9, 5, 0);
 		expect(formatCommitTime(date.toISOString())).toBe('09:05');
