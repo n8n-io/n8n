@@ -422,6 +422,32 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 
 defineExpose({ openChannelModal });
 
+const togglingChannel = ref(false);
+
+/**
+ * Only n8n Chat has a switch in the list: it needs no credential, so it can be
+ * made available or unavailable without the channel modal.
+ */
+async function toggleChannel(channelType: string, enabled: boolean) {
+	if (channelType !== N8N_CHAT_INTEGRATION_TYPE || togglingChannel.value) return;
+	if (!enabled) {
+		requestDisconnect(channelType, connectedCredentials.value[channelType] ?? '');
+		return;
+	}
+	togglingChannel.value = true;
+	try {
+		await props.ensureAgentPersisted?.();
+		await integrationStatus.connect(channelType, '');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		return;
+	} finally {
+		togglingChannel.value = false;
+	}
+	emit('agent-changed');
+	handleChannelConnected(channelType);
+}
+
 function handleChannelDisconnected(channelType: string) {
 	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
 	emit('update:connected-triggers', channels);
@@ -441,7 +467,7 @@ function handleChannelDisconnected(channelType: string) {
 			:project-id="props.projectId"
 			:agent-id="props.agentId"
 			:disabled="props.disabled"
-			:removing-channel="removingChannel"
+			:removing-channel="removingChannel || togglingChannel"
 			:task-refs="props.taskRefs"
 			:is-published="props.isPublished"
 			:is-runnable="props.isRunnable"
@@ -452,6 +478,7 @@ function handleChannelDisconnected(channelType: string) {
 			:preview-disabled-reason="props.previewDisabledReason"
 			@open-channel="openChannelEdit($event.type, $event.connected)"
 			@add-channel="openChannelModal"
+			@toggle-channel="toggleChannel($event.type, $event.enabled)"
 			@open-task="openTaskEdit"
 			@toggle-task="emit('toggle-task', $event)"
 			@tasks-changed="emit('tasks-changed')"

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentConfigValidationIssue,
+	type AgentJsonTaskConfig,
+} from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -37,6 +41,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'open-channel': [payload: { type: string; connected: boolean }];
 	'add-channel': [];
+	'toggle-channel': [payload: { type: string; enabled: boolean }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
@@ -68,11 +73,21 @@ const { taskRows, taskErrorMessage, removingTaskId, toggleTask, reloadTasks } = 
  * credential name says which account the channel uses.
  */
 function channelTitle(channel: AgentTriggerChannelItem) {
-	return channel.mentionLabel ?? channel.credentialName ?? channel.label;
+	if (isN8nChat(channel)) {
+		return i18n.baseText('agents.builder.triggers.channel.newChatThread');
+	}
+	return (
+		channel.mentionLabel ??
+		channel.credentialName ??
+		i18n.baseText('agents.builder.triggers.channel.newSession')
+	);
+}
+
+function isN8nChat(channel: AgentTriggerChannelItem) {
+	return channel.type === N8N_CHAT_INTEGRATION_TYPE;
 }
 
 function channelSource(channel: AgentTriggerChannelItem) {
-	if (!channel.mentionLabel && !channel.credentialName) return undefined;
 	return i18n.baseText('agents.builder.triggers.channel.source', {
 		interpolate: { channel: channel.label },
 	});
@@ -120,7 +135,7 @@ defineExpose({ reloadTasks });
 				</span>
 			</li>
 
-			<li v-for="channel in props.channels" :key="channel.type">
+			<li v-for="channel in props.channels" :key="channel.type" :class="$style.row">
 				<button
 					type="button"
 					:class="[
@@ -172,6 +187,21 @@ defineExpose({ reloadTasks });
 						</template>
 					</N8nTooltip>
 				</button>
+				<div v-if="isN8nChat(channel)" :class="$style.actions">
+					<N8nSwitch2
+						:model-value="channel.connected"
+						:disabled="props.disabled || props.removingChannel"
+						:aria-label="
+							i18n.baseText(
+								channel.connected
+									? 'agents.channels.n8nChat.makeUnavailable'
+									: 'agents.channels.n8nChat.makeAvailable',
+							)
+						"
+						data-testid="agent-triggers-channel-toggle"
+						@update:model-value="emit('toggle-channel', { type: channel.type, enabled: $event })"
+					/>
+				</div>
 			</li>
 
 			<li v-for="task in taskRows" :key="task.id" :class="$style.row">

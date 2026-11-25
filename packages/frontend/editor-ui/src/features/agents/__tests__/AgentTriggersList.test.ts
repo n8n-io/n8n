@@ -99,10 +99,45 @@ describe('AgentTriggersList', () => {
 			expect(text).toContain('agents.builder.triggers.channel.source:{"channel":"Slack"}');
 		});
 
-		it('uses the channel label as title when no credential is known', () => {
+		it('uses a new session title and the channel as source when no credential is known', () => {
 			const wrapper = mountList({ channels: [makeChannel()] });
 
-			expect(wrapper.get('[data-testid="agent-triggers-channel"]').text()).toBe('Slack');
+			const text = wrapper.get('[data-testid="agent-triggers-channel"]').text();
+			expect(text).toContain('agents.builder.triggers.channel.newSession');
+			expect(text).toContain('agents.builder.triggers.channel.source:{"channel":"Slack"}');
+		});
+
+		it('uses a new chat thread title and n8n Chat as source for n8n Chat', () => {
+			const wrapper = mountList({
+				channels: [makeChannel({ type: 'n8n_chat', label: 'n8n Chat' })],
+			});
+
+			const text = wrapper.get('[data-testid="agent-triggers-channel"]').text();
+			expect(text).toContain('agents.builder.triggers.channel.newChatThread');
+			expect(text).toContain('agents.builder.triggers.channel.source:{"channel":"n8n Chat"}');
+		});
+
+		it('shows a switch only for n8n Chat', () => {
+			const wrapper = mountList({
+				channels: [
+					makeChannel(),
+					makeChannel({ type: 'n8n_chat', label: 'n8n Chat', connected: false }),
+				],
+			});
+
+			const toggles = wrapper.findAll('[data-testid="agent-triggers-channel-toggle"]');
+			expect(toggles).toHaveLength(1);
+			expect(wrapper.findComponent({ name: 'N8nSwitch2' }).props('modelValue')).toBe(false);
+		});
+
+		it('emits toggle-channel when the n8n Chat switch changes', () => {
+			const wrapper = mountList({
+				channels: [makeChannel({ type: 'n8n_chat', label: 'n8n Chat', connected: false })],
+			});
+
+			wrapper.findComponent({ name: 'N8nSwitch2' }).vm.$emit('update:modelValue', true);
+
+			expect(wrapper.emitted('toggle-channel')).toEqual([[{ type: 'n8n_chat', enabled: true }]]);
 		});
 
 		it('emits open-channel when a channel is clicked', async () => {

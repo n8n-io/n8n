@@ -11070,6 +11070,8 @@
 	"agents.builder.triggers.preview.label": "New test session",
 	"agents.builder.triggers.preview.source": "on n8n",
 	"agents.builder.triggers.channel.source": "on {channel}",
+	"agents.builder.triggers.channel.newSession": "New session",
+	"agents.builder.triggers.channel.newChatThread": "New chat thread",
 	"agents.builder.triggers.channel.mention": "Mention",
 	"agents.builder.triggers.channel.mention.bot": "Mention {'@'}{bot}",
 	"agents.builder.triggers.channel.mention.botInWorkspace": "Mention {'@'}{bot} in {workspace}",
