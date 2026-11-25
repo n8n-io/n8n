@@ -1,0 +1,77 @@
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_1b279b1934f6ba::t_615e3b833eabfb 186-195,211-212,231-233,261
+packages/@n8n/module-cli/src/templates/frontend/module.ts.template
+  s_1b279b1934f6ba::t_479d8217e049fe 29-30
+packages/cli/src/credentials-helper.ts
+  s_1b279b1934f6ba::t_b531ba094bd878 220-224,227-234,263
+packages/frontend/@n8n/composables/package.json
+  s_5e5f3ce1c6da16::t_a71a57bcd8b36e 36
+packages/frontend/@n8n/composables/src/registerCharts.test.ts
+  s_5e5f3ce1c6da16::t_436da78e4cf9e5 1-35
+packages/frontend/@n8n/composables/src/registerCharts.ts
+  s_1b279b1934f6ba::t_9d04fd1cb272e0 4-5,8-11,14-41
+packages/frontend/editor-ui/package.json
+  s_5e5f3ce1c6da16::t_104beae44dfa33 124,178
+packages/frontend/editor-ui/src/app/bootstrapRegistrations.test.ts
+  s_1b279b1934f6ba::t_51c0cf33440fb6 31-43
+packages/frontend/editor-ui/src/app/chartRegistrations.test.ts
+  s_1b279b1934f6ba::t_af2d22a370b267 1-48
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ListRuns/MetricsChart.vue
+  s_1b279b1934f6ba::t_92ae3fa1d8577f 5,10-12
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewRunData.test.ts
+  s_1b279b1934f6ba::t_d556eb56397c4e 10
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewRunData.vue
+  s_1b279b1934f6ba::t_28308e8d64339c 132-135
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_1b279b1934f6ba::t_767585c823dd66 1
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_1b279b1934f6ba::t_00b488a5c1a1fe 289-290,366,373,379,603,626,656,666,758,773,819,821,841,1057,1125,1149,1274,1373,1378,1423,1550,1617,1621,1629,1640,1754,1786,1804,1819,1909,1930,1970,2128,2207,2229,2249,2253,2282,2296-2297
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataDisplayModeSelect.vue
+  s_1b279b1934f6ba::t_0029f0858cf1b2 9-17,44,49,66
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.ts
+  s_1b279b1934f6ba::t_175a275e2cf615 882-883
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerChartsAccordion.vue
+  s_1b279b1934f6ba::t_90f261bd886045 8,12-13
+packages/modules/insights/frontend/package.json
+  s_5e5f3ce1c6da16::t_f55c9b986aaab6 36,42
+packages/modules/insights/frontend/src/chartRegistrations.test.ts
+  s_1b279b1934f6ba::t_42df873874f79a 1-51
+packages/modules/insights/frontend/src/components/charts/InsightsChartAverageRuntime.vue
+  s_1b279b1934f6ba::t_b4f9c4199986ee 2,14-15
+packages/modules/insights/frontend/src/components/charts/InsightsChartFailed.vue
+  s_1b279b1934f6ba::t_2b737c86ac6504 2,14-15
+packages/modules/insights/frontend/src/components/charts/InsightsChartFailureRate.vue
+  s_1b279b1934f6ba::t_9d9b534e9b2b79 2,15-16
+packages/modules/insights/frontend/src/components/charts/InsightsChartTimeSaved.vue
+  s_1b279b1934f6ba::t_cc48c0d7ec7ca0 2,13-14
+packages/modules/insights/frontend/src/components/charts/InsightsChartTotal.vue
+  s_1b279b1934f6ba::t_cd623fd20a3934 2,13-14
+pnpm-lock.yaml
+  s_5e5f3ce1c6da16::t_de4b6f6bcffb8c 904-906,925-927,6084-6086,7290,7452,8294,8312
+pnpm-workspace.yaml
+  s_5e5f3ce1c6da16::t_555485354a4eeb 342,349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8145a9c71d3088f54b0cda367e4f84ec97d1a5c1",
+  "prompts": {},
+  "sessions": {
+    "s_1b279b1934f6ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d587a90-f43c-4aaf-90cd-8f1f40ac1be8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

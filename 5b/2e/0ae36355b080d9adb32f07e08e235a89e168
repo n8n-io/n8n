@@ -1,0 +1,29 @@
+packages/frontend/@n8n/design-system/AGENTS.md
+  s_cf1a8b888da641::t_651d0f36e49f44 21-23,25-75,77-90,92-122,125-153,155-224,227-267
+  s_cf1a8b888da641::t_325276b0de62b7 154
+  s_9621b22019358e::t_dae3675d1fe770 5-20,24,76,91,123-124,225-226,268-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b2e0ae36355b080d9adb32f07e08e235a89e168",
+  "prompts": {},
+  "sessions": {
+    "s_9621b22019358e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20991-492c-71b3-ba37-8e82b743e829",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cf1a8b888da641": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a2098a-6fa5-71b3-ba37-8e812698f3fa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

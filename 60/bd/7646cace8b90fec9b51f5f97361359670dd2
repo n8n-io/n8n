@@ -1,0 +1,69 @@
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
+  s_4a494bfdece475::t_48d0a027d8e8b3 73-116
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_4a494bfdece475::t_6348db6491b2df 273-274,285-289,320,332-335
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
+  s_4a494bfdece475::t_17592b84fb7ace 43-46,51,53,58,60,66-69,72,77-81,86,103-104,108-131,184,186-188,192,195-203,206,215,228-230,232,236-288
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.test.ts
+  s_4a494bfdece475::t_410de012dbd952 93-94,235,242-243,393-631,648,655-662,667-676
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_54403030a287d3 89-90,364,391,504,523,567,573-608
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_f0e565ed567989 6,41,2604-2631,2633,2635-2637,2639,2665-2705,2707-2762,2904-2905,2912,2937,2945-3027,3100,3104,3116,3130,3136-3192,3229-3230
+packages/cli/src/modules/promotions.ee/apply-dependency-check.service.ts
+  s_4a494bfdece475::t_3f037a3afe4a7f 32,43-44,49-51,60,67-70,78-79,81,85-91,96,104-105,107,138-150
+packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
+  s_4a494bfdece475::t_7d6aff65e8263e 32-43,83-97,102-104,128-129,131-163,167-228,231,234-237,239,259
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_4a494bfdece475::t_81300e8b9c01e8 188,190,345-347,354,378
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_4a494bfdece475::t_33dc75bb878bdc 528
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_4a494bfdece475::t_ca16ee1d54788c 616,683,739,830
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_4a494bfdece475::t_3d5de576a41797 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_4a494bfdece475::t_0ea79cabd56942 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  s_4a494bfdece475::t_c10ba7a24e5e6f 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_4a494bfdece475::t_94957c4bdc74be 8
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.generated.yml
+  s_4a494bfdece475::t_6de353224f99c3 26,45-50
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_b6cdb4858cd86a 11583,11623,11642,11646,11648,11650
+packages/modules/promotions/frontend/src/__tests__/missingDependencies.fixtures.ts
+  s_4a494bfdece475::t_2c19ece18fa07e 122-194
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_741c35b9d61bb7 44,126,134,322-329,338-344,355-395,419-422,433,437-442
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_4a494bfdece475::t_c4a2db0ce1cc86 7-8,12,147,161,210-247
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_4a494bfdece475::t_8e145322226b49 74
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_4a494bfdece475::t_aea74a6e0bf4f5 113-116,121-124,126,129-134,136-138
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_4a494bfdece475::t_859df4728a7155 10-11,36-37,118,150,189,238,260,268,273-298
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_4a494bfdece475::t_6b91bdfcb8ca0c 125-131,133-141,170-173,185,249
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_3f56fc1e0ff808 31-32,35-36,40-41,1650-1908
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_750848a0f0a7fd 23,54,87-90,92-94,100-107,110-116,119-120,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60bd7646cace8b90fec9b51f5f97361359670dd2",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

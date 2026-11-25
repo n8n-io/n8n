@@ -1,0 +1,29 @@
+packages/cli/test/integration/sub-workflow-paired-item.test.ts
+  s_ee257bd3aa5f17::t_7ffe9f74661cd0 110,250-251,84,91,105,114,117,132,154,221,237,245,252-253,255-258,260-272,283-284
+  s_ee257bd3aa5f17::t_b5d59fc53c9d5e 82-83,85-90,95,97-99,101-104,128,143,150,220
+  s_fcb95719ac2ec5::t_6ed13e9a0101a3 206-210,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec84fa44b8948393c2f4d1ac2d2a0f5f5fd35ea1",
+  "prompts": {},
+  "sessions": {
+    "s_ee257bd3aa5f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9afdedee-89bd-4956-bc5d-7218bb0f47a5",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_fcb95719ac2ec5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c719b4a-4120-47d6-982d-b1feac15f85e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
