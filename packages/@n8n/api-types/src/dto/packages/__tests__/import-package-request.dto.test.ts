@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
@@ -796,4 +797,27 @@ describe('ImportPackageRequestDto', () => {
 			).toBe(false);
 		});
 	});
+});
+
+it('accepts a removal selection across more than six full Preference scopes', () => {
+	const ids = Array.from({ length: 350 }, () => randomUUID());
+	const parsed = ImportPackageRequestDto.parse(
+		withPackageFile({
+			conflictPolicy: 'fail',
+			deletedPreferenceIds: JSON.stringify(ids),
+		}),
+	);
+	expect(parsed.deletedPreferenceIds).toEqual(ids);
+});
+
+it('still requires UUIDs in a large Preference removal selection', () => {
+	const ids = [...Array.from({ length: 350 }, () => randomUUID()), 'invalid'];
+	expect(
+		ImportPackageRequestDto.safeParse(
+			withPackageFile({
+				conflictPolicy: 'fail',
+				deletedPreferenceIds: JSON.stringify(ids),
+			}),
+		).success,
+	).toBe(false);
 });

@@ -24,6 +24,7 @@ import {
 	renderAiPreferences,
 	renderAiPreferencesBlock,
 } from '../ai-preference.service';
+import { InstanceWriteAccessService } from '../instance-write-access.service';
 import { ProjectScopeService } from '../project-scope.service';
 import type { RoleService } from '../role.service';
 
@@ -63,6 +64,7 @@ describe('AiPreferenceService', () => {
 		projectRepository,
 		new ProjectScopeService(roleService, projectRelationRepository, mock<RoleRepository>()),
 		userRepository,
+		new InstanceWriteAccessService(),
 	);
 
 	type Membership = { projectId: string; scopes: string[] };

@@ -6,6 +6,16 @@ import { Z } from '../../zod-class';
 
 export class ExportPackageRequestDto extends Z.class(
 	{
+		preferenceIds: z
+			.array(z.string().uuid())
+			.min(1)
+			.max(300)
+			.optional()
+			.openapi(exportPackageRequestFieldDocs.preferenceIds),
+		includePreferences: z
+			.boolean()
+			.optional()
+			.openapi(exportPackageRequestFieldDocs.includePreferences),
 		agentIds: z
 			.array(z.string().trim().min(1))
 			.min(1)

@@ -13,6 +13,7 @@ import type { ExportPackageCounts, ExportPackageResult } from '../../client';
  */
 function describeExport(counts: ExportPackageCounts): string {
 	const parts: string[] = [];
+	if (counts.preferences) parts.push(`${counts.preferences} Preference(s)`);
 	if (counts.projects) parts.push(`${counts.projects} project(s)`);
 	if (counts.agents) parts.push(`${counts.agents} agent(s)`);
 	if (counts.workflows) parts.push(`${counts.workflows} workflow(s)`);
@@ -42,6 +43,16 @@ export default class PackageExport extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
+		preferenceId: Flags.string({
+			description: 'Shared Preference UUID to include',
+			multiple: true,
+			aliases: ['preference-id'],
+		}),
+		includePreferences: Flags.option({
+			description: 'Include the shared Preferences of selected projects',
+			options: ['true', 'false'] as const,
+			aliases: ['include-preferences'],
+		})(),
 		agentId: Flags.string({
 			description: 'Agent ID to include (repeat for multiple)',
 			multiple: true,
@@ -129,9 +140,9 @@ export default class PackageExport extends BaseCommand {
 		if (projectIds.length > 0 && hasLooseSelection) {
 			this.error('Provide either --agent-id/--workflow-id/--folder-id or --project-id, not both');
 		}
-		if (!hasLooseSelection && projectIds.length === 0) {
+		if (!hasLooseSelection && projectIds.length === 0 && !flags.preferenceId?.length) {
 			this.error(
-				'At least one --agent-id, --workflow-id, --folder-id, or --project-id is required',
+				'At least one --agent-id, --workflow-id, --folder-id, --project-id, or --preference-id is required',
 			);
 		}
 
@@ -143,6 +154,8 @@ export default class PackageExport extends BaseCommand {
 					projectIds.length > 0
 						? {
 								projectIds,
+								...(flags.preferenceId?.length ? { preferenceIds: flags.preferenceId } : {}),
+								...(flags.includePreferences === 'true' ? { includePreferences: true } : {}),
 								includeVariableValues,
 								includeTags,
 								dependencyPolicy,
@@ -154,6 +167,8 @@ export default class PackageExport extends BaseCommand {
 								...(agentIds.length > 0 ? { agentIds } : {}),
 								workflowIds,
 								folderIds,
+								...(flags.preferenceId?.length ? { preferenceIds: flags.preferenceId } : {}),
+								...(flags.includePreferences === 'true' ? { includePreferences: true } : {}),
 								includeVariableValues,
 								includeTags,
 								dependencyPolicy,

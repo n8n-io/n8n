@@ -79,6 +79,18 @@ export class ProjectRepository extends BaseRepository<Project> {
 		return await this.managerFor(ctx).findOneBy(Project, { id: projectId });
 	}
 
+	async isTeamProjectCreator(
+		projectId: string,
+		userId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(Project, {
+			id: projectId,
+			type: 'team',
+			creatorId: userId,
+		});
+	}
+
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
 		const em = entityManager ?? this.manager;
 

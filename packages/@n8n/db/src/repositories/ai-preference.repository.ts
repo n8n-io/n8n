@@ -67,6 +67,13 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		if (result.affected !== 1) throw preferenceChanged();
 	}
 
+	/** Check a preview. Updates and deletes repeat this condition in the write itself. */
+	async checkUnchanged(previous: AiPreference, ctx: OperationContext): Promise<void> {
+		if (!(await this.managerFor(ctx).exists(AiPreference, { where: unchangedRow(previous) }))) {
+			throw preferenceChanged();
+		}
+	}
+
 	async createPreference(row: AiPreference, ctx: OperationContext = {}): Promise<AiPreference> {
 		const now = new Date();
 		const created = this.create({ ...row, createdAt: now, updatedAt: now });
@@ -78,6 +85,17 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			throw error;
 		}
 		return created;
+	}
+
+	async findForTarget(
+		target: AiPreferenceTarget,
+		ctx: OperationContext = {},
+	): Promise<AiPreference[]> {
+		return await this.managerFor(ctx).find(AiPreference, { where: whereTarget(target) });
+	}
+
+	async findForChange(id: string, ctx: OperationContext = {}): Promise<AiPreference | null> {
+		return await this.managerFor(ctx).findOne(AiPreference, { where: { id } });
 	}
 
 	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */

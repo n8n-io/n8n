@@ -21,6 +21,7 @@ interface ExportFlags {
 	versionPolicy?: string;
 	credentialExportPolicy?: string;
 	includeArchived?: string;
+	includePreferences?: string;
 }
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
@@ -62,6 +63,45 @@ function stubCommand(
 describe('package export command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it.each([false, true])('omits disabled Preferences with project=%s', async (project) => {
+		const { command, exportPackage } = stubCommand({
+			...(project ? { projectId: ['team'] } : { workflowId: ['workflow'] }),
+			includePreferences: 'false',
+			output: '/tmp/export.n8np',
+		});
+		await command.run();
+		expect(exportPackage).toHaveBeenCalledOnce();
+		expect(exportPackage).toHaveBeenCalledWith(
+			expect.not.objectContaining({ includePreferences: expect.anything() }),
+		);
+	});
+
+	it.each([false, true])('parses shared Preferences with project=%s', async (project) => {
+		const id = 'b86d323f-c829-4cd9-877e-c34a80cb6dfa';
+		const argv = [`--preference-id=${id}`, '--output=/tmp/preferences.n8np'];
+		if (project) argv.push('--project-id=team', '--include-preferences=true');
+		const command = new PackageExport(argv, await Config.load(process.cwd()));
+		const internals = command as unknown as ExportInternals;
+		const counts = { ...DEFAULT_COUNTS, preferences: 1 };
+		const exportPackage = vi.fn().mockResolvedValue({ archive: Buffer.from('package'), counts });
+		vi.spyOn(internals, 'getClient').mockReturnValue({ exportPackage } as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		await command.run();
+		expect(exportPackage).toHaveBeenCalledWith(expect.objectContaining({ preferenceIds: [id] }));
+		if (project)
+			expect(exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectIds: ['team'],
+					includePreferences: true,
+				}),
+			);
+		expect(internals.succeed).toHaveBeenCalledWith(
+			`Exported 1 Preference(s)${project ? ', 1 project(s)' : ''} to /tmp/preferences.n8np`,
+			expect.anything(),
+			expect.objectContaining({ counts }),
+		);
 	});
 
 	it.each([false, true])('parses repeated Agent selection with mixed=%s', async (mixed) => {

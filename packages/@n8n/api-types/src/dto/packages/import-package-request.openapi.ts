@@ -1,6 +1,14 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
 export const importPackageRequestFieldDocs = {
+	preferenceConflictPolicy: {
+		description:
+			'For shared Preferences with changed content: fail blocks import, skip keeps the destination, and replace explicitly replaces its content. Identical content is always skipped. Defaults to fail. Source and creator stay unchanged on replacement.',
+	},
+	deletedPreferenceIds: {
+		description:
+			'JSON array of destination shared Preference UUIDs to remove. Other Preferences remain unchanged. Requires a Preferences collection. Project IDs must belong to the destination project or package projects.',
+	},
 	package: { description: 'Gzip-compressed tar package (`.n8np`).' },
 	projectId: {
 		description:
@@ -259,6 +267,10 @@ export const importPackageRequestFieldDocs = {
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const importPackageSelectionRequestFieldDocs = {
+	selectedPreferenceIds: {
+		description:
+			'JSON array of shared Preference UUIDs to import. Omit to import no Preferences. Project Preferences must belong to selectedProjectId. Instance Preferences can be selected explicitly.',
+	},
 	selectedProjectId: {
 		description:
 			'Id of the single source project the selection is scoped to, as it appears in the package.',

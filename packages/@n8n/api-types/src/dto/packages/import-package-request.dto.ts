@@ -13,6 +13,8 @@ const packageFileSchema = publicApiUploadedFileSchema.openapi(
 
 /** Multipart text field names validated by {@link ImportPackageRequestDto}. */
 export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
+	'preferenceConflictPolicy',
+	'deletedPreferenceIds',
 	'projectId',
 	'folderId',
 	'credentialMatchingMode',
@@ -100,8 +102,25 @@ const bindingsSchema = z
 		return result.data;
 	});
 
+function preferenceIdArray() {
+	return z
+		.string()
+		.optional()
+		.transform((value, ctx) => {
+			if (value === undefined || !value.trim()) return undefined;
+			return parseIdArray(value, ctx, 'Preference IDs must be a JSON array of UUIDs.');
+		})
+		.pipe(z.array(z.string().uuid()).optional());
+}
+
 export class ImportPackageRequestDto extends Z.class(
 	{
+		preferenceConflictPolicy: optionalEnumNoDefault(['fail', 'skip', 'replace']).openapi(
+			importPackageRequestFieldDocs.preferenceConflictPolicy,
+		),
+		deletedPreferenceIds: preferenceIdArray().openapi(
+			importPackageRequestFieldDocs.deletedPreferenceIds,
+		),
 		package: packageFileSchema,
 		projectId: optionalFormId.openapi(importPackageRequestFieldDocs.projectId),
 		folderId: optionalFormId.openapi(importPackageRequestFieldDocs.folderId),
@@ -173,6 +192,9 @@ export class ImportPackageRequestDto extends Z.class(
 
 /** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
 export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
+	'preferenceConflictPolicy',
+	'selectedPreferenceIds',
+	'deletedPreferenceIds',
 	'selectedProjectId',
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
@@ -228,7 +250,16 @@ const optionalJsonStringIdArray = (errorMessage: string) =>
 
 export class ImportPackageSelectionRequestDto extends Z.class(
 	{
+		preferenceConflictPolicy: optionalEnumNoDefault(['fail', 'skip', 'replace']).openapi(
+			importPackageRequestFieldDocs.preferenceConflictPolicy,
+		),
+		deletedPreferenceIds: preferenceIdArray().openapi(
+			importPackageRequestFieldDocs.deletedPreferenceIds,
+		),
 		package: packageFileSchema,
+		selectedPreferenceIds: preferenceIdArray().openapi(
+			importPackageSelectionRequestFieldDocs.selectedPreferenceIds,
+		),
 		selectedProjectId: z
 			.string()
 			.trim()

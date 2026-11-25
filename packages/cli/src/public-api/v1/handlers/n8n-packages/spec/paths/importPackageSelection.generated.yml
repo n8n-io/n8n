@@ -11,8 +11,8 @@ description: |-
 
   The package must be a project package (a workflow package is rejected with a 400). The cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The API key also needs `project:create` when the selected project does not exist. The import never changes an existing project, so it never needs `project:update`. It needs `folder:create` and a license that supports folders only when it creates a folder for a selected workflow, or a folder above it. Packages that contain Agents are rejected before writes. Use the ordinary import endpoint for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and `idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. Publication remains fixed to `match-source`. When `match-source` publishes a selected workflow, the API key also needs `workflow:activate`. When it unpublishes one, the key needs `workflow:deactivate`. Archiving or restoring a matched workflow also needs `workflow:delete`. Restoring and publishing a workflow requires both `workflow:delete` and `workflow:activate`.
 
-  Requires the `workflow:import` API key scope.
-x-required-scope: workflow:import
+  Requires one of these API key scopes: `workflow:import`, `aiPreference:read`, `aiPreference:create`, `aiPreference:update`, `aiPreference:delete`.
+x-required-scope: workflow:import,aiPreference:read,aiPreference:create,aiPreference:update,aiPreference:delete
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
@@ -22,10 +22,23 @@ requestBody:
       schema:
         type: object
         properties:
+          preferenceConflictPolicy:
+            type: string
+            enum:
+              - fail
+              - skip
+              - replace
+            description: 'For shared Preferences with changed content: fail blocks import, skip keeps the destination, and replace explicitly replaces its content. Identical content is always skipped. Defaults to fail. Source and creator stay unchanged on replacement.'
+          deletedPreferenceIds:
+            type: string
+            description: JSON array of destination shared Preference UUIDs to remove. Other Preferences remain unchanged. Requires a Preferences collection. Project IDs must belong to the destination project or package projects.
           package:
             type: string
             description: Gzip-compressed tar package (`.n8np`).
             format: binary
+          selectedPreferenceIds:
+            type: string
+            description: JSON array of shared Preference UUIDs to import. Omit to import no Preferences. Project Preferences must belong to selectedProjectId. Instance Preferences can be selected explicitly.
           selectedProjectId:
             type: string
             minLength: 1

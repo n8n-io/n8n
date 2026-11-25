@@ -1,6 +1,14 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
 export const exportPackageRequestFieldDocs = {
+	preferenceIds: {
+		description:
+			'Shared Preference IDs to export. Personal Preferences cannot be exported. Requires aiPreference:read and aiPreference:list.',
+	},
+	includePreferences: {
+		description:
+			'Include the shared Preferences of selected projects. Defaults to false. Instance Preferences require explicit preferenceIds. Requires package format 3 support on the destination.',
+	},
 	agentIds: {
 		description: 'IDs of the agents to include. Requires the agents module.',
 		example: ['uT9LdQx7rK2MvB4f'],

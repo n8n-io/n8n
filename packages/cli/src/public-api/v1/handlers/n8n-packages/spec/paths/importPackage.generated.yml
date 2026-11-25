@@ -5,7 +5,7 @@ summary: 'Beta: Import an n8n package into a project'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Imports Agent-only, workflow-only, mixed, and whole-project packages. The Agents module must be active for packages that contain Agents. Send the gzip-compressed tar archive (`.n8np`) as the multipart field `package`. Optional routing uses form fields `projectId` and `folderId` (omit or send empty for defaults). Every optional mode/policy field (credential, Agent, workflow, project, folder, data table, variable, and tag) takes its default when omitted; the one non-fixed default is `folderConflictPolicy`, which follows `projectConflictPolicy` on a project package. The required `conflictPolicy` field controls matches for both Agents and workflows. It replaces `workflowConflictPolicy`; the old field is rejected. `idPolicy` and `publishingPolicy` also apply to both kinds. They replace the workflow-specific and Agent-specific fields, which are rejected. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+  Imports Agent-only, workflow-only, Preference-only, mixed, and whole-project packages. The Agents module must be active for packages that contain Agents. Send the gzip-compressed tar archive (`.n8np`) as the multipart field `package`. Optional routing uses form fields `projectId` and `folderId` (omit or send empty for defaults). Every optional mode/policy field (credential, Agent, workflow, project, folder, data table, variable, and tag) takes its default when omitted; the one non-fixed default is `folderConflictPolicy`, which follows `projectConflictPolicy` on a project package. The required `conflictPolicy` field controls matches for both Agents and workflows. It replaces `workflowConflictPolicy`; the old field is rejected. `idPolicy` and `publishingPolicy` also apply to both kinds. They replace the workflow-specific and Agent-specific fields, which are rejected. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
 
   The package must declare its manifest at `manifest.json` and include every file the manifest references.
 
@@ -17,10 +17,12 @@ description: |-
 
   Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, directory imports, and Promotions before writes.
 
+  Shared Preferences keep their UUIDs. Identical content is a no-op. Changed content requires `preferenceConflictPolicy=replace`; the default is `fail`. `deletedPreferenceIds` removes only explicit shared UUIDs. Personal Preferences, missing collections, and unselected rows stay local. Preferences must be available, and protected environments reject ordinary shared writes. Each planned action needs its aiPreference API key scope. Results include `preferences` and `counts.preferences`. Conflicts appear as `preference-conflict` issues.
+
   Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, `publishingPolicy=match-source`, and `bindings={"credentials":{"source-credential":"target-credential"}}`.
 
-  Requires one of these API key scopes: `workflow:import`, `agent:import`.
-x-required-scope: workflow:import,agent:import
+  Requires one of these API key scopes: `workflow:import`, `agent:import`, `aiPreference:read`, `aiPreference:create`, `aiPreference:update`, `aiPreference:delete`.
+x-required-scope: workflow:import,agent:import,aiPreference:read,aiPreference:create,aiPreference:update,aiPreference:delete
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
@@ -30,6 +32,16 @@ requestBody:
       schema:
         type: object
         properties:
+          preferenceConflictPolicy:
+            type: string
+            enum:
+              - fail
+              - skip
+              - replace
+            description: 'For shared Preferences with changed content: fail blocks import, skip keeps the destination, and replace explicitly replaces its content. Identical content is always skipped. Defaults to fail. Source and creator stay unchanged on replacement.'
+          deletedPreferenceIds:
+            type: string
+            description: JSON array of destination shared Preference UUIDs to remove. Other Preferences remain unchanged. Requires a Preferences collection. Project IDs must belong to the destination project or package projects.
           package:
             type: string
             description: Gzip-compressed tar package (`.n8np`).

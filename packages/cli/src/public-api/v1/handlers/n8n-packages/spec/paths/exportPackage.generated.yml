@@ -1,7 +1,7 @@
 operationId: exportPackage
 tags:
   - N8nPackage
-summary: 'Beta: Export agents, workflows, folders, or projects as an n8n package'
+summary: 'Beta: Export agents, workflows, projects, or shared Preferences as an n8n package'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
@@ -28,8 +28,10 @@ description: |-
   Agent definitions include referenced skills, custom tools, and schedules.
   Knowledge base files and runtime data are excluded.
 
-  Requires one of these API key scopes: `project:export`, `workflow:export`, `agent:export`.
-x-required-scope: project:export,workflow:export,agent:export
+  Select shared Preferences with `preferenceIds`, or include project Preferences with `includePreferences=true`. Personal Preferences stay local. Preference export also needs `aiPreference:read` and `aiPreference:list`. Packages with Preferences use format 3 and require a destination that supports this format. Older readers reject them.
+
+  Requires one of these API key scopes: `project:export`, `workflow:export`, `agent:export`, `aiPreference:read`.
+x-required-scope: project:export,workflow:export,agent:export,aiPreference:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
@@ -39,6 +41,17 @@ requestBody:
       schema:
         type: object
         properties:
+          preferenceIds:
+            type: array
+            items:
+              type: string
+              format: uuid
+            minItems: 1
+            maxItems: 300
+            description: Shared Preference IDs to export. Personal Preferences cannot be exported. Requires aiPreference:read and aiPreference:list.
+          includePreferences:
+            type: boolean
+            description: Include the shared Preferences of selected projects. Defaults to false. Instance Preferences require explicit preferenceIds. Requires package format 3 support on the destination.
           agentIds:
             type: array
             items:

@@ -138,3 +138,15 @@ pnpm typecheck
 ## License
 
 See [LICENSE.md](LICENSE.md) for details.
+
+Shared Preferences can travel in packages. Personal Preferences stay local.
+See [Shared Preferences](docs/commands/package.md#shared-preferences) for scope,
+permission, protection, and format requirements.
+
+| Package flag | Purpose |
+| --- | --- |
+| `export --preference-id=<uuid>` | Export a selected shared Preference. Repeat for more IDs. |
+| `export --project-id=<id> --include-preferences=true` | Include shared project Preferences. |
+| `import --preference-conflict-policy=replace` | Explicitly replace changed content for matching IDs. |
+| `import-selection --selected-preference-ids=<uuid>` | Import only selected Preferences. |
+| `import --deleted-preference-ids=<uuid>` | Remove explicit destination rows. Also works with `import-selection`. |

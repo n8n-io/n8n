@@ -5,6 +5,8 @@ import {
 	serializedDataTableSchema,
 	type SerializedFolder,
 	serializedFolderSchema,
+	type SerializedPreference,
+	serializedPreferenceSchema,
 	type SerializedProject,
 	serializedProjectSchema,
 	type SerializedVariable,
@@ -115,6 +117,40 @@ export class N8nPackageParser {
 			agents.push({ ...(await this.readAgent(reader, entry)), parentFolderId });
 		}
 		return agents;
+	}
+
+	/** Read portable Preferences and derive their source projects from the package layout. */
+	async getPreferences(
+		reader: PackageReader,
+	): Promise<Array<SerializedPreference & { sourceProjectId?: string }>> {
+		const manifest = await this.getManifest(reader);
+		const preferences: Array<SerializedPreference & { sourceProjectId?: string }> = [];
+		for (const entry of manifest.preferences ?? []) {
+			const preference = await this.readEntityFile(
+				reader,
+				entityFilePath('preferences', entry.target),
+				'Preference',
+				serializedPreferenceSchema,
+			);
+			if (preference.id !== entry.id)
+				throw new BadRequestError('Preference ID does not match its manifest entry.');
+			const project = manifest.projects?.find(
+				(project) =>
+					entry.target.startsWith(`${project.target}/preferences/`) &&
+					entry.target.slice(project.target.length + 1).split('/').length === 2,
+			);
+			const topLevel =
+				entry.target.startsWith('preferences/') && entry.target.split('/').length === 2;
+			if (
+				(!project && !topLevel) ||
+				(preference.scope === 'instance' && !topLevel) ||
+				(preference.scope === 'project' && manifest.projects?.length && !project)
+			) {
+				throw new BadRequestError('Preference scope does not match the package layout.');
+			}
+			preferences.push({ ...preference, ...(project ? { sourceProjectId: project.id } : {}) });
+		}
+		return preferences;
 	}
 
 	/** Reads every skill of the package. Agents in any scope can reference an instance skill. */
@@ -269,7 +305,7 @@ export class N8nPackageParser {
 	private async readEntityFile<T>(
 		reader: PackageReader,
 		path: string,
-		label: 'Agent' | 'skill',
+		label: 'Agent' | 'skill' | 'Preference',
 		schema: ZodType<T, ZodTypeDef, unknown>,
 	): Promise<T> {
 		const wire = await this.readJson(reader, path, label);

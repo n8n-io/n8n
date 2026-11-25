@@ -42,6 +42,7 @@ export type ExportPackageFields = Partial<ExportPackageRequestDto>;
 
 /** True per-entity counts of what ended up in an exported package. */
 export interface ExportPackageCounts {
+	preferences?: number;
 	/** Older servers can omit Agent and project counts. */
 	agents?: number;
 	projects?: number;
@@ -806,6 +807,9 @@ export class N8nClient {
 	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: ExportPackageFields = {};
+		if (fields.preferenceIds?.length) body.preferenceIds = fields.preferenceIds;
+		if (fields.includePreferences !== undefined)
+			body.includePreferences = fields.includePreferences;
 		if (fields.agentIds?.length) body.agentIds = fields.agentIds;
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
@@ -847,6 +851,8 @@ export class N8nClient {
 	): Promise<ImportResultDto> {
 		const form = new FormData();
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		if (fields.deletedPreferenceIds !== undefined)
+			form.append('deletedPreferenceIds', JSON.stringify(fields.deletedPreferenceIds));
 		for (const [key, value] of Object.entries(fields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
@@ -863,6 +869,7 @@ export class N8nClient {
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		const stringFields: Record<string, string | undefined> = {
 			selectedProjectId: fields.selectedProjectId,
+			preferenceConflictPolicy: fields.preferenceConflictPolicy,
 			conflictPolicy: fields.conflictPolicy,
 			idPolicy: fields.idPolicy,
 			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
@@ -872,6 +879,10 @@ export class N8nClient {
 		}
 		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
 		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.selectedPreferenceIds !== undefined)
+			form.append('selectedPreferenceIds', JSON.stringify(fields.selectedPreferenceIds));
+		if (fields.deletedPreferenceIds !== undefined)
+			form.append('deletedPreferenceIds', JSON.stringify(fields.deletedPreferenceIds));
 		if (fields.deletedWorkflowIds !== undefined) {
 			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
 		}

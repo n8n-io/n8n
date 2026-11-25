@@ -4,6 +4,7 @@ import type { BlockingIssue } from '../n8n-packages.types';
 
 export function toImportBlockedError(
 	issues: BlockingIssue[],
+	meta: Record<string, unknown> = {},
 ): ConflictError | UnprocessableRequestError {
 	const message =
 		`Import blocked: ${issues.length} issue(s) must be resolved before the package ` +
@@ -12,6 +13,7 @@ export function toImportBlockedError(
 	if (
 		issues.some(
 			(issue) =>
+				(issue.type === 'preference-conflict' && issue.kind === 'conflict') ||
 				issue.type === 'agent-conflict' ||
 				issue.type === 'workflow-conflict' ||
 				issue.type === 'workflow-lineage-conflict' ||
@@ -28,8 +30,8 @@ export function toImportBlockedError(
 					(issue.kind === 'rename-drift' || issue.kind === 'name-collision')),
 		)
 	) {
-		return new ConflictError(message, undefined, { issues });
+		return new ConflictError(message, undefined, { ...meta, issues });
 	}
 
-	return new UnprocessableRequestError(message, undefined, { issues });
+	return new UnprocessableRequestError(message, undefined, { ...meta, issues });
 }
