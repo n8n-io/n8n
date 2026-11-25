@@ -21,6 +21,8 @@ import { createTestLogEntry } from '../__test__/mocks';
 import { createLogTree } from '../logs.utils';
 import { createRunExecutionData, NodeConnectionTypes, type RedactionInfo } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import { runDataDisplayModeRegistry } from '@n8n/frontend-module-sdk';
+import { HtmlDisplayModeModule } from '@n8n/frontend-module-html-display-mode';
 import { HTML_NODE_TYPE } from '@/app/constants';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
@@ -373,6 +375,11 @@ describe('LogDetailsPanel', () => {
 	});
 
 	it('should render output data in HTML mode for HTML node', async () => {
+		HtmlDisplayModeModule.runDataDisplayModes?.forEach((mode) =>
+			runDataDisplayModeRegistry.register(mode),
+		);
+		onTestFinished(() => runDataDisplayModeRegistry.clear());
+
 		const nodeA = createTestNode({ name: 'A' });
 		const nodeB = createTestNode({
 			name: 'B',

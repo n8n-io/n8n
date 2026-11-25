@@ -42,6 +42,14 @@ several attached documents or shares one. The save returns `notEditable`, the pa
 and the store sets `notEditable` for that kind. Later saves of that kind are not sent until a load
 finds a newer version.
 
+The landing page lists the team projects from `GET /project-policies` through
+`useProjectPolicies()`. Each entry covers both kinds, so a project policy is one card. "Add project
+policy" calls `POST /project-policies`, which gives the project both kinds in one write. The page
+reads the list again after each add, also when the admin closed the dialog before the add ended. A
+409 means another admin added the policy first: the dialog keeps its error and the page reads the
+list again. If the first list read fails, the page shows the Global section only. A later read that
+fails keeps the last list, and a read that ends after a newer one is ignored.
+
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies
 ```
