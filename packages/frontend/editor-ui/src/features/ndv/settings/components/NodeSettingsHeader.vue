@@ -78,7 +78,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-	--tabs--arrow-buttons--color: var(--color--background--light-3);
+	--n8n-tabs--arrow-buttons--color: var(--color--background--light-3);
 
 	display: flex;
 	align-items: center;
@@ -90,10 +90,6 @@ const emit = defineEmits<{
 
 .tabs {
 	align-self: flex-end;
-}
-
-.tabs :global(#communityNode) {
-	padding-right: var(--spacing--2xs);
 }
 
 .stop {
