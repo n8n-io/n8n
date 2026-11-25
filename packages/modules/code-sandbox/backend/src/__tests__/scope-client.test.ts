@@ -92,12 +92,12 @@ describe('ScopeClient', () => {
 		expect(client.getOrCreateSandbox).not.toHaveBeenCalled();
 	});
 
-	it('fails when all sandboxes stay full until the deadline', async () => {
-		vi.useFakeTimers();
+	it('fails when the sandboxes stay full until the deadline', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
 		client.runTask.mockRejectedValue(full);
 
 		const result = scopeClient.runTask(scopeKey, options, task).catch((e: unknown) => e);
-		await vi.advanceTimersByTimeAsync(31_000);
+		vi.setSystemTime(Date.now() + 31_000);
 
 		expect(await result).toBeInstanceOf(CodeSandboxesFullError);
 	});
