@@ -1,5 +1,4 @@
 import {
-	appAgentPermissionSchema,
 	appBindingSchema,
 	appDataTablePermissionSchema,
 	type AppAgentPermission,
@@ -21,7 +20,9 @@ type BindingKindConfig = {
 	icon: IconName;
 	label: BaseTextKey;
 	addLabel: BaseTextKey;
-	permissions: readonly BindingPermission[];
+	openLabel: BaseTextKey;
+	noMatches: BaseTextKey;
+	removeMessage: BaseTextKey;
 	defaultPermissions: readonly BindingPermission[];
 	route: (projectId: string, resourceId: string) => RouteLocationRaw;
 };
@@ -33,7 +34,9 @@ export const BINDING_KINDS: Record<AppBindingKind, BindingKindConfig> = {
 		icon: 'workflow',
 		label: 'apps.configure.connections.workflows',
 		addLabel: 'apps.configure.connections.addWorkflow',
-		permissions: [],
+		openLabel: 'apps.configure.connections.openWorkflow',
+		noMatches: 'apps.configure.connections.noMatches.workflow',
+		removeMessage: 'apps.configure.connections.removeConfirm.message.workflow',
 		defaultPermissions: [],
 		route: (_projectId, workflowId) => ({ name: VIEWS.WORKFLOW, params: { workflowId } }),
 	},
@@ -41,7 +44,9 @@ export const BINDING_KINDS: Record<AppBindingKind, BindingKindConfig> = {
 		icon: 'table',
 		label: 'apps.configure.connections.dataTables',
 		addLabel: 'apps.configure.connections.addDataTable',
-		permissions: appDataTablePermissionSchema.options,
+		openLabel: 'apps.configure.connections.openDataTable',
+		noMatches: 'apps.configure.connections.noMatches.dataTable',
+		removeMessage: 'apps.configure.connections.removeConfirm.message.dataTable',
 		defaultPermissions: ['read'],
 		route: (projectId, id) => ({ name: DATA_TABLE_DETAILS, params: { projectId, id } }),
 	},
@@ -49,20 +54,54 @@ export const BINDING_KINDS: Record<AppBindingKind, BindingKindConfig> = {
 		icon: 'robot',
 		label: 'apps.configure.connections.agents',
 		addLabel: 'apps.configure.connections.addAgent',
-		permissions: appAgentPermissionSchema.options,
+		openLabel: 'apps.configure.connections.openAgent',
+		noMatches: 'apps.configure.connections.noMatches.agent',
+		removeMessage: 'apps.configure.connections.removeConfirm.message.agent',
 		defaultPermissions: ['chat'],
 		route: (projectId, agentId) => ({ name: AGENT_VIEW, params: { projectId, agentId } }),
 	},
 };
 
-export const PERMISSION_LABELS: Record<BindingPermission, BaseTextKey> = {
-	read: 'apps.configure.connections.permission.read',
-	insert: 'apps.configure.connections.permission.insert',
-	update: 'apps.configure.connections.permission.update',
-	delete: 'apps.configure.connections.permission.delete',
-	chat: 'apps.configure.connections.permission.chat',
-	history: 'apps.configure.connections.permission.history',
+const DATA_TABLE_VERBS: Record<AppDataTablePermission, BaseTextKey> = {
+	read: 'apps.configure.connections.setup.verb.read',
+	insert: 'apps.configure.connections.setup.verb.insert',
+	update: 'apps.configure.connections.setup.verb.update',
+	delete: 'apps.configure.connections.setup.verb.delete',
 };
+
+/** The sentence that tells what the app does with a connection, with the part to show in bold. */
+export type SetupSentence = { template: BaseTextKey; actions: BaseTextKey; verbs?: BaseTextKey[] };
+
+export function setupSentence(binding: AppBinding): SetupSentence {
+	switch (binding.kind) {
+		case 'workflow':
+			return {
+				template: 'apps.configure.connections.setup',
+				actions: 'apps.configure.connections.setup.workflow',
+			};
+		case 'dataTable':
+			return {
+				template: 'apps.configure.connections.setup.dataTable',
+				actions: 'apps.configure.connections.setup.dataTable.rows',
+				verbs: appDataTablePermissionSchema.options
+					.filter((permission) => binding.permissions.includes(permission))
+					.map((permission) => DATA_TABLE_VERBS[permission]),
+			};
+		case 'agent': {
+			const chat = binding.permissions.includes('chat');
+			const history = binding.permissions.includes('history');
+			return {
+				template: 'apps.configure.connections.setup',
+				actions:
+					chat && history
+						? 'apps.configure.connections.setup.agent.chatAndHistory'
+						: history
+							? 'apps.configure.connections.setup.agent.history'
+							: 'apps.configure.connections.setup.agent.chat',
+			};
+		}
+	}
+}
 
 const WARNING_LABELS: Record<AppBindingWarning['code'], BaseTextKey> = {
 	resource_missing: 'apps.configure.connections.warning.resource_missing',
@@ -96,21 +135,6 @@ export function resourceIdOf(binding: AppBinding): string {
 	}
 }
 
-export function permissionsOf(binding: AppBinding): readonly BindingPermission[] {
-	return binding.kind === 'workflow' ? [] : binding.permissions;
-}
-
-export function togglePermission(
-	kind: AppBindingKind,
-	current: readonly BindingPermission[],
-	permission: BindingPermission,
-	checked: boolean,
-): BindingPermission[] {
-	return BINDING_KINDS[kind].permissions.filter((entry) =>
-		entry === permission ? checked : current.includes(entry),
-	);
-}
-
 export function createBinding(
 	kind: AppBindingKind,
 	key: string,
@@ -123,11 +147,4 @@ export function createBinding(
 		[RESOURCE_ID_FIELD[kind]]: resourceId,
 		...(kind !== 'workflow' && { permissions }),
 	});
-}
-
-export function withPermissions(
-	binding: AppBinding,
-	permissions: readonly BindingPermission[],
-): AppBinding {
-	return createBinding(binding.kind, binding.key, resourceIdOf(binding), permissions);
 }

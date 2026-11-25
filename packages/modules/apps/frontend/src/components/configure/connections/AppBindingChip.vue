@@ -2,167 +2,78 @@
 import type { AppBindingWarning, AppDescribedBinding } from '@n8n/api-types';
 import {
 	N8nButton,
-	N8nCheckbox,
+	N8nContextMenu,
 	N8nIcon,
-	N8nLink,
-	N8nPopover,
-	N8nText,
 	N8nTooltip,
+	type ContextMenuNode,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
 
-import {
-	BINDING_KINDS,
-	PERMISSION_LABELS,
-	permissionsOf,
-	resourceIdOf,
-	togglePermission,
-	warningLabel,
-	type BindingPermission,
-} from './bindingKinds';
+import { BINDING_KINDS, warningLabel } from './bindingKinds';
 
 const props = defineProps<{
 	binding: AppDescribedBinding;
-	projectId: string;
 	warning?: AppBindingWarning;
 	canUpdate: boolean;
 }>();
 
-const emit = defineEmits<{
-	update: [permissions: BindingPermission[]];
-	remove: [];
-}>();
+const emit = defineEmits<{ open: []; remove: [] }>();
 
 const i18n = useI18n();
-const router = useRouter();
-const open = ref(false);
-const draftPermissions = ref<BindingPermission[]>([]);
-const draftChanged = ref(false);
 
 const config = computed(() => BINDING_KINDS[props.binding.kind]);
 const warningText = computed(() =>
 	props.warning ? i18n.baseText(warningLabel(props.warning.code, props.binding.kind)) : undefined,
 );
-const permissions = computed(() => permissionsOf(props.binding));
-const missing = computed(() => 'missing' in props.binding);
-const href = computed(() =>
-	missing.value
-		? undefined
-		: router.resolve(config.value.route(props.projectId, resourceIdOf(props.binding))).fullPath,
-);
-
-function toggle(permission: BindingPermission, checked: boolean) {
-	draftChanged.value = true;
-	draftPermissions.value = togglePermission(
-		props.binding.kind,
-		draftPermissions.value,
-		permission,
-		checked,
-	);
-}
-
-function isLastChecked(permission: BindingPermission) {
-	return draftPermissions.value.length === 1 && draftPermissions.value[0] === permission;
-}
-
-function permissionsChanged() {
-	return (
-		draftPermissions.value.length !== permissions.value.length ||
-		draftPermissions.value.some((permission) => !permissions.value.includes(permission))
-	);
-}
-
-function onOpen(value: boolean) {
-	if (value) {
-		draftPermissions.value = [...permissions.value];
-		draftChanged.value = false;
-		open.value = true;
-		return;
-	}
-	if (open.value && draftChanged.value && permissionsChanged()) {
-		emit('update', draftPermissions.value);
-	}
-	open.value = false;
-}
-
-function remove() {
-	open.value = false;
-	emit('remove');
-}
-
-watch(permissions, (value) => {
-	if (open.value && !draftChanged.value) draftPermissions.value = [...value];
-});
+const menuItems = computed<Array<ContextMenuNode<'remove'>>>(() => [
+	{
+		type: 'item',
+		id: 'remove',
+		label: i18n.baseText('apps.configure.connections.remove'),
+		icon: { type: 'icon', value: 'trash-2' },
+		variant: 'destructive',
+	},
+]);
 </script>
 
 <template>
-	<N8nPopover :open="open" width="260px" align="start" @update:open="onOpen">
+	<!-- Right-click opens a menu with Remove, as on an Agent chip. -->
+	<N8nContextMenu :items="menuItems" :disabled="!canUpdate" @select="emit('remove')">
 		<template #trigger>
-			<!-- The popover owns the chip's click, so the tooltip sits on the warning icon. -->
-			<N8nButton
-				variant="outline"
-				size="medium"
-				:class="[$style.chip, { [$style.warning]: warning }]"
-				:aria-description="warningText"
-				:data-test-id="`app-binding-${binding.key}`"
-			>
-				<N8nIcon :icon="config.icon" :size="16" :class="$style.icon" />
-				<span :class="$style.name">{{ binding.name }}</span>
-				<N8nTooltip v-if="warningText" :content="warningText" placement="top">
-					<N8nIcon
-						icon="triangle-alert"
-						:size="14"
-						:class="$style.warningIcon"
-						:data-test-id="`app-binding-${binding.key}-warning`"
-					/>
-				</N8nTooltip>
-			</N8nButton>
-		</template>
-		<template #content>
-			<div :class="$style.content" :data-test-id="`app-binding-${binding.key}-details`">
-				<div :class="$style.section">
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('apps.configure.connections.key') }}
-					</N8nText>
-					<code :class="$style.key">{{ binding.key }}</code>
-				</div>
-				<div v-if="config.permissions.length > 0" :class="$style.section">
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('apps.configure.connections.permissions') }}
-					</N8nText>
-					<N8nCheckbox
-						v-for="permission in config.permissions"
-						:key="permission"
-						:model-value="draftPermissions.includes(permission)"
-						:label="i18n.baseText(PERMISSION_LABELS[permission])"
-						:disabled="!canUpdate || isLastChecked(permission)"
-						:data-test-id="`app-binding-${binding.key}-permission-${permission}`"
-						@update:model-value="toggle(permission, $event)"
-					/>
-				</div>
-				<div :class="$style.actions">
-					<N8nLink v-if="href" :to="href" :new-window="true" size="small">
-						{{ i18n.baseText('apps.configure.connections.open') }}
-					</N8nLink>
+			<span :class="$style.trigger">
+				<N8nTooltip :content="warningText" :disabled="!warningText" placement="top">
 					<N8nButton
-						v-if="canUpdate"
-						variant="ghost"
-						size="small"
-						icon="trash-2"
-						:data-test-id="`app-binding-${binding.key}-remove`"
-						@click="remove"
+						variant="outline"
+						size="medium"
+						:class="[$style.chip, { [$style.warning]: warning }]"
+						:aria-description="warningText"
+						:data-test-id="`app-binding-${binding.key}`"
+						@click="emit('open')"
 					>
-						{{ i18n.baseText('apps.configure.connections.remove') }}
+						<N8nIcon :icon="config.icon" :size="16" :class="$style.icon" />
+						<span :class="$style.name">{{ binding.name }}</span>
+						<N8nIcon
+							v-if="warningText"
+							icon="triangle-alert"
+							:size="14"
+							:class="$style.warningIcon"
+							:data-test-id="`app-binding-${binding.key}-warning`"
+						/>
 					</N8nButton>
-				</div>
-			</div>
+				</N8nTooltip>
+			</span>
 		</template>
-	</N8nPopover>
+	</N8nContextMenu>
 </template>
 
 <style lang="scss" module>
+.trigger {
+	display: inline-flex;
+	max-width: 100%;
+	user-select: none;
+}
+
 .chip {
 	max-width: 100%;
 }
@@ -189,29 +100,5 @@ watch(permissions, (value) => {
 .warningIcon {
 	flex-shrink: 0;
 	color: var(--color--warning);
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
-}
-
-.section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.key {
-	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--sm);
-}
-
-.actions {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
 }
 </style>

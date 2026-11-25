@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import type { AppBinding, AppBindingKind, AppResponse } from '@n8n/api-types';
-import { N8nCard, N8nText } from '@n8n/design-system';
+import { N8nAlertDialog, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, useId } from 'vue';
+import { computed, onMounted, ref, useId } from 'vue';
 
 import type { BindableResource } from '../../../apps.api';
 import { getAppPermissions } from '../../../apps.permissions';
 import { useAppBindings } from '../../../composables/useAppBindings';
 import type { AppVersions } from '../../../composables/useAppVersions';
 import AppBindingChip from './AppBindingChip.vue';
+import AppBindingDialog from './AppBindingDialog.vue';
 import AppBindingPicker from './AppBindingPicker.vue';
 import { deriveBindingKey } from './bindingKey';
-import {
-	BINDING_KIND_ORDER,
-	BINDING_KINDS,
-	createBinding,
-	resourceIdOf,
-	withPermissions,
-	type BindingPermission,
-} from './bindingKinds';
+import { BINDING_KIND_ORDER, BINDING_KINDS, createBinding, resourceIdOf } from './bindingKinds';
 
 const props = defineProps<{ app: AppResponse; versions: AppVersions }>();
 
@@ -27,6 +21,11 @@ const emit = defineEmits<{ updated: [app: AppResponse] }>();
 const i18n = useI18n();
 const headingId = useId();
 const { bindings, warningsByKey, loading, loaded, load, save } = useAppBindings(() => props.app);
+const openKey = ref<string>();
+const removeKey = ref<string>();
+
+const openBinding = computed(() => bindings.value.find(({ key }) => key === openKey.value));
+const removeBinding = computed(() => bindings.value.find(({ key }) => key === removeKey.value));
 
 const canUpdate = computed(
 	() => getAppPermissions(props.app.projectId).canUpdate && loaded.value && !loading.value,
@@ -50,11 +49,7 @@ async function persist(update: (current: AppBinding[]) => AppBinding[]) {
 	await props.versions.refresh();
 }
 
-async function add(
-	kind: AppBindingKind,
-	resource: BindableResource,
-	permissions: BindingPermission[],
-) {
+async function add(kind: AppBindingKind, resource: BindableResource) {
 	await persist((current) => [
 		...current,
 		createBinding(
@@ -65,20 +60,16 @@ async function add(
 				current.map(({ key }) => key),
 			),
 			resource.id,
-			permissions,
+			BINDING_KINDS[kind].defaultPermissions,
 		),
 	]);
 }
 
-async function update(key: string, permissions: BindingPermission[]) {
-	await persist((current) =>
-		current.map((binding) =>
-			binding.key === key ? withPermissions(binding, permissions) : binding,
-		),
-	);
-}
-
-async function remove(key: string) {
+async function confirmRemove() {
+	const key = removeKey.value;
+	removeKey.value = undefined;
+	if (!key) return;
+	if (openKey.value === key) openKey.value = undefined;
 	await persist((current) => current.filter((binding) => binding.key !== key));
 }
 
@@ -112,11 +103,10 @@ onMounted(load);
 								v-for="binding in row.bindings"
 								:key="binding.key"
 								:binding="binding"
-								:project-id="app.projectId"
 								:warning="warningsByKey.get(binding.key)"
 								:can-update="canUpdate"
-								@update="update(binding.key, $event)"
-								@remove="remove(binding.key)"
+								@open="openKey = binding.key"
+								@remove="removeKey = binding.key"
 							/>
 							<AppBindingPicker
 								v-if="canUpdate"
@@ -124,13 +114,38 @@ onMounted(load);
 								:project-id="app.projectId"
 								:bound-ids="row.boundIds"
 								:has-items="row.bindings.length > 0"
-								@add="(resource, permissions) => add(row.kind, resource, permissions)"
+								@add="add(row.kind, $event)"
 							/>
 						</div>
 					</div>
 				</template>
 			</div>
 		</section>
+		<AppBindingDialog
+			v-if="openBinding"
+			:binding="openBinding"
+			:project-id="app.projectId"
+			:warning="warningsByKey.get(openBinding.key)"
+			:can-update="canUpdate"
+			@close="openKey = undefined"
+			@remove="removeKey = openBinding.key"
+		/>
+		<N8nAlertDialog
+			:open="removeBinding !== undefined"
+			size="medium"
+			:stacked="openBinding !== undefined"
+			:title="
+				i18n.baseText('apps.configure.connections.removeConfirm.title', {
+					interpolate: { name: removeBinding?.name ?? '' },
+				})
+			"
+			:description="removeBinding && i18n.baseText(BINDING_KINDS[removeBinding.kind].removeMessage)"
+			:action-label="i18n.baseText('apps.configure.connections.removeConfirm.confirm')"
+			action-variant="destructive"
+			:cancel-label="i18n.baseText('generic.cancel')"
+			@action="confirmRemove"
+			@update:open="!$event && (removeKey = undefined)"
+		/>
 	</N8nCard>
 </template>
 
