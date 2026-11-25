@@ -16,9 +16,11 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
+import AgentHitlPanel from './AgentHitlPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
@@ -82,7 +84,16 @@ provideAgentPersonalisation(
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
 
+watch(
+	() => !!props.localConfig?.vectorStores?.length,
+	(configured) => {
+		if (configured) isKnowledgeAdvancedExpanded.value = true;
+	},
+	{ immediate: true },
+);
+
 const settingsStore = useSettingsStore();
+const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -324,7 +335,7 @@ defineExpose({ onSetupTaskAction });
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.guardrails.title')"
-						:description="i18n.baseText('agents.builder.guardrails.description')"
+						header-visibility="visually-hidden"
 						data-testid="agent-guardrails-panel"
 					>
 						<AgentGuardrailsSection
@@ -336,7 +347,22 @@ defineExpose({ onSetupTaskAction });
 							:validation-issues="configValidationIssues ?? []"
 							@update:config="emit('update:config', $event)"
 							@update:budget-config="emit('update:budget-config', $event)"
-						/>
+						>
+							<template v-if="approvalDestinationsEnabled" #approval>
+								<AgentHitlPanel
+									:agent-id="agentId"
+									:agent-unsaved="agentUnsaved"
+									:is-published="Boolean(agent?.activeVersionId)"
+									:ensure-agent-persisted="ensureAgentPersisted"
+									:config="localConfig"
+									:custom-tools="agent?.tools"
+									:project-id="projectId"
+									:disabled="childrenDisabled"
+									@agent-changed="emit('agent-changed')"
+									@update:config="emit('update:config', $event)"
+								/>
+							</template>
+						</AgentGuardrailsSection>
 					</AgentPanel>
 
 					<AgentMemoryPanel

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
 import { N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { McpToolPermissions } from '@n8n/api-types';
+import type { AgentApprovalRoute, McpToolPermissions } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 
+import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
+import { hitlMcpServerKey } from '../utils/hitlConfiguration';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import McpConnectionStatusCallout from '@/features/shared/toolsConnection/McpConnectionStatusCallout.vue';
@@ -36,6 +39,8 @@ const config = useAgentRegistryMcpConfig(modalData, () => emit('credential-delet
 const item = config.item;
 const title = config.title;
 const submitted = ref(false);
+const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
+const approvalRoute = ref<AgentApprovalRoute | undefined>(props.data.mcpServer.approvalRoute);
 const initialConnectionTimeoutMs =
 	props.data.mcpServer.connectionTimeoutMs ?? DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS;
 const draftSettings = ref<McpToolSettings>({
@@ -119,7 +124,7 @@ const saveDisabled = computed(() => item.value?.status !== 'connected');
 function confirm(): boolean {
 	submitted.value = true;
 	if (parsedTimeout.value === null) return false;
-	return config.save(draftSettings.value);
+	return config.save(draftSettings.value, approvalRoute.value);
 }
 
 async function remove(): Promise<boolean> {
@@ -179,7 +184,24 @@ defineExpose({
 				:server-title="title"
 				:status="item.status"
 				:exclude-permissions="data.supportsToolApproval === false ? ['require_approval'] : []"
-			/>
+			>
+				<template
+					v-if="
+						data.approvalContext &&
+						data.supportsToolApproval !== false &&
+						approvalDestinationsEnabled
+					"
+					#after-permissions
+				>
+					<AgentApprovalRouteSelect
+						v-model="approvalRoute"
+						embedded
+						:tool-key="hitlMcpServerKey(data.mcpServer.name)"
+						:context="data.approvalContext"
+						:project-id="data.projectId"
+					/>
+				</template>
+			</McpToolPermissionsEditor>
 			<div :class="$style.timeoutSection">
 				<N8nText tag="label" for="agent-mcp-connection-timeout" size="medium" bold>
 					{{ i18n.baseText('agents.toolConfig.mcp.timeout.label') }}

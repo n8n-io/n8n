@@ -511,7 +511,11 @@ function isDeclinedToolOutput(output: unknown): boolean {
 }
 
 function isApprovalRequest(value: unknown): boolean {
-	return isRecord(value) && value.type === 'approval';
+	return (
+		isRecord(value) &&
+		(value.type === 'approval' ||
+			(value.type === WORKFLOW_WAIT_SUSPEND_TYPE && value.approval === true))
+	);
 }
 
 function isIntegrationActionRequest(value: unknown): boolean {
@@ -595,6 +599,8 @@ interface HitlContext {
 	toolCall?: RawToolCallEvent;
 	toolItem?: TimelineItem;
 	toolDisplayName?: string;
+	approvalWorkflowId?: string;
+	approvalWorkflowExecutionId?: string;
 	hasExplicitResponse: boolean;
 }
 
@@ -697,6 +703,8 @@ function hitlResponseItem(
 		hitlResponse: response,
 		hitlResponseStatus: hitlResponseStatus(context.requestType, response, isLegacyResponse),
 		hitlToolDisplayName: context.toolDisplayName,
+		approvalWorkflowId: context.approvalWorkflowId,
+		approvalWorkflowExecutionId: context.approvalWorkflowExecutionId,
 		timestamp,
 		endTimestamp: timestamp,
 		workflowName: context.toolCall?.workflowName,
@@ -945,9 +953,19 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const requestType = inferHitlRequestType(suspension, toolCall, legacyApprovalToolCallIds);
 				const request = hitlRequestPayload(suspension, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
+				const approvalWorkflowId =
+					requestType === 'approval' && isRecord(request) && typeof request.workflowId === 'string'
+						? request.workflowId
+						: undefined;
+				const approvalWorkflowExecutionId =
+					requestType === 'approval' &&
+					isRecord(request) &&
+					typeof request.workflowExecutionId === 'string'
+						? request.workflowExecutionId
+						: undefined;
 				if (event.toolCallId) {
 					const toolItem = initialToolItems.get(event.toolCallId);
-					if (toolItem) {
+					if (toolItem && !toolCall?.endTime) {
 						toolItem.activityStatus =
 							exec.status === 'error' ||
 							exec.status === 'cancelled' ||
@@ -962,6 +980,8 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 						toolCall,
 						toolItem: initialToolItems.get(event.toolCallId),
 						toolDisplayName,
+						approvalWorkflowId,
+						approvalWorkflowExecutionId,
 						hasExplicitResponse: false,
 					});
 				}
@@ -974,6 +994,8 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					hitlRequestType: requestType,
 					hitlRequest: request,
 					hitlToolDisplayName: toolDisplayName,
+					approvalWorkflowId,
+					approvalWorkflowExecutionId,
 					workflowName: toolCall?.workflowName,
 					nodeDisplayName: toolCall?.nodeDisplayName,
 				});
@@ -981,7 +1003,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (!hitlContext) continue;
 				hitlContext.hasExplicitResponse = true;
-				if (hitlContext.toolItem) {
+				if (hitlContext.toolItem && !hitlContext.toolCall?.endTime) {
 					const responseStatus = hitlResponseStatus(hitlContext.requestType, event.response);
 					if (responseStatus === 'declined') {
 						hitlContext.toolItem.activityStatus = 'completed';

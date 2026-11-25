@@ -390,6 +390,17 @@ describe('AgentChannelModal', () => {
 		mocks.saveDescription.mockResolvedValue(undefined);
 	});
 
+	it('limits a review channel picker to the supported platforms', async () => {
+		catalog.value = [exampleIntegration, slackIntegration];
+		const wrapper = mountModal('list', false, { channelTypes: ['slack', 'telegram', 'discord'] });
+		await flushPromises();
+		expect(
+			wrapper
+				.findAll('[data-testid="channel-list-item"]')
+				.map((item) => item.attributes('data-type')),
+		).toEqual(['slack']);
+	});
+
 	it('uses registry metadata and setup rendering without platform checks', async () => {
 		const list = mountModal('list');
 		await flushPromises();

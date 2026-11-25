@@ -152,7 +152,10 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
-		args: value.args,
+		...(typeof value.description === 'string' && value.description.trim()
+			? { description: value.description.trim() }
+			: {}),
+		args: value.argumentsRedacted === true ? undefined : value.args,
 		...(askReason.success && { askReason: askReason.data }),
 	};
 }

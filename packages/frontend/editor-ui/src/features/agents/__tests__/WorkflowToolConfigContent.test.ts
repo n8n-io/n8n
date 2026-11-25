@@ -7,11 +7,13 @@ import { defineComponent, h, nextTick, ref, shallowRef } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowToolConfigContent from '../components/WorkflowToolConfigContent.vue';
 import WorkflowToolInputs from '../components/WorkflowToolInputs.vue';
 import AgentToolConfigForm from '../components/AgentToolConfigForm.vue';
 import type { WorkflowToolRef } from '../types';
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
@@ -92,14 +94,33 @@ function workflow(
 
 const renderComponent = createComponentRenderer(WorkflowToolConfigContent);
 
-function renderForm(initialRef: WorkflowToolRef) {
+function renderForm(
+	initialRef: WorkflowToolRef,
+	approvalContext?: AgentHitlContext,
+	withGuardrails = false,
+) {
 	const form = ref<InstanceType<typeof AgentToolConfigForm>>();
 	const onConfirm = vi.fn();
 	const render = createComponentRenderer(
 		defineComponent({
 			setup: () => () =>
 				h('div', [
-					h(AgentToolConfigForm, { ref: form, data: { toolRef: initialRef, onConfirm } }),
+					h(AgentToolConfigForm, {
+						ref: form,
+						data: {
+							toolRef: initialRef,
+							onConfirm,
+							...(approvalContext ? { projectId: 'project-1', approvalContext } : {}),
+							...(withGuardrails && {
+								onRemove: vi.fn(),
+								guardrails: {
+									getGuardrails: () => [],
+									getTools: () => [],
+									onUpdateGuardrails: vi.fn(),
+								},
+							}),
+						},
+					}),
 					h('button', { onClick: () => form.value?.confirm() }, 'Save'),
 				]),
 		}),
@@ -136,6 +157,39 @@ describe('WorkflowToolConfigContent', () => {
 		vi.clearAllMocks();
 		createTestingPinia({ stubActions: false });
 		setProjectWorkflows([workflow('Notify Sales'), workflow('Invoice Sender')]);
+	});
+
+	it('keeps workflow approval in its own group and Advanced last', async () => {
+		mockedStore(useSettingsStore).isAgentModuleActive = vi.fn().mockReturnValue(true);
+		const { getByTestId, container } = renderForm(
+			createRef({ requireApproval: true }),
+			{ getConfig: () => null, saveConfiguration: vi.fn() },
+			true,
+		);
+		const toggle = getByTestId('agent-tool-approval-toggle');
+		const destination = container.querySelector<HTMLElement>(
+			'[data-testid="agent-approval-route"]',
+		)!;
+		const approval = getByTestId('agent-workflow-tool-approval');
+		const advanced = getByTestId('agent-workflow-tool-advanced');
+		const guardrails = container.querySelector('[data-testid="agent-tool-guardrails-section"]');
+
+		expect(destination).toContainElement(toggle);
+		expect(
+			destination.compareDocumentPosition(advanced) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(approval).toContainElement(destination);
+		expect(destination).toHaveAttribute('data-test-id', 'settings-row-group');
+		expect(approval).not.toContainElement(advanced);
+		expect(advanced.parentElement?.previousElementSibling).toBe(guardrails);
+		expect(toggle).toBeVisible();
+		expect(advanced).toHaveAttribute('aria-expanded', 'false');
+		await fireEvent.click(advanced);
+		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
+
+		await fireEvent.click(toggle);
+		expect(container.querySelector('[data-testid="agent-review-add"]')).not.toBeInTheDocument();
+		expect(advanced).toHaveAttribute('aria-expanded', 'true');
 	});
 
 	it('emits valid=true when target, name and description are set', () => {
@@ -403,6 +457,13 @@ describe('WorkflowToolConfigContent', () => {
 		expect(queryByTestId('agent-workflow-tool-target-unusable')).toBeNull();
 	});
 
+	it('opens Advanced for a workflow configured to return all outputs', () => {
+		const { getByTestId } = renderForm(createRef({ allOutputs: true }));
+
+		expect(getByTestId('agent-workflow-tool-advanced')).toHaveAttribute('aria-expanded', 'true');
+		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
+	});
+
 	describe('workflow input bindings', () => {
 		it('configures an unpublished workflow whose trigger omits default parameters', async () => {
 			setProjectWorkflows([
@@ -422,7 +483,10 @@ describe('WorkflowToolConfigContent', () => {
 			};
 			const view = renderForm(createRef({ inputs }));
 			await view.findByTestId('agent-workflow-tool-target-unpublished');
-			await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+			expect(view.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+				'aria-expanded',
+				'true',
+			);
 			const field = await view.findByTestId('agent-workflow-tool-input-request');
 			expect(within(field).getByRole('textbox')).toHaveValue('Please review this request');
 			await fireEvent.click(view.getByRole('button', { name: 'Save' }));
@@ -482,7 +546,7 @@ describe('WorkflowToolConfigContent', () => {
 			});
 
 			const field = await findByTestId('agent-workflow-tool-input-botName');
-			await fireEvent.click(getByTestId('agent-workflow-tool-advanced'));
+			expect(getByTestId('agent-workflow-tool-advanced')).toHaveAttribute('aria-expanded', 'true');
 			expect(within(field).getByRole('textbox')).toHaveValue('Jarvis');
 		});
 
@@ -590,7 +654,10 @@ describe('WorkflowToolConfigContent', () => {
 			view.unmount();
 			const reopened = renderForm(saved);
 			await reopened.findByTestId('agent-workflow-tool-inputs');
-			await fireEvent.click(reopened.getByTestId('agent-workflow-tool-advanced'));
+			expect(reopened.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+				'aria-expanded',
+				'true',
+			);
 			expect(
 				within(reopened.getByTestId('agent-workflow-tool-input-query')).getByRole('textbox'),
 			).toHaveValue('Input guidance');
@@ -628,7 +695,10 @@ describe('WorkflowToolConfigContent', () => {
 					.fn()
 					.mockRejectedValue(new Error('offline'));
 				const failedLoad = renderForm(createRef({ inputs }));
-				await fireEvent.click(failedLoad.getByTestId('agent-workflow-tool-advanced'));
+				expect(failedLoad.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+					'aria-expanded',
+					'true',
+				);
 				await failedLoad.findByText('agents.toolConfig.workflow.inputs.loadError');
 				await fireEvent.click(failedLoad.getByRole('button', { name: 'Save' }));
 				expect(failedLoad.onConfirm).toHaveBeenCalledWith(expect.objectContaining({ inputs }));

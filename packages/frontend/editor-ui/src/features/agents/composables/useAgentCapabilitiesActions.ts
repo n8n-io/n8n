@@ -6,6 +6,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import {
 	skillNameKey,
+	type AgentHitlConfiguration,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
 	type AgentSkillVersionInfo,
@@ -29,6 +30,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
 import { withToolGuardrails } from '../utils/guardrails';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
@@ -227,6 +229,36 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleConfigUpdate(withToolGuardrails(localConfig.value, next));
 	}
 
+	function hitlContext() {
+		if (supportsToolApproval === false) return undefined;
+		const targetAgentId = agentId.value;
+		const targetProjectId = projectId.value;
+		const isCurrentTarget = () =>
+			agentId.value === targetAgentId && projectId.value === targetProjectId;
+		return {
+			agentId: targetAgentId,
+			get isPublished() {
+				return !!agent.value?.activeVersionId;
+			},
+			ensureAgentPersisted: async () => {
+				if (!isCurrentTarget()) return;
+				await beforeAgentMutation?.();
+				if (isCurrentTarget()) await ensureAgentPersisted?.();
+			},
+			onChannelsChanged: async () => {
+				if (isCurrentTarget()) {
+					await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+				}
+			},
+			getConfig: () => (isCurrentTarget() ? localConfig.value : null),
+			getCustomToolName: (id: string) => agent.value?.tools[id]?.descriptor.name,
+			saveConfiguration: (configuration: AgentHitlConfiguration, toolKeys?: string[]) => {
+				if (!isCurrentTarget()) return;
+				scheduleConfigUpdate(hitlConfigurationUpdates(localConfig.value, configuration, toolKeys));
+			},
+		};
+	}
+
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
@@ -236,11 +268,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
 				mode,
-				tools: localConfig.value?.tools ?? [],
-				mcpServers: localConfig.value?.mcpServers ?? [],
+				get tools() {
+					return localConfig.value?.tools ?? [];
+				},
+				get mcpServers() {
+					return localConfig.value?.mcpServers ?? [];
+				},
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,
+				approvalContext: hitlContext(),
 				...(toolGuardrailsEnabled && { guardrails: toolGuardrailsWiring(targetAgentId) }),
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
@@ -312,6 +349,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					projectId: projectId.value,
 					agentId: agentId.value,
 					supportsToolApproval,
+					approvalContext: hitlContext(),
 					validationIssues: () =>
 						validationIssues?.value.filter(
 							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
@@ -361,6 +399,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					mcpServer,
 					projectId: projectId.value,
 					supportsToolApproval,
+					approvalContext: hitlContext(),
 					existingToolNames: mcpServers
 						.filter((_, index) => index !== mcpServerIndex)
 						.map((server) => server.name),
@@ -399,6 +438,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: projectId.value,
 				agentId: agentId.value,
 				supportsToolApproval,
+				approvalContext: hitlContext(),
 				existingToolNames: mcpServers
 					.filter((_, i) => i !== mcpServerIndex)
 					.map((server) => server.name),

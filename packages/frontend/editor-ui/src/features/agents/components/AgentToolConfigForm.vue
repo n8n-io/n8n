@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type { AgentApprovalRoute, AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nCallout, N8nText } from '@n8n/design-system';
 import {
 	RestrictedTypeCallout,
@@ -30,12 +30,15 @@ import {
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import { isRestrictedByInlineTool } from '../utils/validationIssues';
+import { hitlMcpServerKey, hitlToolKey } from '../utils/hitlConfiguration';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
 	CustomToolEntry,
 	WorkflowToolRef,
 } from '../types';
+import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
@@ -56,6 +59,7 @@ interface ToolModalData {
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
@@ -76,6 +80,7 @@ interface McpServerModalData {
 	agentId?: string;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
@@ -139,6 +144,16 @@ const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowConten
 const isValid = ref(false);
 const submitCount = ref(0);
 const approvalRequired = ref(false);
+const approvalRoute = ref<AgentApprovalRoute>();
+watch(
+	() => props.data,
+	(data) => {
+		approvalRoute.value = isMcpServerModalData(data)
+			? data.mcpServer.approvalRoute
+			: data.toolRef.approvalRoute;
+	},
+	{ immediate: true },
+);
 const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
@@ -195,6 +210,14 @@ const customToolTitle = computed(() => {
 const title = computed(() => (isCustomTool.value ? customToolTitle.value : nodeName.value));
 
 const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
+const approvalToolKey = computed(() =>
+	isMcpServerModalData(props.data)
+		? hitlMcpServerKey(props.data.mcpServer.name)
+		: hitlToolKey(props.data.toolRef),
+);
+const hasReviewContext = computed(
+	() => supportsApproval.value && !!props.data.approvalContext && !!props.data.projectId,
+);
 const showApprovalSetting = computed(
 	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
 );
@@ -283,7 +306,10 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 		const { requireApproval: _requireApproval, ...rest } = ref;
 		return rest;
 	}
-	const updatedRef = { ...ref };
+	const updatedRef = {
+		...ref,
+		approvalRoute: approvalRequired.value ? approvalRoute.value : undefined,
+	};
 	if (approvalRequired.value) updatedRef.requireApproval = true;
 	else delete updatedRef.requireApproval;
 	return updatedRef;
@@ -307,6 +333,7 @@ function confirm(): boolean {
 		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
 		mcpData.onConfirm({
 			...updatedServer,
+			approvalRoute: supportsApproval.value ? approvalRoute.value : undefined,
 			toolPermissions: supportsApproval.value
 				? mcpPermissions.value
 				: {
@@ -405,10 +432,10 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 			:class="$style.customToolViewer"
 		/>
 		<AgentToolConfigApprovalSetting
-			v-if="isCustomTool && showApprovalSetting"
+			v-if="isCustomTool && showApprovalSetting && !hasReviewContext"
 			v-model="approvalRequired"
 		/>
-		<div v-else :class="$style.configureTab">
+		<div v-if="!isCustomTool" :class="$style.configureTab">
 			<AgentToolConfigWorkflowContent
 				v-if="workflowInitialRef"
 				ref="workflowContentRef"
@@ -420,7 +447,29 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
 				@update:approval-required="approvalRequired = $event"
-			/>
+			>
+				<template
+					v-if="data.approvalContext && data.projectId && supportsApproval"
+					#approvalSettings
+				>
+					<AgentApprovalRouteSelect
+						v-if="data.approvalContext && data.projectId"
+						v-model="approvalRoute"
+						:tool-key="approvalToolKey"
+						v-model:approval-required="approvalRequired"
+						:context="data.approvalContext"
+						:project-id="data.projectId"
+						:disabled="isRestricted"
+					/>
+				</template>
+				<template v-if="guardrailsSection" #beforeAdvanced>
+					<AgentToolGuardrailsSection
+						:tool-ref="guardrailsSection.toolRef"
+						v-bind="guardrailsSection.wiring"
+						@open-guardrail="emit('open-guardrail', $event)"
+					/>
+				</template>
+			</AgentToolConfigWorkflowContent>
 			<AgentToolConfigNodeContent
 				v-else-if="isMcpTool && initialNode"
 				ref="mcpContentRef"
@@ -449,7 +498,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:node="draftNode = $event"
 			/>
 			<AgentToolConfigApprovalSetting
-				v-if="!isMcpTool && initialNode && showApprovalSetting"
+				v-if="!isMcpTool && initialNode && showApprovalSetting && !hasReviewContext"
 				v-model="approvalRequired"
 				:disabled="isRestricted"
 			/>
@@ -462,8 +511,25 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:valid="mcpApprovalValid = $event"
 			/>
 		</div>
+		<AgentApprovalRouteSelect
+			v-if="
+				!isWorkflowTool &&
+				data.approvalContext &&
+				data.projectId &&
+				supportsApproval &&
+				((!isMcpTool && showApprovalSetting) || isMcpTool)
+			"
+			v-model="approvalRoute"
+			:tool-key="approvalToolKey"
+			:label="isMcpTool ? i18n.baseText('agents.hitl.mcpRoute') : undefined"
+			:approval-required="isMcpTool ? undefined : approvalRequired"
+			@update:approval-required="approvalRequired = $event"
+			:context="data.approvalContext"
+			:project-id="data.projectId"
+			:disabled="isRestricted"
+		/>
 		<AgentToolGuardrailsSection
-			v-if="guardrailsSection"
+			v-if="!isWorkflowTool && guardrailsSection"
 			:tool-ref="guardrailsSection.toolRef"
 			v-bind="guardrailsSection.wiring"
 			@open-guardrail="emit('open-guardrail', $event)"
@@ -476,7 +542,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	overflow-x: hidden;
+	overflow-x: clip;
 
 	:global(.ndv-connection-hint-notice) {
 		display: none;
