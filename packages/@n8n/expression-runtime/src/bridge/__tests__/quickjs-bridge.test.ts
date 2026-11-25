@@ -999,4 +999,161 @@ describe('QuickJsBridge cycle guard', () => {
 			await expect(bridge.dispose()).resolves.toBeUndefined();
 		}
 	});
+
+	it('should reject a cyclic plain object or array extracted from a host Map or Set without breaking the runtime', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 16,
+			poolSize: 1,
+		});
+		await evaluator.initialize();
+		const execution = {};
+		await evaluator.acquire(execution);
+
+		try {
+			const cycObj: Record<string, unknown> = { a: 1 };
+			cycObj.self = cycObj;
+			const cycArr: unknown[] = [1];
+			cycArr.push(cycArr);
+			const json = {
+				mapWithObj: new Map<string, unknown>([['k', cycObj]]),
+				setWithArr: new Set<unknown>([cycArr]),
+			};
+			const hostData = { $input: { first: () => ({ json }) } };
+
+			// Returning the collection itself or reading acyclic fields still works.
+			const returnedMap = evaluator.evaluate(
+				'{{ $input.first().json.mapWithObj }}',
+				hostData,
+				execution,
+			) as Map<string, Record<string, unknown>>;
+			expect(returnedMap.get('k')?.self).toBe(returnedMap.get('k'));
+			expect(
+				evaluator.evaluate('{{ $input.first().json.mapWithObj.get("k").a }}', hostData, execution),
+			).toBe(1);
+
+			for (const expr of [
+				'{{ $input.first().json.mapWithObj.get("k") }}',
+				'{{ $input.first()?.json.mapWithObj.get("k") }}',
+				'{{ [...$input.first().json.setWithArr][0] }}',
+			]) {
+				let thrown: unknown;
+				try {
+					evaluator.evaluate(expr, hostData, execution);
+				} catch (error) {
+					thrown = error;
+				}
+				expect(thrown).toBeInstanceOf(Error);
+				expect(thrown).not.toBeInstanceOf(HostCallError);
+				expect((thrown as Error).message).toMatch(/Maximum call stack size exceeded/);
+				// The runtime stays healthy for the next expression (no RuntimeRestartingError).
+				expect(evaluator.evaluate('{{ 1 + 1 }}', {}, execution)).toBe(2);
+			}
+		} finally {
+			await evaluator.release(execution);
+			await expect(evaluator.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should not keep seen-map state across vm.dump() for large plain-object arrays near the memory limit', async () => {
+		const bridge = new QuickJsBridge({ timeout: 30_000, memoryLimit: 16 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				'return Array.from({ length: 205_000 }, (_, i) => ({ i }));',
+				{},
+			);
+			expect(Array.isArray(result)).toBe(true);
+			expect((result as Array<{ i: number }>).length).toBe(205_000);
+			expect((result as Array<{ i: number }>)[204_999]).toStrictEqual({ i: 204_999 });
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should keep fields on mutually referencing Errors returned at separate positions', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const mutual = bridge.execute(
+				`
+				const a = new Error('a');
+				const b = new Error('b');
+				a.child = b;
+				b.parent = a;
+				return [a, b];
+				`,
+				{},
+			) as [
+				Error & { child?: Error & { parent?: unknown } },
+				Error & { parent?: Error & { child?: unknown } },
+			];
+			expect(mutual[0]).toBeInstanceOf(Error);
+			expect(mutual[0].message).toBe('a');
+			expect(mutual[0].child?.message).toBe('b');
+			expect(mutual[0].child?.parent).toBeUndefined();
+			expect(mutual[1]).toBeInstanceOf(Error);
+			expect(mutual[1].message).toBe('b');
+			expect(mutual[1].parent).toBeInstanceOf(Error);
+			expect(mutual[1].parent?.message).toBe('a');
+			expect(mutual[1].parent?.child).toBeUndefined();
+
+			const causeLoop = bridge.execute(
+				`
+				const c = new Error('c');
+				const e = new Error('e', { cause: c });
+				c.back = e;
+				return [e, c];
+				`,
+				{},
+			) as [
+				Error & { cause?: Error & { back?: unknown } },
+				Error & { back?: Error & { cause?: unknown } },
+			];
+			expect(causeLoop[0].cause?.message).toBe('c');
+			expect(causeLoop[0].cause?.back).toBeUndefined();
+			expect(causeLoop[1].back).toBeInstanceOf(Error);
+			expect(causeLoop[1].back?.message).toBe('e');
+			expect(causeLoop[1].back?.cause).toBeUndefined();
+
+			const threeCycle = bridge.execute(
+				`
+				const a = new Error('a');
+				const b = new Error('b');
+				const c = new Error('c');
+				a.next = b;
+				b.next = c;
+				c.next = a;
+				return [a, b, c];
+				`,
+				{},
+			) as Array<Error & { next?: Error & { next?: Error } }>;
+			expect(threeCycle[0].next?.next?.message).toBe('c');
+			expect(threeCycle[1].next?.next?.message).toBe('a');
+			expect(threeCycle[2].next?.next?.message).toBe('b');
+
+			const siblingDiamond = bridge.execute(
+				`
+				const a = new Error('a');
+				const b = new Error('b');
+				const c = new Error('c');
+				const d = new Error('d');
+				a.first = { b };
+				b.d = d;
+				d.back = b;
+				a.second = c;
+				c.d = d;
+				return [a, c];
+				`,
+				{},
+			) as [
+				Error & { first: { b: Error & { d: Error } }; second: Error & { d: Error } },
+				Error & { d: Error & { back?: Error } },
+			];
+			expect(siblingDiamond[0].first.b.d).toBe(siblingDiamond[0].second.d);
+			expect(siblingDiamond[1].d.back?.message).toBe('b');
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
 });

@@ -415,12 +415,74 @@ describe('__prepareForTransfer', () => {
 		const outer = new Error('outer', { cause: inner });
 		const recorded = new Map<Error, object>();
 
-		const prepared = __prepareForTransfer(outer, (error, sentinel) => {
-			recorded.set(error, sentinel);
+		const prepared = __prepareForTransfer(outer, {
+			onEncodeError: (error, sentinel) => {
+				recorded.set(error, sentinel);
+			},
 		}) as { __cause: object };
 
 		expect(recorded.get(outer)).toBe(prepared);
 		expect(recorded.get(inner)).toBe(prepared.__cause);
+	});
+
+	it('skips reporting nested Error markers truncated by an enclosing open object', () => {
+		const a = new Error('a') as Error & { child?: Error };
+		const b = new Error('b') as Error & { parent?: Error };
+		a.child = b;
+		b.parent = a;
+		const recorded: Array<[Error, object]> = [];
+
+		const prepared = __prepareForTransfer([a, b], {
+			onEncodeError: (error, sentinel) => {
+				recorded.push([error, sentinel]);
+			},
+		}) as [object, object];
+
+		expect(recorded).toStrictEqual([
+			[a, prepared[0]],
+			[b, prepared[1]],
+		]);
+	});
+
+	it('skips reporting a sibling Error that reuses a truncated cached object', () => {
+		const a = new Error('a') as Error & { first?: unknown; second?: unknown };
+		const b = new Error('b') as Error & { d?: unknown };
+		const c = new Error('c') as Error & { d?: unknown };
+		const d = new Error('d') as Error & { back?: unknown };
+		b.d = d;
+		d.back = b;
+		c.d = d;
+		a.first = { b };
+		a.second = c;
+		const recorded: Error[] = [];
+
+		__prepareForTransfer([a, c], {
+			onEncodeError: (error) => {
+				recorded.push(error);
+			},
+		});
+
+		expect(recorded).toStrictEqual([b, a, d, c]);
+	});
+
+	it('calls onPlainCycle when a plain object or array refers to itself outside an Error', () => {
+		const obj: Record<string, unknown> = { a: 1 };
+		obj.self = obj;
+		const arr: unknown[] = [1];
+		arr.push(arr);
+		const onPlainCycle = (): never => {
+			throw new RangeError('Maximum call stack size exceeded');
+		};
+
+		expect(() => __prepareForTransfer(obj, { onPlainCycle })).toThrow(RangeError);
+		expect(() => __prepareForTransfer(arr, { onPlainCycle })).toThrow(RangeError);
+
+		// Shared acyclic plain objects are still allowed and not treated as cycles.
+		const shared = { x: 1 };
+		expect(__prepareForTransfer({ left: shared, right: shared }, { onPlainCycle })).toStrictEqual({
+			left: { x: 1 },
+			right: { x: 1 },
+		});
 	});
 
 	it('invokes onCreate in rebuildErrorValue before decoding children', () => {

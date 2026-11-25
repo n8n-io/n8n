@@ -1316,6 +1316,51 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(outErr.m).toBeInstanceOf(Map);
 			expect(outMarker).toStrictEqual({ __isRef: true, __id: 0 });
 		});
+
+		it('should keep fields on mutually referencing Errors returned at separate positions', () => {
+			const mutual = evaluator.evaluate(
+				'{{ (() => { const a = new Error("a"); const b = new Error("b"); a.child = b; b.parent = a; return [a, b]; })() }}',
+				data,
+				caller,
+			) as [Error & { child?: Error }, Error & { parent?: Error }];
+			const causeLoop = evaluator.evaluate(
+				'{{ (() => { const c = new Error("c"); const e = new Error("e", { cause: c }); c.back = e; return [e, c]; })() }}',
+				data,
+				caller,
+			) as [Error & { cause?: Error }, Error & { back?: Error }];
+
+			expect(mutual[0].child).toBeInstanceOf(Error);
+			expect(mutual[0].child?.message).toBe('b');
+			expect(mutual[1].parent).toBeInstanceOf(Error);
+			expect(mutual[1].parent?.message).toBe('a');
+
+			expect(causeLoop[0].cause).toBeInstanceOf(Error);
+			expect(causeLoop[0].cause?.message).toBe('c');
+			expect(causeLoop[1].back).toBeInstanceOf(Error);
+			expect(causeLoop[1].back?.message).toBe('e');
+		});
+
+		it('should report a guest stack error and stay healthy when a cyclic plain value is extracted from a host Map or Set', () => {
+			const cycObj: Record<string, unknown> = { a: 1 };
+			cycObj.self = cycObj;
+			const cycArr: unknown[] = [1];
+			cycArr.push(cycArr);
+			const json = {
+				mapWithObj: new Map<string, unknown>([['k', cycObj]]),
+				setWithArr: new Set<unknown>([cycArr]),
+			};
+			const hostData = { $input: { first: () => ({ json }) } };
+
+			expect(() =>
+				evaluator.evaluate('{{ $input.first().json.mapWithObj.get("k") }}', hostData, caller),
+			).toThrow(/Maximum call stack size exceeded/);
+			expect(evaluator.evaluate('{{ 1 + 1 }}', data, caller)).toBe(2);
+
+			expect(() =>
+				evaluator.evaluate('{{ [...$input.first().json.setWithArr][0] }}', hostData, caller),
+			).toThrow(/Maximum call stack size exceeded/);
+			expect(evaluator.evaluate('{{ 2 + 2 }}', data, caller)).toBe(4);
+		});
 	});
 
 	it('should honor locale and options in toLocaleString/toLocaleTimeString', () => {

@@ -6,7 +6,7 @@ import { SafeObject, SafeError, ExpressionError } from './safe-globals';
 import { installLazyArrayConcat } from './lazy-array-concat';
 import { createDeepLazyProxy } from './lazy-proxy';
 import { buildContext, type BridgeCallbacks } from './context';
-import { __prepareForTransfer } from './serialize';
+import { __prepareForTransfer, type PrepareTransferOptions } from './serialize';
 
 // Augment globalThis with runtime properties
 declare global {
@@ -27,10 +27,7 @@ declare global {
 		var DateTime: typeof import('luxon').DateTime;
 		var Duration: typeof import('luxon').Duration;
 		var Interval: typeof import('luxon').Interval;
-		var __prepareForTransfer: (
-			value: unknown,
-			onEncodeError?: (error: Error, sentinel: object) => void,
-		) => unknown;
+		var __prepareForTransfer: (value: unknown, options?: PrepareTransferOptions) => unknown;
 		var extend: typeof import('../extensions/extend').extend;
 		var extendOptional: typeof import('../extensions/extend').extendOptional;
 	}

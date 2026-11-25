@@ -1370,6 +1370,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	var NativeError = Error;
 	var NativeMap = Map;
 	var NativePromise = Promise;
+	var NativeRangeError = RangeError;
 	var NativeSet = Set;
 	var NativeTypeError = TypeError;
 	var stringPrototype = String.prototype;
@@ -1455,6 +1456,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 		return null;
 	}
+	function throwPlainCycle() {
+		throw new NativeRangeError('Maximum call stack size exceeded');
+	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
 		var errorToSentinel;
@@ -1469,257 +1473,310 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			reflectApply(mapSet, sentinelToError, [sentinel, error]);
 		}
-		var prepared = original(value, recordError);
+		var prepared = original(value, {
+			onEncodeError: recordError,
+			onPlainCycle: throwPlainCycle,
+		});
 		if (prepared === null || prepared === undefined) return prepared;
 		if (typeof prepared === 'function') {
 			throw new NativeTypeError(BoxedString(prepared) + ' could not be cloned');
 		}
 		if (numberIsNaN(prepared)) return { __isNaN: true };
 		if (typeof prepared !== 'object') return prepared;
-		return wrapGraph(prepared, errorToSentinel, sentinelToError);
+		var root = wrapGraph(prepared, errorToSentinel, sentinelToError);
+		errorToSentinel = undefined;
+		sentinelToError = undefined;
+		prepared = undefined;
+		return root;
 	};
 
-	function wrapGraph(rootValue, errorToSentinel, sentinelToError) {
-		var seen = new NativeMap();
-		var repeated = [];
-		var nextId = 0;
+	function makeRef(entry, state) {
+		if (entry.id === -1) {
+			entry.id = state.nextId++;
+			state.repeated[state.repeated.length] = entry;
+		}
+		return { __isRef: true, __id: entry.id };
+	}
 
-		function makeRef(entry) {
-			if (entry.id === -1) {
-				entry.id = nextId++;
-				repeated[repeated.length] = entry;
-			}
-			return { __isRef: true, __id: entry.id };
+	function getSeenMap(state) {
+		if (state.seen === null) {
+			state.seen = new NativeMap();
+		}
+		return state.seen;
+	}
+
+	function wrapPreparedError(originalError, marker, state) {
+		var seen = getSeenMap(state);
+		var existing = reflectApply(mapGet, seen, [originalError]);
+		if (existing === undefined) existing = reflectApply(mapGet, seen, [marker]);
+		if (existing !== undefined) {
+			reflectApply(mapSet, seen, [originalError, existing]);
+			reflectApply(mapSet, seen, [marker, existing]);
+			return makeRef(existing, state);
+		}
+		var entry = { id: -1, out: null };
+		reflectApply(mapSet, seen, [originalError, entry]);
+		reflectApply(mapSet, seen, [marker, entry]);
+		var out = wrapErrorMarker(marker, state);
+		entry.out = out;
+		return out;
+	}
+
+	function isPlainObjectProto(v) {
+		try {
+			return getPrototypeOf(v) === objectPrototype;
+		} catch (_e) {
+			return false;
+		}
+	}
+
+	// __prepareForTransfer does not walk into a Map, a Set or the extra keys of an
+	// Error, and it does not walk an opaque payload. The inCollection flag marks
+	// those places, where a transfer marker can only come from user data.
+	// Outside collections and Errors (trackRefs === false), __prepareForTransfer
+	// already copied every plain object and array into a fresh unshared object, so
+	// those do not need seen-map entries.
+	function wrapSpecialValues(v, inCollection, trackRefs, state) {
+		if (v === null || v === undefined) return v;
+		// Functions and Promises must not leave the sandbox as results.
+		// isolated-vm's structured clone rejects them; match its error.
+		if (typeof v === 'function') {
+			throw new NativeTypeError(BoxedString(v) + ' could not be cloned');
+		}
+		if (numberIsNaN(v)) {
+			return { __isNaN: true };
+		}
+		if (typeof v !== 'object') return v;
+		if (v instanceof NativePromise) {
+			throw new NativeTypeError('#<Promise> could not be cloned');
+		}
+		if (state.seen !== null) {
+			var existing = reflectApply(mapGet, state.seen, [v]);
+			if (existing !== undefined) return makeRef(existing, state);
 		}
 
-		function wrapPreparedError(originalError, marker) {
-			var existing = reflectApply(mapGet, seen, [originalError]);
-			if (existing === undefined) existing = reflectApply(mapGet, seen, [marker]);
-			if (existing !== undefined) {
-				reflectApply(mapSet, seen, [originalError, existing]);
-				reflectApply(mapSet, seen, [marker, existing]);
-				return makeRef(existing);
+		// original() turns an Error into a marker while a Map or Set keeps the raw
+		// Error. Bind both to one seen entry so cycles through a collection keep one
+		// Error instance on the host.
+		if (state.errorToSentinel !== undefined) {
+			var preparedError = reflectApply(mapGet, state.errorToSentinel, [v]);
+			if (preparedError !== undefined) {
+				return wrapPreparedError(v, preparedError, state);
 			}
-			var entry = { id: -1, out: null };
-			reflectApply(mapSet, seen, [originalError, entry]);
-			reflectApply(mapSet, seen, [marker, entry]);
-			var out = wrapErrorMarker(marker);
-			entry.out = out;
-			return out;
-		}
-
-		// __prepareForTransfer does not walk into a Map, a Set or the extra keys of an
-		// Error, and it does not walk an opaque payload. The inCollection flag marks
-		// those places, where a transfer marker can only come from user data.
-		function wrapSpecialValues(v, inCollection) {
-			if (v === null || v === undefined) return v;
-			// Functions and Promises must not leave the sandbox as results.
-			// isolated-vm's structured clone rejects them; match its error.
-			if (typeof v === 'function') {
-				throw new NativeTypeError(BoxedString(v) + ' could not be cloned');
-			}
-			if (numberIsNaN(v)) {
-				return { __isNaN: true };
-			}
-			if (typeof v !== 'object') return v;
-			if (v instanceof NativePromise) {
-				throw new NativeTypeError('#<Promise> could not be cloned');
-			}
-			var existing = reflectApply(mapGet, seen, [v]);
-			if (existing !== undefined) return makeRef(existing);
-
-			// original() turns an Error into a marker while a Map or Set keeps the raw
-			// Error. Bind both to one seen entry so cycles through a collection keep one
-			// Error instance on the host.
-			if (errorToSentinel !== undefined) {
-				var preparedError = reflectApply(mapGet, errorToSentinel, [v]);
-				if (preparedError !== undefined) {
-					return wrapPreparedError(v, preparedError);
-				}
-				if (!inCollection) {
-					var originalError = reflectApply(mapGet, sentinelToError, [v]);
-					if (originalError !== undefined) {
-						return wrapPreparedError(originalError, v);
-					}
-				}
-			}
-
-			// Outside a collection, an escaped wrapper from __prepareForTransfer is a
-			// plain object carrying the same object as its payload. Reuse an earlier
-			// entry for that payload, or bind both to one entry so cycles through the
-			// payload resolve to the wrapper.
 			if (!inCollection) {
-				var isPlainProto = false;
-				try {
-					isPlainProto = getPrototypeOf(v) === objectPrototype;
-				} catch (_e) {
-					isPlainProto = false;
-				}
-				if (
-					isPlainProto &&
-					v['${TRANSFER_ESCAPED_KEY}'] === true &&
-					typeof v['${TRANSFER_TYPE_KEY}'] !== 'string'
-				) {
-					return wrapEscapedTransfer(v, inCollection);
+				var originalError = reflectApply(mapGet, state.sentinelToError, [v]);
+				if (originalError !== undefined) {
+					return wrapPreparedError(originalError, v, state);
 				}
 			}
-
-			var entry = { id: -1, out: null };
-			reflectApply(mapSet, seen, [v, entry]);
-			var out;
-			if (v instanceof NativeDate) {
-				// Invalid Dates have no ISO string; '' rebuilds an Invalid Date on the host.
-				out = {
-					__isDate: true,
-					__isoString: numberIsNaN(reflectApply(dateGetTime, v, []))
-						? ''
-						: reflectApply(dateToISOString, v, []),
-				};
-			} else if (v instanceof NativeError) {
-				var errExtra = {};
-				var errKeys = objectKeys(v);
-				for (var ei = 0; ei < errKeys.length; ei++) {
-					if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-						defineOwnValue(errExtra, errKeys[ei], wrapChild(v[errKeys[ei]], true));
-					}
-				}
-				out = { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
-			} else if (v instanceof NativeMap) {
-				var entries = [];
-				reflectApply(mapForEach, v, [function(val, key) {
-					entries[entries.length] = [wrapChild(key, true), wrapChild(val, true)];
-				}]);
-				out = { __isMap: true, __entries: entries };
-			} else if (v instanceof NativeSet) {
-				var values = [];
-				reflectApply(setForEach, v, [function(val) {
-					values[values.length] = wrapChild(val, true);
-				}]);
-				out = { __isSet: true, __values: values };
-			} else if (isArray(v)) {
-				out = wrapArray(v, inCollection);
-			} else {
-				var boxed = wrapBoxedPrimitive(v);
-				if (boxed !== null) {
-					out = boxed;
-				} else if (!inCollection && v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
-					// The values inside an Error marker still need the wrapping above.
-					out = wrapErrorMarker(v);
-				} else if (!inCollection && typeof v['${TRANSFER_TYPE_KEY}'] === 'string') {
-					// Outside a collection, transfer markers come from __prepareForTransfer above,
-					// so pass them to the host as they are.
-					out = v;
-				} else {
-					out = wrapOwnKeys(v, inCollection);
-				}
-			}
-			entry.out = out;
-			return out;
 		}
 
-		function wrapEscapedTransfer(v, inCollection) {
-			var payload = v.__value;
-			var payloadIsObject = payload !== null && typeof payload === 'object';
+		if (!inCollection) {
+			if (!trackRefs && isArray(v)) {
+				return wrapArray(v, false, false, state);
+			}
+			var isPlainProto = isPlainObjectProto(v);
+			if (isPlainProto) {
+				if (v['${TRANSFER_ESCAPED_KEY}'] === true && typeof v['${TRANSFER_TYPE_KEY}'] !== 'string') {
+					return wrapEscapedTransfer(v, false, trackRefs, state);
+				}
+				if (!trackRefs) {
+					if (v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
+						// Unrecorded Error marker (e.g. truncated in an enclosing walk):
+						// fall through so it and its Error-walk children are tracked in seen.
+					} else if (typeof v['${TRANSFER_TYPE_KEY}'] === 'string') {
+						return v;
+					} else {
+						return wrapOwnKeys(v, false, false, state);
+					}
+				}
+			}
+		}
+
+		var seen = getSeenMap(state);
+		var entry = { id: -1, out: null };
+		reflectApply(mapSet, seen, [v, entry]);
+		var out;
+		if (v instanceof NativeDate) {
+			// Invalid Dates have no ISO string; '' rebuilds an Invalid Date on the host.
+			out = {
+				__isDate: true,
+				__isoString: numberIsNaN(reflectApply(dateGetTime, v, []))
+					? ''
+					: reflectApply(dateToISOString, v, []),
+			};
+		} else if (v instanceof NativeError) {
+			var errExtra = {};
+			var errKeys = objectKeys(v);
+			for (var ei = 0; ei < errKeys.length; ei++) {
+				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
+					defineOwnValue(errExtra, errKeys[ei], wrapChild(v[errKeys[ei]], true, true, state));
+				}
+			}
+			out = { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
+		} else if (v instanceof NativeMap) {
+			var entries = [];
+			reflectApply(mapForEach, v, [function(val, key) {
+				entries[entries.length] = [wrapChild(key, true, true, state), wrapChild(val, true, true, state)];
+			}]);
+			out = { __isMap: true, __entries: entries };
+		} else if (v instanceof NativeSet) {
+			var values = [];
+			reflectApply(setForEach, v, [function(val) {
+				values[values.length] = wrapChild(val, true, true, state);
+			}]);
+			out = { __isSet: true, __values: values };
+		} else if (isArray(v)) {
+			out = wrapArray(v, inCollection, true, state);
+		} else {
+			var boxed = wrapBoxedPrimitive(v);
+			if (boxed !== null) {
+				out = boxed;
+			} else if (!inCollection && v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
+				// The values inside an Error marker still need the wrapping above.
+				out = wrapErrorMarker(v, state);
+			} else if (!inCollection && typeof v['${TRANSFER_TYPE_KEY}'] === 'string') {
+				// Outside a collection, transfer markers come from __prepareForTransfer above,
+				// so pass them to the host as they are.
+				out = v;
+			} else {
+				out = wrapOwnKeys(v, inCollection, true, state);
+			}
+		}
+		entry.out = out;
+		return out;
+	}
+
+	function wrapEscapedTransfer(v, inCollection, trackRefs, state) {
+		var payload = v.__value;
+		var payloadIsObject = payload !== null && typeof payload === 'object';
+		var isOpaque = v['${TRANSFER_OPAQUE_KEY}'] === true;
+		var shouldTrack = isOpaque || trackRefs;
+		var entry;
+		if (shouldTrack) {
+			var seen = getSeenMap(state);
 			if (payloadIsObject) {
 				var existingPayload = reflectApply(mapGet, seen, [payload]);
 				if (existingPayload !== undefined) {
 					reflectApply(mapSet, seen, [v, existingPayload]);
-					return makeRef(existingPayload);
+					return makeRef(existingPayload, state);
 				}
 			}
-			var entry = { id: -1, out: null };
+			entry = { id: -1, out: null };
 			reflectApply(mapSet, seen, [v, entry]);
 			if (payloadIsObject) {
 				reflectApply(mapSet, seen, [payload, entry]);
 			}
-			var wrapper;
-			if (v['${TRANSFER_OPAQUE_KEY}'] === true) {
-				// The host gives an opaque payload back as data, so wrap its contents
-				// as a collection and keep any marker in them as data too.
-				wrapper = { __value: payloadIsObject ? wrapOwnKeys(payload, true) : wrapSpecialValues(payload, true) };
-				wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
-				wrapper['${TRANSFER_OPAQUE_KEY}'] = true;
-			} else if (payloadIsObject && !isArray(payload)) {
-				wrapper = { __value: wrapOwnKeys(payload, inCollection) };
-				wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
-			} else if (isArray(payload)) {
-				wrapper = { __value: wrapArray(payload, inCollection) };
-				wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
-			} else {
-				wrapper = { __value: wrapSpecialValues(payload, inCollection) };
-				wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+		}
+		var wrapper;
+		if (isOpaque) {
+			// The host gives an opaque payload back as data, so wrap its contents
+			// as a collection and keep any marker in them as data too.
+			wrapper = { __value: payloadIsObject ? wrapOwnKeys(payload, true, true, state) : wrapSpecialValues(payload, true, true, state) };
+			wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+			wrapper['${TRANSFER_OPAQUE_KEY}'] = true;
+		} else if (payloadIsObject && !isArray(payload)) {
+			wrapper = { __value: wrapOwnKeys(payload, inCollection, shouldTrack, state) };
+			wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+		} else if (isArray(payload)) {
+			wrapper = { __value: wrapArray(payload, inCollection, shouldTrack, state) };
+			wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+		} else {
+			wrapper = { __value: wrapSpecialValues(payload, inCollection, shouldTrack, state) };
+			wrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+		}
+		if (entry !== undefined) entry.out = wrapper;
+		return wrapper;
+	}
+
+	function wrapArray(v, inCollection, trackRefs, state) {
+		var result = new Array(v.length);
+		for (var i = 0; i < v.length; i++) {
+			if (i in v) result[i] = wrapChild(v[i], inCollection, trackRefs, state);
+		}
+		return result;
+	}
+
+	function wrapErrorMarker(marker, state) {
+		var result = {};
+		var keys = objectKeys(marker);
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			var isData = key === '__props' || key === '__cause' || key === '__json';
+			defineOwnValue(result, key, isData ? wrapChild(marker[key], false, true, state) : marker[key]);
+		}
+		return result;
+	}
+
+	// vm.dump() drops an undefined object value and turns an undefined array item into null.
+	function wrapChild(v, inCollection, trackRefs, state) {
+		return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection, trackRefs, state);
+	}
+
+	function wrapOwnKeys(v, inCollection, trackRefs, state) {
+		var result = {};
+		var keys = objectKeys(v);
+		var collides = false;
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			if (
+				key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
+				key === '__isBoxedPrimitive' || key === '__isErrorValue' || key === '__isMap' ||
+				key === '__isSet' || key === '__isEscaped' || key === '__isRef' || key === '__isRefDef'
+			) {
+				collides = true;
 			}
-			entry.out = wrapper;
-			return wrapper;
-		}
-
-		function wrapArray(v, inCollection) {
-			var result = new Array(v.length);
-			for (var i = 0; i < v.length; i++) {
-				if (i in v) result[i] = wrapChild(v[i], inCollection);
+			// Inside a collection a transfer marker or an error flag is user data, so
+			// escape the object and the host reads the keys as the plain data they are.
+			if (
+				inCollection && (
+					key === '__isError' ||
+					key === '${TRANSFER_TYPE_KEY}' ||
+					key === '${TRANSFER_ESCAPED_KEY}' ||
+					key === '${TRANSFER_OPAQUE_KEY}'
+				)
+			) {
+				collides = true;
 			}
-			return result;
+			defineOwnValue(result, key, wrapChild(v[key], inCollection, trackRefs, state));
 		}
+		// User objects whose keys collide with transfer markers are escaped so
+		// the host returns them as plain data (as isolated-vm does) instead of
+		// misreading them as sentinels.
+		return collides ? { __isEscaped: true, __value: result } : result;
+	}
 
-		function wrapErrorMarker(marker) {
-			var result = {};
-			var keys = objectKeys(marker);
-			for (var i = 0; i < keys.length; i++) {
-				var key = keys[i];
-				var isData = key === '__props' || key === '__cause' || key === '__json';
-				defineOwnValue(result, key, isData ? wrapChild(marker[key], false) : marker[key]);
-			}
-			return result;
-		}
-
-		// vm.dump() drops an undefined object value and turns an undefined array item into null.
-		function wrapChild(v, inCollection) {
-			return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection);
-		}
-
-		function wrapOwnKeys(v, inCollection) {
-			var result = {};
-			var keys = objectKeys(v);
-			var collides = false;
-			for (var i = 0; i < keys.length; i++) {
-				var key = keys[i];
-				if (
-					key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
-					key === '__isBoxedPrimitive' || key === '__isErrorValue' || key === '__isMap' ||
-					key === '__isSet' || key === '__isEscaped' || key === '__isRef' || key === '__isRefDef'
-				) {
-					collides = true;
+	function wrapGraph(rootValue, errorToSentinel, sentinelToError) {
+		var state = {
+			seen: null,
+			repeated: [],
+			nextId: 0,
+			errorToSentinel: errorToSentinel,
+			sentinelToError: sentinelToError,
+		};
+		try {
+			var root = wrapSpecialValues(rootValue, false, false, state);
+			// Release walk maps before attachDefs and vm.dump() so QuickJS frees
+			// them immediately instead of holding them across JSON serialization.
+			state.seen = null;
+			state.errorToSentinel = undefined;
+			state.sentinelToError = undefined;
+			if (state.repeated.length === 0) return root;
+			var defIds = new NativeMap();
+			for (var ri = 0; ri < state.repeated.length; ri++) {
+				var rep = state.repeated[ri];
+				if (rep.out !== null && typeof rep.out === 'object') {
+					reflectApply(mapSet, defIds, [rep.out, rep.id]);
 				}
-				// Inside a collection a transfer marker or an error flag is user data, so
-				// escape the object and the host reads the keys as the plain data they are.
-				if (
-					inCollection && (
-						key === '__isError' ||
-						key === '${TRANSFER_TYPE_KEY}' ||
-						key === '${TRANSFER_ESCAPED_KEY}' ||
-						key === '${TRANSFER_OPAQUE_KEY}'
-					)
-				) {
-					collides = true;
-				}
-				defineOwnValue(result, key, wrapChild(v[key], inCollection));
 			}
-			// User objects whose keys collide with transfer markers are escaped so
-			// the host returns them as plain data (as isolated-vm does) instead of
-			// misreading them as sentinels.
-			return collides ? { __isEscaped: true, __value: result } : result;
+			state.repeated = null;
+			return attachDefs(root, defIds);
+		} finally {
+			state.seen = null;
+			state.repeated = null;
+			state.errorToSentinel = undefined;
+			state.sentinelToError = undefined;
 		}
-
-		var root = wrapSpecialValues(rootValue, false);
-		if (repeated.length === 0) return root;
-		var defIds = new NativeMap();
-		for (var ri = 0; ri < repeated.length; ri++) {
-			var rep = repeated[ri];
-			if (rep.out !== null && typeof rep.out === 'object') {
-				reflectApply(mapSet, defIds, [rep.out, rep.id]);
-			}
-		}
-		return attachDefs(root, defIds);
 	}
 
 	function attachDefs(node, defIds) {
