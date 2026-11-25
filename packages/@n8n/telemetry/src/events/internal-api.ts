@@ -1,21 +1,16 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { publicApiClientSchema } from '../schemas';
 
 export const INTERNAL_API_USAGE_JSON_FIELDS = {
 	routes: z.array(
 		z.object({
 			route: z.string(),
-			result: z.enum(['2xx', '4xx', '5xx']),
-			caller: publicApiClientSchema.exclude(['editor_ui']),
 			calls: z.number().int().positive(),
 		}),
 	),
 	clients: z.object({
 		editor_ui: z.number().int().nonnegative(),
-		n8n_node: z.number().int().nonnegative(),
-		n8n_cli: z.number().int().nonnegative(),
 		other: z.number().int().nonnegative(),
 	}),
 };
@@ -24,9 +19,8 @@ export const INTERNAL_API_TELEMETRY = defineTelemetryEvents({
 	INTERNAL_API_USAGE: {
 		name: 'Internal API usage',
 		description:
-			'Six-hourly pulse of Internal API calls, one event per user who made a call in the window, also sent on shutdown. A large window can send several events for one user. Only the first event carries total_calls and clients, and the others carry zeros, so summing a window counts each call once. Routes are named by their pattern, for example `GET /rest/workflows/{workflowId}`, never by the URL that was called. Per-route rows exclude the Editor UI to keep the payload bounded.',
+			'Six-hourly pulse of Internal API calls, one event for each main process that served a call in the window, also sent on shutdown. The event carries no user. A large window can send several events for one process. Only the first event carries total_calls and clients, and the others carry zeros, so summing a window counts each call once. Routes are named by their pattern, for example `GET /rest/workflows/{workflowId}`, never by the URL that was called. Per-route rows exclude the Editor UI to keep the payload bounded.',
 		properties: z.object({
-			user_id: z.string(),
 			total_calls: z
 				.number()
 				.int()
@@ -36,12 +30,12 @@ export const INTERNAL_API_TELEMETRY = defineTelemetryEvents({
 			routes: z
 				.string()
 				.describe(
-					'JSON text. One row per route, result and caller, for callers other than the Editor UI: [{"route": "GET /rest/workflows/{workflowId}", "result": "2xx", "caller": "other", "calls": 3}]. result is 2xx, 4xx or 5xx. caller is n8n_node, n8n_cli or other',
+					'JSON text. One row per route, for calls from clients other than the Editor UI: [{"route": "GET /rest/workflows/{workflowId}", "calls": 3}]',
 				),
 			clients: z
 				.string()
 				.describe(
-					'JSON text. Calls per caller for all callers: {"editor_ui": 5, "n8n_node": 1, "n8n_cli": 0, "other": 2}',
+					'JSON text. Calls per client. editor_ui is the Editor UI. other is every other client: {"editor_ui": 5, "other": 2}',
 				),
 		}),
 	},

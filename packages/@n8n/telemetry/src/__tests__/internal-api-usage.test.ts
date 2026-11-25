@@ -3,15 +3,13 @@ import { INTERNAL_API_TELEMETRY, INTERNAL_API_USAGE_JSON_FIELDS } from '../event
 const { INTERNAL_API_USAGE } = INTERNAL_API_TELEMETRY;
 
 const report = {
-	user_id: 'user-1',
 	total_calls: 4,
 	first: '2026-11-16T10:00:00.000Z',
 	routes: JSON.stringify([
-		{ route: 'GET /rest/workflows/{workflowId}', result: '2xx', caller: 'other', calls: 1 },
-		{ route: 'GET /rest/workflows/{workflowId}', result: '4xx', caller: 'other', calls: 1 },
-		{ route: 'GET /rest/credentials', result: '2xx', caller: 'n8n_node', calls: 1 },
+		{ route: 'GET /rest/workflows/{workflowId}', calls: 2 },
+		{ route: 'GET /rest/credentials', calls: 1 },
 	]),
-	clients: JSON.stringify({ editor_ui: 1, n8n_node: 1, n8n_cli: 0, other: 2 }),
+	clients: JSON.stringify({ editor_ui: 1, other: 3 }),
 };
 
 type JsonField = keyof typeof INTERNAL_API_USAGE_JSON_FIELDS;
@@ -34,21 +32,19 @@ describe('Internal API usage', () => {
 		const followUp = {
 			...report,
 			total_calls: 0,
-			clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 0 }),
+			clients: JSON.stringify({ editor_ui: 0, other: 0 }),
 		};
 
 		expect(INTERNAL_API_USAGE.getValidationError(followUp)).toBeNull();
 	});
 
-	it('rejects a route row with a result outside 2xx, 4xx and 5xx', () => {
-		const row = { route: 'GET /rest/workflows', result: '3xx', caller: 'other', calls: 1 };
+	it('rejects a route row without a positive call count', () => {
+		const row = { route: 'GET /rest/workflows', calls: 0 };
 
 		expect(INTERNAL_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
 	});
 
-	it('rejects a route row for the Editor UI caller', () => {
-		const row = { route: 'GET /rest/workflows', result: '2xx', caller: 'editor_ui', calls: 1 };
-
-		expect(INTERNAL_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
+	it('rejects a clients count without the other client', () => {
+		expect(INTERNAL_API_USAGE_JSON_FIELDS.clients.safeParse({ editor_ui: 1 }).success).toBe(false);
 	});
 });

@@ -24,8 +24,8 @@ import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { resolvePublicApiClient } from '@/public-api/public-api-client';
-import { toPublicApiResult, toRouteName } from '@/public-api/public-api-controller.utils';
+import { resolveInternalApiClient } from '@/internal-api-client';
+import { toRouteName } from '@/public-api/public-api-controller.utils';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';
@@ -237,7 +237,7 @@ export class ControllerRegistry {
 
 			// Only regular routes have a route template to name the event with.
 			if (routeName) {
-				middlewares.push(this.createApiInvocationMiddleware(routeName));
+				middlewares.push(this.createInternalApiInvocationMiddleware(routeName));
 			}
 		}
 
@@ -273,22 +273,12 @@ export class ControllerRegistry {
 		return middlewares;
 	}
 
-	private createApiInvocationMiddleware(routeName: string): RequestHandler {
-		return (req, res, next) => {
-			const userId = isAuthenticatedRequest(req) ? req.user?.id : undefined;
-			if (userId) {
-				const client = resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]);
-
-				// Emit after the response, so the result matches the status that was sent.
-				res.once('finish', () => {
-					this.eventService.emit('internal-api-invoked', {
-						userId,
-						route: routeName,
-						result: toPublicApiResult(res.statusCode),
-						client,
-					});
-				});
-			}
+	private createInternalApiInvocationMiddleware(routeName: string): RequestHandler {
+		return (req, _res, next) => {
+			this.eventService.emit('internal-api-invoked', {
+				route: routeName,
+				client: resolveInternalApiClient(req.headers[N8N_CLIENT_HEADER]),
+			});
 
 			next();
 		};

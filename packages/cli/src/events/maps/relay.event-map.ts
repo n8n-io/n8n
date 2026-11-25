@@ -63,6 +63,7 @@ import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { PolicySystemReason } from '@/policy/policy-enforcement-backend';
 import type { UserLike } from '@/types/user-like.types';
+import type { InternalApiClient } from '@/internal-api-client';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
 
@@ -569,10 +570,8 @@ export type RelayEventMap = ModuleEventMap & {
 	// #region Internal API
 
 	'internal-api-invoked': {
-		userId: string;
 		route: string;
-		result: PublicApiResult;
-		client: PublicApiClient;
+		client: InternalApiClient;
 	};
 
 	// #endregion

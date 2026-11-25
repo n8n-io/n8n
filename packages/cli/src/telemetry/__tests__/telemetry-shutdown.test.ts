@@ -68,7 +68,7 @@ describe('Telemetry shutdown', () => {
 	test('should deliver a buffer larger than one SDK batch before shutdown resolves', async () => {
 		const userIds = Array.from({ length: 45 }, (_, i) => `user-${i}`);
 		for (const userId of userIds) {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: userId,
 				route: 'GET /workflows',
 				result: '2xx',
@@ -86,7 +86,7 @@ describe('Telemetry shutdown', () => {
 		answer = false;
 		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 		try {
-			telemetry.trackApiInvocation({
+			telemetry.trackPublicApiInvocation({
 				user_id: 'user-0',
 				route: 'GET /workflows',
 				result: '2xx',

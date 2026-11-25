@@ -25,6 +25,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
+import type { InternalApiClient } from '@/internal-api-client';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
 
@@ -58,7 +59,7 @@ interface IExecutionsBuffer {
 	[workflowId: string]: IExecutionsBufferEntry;
 }
 
-interface IApiInvocationProperties {
+interface IPublicApiInvocationProperties {
 	user_id: string;
 	route: string;
 	result: PublicApiResult;
@@ -68,47 +69,43 @@ interface IApiInvocationProperties {
 }
 
 /** One row for each route, result and caller. A flat list is easier to query in Hex. */
-interface IApiRouteCalls {
+interface IPublicApiRouteCalls {
 	route: string;
 	result: PublicApiResult;
 	caller: PublicApiClient;
 	calls: number;
 }
 
-interface IApiInvocationsBufferEntry {
+interface IPublicApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
 	endpoints_by_client: Record<Exclude<PublicApiClient, 'other'>, Record<string, number>>;
-	routes: IApiRouteCalls[];
+	routes: IPublicApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
 
-interface IApiInvocationsBuffer {
-	[userId: string]: IApiInvocationsBufferEntry;
+interface IPublicApiInvocationsBuffer {
+	[userId: string]: IPublicApiInvocationsBufferEntry;
 }
 
 interface IInternalApiInvocationProperties {
-	user_id: string;
 	route: string;
-	result: PublicApiResult;
-	client: PublicApiClient;
+	client: InternalApiClient;
 }
 
-/** Route rows leave out the editor, which makes most Internal API calls. */
+/** Route rows count calls from `other` only, because the editor makes most Internal API calls. */
 interface IInternalApiRouteCalls {
 	route: string;
-	result: PublicApiResult;
-	caller: Exclude<PublicApiClient, 'editor_ui'>;
 	calls: number;
 }
 
 interface IInternalApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
-	clients: Record<PublicApiClient, number>;
-	routeCalls: Map<string, IInternalApiRouteCalls>;
+	clients: Record<InternalApiClient, number>;
+	routeCalls: Map<string, number>;
 }
 
 /**
@@ -117,12 +114,7 @@ interface IInternalApiInvocationsBufferEntry {
  */
 const INTERNAL_API_ROUTE_ROWS_PER_EVENT = 100;
 
-const NO_CALLS_BY_CLIENT: Record<PublicApiClient, number> = {
-	editor_ui: 0,
-	n8n_node: 0,
-	n8n_cli: 0,
-	other: 0,
-};
+const NO_CALLS_BY_CLIENT: Record<InternalApiClient, number> = { editor_ui: 0, other: 0 };
 
 /** An empty report still gets one batch, so its totals are sent. */
 function batchRouteRows(rows: IInternalApiRouteCalls[]): IInternalApiRouteCalls[][] {
@@ -144,9 +136,10 @@ export class Telemetry implements TelemetryTracker {
 	// No prototype, so every workflow id is an own key.
 	private executionCountsBuffer: IExecutionsBuffer = Object.create(null);
 
-	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
+	private publicApiInvocationsBuffer: IPublicApiInvocationsBuffer = {};
 
-	private internalApiInvocationsBuffer = new Map<string, IInternalApiInvocationsBufferEntry>();
+	/** Calls of this process in the current window. Unset until the first call. */
+	private internalApiInvocationsBuffer?: IInternalApiInvocationsBufferEntry;
 
 	private readonly bufferFlushers: (() => void)[] = [];
 
@@ -296,8 +289,8 @@ export class Telemetry implements TelemetryTracker {
 	}
 
 	private flushApiInvocations() {
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
+		for (const userId of Object.keys(this.publicApiInvocationsBuffer)) {
+			const entry = this.publicApiInvocationsBuffer[userId];
 			if (entry.total_calls > 0) {
 				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
 					user_id: userId,
@@ -311,27 +304,29 @@ export class Telemetry implements TelemetryTracker {
 				});
 			}
 		}
-		this.apiInvocationsBuffer = {};
+		this.publicApiInvocationsBuffer = {};
 	}
 
 	private flushInternalApiInvocations() {
-		for (const [userId, entry] of this.internalApiInvocationsBuffer) {
-			const routeBatches = batchRouteRows([...entry.routeCalls.values()]);
+		const entry = this.internalApiInvocationsBuffer;
+		if (!entry) return;
 
-			routeBatches.forEach((routes, index) => {
-				// Totals go on the first event only, so summing a window's events counts each call once.
-				const isFirstEvent = index === 0;
+		const routeRows = [...entry.routeCalls].map(([route, calls]) => ({ route, calls }));
+		const routeBatches = batchRouteRows(routeRows);
 
-				this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
-					user_id: userId,
-					total_calls: isFirstEvent ? entry.total_calls : 0,
-					first: entry.first.toISOString(),
-					routes: JSON.stringify(routes),
-					clients: JSON.stringify(isFirstEvent ? entry.clients : NO_CALLS_BY_CLIENT),
-				});
+		routeBatches.forEach((routes, index) => {
+			// Totals go on the first event only, so summing a window's events counts each call once.
+			const isFirstEvent = index === 0;
+
+			this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
+				total_calls: isFirstEvent ? entry.total_calls : 0,
+				first: entry.first.toISOString(),
+				routes: JSON.stringify(routes),
+				clients: JSON.stringify(isFirstEvent ? entry.clients : NO_CALLS_BY_CLIENT),
 			});
-		}
-		this.internalApiInvocationsBuffer = new Map();
+		});
+
+		this.internalApiInvocationsBuffer = undefined;
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -424,12 +419,12 @@ export class Telemetry implements TelemetryTracker {
 		}
 	}
 
-	trackApiInvocation(properties: IApiInvocationProperties) {
+	trackPublicApiInvocation(properties: IPublicApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
 		const { user_id, route, result, user_agent, client } = properties;
 
-		const entry = (this.apiInvocationsBuffer[user_id] ??= {
+		const entry = (this.publicApiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
@@ -466,31 +461,21 @@ export class Telemetry implements TelemetryTracker {
 	trackInternalApiInvocation(properties: IInternalApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, route, result, client } = properties;
+		const { route, client } = properties;
 
-		let entry = this.internalApiInvocationsBuffer.get(user_id);
-		if (!entry) {
-			entry = {
-				total_calls: 0,
-				first: new Date(),
-				clients: { ...NO_CALLS_BY_CLIENT },
-				routeCalls: new Map(),
-			};
-			this.internalApiInvocationsBuffer.set(user_id, entry);
-		}
+		const entry = (this.internalApiInvocationsBuffer ??= {
+			total_calls: 0,
+			first: new Date(),
+			clients: { ...NO_CALLS_BY_CLIENT },
+			routeCalls: new Map(),
+		});
 		entry.total_calls++;
 		entry.clients[client]++;
 
 		// The editor makes most Internal API calls. Only its total is kept, to bound the payload.
 		if (client === 'editor_ui') return;
 
-		const rowKey = `${route}|${result}|${client}`;
-		const existingRow = entry.routeCalls.get(rowKey);
-		if (existingRow) {
-			existingRow.calls++;
-		} else {
-			entry.routeCalls.set(rowKey, { route, result, caller: client, calls: 1 });
-		}
+		entry.routeCalls.set(route, (entry.routeCalls.get(route) ?? 0) + 1);
 	}
 
 	isEnabled(): boolean {
@@ -686,11 +671,11 @@ export class Telemetry implements TelemetryTracker {
 		return this.executionCountsBuffer;
 	}
 
-	getApiInvocationsBuffer(): IApiInvocationsBuffer {
-		return this.apiInvocationsBuffer;
+	getPublicApiInvocationsBuffer(): IPublicApiInvocationsBuffer {
+		return this.publicApiInvocationsBuffer;
 	}
 
-	getInternalApiInvocationsBuffer(): Map<string, IInternalApiInvocationsBufferEntry> {
+	getInternalApiInvocationsBuffer(): IInternalApiInvocationsBufferEntry | undefined {
 		return this.internalApiInvocationsBuffer;
 	}
 }

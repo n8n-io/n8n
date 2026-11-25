@@ -32,7 +32,7 @@ import { z } from 'zod';
 import { AbstractServer } from '@/abstract-server';
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError } from '@n8n/errors';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';
@@ -540,11 +540,6 @@ describe('ControllerRegistry', () => {
 				return { widgetId };
 			}
 
-			@Get('/failing/:widgetId')
-			failing() {
-				throw new NotFoundError('Widget not found');
-			}
-
 			@Get('/open/:widgetId', { skipAuth: true })
 			open(_req: express.Request, _res: express.Response, @Param('widgetId') widgetId: string) {
 				return { widgetId };
@@ -552,14 +547,11 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (req, _res, next) => {
-				req.user = { id: 'user-1' };
-				next();
-			});
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
 			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
-		it('should emit the route, result and client of an editor call', async () => {
+		it('should emit the route and client of an editor call', async () => {
 			await request(app)
 				.get('/rest/test/widget-1')
 				.set(N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI)
@@ -567,9 +559,7 @@ describe('ControllerRegistry', () => {
 
 			await vi.waitFor(() => {
 				expect(eventService.emit).toHaveBeenCalledWith('internal-api-invoked', {
-					userId: 'user-1',
 					route: 'GET /rest/test/{widgetId}',
-					result: '2xx',
 					client: 'editor_ui',
 				});
 			});
@@ -577,6 +567,17 @@ describe('ControllerRegistry', () => {
 
 		it('should count a call without the client header as other', async () => {
 			await request(app).get('/rest/test/widget-1').expect(200);
+
+			await vi.waitFor(() => {
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'internal-api-invoked',
+					expect.objectContaining({ client: 'other' }),
+				);
+			});
+		});
+
+		it('should count a call from another n8n client as other', async () => {
+			await request(app).get('/rest/test/widget-1').set(N8N_CLIENT_HEADER, 'n8n-cli').expect(200);
 
 			await vi.waitFor(() => {
 				expect(eventService.emit).toHaveBeenCalledWith(
@@ -605,29 +606,8 @@ describe('ControllerRegistry', () => {
 			);
 		});
 
-		it('should emit a 4xx result for a failed call', async () => {
-			await request(app).get('/rest/test/failing/widget-1').expect(404);
-
-			await vi.waitFor(() => {
-				expect(eventService.emit).toHaveBeenCalledWith('internal-api-invoked', {
-					userId: 'user-1',
-					route: 'GET /rest/test/failing/{widgetId}',
-					result: '4xx',
-					client: 'other',
-				});
-			});
-		});
-
 		it('should not emit for a route that skips auth', async () => {
 			await request(app).get('/rest/test/open/widget-1').expect(200);
-
-			expect(eventService.emit).not.toHaveBeenCalled();
-		});
-
-		it('should not emit when the request has no user', async () => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
-
-			await request(app).get('/rest/test/widget-1').expect(200);
 
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
