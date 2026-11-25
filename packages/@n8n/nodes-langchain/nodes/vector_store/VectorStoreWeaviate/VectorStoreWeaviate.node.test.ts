@@ -277,12 +277,12 @@ describe('VectorStoreWeaviate.node', () => {
 			);
 		});
 
-		it('should treat a max vector distance of 0 as not set', async () => {
+		it('should keep a max vector distance of 0', async () => {
 			await getClient({ maxVectorDistance: 0 });
 
 			expect(store.fromExistingIndex).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ maxVectorDistance: undefined }),
+				expect.objectContaining({ maxVectorDistance: 0 }),
 			);
 		});
 

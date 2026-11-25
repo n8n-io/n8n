@@ -1,7 +1,7 @@
+import { EXTENDED_PROMPT_MAX_LENGTH } from '@n8n/api-types';
 import { i18n as realI18n, type BaseTextKey, type I18nClass } from '@n8n/i18n';
 import { describe, expect, it, vi } from 'vitest';
 
-import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import {
 	buildAgentFixWithAssistantPrompt,
 	MAX_FIX_WITH_ASSISTANT_DRAFT_LENGTH,

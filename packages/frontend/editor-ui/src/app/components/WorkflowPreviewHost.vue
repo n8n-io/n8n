@@ -24,6 +24,7 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +41,8 @@ const props = withDefaults(
 );
 
 const { normalizeWorkflowData } = useWorkflowNormalization();
+// Normalization fills the node default parameters only for node types in the store.
+const nodeTypes = useNodeTypesLoad();
 
 const documentStore = shallowRef<WorkflowDocumentStore | null>(null);
 
@@ -124,7 +127,14 @@ async function hydratePreview() {
 	canvasEventBus.emit('fitView');
 }
 
-watch(() => [props.documentId, props.workflow] as const, hydratePreview, { immediate: true });
+watch(
+	() => [props.documentId, props.workflow, nodeTypes.isLoading.value] as const,
+	([, , nodeTypesLoading]) => {
+		if (nodeTypesLoading) return;
+		void hydratePreview();
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	disposePreviewStores();

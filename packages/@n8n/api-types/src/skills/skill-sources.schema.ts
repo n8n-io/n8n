@@ -174,6 +174,10 @@ export const SKILL_SCAN_RULES = [
 	'over_limit',
 	'file_skipped',
 	'file_unstorable',
+	'file_too_large',
+	'file_over_skill_limit',
+	'script_file',
+	'binary_file',
 	'hidden_unicode',
 	'new_url',
 	'risky_url',
@@ -212,13 +216,32 @@ export type SkillScanLocation = {
 	end: number;
 };
 
+/** The part of a skill that a size limit applies to. */
+export const SKILL_SCAN_LIMIT_FIELDS = [
+	'name',
+	'description',
+	'instructions',
+	'frontmatter',
+	'referenceCount',
+	'referencePath',
+	'referenceContent',
+	'referencesTotal',
+] as const;
+
+export type SkillScanLimitField = (typeof SKILL_SCAN_LIMIT_FIELDS)[number];
+
+/** A size limit and the size that the skill has. `referenceCount` counts files, each other field counts characters. */
+export type SkillScanLimit = { field: SkillScanLimitField; max: number; current: number };
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
 	/** `SKILL.md`, or the path of a file in the skill folder. */
 	file?: string;
-	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
+	/** English text for logs. The UI shows it only where no field of the finding gives the reason. */
 	detail: string;
+	/** Set for an `over_limit` finding, so the UI can write the reason in its language. */
+	limit?: SkillScanLimit;
 	/** The linked domain of a `new_url` or `risky_url` finding. */
 	domain?: string;
 	/** Set for a `risky_url` finding. */
@@ -239,6 +262,7 @@ export type SkillPreviewFile = {
 	 * line. Each hidden character shows as a marker such as `⟦U+200B⟧`.
 	 */
 	text: string;
+	isBinary?: boolean;
 };
 
 /** One skill in the picker. */
@@ -250,7 +274,7 @@ export type DiscoveredSkill = {
 	/** Null when n8n cannot read the skill. `error` then says why. */
 	name: string | null;
 	description: string | null;
-	/** Files that the import leaves out, such as scripts. */
+	/** Files that the import leaves out. */
 	skippedFiles: string[];
 	/** The files that the import keeps, for the review. Empty when n8n cannot read the skill. */
 	previewFiles: SkillPreviewFile[];
@@ -522,7 +546,10 @@ export type SkillUpdateFile = {
 	path: string;
 	before: string;
 	after: string;
-	status?: 'added' | 'removed';
+	beforeIsBinary?: true;
+	afterIsBinary?: true;
+	/** Modified indicates a change to bytes or encoding that a text diff cannot show. */
+	status?: 'added' | 'removed' | 'modified';
 };
 
 /** Names are limited to agents the user can read. */
@@ -531,7 +558,11 @@ export type SkillUpdateAgents = {
 	hiddenAgentCount: number;
 };
 
-export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
+export type SkillUpdateReview = SkillUpdateAgents & {
+	files: SkillUpdateFile[];
+	/** Use a bounded preview when blocked content is too large for the diff viewer. */
+	preview?: Pick<DiscoveredSkill, 'previewFiles' | 'previewTruncated'>;
+};
 export type SkillSourceAcceptResponse = SkillUpdateAgents & {
 	updatedCount: number;
 	importedCount?: number;

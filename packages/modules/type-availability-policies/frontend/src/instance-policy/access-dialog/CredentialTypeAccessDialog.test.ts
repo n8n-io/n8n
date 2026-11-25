@@ -12,11 +12,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CredentialTypeAccessDialog from './CredentialTypeAccessDialog.vue';
 import { useInstancePolicyStore } from '../instance-policy.store';
+import { useRestrictReviewStore } from '../restrict-review/restrict-review.store';
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
+	fetchCredentialTypeUsage: vi.fn(),
 }));
 
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
@@ -127,6 +130,11 @@ async function setup(name: string, scopes: Scope[] = BOTH_SCOPES) {
 	return rendered;
 }
 
+const usageIn = (section: HTMLElement) =>
+	within(section)
+		.queryAllByTestId('type-access-item-usage')
+		.map((line) => line.textContent?.trim());
+
 const selectsIn = (section: HTMLElement) => within(section).getAllByTestId('type-access-select');
 
 describe('CredentialTypeAccessDialog', () => {
@@ -148,6 +156,12 @@ describe('CredentialTypeAccessDialog', () => {
 			version: 2,
 			warnings: [],
 		}));
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			'n8n-nodes-base.airtable': { uses: 1, workflows: 1, activeWorkflows: 1, projects: 1 },
+		});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({
+			airtableTokenApi: { uses: 3, workflows: 2, activeWorkflows: 0, projects: 1 },
+		});
 		componentRegistry.register('node-type-icon', {
 			props: ['nodeType', 'size'],
 			template: '<span data-test-id="node-icon" :data-type="nodeType?.name" />',
@@ -181,6 +195,33 @@ describe('CredentialTypeAccessDialog', () => {
 			'data-value',
 			'allow',
 		);
+	});
+
+	it('shows the usage of the credential type and of each related type', async () => {
+		const { getByTestId } = await setup('airtableApi');
+
+		expect(usageIn(getByTestId('credential-type-access-credential'))).toEqual([
+			'Not used in any workflow',
+		]);
+		expect(usageIn(getByTestId('credential-type-access-related-node'))).toEqual([
+			'Used 1 time across 1 workflow · 1 active',
+			'Not used in any workflow',
+		]);
+		expect(usageIn(getByTestId('credential-type-access-related-credential'))).toEqual([
+			'Not used in any workflow',
+			'Used 3 times across 2 workflows · 0 active',
+		]);
+	});
+
+	it('shows no usage of node types to a user who cannot manage them', async () => {
+		const { getByTestId } = await setup('airtableApi', ['credentialTypePolicy:manage']);
+
+		expect(usageIn(getByTestId('credential-type-access-related-credential'))).toEqual([
+			'Not used in any workflow',
+			'Used 3 times across 2 workflows · 0 active',
+		]);
+		expect(usageIn(getByTestId('credential-type-access-related-node'))).toEqual([]);
+		expect(mocks.fetchNodeTypeUsage).not.toHaveBeenCalled();
 	});
 
 	it('lists the related node types and credential types with their access', async () => {
@@ -243,6 +284,8 @@ describe('CredentialTypeAccessDialog', () => {
 	});
 
 	it('saves only the changed related node type, not the credential type', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const { getByTestId } = await setup('airtableApi');
 
 		await fireEvent.click(selectsIn(getByTestId('credential-type-access-related-node'))[0]);
@@ -265,6 +308,55 @@ describe('CredentialTypeAccessDialog', () => {
 		expect(
 			within(getByTestId('credential-type-access-credential')).getByTestId('type-access-select'),
 		).toHaveAttribute('data-value', 'allow');
+	});
+
+	it('asks before it restricts a related node type in use, and keeps Allowed when the admin cancels', async () => {
+		const { getByTestId } = await setup('airtableApi');
+		const review = useRestrictReviewStore();
+		const airtableSelect = () => selectsIn(getByTestId('credential-type-access-related-node'))[0];
+
+		await fireEvent.click(airtableSelect());
+
+		await waitFor(() =>
+			expect(review.request).toEqual({
+				kind: 'node',
+				name: 'n8n-nodes-base.airtable',
+				label: 'Airtable',
+				usage: { uses: 1, workflows: 1, activeWorkflows: 1, projects: 1 },
+			}),
+		);
+		expect(airtableSelect()).toHaveAttribute('data-value', 'allow');
+
+		review.resolve(false);
+		await waitFor(() => expect(review.request).toBeNull());
+		expect(airtableSelect()).toHaveAttribute('data-value', 'allow');
+		expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+	});
+
+	it('restricts the credential type in use when the admin confirms', async () => {
+		const { getByTestId } = await setup('airtableTokenApi');
+		const review = useRestrictReviewStore();
+
+		await fireEvent.click(
+			within(getByTestId('credential-type-access-credential')).getByTestId('type-access-select'),
+		);
+		await waitFor(() =>
+			expect(review.request).toMatchObject({ kind: 'credential', name: 'airtableTokenApi' }),
+		);
+		review.resolve(true);
+
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'credential', {
+			rules: [
+				{
+					id: expect.any(String),
+					action: 'deny',
+					selector: { kind: 'name', value: 'airtableTokenApi' },
+				},
+			],
+			defaultAction: 'allow',
+			version: 1,
+		});
 	});
 
 	it('shows node types without access for a user who cannot manage them', async () => {
@@ -300,6 +392,9 @@ describe('CredentialTypeAccessDialog', () => {
 	});
 
 	it('shows an error and the saved access again when the save of a related node fails', async () => {
+		// No workflow uses a type, so a change applies with no review.
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(new Error('offline'));
 		const { getByTestId } = await setup('airtableApi');
 		const airtableSelect = () => selectsIn(getByTestId('credential-type-access-related-node'))[0];
@@ -347,6 +442,7 @@ describe('CredentialTypeAccessDialog', () => {
 
 		// Restricts the type, then allows it again while the first save runs.
 		await fireEvent.click(credentialSelect());
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
 		await fireEvent.click(credentialSelect());
 		firstSave.resolve({
 			scopeId: null,

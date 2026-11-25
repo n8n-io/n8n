@@ -29,12 +29,13 @@ test.describe(
 			n8n,
 		}, testInfo) => {
 			const { containerConfig } = testInfo.project.use as {
-				containerConfig?: { workers?: number };
+				containerConfig?: { workers?: number; engine?: string };
 			};
-			// In queue mode the partial run is handled by a worker, so the UserError never
-			// reaches the main-process UI as a toast. Only assert it in direct (main-only) mode.
+			// In queue mode a worker runs a legacy partial run, so the UserError never
+			// reaches the main-process UI as a toast. Engine v2 runs go to the engine, not
+			// to a worker, so a stack with engine v2 still shows the toast.
 			test.skip(
-				Boolean(containerConfig?.workers),
+				Boolean(containerConfig?.workers) && !containerConfig?.engine,
 				'Toast is only shown when the run executes on a main',
 			);
 

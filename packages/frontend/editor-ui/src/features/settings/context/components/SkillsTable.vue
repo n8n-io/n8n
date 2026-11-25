@@ -9,7 +9,6 @@ import type {
 import {
 	N8nActionToggle,
 	N8nBadge,
-	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
 	N8nSpinner,
@@ -330,7 +329,8 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
-		width: props.sources ? 180 : 130,
+		// Wide enough for the health icon, "N new" and "N updates" in one row.
+		width: props.sources ? 240 : 130,
 	},
 	{
 		title: '',
@@ -465,36 +465,38 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							}}
 						</N8nBadge>
 					</button>
-					<N8nButton
+					<button
 						v-if="
 							!props.checkingSourceIds?.includes(group) && updateCount(sourcesById.get(group)!) > 0
 						"
-						variant="outline"
-						size="small"
+						type="button"
+						:class="$style.updateButton"
 						data-test-id="skill-group-review-updates"
 						data-attr="skill-group-review-updates"
 						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
 					>
-						<template #icon>
-							<N8nStatusDot
-								:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
-								data-test-id="skill-group-update-status"
-							/>
-						</template>
-						<span data-test-id="skill-group-updates">
-							{{
-								i18n.baseText(
-									sourcesById.get(group)!.updatesAvailable > 0
-										? 'settings.context.skills.sources.updates'
-										: 'settings.context.skills.sources.updatesBlocked',
-									{
-										interpolate: { count: updateCount(sourcesById.get(group)!) },
-										adjustToNumber: updateCount(sourcesById.get(group)!),
-									},
-								)
-							}}
-						</span>
-					</N8nButton>
+						<N8nBadge variant="outline">
+							<template #leading>
+								<N8nStatusDot
+									:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
+									data-test-id="skill-group-update-status"
+								/>
+							</template>
+							<span data-test-id="skill-group-updates">
+								{{
+									i18n.baseText(
+										sourcesById.get(group)!.updatesAvailable > 0
+											? 'settings.context.skills.sources.updates'
+											: 'settings.context.skills.sources.updatesBlocked',
+										{
+											interpolate: { count: updateCount(sourcesById.get(group)!) },
+											adjustToNumber: updateCount(sourcesById.get(group)!),
+										},
+									)
+								}}
+							</span>
+						</N8nBadge>
+					</button>
 				</div>
 			</template>
 
@@ -693,11 +695,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	cursor: pointer;
 }
 
+/* One row of same-size badges, which wraps only when the column is too narrow. */
 .sourceStatus {
 	display: flex;
-	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--spacing--5xs) var(--spacing--2xs);
+	align-items: center;
+	gap: var(--spacing--4xs) var(--spacing--2xs);
 	padding-block: var(--spacing--5xs);
 }
 </style>
