@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { NodeOperationError } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 import { getEventListeners } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';
@@ -1312,6 +1312,28 @@ describe('Kafka Utils', () => {
 				expect(SchemaRegistry).not.toHaveBeenCalled();
 			});
 
+			// A plain configuration mistake, so it is named before the network is consulted
+			it('names the http URL ahead of the egress check when TLS material is set', async () => {
+				const { filter, validateUrl } = blockedFilter();
+				const ctx = createRegistryContext({
+					secureEgressFilter: filter,
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'http://schema-registry.local:8081',
+						authentication: 'none',
+						ca: '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----',
+					},
+				});
+
+				const failure = await createSchemaRegistry(ctx, '').catch(
+					(error: NodeOperationError) => error,
+				);
+
+				expect(failure).toBeInstanceOf(NodeOperationError);
+				expect((failure as NodeOperationError).description).toContain('must use https');
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
 			it('passes an http agent carrying the secure lookup for an http host', async () => {
 				const { filter, lookup } = okFilter();
 				const input = 'http://schema-registry.local:8081';
@@ -1558,6 +1580,24 @@ describe('Kafka Utils', () => {
 				const { message } = logPayload as { message: string };
 				expect(message).toHaveLength(503);
 				expect(message.endsWith('...')).toBe(true);
+			});
+
+			// A deleted credential raises `CredentialNotFoundError`, which is a `UserError`
+			// like the TLS checks. Catching that class would stop the trigger activating.
+			it('warns and keeps running when the credential has gone', async () => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+					nodeCredentials: schemaRegistryNodeCredentials,
+				});
+				ctx.getCredentials.mockRejectedValue(new UserError('Credentials with ID "1" do not exist'));
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Could not connect to Schema Registry',
+					expect.anything(),
+				);
 			});
 
 			it('should rethrow misconfiguration errors instead of warning', async () => {

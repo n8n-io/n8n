@@ -511,6 +511,22 @@ export function sanitizeRegistryError(error: unknown) {
 }
 
 /**
+ * The TLS helpers are shared with the broker path and raise a plain `UserError`. Here it
+ * becomes a node error, like every other configuration problem in this file, so the
+ * trigger can name one class instead of catching every `UserError` a helper can throw.
+ */
+function asNodeError<T>(ctx: Pick<FunctionsBase, 'getNode'>, read: () => T): T {
+	try {
+		return read();
+	} catch (error) {
+		if (!(error instanceof UserError)) throw error;
+		throw new NodeOperationError(ctx.getNode(), error.message, {
+			description: error.description ?? undefined,
+		});
+	}
+}
+
+/**
  * Resolves the Confluent Schema Registry connection options, preferring a
  * selected `schemaRegistryApi` credential over the legacy URL node parameter
  * @param ctx - The execution context (node or trigger)
@@ -544,14 +560,16 @@ export async function getSchemaRegistryOptions(
 
 	const connection: ResolvedRegistryConnection = { client: { host } };
 
-	const { ca, cert, key } = readTlsMaterial(credentials, 'Schema Registry');
-	if (ca ?? cert) {
-		connection.tls = {
+	const tls = asNodeError(ctx, () => {
+		const { ca, cert, key } = readTlsMaterial(credentials, 'Schema Registry');
+		if (!(ca ?? cert)) return undefined;
+		return {
 			...(ca ? { ca: formatAndValidatePem(ca, 'Schema Registry CA certificate') } : {}),
 			...(cert ? { cert: formatAndValidatePem(cert, 'Schema Registry client certificate') } : {}),
 			...(key ? { key: formatAndValidatePem(key, 'Schema Registry client private key') } : {}),
 		};
-	}
+	});
+	if (tls) connection.tls = tls;
 
 	if (credentials.authentication === 'basicAuth') {
 		if (!(credentials.username && credentials.password)) {
@@ -601,6 +619,12 @@ export async function createSchemaRegistry(
 		});
 	}
 
+	if (tls && parsed.protocol !== 'https:') {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: 'The credential carries TLS material, so the Schema Registry URL must use https',
+		});
+	}
+
 	// Validate the target host against the configured egress rules before any
 	// request, covering direct/resolved IPs without DNS.
 	const result = await filter.validateUrl(parsed);
@@ -613,13 +637,6 @@ export async function createSchemaRegistry(
 	// Connect using the canonical href so the client re-parses the exact
 	// authority we validated, and validate the resolved addresses at connect
 	// time via the secure lookup.
-	if (tls && parsed.protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
-			description:
-				'The credential carries TLS material, which only applies to an https Schema Registry URL',
-		});
-	}
-
 	const agent =
 		parsed.protocol === 'https:'
 			? new https.Agent({ lookup: filter.createSecureLookup(), ...tls })
@@ -640,10 +657,10 @@ export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
 			return await createSchemaRegistry(ctx, schemaRegistryUrl);
 		} catch (error) {
-			// Credential/config misconfiguration must fail loudly at activation. The TLS
-			// checks raise UserError, so a malformed PEM or a half-configured mTLS pair
-			// would otherwise warn and leave the trigger running with no registry.
-			if (error instanceof NodeOperationError || error instanceof UserError) {
+			// Credential and configuration mistakes must fail loudly at activation, or a
+			// malformed PEM or a half-configured mTLS pair would warn and leave the trigger
+			// running with no registry. Everything this file raises for one is a node error.
+			if (error instanceof NodeOperationError) {
 				throw error;
 			}
 			// Connection-type failures keep the warn-and-continue behavior
