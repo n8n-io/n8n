@@ -8,10 +8,10 @@ import {
 import { TOKEN_REQUEST_TIMEOUT } from '../token-request';
 
 /** Shaped like what the outbound client really rejects with on a non-2xx. */
-const httpError = (data: unknown) =>
-	Object.assign(new Error('Request failed with status code 401'), {
+const httpError = (data: unknown, status = 401) =>
+	Object.assign(new Error(`Request failed with status code ${status}`), {
 		[Symbol.for('n8n.backend-network.http-request-error')]: true,
-		response: { status: 401, data },
+		response: { status, data },
 	});
 
 const config = {
@@ -124,12 +124,40 @@ describe('client credentials grant', () => {
 			);
 		});
 
-		it('form-encodes the Basic pair, so a secret with reserved characters survives', async () => {
+		it('percent-encodes the Basic pair, so a secret with reserved characters survives', async () => {
 			await requestClientCredentialsToken({ ...config, clientSecret: 'a+b c%d' });
 
 			expect((requestMock.mock.calls[0][0] as { auth: { password: string } }).auth.password).toBe(
 				'a%2Bb%20c%25d',
 			);
+		});
+
+		// A 429 or a 5xx is the endpoint having a bad day, and reading either as a refusal
+		// would send the user off to check a correct client ID and secret
+		it.each([429, 500, 503])('does not call a %i a refusal', async (status) => {
+			requestMock.mockRejectedValue(httpError({ error: 'server_error' }, status));
+
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure.message).not.toContain('refused the grant');
+			expect(failure.message).toContain(String(status));
+		});
+
+		it('keeps the secret out of a failure that is not a refusal', async () => {
+			requestMock.mockRejectedValue(
+				httpError({ error_description: 'upstream said secret is not valid' }, 502),
+			);
+
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure.message).not.toContain('secret');
+			expect(failure.message).toContain('***');
 		});
 
 		it('rethrows an error that is not an HTTP refusal', async () => {

@@ -1,5 +1,6 @@
-import { isHttpRequestError } from '@n8n/backend-network';
+import { httpStatusFromError, isHttpRequestError } from '@n8n/backend-network';
 import { OperationalError, UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { getTokenRequestClient, hasAccessToken, TOKEN_REQUEST_TIMEOUT } from './token-request';
@@ -28,9 +29,8 @@ function refusalFrom(error: unknown, clientSecret: string) {
 	const said =
 		typeof data === 'string'
 			? asFilledString(data)?.slice(0, 300)
-			: typeof data === 'object' && data !== null
-				? (asFilledString((data as Record<string, unknown>).error_description) ??
-					asFilledString((data as Record<string, unknown>).error))
+			: isRecord(data)
+				? (asFilledString(data.error_description) ?? asFilledString(data.error))
 				: undefined;
 
 	return said === undefined ? undefined : scrubSecretsInText(said.split(clientSecret).join('***'));
@@ -63,8 +63,10 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 		response = await getTokenRequestClient('user-controlled').request({
 			url: tokenUrl,
 			method: 'POST',
-			// RFC 6749 2.3.1: both halves are form-urlencoded before they are base64-encoded,
-			// so a secret holding `+`, `%` or a space still reaches a compliant server intact.
+			// RFC 6749 2.3.1 percent-encodes both halves before they are base64-encoded, so a
+			// secret holding `+`, `%` or a space still reaches a compliant server intact. A
+			// space stays `%20` rather than becoming `+`, because a server that percent-decodes
+			// without treating the pair as a form would hand a `+` on as a literal one.
 			...(inBody
 				? {}
 				: {
@@ -82,7 +84,18 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 		});
 	} catch (error) {
 		const refusal = refusalFrom(error, clientSecret);
-		if (refusal) throw new UserError(`The token endpoint refused the grant: ${refusal}`);
+		const status = httpStatusFromError(error);
+
+		// Only these say the credential is wrong. A 429 or a 5xx is the endpoint having a bad
+		// day, and reading it as a refusal would send the user to check a correct secret.
+		if (status === 400 || status === 401 || status === 403) {
+			throw new UserError(
+				refusal
+					? `The token endpoint refused the grant: ${refusal}`
+					: 'The token endpoint refused the grant',
+			);
+		}
+		if (refusal) throw new OperationalError(`The token endpoint answered ${status}: ${refusal}`);
 		throw error;
 	}
 
