@@ -30,8 +30,8 @@ const { projects } = defineProps<{
 const open = defineModel<boolean>('open', { default: false });
 
 const emit = defineEmits<{
-	/** Another admin added a policy to the picked project, so the list is stale. */
-	conflict: [];
+	/** A project gained a policy, from this dialog or from another admin, so the list is stale. */
+	listChanged: [];
 }>();
 
 const i18n = useI18n();
@@ -63,12 +63,13 @@ async function onAdd() {
 		if (e instanceof ResponseError && e.httpStatusCode === 409) {
 			// The reload drops the project from the options, and a select shows an unmatched value raw.
 			projectId.value = undefined;
-			emit('conflict');
+			emit('listChanged');
 		}
 		return;
 	} finally {
 		saving.value = false;
 	}
+	emit('listChanged');
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('typeAvailabilityPolicies.addProjectPolicy.success.title', {

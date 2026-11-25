@@ -363,6 +363,29 @@ describe('PoliciesLandingView', () => {
 			expect(getAllByTestId('policies-landing-project-row')).toHaveLength(4);
 		});
 
+		it('reads the list again when the admin closes the dialog before the add ends', async () => {
+			api.fetchProjectPolicies.mockResolvedValue({ projects: nineProjects });
+			let resolveAdd: (value: unknown) => void = () => {};
+			api.createProjectPolicy.mockReturnValue(
+				new Promise((resolve) => {
+					resolveAdd = resolve;
+				}),
+			);
+			const { findByTestId, getByTestId, getByRole } = renderForAdmin();
+
+			await fireEvent.click(await findByTestId('policies-landing-add-project-policy'));
+			await fireEvent.update(
+				await waitFor(() => getByTestId('add-project-policy-select')),
+				'without-1',
+			);
+			await fireEvent.click(getByTestId('add-project-policy-submit'));
+			await fireEvent.click(getByRole('button', { name: 'Cancel' }));
+			resolveAdd(withoutPolicy(1));
+
+			await waitFor(() => expect(api.fetchProjectPolicies).toHaveBeenCalledTimes(2));
+			expect(push).not.toHaveBeenCalled();
+		});
+
 		it('shows no Projects section when the project list fails to load', async () => {
 			api.fetchProjectPolicies.mockRejectedValue(new Error('Request failed'));
 			const { getByTestId, queryByTestId } = renderForAdmin();

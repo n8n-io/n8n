@@ -158,7 +158,7 @@ function openProjectPolicy(projectId: string) {
 		<AddProjectPolicyDialog
 			v-model:open="dialogOpen"
 			:projects="withoutPolicy"
-			@conflict="emit('reload')"
+			@list-changed="emit('reload')"
 		/>
 	</N8nSettingsSection>
 </template>

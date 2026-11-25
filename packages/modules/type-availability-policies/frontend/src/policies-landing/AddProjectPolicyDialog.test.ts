@@ -102,6 +102,7 @@ describe('AddProjectPolicyDialog', () => {
 			message: 'It follows the instance policy until you change something for this project.',
 		});
 		expect(emitted('update:open')).toEqual([[false]]);
+		expect(emitted('listChanged')).toHaveLength(1);
 	});
 
 	it('adds the policy but stays on the page when the dialog closed during the add', async () => {
@@ -111,7 +112,7 @@ describe('AddProjectPolicyDialog', () => {
 				resolveAdd = resolve;
 			}),
 		);
-		const { findByTestId, getByTestId, rerender } = render();
+		const { findByTestId, getByTestId, rerender, emitted } = render();
 
 		await findByTestId('add-project-policy-dialog');
 		await pick(getByTestId, 'security');
@@ -121,6 +122,7 @@ describe('AddProjectPolicyDialog', () => {
 
 		await waitFor(() => expect(showMessage).toHaveBeenCalled());
 		expect(push).not.toHaveBeenCalled();
+		expect(emitted('listChanged')).toHaveLength(1);
 	});
 
 	it('stays open with the error when the add fails', async () => {
@@ -135,7 +137,7 @@ describe('AddProjectPolicyDialog', () => {
 			'Could not add the policy',
 		);
 		expect(emitted('update:open')).toBeUndefined();
-		expect(emitted('conflict')).toBeUndefined();
+		expect(emitted('listChanged')).toBeUndefined();
 		expect(push).not.toHaveBeenCalled();
 		expect(showMessage).not.toHaveBeenCalled();
 		expect(getAllByRole('option').map((option) => option.textContent?.trim())).toContain(
@@ -154,7 +156,7 @@ describe('AddProjectPolicyDialog', () => {
 		await fireEvent.click(getByTestId('add-project-policy-submit'));
 
 		await findByTestId('add-project-policy-error');
-		expect(emitted('conflict')).toHaveLength(1);
+		expect(emitted('listChanged')).toHaveLength(1);
 		expect(getByTestId('add-project-policy-select')).toHaveValue('');
 		expect(getByTestId('add-project-policy-submit')).toBeDisabled();
 	});
