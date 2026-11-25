@@ -39,9 +39,31 @@ const detail: SkillDetail = {
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
+const syncedListItem: SkillListItem = {
+	...listItem,
+	source: 'github',
+	canEdit: false,
+	canStopSyncing: true,
+	sourceId: 'source-1',
+	syncState: 'update_available',
+};
+
+const syncedDetail: SkillDetail = {
+	...detail,
+	...syncedListItem,
+	syncedFrom: {
+		sourceId: 'source-1',
+		type: 'github',
+		label: 'acme/skills',
+		ref: 'main',
+		webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+		canStopSyncing: true,
+	},
+};
+
 type SkillServiceMock = {
-	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled'>]: Mock;
-} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled'>;
+	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>]: Mock;
+} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>;
 
 function createSkillService(assistantSkillsEnabled = true): SkillServiceMock {
 	return {
@@ -142,6 +164,317 @@ describe('skills tool', () => {
 
 		expect(service.get).toHaveBeenCalledWith('skill_a');
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
+	});
+
+	it('lists a binary file without its content', async () => {
+		service.get.mockResolvedValue({
+			...detail,
+			skill: {
+				...detail.skill,
+				references: [{ path: 'assets/logo.png', content: 'AP8=', isBinary: true }],
+			},
+		});
+		const tool = createSkillsTool(createContext(service));
+
+		const result = await executeTool<{ skill: { references: unknown[] } }>(tool, {
+			action: 'get',
+			skillId: 'skill_a',
+		});
+
+		expect(result.skill.references).toEqual([
+			{ path: 'assets/logo.png', isBinary: true, characterCount: 4 },
+		]);
+	});
+
+	it('refuses a referenceOffset without a referencePath', async () => {
+		const tool = createSkillsTool(createContext(service));
+
+		const result = await executeTool(tool, {
+			action: 'get',
+			skillId: 'skill_a',
+			referenceOffset: 10,
+		});
+
+		expect(result).toEqual({
+			success: false,
+			refused: true,
+			reason: 'Pass referencePath with referenceOffset.',
+		});
+		expect(service.get).not.toHaveBeenCalled();
+	});
+
+	it('reads the next part of a reference on request', async () => {
+		const referencePath = 'reference/guide.md';
+		const fullContent = `${'x'.repeat(50 * 1024)}End`;
+		service.get.mockResolvedValue({
+			...detail,
+			skill: { ...detail.skill, references: [{ path: referencePath, content: fullContent }] },
+		});
+		const tool = createSkillsTool(createContext(service));
+		const input = { action: 'get', skillId: 'skill_a', referencePath };
+
+		const start = (await executeTool(tool, input)) as {
+			skill: {
+				references: Array<{ content?: string; nextOffset?: number; contentTruncated?: boolean }>;
+			};
+		};
+		const firstRef = start.skill.references[0];
+		expect(firstRef.contentTruncated).toBe(true);
+		expect(firstRef.nextOffset).toBeGreaterThan(0);
+		expect(firstRef.content).toBe(fullContent.slice(0, firstRef.nextOffset));
+
+		const end = await executeTool(tool, { ...input, referenceOffset: firstRef.nextOffset });
+		expect(end).toMatchObject({
+			skill: { references: [{ content: fullContent.slice(firstRef.nextOffset) }] },
+		});
+		expect(end).not.toHaveProperty('skill.references.0.nextOffset');
+	});
+
+	describe('synced skills', () => {
+		it('shows in the list that a skill is synced, with its source and sync state', async () => {
+			service.list.mockResolvedValue({ count: 2, data: [listItem, syncedListItem] });
+
+			const result = await executeTool(createSkillsTool(createContext(service)), {
+				action: 'list',
+			});
+
+			expect(result.skills).toEqual([
+				expect.objectContaining({ sourceId: null, syncState: null, canEdit: true }),
+				expect.objectContaining({
+					sourceId: 'source-1',
+					syncState: 'update_available',
+					canEdit: false,
+				}),
+			]);
+		});
+
+		it('shows where a synced skill comes from', async () => {
+			service.get.mockResolvedValue(syncedDetail);
+
+			const result = await executeTool(createSkillsTool(createContext(service)), {
+				action: 'get',
+				skillId: 'skill_a',
+			});
+
+			expect(result).toMatchObject({
+				sourceId: 'source-1',
+				syncState: 'update_available',
+				canEdit: false,
+				syncedFrom: syncedDetail.syncedFrom,
+			});
+		});
+
+		it('says that a skill with no source is not synced', async () => {
+			const result = await executeTool(createSkillsTool(createContext(service)), {
+				action: 'get',
+				skillId: 'skill_a',
+			});
+
+			expect(result).toMatchObject({ sourceId: null, syncState: null, syncedFrom: null });
+		});
+	});
+
+	describe('skill sources', () => {
+		const target = { url: 'https://github.com/acme/skills', scope: 'instance' };
+		const input = {
+			...target,
+			action: 'import-from-source',
+			skillKeys: ['brand-voice'],
+			revision: 'commit',
+		};
+		const check = {
+			source: { label: 'acme/skills', ref: 'main', path: 'skills' },
+			importable: [{ key: 'brand-voice', name: 'Brand voice' }],
+			failed: [],
+		};
+		const list = vi.fn();
+		const discover = vi.fn();
+		const checkImport = vi.fn();
+		const connect = vi.fn();
+		const sourceTool = (overrides: Parameters<typeof createContext>[1] = {}) =>
+			createSkillsTool(
+				createContext({ ...service, sources: { list, discover, checkImport, connect } }, overrides),
+			);
+
+		beforeEach(() => {
+			list.mockReset();
+			discover.mockReset();
+			checkImport.mockReset().mockResolvedValue(check);
+			connect.mockReset().mockResolvedValue({ sourceId: 'source-1', imported: [], failed: [] });
+		});
+
+		it('hides source actions when Skill Sync is off', () => {
+			const tool = createSkillsTool(createContext(service));
+			expect((tool.inputSchema as z.ZodType).safeParse({ action: 'list-sources' }).success).toBe(
+				false,
+			);
+		});
+
+		it('lists the sources that the user can see', async () => {
+			const sources = [{ id: 'source-1', label: 'acme/skills', skillCount: 2 }];
+			list.mockResolvedValue(sources);
+
+			const result = await executeTool(sourceTool(), { action: 'list-sources' });
+
+			expect(result).toEqual({ sources });
+		});
+
+		it('previews a source without asking for approval', async () => {
+			const preview = {
+				source: { label: 'acme/skills' },
+				duplicate: { kind: 'none' },
+				revision: 'commit',
+				skills: [{ key: 'brand-voice', name: 'Brand voice', verdict: 'pass' }],
+			};
+			discover.mockResolvedValue(preview);
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				sourceTool(),
+				{ ...target, action: 'discover-source' },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual(preview);
+			expect(discover).toHaveBeenCalledWith(target);
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('always asks before connecting the source, even when other skill creation is always allowed', async () => {
+			const tool = sourceTool({ permissions: { createSkill: 'always_allow' } });
+			const suspend = vi.fn();
+			await executeTool(tool, input, suspendCtx(suspend));
+			expect(checkImport).toHaveBeenCalledWith({
+				...target,
+				revision: 'commit',
+				skillKeys: ['brand-voice'],
+			});
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resourceName: 'acme/skills · main · skills',
+					message:
+						'Connect this source and import 1 synced skill for every project on this instance: Brand voice.',
+				}),
+			);
+			await executeTool(tool, input, resumeCtx(false));
+			expect(connect).not.toHaveBeenCalled();
+			await expect(executeTool(tool, input, resumeCtx(true))).resolves.toMatchObject({
+				success: true,
+				sourceId: 'source-1',
+			});
+			expect(connect).toHaveBeenCalledWith({
+				...target,
+				revision: 'commit',
+				skillKeys: ['brand-voice'],
+			});
+		});
+
+		it('names on the card the skills that come in, and counts the others', async () => {
+			checkImport.mockResolvedValue({
+				...check,
+				importable: [
+					{ key: 'brand-voice', name: 'Brand voice' },
+					{ key: 'docx', name: 'docx' },
+				],
+				failed: [{ key: 'warning', name: 'warning', reason: 'review_required' }],
+			});
+			const suspend = vi.fn();
+			await executeTool(sourceTool(), input, suspendCtx(suspend));
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Connect this source and import 2 synced skills for every project on this instance: Brand voice, docx. 1 selected skill cannot come in.',
+				}),
+			);
+		});
+
+		it('tells the model why the import failed after the approval, and reports no skill', async () => {
+			connect.mockRejectedValue(
+				new Error('The source changed. Preview it again before importing.'),
+			);
+			const onArtifactChanged = vi.fn();
+
+			await expect(
+				executeTool(sourceTool({ onArtifactChanged }), input, resumeCtx(true)),
+			).rejects.toThrow('The source changed. Preview it again before importing.');
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('reports each imported skill and returns the skills that did not come in', async () => {
+			const failed = [{ key: 'warning', name: 'warning', reason: 'review_required' }];
+			connect.mockResolvedValue({
+				sourceId: 'source-1',
+				imported: [{ key: 'brand-voice', skillId: 'skill_a', name: 'Brand voice' }],
+				failed,
+			});
+			const onArtifactChanged = vi.fn();
+
+			const result = await executeTool(
+				sourceTool({ onArtifactChanged }),
+				{ ...input, skillKeys: ['brand-voice', 'warning'] },
+				resumeCtx(true),
+			);
+
+			expect(result).toMatchObject({ success: true, sourceId: 'source-1', failed });
+			expect(onArtifactChanged).toHaveBeenCalledTimes(1);
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'skill',
+				id: 'skill_a',
+				name: 'Brand voice',
+			});
+		});
+
+		// The service owns the import rules. Its integration tests cover each refusal.
+		it.each([
+			[
+				'the source is at another revision',
+				'The source changed. Preview it again before importing.',
+			],
+			['the names are taken', 'Every picked skill has a name that this scope already has.'],
+		])('asks for no approval and connects nothing when %s', async (_name, message) => {
+			checkImport.mockRejectedValue(new Error(message));
+			const suspend = vi.fn();
+
+			await expect(executeTool(sourceTool(), input, suspendCtx(suspend))).rejects.toThrow(message);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
+
+		it('checks and connects nothing when the admin blocks skill creation', async () => {
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				sourceTool({ permissions: { createSkill: 'blocked' } }),
+				input,
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+			expect(checkImport).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
+
+		it('refuses a project import without a project before it checks the source', async () => {
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				sourceTool(),
+				{ ...input, scope: 'project' },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'A project skill needs a projectId.',
+			});
+			expect(checkImport).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('Assistant availability', () => {

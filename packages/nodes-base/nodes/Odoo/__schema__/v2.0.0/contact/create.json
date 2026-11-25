@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

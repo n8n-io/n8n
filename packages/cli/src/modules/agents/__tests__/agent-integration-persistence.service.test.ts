@@ -1,7 +1,7 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { TransactionRunner } from '@n8n/db';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
-import { EventService, type PostHogClient } from '@n8n/backend-services';
+import { EventService, type PostHogClient, type TelemetryProxy } from '@n8n/backend-services';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -13,7 +13,6 @@ import type { InstanceSettings } from 'n8n-core';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
-import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
@@ -40,7 +39,7 @@ const blankConfig: AgentJsonConfig = {
 
 const configuredConfig: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -64,7 +63,7 @@ function setup(options: SetupOptions = {}) {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	const eventService = mock<EventService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const credentialsService = mock<CredentialsService>();
 	const setupCompletionService = mock<AgentSetupCompletionService>();
 	const postHogClient = mock<PostHogClient>();

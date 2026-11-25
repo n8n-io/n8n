@@ -123,6 +123,12 @@ oneOf:
           name:
             type: string
             minLength: 1
+          resourceType:
+            type: string
+            enum:
+              - workflow
+              - agent
+            default: workflow
           parentFolderId:
             type: string
             nullable: true
@@ -141,6 +147,12 @@ oneOf:
           name:
             type: string
             minLength: 1
+          resourceType:
+            type: string
+            enum:
+              - workflow
+              - agent
+            default: workflow
           parentFolderId:
             type: string
             nullable: true

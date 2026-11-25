@@ -21,6 +21,9 @@ function makeExecutionStore(): ExecutionStore {
 		findStaleQueuedExecutions: vi.fn().mockResolvedValue([]),
 		renewQueuedExecution: vi.fn().mockResolvedValue(true),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn(),
+		findPrunableExecutions: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 	};
 }
 

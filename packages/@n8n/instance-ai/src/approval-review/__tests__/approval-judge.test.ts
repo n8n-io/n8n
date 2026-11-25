@@ -34,6 +34,8 @@ function block(prompt: string, name: 'conversation' | 'action'): unknown {
 }
 
 describe('renderApprovalJudgePrompt', () => {
+	const olderMessagesNote = { role: 'note', text: 'Older messages are left out.' };
+
 	it('renders the conversation and the action as JSON data blocks', () => {
 		const prompt = renderApprovalJudgePrompt(input);
 
@@ -47,18 +49,96 @@ describe('renderApprovalJudgePrompt', () => {
 		});
 	});
 
-	it('says when older messages are left out', () => {
-		const note = { role: 'note', text: 'Older messages are left out.' };
-		const conversation = Array.from({ length: 13 }, (_, index) => ({
-			role: 'user' as const,
-			text: `Message ${index}`,
+	it('says when the thread has older messages than it read', () => {
+		const prompt = renderApprovalJudgePrompt({ ...input, olderMessagesLeftOut: true });
+
+		expect(block(prompt, 'conversation')).toEqual([olderMessagesNote, ...input.conversation]);
+	});
+
+	it("keeps the user's older messages and leaves out the Assistant's older replies", () => {
+		const limit = { role: 'user' as const, text: 'Ask me before you delete anything' };
+		const turns = Array.from({ length: 8 }, (_, index) => [
+			{ role: 'user' as const, text: `Request ${index}` },
+			{ role: 'assistant' as const, text: `Reply ${index}` },
+		]).flat();
+		const conversation = [limit, ...turns];
+
+		const prompt = renderApprovalJudgePrompt({ ...input, conversation });
+
+		expect(block(prompt, 'conversation')).toEqual([
+			limit,
+			{ role: 'user', text: 'Request 0' },
+			{ role: 'user', text: 'Request 1' },
+			{
+				role: 'note',
+				text: "Before this note, only the user's messages are shown. The Assistant's replies are left out.",
+			},
+			...conversation.slice(-12),
+		]);
+	});
+
+	it('says that older messages are left out when the older part has only Assistant replies', () => {
+		const conversation = Array.from({ length: 14 }, (_, index) => ({
+			role: 'assistant' as const,
+			text: `Reply ${index}`,
 		}));
 
-		const cut = renderApprovalJudgePrompt({ ...input, conversation });
-		const notRead = renderApprovalJudgePrompt({ ...input, olderMessagesLeftOut: true });
+		const prompt = renderApprovalJudgePrompt({ ...input, conversation });
 
-		expect(block(cut, 'conversation')).toEqual([note, ...conversation.slice(1)]);
-		expect(block(notRead, 'conversation')).toEqual([note, ...input.conversation]);
+		expect(block(prompt, 'conversation')).toEqual([olderMessagesNote, ...conversation.slice(-12)]);
+	});
+
+	it('keeps the newest older user messages that fit the budget, and says when it leaves some out', () => {
+		const userMessages = (count: number, length: number) =>
+			Array.from({ length: count }, (_, index) => ({
+				role: 'user' as const,
+				text: `${index} `.padEnd(length, 'x'),
+			}));
+		const recent = userMessages(12, 10);
+		const many = userMessages(25, 10);
+		const long = userMessages(10, 1_500);
+
+		const tooMany = renderApprovalJudgePrompt({ ...input, conversation: [...many, ...recent] });
+		const tooLong = renderApprovalJudgePrompt({ ...input, conversation: [...long, ...recent] });
+
+		expect(block(tooMany, 'conversation')).toEqual([
+			olderMessagesNote,
+			...many.slice(-20),
+			...recent,
+		]);
+		expect(block(tooLong, 'conversation')).toEqual([
+			olderMessagesNote,
+			...long.slice(-5),
+			...recent,
+		]);
+	});
+
+	it('cuts a long older user message, and shows both notes when the budget and the roles leave messages out', () => {
+		const long = { role: 'user' as const, text: `${'x'.repeat(600)}${'y'.repeat(2_000)}` };
+		const olderTurns = Array.from({ length: 21 }, (_, index) => [
+			{ role: 'user' as const, text: `Request ${index}` },
+			{ role: 'assistant' as const, text: `Reply ${index}` },
+		]).flat();
+		const recent = Array.from({ length: 12 }, (_, index) => ({
+			role: 'user' as const,
+			text: `Recent ${index}`,
+		}));
+
+		const prompt = renderApprovalJudgePrompt({
+			...input,
+			conversation: [...olderTurns, long, ...recent],
+		});
+
+		expect(block(prompt, 'conversation')).toEqual([
+			olderMessagesNote,
+			...olderTurns.filter(({ role }) => role === 'user').slice(-19),
+			{ role: 'user', text: `…${'y'.repeat(2_000)}` },
+			{
+				role: 'note',
+				text: "Before this note, only the user's messages are shown. The Assistant's replies are left out.",
+			},
+			...recent,
+		]);
 	});
 
 	it('names the MCP server and its hints', () => {
@@ -309,16 +389,23 @@ describe('judgeApproval', () => {
 		const setSchema = vi.spyOn(Agent.prototype, 'structuredOutput');
 		const setModelFetch = vi.spyOn(Agent.prototype, 'modelFetch');
 		const setTelemetry = vi.spyOn(Agent.prototype, 'telemetry');
+		const setFunctionId = vi.spyOn(Agent.prototype, 'functionId');
 		const modelFetch = vi.fn();
 		const telemetry = { functionId: 'instance-ai.approval-judge' } as BuiltTelemetry;
 
-		await judgeApproval(input, { model: 'anthropic/claude-haiku', modelFetch, telemetry });
+		await judgeApproval(input, {
+			model: 'anthropic/claude-haiku',
+			modelFetch,
+			telemetry,
+			requestLabels: true,
+		});
 
 		expect(setModel).toHaveBeenCalledWith('anthropic/claude-haiku');
 		expect(setInstructions).toHaveBeenCalledWith(APPROVAL_JUDGE_INSTRUCTIONS, expect.anything());
 		expect(setSchema).toHaveBeenCalledWith(approvalJudgeVerdictSchema);
 		expect(setModelFetch).toHaveBeenCalledWith(modelFetch);
 		expect(setTelemetry).toHaveBeenCalledWith(telemetry);
+		expect(setFunctionId).toHaveBeenCalledWith('instance-ai.approval-judge');
 	});
 
 	it('returns the verdict with its usage', async () => {

@@ -116,7 +116,26 @@ describe('AssistantTurnTrace', () => {
 				otelTraceId: 'otel-1',
 				actorSpanId: 'span-1',
 				messageGroupId: 'mg-1',
+				turnRoot: { langsmithTraceId: 'ls-trace-1', runId: 'root-1' },
 			},
+		});
+	});
+
+	it('gives a resume the root of its turn, for the feedback on the answer', () => {
+		const { context } = traceContext();
+		const turnRoot = { langsmithTraceId: 'ls-trace-0', runId: 'root-0' };
+		const trace = new AssistantTurnTrace(context, 'run-1', logger(), {}, undefined, turnRoot);
+
+		expect(trace.payload).toEqual({
+			traceId: 'otel-1',
+			langsmithTraceId: 'ls-trace-1',
+			langsmithRunId: 'root-1',
+			turnLangsmithTraceId: 'ls-trace-0',
+			turnLangsmithRunId: 'root-0',
+		});
+		// A later resume of this beat keeps the same turn root.
+		expect(trace.hostMetadata()).toEqual({
+			assistantTrace: expect.objectContaining({ rootRunId: 'root-1', turnRoot }),
 		});
 	});
 
@@ -569,6 +588,42 @@ describe('AssistantTurnTracer', () => {
 		);
 	});
 
+	it('sends the turn root of a stored anchor with the ids of a resume', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+		const turn = resumeTurn({
+			checkpointHostMetadata: {
+				assistantTrace: {
+					...storedAnchor,
+					turnRoot: { langsmithTraceId: 'ls-turn', runId: 'root-turn' },
+				},
+			},
+		});
+
+		const trace = await tracer().startForTurn(turn, setup);
+
+		expect(trace?.payload).toEqual(
+			expect.objectContaining({
+				turnLangsmithTraceId: 'ls-turn',
+				turnLangsmithRunId: 'root-turn',
+			}),
+		);
+		expect(turn.emitHostEvent).toHaveBeenCalledWith(ASSISTANT_TRACE_EVENT, trace?.payload, {
+			key: 'turn',
+		});
+	});
+
+	it('uses the root of an older anchor without a turn root as the turn root', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+
+		const trace = await tracer().startForTurn(resumeTurn(), setup);
+
+		expect(trace?.payload).toEqual(
+			expect.objectContaining({ turnLangsmithTraceId: 'ls-0', turnLangsmithRunId: 'root-0' }),
+		);
+	});
+
 	it('continues the message group of a stored anchor', async () => {
 		const { context } = traceContext();
 		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
@@ -624,6 +679,8 @@ describe('AssistantTurnTracer', () => {
 			cancelled_tool_call_id: 'tc-1',
 			assistant_runtime: 'agents',
 		});
+		// A new turn is its own turn root, so the feedback goes to this trace.
+		expect(trace?.payload).not.toHaveProperty('turnLangsmithRunId');
 		await trace?.startOrchestratorRun();
 		expect(startChildRun).toHaveBeenCalledWith(
 			context.rootRun,

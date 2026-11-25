@@ -1,5 +1,7 @@
 import {
+	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_NAME_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
@@ -55,72 +57,137 @@ describe('SkillSecurityScanner', () => {
 		it.each([
 			{ case: 'a name of only spaces', content: skill({ name: '   ' }) },
 			{
-				case: 'an empty reference file',
-				content: skill({ files: [{ path: 'references/a.md', content: '' }] }),
+				case: 'a noncanonical file path',
+				content: skill({ files: [{ path: '../a.md', content: '' }] }),
 			},
 			{
-				case: 'a reference outside references/',
-				content: skill({ files: [{ path: 'docs/a.md', content: 'a' }] }),
+				case: 'invalid binary file data',
+				content: skill({
+					files: [{ path: 'assets/logo.png', content: 'not base64', isBinary: true }],
+				}),
 			},
 		])('blocks $case', ({ content }) => {
 			const result = scanner.scan(fetched(content));
 
 			expect(result.verdict).toBe('blocked');
-			expect(result.findings.map((finding) => finding.rule)).toEqual(['invalid_skill']);
+			expect(
+				result.findings.flatMap(({ rule, severity }) => (severity === 'blocked' ? [rule] : [])),
+			).toEqual(['invalid_skill']);
+		});
+
+		it.each([
+			{ case: 'name', content: skill({ name: '   ' }), detail: 'The name is empty.' },
+			{
+				case: 'description',
+				content: skill({ description: ' ' }),
+				detail: 'The description is empty.',
+			},
+		])('says that the $case is empty in its own words', ({ content, detail }) => {
+			expect(scanner.scan(fetched(content)).findings).toEqual([
+				expect.objectContaining({ rule: 'invalid_skill', detail }),
+			]);
 		});
 	});
 
 	describe('rule over_limit: content over the size limits', () => {
-		it.each([
+		const references = (count: number, length: number) =>
+			Array.from({ length: count }, (_, index) => ({
+				path: `references/${index}.md`,
+				content: 'a'.repeat(length),
+			}));
+		const longPath = (length: number) => `references/${'a'.repeat(length - 14)}.md`;
+		const frontmatter = (length: number) => ({
+			// The JSON adds `{"notes":""}` around the value.
+			notes: 'a'.repeat(length - 12),
+		});
+		const limits = [
 			{
-				case: 'instructions over the limit',
-				content: skill({ instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1) }),
+				field: 'name',
+				max: AGENT_SKILL_NAME_MAX_LENGTH,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ name: 'a'.repeat(size) }),
+				detail: 'The name can have at most 128 characters. It has 129 characters.',
 			},
 			{
-				case: 'too many reference files',
-				content: skill({
-					files: Array.from({ length: AGENT_SKILL_REFERENCE_MAX_COUNT + 1 }, (_, index) => ({
-						path: `references/${index}.md`,
-						content: 'a',
-					})),
-				}),
+				field: 'description',
+				max: AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ description: 'a'.repeat(size) }),
+				detail: 'The description can have at most 1024 characters. It has 1025 characters.',
 			},
 			{
-				case: 'a reference file over the limit',
-				content: skill({
-					files: [
-						{
-							path: 'references/big.md',
-							content: 'a'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH + 1),
-						},
-					],
-				}),
-				file: 'references/big.md',
-			},
-			{
-				case: 'reference files over the total limit',
-				content: skill({
-					files: Array.from({ length: 5 }, (_, index) => ({
-						path: `references/${index}.md`,
-						content: 'a'.repeat(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 4),
-					})),
-				}),
+				field: 'instructions',
+				max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ instructions: 'a'.repeat(size) }),
+				detail: 'The instructions can have at most 65536 characters. They have 65537 characters.',
 			},
 			{
-				case: 'frontmatter over the limit',
-				content: skill({ frontmatter: { notes: 'a'.repeat(16_384) } }),
+				field: 'frontmatter',
+				max: 16_384,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ frontmatter: frontmatter(size) }),
+				detail:
+					'The frontmatter can have at most 16384 characters as JSON. It has 16385 characters.',
 			},
-		])('blocks $case', ({ content, file }) => {
-			const result = scanner.scan(fetched(content));
+			{
+				field: 'referenceCount',
+				max: AGENT_SKILL_REFERENCE_MAX_COUNT,
+				file: 'SKILL.md',
+				content: (size: number) => skill({ files: references(size, 1) }),
+				detail: 'A skill can have at most 500 reference files. It has 501 files.',
+			},
+			{
+				field: 'referencePath',
+				max: 512,
+				file: longPath(513),
+				content: (size: number) => skill({ files: [{ path: longPath(size), content: 'a' }] }),
+				detail:
+					'The path of a reference file can have at most 512 characters. It has 513 characters.',
+			},
+			{
+				field: 'referenceContent',
+				max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+				file: 'references/0.md',
+				content: (size: number) => skill({ files: references(1, size) }),
+				detail: 'A reference file can have at most 1048576 characters. It has 1048577 characters.',
+			},
+			{
+				field: 'referencesTotal',
+				max: AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+				file: 'SKILL.md',
+				content: (size: number) =>
+					skill({
+						files: [
+							...references(4, AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 4 - 1),
+							{
+								path: 'references/last.md',
+								content: 'a'.repeat(size + 4 - AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH),
+							},
+						],
+					}),
+				detail:
+					'The reference files can have at most 2097152 characters in total. They have 2097153 characters.',
+			},
+		] as const;
+
+		it.each(limits)('blocks $field over the limit', ({ field, max, file, content, detail }) => {
+			const result = scanner.scan(fetched(content(max + 1)));
 
 			expect(result.verdict).toBe('blocked');
 			expect(result.findings).toEqual([
-				expect.objectContaining({ rule: 'over_limit', severity: 'blocked', file }),
+				{
+					rule: 'over_limit',
+					severity: 'blocked',
+					file,
+					detail,
+					limit: { field, max, current: max + 1 },
+				},
 			]);
+		});
+
+		it.each(limits)('accepts $field at the limit', ({ max, content }) => {
+			expect(scanner.scan(fetched(content(max)))).toEqual({ verdict: 'pass', findings: [] });
 		});
 	});
 
@@ -176,6 +243,148 @@ describe('SkillSecurityScanner', () => {
 		});
 	});
 
+	describe('rule file_over_skill_limit: files that do not fit the limits of one skill', () => {
+		it('names the limit for each file that the skill leaves out, and still passes', () => {
+			const result = scanner.scan({
+				...fetched(skill(), { skippedFiles: ['assets/c.txt'] }),
+				overLimitFiles: ['assets/c.txt'],
+			});
+
+			expect(result).toEqual({
+				verdict: 'pass',
+				findings: [
+					{
+						rule: 'file_over_skill_limit',
+						severity: 'info',
+						file: 'assets/c.txt',
+						detail:
+							'n8n left this file out. A skill keeps at most 500 files and 2 MiB of file content.',
+					},
+				],
+			});
+		});
+	});
+
+	describe('rule script_file: scripts that the skill keeps', () => {
+		const withFiles = (files: SkillContent['files']) => skill({ files });
+		const scriptFinding = (file: string) =>
+			expect.objectContaining({ rule: 'script_file', severity: 'needs_review', file });
+
+		it.each(['scripts/run.py', 'scripts/extract', 'tools/check.TS'])(
+			'flags the script %s for review at import',
+			(path) => {
+				const result = scanner.scan(fetched(withFiles([{ path, content: 'echo 1' }])));
+
+				expect(result).toEqual({ verdict: 'needs_review', findings: [scriptFinding(path)] });
+			},
+		);
+
+		it('flags a text file that starts with #!, whatever its name and folder are', () => {
+			const result = scanner.scan(
+				fetched(
+					withFiles([
+						{ path: 'bin/setup', content: '#!/bin/sh\necho 1' },
+						{ path: 'bin/readme', content: 'Run setup. It starts with #!/bin/sh.' },
+					]),
+				),
+			);
+
+			expect(result).toEqual({ verdict: 'needs_review', findings: [scriptFinding('bin/setup')] });
+		});
+
+		it('passes a skill with only a reference and an asset', () => {
+			const result = scanner.scan(
+				fetched(
+					withFiles([
+						{ path: 'assets/logo.svg', content: '<svg/>' },
+						{ path: 'references/guide.md', content: 'Guide.' },
+					]),
+				),
+			);
+
+			expect(result).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it('does not flag an unchanged script at update', () => {
+			const content = withFiles([{ path: 'scripts/run.py', content: 'print(1)' }]);
+
+			expect(scanner.scan(fetched(content), content).findings).toEqual([]);
+		});
+
+		it('flags a changed script at update', () => {
+			const previous = withFiles([{ path: 'scripts/run.py', content: 'print(1)' }]);
+			const next = withFiles([{ path: 'scripts/run.py', content: 'print(2)' }]);
+
+			expect(scanner.scan(fetched(next), previous).findings).toEqual([
+				scriptFinding('scripts/run.py'),
+			]);
+		});
+
+		it('flags a script that changes from text to binary with the same content string', () => {
+			const previous = withFiles([{ path: 'scripts/run', content: 'AP8=' }]);
+			const next = withFiles([{ path: 'scripts/run', content: 'AP8=', isBinary: true }]);
+
+			expect(scanner.scan(fetched(next), previous).findings).toContainEqual(
+				scriptFinding('scripts/run'),
+			);
+		});
+
+		it('does not flag a removed script', () => {
+			const previous = withFiles([{ path: 'scripts/run.py', content: 'print(1)' }]);
+
+			expect(scanner.scan(fetched(withFiles([])), previous).findings).toEqual([]);
+		});
+	});
+
+	describe('rule binary_file: binary files that the check cannot read', () => {
+		const png = { path: 'assets/logo.png', content: 'AP8=', isBinary: true as const };
+		const binaryFinding = (file: string, severity: 'info' | 'needs_review') =>
+			expect.objectContaining({ rule: 'binary_file', severity, file });
+
+		it('tells the reviewer of a new binary asset, and still passes', () => {
+			const result = scanner.scan(fetched(skill({ files: [png] })));
+
+			expect(result).toEqual({
+				verdict: 'pass',
+				findings: [binaryFinding('assets/logo.png', 'info')],
+			});
+			expect(result.findings[0].detail).toContain('Agents cannot read it');
+		});
+
+		it.each([
+			['a Markdown name', 'references/guide.md', 'AP8='],
+			['a script name', 'tools/check.py', 'AP8='],
+			['a script start', 'bin/run', Buffer.from('#!/bin/sh\n\0').toString('base64')],
+		])('needs review for a binary file with %s', (_case, path, content) => {
+			const result = scanner.scan(fetched(skill({ files: [{ path, content, isBinary: true }] })));
+
+			expect(result.verdict).toBe('needs_review');
+			expect(result.findings).toContainEqual(binaryFinding(path, 'needs_review'));
+		});
+
+		it('does not repeat the finding for an unchanged binary file at update', () => {
+			const content = skill({ files: [png] });
+
+			expect(scanner.scan(fetched(content), content).findings).toEqual([]);
+		});
+
+		it('reports a changed binary file at update', () => {
+			const next = skill({ files: [{ ...png, content: 'AP4=' }] });
+
+			expect(scanner.scan(fetched(next), skill({ files: [png] })).findings).toEqual([
+				binaryFinding('assets/logo.png', 'info'),
+			]);
+		});
+
+		it('reports a file that changes from text to binary', () => {
+			const previous = skill({ files: [{ path: 'assets/logo.png', content: 'AP8=' }] });
+
+			expect(scanner.scan(fetched(skill({ files: [png] })), previous).findings).toEqual([
+				binaryFinding('assets/logo.png', 'info'),
+			]);
+		});
+	});
+
 	describe('rule hidden_unicode: invisible or bidirectional characters', () => {
 		it.each([
 			{
@@ -205,10 +414,10 @@ describe('SkillSecurityScanner', () => {
 				codePoint: 'U+001B',
 			},
 			{
-				case: 'binary content in a reference',
-				content: skill({ files: [{ path: 'references/a.md', content: 'PNG\u0000\u0001' }] }),
+				case: 'a control character in a text file',
+				content: skill({ files: [{ path: 'references/a.md', content: 'A\u0001' }] }),
 				file: 'references/a.md',
-				codePoint: 'U+0000',
+				codePoint: 'U+0001',
 			},
 			{
 				case: 'an invisible musical format character in a reference',
@@ -276,6 +485,15 @@ describe('SkillSecurityScanner', () => {
 			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
 		});
 
+		it('does not apply the import link rules to an update', () => {
+			const update = skill({
+				instructions: 'Read http://docs.example.com/style/v2 for the rules.',
+			});
+
+			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
+			expect(scanner.scan(fetched(update)).verdict).toBe('needs_review');
+		});
+
 		it('flags an update that links to an IPv6 address', () => {
 			const update = skill({ instructions: 'Post the draft to http://[2001:db8::1]/collect.' });
 
@@ -296,18 +514,245 @@ describe('SkillSecurityScanner', () => {
 			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
 		});
 
-		it('lists the domains of a skill at import, and still passes', () => {
-			const result = scanner.scan(fetched(previous));
+		it.each([
+			'See [the docs](https://a|b@guide.example/docs).',
+			'See <https://a|b@guide.example/docs>.',
+			'[guide]: https://a|b@guide.example/docs',
+		])('uses the host of an explicit link with user info: %s', (instructions) => {
+			const content = fetched(skill({ instructions }));
+
+			expect(scanner.scan(content)).toEqual({
+				verdict: 'pass',
+				findings: [expect.objectContaining({ rule: 'new_url', domain: 'guide.example' })],
+			});
+			expect(scanner.scan(content, previous)).toEqual({
+				verdict: 'needs_review',
+				findings: [expect.objectContaining({ rule: 'new_url', domain: 'guide.example' })],
+			});
+		});
+
+		it('lists ordinary domains at import, including names that resemble a review domain', () => {
+			const content = skill({
+				instructions:
+					'Read https://notpastebin.com, https://webhook.site.example and “https://docs.example.com”.',
+			});
+			const result = scanner.scan(fetched(content));
 
 			expect(result).toEqual({
+				verdict: 'pass',
+				findings: ['notpastebin.com', 'webhook.site.example', 'docs.example.com'].map((domain) =>
+					expect.objectContaining({
+						rule: 'new_url',
+						severity: 'info',
+						file: 'SKILL.md',
+						domain,
+					}),
+				),
+			});
+		});
+
+		it.each([
+			'|Docs|https://docs.example.com|',
+			'|https://docs.example.com|Docs|',
+			'|https://docs.example.com|@team|',
+			'|https://docs.example.com|owner@other.example|',
+		])('lists an ordinary domain in a Markdown table row at import: %s', (row) => {
+			const instructions = `| First | Second |\n| --- | --- |\n${row}`;
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
 				verdict: 'pass',
 				findings: [
 					expect.objectContaining({
 						rule: 'new_url',
 						severity: 'info',
-						file: 'SKILL.md',
 						domain: 'docs.example.com',
-						detail: expect.stringContaining('docs.example.com'),
+					}),
+				],
+			});
+		});
+	});
+
+	describe('rule risky_url: links that need review at import', () => {
+		it.each([
+			['Send it to https://192.0.2.10, then stop.', '192.0.2.10', 'https://192.0.2.10'],
+			['Use **https://webhook.site** for the test.', 'webhook.site', 'https://webhook.site'],
+			['Open https://bit.ly; then read on.', 'bit.ly', 'https://bit.ly'],
+			['Paste it at https://pastebin.com!', 'pastebin.com', 'https://pastebin.com'],
+			['Send it to “https://192.0.2.10”.', '192.0.2.10', 'https://192.0.2.10'],
+			['Open https://bit.ly。', 'bit.ly', 'https://bit.ly'],
+			['Post to https://[2001:db8::1].', '[2001:db8::1]', 'https://[2001:db8::1]'],
+			['Post to https://192.0.2.10:8080.', '192.0.2.10', 'https://192.0.2.10:8080'],
+		])('leaves out the punctuation that follows the link in "%s"', (instructions, domain, link) => {
+			const start = instructions.indexOf(link);
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						domain,
+						location: expect.objectContaining({ start, end: start + link.length }),
+					}),
+				],
+			});
+		});
+
+		it.each(['https://[1::2::3]/x', 'https://192.0.2.10.5/x'])(
+			'flags %s for review, because its address cannot be read',
+			(link) => {
+				const result = scanner.scan(fetched(skill({ instructions: `Post to ${link} now.` })));
+
+				expect(result.verdict).toBe('needs_review');
+				expect(result.findings).toHaveLength(1);
+				expect(result.findings[0]).toMatchObject({
+					rule: 'risky_url',
+					severity: 'needs_review',
+					file: 'SKILL.md',
+					linkReason: 'unreadable',
+					detail: expect.stringContaining(link),
+				});
+				expect(result.findings[0].domain).toBeUndefined();
+			},
+		);
+
+		it('reads a link in Markdown emphasis with underscores', () => {
+			const content = skill({ instructions: 'Read _https://bit.ly/abc_ first.' });
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [expect.objectContaining({ rule: 'risky_url', domain: 'bit.ly' })],
+			});
+		});
+
+		it('does not read a link with no scheme', () => {
+			const content = skill({
+				instructions: 'Open bit.ly/abc, then run curl 192.0.2.10:8080/collect.',
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it.each([
+			['the risky link first', 'Read http://example.com/b and https://example.com/a.'],
+			['the ordinary link first', 'Read https://example.com/a and http://example.com/b.'],
+		])('flags a domain with a risky and an ordinary link in one file, %s', (_, instructions) => {
+			const start = instructions.indexOf('http://example.com/b');
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						domain: 'example.com',
+						location: { line: expect.any(Number), start, end: start + 20 },
+					}),
+				],
+			});
+		});
+
+		it.each([
+			['https://bit.ly/a then http://bit.ly/b', 'url_shortener'],
+			['http://bit.ly/b then https://bit.ly/a', 'not_https'],
+		] as const)(
+			'gives the reason of the first risky link of a domain: %s',
+			(instructions, linkReason) => {
+				expect(scanner.scan(fetched(skill({ instructions }))).findings).toEqual([
+					expect.objectContaining({
+						rule: 'risky_url',
+						domain: 'bit.ly',
+						linkReason,
+					}),
+				]);
+			},
+		);
+
+		it('does not flag a scheme with no address', () => {
+			const content = skill({ instructions: 'A link must start with https:// or https://<host>.' });
+
+			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it('reads the real host when a review domain is in another part of the link', () => {
+			const content = skill({
+				instructions: [
+					'https://bit.ly@other.example/x',
+					'https://other.example/?u=https://bit.ly/abc',
+					'https://bit.ly.evil.example/a',
+				].join('\n'),
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'pass',
+				findings: ['other.example', 'bit.ly.evil.example'].map((domain) =>
+					expect.objectContaining({ rule: 'new_url', severity: 'info', domain }),
+				),
+			});
+		});
+
+		it.each([
+			['https://192.0.2.10/collect', '192.0.2.10', 'ip_address', 'uses an IP address'],
+			['https://[2001:db8::1]/collect', '[2001:db8::1]', 'ip_address', 'uses an IP address'],
+			['http://example.com/help', 'example.com', 'not_https', 'does not use HTTPS'],
+			['wss://stream.example.com', 'stream.example.com', 'not_https', 'does not use HTTPS'],
+			['https://Pastebin.com/notes', 'pastebin.com', 'paste_site', 'uses a paste site'],
+			[
+				'https://test.Webhook.site./collect',
+				'test.webhook.site',
+				'webhook_catcher',
+				'uses a webhook catcher',
+			],
+			['https://bit.ly/read-more', 'bit.ly', 'url_shortener', 'uses a URL shortener'],
+			// Forms that hide the real host.
+			['https://other.example@bit.ly/x', 'bit.ly', 'url_shortener', 'uses a URL shortener'],
+			['https://2130706433/x', '127.0.0.1', 'ip_address', 'uses an IP address'],
+			['https://127.1/x', '127.0.0.1', 'ip_address', 'uses an IP address'],
+			['https://[::ffff:192.0.2.1]/x', '[::ffff:c000:201]', 'ip_address', 'uses an IP address'],
+			['ftp://files.example.com/a', 'files.example.com', 'not_https', 'does not use HTTPS'],
+			// A loopback host is the n8n host for an agent, so it gets no exemption.
+			['http://localhost:3000', 'localhost', 'not_https', 'does not use HTTPS'],
+			['http://127.0.0.1:3000/health', '127.0.0.1', 'ip_address', 'uses an IP address'],
+		] as const)('flags %s for review', (url, domain, linkReason, reason) => {
+			const content = skill({ instructions: `See [the link](${url}).` });
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						file: 'SKILL.md',
+						domain,
+						linkReason,
+						detail: expect.stringContaining(reason),
+					}),
+				],
+			});
+		});
+
+		it('lists ordinary domains and marks the first risky link when the same domain also uses HTTPS', () => {
+			const httpUrl = 'http://example.com/data';
+			const content = skill({
+				instructions:
+					'Read https://example.com/docs, https://example.com/guide and https://docs.example.org.',
+				files: [{ path: 'references/tone.md', content: `See ${httpUrl} or ${httpUrl}.` }],
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						file: 'references/tone.md',
+						domain: 'example.com',
+						location: { line: 1, start: 4, end: 4 + httpUrl.length },
+					}),
+					expect.objectContaining({
+						rule: 'new_url',
+						severity: 'info',
+						domain: 'docs.example.org',
 					}),
 				],
 			});

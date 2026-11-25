@@ -16,7 +16,7 @@ const STACK_TRACE_START =
  * The non-secret parts of a vector store connection that a fixed message can name.
  * The name is validated against `VECTOR_STORE_NAME_REGEX`, so it is safe to show.
  */
-export type VectorStoreErrorLabels = Pick<
+export type VectorStoreErrorContext = Pick<
 	AgentJsonVectorStoreConfig,
 	'name' | 'credential' | 'embedding'
 >;
@@ -37,7 +37,7 @@ function createSanitizedError(error: unknown, message: string): Error {
  */
 export function createVectorStoreErrorSanitizer(
 	provider: CredentialProvider,
-	vectorStore: VectorStoreErrorLabels,
+	vectorStore: VectorStoreErrorContext,
 ) {
 	const secrets = new Set<string>();
 	const credentialProvider: CredentialProvider = {

@@ -1,5 +1,6 @@
+import { AgentHitlOptionsQuerySchema } from './agent-hitl.schema';
 import { jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
+import { z, type ZodRawShape } from 'zod';
 
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
@@ -31,6 +32,7 @@ import {
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
+import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
@@ -110,6 +112,8 @@ const agentListFilterSchema = z
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 		includeArchived: z.boolean().optional(),
+		parentFolderId: z.string().min(1).max(36).nullable().optional(),
+		includeDescendants: z.boolean().optional(),
 		active: z.boolean().optional(),
 		projectId: z.string().min(1).optional(),
 	})
@@ -173,11 +177,22 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
+	/** Comma-separated session IDs, or repeated query parameters. An empty list matches nothing. */
+	sessionIds: z.preprocess(
+		(value) =>
+			typeof value === 'string'
+				? value
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: value,
+		z.array(z.string().min(1).max(128)).max(500).optional(),
+	),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly' | 'sessionIds'
 >;
 
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
@@ -189,10 +204,22 @@ export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	sourceFacetId: z.string().min(1).max(255).optional(),
 }) {}
 
-/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+const threadCursorTimestamp = z.string().datetime();
+
+/** Cross-agent n8n Chat thread list: no status, origin, or scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
-	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
-	cursor: z.string().datetime().optional(),
+	// New cursors add the thread ID to break ties at the same update time.
+	cursor: z
+		.string()
+		.refine((cursor) => {
+			const [timestamp, ...idParts] = cursor.split('|');
+			return (
+				threadCursorTimestamp.safeParse(timestamp).success &&
+				(idParts.length === 0 || idParts.join('|') !== '') &&
+				!cursor.includes('\0')
+			);
+		}, 'Invalid session cursor')
+		.optional(),
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
@@ -205,6 +232,26 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 	cursor: z.string().max(512).optional(),
 	limit: z.string().optional(),
 	search: threadTitleSearchSchema,
+}) {}
+
+/** The largest number of turns in one page of a chat thread's messages. */
+const MAX_CHAT_HISTORY_PAGE_TURNS = 100;
+
+/**
+ * One page of a chat thread's messages. Without `limit`, the route returns the
+ * whole thread. With `limit`, it returns the newest turns before `cursor`.
+ */
+export class AgentChatMessagesQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().min(1).max(512).optional(),
+	// No default: a request without `limit` asks for the whole thread.
+	limit: z
+		.string()
+		.regex(/^\d+$/, 'Param `limit` must be a positive integer')
+		.transform(Number)
+		.refine((limit) => limit >= 1, { message: 'Param `limit` must be a positive integer' })
+		.transform((limit) => Math.min(limit, MAX_CHAT_HISTORY_PAGE_TURNS))
+		.optional(),
 }) {}
 
 /** A new title for a thread of a system agent. */
@@ -247,6 +294,7 @@ const createAgentToolEntrySchema = z.object({
 
 const createAgentShape = {
 	name: z.string().trim().min(1).max(128),
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	id: clientMintedAgentIdSchema.optional(),
 	config: AgentJsonConfigSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
@@ -265,6 +313,8 @@ const createAgentSchema = z
 type CreateAgent = z.infer<typeof createAgentSchema>;
 
 export class CreateAgentDto implements CreateAgent {
+	declare parentFolderId?: CreateAgent['parentFolderId'];
+
 	declare name: CreateAgent['name'];
 
 	declare id?: CreateAgent['id'];
@@ -320,6 +370,19 @@ export class CreateAgentPublicDto extends Z.class(
 	},
 	{ strict: true },
 ) {}
+
+export class PublishAgentPublicDto extends Z.class(
+	{
+		versionId: z.string().min(1).optional().openapi({
+			description: 'The saved version to publish. Omit this field to publish the current draft.',
+		}),
+	},
+	{ strict: true },
+) {}
+
+export class MoveAgentDto extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable(),
+}) {}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
@@ -431,10 +494,17 @@ const agentBuilderStateShape = {
 };
 
 /** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
-export class AgentPublicDto extends Z.class(agentPublicShape) {}
+export class AgentPublicDto extends Z.class({
+	...agentPublicShape,
+	parentFolder: workflowParentFolderPublicSchema.nullable(),
+}) {}
 
 /** Single-agent response. `config` is the document `PUT` writes back. */
-export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+export class AgentDto extends Z.class({
+	...agentPublicShape,
+	parentFolderId: z.string().nullable().optional(),
+	...agentBuilderStateShape,
+}) {}
 
 /**
  * Response of the Public API `DELETE /agents/:agentId`. Metadata of the
@@ -489,6 +559,8 @@ const agentListItemShape = {
 	id: z.string(),
 	name: z.string(),
 	projectId: z.string(),
+	parentFolderId: z.string().nullable().optional(),
+	folderPath: z.array(z.string()).optional(),
 	project: agentProjectResponseSchema,
 	availableInMCP: z.boolean(),
 	isArchived: z.boolean(),
@@ -522,6 +594,7 @@ const updateAgentObjectSchema = z
 		id: strippedAgentField,
 		name: strippedAgentField,
 		projectId: strippedAgentField,
+		parentFolderId: strippedAgentField,
 		project: strippedAgentField,
 		availableInMCP: strippedAgentField,
 		isArchived: strippedAgentField,
@@ -581,6 +654,72 @@ export class UpdateAgentDto implements UpdateAgent {
 
 	static parse(data: unknown) {
 		return updateAgentSchema.parse(data);
+	}
+}
+
+/**
+ * Response fields a PUT body may carry but must not write. Derived from the
+ * agent response DTO schemas, so the strict schema cannot drift from them: a
+ * new response field is accepted-and-ignored here without a list to maintain.
+ * `config` and `configHash` are real inputs of this DTO, not managed fields.
+ */
+const serverManagedAgentResponseFields: ZodRawShape = Object.fromEntries(
+	[...Object.keys(AgentPublicDto.schema.shape), ...Object.keys(AgentDto.schema.shape), 'adopted']
+		.filter((field) => field !== 'config' && field !== 'configHash')
+		.map((field) => [field, strippedAgentField]),
+);
+
+const updateAgentPublicObjectSchema = z
+	.object({
+		// `null` is the retrieved body of an agent that has no configuration
+		// yet, so the round-trip accepts it. The handler turns a null config
+		// into a no-op for such an agent and rejects it for one with a config.
+		config: AgentJsonConfigSchema.nullable().openapi(alsoNullable({ type: 'object' })),
+		baseConfigHash: z.string().nullable().optional(),
+		configHash: z.string().nullable().optional(),
+		...serverManagedAgentResponseFields,
+	})
+	.strict();
+
+const updateAgentPublicSchema = updateAgentPublicObjectSchema
+	.superRefine((value, ctx) => {
+		if (value.baseConfigHash === undefined && value.configHash === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'baseConfigHash or configHash is required',
+				path: ['baseConfigHash'],
+			});
+		}
+	})
+	.transform(({ config, baseConfigHash, configHash }) => ({
+		config,
+		baseConfigHash: baseConfigHash !== undefined ? baseConfigHash : (configHash ?? null),
+	}));
+
+type UpdateAgentPublic = z.infer<typeof updateAgentPublicSchema>;
+
+/**
+ * Body of the Public API `PUT /agents/:agentId`. Accepts a `GET /agents/:agentId`
+ * body: server-managed fields are ignored, not rejected. `configHash` is the
+ * concurrency token when `baseConfigHash` is absent.
+ */
+export class UpdateAgentPublicDto implements UpdateAgentPublic {
+	declare config: UpdateAgentPublic['config'];
+
+	declare baseConfigHash: UpdateAgentPublic['baseConfigHash'];
+
+	static schema = updateAgentPublicSchema;
+
+	constructor(data: z.input<typeof updateAgentPublicObjectSchema>) {
+		Object.assign(this, updateAgentPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateAgentPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateAgentPublicSchema.parse(data);
 	}
 }
 
@@ -729,11 +868,26 @@ export const lowercaseUuidSchema = z
 	.refine((value) => value === value.toLowerCase(), { message: 'The UUID must be lowercase' });
 
 /**
+ * Raised character limit for chat surfaces where users paste long,
+ * externally-drafted prompts (agent builder, Assistant). The system agent
+ * chat routes enforce it on the backend.
+ */
+export const EXTENDED_PROMPT_MAX_LENGTH = 25_000;
+
+const systemAgentMessageSchema = z
+	.string()
+	.max(
+		EXTENDED_PROMPT_MAX_LENGTH,
+		`Message must be ${EXTENDED_PROMPT_MAX_LENGTH} characters or fewer`,
+	);
+
+/**
  * A system agent session ID is a lowercase UUID. System agents derive
  * resource names, such as sandbox names, from it.
  */
 const systemAgentChatMessageShape = {
 	...agentChatMessageShape,
+	message: systemAgentMessageSchema,
 	sessionId: lowercaseUuidSchema.optional(),
 };
 
@@ -764,8 +918,9 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 /**
  * The chat message of a system agent. Same as {@link AgentChatMessageDto},
- * but the session ID must be a lowercase UUID. Validate via `parse`/`safeParse`,
- * for the same reason as `AgentChatMessageDto`.
+ * but the session ID must be a lowercase UUID and the message has a maximum
+ * length. Validate via `parse`/`safeParse`, for the same reason as
+ * `AgentChatMessageDto`.
  */
 export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageShape) {
 	constructor(data: z.infer<typeof systemAgentChatMessageSchema>) {
@@ -783,6 +938,11 @@ export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageSha
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+/** Same as {@link AgentChatQueueUpdateDto}, with the system agent message limit. */
+export class SystemAgentChatQueueUpdateDto extends Z.class({
+	message: systemAgentMessageSchema,
 }) {}
 
 export class AgentChatQueueSteerDto extends Z.class({
@@ -944,3 +1104,5 @@ export class AgentChatCancelDto extends Z.class({
 export class AgentTaskCancellationDto extends Z.class({
 	planId: z.string().uuid().toLowerCase().nullable(),
 }) {}
+
+export class AgentHitlOptionsQueryDto extends Z.class(AgentHitlOptionsQuerySchema.shape) {}

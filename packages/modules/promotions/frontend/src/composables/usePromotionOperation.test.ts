@@ -61,9 +61,16 @@ it.each([
 	await operation.submit({
 		workflowIds: ['wf-1'],
 		folderIds: [],
+		credentialIds: [],
 		confirmDestructiveChanges: false,
 	});
 
-	expect(operation.error.value).toEqual({ message, kind });
+	expect(operation.error.value).toEqual({
+		message:
+			status === 423
+				? 'Nothing was applied. Another operation is running on this environment. Try again when it finishes.'
+				: message,
+		kind,
+	});
 	expect(refresh).toHaveBeenCalledTimes(refreshes ? 1 : 0);
 });

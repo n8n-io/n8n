@@ -147,3 +147,34 @@ describe('credential type availability policy: instance deny beats a project all
 		});
 	});
 });
+
+describe('PATCH /projects/:projectId/credential-type-policies/project/access', () => {
+	const accessRoute = (projectId: string) => `${projectRoute(projectId)}/access`;
+
+	test('rejects a project editor with 403', async () => {
+		const response = await testServer
+			.authAgentFor(projectEditor)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: 'slackApi', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('lets the project admin set the access of a credential type', async () => {
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: 'slackApi', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			version: 1,
+			rules: [{ action: 'deny', selector: { kind: 'name', value: 'slackApi' } }],
+		});
+
+		const nodePolicy = await testServer
+			.authAgentFor(projectAdmin)
+			.get(`/projects/${project.id}/node-type-policies/project`);
+		expect(nodePolicy.body.data.version).toBe(0);
+	});
+});

@@ -1,11 +1,7 @@
+import type { ExecutionLedgerBacklogStats } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
-	EXECUTION_LEDGER_BLOCKED_BY,
-	EXECUTION_LEDGER_ENTITY_TYPES,
-	EXECUTION_LEDGER_EVENTS,
-	EXECUTION_LEDGER_ORIGINS,
-	EXECUTION_LEDGER_OUTCOMES,
 	type ExecutionLedgerRow,
 	type OperationContext,
 	parseDbTime,
@@ -17,6 +13,7 @@ import { DataSource, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from '@n8n/errors';
 
 import { ExecutionLedgerEntity } from '../entities/execution-ledger.entity';
+import { parseLedgerRow, type RawLedgerRow } from '../ledger-row.parser';
 
 class ExecutionLedgerTable extends BaseRepository<ExecutionLedgerEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -26,7 +23,11 @@ class ExecutionLedgerTable extends BaseRepository<ExecutionLedgerEntity> {
 
 export type NewExecutionLedgerRow = Omit<ExecutionLedgerRow, 'id'>;
 
-type RawLedgerRow = Record<keyof ExecutionLedgerRow, unknown>;
+export type ClaimedBatch = {
+	rows: ExecutionLedgerRow[];
+	/** Rows with a value that this version does not know. The claim deleted them too. */
+	unreadable: RawLedgerRow[];
+};
 
 /** The only reader and writer of `execution_ledger`. */
 @Service()
@@ -60,7 +61,7 @@ export class ExecutionLedgerRepository {
 	 * Deletes up to `limit` of the oldest rows and returns them in id order. A rollback of the
 	 * transaction in `ctx` puts them back, so the claim is only final when the fold commits.
 	 */
-	async claimBatch(limit: number, ctx: OperationContext): Promise<ExecutionLedgerRow[]> {
+	async claimBatch(limit: number, ctx: OperationContext): Promise<ClaimedBatch> {
 		if (!ctx.trx) throw new UnexpectedError('Claiming ledger rows needs an active transaction');
 		if (!Number.isInteger(limit) || limit < 1) {
 			throw new UnexpectedError('The claim limit must be a positive integer', { extra: { limit } });
@@ -69,7 +70,7 @@ export class ExecutionLedgerRepository {
 		const manager = this.table.managerFor(ctx);
 		const table = manager.connection.driver.escape(this.table.metadata.tableName);
 
-		const rows = this.isPostgres
+		const claimed = this.isPostgres
 			? await this.query(
 					manager,
 					// The CTE makes the driver return rows only: a bare DELETE ... RETURNING returns [rows, count].
@@ -78,7 +79,35 @@ export class ExecutionLedgerRepository {
 				)
 			: await this.claimOnSqlite(manager, table, limit);
 
-		return rows.map(toLedgerRow);
+		const batch: ClaimedBatch = { rows: [], unreadable: [] };
+		for (const raw of claimed) {
+			const row = parseLedgerRow(raw);
+			if (row) batch.rows.push(row);
+			else batch.unreadable.push(raw);
+		}
+		return batch;
+	}
+
+	/**
+	 * Separate subqueries, because SQLite scans the whole table when MIN and MAX share
+	 * one aggregate. Each one is a primary-key lookup on both dialects.
+	 */
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		const manager = this.table.managerFor({});
+		const table = manager.connection.driver.escape(this.table.metadata.tableName);
+		const [stats] = await this.query<{ minId: unknown; maxId: unknown; oldest: unknown }>(
+			manager,
+			`SELECT (SELECT MIN("id") FROM ${table}) AS "minId", (SELECT MAX("id") FROM ${table}) AS "maxId", (SELECT "occurredAt" FROM ${table} WHERE "id" = (SELECT MIN("id") FROM ${table})) AS "oldest"`,
+			[],
+		);
+		const oldest = stats?.oldest;
+		const isEmpty = stats?.minId === null || stats?.minId === undefined;
+
+		return {
+			rows: isEmpty ? 0 : Number(stats.maxId) - Number(stats.minId) + 1,
+			oldestOccurredAt:
+				oldest instanceof Date || typeof oldest === 'string' ? parseDbTime(oldest) : null,
+		};
 	}
 
 	/**
@@ -99,50 +128,13 @@ export class ExecutionLedgerRepository {
 		return rows;
 	}
 
-	private async query(
+	private async query<T = RawLedgerRow>(
 		manager: EntityManager,
 		rawSql: string,
 		rawParams: unknown[],
-	): Promise<RawLedgerRow[]> {
+	): Promise<T[]> {
 		const { sql, params } = toDialectQuery(this.isPostgres, rawSql, rawParams);
-		const rows: RawLedgerRow[] = await manager.query(sql, params);
+		const rows: T[] = await manager.query(sql, params);
 		return rows;
 	}
-}
-
-function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
-	const { entityType, event, outcome, blockedBy, origin, occurredAt } = raw;
-	if (
-		!isOneOf(EXECUTION_LEDGER_ENTITY_TYPES, entityType) ||
-		!isOneOf(EXECUTION_LEDGER_EVENTS, event) ||
-		!isOneOf(EXECUTION_LEDGER_OUTCOMES, outcome) ||
-		!isOneOf(EXECUTION_LEDGER_BLOCKED_BY, blockedBy) ||
-		!isOneOf(EXECUTION_LEDGER_ORIGINS, origin) ||
-		!(occurredAt instanceof Date || typeof occurredAt === 'string')
-	) {
-		throw new UnexpectedError('Ledger row has an unexpected value', { extra: { id: raw.id } });
-	}
-
-	return {
-		id: String(raw.id),
-		executionId: String(raw.executionId),
-		occurredAt: parseDbTime(occurredAt),
-		entityType,
-		entityName: String(raw.entityName),
-		entityId: String(raw.entityId),
-		projectId: String(raw.projectId),
-		mode: String(raw.mode),
-		source: String(raw.source),
-		event,
-		outcome,
-		blockedBy,
-		runtimeMs: Number(raw.runtimeMs),
-		timeSavedMin: Number(raw.timeSavedMin),
-		origin,
-		eventId: String(raw.eventId),
-	};
-}
-
-function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
-	return values.some((allowed) => allowed === value);
 }

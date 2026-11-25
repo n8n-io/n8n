@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	isTerminalExecutionStatus,
+	isTrimmedNodeExecutionData,
 	parseErrorMetadata,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -32,7 +33,6 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
-	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -82,7 +82,8 @@ import RunDataPaginationBar from './RunDataPaginationBar.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from './RunDataBinary.vue';
-import { hasTrimmedRunData } from '@/features/execution/executions/executions.utils';
+import { isTrimmedTaskData } from '@/features/execution/executions/executions.utils';
+import { useTrimmedRunDataFill } from '@/features/ndv/runData/composables/useTrimmedRunDataFill';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
@@ -90,7 +91,6 @@ import {
 	N8nBlockUi,
 	N8nButton,
 	N8nCallout,
-	N8nHtmlPreview,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -102,6 +102,9 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { resolveContributedComponent } from '@/app/utils/resolveContributedComponent';
+import { isBuiltInDisplayMode, PANE_DEFAULT_DISPLAY_MODE } from '@/features/ndv/shared/ndv.utils';
+import { useRunDataDisplayModes } from '@/features/ndv/runData/composables/useRunDataDisplayModes';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -284,8 +287,8 @@ const nodeType = computed(() => {
 const isPaneTypeInput = computed(() => props.paneType === 'input');
 const isPaneTypeOutput = computed(() => props.paneType === 'output');
 
-const isSchemaView = computed(() => props.displayMode === 'schema');
-const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
+const isSchemaView = computed(() => activeDisplayMode.value === 'schema');
+const isSearchInSchemaView = computed(() => isSchemaView.value && !!activeSearch.value);
 const hasMultipleInputNodes = computed(() => isPaneTypeInput.value && props.nodes.length > 0);
 const displaysMultipleNodes = computed(() => isSchemaView.value && hasMultipleInputNodes.value);
 const hasAnyUpstreamExecuted = computed(() => {
@@ -361,20 +364,22 @@ const shouldShowDisabledNodeHint = computed(() => {
 const shouldShowNoDataInBranch = computed(() => {
 	return (
 		hasNodeRun.value &&
-		(!unfilteredDataCount.value || (search.value && !dataCount.value)) &&
+		(!unfilteredDataCount.value || (activeSearch.value && !dataCount.value)) &&
 		isSingleNodeView.value &&
 		branches.value.length > 1
 	);
 });
 
 const shouldShowNoOutputData = computed(() => {
-	return hasNodeRun.value && !inputData.value.length && isSingleNodeView.value && !search.value;
+	return (
+		hasNodeRun.value && !inputData.value.length && isSingleNodeView.value && !activeSearch.value
+	);
 });
 
 const shouldShowBinaryOnlyHint = computed(() => {
 	return (
 		hasNodeRun.value &&
-		props.displayMode === 'table' &&
+		activeDisplayMode.value === 'table' &&
 		binaryData.value.length > 0 &&
 		inputData.value.length === 1 &&
 		Object.keys(jsonData.value[0] || {}).length === 0
@@ -480,9 +485,33 @@ const dataCount = computed(() =>
 	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
-const isTrimmedManualExecutionDataItem = computed(() =>
-	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
-);
+const isShownRunTrimmed = computed(() => {
+	const taskData = currentNodeRunData.value?.[props.runIndex];
+	return taskData ? (isTrimmedTaskData(taskData) ?? false) : false;
+});
+
+// Follows the runs the panel shows: another node's trimmed data must not hide
+// this run's data. The schema view of the input panel shows every parent node,
+// one run for each connected output, selected as `VirtualSchema` selects it.
+const isTrimmedManualExecutionDataItem = computed(() => {
+	if (isShownRunTrimmed.value) return true;
+	if (!displaysMultipleNodes.value) return false;
+
+	return props.nodes.some(({ name, indicies }) =>
+		(indicies.length > 0 ? indicies : [0]).some((outputIndex) => {
+			const runIndex = nodeHelpers.getLastRunIndexWithData(name, outputIndex, connectionType.value);
+			const taskData = nodeHelpers.getNodeTaskData(name, runIndex);
+			return isTrimmedNodeExecutionData(taskData?.data?.[connectionType.value]?.[outputIndex]);
+		}),
+	);
+});
+
+useTrimmedRunDataFill({
+	nodeName: () => node.value?.name,
+	runIndex: () => props.runIndex,
+	isTrimmed: isShownRunTrimmed,
+	hasWorkflowExecution: () => props.workflowExecution !== undefined,
+});
 
 const isExecutionInTerminalState = computed(() =>
 	isTerminalExecutionStatus(currentExecution.value?.status ?? undefined),
@@ -552,7 +581,23 @@ const binaryData = computed(() => {
 		.getBinaryData(runDataOfNode, currentOutputIndex.value)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
-const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
+
+const { availableDisplayModes, displayModeToAutoSelect, getAvailableDisplayMode } =
+	useRunDataDisplayModes({ node, pane: () => props.paneType, data: unfilteredInputData });
+/**
+ * The mode to render. A registered mode that cannot render this data falls back to
+ * the pane default. The fallback is not saved, so the stored choice stays for other nodes.
+ */
+const activeDisplayMode = computed<IRunDataDisplayMode>(() =>
+	isBuiltInDisplayMode(props.displayMode) || getAvailableDisplayMode(props.displayMode)
+		? props.displayMode
+		: PANE_DEFAULT_DISPLAY_MODE[props.paneType],
+);
+const activeRenderer = computed(() => getAvailableDisplayMode(activeDisplayMode.value));
+// Text typed in another mode must not filter or hide a mode that cannot search
+const activeSearch = computed(() =>
+	activeRenderer.value && !activeRenderer.value.supports?.search ? '' : search.value,
+);
 const currentOutputIndex = computed(() => {
 	if (props.overrideOutputs?.length && !props.overrideOutputs.includes(outputIndex.value)) {
 		return props.overrideOutputs[0];
@@ -574,7 +619,7 @@ const branches = computed(() => {
 		}
 		const totalItemsCount = getRawInputData(props.runIndex, i).length;
 		const itemsCount = getDataCount(props.runIndex, i);
-		const items = search.value
+		const items = activeSearch.value
 			? i18n.baseText('ndv.search.items', {
 					adjustToNumber: totalItemsCount,
 					interpolate: { matched: itemsCount, total: totalItemsCount },
@@ -597,7 +642,9 @@ const branches = computed(() => {
 		}
 		result.push({
 			label:
-				(search.value && itemsCount) || totalItemsCount ? `${outputName} (${items})` : outputName,
+				(activeSearch.value && itemsCount) || totalItemsCount
+					? `${outputName} (${items})`
+					: outputName,
 			value: i,
 		});
 	}
@@ -627,7 +674,8 @@ const inputSelectLocation = computed(() => {
 });
 
 const showIoSearchNoMatchContent = computed(
-	() => hasNodeRun.value && !inputData.value.length && !!search.value && isSingleNodeView.value,
+	() =>
+		hasNodeRun.value && !inputData.value.length && !!activeSearch.value && isSingleNodeView.value,
 );
 
 const shouldShowDisplayModeSelect = computed(() => {
@@ -637,7 +685,7 @@ const shouldShowDisplayModeSelect = computed(() => {
 		(hasNodeRun.value &&
 			(inputData.value.length ||
 				binaryData.value.length ||
-				search.value ||
+				activeSearch.value ||
 				hasMultipleInputNodes.value))
 	);
 });
@@ -729,7 +777,8 @@ const hasPreviewSchema = asyncComputed(async () => {
 }, false);
 
 const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']>(() => ({
-	search: search.value,
+	// Schema view filters itself and shows no filtered count
+	search: isSchemaView.value ? '' : activeSearch.value,
 	dataCount: dataCount.value,
 	unfilteredDataCount: unfilteredDataCount.value,
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
@@ -744,7 +793,7 @@ const hasParsedAiContent = computed(() =>
 );
 
 const binaryDataDisplayVisible = computed(
-	() => binaryDataDisplayData.value !== null && props.displayMode === 'binary',
+	() => binaryDataDisplayData.value !== null && activeDisplayMode.value === 'binary',
 );
 
 function setInputBranchIndex(value: number) {
@@ -790,9 +839,9 @@ watch(jsonData, (data: IDataObject[], prevData: IDataObject[]) => {
 });
 
 watch(binaryData, (newData, prevData) => {
-	if (newData.length && !prevData.length && props.displayMode !== 'binary') {
+	if (newData.length && !prevData.length && activeDisplayMode.value !== 'binary') {
 		switchToBinary();
-	} else if (!newData.length && props.displayMode === 'binary') {
+	} else if (!newData.length && activeDisplayMode.value === 'binary') {
 		onDisplayModeChange('table');
 	}
 });
@@ -812,7 +861,7 @@ watch(search, (newSearch) => {
 watch(
 	hasParsedAiContent,
 	(hasAiContent) => {
-		if (hasAiContent && props.displayMode !== 'ai') {
+		if (hasAiContent && activeDisplayMode.value !== 'ai') {
 			emit('displayModeChange', 'ai');
 		}
 	},
@@ -1028,7 +1077,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
-		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
+		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : activeDisplayMode.value,
 		is_data_pinned: pinnedData.hasData.value,
 		workflow_id: workflowId.value,
 		node_id: activeNode.value?.id,
@@ -1096,7 +1145,7 @@ function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
-		view: props.displayMode,
+		view: activeDisplayMode.value,
 		type,
 	});
 }
@@ -1120,7 +1169,7 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 			node_type: activeNode.value?.type,
 			push_ref: props.pushRef,
 			run_index: props.runIndex,
-			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : props.displayMode,
+			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : activeDisplayMode.value,
 			workflow_id: workflowId.value,
 			node_id: activeNode.value?.id,
 		};
@@ -1245,7 +1294,7 @@ function onPageSizeChange(newPageSize: number) {
 }
 
 function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
-	const previous = props.displayMode;
+	const previous = activeDisplayMode.value;
 	emit('displayModeChange', newDisplayMode);
 
 	if (!userEnabledShowData.value) updateShowData();
@@ -1344,12 +1393,12 @@ function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] 
 }
 
 function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
-	if (!search.value || isSchemaView.value) {
+	if (!activeSearch.value || isSchemaView.value) {
 		return data;
 	}
 
 	currentPage.value = 1;
-	return data.filter(({ json }) => searchInObject(json, search.value));
+	return data.filter(({ json }) => searchInObject(json, activeSearch.value));
 }
 
 function getDataCount(
@@ -1394,7 +1443,7 @@ function init() {
 	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
 	if (binaryData.value.length > 0) {
 		emit('displayModeChange', 'binary');
-	} else if (props.displayMode === 'binary') {
+	} else if (activeDisplayMode.value === 'binary') {
 		emit('displayModeChange', 'schema');
 	}
 
@@ -1483,15 +1532,9 @@ function enableNode() {
 	}
 }
 
-const shouldDisplayHtml = computed(
-	() =>
-		node.value?.type === HTML_NODE_TYPE &&
-		node.value.parameters.operation === 'generateHtmlTemplate',
-);
-
 function setDisplayMode() {
-	if (shouldDisplayHtml.value) {
-		emit('displayModeChange', 'html');
+	if (displayModeToAutoSelect.value) {
+		emit('displayModeChange', displayModeToAutoSelect.value.id);
 	}
 }
 
@@ -1521,7 +1564,7 @@ defineExpose({ enterEditMode });
 			$style.container,
 			{
 				[$style.compact]: compact,
-				[$style.showActionsOnHover]: showActionsOnHover && !search,
+				[$style.showActionsOnHover]: showActionsOnHover && !activeSearch,
 			},
 		]"
 		@mouseover="activatePane"
@@ -1588,11 +1631,11 @@ defineExpose({ enterEditMode });
 			>
 				<Suspense>
 					<LazyRunDataSearch
-						v-if="showIOSearch"
+						v-if="showIOSearch && (!activeRenderer || activeRenderer.supports?.search)"
 						v-model="search"
 						:class="$style.search"
 						:pane-type="paneType"
-						:display-mode="displayMode"
+						:display-mode="activeDisplayMode"
 						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
@@ -1600,7 +1643,7 @@ defineExpose({ enterEditMode });
 
 				<N8nIconButton
 					variant="ghost"
-					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
+					v-if="activeDisplayMode === 'table' && collapsingTableColumnName !== null"
 					:class="$style.resetCollapseButton"
 					icon="chevrons-up-down"
 					size="xsmall"
@@ -1611,11 +1654,10 @@ defineExpose({ enterEditMode });
 					v-if="!disableDisplayModeSelection"
 					v-show="shouldShowDisplayModeSelect"
 					:compact="props.compact"
-					:value="displayMode"
+					:value="activeDisplayMode"
 					:has-binary-data="binaryData.length > 0"
-					:pane-type="paneType"
-					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
+					:registered-display-modes="availableDisplayModes"
 					@change="onDisplayModeChange"
 				/>
 
@@ -1725,7 +1767,7 @@ defineExpose({ enterEditMode });
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
 					:task-metadata="activeTaskMetadata"
-					:display-mode="displayMode"
+					:display-mode="activeDisplayMode"
 				/>
 			</div>
 
@@ -1757,7 +1799,7 @@ defineExpose({ enterEditMode });
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
 					:task-metadata="activeTaskMetadata"
-					:display-mode="displayMode"
+					:display-mode="activeDisplayMode"
 				/>
 
 				<div :class="$style.tabs">
@@ -1775,7 +1817,7 @@ defineExpose({ enterEditMode });
 					!props.compact &&
 					hasNodeRun &&
 					!isSearchInSchemaView &&
-					((dataCount > 0 && maxRunIndex === 0) || search) &&
+					((dataCount > 0 && maxRunIndex === 0) || activeSearch) &&
 					!isArtificialRecoveredEventItem &&
 					!displaysMultipleNodes &&
 					!isExecutionRedacted
@@ -1790,7 +1832,7 @@ defineExpose({ enterEditMode });
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
 					:task-metadata="activeTaskMetadata"
-					:display-mode="displayMode"
+					:display-mode="activeDisplayMode"
 				/>
 			</div>
 		</div>
@@ -1880,7 +1922,7 @@ defineExpose({ enterEditMode });
 				<div :class="$style.redactedFakeData">
 					<!-- Text-like fake content for AI / text output -->
 					<div
-						v-if="displayMode === 'ai' || node?.type?.includes('langchain')"
+						v-if="activeDisplayMode === 'ai' || node?.type?.includes('langchain')"
 						:class="$style.redactedText"
 					>
 						<p>
@@ -1901,7 +1943,7 @@ defineExpose({ enterEditMode });
 						</p>
 					</div>
 					<!-- JSON-like fake content -->
-					<pre v-else-if="displayMode === 'json'" :class="$style.redactedJson">
+					<pre v-else-if="activeDisplayMode === 'json'" :class="$style.redactedJson">
 [
   {
     "id": 1007,
@@ -1941,7 +1983,7 @@ defineExpose({ enterEditMode });
 ]</pre
 					>
 					<!-- Schema-like fake content -->
-					<div v-else-if="displayMode === 'schema'" :class="$style.redactedSchema">
+					<div v-else-if="activeDisplayMode === 'schema'" :class="$style.redactedSchema">
 						<div :class="$style.redactedSchemaField">
 							<span :class="$style.redactedSchemaKey">id</span>
 							<span :class="$style.redactedSchemaType">number</span>
@@ -2099,7 +2141,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
-				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
+				<NDVEmptyState v-if="activeSearch" :title="i18n.baseText('ndv.search.noMatch.title')">
 					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
 							<a href="#" @click.prevent="onSearchClear">
@@ -2178,7 +2220,7 @@ defineExpose({ enterEditMode });
 				</I18nT>
 			</NDVEmptyState>
 
-			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
+			<Suspense v-else-if="hasNodeRun && activeDisplayMode === 'table' && node">
 				<LazyRunDataTable
 					:node="node"
 					:input-data="inputDataPage"
@@ -2200,7 +2242,7 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
+			<Suspense v-else-if="hasNodeRun && activeDisplayMode === 'json' && node">
 				<LazyRunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"
@@ -2210,6 +2252,7 @@ defineExpose({ enterEditMode });
 					:mapping-enabled="mappingEnabled"
 					:distance-from-active="distanceFromActive"
 					:run-index="runIndex"
+					:connection-type="connectionType"
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
@@ -2218,12 +2261,20 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<N8nHtmlPreview
-				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
-				:html="inputHtml"
-			/>
+			<Suspense v-else-if="hasNodeRun && node && activeRenderer">
+				<component
+					:is="resolveContributedComponent(activeRenderer.component)"
+					:data="activeRenderer.supports?.search ? inputData : unfilteredInputData"
+					:node="node"
+					:pane="paneType"
+					:run-index="runIndex"
+					:output-index="currentOutputIndex"
+					:search="activeSearch"
+					:compact="props.compact"
+				/>
+			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
+			<Suspense v-else-if="hasNodeRun && activeDisplayMode === 'ai'">
 				<LazyRunDataAi
 					render-type="rendered"
 					:compact="compact"
@@ -2252,7 +2303,7 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<RunDataBinary
-				v-else-if="displayMode === 'binary'"
+				v-else-if="activeDisplayMode === 'binary'"
 				:binary-data="binaryData"
 				@preview="displayBinaryData"
 			/>
@@ -2266,8 +2317,8 @@ defineExpose({ enterEditMode });
 				hidePagination === false &&
 				hasNodeRun &&
 				!hasRunError &&
-				displayMode !== 'binary' &&
-				displayMode !== 'html' &&
+				activeDisplayMode !== 'binary' &&
+				!activeRenderer &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
@@ -2404,7 +2455,7 @@ defineExpose({ enterEditMode });
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
-	--tabs--arrow-buttons--color: var(--run-data--color--background);
+	--n8n-tabs--arrow-buttons--color: var(--run-data--color--background);
 }
 
 .itemsCount {

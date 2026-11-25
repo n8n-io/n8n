@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import type {
 	AddDatasetRowDto,
 	DatasetCandidateResponse,
@@ -7,9 +8,11 @@ import type {
 	EvaluationConfigDto,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -17,13 +20,13 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 
-import Modal from '@/app/components/Modal.vue';
 import { ADD_EXECUTION_TO_DATASET_MODAL_KEY } from '@/app/constants';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useEvaluationStore } from '../../evaluation.store';
 import { stringifyValue } from '../../evaluation.utils';
 
+defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -37,7 +40,18 @@ const locale = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const evaluationStore = useEvaluationStore();
-const modalBus = createEventBus();
+const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[ADD_EXECUTION_TO_DATASET_MODAL_KEY]?.open === true,
+);
+
+async function closeDialog() {
+	uiStore.closeModal(ADD_EXECUTION_TO_DATASET_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const selectedConfigId = ref<string>(props.data.configs[0]?.id ?? '');
 const candidate = ref<DatasetCandidateResponse | null>(null);
@@ -154,21 +168,30 @@ function buildPayloadMapping(): AddDatasetRowDto['mapping'] {
 	return result;
 }
 
+function isCurrentDialogSession(session: typeof props.data): boolean {
+	const current = uiStore.modalsById[ADD_EXECUTION_TO_DATASET_MODAL_KEY];
+	if (current?.open !== true) return false;
+	// A later open replaces the store payload. Finish only the session that started this submit.
+	if (current.data !== undefined && current.data !== session) return false;
+	return true;
+}
+
 async function onSubmit(): Promise<void> {
 	if (!canSubmit.value) return;
+	const session = props.data;
 	submitting.value = true;
 	try {
 		await evaluationStore.addExecutionToDataset({
-			workflowId: props.data.workflowId,
+			workflowId: session.workflowId,
 			configId: selectedConfigId.value,
 			payload: {
-				executionId: props.data.executionId,
+				executionId: session.executionId,
 				mapping: buildPayloadMapping(),
 			},
 		});
 		telemetry.track('User added execution to evaluation dataset', {
-			workflow_id: props.data.workflowId,
-			execution_id: props.data.executionId,
+			workflow_id: session.workflowId,
+			execution_id: session.executionId,
 			config_id: selectedConfigId.value,
 			columns_mapped: mappedColumnCount.value,
 		});
@@ -176,7 +199,7 @@ async function onSubmit(): Promise<void> {
 			type: 'success',
 			title: locale.baseText('evaluations.addToDataset.success.title'),
 		});
-		modalBus.emit('close');
+		if (isCurrentDialogSession(session)) void closeDialog();
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluations.addToDataset.error.submit'));
 	} finally {
@@ -197,16 +220,14 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		:name="ADD_EXECUTION_TO_DATASET_MODAL_KEY"
-		:title="locale.baseText('evaluations.addToDataset.title')"
-		:event-bus="modalBus"
-		:center="true"
-		max-width="640px"
-		data-test-id="add-execution-to-dataset-modal"
+	<N8nDialog
+		:open="modalOpen"
+		size="xlarge"
+		:header="locale.baseText('evaluations.addToDataset.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogBody>
+			<div :class="$style.content" data-test-id="add-execution-to-dataset-modal">
 				<div :class="$style.field">
 					<N8nInputLabel
 						:label="locale.baseText('evaluations.addToDataset.config.label')"
@@ -217,6 +238,7 @@ onMounted(async () => {
 						v-if="hasMultipleConfigs"
 						v-model="selectedConfigId"
 						size="medium"
+						:teleported="false"
 						data-test-id="add-execution-to-dataset-config-select"
 					>
 						<N8nOption
@@ -261,6 +283,7 @@ onMounted(async () => {
 								v-model="mapping[column.name]"
 								size="medium"
 								filterable
+								:teleported="false"
 								:placeholder="locale.baseText('evaluations.addToDataset.field.placeholder')"
 								:data-test-id="`add-execution-to-dataset-select-${column.name}`"
 							>
@@ -287,14 +310,14 @@ onMounted(async () => {
 					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer="{ close }">
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="outline"
 					:label="locale.baseText('generic.cancel')"
 					data-test-id="add-execution-to-dataset-cancel"
-					@click="close"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:label="locale.baseText('evaluations.addToDataset.submit')"
@@ -304,8 +327,8 @@ onMounted(async () => {
 					@click="onSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">

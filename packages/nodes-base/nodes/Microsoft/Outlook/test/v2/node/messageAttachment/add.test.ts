@@ -150,6 +150,42 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 			);
 		});
 
+		it('should read the binary field from the current item', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, itemIndex?: number) => {
+					if (paramName === 'binaryPropertyName') {
+						return itemIndex === 1 ? 'attachment' : 'data';
+					}
+					const params: Record<string, any> = {
+						messageId: 'AAMkAGI2TG93AAA=',
+						options: {},
+					};
+					return params[paramName];
+				},
+			);
+
+			const mockBinaryData = {
+				data: 'SGVsbG8gV29ybGQ=',
+				mimeType: 'text/plain',
+				fileName: 'attachment.txt',
+				fileExtension: 'txt',
+			};
+
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
+				Buffer.from('Hello World'),
+			);
+			microsoftApiRequestSpy.mockResolvedValue({});
+
+			await execute.call(mockExecuteFunctions, 1, [{ json: {} }]);
+
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(1, 'attachment');
+			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(
+				1,
+				'attachment',
+			);
+		});
+
 		it('should throw error when fileName is not set', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {

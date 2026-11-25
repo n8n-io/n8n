@@ -7,7 +7,7 @@ import { Agent } from '../../index';
  * Thinking / reasoning stream integration tests.
  *
  * These require models that support extended thinking:
- * - Anthropic: claude-sonnet-4-5 (not haiku — it doesn't support thinking)
+ * - Anthropic: claude-sonnet-4-6 (adaptive thinking)
  * - OpenAI: gpt-5-mini (reasoning model with streamed summaries)
  */
 
@@ -16,11 +16,13 @@ const describeAnthropic = describeIf('anthropic');
 describeAnthropic('reasoning stream (Anthropic)', () => {
 	it('emits reasoning-delta chunks when reasoning is enabled', async () => {
 		const agent = new Agent('thinking-test')
-			.model('anthropic', 'claude-sonnet-4-5')
-			.reasoning('medium')
+			.model('anthropic', 'claude-sonnet-4-6')
+			.reasoning('high')
 			.instructions('You are a helpful assistant. Think carefully before answering.');
 
-		const { stream: fullStream } = await agent.stream('What is 17 * 23?');
+		const { stream: fullStream } = await agent.stream(
+			'Find the smallest positive integer divisible by every integer from 1 through 17, and explain your method.',
+		);
 
 		const chunks = await collectStreamChunks(fullStream);
 		const reasoningChunks = chunksOfType(chunks, 'reasoning-delta');

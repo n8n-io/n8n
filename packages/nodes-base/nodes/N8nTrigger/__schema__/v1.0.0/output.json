@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"event": {
+			"type": "string"
+		},
+		"timestamp": {
+			"type": "string"
+		},
+		"workflow_id": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

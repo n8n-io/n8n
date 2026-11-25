@@ -1,0 +1,49 @@
+{
+	"properties": {
+		"execution": {
+			"additionalProperties": true,
+			"properties": {
+				"error": {
+					"additionalProperties": true,
+					"properties": {
+						"message": {
+							"type": "string"
+						},
+						"stack": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": ["number", "string"]
+				},
+				"lastNodeExecuted": {
+					"type": "string"
+				},
+				"mode": {
+					"type": "string"
+				},
+				"retryOf": {
+					"type": ["null", "string"]
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"workflow": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

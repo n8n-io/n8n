@@ -18,6 +18,7 @@ function row(
 		iteration,
 		status,
 		outputs,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 	};

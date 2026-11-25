@@ -34,6 +34,7 @@ export class GoogleCalendarTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Calendar Trigger',
 		name: 'googleCalendarTrigger',
+		schemaPath: 'Google/Calendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['trigger'],
 		version: [1, 1.1],

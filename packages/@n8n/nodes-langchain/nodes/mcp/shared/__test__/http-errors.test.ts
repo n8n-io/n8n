@@ -36,7 +36,10 @@ describe('MCP HTTP error diagnostics', () => {
 			const client = mockDeep<Client>();
 			client.callTool.mockRejectedValue(failure);
 			const onError = vi.fn();
-			expect(await createCallTool('lookup', client, 1000, onError)({})).toBe(expected);
+			expect(await createCallTool('lookup', client, 1000, onError)({})).toEqual({
+				isError: true,
+				content: [{ type: 'text', text: expected }],
+			});
 			expect(onError).toHaveBeenCalledWith(expected);
 			expect(
 				mapToNodeOperationError(mockDeep<INode>(), { type: 'connection', error: failure })
@@ -51,14 +54,14 @@ describe('MCP HTTP error diagnostics', () => {
 	);
 
 	it('preserves the HTTP status of an SSE connection error', () => {
-		const error = new SseError(503, 'Service unavailable');
+		const error = new SseError(503, 'Service unavailable', new Event('error'));
 		expect(getErrorDescriptionFromToolCall(error)).toBe(`HTTP 503: ${error.message}`);
 	});
 
 	it.each([
 		new StreamableHTTPError(-1, 'Unexpected content type'),
 		new StreamableHTTPError(200, 'Unexpected response'),
-		new SseError(undefined, 'Connection closed'),
+		new SseError(undefined, 'Connection closed', new Event('error')),
 		new McpError(-32603, 'Tool failed'),
 		new McpError(-32001, 'Request timed out'),
 		Object.assign(new Error('Application failure'), { code: 429 }),

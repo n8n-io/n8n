@@ -13,7 +13,6 @@ import {
 	type RuntimeSkillRegistry,
 	type RuntimeSkillRegistryEntry,
 	type RuntimeSkillSource,
-	type RuntimeSkillLoader,
 	type RuntimeSkillContent,
 	type RuntimeSkillLoadError,
 } from './types';
@@ -27,6 +26,9 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'examples',
 	'other',
 ];
+
+/** The header of a loaded skill is outside the output cap, so it names only the first files. */
+const LISTED_LINKED_FILES_MAX = 50;
 
 export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
@@ -63,6 +65,14 @@ const skillLoadInputWithFilesSchema = skillLoadBaseInputSchema
 			.string()
 			.optional()
 			.describe('Optional linked file path relative to the skill directory.'),
+		offset: z
+			.number()
+			.int()
+			.min(0)
+			.optional()
+			.describe(
+				'Byte offset into a linked file. Pass the offset from a truncation note to read the next part.',
+			),
 	})
 	.refine(({ skillId, name }) => skillId !== undefined || name !== undefined, {
 		message: 'Either skillId or name is required.',
@@ -113,23 +123,20 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 			)
 			.input(skillLoadInputSchema)
 			.output(skillLoadResultSchema)
-			.handler(
-				async ({ skillId, name }, context) =>
-					await loadSkill(source, { skillId, name }, context.loadSkill),
-			)
+			.handler(async ({ skillId, name }) => await loadSkill(source, { skillId, name }))
 			.build();
 	}
 
 	const loadFile = source.loadFile;
 	return new Tool(SKILL_LOAD_TOOL_NAME)
 		.description(
-			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles.',
+			'Load a skill by skillId or name. Omit filePath to load the main skill instructions; use filePath only for a linked file path returned in linkedFiles. A long linked file comes in parts: pass the offset from the truncation note to read the next part.',
 		)
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadResultSchema)
 		.handler(
-			async ({ skillId, name, filePath }, context) =>
-				await loadSkill(source, { skillId, name, filePath, loadFile }, context.loadSkill),
+			async ({ skillId, name, filePath, offset }) =>
+				await loadSkill(source, { skillId, name, filePath, offset, loadFile }),
 		)
 		.build();
 }
@@ -140,14 +147,14 @@ async function loadSkill(
 		skillId?: string;
 		name?: string;
 		filePath?: string;
+		offset?: number;
 		loadFile?: NonNullable<RuntimeSkillSource['loadFile']>;
 	},
-	activate?: RuntimeSkillLoader,
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
 	const { skillId, name, loadFile } = input;
 	await source.prepare?.();
 	const requestedEntry = findRuntimeSkillEntry(source.registry, { skillId, name });
-	// A path to a reference file activates the reference instead of returning raw text.
+	// A path to a reference file loads the reference skill instead of returning raw text.
 	const referenceEntry =
 		requestedEntry && input.filePath !== undefined
 			? findReferenceByPath(source.registry, requestedEntry.id, input.filePath)
@@ -169,7 +176,7 @@ async function loadSkill(
 
 	const loadMainSkill = isMainSkillFilePath(filePath);
 	if (!loadMainSkill) {
-		const linkedFilePath = filePath ?? '';
+		const linkedFilePath = (filePath ?? '').replace(/^(\.\/)+/, '');
 		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, linkedFilePath);
 		if (!linkedFile) {
 			return {
@@ -225,13 +232,13 @@ async function loadSkill(
 			hash: skillEntry.hash,
 			category: skillEntry.category,
 			filePath: linkedFile.path,
-			content: cap(file.content),
+			content: capFilePart(file.content, input.offset),
 			bytes: file.bytes ?? linkedFile.bytes,
 			sha256: file.sha256 ?? linkedFile.sha256,
 		};
 	}
 
-	const skill = await (activate ?? source.loadSkill)(skillEntry.id);
+	const skill = await source.loadSkill(skillEntry.id);
 	if (!skill) {
 		const loadError = source.getLoadError?.(skillEntry.id);
 		return {
@@ -245,34 +252,13 @@ async function loadSkill(
 		};
 	}
 
-	if (activate) {
-		const { references, linkedFiles } = skillReferences(skillEntry, source.registry);
-		return {
-			success: true,
-			skillId: skillEntry.id,
-			name: skillEntry.name,
-			hash: skillEntry.hash,
-			content: source.shouldAppendSkillUpdates?.(skillEntry.id)
-				? formatActiveSkill(skill, skillEntry, source.registry)
-				: 'The skill instructions are active. Follow them for this task.',
-			...(references.length > 0
-				? {
-						references: references.map((entry) => ({
-							skillId: entry.id,
-							description: entry.description,
-						})),
-					}
-				: {}),
-			linkedFiles,
-		};
-	}
 	return {
 		type: 'content',
-		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry, source.registry) }],
+		value: [{ type: 'text', text: formatLoadedSkill(skill, skillEntry, source.registry) }],
 	};
 }
 
-export function formatActiveSkill(
+export function formatLoadedSkill(
 	skill: RuntimeSkillContent,
 	skillEntry: RuntimeSkillRegistryEntry,
 	registry?: RuntimeSkillRegistry,
@@ -283,7 +269,7 @@ export function formatActiveSkill(
 		(file) => file.path,
 	);
 	const header = [
-		activationEnvelope(skillEntry),
+		skillEnvelope(skillEntry),
 		...(references.length > 0
 			? [
 					[
@@ -297,7 +283,11 @@ export function formatActiveSkill(
 			: []),
 		...(linkedFilePaths.length > 0
 			? [
-					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
+					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.slice(0, LISTED_LINKED_FILES_MAX).map(envelopeValue).join(', ')}${
+						linkedFilePaths.length > LISTED_LINKED_FILES_MAX
+							? `, and ${linkedFilePaths.length - LISTED_LINKED_FILES_MAX} more files. To load one of them, pass the relative path that the instructions give.`
+							: ''
+					}]`,
 				]
 			: []),
 	];
@@ -357,9 +347,10 @@ export function findRuntimeSkillEntry(
 	return undefined;
 }
 
-function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
+function skillEnvelope(skill: RuntimeSkillRegistryEntry): string {
 	return [
 		`[Skill: ${envelopeValue(skill.name)}]`,
+		`[Skill id: ${envelopeValue(skill.id)}]`,
 		...(skill.parents?.length
 			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
 			: []),
@@ -392,6 +383,24 @@ export function isMainSkillFilePath(filePath?: string): boolean {
 
 function envelopeValue(value: string): string {
 	return JSON.stringify(value);
+}
+
+const isContinuationByte = (byte: number | undefined) =>
+	byte !== undefined && (byte & 0xc0) === 0x80;
+
+/**
+ * One part of a linked file, from a byte offset. A part ends on a character boundary, and its
+ * note gives the offset of the next part, so a model can read a file of any stored size.
+ */
+function capFilePart(content: string, offset = 0): string {
+	const bytes = Buffer.from(scrubSecretsInText(content), 'utf8');
+	let start = Math.min(offset, bytes.byteLength);
+	while (isContinuationByte(bytes[start])) start += 1;
+	let end = Math.min(start + RUNTIME_SKILL_MAX_OUTPUT_BYTES, bytes.byteLength);
+	while (end > start && isContinuationByte(bytes[end])) end -= 1;
+	const part = bytes.subarray(start, end).toString('utf8');
+	if (end === bytes.byteLength) return part;
+	return `${part}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB. To read the next part, call load_skill with the same filePath and offset ${end} ...]`;
 }
 
 function cap(content: string): string {

@@ -1,5 +1,6 @@
 export * from './agent-chat-attachments.constants';
 export * from './agent-config-lifecycle';
+export * from './agent-hitl.schema';
 export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
@@ -21,6 +22,7 @@ export type * from './teams';
 export type * from './whatsapp';
 export * from './agent-task.schema';
 export * from './dto';
+export * from './attention-flags';
 export * from './model-id';
 export * from './model-providers';
 export * from './provider-capabilities';

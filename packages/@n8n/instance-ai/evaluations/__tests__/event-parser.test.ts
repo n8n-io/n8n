@@ -269,6 +269,70 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual([]);
 	});
 
+	const changeDataTablesEvents = (result: unknown): CapturedEvent[] => [
+		{
+			timestamp: 1000,
+			type: 'tool-call',
+			data: {
+				type: 'tool-call',
+				payload: { toolCallId: 'tc-1', toolName: 'change_data_tables', args: { changes: [] } },
+			},
+		},
+		{
+			timestamp: 1100,
+			type: 'tool-result',
+			data: {
+				type: 'tool-result',
+				payload: { toolCallId: 'tc-1', toolName: 'change_data_tables', result },
+			},
+		},
+	];
+
+	it('tracks only the tables that a change_data_tables batch created', () => {
+		const events = changeDataTablesEvents({
+			success: true,
+			applied: [
+				{ index: 0, action: 'create', table: { id: 'dt-new', name: 'leads' }, result: {} },
+				{ index: 1, action: 'insert-rows', table: { id: 'dt-new', name: 'leads' }, result: {} },
+				{
+					index: 2,
+					action: 'delete-column',
+					table: { id: 'dt-existing', name: 'orders' },
+					result: {},
+				},
+			],
+			skipped: [],
+		});
+
+		expect(extractOutcomeFromEvents(events).dataTableIds).toEqual(['dt-new']);
+	});
+
+	it('tracks a table that a change_data_tables batch created before a later change failed', () => {
+		const events = changeDataTablesEvents(
+			JSON.stringify({
+				success: false,
+				applied: [
+					{ index: 0, action: 'create', table: { id: 'dt-new', name: 'leads' }, result: {} },
+				],
+				failed: { index: 1, action: 'insert-rows', error: 'Column not found' },
+				skipped: [2],
+			}),
+		);
+
+		expect(extractOutcomeFromEvents(events).dataTableIds).toEqual(['dt-new']);
+	});
+
+	it('tracks no table when a change_data_tables batch applied nothing', () => {
+		const events = changeDataTablesEvents({
+			success: false,
+			applied: [],
+			failed: { index: 0, action: 'create', error: 'Table already exists' },
+			skipped: [],
+		});
+
+		expect(extractOutcomeFromEvents(events).dataTableIds).toEqual([]);
+	});
+
 	it('extracts execution IDs from consolidated executions run results', () => {
 		const events: CapturedEvent[] = [
 			{

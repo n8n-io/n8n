@@ -68,6 +68,11 @@ interface ExecuteTurnConfig {
 	toolRegistry: ToolRegistry;
 	mcpServerAttributions: Map<string, string>;
 	context: RecordingContext;
+	/**
+	 * The memory resource of the files that the turn stores from its sandbox.
+	 * A system chat sets it, because it reads its files by resource.
+	 */
+	fileResourceId?: string;
 	prepare: () => Promise<AgentTurnRequest>;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
@@ -450,7 +455,12 @@ export class AgentTurnExecutionService {
 		const workspace = config.agentInstance.getWorkspace();
 		if (!workspace) return;
 		const { agentId, projectId, threadId } = config.context;
-		await this.sandboxFiles.syncOutputs(workspace, { agentId, projectId, threadId });
+		await this.sandboxFiles.syncOutputs(workspace, {
+			agentId,
+			projectId,
+			threadId,
+			...(config.fileResourceId ? { resourceId: config.fileResourceId } : {}),
+		});
 	}
 
 	/** Give the host the outcome of the turn before the record is final. */

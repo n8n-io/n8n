@@ -110,6 +110,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "agents_observation_locks" {
   varchar_36_ agentId PK

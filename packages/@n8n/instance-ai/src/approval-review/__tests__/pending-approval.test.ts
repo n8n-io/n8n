@@ -97,13 +97,61 @@ describe('readPendingApproval', () => {
 });
 
 describe('routeApproval', () => {
+	it('always asks before the assistant publishes an agent', () => {
+		const payload = {
+			message: 'Publish Support agent and go live.',
+			severity: 'warning',
+			resourceName: 'Support agent',
+			approvalDetails: {
+				action: 'publish-agent',
+				liveAvailability: 'unpublished',
+				selectedVersion: false,
+				sendTargets: [{ kind: 'channel', name: 'Slack' }],
+			},
+		};
+		const approval = readPendingApproval(
+			builtTool({ name: 'agent_builder_publish_agent' }),
+			{},
+			payload,
+			'call_1',
+		);
+
+		expect(approval).toMatchObject({
+			toolName: 'agent_builder_publish_agent',
+			approvalDetails: payload.approvalDetails,
+		});
+		expect(routeApproval(approval!)).toBe('always-ask');
+		// A legacy name of the publish tool never reaches the judge either.
+		expect(routeApproval({ toolName: 'publish_agent', args: {} })).toBe('always-ask');
+	});
+
 	it('always asks before a skill is deleted, and lets the judge decide other skill changes', () => {
 		expect(routeApproval({ toolName: 'skills', args: { action: 'delete', skillId: 's1' } })).toBe(
+			'always-ask',
+		);
+		expect(routeApproval({ toolName: 'skills', args: { action: 'import-from-source' } })).toBe(
 			'always-ask',
 		);
 		expect(routeApproval({ toolName: 'skills', args: { action: 'update', skillId: 's1' } })).toBe(
 			'judge',
 		);
+	});
+
+	it.each([
+		{ actions: ['create', 'insert-rows', 'delete'], route: 'always-ask' },
+		{ actions: ['create', 'add-column'], route: 'low-risk' },
+		{ actions: ['create', 'insert-rows'], route: 'judge' },
+		{ actions: ['delete-rows'], route: 'judge' },
+	])('routes a data table batch of $actions to $route', ({ actions, route }) => {
+		const changes = actions.map((action) => ({ action }));
+		expect(routeApproval({ toolName: 'change_data_tables', args: { changes } })).toBe(route);
+	});
+
+	it('lets the judge decide a data table batch whose changes it cannot read', () => {
+		expect(routeApproval({ toolName: 'change_data_tables', args: { changes: 'all' } })).toBe(
+			'judge',
+		);
+		expect(routeApproval({ toolName: 'change_data_tables', args: { changes: [] } })).toBe('judge');
 	});
 
 	it('sends an MCP tool to the judge even when its name matches a built-in tool', () => {

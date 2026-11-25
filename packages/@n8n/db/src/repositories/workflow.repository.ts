@@ -1,3 +1,5 @@
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { randomUUID } from 'node:crypto';
 import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -435,6 +437,27 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 					return saved;
 				}),
 		);
+	}
+
+	/** Create an empty private owner. Execution snapshots still pass the workflowStart policy. */
+	async createPrivateExecutionOwner(ctx: OperationContext): Promise<string> {
+		const id = generateNanoId();
+		const workflow = this.create({
+			id,
+			name: `Internal execution owner ${id}`,
+			isArchived: true,
+			// oxlint-disable-next-line typescript/no-deprecated -- Initialize the required legacy column for this unpublished workflow.
+			active: false,
+			activeVersionId: null,
+			versionId: randomUUID(),
+			nodes: [],
+			connections: {},
+			settings: { callerPolicy: 'none' },
+		});
+		await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).insert(WorkflowEntity, workflow),
+		);
+		return workflow.id;
 	}
 
 	/**
@@ -2132,11 +2155,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				.update(WorkflowEntity)
 				.set({
 					activeVersionId: () => 'versionId',
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: true,
 				})
 				.where('id = :workflowId', { workflowId })
 				.execute();
 		} else {
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 			return await this.update({ id: workflowId }, { active: false, activeVersionId: null });
 		}
 	}
@@ -2350,6 +2375,23 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 
 		return await qb.getMany();
+	}
+
+	/** Read the canonical published versions for publication status checks. */
+	async findActiveVersionIds(
+		workflowIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string | null>> {
+		const versions = new Map<string, string | null>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const workflows = await this.managerFor(ctx).find(WorkflowEntity, {
+				where: { id: In(chunk) },
+				select: ['id', 'activeVersionId'],
+				loadEagerRelations: false,
+			});
+			for (const workflow of workflows) versions.set(workflow.id, workflow.activeVersionId);
+		}
+		return versions;
 	}
 
 	/**

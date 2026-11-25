@@ -14,17 +14,15 @@ import {
 	Delete,
 	Get,
 	GlobalScope,
-	Middleware,
 	Patch,
 	Post,
 	Put,
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import type { NextFunction, Request, Response } from 'express';
+import type { Response } from 'express';
 
 import { ScimDeprovisioningService } from './scim-deprovisioning.service';
-import { scimOptInGate } from './scim-opt-in';
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
@@ -53,12 +51,6 @@ export class ScimTokenController {
 		private readonly scimDeprovisioningService: ScimDeprovisioningService,
 		private readonly eventService: EventService,
 	) {}
-
-	/** Every route answers 404 while the SCIM opt-in is off. */
-	@Middleware()
-	requireOptIn(req: Request, res: Response, next: NextFunction) {
-		scimOptInGate(req, res, next);
-	}
 
 	/**
 	 * GET /rest/scim/config
