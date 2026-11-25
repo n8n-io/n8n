@@ -127,22 +127,19 @@ export class AgentChatAttachmentRepository {
 	}
 
 	/**
-	 * Whether a system chat thread has a file with these stored bytes, in the
+	 * The newest file of a system chat thread with these stored bytes, in the
 	 * scope of `findByIdForSystemAgent`. The caller checks access to the thread.
 	 */
-	async existsInSystemThreadByBinaryDataId(
+	async findInSystemThreadByBinaryDataId(
 		threadId: string,
 		binaryDataId: string,
 		scope: { agentId: string; resourceId: string; sources: readonly string[] },
 		ctx: OperationContext,
-	): Promise<boolean> {
+	): Promise<AgentChatAttachment | null> {
 		const { agentId, resourceId, sources } = scope;
-		return await this.table.managerFor(ctx).existsBy(AgentChatAttachment, {
-			threadId,
-			binaryDataId,
-			agentId,
-			resourceId,
-			source: In([...sources]),
+		return await this.table.managerFor(ctx).findOne(AgentChatAttachment, {
+			where: { threadId, binaryDataId, agentId, resourceId, source: In([...sources]) },
+			order: { createdAt: 'DESC' },
 		});
 	}
 

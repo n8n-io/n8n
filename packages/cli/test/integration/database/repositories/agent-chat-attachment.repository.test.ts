@@ -163,6 +163,75 @@ describe('AgentChatAttachmentRepository', () => {
 		expect(files.map(({ id }) => id)).toEqual([output, upload]);
 	});
 
+	it('finds the newest file of a system thread by its stored bytes, only in its scope', async () => {
+		const save = async (
+			overrides: Partial<ReturnType<typeof attachmentParams>>,
+			createdAt: Date,
+		) => {
+			const saved = await repository.saveInboundAttachment(
+				{
+					...attachmentParams(),
+					source: 'system_chat',
+					binaryDataId: 'filesystem-v2:shared',
+					...overrides,
+				},
+				{},
+			);
+			await table.update(saved.id, { createdAt });
+			return saved.id;
+		};
+		await save({ fileName: 'older.png' }, new Date('2026-01-01T00:00:00.000Z'));
+		const newer = await save(
+			{ fileName: 'newer.png', source: 'tool' },
+			new Date('2026-01-02T00:00:00.000Z'),
+		);
+		const scope = { agentId, resourceId: 'resource-1', sources: ['system_chat', 'tool'] };
+
+		expect(
+			(
+				await repository.findInSystemThreadByBinaryDataId(
+					'thread-1',
+					'filesystem-v2:shared',
+					scope,
+					{},
+				)
+			)?.id,
+		).toBe(newer);
+		// Another thread, another user, a source out of scope, or other bytes find nothing.
+		expect(
+			await repository.findInSystemThreadByBinaryDataId(
+				'thread-2',
+				'filesystem-v2:shared',
+				scope,
+				{},
+			),
+		).toBeNull();
+		expect(
+			await repository.findInSystemThreadByBinaryDataId(
+				'thread-1',
+				'filesystem-v2:shared',
+				{ ...scope, resourceId: 'resource-2' },
+				{},
+			),
+		).toBeNull();
+		expect(
+			await repository.findInSystemThreadByBinaryDataId(
+				'thread-1',
+				'filesystem-v2:shared',
+				{ ...scope, sources: ['sandbox'] },
+				{},
+			),
+		).toBeNull();
+		expect(
+			await repository.findInSystemThreadByBinaryDataId(
+				'thread-1',
+				'filesystem-v2:other',
+				scope,
+				{},
+			),
+		).toBeNull();
+	});
+
 	it('returns null for a missing row and accepts deletion of a missing ID', async () => {
 		const ctx: OperationContext = {};
 		expect(

@@ -878,6 +878,7 @@ export type {
 	InstanceAiImportedFile,
 	InstanceAiSandboxFiles,
 	InstanceAiSkippedFile,
+	InstanceAiStoreWorkflowFile,
 	InstanceAiStoredFile,
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,

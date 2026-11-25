@@ -125,7 +125,7 @@ function setup(
 	const fileBridge = mock<AgentFileBridge>();
 	const binaryDataAccess = mock<BinaryDataAccessService>();
 	binaryDataAccess.hasReadAccess.mockResolvedValue(false);
-	attachmentService.isSystemAgentThreadBinary.mockResolvedValue(false);
+	attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(undefined);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -1129,14 +1129,15 @@ describe('SystemAgentExecutionService', () => {
 					});
 				});
 
-				it('stores a file of the thread that a run passed on', async () => {
+				it('gives the file of the thread that a run passed on, without a copy', async () => {
 					const { turn, fileBridge, attachmentService, binaryDataAccess } =
 						await startTurnWithAttachment();
-					attachmentService.isSystemAgentThreadBinary.mockResolvedValue(true);
-					fileBridge.adoptBinary.mockResolvedValue(stored);
+					const threadFile = { ...stored, fileId: 'upload-1' };
+					attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(threadFile);
 
-					await expect(turn.storeWorkflowFile(binary)).resolves.toBe(stored);
-					expect(attachmentService.isSystemAgentThreadBinary).toHaveBeenCalledWith(
+					await expect(turn.storeWorkflowFile(binary)).resolves.toBe(threadFile);
+					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
+					expect(attachmentService.findSystemAgentThreadFileByBinary).toHaveBeenCalledWith(
 						'thread-1',
 						binary.id,
 						{

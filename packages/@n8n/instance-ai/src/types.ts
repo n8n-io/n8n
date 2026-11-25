@@ -20,6 +20,7 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
 	AgentToolOutputFile,
+	AgentToolSkippedFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -232,8 +233,10 @@ export interface ExecutionResult {
 	 * files. Set only when the caller passed `storeOutputFile` to `run`.
 	 */
 	files?: InstanceAiConversationFile[];
-	/** Output files that were not stored, for example because they are too large. */
+	/** Output files that were not stored, for example because they are too large. The list has a cap. */
 	skippedFiles?: InstanceAiSkippedFile[];
+	/** The number of output files that were not stored and that the capped `skippedFiles` leaves out. */
+	moreSkippedFiles?: number;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -718,9 +721,7 @@ export interface InstanceAiExecutionService {
 			 * Store each file that the last node of the run returned as a
 			 * conversation file. The result lists them in `files`.
 			 */
-			storeOutputFile?: (
-				binary: IBinaryData,
-			) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
+			storeOutputFile?: InstanceAiStoreWorkflowFile;
 		},
 	): Promise<ExecutionResult>;
 	/**
@@ -1835,16 +1836,19 @@ export interface InstanceAiStoredFileReader {
 	 * a skipped file for a file over a cap, and `undefined` when storage fails.
 	 * The host sets it together with `readBinary`.
 	 */
-	storeWorkflowFile?(
-		binary: IBinaryData,
-	): Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
+	storeWorkflowFile?: InstanceAiStoreWorkflowFile;
 }
 
 /** A file that n8n did not store as a conversation file, with the reason. */
-export interface InstanceAiSkippedFile {
-	fileName: string;
-	reason: string;
-}
+export type InstanceAiSkippedFile = AgentToolSkippedFile;
+
+/**
+ * Stores a binary that a workflow run returned as a conversation file. Gives a
+ * skipped file for a file over a cap, and `undefined` when storage fails.
+ */
+export type InstanceAiStoreWorkflowFile = (
+	binary: IBinaryData,
+) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@ import {
 } from '@n8n/api-types';
 import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
-import type { IBinaryKeyData } from 'n8n-workflow';
+import type { IBinaryData, IBinaryKeyData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -376,7 +376,7 @@ async function handleRun(
 	const workflowFiles = workflowFilesOf(context);
 	let binary: IBinaryKeyData | undefined;
 	if (workflowFiles && input.files && Object.keys(input.files).length > 0) {
-		binary = {};
+		const entries = new Map<string, IBinaryData>();
 		for (const [key, fileId] of Object.entries(input.files)) {
 			const entry = await workflowFiles.readBinary(fileId);
 			if (!entry) {
@@ -386,8 +386,11 @@ async function handleRun(
 					error: `File "${fileId}" not found in this conversation`,
 				};
 			}
-			binary[key] = entry;
+			entries.set(key, entry);
 		}
+		// A plain object would take a `__proto__` key as its prototype. `fromEntries` defines
+		// own properties only, so no key from the model can change a prototype.
+		binary = Object.fromEntries(entries);
 	}
 	const result = await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,

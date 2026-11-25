@@ -624,18 +624,21 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 | `triggerNodeName` | string | no | — | Trigger node to use when a workflow has more than one trigger |
 | `files` | Record<string, string> | no | — | Conversation files for the trigger item, by binary property name. Only when the host sets `readBinary` and `storeWorkflowFile` on `storedFiles` |
 
-**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim?, files?, skippedFiles? }`
+**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim?, files?, skippedFiles?, moreSkippedFiles? }`
 
 **Files**: the Assistant on the Agents runtime sets `readBinary` and
 `storeWorkflowFile`, the same as the workflow tools of project Agents. Each
 file in `files` becomes a binary data entry of the trigger item. The entry
 points to the stored bytes of the conversation file, so nothing is copied.
-With `files` and no `inputData`, the trigger output is still injected. After
-the run, the files of the last node are stored as conversation files with the
-`tool` source, one time for each binary and at most 10 for each run. The
-result lists them in `files`, so the chat shows them, and lists files over a
-cap in `skippedFiles`. A redacted execution stores no files. Without the host
-functions, the input schema has no `files` field.
+With `files` and no `inputData`, the trigger output is still injected. A
+workflow without a trigger node cannot take files, so the run fails before it
+starts. After the run, the files of the last node are stored as conversation
+files with the `tool` source, one time for each binary and at most 10 for each
+run. A file of the conversation that the run passes on unchanged keeps its
+fileId and is not copied. The result lists the files in `files`, so the chat
+shows them. It lists at most 10 files that were not stored in `skippedFiles`,
+and counts the others in `moreSkippedFiles`. A redacted execution stores no
+files. Without the host functions, the input schema has no `files` field.
 
 **Live test evidence**: `workflow_builder_verify_built_workflow` always simulates destructive
 nodes, so a live test runs through this action. When a successful run reaches

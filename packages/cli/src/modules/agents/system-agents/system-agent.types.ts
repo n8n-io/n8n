@@ -12,7 +12,7 @@ import type {
 	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
-import type { AgentToolOutputFile } from '@n8n/api-types';
+import type { AgentToolOutputFile, AgentToolSkippedFile } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { IBinaryData } from 'n8n-workflow';
 
@@ -156,10 +156,7 @@ export interface SystemAgentSandboxFiles {
 export type SystemAgentStoredFile = AgentToolOutputFile;
 
 /** A file that a system-agent turn did not store, with the reason. */
-export interface SystemAgentSkippedFile {
-	fileName: string;
-	reason: string;
-}
+export type SystemAgentSkippedFile = AgentToolSkippedFile;
 
 /** A file of a system-agent thread, as `listFiles` gives it. */
 export interface SystemAgentListedFile extends SystemAgentStoredFile {

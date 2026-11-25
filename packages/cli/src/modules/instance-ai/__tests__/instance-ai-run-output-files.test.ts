@@ -1,7 +1,11 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type { IBinaryData, INodeExecutionData, IRunData } from 'n8n-workflow';
 
-import { MAX_RUN_OUTPUT_FILES, storeRunOutputFiles } from '../instance-ai.adapter.service';
+import {
+	MAX_RUN_OUTPUT_FILES,
+	MAX_RUN_SKIPPED_FILES,
+	storeRunOutputFiles,
+} from '../instance-ai-run-output-files';
 
 function binary(id: string, fileName = `${id}.png`): IBinaryData {
 	return { id: `filesystem-v2:${id}`, data: 'filesystem-v2', mimeType: 'image/png', fileName };
@@ -81,6 +85,38 @@ describe('storeRunOutputFiles', () => {
 		expect(storeOutputFile).toHaveBeenCalledTimes(MAX_RUN_OUTPUT_FILES);
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
 		expect(result.skippedFiles).toHaveLength(2);
+		expect(result).not.toHaveProperty('moreSkippedFiles');
+	});
+
+	it(`lists at most ${MAX_RUN_SKIPPED_FILES} skipped files and counts the others`, async () => {
+		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+		const total = MAX_RUN_OUTPUT_FILES + MAX_RUN_SKIPPED_FILES + 5;
+		const items = Array.from({ length: total }, (_, index) => ({
+			json: {},
+			binary: { data: binary(`f${index}`) },
+		}));
+
+		const result = await storeRunOutputFiles(executionOf(runOf({ Split: items })), storeOutputFile);
+
+		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
+		expect(result.skippedFiles).toHaveLength(MAX_RUN_SKIPPED_FILES);
+		expect(result.moreSkippedFiles).toBe(5);
+	});
+
+	it('counts the files that storage rejects against the same list cap', async () => {
+		const storeOutputFile = vi.fn(async (b: IBinaryData) => ({
+			fileName: b.fileName ?? 'file',
+			reason: 'larger than 50 MB',
+		}));
+		const items = Array.from({ length: MAX_RUN_SKIPPED_FILES + 1 }, (_, index) => ({
+			json: {},
+			binary: { data: binary(`f${index}`) },
+		}));
+
+		const result = await storeRunOutputFiles(executionOf(runOf({ Split: items })), storeOutputFile);
+
+		expect(result.skippedFiles).toHaveLength(MAX_RUN_SKIPPED_FILES);
+		expect(result.moreSkippedFiles).toBe(1);
 	});
 
 	it('stores nothing from a redacted execution', async () => {

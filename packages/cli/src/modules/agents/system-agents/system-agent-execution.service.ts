@@ -1102,14 +1102,25 @@ export class SystemAgentExecutionService {
 				return attachmentToBinaryData(attachment);
 			},
 			storeWorkflowFile: async (binary) => {
-				if (binary.id && !(await this.canStoreBinary(thread, resourceId, user, binary.id))) {
-					this.logger.warn('Refused to store a workflow file that the user cannot read', {
-						threadId: thread.id,
-					});
-					return {
-						fileName: binary.fileName ?? 'file',
-						reason: 'you do not have access to this file',
-					};
+				if (binary.id) {
+					// A run that passes a file of this thread on unchanged gives that file, without a copy.
+					const threadFile = await this.attachmentService.findSystemAgentThreadFileByBinary(
+						thread.id,
+						binary.id,
+						systemChatFileScope(thread.agentId, resourceId),
+					);
+					if (threadFile) return threadFile;
+					// Execution data can name any stored binary, for example in pinned data, so the
+					// id alone does not prove access. Check it as the binary data download route does.
+					if (!(await this.binaryDataAccess.hasReadAccess(user, binary.id))) {
+						this.logger.warn('Refused to store a workflow file that the user cannot read', {
+							threadId: thread.id,
+						});
+						return {
+							fileName: binary.fileName ?? 'file',
+							reason: 'you do not have access to this file',
+						};
+					}
 				}
 				return await this.fileBridge.adoptBinary(binary, {
 					agentId: thread.agentId,
@@ -1120,26 +1131,6 @@ export class SystemAgentExecutionService {
 				});
 			},
 		};
-	}
-
-	/**
-	 * Execution data can name any stored binary, for example in pinned data, so
-	 * the id alone does not prove access. The user can store a file of this
-	 * thread that a run passed on, or a binary of an execution that the user can
-	 * read, as the binary data download route checks.
-	 */
-	private async canStoreBinary(
-		thread: AgentExecutionThread,
-		resourceId: string,
-		user: User,
-		binaryDataId: string,
-	): Promise<boolean> {
-		const isThreadFile = await this.attachmentService.isSystemAgentThreadBinary(
-			thread.id,
-			binaryDataId,
-			systemChatFileScope(thread.agentId, resourceId),
-		);
-		return isThreadFile || (await this.binaryDataAccess.hasReadAccess(user, binaryDataId));
 	}
 
 	private async readThreadFile(

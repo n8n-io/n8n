@@ -221,20 +221,27 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
-	 * Whether a file of a system-chat thread has these stored bytes, in the
+	 * The file of a system-chat thread that has these stored bytes, in the
 	 * scope of `getForSystemAgent`. The caller checks access to the thread.
 	 */
-	async isSystemAgentThreadBinary(
+	async findSystemAgentThreadFileByBinary(
 		threadId: string,
 		binaryDataId: string,
 		scope: { agentId: string; resourceId: string; sources: readonly string[] },
-	): Promise<boolean> {
-		return await this.repository.existsInSystemThreadByBinaryDataId(
+	): Promise<AgentToolOutputFile | undefined> {
+		const file = await this.repository.findInSystemThreadByBinaryDataId(
 			threadId,
 			binaryDataId,
 			scope,
 			{},
 		);
+		if (!file) return undefined;
+		return {
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+		};
 	}
 
 	/**

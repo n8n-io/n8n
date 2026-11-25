@@ -6077,6 +6077,20 @@ describe('createExecutionAdapter run()', () => {
 		});
 	});
 
+	it('does not start a run with files when the workflow has no trigger', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		await expect(
+			adapter.run('wf-1', undefined, {
+				binary: { data: { data: 'filesystem-v2', id: 'filesystem-v2:a', mimeType: 'image/png' } },
+			}),
+		).rejects.toThrow('This workflow has no trigger node, so a run cannot take files');
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
 	it('forces save settings so the agent can read the result back', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

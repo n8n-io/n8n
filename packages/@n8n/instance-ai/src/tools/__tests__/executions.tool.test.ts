@@ -1188,7 +1188,40 @@ describe('execution tools', () => {
 					storeOutputFile: expect.any(Function),
 				}),
 			);
+
+			// The run stores each output file through the host.
+			const stored = { fileId: 'out-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
+			storedFiles.storeWorkflowFile.mockResolvedValue(stored);
+			const { storeOutputFile } = vi.mocked(context.executionService.run).mock.calls[0][2] ?? {};
+			await expect(storeOutputFile?.(pngBinary)).resolves.toBe(stored);
+			expect(storedFiles.storeWorkflowFile).toHaveBeenCalledWith(pngBinary);
 		});
+
+		it.each(['__proto__', 'constructor', 'prototype'])(
+			'does not let a "%s" key change the prototype of the binary data',
+			async (name) => {
+				const { context } = contextWithFiles();
+				// JSON.parse keeps `__proto__` as an own key, as the arguments of a model tool call do.
+				// The schema drops it, so the handler gets the raw arguments here to check its own guard.
+				const raw = JSON.parse(
+					`{"workflowId":"wf-1","files":{"${name}":"file-1","data":"file-1"}}`,
+				) as { workflowId: string; files: Record<string, string> };
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{ action: 'run' as const, ...raw },
+					createAgentCtx({ resumeData: { approved: true } }) as never,
+				);
+
+				const { binary } = vi.mocked(context.executionService.run).mock.calls[0][2] ?? {};
+				expect(Object.getPrototypeOf(binary)).toBe(Object.prototype);
+				expect(binary?.data).toEqual(pngBinary);
+				// Any key that remains is an own data property, never the prototype.
+				for (const key of Object.keys(binary ?? {})) {
+					expect(Object.getOwnPropertyDescriptor(binary, key)?.value).toEqual(pngBinary);
+				}
+			},
+		);
 
 		it('does not run the workflow with a file that the conversation does not have', async () => {
 			const { context } = contextWithFiles();

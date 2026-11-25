@@ -503,6 +503,42 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('findSystemAgentThreadFileByBinary', () => {
+		const scope = { agentId: 'assistant', resourceId: 'user-1', sources: ['system_chat'] };
+
+		it('gives the file of the thread that has the stored bytes', async () => {
+			repository.findInSystemThreadByBinaryDataId.mockResolvedValue({
+				id: 'upload-1',
+				fileName: 'photo.png',
+				mimeType: 'image/png',
+				fileSizeBytes: 3,
+			} as AgentChatAttachment);
+
+			await expect(
+				service.findSystemAgentThreadFileByBinary('thread-1', 'filesystem-v2:a', scope),
+			).resolves.toEqual({
+				fileId: 'upload-1',
+				fileName: 'photo.png',
+				mimeType: 'image/png',
+				sizeBytes: 3,
+			});
+			expect(repository.findInSystemThreadByBinaryDataId).toHaveBeenCalledWith(
+				'thread-1',
+				'filesystem-v2:a',
+				scope,
+				{},
+			);
+		});
+
+		it('gives nothing when the thread has no file with the bytes', async () => {
+			repository.findInSystemThreadByBinaryDataId.mockResolvedValue(null);
+
+			await expect(
+				service.findSystemAgentThreadFileByBinary('thread-1', 'filesystem-v2:a', scope),
+			).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findReadableByHashes', () => {
 		const file = (id: string, contentHash: string, createdByThreadId: string) =>
 			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;

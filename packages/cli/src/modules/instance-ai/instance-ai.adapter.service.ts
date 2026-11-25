@@ -153,7 +153,6 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
-	type IBinaryData,
 	type IRunData,
 	type ITaskData,
 	NodeConnectionTypes,
@@ -259,7 +258,6 @@ import {
 	assertExecutionTimeoutWithinMax,
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
-import { collectResultItems } from '@/workflows/callable/callable-workflow-result';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -288,6 +286,7 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
+import { storeRunOutputFiles } from './instance-ai-run-output-files';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { skipTimeBasedWaits } from './skip-time-based-waits';
 import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
@@ -2529,6 +2528,12 @@ export class InstanceAiAdapterService {
 					options?.triggerNodeName !== undefined
 						? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
 						: findTriggerNode(nodes);
+				// The files go to the trigger item. Without a trigger, the run would silently drop them.
+				if (options?.binary && !triggerNode) {
+					throw new UserError(
+						'This workflow has no trigger node, so a run cannot take files. Add a trigger to give it files.',
+					);
+				}
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
@@ -5430,52 +5435,6 @@ function foldToolExecutorRun(
 	}
 
 	return folded;
-}
-
-/** Most output files that one run stores, so a large batch cannot flood the conversation. */
-export const MAX_RUN_OUTPUT_FILES = 10;
-
-/**
- * Store each file that the last node of a run returned as a conversation file,
- * one time for each binary, as the workflow tools of project agents do. A
- * redacted execution stores nothing, because its data is hidden from the user.
- */
-export async function storeRunOutputFiles(
-	execution: IExecutionResponse,
-	storeOutputFile: NonNullable<
-		NonNullable<Parameters<InstanceAiExecutionService['run']>[2]>['storeOutputFile']
-	>,
-): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
-	const runData = execution.data?.resultData?.runData;
-	if (!runData || getExecutionRedaction(execution)) return {};
-	const files: NonNullable<ExecutionResult['files']> = [];
-	const skippedFiles: NonNullable<ExecutionResult['skippedFiles']> = [];
-	const seen = new Set<IBinaryData | string>();
-	for (const items of Object.values(collectResultItems(runData, false))) {
-		for (const item of items) {
-			for (const [key, binary] of Object.entries(item.binary ?? {})) {
-				// Nodes pass the same stored binary on, so store it one time.
-				const identity = binary.id ?? binary;
-				if (seen.has(identity)) continue;
-				seen.add(identity);
-				if (files.length >= MAX_RUN_OUTPUT_FILES) {
-					skippedFiles.push({
-						fileName: binary.fileName ?? key,
-						reason: `one run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
-					});
-					continue;
-				}
-				const stored = await storeOutputFile(binary);
-				if (!stored) continue;
-				if ('reason' in stored) skippedFiles.push(stored);
-				else files.push(stored);
-			}
-		}
-	}
-	return {
-		...(files.length > 0 ? { files } : {}),
-		...(skippedFiles.length > 0 ? { skippedFiles } : {}),
-	};
 }
 
 /**
