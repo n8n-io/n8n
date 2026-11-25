@@ -17,7 +17,11 @@ import {
 	type StepOutputSources,
 	type StepStatus,
 } from '../execution/execution.types';
-import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
+import {
+	DEFAULT_STALENESS_THRESHOLDS,
+	nextQueuedStaleAfter,
+	type StalenessThresholds,
+} from '../execution/staleness';
 import {
 	StepNotFoundError,
 	type DueStep,
@@ -324,7 +328,7 @@ export class TypeOrmStepStore implements StepStore {
 	async renewQueuedStep(id: string, staleAfter: Date): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, status: 'queued', staleAfter },
-			{ staleAfter: this.staleAfterFor('queued') },
+			{ staleAfter: nextQueuedStaleAfter(staleAfter, Date.now(), this.staleness.queuedMs) },
 		);
 		return result.affected === 1;
 	}

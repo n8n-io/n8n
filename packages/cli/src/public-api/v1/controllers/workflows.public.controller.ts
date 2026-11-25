@@ -96,9 +96,9 @@ const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 const UPDATE_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
 	'`workflowReviewRequestId` are present), re-publication of a version without an approved ' +
-	'review when the instance requires one (then `reason` is `review_required` and `versionId` ' +
-	'names the draft), or a webhook path conflict. A blocked re-publication still saves the ' +
-	'update as a draft. To save without publishing, set `publishIfActive=false`.';
+	'review when the instance or the project requires one (then `reason` is `review_required` ' +
+	'and `versionId` names the draft), or a webhook path conflict. A blocked re-publication ' +
+	'still saves the update as a draft. To save without publishing, set `publishIfActive=false`.';
 
 const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
 	'The update would re-publish the workflow, but the API key lacks `workflow:activate` or the ' +
@@ -108,8 +108,8 @@ const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
 	'`workflowReviewRequestId` are present), publication of a version without an approved ' +
-	'review when the instance requires one (then `reason` is `review_required` and `versionId` ' +
-	'is present), or a webhook path conflict.';
+	'review when the instance or the project requires one (then `reason` is `review_required` ' +
+	'and `versionId` is present), or a webhook path conflict.';
 
 function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)

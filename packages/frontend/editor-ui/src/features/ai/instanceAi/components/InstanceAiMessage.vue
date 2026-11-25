@@ -19,6 +19,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
+import { toAnsweredQuestionsToolCall } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -310,7 +311,7 @@ function formatJson(value: unknown): string {
 		</template>
 
 		<template v-if="trailingAnswer" #after-actions>
-			<AnsweredQuestions :tool-call="trailingAnswer" />
+			<AnsweredQuestions :tool-call="toAnsweredQuestionsToolCall(trailingAnswer)" />
 		</template>
 	</N8nChatMessage>
 </template>

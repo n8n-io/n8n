@@ -1476,11 +1476,11 @@ describe('useCanvasPreview', () => {
 	describe('auto-open app preview', () => {
 		const app = { id: 'app-1', name: 'Todos', projectId: 'project-1' };
 
-		function appsCall(toolCallId: string, args: Record<string, unknown>) {
+		function appCall(toolCallId: string, toolName: string, args: Record<string, unknown> = {}) {
 			return makeMessage({
 				agentTree: makeAgentNode({
 					toolCalls: [
-						makeToolCall({ toolCallId, toolName: 'apps', args, result: { app, versionId: 'v1' } }),
+						makeToolCall({ toolCallId, toolName, args, result: { app, versionId: 'v1' } }),
 					],
 				}),
 			});
@@ -1496,7 +1496,7 @@ describe('useCanvasPreview', () => {
 			const ctx = setup();
 			registerApp(ctx.thread);
 
-			ctx.thread.messages = [appsCall('tc-create', { action: 'create' })];
+			ctx.thread.messages = [appCall('tc-create', 'create_app')];
 			await nextTick();
 
 			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
@@ -1505,7 +1505,7 @@ describe('useCanvasPreview', () => {
 
 			ctx.thread.messages = [
 				...ctx.thread.messages,
-				appsCall('tc-commit', { action: 'commit', appId: 'app-1' }),
+				appCall('tc-commit', 'commit_app', { appId: 'app-1' }),
 			];
 			await nextTick();
 
@@ -1516,7 +1516,7 @@ describe('useCanvasPreview', () => {
 			const ctx = setup();
 			registerApp(ctx.thread);
 
-			ctx.thread.messages = [appsCall('tc-get', { action: 'get', appId: 'app-1' })];
+			ctx.thread.messages = [appCall('tc-get', 'get_app', { appId: 'app-1' })];
 			await nextTick();
 
 			expect(ctx.activeApp.value).toBeNull();

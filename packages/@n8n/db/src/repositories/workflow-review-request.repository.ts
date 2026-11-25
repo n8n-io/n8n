@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { SharedWorkflow } from '../entities/shared-workflow';
 import { WorkflowHistory } from '../entities/workflow-history';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import {
@@ -169,7 +170,10 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.getOne();
 	}
 
-	/** An approval stays valid for its version wherever the workflow lives now. */
+	/**
+	 * An approval counts only in the project that owns the workflow now, so a move into
+	 * another project needs a new review there.
+	 */
 	async hasApprovedReviewForVersion(
 		workflowId: string,
 		workflowVersionId: string,
@@ -183,6 +187,12 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 				WorkflowReviewRequestWorkflow,
 				'requestWorkflow',
 				'requestWorkflow.workflowReviewRequestId = request.id',
+			)
+			.innerJoin(
+				SharedWorkflow,
+				'owner',
+				'owner.workflowId = requestWorkflow.workflowId AND owner.projectId = request.projectId AND owner.role = :ownerRole',
+				{ ownerRole: 'workflow:owner' },
 			)
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
 			.andWhere('requestWorkflow.workflowVersionId = :workflowVersionId', { workflowVersionId })

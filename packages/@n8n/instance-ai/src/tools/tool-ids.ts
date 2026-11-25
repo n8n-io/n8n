@@ -1,5 +1,6 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	APP_TOOL_NAMES,
 	DATA_TABLE_TOOL_NAMES,
 	EXECUTION_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
@@ -74,7 +75,6 @@ export const DOMAIN_TOOL_IDS = {
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 	SEND_FEEDBACK: 'send_feedback',
 	SKILLS: 'skills',
-	APPS: 'apps',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -101,7 +101,6 @@ export const WORKSPACE_TOOL_IDS = {
 	WRITE_FILE: 'write-file',
 } as const;
 
-export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
@@ -201,6 +200,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 		name,
 		'instance',
 	]),
+	...APP_TOOL_NAMES.map((name): [string, string] => [name, 'apps']),
 	[DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS, 'custom_mcp_servers'],
 ]);
 
@@ -214,6 +214,7 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	agents: 'build and configure standalone n8n Agents',
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
+	apps: 'create, open, change, save and bind n8n Apps',
 	// Without this line the model reads "MCP server" as an MCP Server Trigger workflow.
 	custom_mcp_servers:
 		'build and change custom MCP servers: a project server that serves chosen workflows as tools to AI clients, with the n8n sign-in. Not an MCP Server Trigger workflow',

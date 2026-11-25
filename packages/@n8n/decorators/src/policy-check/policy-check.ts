@@ -1,6 +1,11 @@
 import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type {
+	INode,
+	WorkflowEngineType,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 
 export type { PolicyViolation, PolicyCheckFailure };
 
@@ -14,6 +19,7 @@ export type { PolicyViolation, PolicyCheckFailure };
 export const ENFORCEMENT_POINTS = [
 	'workflowSave',
 	'workflowPublish',
+	'executionAdmission',
 	'workflowStart',
 	'workflowTransfer',
 	'credentialSave',
@@ -75,6 +81,27 @@ export type WorkflowSaveContext = {
 export type WorkflowPublishContext = {
 	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
+};
+
+/** A workflow or an agent named by reference, without its nodes. */
+export type PolicedArtifactRef = {
+	readonly kind: PolicedArtifactKind;
+	readonly id: string;
+	readonly name: string;
+};
+
+/**
+ * A run that asks for its execution row. The fields match a ledger row, so a check can apply
+ * the shared counting rules. There are no nodes: a check here must read memory only.
+ */
+export type ExecutionAdmissionContext = {
+	readonly artifact: PolicedArtifactRef;
+	/** `null` when the artifact has no owner project. */
+	readonly projectId: string | null;
+	readonly mode: WorkflowExecuteMode;
+	/** `null` for a regular run. */
+	readonly source: WorkflowExecutionSource | null;
+	readonly engine: WorkflowEngineType;
 };
 
 export type WorkflowStartContext = {
@@ -225,6 +252,10 @@ export interface RegisteredPolicyCheck {
 
 	onWorkflowSave?(ctx: WorkflowSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onWorkflowPublish?(ctx: WorkflowPublishContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onExecutionAdmission?(
+		ctx: ExecutionAdmissionContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
 	onWorkflowStart?(ctx: WorkflowStartContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onWorkflowTransfer?(
 		ctx: WorkflowTransferContext,
@@ -257,6 +288,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 } = {
 	workflowSave: 'onWorkflowSave',
 	workflowPublish: 'onWorkflowPublish',
+	executionAdmission: 'onExecutionAdmission',
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
 	credentialSave: 'onCredentialSave',

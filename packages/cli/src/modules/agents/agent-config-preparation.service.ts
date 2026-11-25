@@ -9,8 +9,10 @@ import {
 import { WorkflowRepository, type User } from '@n8n/db';
 import { CredentialsFinderService, ProjectScopeService } from '@n8n/backend-services';
 import { Container, Service } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
 import { ForbiddenError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
+import isEqual from 'lodash/isEqual';
 import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -48,7 +50,10 @@ import {
 	type CompleteAgentDefinition,
 	type PlannedAgentDestinations,
 } from './utils/agent-definition';
-import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from './utils/extract-agent-workflow-refs';
 import {
 	findChangedCredentialReferences,
 	visitAgentCredentialReferences,
@@ -120,6 +125,14 @@ export class AgentConfigPreparationService {
 			rawConfig,
 			clearOmitted,
 		);
+		const previousReviewConfig = isNew ? null : previousSchema;
+		assertHumanReviewSettingsAllowed(replacement.nextSchema, previousReviewConfig);
+		await this.assertReadableHitlWorkflows(
+			replacement.nextSchema,
+			previousReviewConfig,
+			entity.projectId,
+			user,
+		);
 		await this.agentPolicyService.enforceSave(
 			entity.projectId,
 			isNew ? null : entity.id,
@@ -144,6 +157,7 @@ export class AgentConfigPreparationService {
 	async validateDefinition(
 		agentId: string,
 		definition: CompleteAgentDefinition,
+		previousConfig: AgentJsonConfig | null = null,
 	): Promise<CompleteAgentDefinition> {
 		const [{ AgentCustomToolsService }, { AgentTaskService }] = await Promise.all([
 			import('./agent-custom-tools.service.js'),
@@ -164,6 +178,7 @@ export class AgentConfigPreparationService {
 			result.config.integrations ?? [],
 		);
 		prepared.config = reconcileNativeWebSearch(result.config);
+		assertHumanReviewSettingsAllowed(prepared.config, previousConfig);
 		this.validateSubAgentRefs(prepared.config.subAgents?.agents ?? [], agentId);
 		const [missingBody] = findMissingAgentDefinitionBodies(prepared);
 		if (missingBody) {
@@ -183,7 +198,7 @@ export class AgentConfigPreparationService {
 		planned: PlannedAgentDestinations = {},
 		previousConfig: AgentJsonConfig | null = null,
 	) {
-		const prepared = await this.validateDefinition(agentId, definition);
+		const prepared = await this.validateDefinition(agentId, definition, previousConfig);
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -252,6 +267,10 @@ export class AgentConfigPreparationService {
 		if (localIds.some((id) => !id))
 			throw new UserError('A workflow tool references a missing workflow.');
 		const ids = new Set(localIds.filter((id): id is string => id !== undefined));
+		for (const id of extractGuardrailCheckWorkflowIds(config)) ids.add(id);
+		for (const interaction of config.hitlConfigurations ?? []) {
+			if (interaction.method === 'workflow') ids.add(interaction.workflowId);
+		}
 		for (const tool of config.tools ?? []) {
 			if (tool.type !== 'node') continue;
 			const id = getStaticSubworkflowId({
@@ -289,6 +308,29 @@ export class AgentConfigPreparationService {
 			}
 			throw new UserError(`Workflow "${id}" is missing or inaccessible.`);
 		}
+	}
+
+	/**
+	 * A user needs read access in this project to each workflow that a human review
+	 * configuration adds. Workflows that the stored config already uses stay allowed.
+	 */
+	private async assertReadableHitlWorkflows(
+		next: AgentJsonConfig,
+		previous: AgentJsonConfig | null,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		const previousIds = new Set(hitlWorkflowIds(previous));
+		const ids = [...new Set(hitlWorkflowIds(next))].filter((id) => !previousIds.has(id));
+		if (ids.length === 0) return;
+		const readable = await Container.get(WorkflowFinderService).findWorkflowIdsWithScopeForUser(
+			ids,
+			user,
+			['workflow:read'],
+			projectId,
+		);
+		const missing = ids.find((id) => !readable.has(id));
+		if (missing) throw new UserError(`Workflow "${missing}" is missing or inaccessible.`);
 	}
 
 	/**
@@ -557,6 +599,60 @@ function mergePersonalisationWithPreviousGradient(
 	};
 }
 
+function hitlWorkflowIds(config: AgentJsonConfig | null): string[] {
+	return (config?.hitlConfigurations ?? []).flatMap((configuration) =>
+		configuration.method === 'workflow' ? [configuration.workflowId] : [],
+	);
+}
+
+type AgentJsonTool = NonNullable<AgentJsonConfig['tools']>[number];
+
+function toolReviewKey(tool: AgentJsonTool): string {
+	if (tool.type === 'custom') return `custom:${tool.id}`;
+	if (tool.type === 'workflow') return `workflow:${tool.workflowId ?? tool.workflow}`;
+	return `node:${tool.name}`;
+}
+
+/** The parts of a config that need the human review feature. */
+function humanReviewSettings(config: AgentJsonConfig | null) {
+	const configurationRoutes = <T extends { approvalRoute?: AgentJsonTool['approvalRoute'] }>(
+		items: T[] | undefined,
+		key: (item: T) => string,
+	) =>
+		Object.fromEntries(
+			(items ?? []).flatMap((item) =>
+				item.approvalRoute?.type === 'configuration'
+					? [[key(item), item.approvalRoute] as const]
+					: [],
+			),
+		);
+	return {
+		hitlConfigurations: Object.fromEntries(
+			(config?.hitlConfigurations ?? []).map((configuration) => [configuration.id, configuration]),
+		),
+		tools: configurationRoutes(config?.tools, toolReviewKey),
+		mcpServers: configurationRoutes(config?.mcpServers, (server) => server.name),
+	};
+}
+
+/**
+ * With human review off, a save must not add or change review settings.
+ * Review settings that the stored config already holds do not block other edits,
+ * and a save can remove them.
+ */
+export function assertHumanReviewSettingsAllowed(
+	next: AgentJsonConfig,
+	previous: AgentJsonConfig | null,
+): void {
+	if (Container.get(AgentsConfig).humanReviewEnabled) return;
+	const before = humanReviewSettings(previous);
+	const after = humanReviewSettings(next);
+	const unchanged = (['hitlConfigurations', 'tools', 'mcpServers'] as const).every((group) =>
+		Object.entries(after[group]).every(([key, value]) => isEqual(value, before[group][key])),
+	);
+	if (!unchanged) throw new UserError('Human review is not enabled on this instance');
+}
+
 const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
 	'description',
@@ -570,6 +666,7 @@ const OPTIONAL_SCHEMA_FIELDS = [
 	'config',
 	'mcpServers',
 	'vectorStores',
+	'hitlConfigurations',
 ] as const;
 
 /**
