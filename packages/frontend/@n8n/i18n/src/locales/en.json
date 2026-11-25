@@ -10102,6 +10102,7 @@
 	"agents.delete.modal.button.delete": "Delete",
 	"agents.builder.loadError": "Could not load agent",
 	"agents.builder.saveError": "Could not save agent settings",
+	"agents.builder.deleteError": "Could not delete agent",
 	"agents.builder.remoteChange.title": "Agent updated elsewhere",
 	"agents.builder.remoteChange.message": "Someone changed this agent in another tab or session. We loaded the latest version, so your last edit was not applied.",
 	"agents.builder.externalUpdate.mcp": "This agent was changed by MCP {time}...",
