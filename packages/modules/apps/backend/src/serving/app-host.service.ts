@@ -82,6 +82,17 @@ export class AppHostService {
 		return this.originForLabel(namespace, PREVIEW_MARKER);
 	}
 
+	/**
+	 * The fixed parts of an app URL around its namespace, for example `https://` and
+	 * `--foo.apps.example.com`. The editor shows them around the namespace field.
+	 */
+	urlParts(): { prefix: string; suffix: string } {
+		return {
+			prefix: `${this.baseUrl.protocol}//`,
+			suffix: `${this.hostSuffix}.${this.baseUrl.host}`,
+		};
+	}
+
 	callbackUrl(app: { id: string; namespace: string }): string {
 		const origin = this.origin(app.namespace);
 		if (!origin) throw new BadRequestError('Use a valid app namespace before publishing this app.');

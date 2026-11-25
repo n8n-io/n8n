@@ -67,6 +67,27 @@ describe('AppHostService', () => {
 		expect(hosts.previewNamespace(request('--preview.apps.localhost:5678'))).toBeUndefined();
 	});
 
+	it.each([
+		['the default host', {}, 'https://', '.apps.example.com'],
+		[
+			'a host with a port',
+			{ baseUrl: 'http://apps.localhost:5678' },
+			'http://',
+			'.apps.localhost:5678',
+		],
+		[
+			'a Cloud host',
+			{ deploymentType: 'cloud', deploymentName: 'foo' },
+			'https://',
+			'--foo.apps.example.com',
+		],
+	])('returns the fixed URL parts around the namespace for %s', (_, options, prefix, suffix) => {
+		const hosts = setup(options);
+
+		expect(hosts.urlParts()).toEqual({ prefix, suffix });
+		expect(`${prefix}sales${suffix}`).toBe(hosts.origin('sales'));
+	});
+
 	it('uses the origin of the instance base URL as the editor origin', () => {
 		expect(setup({ instanceBaseUrl: 'https://n8n.example.net/base' }).editorOrigin).toBe(
 			'https://n8n.example.net',

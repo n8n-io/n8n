@@ -6,17 +6,11 @@ import {
 	type UpdateAppDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import {
-	N8nHeading,
-	N8nInput,
-	N8nSettingsRow,
-	N8nSettingsRowGroup,
-	N8nText,
-	useMessage,
-} from '@n8n/design-system';
+import { N8nCard, N8nInput, N8nText, useMessage } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 
 import { updateApp } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
@@ -49,6 +43,12 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const headingId = useId();
+const fieldId = useId();
+
+// The parts of the app URL around the namespace, for example `https://` and `.apps.example.com`.
+const appUrl = computed(() => settingsStore.moduleSettings.apps?.appUrl);
 
 const form = ref<Record<Field, string>>({ name: props.app.name, namespace: props.app.namespace });
 const saving = ref<Partial<Record<Field, boolean>>>({});
@@ -130,76 +130,155 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.cards" data-test-id="app-configure-general">
-		<N8nSettingsRowGroup>
-			<div :class="$style.cardHeader">
-				<N8nHeading tag="h2" size="medium" color="text-dark">
+	<N8nCard :class="$style.panel" data-test-id="app-configure-general">
+		<section :class="$style.body" :aria-labelledby="headingId">
+			<div :class="$style.header">
+				<N8nText :id="headingId" tag="h2" bold>
 					{{ i18n.baseText('apps.configure.general.title') }}
-				</N8nHeading>
-				<N8nText size="small" color="text-light">
+				</N8nText>
+				<N8nText color="text-light" :class="$style.description">
 					{{ i18n.baseText('apps.configure.general.description') }}
 				</N8nText>
 			</div>
-			<N8nSettingsRow
-				v-for="field in FIELDS"
-				:key="field.id"
-				:title="i18n.baseText(field.label)"
-				:description="field.description && i18n.baseText(field.description)"
-				layout="vertical"
-			>
-				<template #action>
-					<div :class="$style.field">
-						<N8nInput
-							v-model="form[field.id]"
-							:class="{ [$style.invalid]: invalid.has(field.id) }"
-							:maxlength="field.maxLength"
-							:disabled="!canUpdate || saving[field.id]"
-							:aria-label="i18n.baseText(field.label)"
-							:data-test-id="`app-configure-${field.id}`"
-							@blur="commit(field.id)"
-							@keydown="onKeydown($event, field.id)"
-						/>
-						<N8nText
-							v-if="invalid.has(field.id)"
-							:class="$style.error"
-							:data-test-id="`app-configure-${field.id}-error`"
-						>
-							{{ i18n.baseText(field.invalidText) }}
-						</N8nText>
-					</div>
-				</template>
-			</N8nSettingsRow>
-		</N8nSettingsRowGroup>
-	</div>
+			<div v-for="field in FIELDS" :key="field.id" :class="$style.field">
+				<div :class="$style.fieldHeader">
+					<N8nText tag="label" :for="`${fieldId}-${field.id}`" bold>
+						{{ i18n.baseText(field.label) }}
+					</N8nText>
+					<N8nText v-if="field.description" color="text-light">
+						{{ i18n.baseText(field.description) }}
+					</N8nText>
+				</div>
+				<!-- The URL parts sit outside N8nInput: its prepend and append slots expect a padded container. -->
+				<div :class="{ [$style.url]: field.id === 'namespace' && appUrl }">
+					<span
+						v-if="field.id === 'namespace' && appUrl"
+						:class="[$style.urlPart, $style.urlPrefix]"
+						data-test-id="app-configure-namespace-prefix"
+					>
+						{{ appUrl.prefix }}
+					</span>
+					<N8nInput
+						:id="`${fieldId}-${field.id}`"
+						v-model="form[field.id]"
+						:class="[$style.input, { [$style.invalid]: invalid.has(field.id) }]"
+						size="large"
+						:maxlength="field.maxLength"
+						:disabled="!canUpdate || saving[field.id]"
+						:data-test-id="`app-configure-${field.id}`"
+						@blur="commit(field.id)"
+						@keydown="onKeydown($event, field.id)"
+					/>
+					<span
+						v-if="field.id === 'namespace' && appUrl"
+						:class="[$style.urlPart, $style.urlSuffix]"
+						:title="appUrl.suffix"
+						data-test-id="app-configure-namespace-suffix"
+					>
+						{{ appUrl.suffix }}
+					</span>
+				</div>
+				<N8nText
+					v-if="invalid.has(field.id)"
+					:class="$style.error"
+					:data-test-id="`app-configure-${field.id}-error`"
+				>
+					{{ i18n.baseText(field.invalidText) }}
+				</N8nText>
+			</div>
+		</section>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
-.cards {
+/* Same panel as Connections: 20px above and below, 16px at the sides. */
+.panel {
+	--card--padding: var(--spacing--md) var(--spacing--sm);
+}
+
+.body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.header,
+.fieldHeader {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.description {
+	max-width: 80%;
+	text-wrap: balance;
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	width: 100%;
+	gap: var(--spacing--2xs);
 }
 
 .field .invalid {
 	--input--border-color: var(--color--danger);
 }
 
-.error {
-	margin-top: var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--danger);
+.input {
+	width: 100%;
 }
 
-.cardHeader {
+/* One rounded field: grey prefix, the input, grey suffix. */
+.url {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
+	align-items: stretch;
+	min-width: 0;
+
+	/* N8nInput reads these corner variables, so only the outer corners are round. */
+	--input--radius--top-left: 0;
+	--input--radius--bottom-left: 0;
+	--input--radius--top-right: 0;
+	--input--radius--bottom-right: 0;
+
+	.input {
+		flex: 1;
+		min-width: 0;
+	}
+}
+
+.urlPart {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	padding: 0 var(--spacing--xs);
+	border: var(--border);
+	background-color: var(--background--subtle);
+	font-size: var(--font-size--sm);
+	color: var(--text-color--subtle);
+	white-space: nowrap;
+}
+
+/* The input draws the line between each part and itself. */
+.urlPrefix {
+	border-right: none;
+	border-radius: var(--radius--xs) 0 0 var(--radius--xs);
+}
+
+/* A block, not a flex box, so that a long host ends in an ellipsis. */
+.urlSuffix {
+	display: block;
+	align-content: center;
+	flex-shrink: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	border-left: none;
+	border-radius: 0 var(--radius--xs) var(--radius--xs) 0;
+}
+
+.error {
+	font-size: var(--font-size--2xs);
+	color: var(--color--danger);
 }
 </style>

@@ -1,5 +1,6 @@
 import type { AppResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { Scope } from '@n8n/permissions';
 import userEvent from '@testing-library/user-event';
@@ -123,7 +124,7 @@ describe('AppConfigureGeneral', () => {
 		await userEvent.tab();
 
 		expect(updateApp).not.toHaveBeenCalled();
-		expect(getByTestId('app-configure-name-error')).toHaveTextContent('Enter an app name.');
+		expect(getByTestId('app-configure-name-error')).toHaveTextContent('Enter an app title');
 	});
 
 	it('saves the second field only after the first save ends', async () => {
@@ -209,5 +210,33 @@ describe('AppConfigureGeneral', () => {
 		);
 		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses-2');
 		expect(emitted('updated')).toBeUndefined();
+	});
+
+	it('shows the app URL around the namespace', () => {
+		providePermissions(['app:update']);
+		useSettingsStore().moduleSettings = {
+			apps: { enabled: true, appUrl: { prefix: 'https://', suffix: '.apps.example.com' } },
+		};
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('app-configure-namespace-prefix')).toHaveTextContent('https://');
+		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses');
+		expect(getByTestId('app-configure-namespace-suffix')).toHaveTextContent('.apps.example.com');
+	});
+
+	it('shows only the namespace when the app URL is unknown', () => {
+		providePermissions(['app:update']);
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses');
+		expect(queryByTestId('app-configure-namespace-prefix')).not.toBeInTheDocument();
+	});
+
+	it('labels each field', () => {
+		providePermissions(['app:update']);
+		const { getByLabelText } = renderComponent();
+
+		expect(getByLabelText('App title')).toHaveValue('Expense tracker');
+		expect(getByLabelText('App URL')).toHaveValue('expenses');
 	});
 });
