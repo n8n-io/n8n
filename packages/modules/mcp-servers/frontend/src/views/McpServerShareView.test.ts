@@ -216,6 +216,28 @@ describe('McpServerShareView', () => {
 			);
 		});
 
+		// `null`: the server URL at the top of the page, the first copy field.
+		it.each([
+			[null, 0, 'any', 'copy_url'],
+			['mcp-share-command-claude-code', 0, 'claude-code', 'copy_command'],
+			['mcp-share-command-codex', 0, 'codex', 'copy_command'],
+			['mcp-share-command-codex', 1, 'codex', 'copy_sign_in_command'],
+			['mcp-share-command-gemini-cli', 0, 'gemini-cli', 'copy_command'],
+			['mcp-share-steps-chatgpt', 0, 'chatgpt', 'copy_url'],
+			['mcp-share-steps-other', 0, 'other', 'copy_url'],
+		])('records a copy in %s (field %i) as %s with %s', async (testId, index, client, method) => {
+			const user = userEvent.setup();
+			await renderPage();
+			const scope = testId ? within(screen.getByTestId(testId)) : screen;
+
+			await user.click(scope.getAllByTestId('copy-input-button')[index]);
+
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
+				{ server_id: publicShare.id, client, method },
+			);
+		});
+
 		it('shows a command to copy for Claude Code, Codex, and Gemini CLI', async () => {
 			await renderPage();
 
