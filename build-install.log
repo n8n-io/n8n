@@ -1,0 +1,12 @@
+Scope: all 111 workspace projects
+✓ Lockfile passes supply-chain policies (verified 4m ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+.../node_modules/isolated-vm install$ node-gyp-build 'node-gyp rebuild -j 4 --release -v' || node-gyp rebuild --release -j max
+.../node_modules/isolated-vm install: Done
+. preinstall$ node scripts/block-npm-install.js
+. preinstall: Done
+. prepare$ node scripts/prepare.mjs
+. prepare: Skip Lefthook install in a linked worktree. Hooks are shared with the main checkout.
+. prepare: Done
+Done in 4.6s using pnpm v12.4.2

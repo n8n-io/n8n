@@ -739,7 +739,7 @@ describe('SkillSourceConnectDialog', () => {
 			const skipped = within(pane).getAllByTestId('skill-source-skipped-file');
 			expect(skipped.map((row) => row.textContent)).toEqual([
 				'skills/hidden/scripts/run.sh',
-				'skills/hidden/references/data.md · A file that n8n cannot store, because it has a NUL character',
+				'skills/hidden/references/data.md · Unsupported file path',
 			]);
 			const files = within(pane).getAllByTestId('skill-source-file');
 			expect(

@@ -15,6 +15,11 @@ const props = defineProps<{
 	threadId?: string;
 }>();
 
+defineSlots<{
+	/** Items before the files, in the same group. */
+	default?: () => unknown;
+}>();
+
 const rootStore = useRootStore();
 const i18n = useI18n();
 /** Use the API URL when no panel provides a URL builder. */
@@ -87,6 +92,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nAttachmentGroup :class="$style.attachments" data-testid="agent-chat-message-attachments">
+		<slot />
 		<template v-for="item in items" :key="item.key">
 			<span
 				v-if="unavailableKeys.has(item.key)"
@@ -122,6 +128,11 @@ onBeforeUnmount(() => {
 
 .attachments {
 	justify-content: inherit;
+
+	// The slot can render nothing, and a message can have no files.
+	&:empty {
+		display: none;
+	}
 }
 
 .fileChip {

@@ -137,6 +137,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
+| [public.project_workflow_review_settings](public.project_workflow_review_settings.md) | 5 |  | BASE TABLE |
 | [public.promotion_environment](public.promotion_environment.md) | 9 |  | BASE TABLE |
 | [public.promotion_environment_project](public.promotion_environment_project.md) | 5 |  | BASE TABLE |
 | [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
@@ -161,7 +162,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_knowledge_collection](public.shared_knowledge_collection.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
-| [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
+| [public.skill_file](public.skill_file.md) | 6 |  | BASE TABLE |
 | [public.skill_source](public.skill_source.md) | 15 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
@@ -422,6 +423,7 @@ erDiagram
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
+"public.project_workflow_review_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_environment" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
 "public.promotion_environment_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_environment_project" }o--|| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE CASCADE"
@@ -1848,6 +1850,13 @@ erDiagram
   integer secretsProviderConnectionId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.project_workflow_review_settings" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ projectId FK
+  boolean requiredByInstance
+  boolean requiredByProject
+  timestamp_3__with_time_zone updatedAt
+}
 "public.promotion_environment" {
   timestamp_3__with_time_zone createdAt
   varchar_16_ direction
@@ -2083,6 +2092,7 @@ erDiagram
 "public.skill_file" {
   text content
   timestamp_3__with_time_zone createdAt
+  boolean isBinary
   varchar_512_ path
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt
