@@ -8,7 +8,7 @@ import type {
 import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { nextCloudApiRequest, webDavPath } from '../GenericFunctions';
+import { nextCloudApiRequest, parseFolderList, webDavPath } from '../GenericFunctions';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
 const baseUrl = 'https://nextcloud.example.com';
@@ -314,6 +314,73 @@ describe('NextCloud GenericFunctions', () => {
 
 		it.each(['a/../../ocs/x', 'a/./b', '../ocs'])('rejects a relative segment in "%s"', (path) => {
 			expect(() => webDavPath(path)).toThrow('Invalid identifier');
+		});
+	});
+
+	describe('parseFolderList', () => {
+		const fileProps =
+			'<d:getlastmodified>Tue, 02 Jan 2024</d:getlastmodified><d:getcontentlength>1024</d:getcontentlength><d:getcontenttype>text/plain</d:getcontenttype><d:resourcetype></d:resourcetype><d:getetag>"file-etag"</d:getetag>';
+		const folderProps =
+			'<d:getlastmodified>Mon, 01 Jan 2024</d:getlastmodified><d:resourcetype><d:collection /></d:resourcetype><d:getetag>"folder-etag"</d:getetag>';
+		const file = {
+			lastModified: 'Tue, 02 Jan 2024',
+			contentLength: '1024',
+			contentType: 'text/plain',
+			type: 'file',
+			eTag: 'file-etag',
+		};
+
+		const response = (href: string, props: string) => `
+  <d:response>
+    <d:href>${href}</d:href>
+    <d:propstat><d:prop>${props}</d:prop></d:propstat>
+  </d:response>`;
+
+		const multistatus = (children: string[]) => `<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">${response('/remote.php/webdav/projects/', folderProps)}${children.join('')}
+</d:multistatus>`;
+
+		it.each([
+			[
+				'a standard WebDAV URL',
+				[response('/remote.php/webdav/projects/file1.txt', fileProps)],
+				[{ path: 'projects/file1.txt', ...file }],
+			],
+			[
+				'a sub-path install',
+				[response('/nextcloud/remote.php/webdav/projects/file1.txt', fileProps)],
+				[{ path: 'projects/file1.txt', ...file }],
+			],
+			[
+				'a per-user dav URL',
+				[response('/remote.php/dav/files/alice/projects/file1.txt', fileProps)],
+				[{ path: 'projects/file1.txt', ...file }],
+			],
+			[
+				'a folder entry',
+				[response('/remote.php/webdav/projects/archive/', folderProps)],
+				[
+					{
+						path: 'projects/archive/',
+						lastModified: 'Mon, 01 Jan 2024',
+						type: 'folder',
+						eTag: 'folder-etag',
+					},
+				],
+			],
+			[
+				'an encoded name',
+				[response('/remote.php/webdav/My%20Folder/a%20b%23c%3F%25d%C3%A9.txt', fileProps)],
+				[{ path: 'My Folder/a b#c?%dé.txt', ...file }],
+			],
+			[
+				'an href without a WebDAV root',
+				[response('/other/a%20b.txt', fileProps)],
+				[{ path: '/other/a b.txt', ...file }],
+			],
+			['an empty folder', [], []],
+		])('parses the folder list for %s', async (_, children, expected) => {
+			expect(await parseFolderList(multistatus(children))).toEqual(expected);
 		});
 	});
 

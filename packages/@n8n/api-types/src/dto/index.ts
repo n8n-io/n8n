@@ -719,6 +719,10 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
+export {
+	UpdateProjectWorkflowReviewSettingsDto,
+	type ProjectWorkflowReviewSettingsResponse,
+} from './workflow-reviews/update-project-workflow-review-settings.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';

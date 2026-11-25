@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the workflow.
+    description: The ID of the workflow
     name: workflowId
     in: path
 requestBody:
@@ -25,10 +25,10 @@ requestBody:
             description: The specific version ID to publish. If not provided, the latest version is used.
           name:
             type: string
-            description: Optional name for the workflow version during publication.
+            description: Optional name for the workflow version during publication
           description:
             type: string
-            description: Optional description for the workflow version during publication.
+            description: Optional description for the workflow version during publication
 responses:
   '200':
     description: Operation successful.
@@ -45,7 +45,7 @@ responses:
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
-    description: Conflict, e.g. publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present), publication of a version without an approved review when the instance requires one (then `reason` is `review_required` and `versionId` is present), or a webhook path conflict.
+    description: Conflict, e.g. publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present), publication of a version without an approved review when the instance or the project requires one (then `reason` is `review_required` and `versionId` is present), or a webhook path conflict.
     content:
       application/json:
         schema:

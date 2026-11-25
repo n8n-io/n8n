@@ -13,7 +13,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the workflow.
+    description: The ID of the workflow
     name: workflowId
     in: path
   - schema:

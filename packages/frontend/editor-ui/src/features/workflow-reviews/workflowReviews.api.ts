@@ -1,6 +1,8 @@
 import type {
 	CreateWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
+	ProjectWorkflowReviewSettingsResponse,
+	UpdateProjectWorkflowReviewSettingsDto,
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
@@ -55,6 +57,30 @@ export async function updateWorkflowReviewRequestVersion(
 		context,
 		'POST',
 		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/update-version`,
+		{ ...payload },
+	);
+}
+
+export async function getProjectWorkflowReviewSettings(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectWorkflowReviewSettingsResponse> {
+	return await makeRestApiRequest<ProjectWorkflowReviewSettingsResponse>(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/workflow-review-settings`,
+	);
+}
+
+export async function updateProjectWorkflowReviewSettings(
+	context: IRestApiContext,
+	projectId: string,
+	payload: UpdateProjectWorkflowReviewSettingsDto,
+): Promise<ProjectWorkflowReviewSettingsResponse> {
+	return await makeRestApiRequest<ProjectWorkflowReviewSettingsResponse>(
+		context,
+		'PATCH',
+		`/projects/${encodeURIComponent(projectId)}/workflow-review-settings`,
 		{ ...payload },
 	);
 }

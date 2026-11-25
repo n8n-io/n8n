@@ -58,6 +58,7 @@ describe('ProjectService', () => {
 	const folderRepository = mock<FolderRepository>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const agentRepository = mock<AgentRepository>();
+	const agentServiceAccount = mock<AgentServiceAccountService>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const agentTestChatService = mock<AgentTestChatService>();
@@ -95,6 +96,9 @@ describe('ProjectService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		agentServiceAccount.deleteForAgent.mockImplementation(
+			async (_agent, _actor, _transferId, _ctx, cleanUp) => await cleanUp(),
+		);
 		projectRelationRepository.find.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 	});
@@ -1135,7 +1139,6 @@ describe('ProjectService', () => {
 
 		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			const agentServiceAccount = mock<AgentServiceAccountService>();
 			Object.defineProperty(projectService, 'agentProjectCleanupService', {
 				configurable: true,
 				get: async () =>
@@ -1150,6 +1153,7 @@ describe('ProjectService', () => {
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
 						agentServiceAccount,
+						mock(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
@@ -1456,7 +1460,8 @@ describe('ProjectService', () => {
 						mock<AgentProjectDeletionRepository>(),
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
-						mock<AgentServiceAccountService>(),
+						agentServiceAccount,
+						mock(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
