@@ -154,6 +154,9 @@ sequenceDiagram
    deletes what the node stored, as the payload guard does today. A crash between the write and the
    dispatch leaves files that nothing deletes. No sweep for those exists today, in v1 or v2.
    CAT-4756 tracks it.
+8.  A host that turns retention on must supply the callback. Without it, the engine refuses to
+   start, because the job would delete the rows and keep the files. A host that writes no files
+   passes `noopExecutionFilesDeleter`.
 
 ## Links
 
