@@ -1,17 +1,17 @@
 // Export the public API here. Do not export McpServersModule from this file.
-export { CustomMcpServersFlagGate } from './custom-mcp-servers-flag-gate';
+export { CustomMcpServersFlagGate } from './services/custom-mcp-servers-flag-gate';
 export { McpServersConfig } from './mcp-servers.config';
-export { McpServersService } from './mcp-servers.service';
+export { McpServersService } from './services/mcp-servers.service';
 export {
 	McpServerToolsService,
 	type McpServerToolCandidatePage,
 	type McpServerToolCandidateQuery,
-} from './mcp-server-tools.service';
+} from './services/mcp-server-tools.service';
 export type { McpServerActor, McpServerEventMap } from './mcp-server-events';
-export { McpServer } from './mcp-server.entity';
-export { McpServerTool } from './mcp-server-tool.entity';
-export { McpServerConnection } from './mcp-server-connection.entity';
-export { McpServerBlock } from './mcp-server-block.entity';
+export { McpServer } from './database/entities/mcp-server.entity';
+export { McpServerTool } from './database/entities/mcp-server-tool.entity';
+export { McpServerConnection } from './database/entities/mcp-server-connection.entity';
+export { McpServerBlock } from './database/entities/mcp-server-block.entity';
 export {
 	McpServerToolAdapters,
 	WorkflowToolPort,

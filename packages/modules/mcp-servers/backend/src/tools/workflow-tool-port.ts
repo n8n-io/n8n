@@ -89,8 +89,8 @@ export type WorkflowToolRunResult =
 
 export abstract class WorkflowToolPort {
 	/**
-	 * Every workflow of the project, for the workflow picker, or only the given workflows.
-	 * It does not run `check`.
+	 * Every workflow that the project owns, for the workflow picker, or only the given workflows.
+	 * A workflow that another project shares is not in the list. It does not run `check`.
 	 */
 	abstract list(projectId: string, workflowIds?: string[]): Promise<WorkflowToolListItem[]>;
 

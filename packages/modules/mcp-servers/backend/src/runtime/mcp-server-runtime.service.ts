@@ -4,9 +4,9 @@ import { Service } from '@n8n/di';
 import { ResourceAdmission, type AdmissionResult } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 
-import type { McpServerTool } from '../mcp-server-tool.entity';
-import { McpServerToolRepository } from '../mcp-server-tool.repository';
-import type { McpServer } from '../mcp-server.entity';
+import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
+import { McpServerToolRepository } from '../database/repositories/mcp-server-tool.repository';
+import type { McpServer } from '../database/entities/mcp-server.entity';
 import { OAuthClientNamePort } from '../tools/oauth-client-name-port';
 import {
 	WorkflowToolPort,

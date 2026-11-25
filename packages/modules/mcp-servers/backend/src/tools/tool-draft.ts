@@ -77,7 +77,8 @@ export function buildToolDraftPrompt(source: ToolDraftSource, request?: ToolDraf
 			'',
 			`The current tool name: ${request.current.toolName}`,
 			`The current description: ${request.current.description || 'none'}`,
-			'Write a new, better text for this field only.',
+			'The builder asked for another text, so the current text is not good enough.',
+			'Write a new text for this field only. It must differ from the current text: use other words, for example another verb or a more specific noun.',
 		);
 	}
 	lines.push(

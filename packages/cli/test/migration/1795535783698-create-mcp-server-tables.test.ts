@@ -205,6 +205,21 @@ describe('CreateMcpServerTables migration', () => {
 		for (const table of tables) expect(await count(table)).toBe(0);
 	});
 
+	it('frees the slugs of a project when the project is deleted', async () => {
+		const projectId = await insertProject();
+		const otherProjectId = await insertProject();
+		await insertServer(projectId, 'sales-tools', { deletedAt: new Date() });
+		const { escape, runQuery } = context;
+
+		await runQuery(
+			`DELETE FROM ${escape.tableName('project')} WHERE ${escape.columnName('id')} = :id`,
+			{ id: projectId },
+		);
+
+		await insertServer(otherProjectId, 'sales-tools');
+		expect(await count('mcp_server')).toBe(1);
+	});
+
 	it('keeps the server and deletes the rows of a person when the person is deleted', async () => {
 		const { userId } = await seedServerWithRows();
 		const { escape, runQuery } = context;

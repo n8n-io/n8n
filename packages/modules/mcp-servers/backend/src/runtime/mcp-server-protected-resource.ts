@@ -15,9 +15,9 @@ import {
 } from '@n8n/inbound-auth';
 import type { Scope } from '@n8n/permissions';
 
-import { CustomMcpServersFlagGate } from '../custom-mcp-servers-flag-gate';
-import type { McpServer } from '../mcp-server.entity';
-import { McpServerRepository } from '../mcp-server.repository';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServerRepository } from '../database/repositories/mcp-server.repository';
 
 /** The path of the runtime endpoint, after the instance base URL. */
 export const MCP_SERVERS_PATH = '/mcp-servers';
@@ -93,7 +93,7 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 	async findServer(slug: string): Promise<McpServer | null> {
 		if (!mcpServerSlugSchema.safeParse(slug).success) return null;
 		const server = await this.servers.findBySlug(slug);
-		if (!server || !(await this.flag.isEnabledForInstance())) return null;
+		if (!server || !(await this.flag.isEnabled())) return null;
 		return server;
 	}
 

@@ -215,7 +215,7 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 
 		await expect(createService().delete({ serverId: SERVER_ID })).rejects.toThrow('Not found');
 
-		expect(flagGate.assertEnabled).toHaveBeenCalledWith(user);
+		expect(flagGate.assertEnabled).toHaveBeenCalledWith();
 		expect(servers.delete).not.toHaveBeenCalled();
 	});
 
@@ -284,6 +284,7 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 			'project-1',
 			SERVER_ID,
 			TOOL_ID,
+			actor,
 			'description',
 		);
 		expect(tools.removeTool).toHaveBeenCalledWith('project-1', SERVER_ID, TOOL_ID);

@@ -11,7 +11,7 @@
 | id | uuid |  | false | [public.mcp_server_block](public.mcp_server_block.md) [public.mcp_server_connection](public.mcp_server_connection.md) [public.mcp_server_tool](public.mcp_server_tool.md) |  | UUIDv7, made by the application |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
-| slug | varchar(128) |  | false |  |  | Path segment of the server URL. It never changes, and a deleted server keeps it |
+| slug | varchar(128) |  | false |  |  | Path segment of the server URL. It never changes. A deleted server keeps it, until its project is deleted |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints

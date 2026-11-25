@@ -9,7 +9,6 @@ import {
 	N8nEmptyState,
 	N8nHeading,
 	N8nIconButton,
-	N8nInlineTextEdit,
 	N8nLoading,
 	N8nTabs,
 	N8nText,
@@ -24,6 +23,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import McpServerContentsTab from '../components/McpServerContentsTab.vue';
+import McpServerDescriptionEdit from '../components/McpServerDescriptionEdit.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
 import { deleteMcpServer, getMcpServer, updateMcpServer } from '../mcp-servers.api';
@@ -231,13 +231,11 @@ async function onBreadcrumbSelected(item: PathItem) {
 						>
 							{{ server.name }}
 						</N8nHeading>
-						<N8nInlineTextEdit
+						<McpServerDescriptionEdit
 							v-if="permissions.canUpdate"
 							:model-value="server.description"
 							:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
 							:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
-							:max-width="640"
-							:class="$style.description"
 							data-test-id="mcp-server-description"
 							@update:model-value="onDescription"
 						/>
@@ -363,6 +361,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 
 .description {
 	color: var(--text-color--subtler);
+	white-space: pre-wrap;
 }
 
 .url {
