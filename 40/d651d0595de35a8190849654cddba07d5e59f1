@@ -1,0 +1,30 @@
+packages/modules/promotions/frontend/src/promotionsSettings.api.ts
+  s_642105d4fc9ac1::t_401cfc2d093e05 14,22,34-48
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.vue
+  s_642105d4fc9ac1::t_70b6ab699df0a7 67,287
+  s_642105d4fc9ac1::t_401cfc2d093e05 39
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.test.ts
+  s_642105d4fc9ac1::t_f20ffd28b6455d 25-28,46,54,415-474,478-479
+  s_642105d4fc9ac1::t_429594f0204829 475-477
+packages/modules/promotions/frontend/src/components/PromotionProjectEnvironmentsRow.vue
+  s_642105d4fc9ac1::t_401cfc2d093e05 1-22,26-73
+  s_642105d4fc9ac1::t_429594f0204829 23-25
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_642105d4fc9ac1::t_401cfc2d093e05 5153-5157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40d651d0595de35a8190849654cddba07d5e59f1",
+  "prompts": {},
+  "sessions": {
+    "s_642105d4fc9ac1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3105821a-cdc6-4e46-a052-c4ce5473b260",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
