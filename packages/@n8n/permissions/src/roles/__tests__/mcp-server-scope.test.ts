@@ -58,7 +58,17 @@ describe('mcpServer scopes', () => {
 		expect([...PROJECT_CUSTOM_ROLE_OPERATIONS.mcpServer].sort()).toEqual(
 			['connect', 'create', 'delete', 'list', 'read', 'update'].sort(),
 		);
-		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.mcpServer).toBeDefined();
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.mcpServer).toEqual({
+			Use: ['mcpServer:list', 'mcpServer:read', 'mcpServer:connect'],
+			Manage: [
+				'mcpServer:list',
+				'mcpServer:read',
+				'mcpServer:connect',
+				'mcpServer:create',
+				'mcpServer:update',
+				'mcpServer:delete',
+			],
+		});
 		for (const scope of allScopes) {
 			expect(scopeInformation[scope as keyof typeof scopeInformation]?.displayName).toEqual(
 				expect.any(String),

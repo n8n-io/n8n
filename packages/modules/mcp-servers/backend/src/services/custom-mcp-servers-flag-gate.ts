@@ -3,24 +3,25 @@ import { PostHogClient } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 
-type FlagUser = Parameters<PostHogClient['getFeatureFlags']>[0];
-
 /**
- * Whether custom MCP servers are on for a user. The PostHog flag rolls out by instance and has
- * the variants `control` and `test`. Only `test` turns the feature on. `PostHogClient` caches per
- * user and applies the local overrides, so this gate needs no cache of its own.
+ * Whether custom MCP servers are on for this instance. The PostHog flag rolls out by instance
+ * and has the variants `control` and `test`. Only `test` turns the feature on.
+ *
+ * The gate reads the flag for the instance, not for a user, because some callers have no user:
+ * the protected resource metadata and the consent screen. `PostHogClient` caches the instance
+ * answer and applies the local overrides, so this gate needs no cache of its own.
  */
 @Service()
 export class CustomMcpServersFlagGate {
 	constructor(private readonly postHog: PostHogClient) {}
 
-	async isEnabled(user: FlagUser): Promise<boolean> {
-		const flags = await this.postHog.getFeatureFlags(user);
-		return flags?.[CUSTOM_MCP_SERVERS_FLAG] === CUSTOM_MCP_SERVERS_FLAG_VARIANT;
+	async isEnabled(): Promise<boolean> {
+		const variant = await this.postHog.getFeatureFlagForInstance(CUSTOM_MCP_SERVERS_FLAG);
+		return variant === CUSTOM_MCP_SERVERS_FLAG_VARIANT;
 	}
 
 	// 404, not 403: a surface behind a flag that is off looks unknown, not forbidden.
-	async assertEnabled(user: FlagUser): Promise<void> {
-		if (!(await this.isEnabled(user))) throw new NotFoundError('Not found');
+	async assertEnabled(): Promise<void> {
+		if (!(await this.isEnabled())) throw new NotFoundError('Not found');
 	}
 }
