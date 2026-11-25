@@ -10,7 +10,7 @@ import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-import { McpServerTool } from './mcp-server-tool.entity';
+import { McpServerTool } from './database/entities/mcp-server-tool.entity';
 
 class McpServerToolTable extends BaseRepository<McpServerTool> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

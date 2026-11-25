@@ -113,6 +113,12 @@ describe('POST /projects/:projectId/mcp-servers', () => {
 		await outsiderAgent.post(serversPath()).send(body).expect(403);
 	});
 
+	it('answers 404 for a project that does not exist, and sends no event', async () => {
+		await ownerAgent.post(serversPath('non-existing-id')).send(body).expect(404);
+
+		expect(emit).not.toHaveBeenCalledWith('mcp-server-created', expect.anything());
+	});
+
 	it('creates a server in the personal project of its owner', async () => {
 		const personal = await getPersonalProject(outsider);
 
@@ -314,6 +320,18 @@ describe('PATCH /projects/:projectId/mcp-servers/:serverId', () => {
 
 		await ownerAgent.patch(`${serversPath()}/${server.id}`).send({ name: 'X' }).expect(404);
 	});
+
+	it('answers 404 for a server of another project and an id that is not a UUID', async () => {
+		const other = await createTeamProject();
+		const elsewhere = await createServer({ name: 'Elsewhere', slug: 'elsewhere' }, other.id);
+		const projectAdmin = agentFor('project:admin');
+
+		await projectAdmin.patch(`${serversPath()}/${elsewhere.id}`).send({ name: 'X' }).expect(404);
+		await projectAdmin.patch(`${serversPath()}/not-a-uuid`).send({ name: 'X' }).expect(404);
+
+		const response = await ownerAgent.get(`${serversPath(other.id)}/${elsewhere.id}`).expect(200);
+		expect(response.body.data.name).toBe('Elsewhere');
+	});
 });
 
 describe('DELETE /projects/:projectId/mcp-servers/:serverId', () => {
@@ -342,6 +360,18 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId', () => {
 
 		await agentFor(role).delete(`${serversPath()}/${server.id}`).expect(status);
 	});
+
+	it('answers 404 for a server of another project and an id that is not a UUID', async () => {
+		const other = await createTeamProject();
+		const elsewhere = await createServer({ name: 'Elsewhere', slug: 'elsewhere' }, other.id);
+		const projectAdmin = agentFor('project:admin');
+
+		await projectAdmin.delete(`${serversPath()}/${elsewhere.id}`).expect(404);
+		await projectAdmin.delete(`${serversPath()}/not-a-uuid`).expect(404);
+
+		await ownerAgent.get(`${serversPath(other.id)}/${elsewhere.id}`).expect(200);
+		expect(emit).not.toHaveBeenCalledWith('mcp-server-deleted', expect.anything());
+	});
 });
 
 describe('with the flag off', () => {
@@ -357,5 +387,31 @@ describe('with the flag off', () => {
 		await ownerAgent.get(path).expect(404);
 		await ownerAgent.patch(path).send({ name: 'X' }).expect(404);
 		await ownerAgent.delete(path).expect(404);
+	});
+
+	it('changes nothing and sends no event', async () => {
+		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+		emit.mockClear();
+		setFlag(false);
+		const path = `${serversPath()}/${server.id}`;
+
+		await ownerAgent.post(serversPath()).send({ name: 'X', slug: 'x' }).expect(404);
+		await ownerAgent.patch(path).send({ name: 'X' }).expect(404);
+		await ownerAgent.delete(path).expect(404);
+		setFlag(true);
+
+		const slug = await ownerAgent.get(`${serversPath()}/slug-available`).query({ slug: 'x' });
+		expect(slug.body.data).toEqual({ available: true, reason: null });
+		expect((await ownerAgent.get(path).expect(200)).body.data.name).toBe('Sales tools');
+		expect(emit).not.toHaveBeenCalledWith('mcp-server-created', expect.anything());
+		expect(emit).not.toHaveBeenCalledWith('mcp-server-deleted', expect.anything());
+	});
+
+	// The scope check and the body check run before the flag gate.
+	it('answers a person without the scope with 403 and an invalid slug with 400', async () => {
+		setFlag(false);
+
+		await agentFor('project:viewer').post(serversPath()).send({ name: 'X', slug: 'x' }).expect(403);
+		await ownerAgent.post(serversPath()).send({ name: 'X', slug: 'Not A Slug' }).expect(400);
 	});
 });

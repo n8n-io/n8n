@@ -12,10 +12,10 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { McpServerActor } from './mcp-server-events';
-import type { McpServerTool } from './mcp-server-tool.entity';
+import type { McpServerTool } from './database/entities/mcp-server-tool.entity';
 import { McpServerToolRepository, type NewWorkflowTool } from './mcp-server-tool.repository';
-import type { McpServer } from './mcp-server.entity';
-import { McpServerRepository } from './mcp-server.repository';
+import type { McpServer } from './database/entities/mcp-server.entity';
+import { McpServerRepository } from './database/repositories/mcp-server.repository';
 import { toToolName, uniqueToolName } from './tools/tool-name';
 import { WorkflowToolPort, type WorkflowToolRefusal } from './tools/workflow-tool-port';
 

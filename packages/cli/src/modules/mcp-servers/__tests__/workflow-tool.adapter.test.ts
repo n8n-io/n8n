@@ -44,9 +44,9 @@ function setupList(projectWorkflows: WorkflowEntity[]) {
 }
 
 describe('WorkflowToolAdapter', () => {
-	it('reports a callable workflow without giving the workflow to the module', async () => {
+	it('reports a callable workflow', async () => {
 		const { runner, adapter } = setup();
-		runner.check.mockResolvedValue({ callable: true, workflow: new WorkflowEntity() });
+		runner.check.mockResolvedValue({ callable: true });
 
 		await expect(adapter.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({ callable: true });
 		expect(runner.check).toHaveBeenCalledWith(PROJECT_ID, WORKFLOW_ID);

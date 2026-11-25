@@ -11,7 +11,7 @@ const builderEvents = [
 ];
 const clientEvents = [
 	events.USER_CONNECTED_TO_CUSTOM_MCP_SERVER,
-	events.CUSTOM_MCP_SERVER_TOOL_CALLED,
+	events.USER_CALLED_CUSTOM_MCP_SERVER_TOOL,
 ];
 
 describe('custom MCP server events', () => {
@@ -55,7 +55,7 @@ describe('custom MCP server events', () => {
 
 	it('accepts a tool call from a client', () => {
 		expect(
-			getEventValidationError(events.CUSTOM_MCP_SERVER_TOOL_CALLED, {
+			getEventValidationError(events.USER_CALLED_CUSTOM_MCP_SERVER_TOOL, {
 				server_id: 'server-1',
 				user_id: 'user-1',
 				client_name: 'Claude Code',

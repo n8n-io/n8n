@@ -29,7 +29,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useCreateMcpServerDialog } from '../composables/useCreateMcpServerDialog';
@@ -66,6 +66,10 @@ const canCreateInProject = computed(
 );
 const finalSlug = computed(() => mcpServerSlugFromName(slug.value));
 const slugError = computed(() => {
+	// A name with no Latin letter or digit, such as "日本語", makes no slug.
+	if (name.value.trim() !== '' && finalSlug.value === '') {
+		return i18n.baseText('mcpServers.create.url.empty');
+	}
 	if (availability.value?.reason === 'taken') return i18n.baseText('mcpServers.create.url.taken');
 	if (availability.value?.reason === 'reserved') {
 		return i18n.baseText('mcpServers.create.url.reserved');
@@ -100,11 +104,17 @@ watch(name, (value) => {
 	if (!slugEdited.value) slug.value = mcpServerSlugFromName(value);
 });
 
-function onSlugInput(value: string) {
+async function onSlugInput(value: string) {
 	// The input also echoes a value that the name wrote. Only a different value is an edit.
 	if (value === slug.value) return;
 	slugEdited.value = true;
-	slug.value = mcpServerSlugInput(value);
+	const cleaned = mcpServerSlugInput(value);
+	// An unchanged slug does not render again, so the input keeps the dropped characters.
+	if (cleaned === slug.value) {
+		slug.value = value;
+		await nextTick();
+	}
+	slug.value = cleaned;
 }
 
 async function checkSlug() {
