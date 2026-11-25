@@ -481,6 +481,7 @@ describe('AgentChatPanel', () => {
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
 			disabled: boolean;
+			inputDraft: string;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -3559,7 +3560,6 @@ describe('AgentChatPanel', () => {
 				id: 'existing-1',
 				role: 'user',
 				content: 'Earlier message',
-				timestamp: new Date(),
 			},
 		];
 		const wrapper = mountPanel({ inputDraft: '' });
