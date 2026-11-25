@@ -7,6 +7,10 @@ import path from 'path';
 
 import { ALPHABET } from './constants';
 import { UserError } from '@n8n/errors';
+import {
+	isSafeObjectProperty,
+	unsafeObjectProperties,
+} from '@n8n/utils/object/is-safe-object-property';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 
@@ -354,49 +358,7 @@ export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is 
 	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
 }
 
-/**
- * Names rejected for static and literal member access by the expression
- * transform, and for runtime-built keys by each engine's runtime sanitizer.
- * Exported so other engine runtimes can be checked against it
- * (test/expression-sanitize-parity.test.ts).
- */
-export const unsafeObjectProperties: ReadonlySet<string> = new Set([
-	'__proto__',
-	'prototype',
-	'constructor',
-	'getPrototypeOf',
-	'setPrototypeOf',
-	'getOwnPropertyDescriptor',
-	'getOwnPropertyDescriptors',
-	'defineProperty',
-	'defineProperties',
-	'mainModule',
-	'binding',
-	'_linkedBinding',
-	'_load',
-	'prepareStackTrace',
-	'__lookupGetter__',
-	'__lookupSetter__',
-	'__defineGetter__',
-	'__defineSetter__',
-	'caller',
-	'callee',
-	'arguments',
-	'getBuiltinModule',
-	'dlopen',
-	'execve',
-	'loadEnvFile',
-]);
-
-/**
- * Checks if a property key is safe to use on an object, preventing prototype pollution.
- * setting untrusted properties can alter the object's prototype chain and introduce vulnerabilities.
- *
- * @see setSafeObjectProperty
- */
-export function isSafeObjectProperty(property: string) {
-	return !unsafeObjectProperties.has(property);
-}
+export { isSafeObjectProperty, unsafeObjectProperties };
 
 /**
  * Checks if a value can be used as an own key of a plain object: it has to be a string,

@@ -13,6 +13,7 @@ export { QuickJsBridge } from './bridge/quickjs-bridge';
 export type {
 	IExpressionEvaluator,
 	EvaluatorConfig,
+	ExpressionEvaluationOutcome,
 	WorkflowData,
 	EvaluateOptions,
 	ExecuteOptions,
@@ -54,3 +55,27 @@ export { ExpressionExtensionError } from './extensions/expression-extension-erro
 // Runtime sanitizer applied to property keys built at runtime. Exported so
 // hosts can verify their transform-time denylist matches the runtime one.
 export { __sanitize } from './runtime/safe-globals';
+
+// Native expression evaluation
+export {
+	CALLABLE_METHODS,
+	EXTENSION_METHODS,
+	ITERATOR_METHODS,
+	MAX_DEPTH,
+	MAX_RESULT_LENGTH,
+	MAX_STEPS,
+	MAX_WORK,
+	RESERVED_NAMES,
+	TIME_METHODS,
+	canVerifyNatively,
+	evaluateNatively,
+	isNativelyEvaluable,
+	nativeSkeleton,
+	NativeVerifier,
+} from './native-evaluation';
+export type {
+	NativeEvaluationOptions,
+	NativeEvaluationResult,
+	NativeFallbackReason,
+	NativeVerifyMismatch,
+} from './native-evaluation';

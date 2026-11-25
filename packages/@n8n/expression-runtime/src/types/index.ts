@@ -14,6 +14,7 @@ export { RuntimeError } from './runtime';
 // Evaluator types
 export type {
 	EvaluatorConfig,
+	ExpressionEvaluationOutcome,
 	IExpressionEvaluator,
 	WorkflowData,
 	EvaluateOptions,

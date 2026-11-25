@@ -1,7 +1,7 @@
-import type { namedTypes } from 'ast-types';
+import type { astNamedTypes as namedTypes } from '@n8n/tournament';
 import { DateTime } from 'luxon';
 
-import { ExpressionExtensions } from '../../extensions';
+import { EXTENSION_OBJECTS } from '../extensions/extend';
 
 // The closed subset grammar, its operator and method allowlists, and the
 // limits the parser and the evaluator share. See index.ts for the overview.
@@ -241,15 +241,14 @@ export const CALLABLE_METHODS = new Set([
 	...ARRAY_METHODS.keys(),
 ]);
 
-// Expression extensions the native path hands to extend(), the host dispatch
-// the legacy engine calls for them too. The vm and quickjs engines run the
-// copy under @n8n/expression-runtime inside the isolate; the two copies are
-// kept equal except where a Web API is unavailable in the isolate, and those
-// names are excluded here. Pure functions of JSON receiver and arguments,
-// linear in the receiver, so the content weight charged below bounds them.
-// The runtime receiver still picks the implementation (a date string's
-// isEmpty() is the Date extension's), and a non-JSON result bails to the
-// engine.
+// Expression extensions the native path hands to extend(), the same dispatch
+// the vm and quickjs engines run inside the isolate. The legacy copy in
+// n8n-workflow matches it except where a Web API is unavailable in the
+// isolate, and those names are excluded here. Pure functions of JSON receiver
+// and arguments, linear in the receiver, so the content weight charged below
+// bounds them. The runtime receiver still picks the implementation (a date
+// string's isEmpty() is the Date extension's), and a non-JSON result bails to
+// the engine.
 const EXCLUDED_EXTENSIONS = new Set([
 	// A Luxon or Date value has no representation here; a random result has
 	// no parity. The Date extensions are left out as a whole below.
@@ -281,7 +280,7 @@ const EXCLUDED_EXTENSIONS = new Set([
 	'extractUrlPath',
 ]);
 export const EXTENSION_METHODS: ReadonlySet<string> = new Set(
-	ExpressionExtensions.filter((extension) => extension.typeName !== 'Date')
+	EXTENSION_OBJECTS.filter((extension) => extension.typeName !== 'Date')
 		.flatMap((extension) => Object.keys(extension.functions))
 		.filter((name) => !EXCLUDED_EXTENSIONS.has(name)),
 );

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
+import type * as ExpressionRuntime from '@n8n/expression-runtime';
+import { canVerifyNatively, nativeSkeleton } from '@n8n/expression-runtime';
+
 import { createPairedItemPagination } from './fixtures/paired-item-pagination';
 import * as Helpers from './helpers';
-import type * as NativeEvaluation from '../src/expressions/native-evaluation';
-import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
 import type { IDataObject } from '../src/interfaces';
 import { createRunExecutionData } from '../src/run-execution-data-factory';
 import type { Workflow } from '../src/workflow';
@@ -14,11 +15,11 @@ const engine = process.env.N8N_EXPRESSION_ENGINE;
 // evaluator, so the mocked copy needs fresh modules.
 async function loadWithMockedNative() {
 	vi.resetModules();
-	vi.doMock('../src/expressions/native-evaluation', async (importOriginal) => {
-		const original = await importOriginal<typeof NativeEvaluation>();
+	vi.doMock('@n8n/expression-runtime', async (importOriginal) => {
+		const original = await importOriginal<typeof ExpressionRuntime>();
 		return { ...original, evaluateNatively: vi.fn(original.evaluateNatively) };
 	});
-	const native = await import('../src/expressions/native-evaluation');
+	const native = await import('@n8n/expression-runtime');
 	const { Expression } = await import('../src/expression');
 	const { workflow } = await import('./ExpressionExtensions/helpers');
 	const LoggerProxy = await import('../src/logger-proxy');
@@ -54,7 +55,7 @@ describe('Expression - native evaluation verify mode', () => {
 	afterAll(async () => {
 		await modules.workflow.expression.releaseIsolate();
 		await modules.Expression.disposeExpressionEngine();
-		vi.doUnmock('../src/expressions/native-evaluation');
+		vi.doUnmock('@n8n/expression-runtime');
 	});
 
 	const evaluate = (value: string, json: IDataObject = { name: 'secret-name' }) =>

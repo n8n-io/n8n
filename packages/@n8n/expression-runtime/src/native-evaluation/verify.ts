@@ -1,12 +1,15 @@
 import { IsolateError } from '@n8n/errors';
 import isEqualWith from 'lodash/isEqualWith';
 
+import {
+	DEFAULT_BRIDGE_CONFIG,
+	type ExpressionEvaluationOutcome,
+	type Logger,
+	type WorkflowData,
+} from '../types';
 import { getCompiled } from './compiler';
+import { isObj } from './grammar';
 import { readsClockOrParameter, skeletonOf } from './skeleton';
-import type { ExpressionEvaluationOutcome } from '../../expression';
-import type { IWorkflowDataProxyData } from '../../interfaces';
-import * as LoggerProxy from '../../logger-proxy';
-import { isObject } from '../../utils';
 
 // Each mismatch shape is reported once per process, up to this many, so a
 // common mismatch cannot spend the Sentry quota.
@@ -16,6 +19,15 @@ const MAX_REPORTED_SHAPES = 1000;
 const MAX_COMPARED_PAIRS = 10_000;
 
 class ComparisonTooLargeError extends Error {}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	if (value === null || typeof value !== 'object') return false;
+	if (Array.isArray(value)) return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+
+	const prototype: unknown = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
 
 /**
  * Whether verify mode can compare the expression: it fits the native subset
@@ -62,6 +74,7 @@ export class NativeVerifier {
 		private readonly sample: number,
 		private readonly report: (mismatch: NativeVerifyMismatch) => void,
 		private readonly canReport: () => boolean = () => true,
+		private readonly logger: Pick<Logger, 'warn'> = DEFAULT_BRIDGE_CONFIG.logger,
 	) {}
 
 	/** Draws whether this evaluation is part of the sample. False while reports cannot be sent. */
@@ -75,7 +88,7 @@ export class NativeVerifier {
 		engineName: NativeVerifyMismatch['engine'],
 		native: ExpressionEvaluationOutcome,
 		engine: ExpressionEvaluationOutcome,
-		data: IWorkflowDataProxyData,
+		data: WorkflowData,
 	): void {
 		try {
 			if (
@@ -97,7 +110,7 @@ export class NativeVerifier {
 				if (this.reportedShapes.size >= MAX_REPORTED_SHAPES) return;
 				this.reportedShapes.add(key);
 				if (this.reportedShapes.size === MAX_REPORTED_SHAPES) {
-					LoggerProxy.warn(
+					this.logger.warn(
 						'Native evaluation verify mode reached its report limit and stops reporting new differences',
 					);
 				}
@@ -135,7 +148,7 @@ function compareValues(a: unknown, b: unknown, maxComparedPairs = MAX_COMPARED_P
 			throw new ComparisonTooLargeError();
 		}
 		// QuickJS drops object keys that hold undefined from its results.
-		if (isObject(x) && isObject(y)) {
+		if (isPlainObject(x) && isPlainObject(y)) {
 			return sameDefinedEntries(x, y, compare);
 		}
 		return undefined;
@@ -191,9 +204,11 @@ function prototypeName(value: object): string {
 	return typeof constructor === 'function' ? constructor.name : 'object';
 }
 
-function workflowIdOf(data: IWorkflowDataProxyData): string | undefined {
+function workflowIdOf(data: WorkflowData): string | undefined {
 	try {
-		const id: unknown = data.$workflow?.id;
+		const workflow = data.$workflow;
+		if (!isObj(workflow)) return undefined;
+		const id: unknown = workflow.id;
 		return typeof id === 'string' ? id : undefined;
 	} catch {
 		return undefined;

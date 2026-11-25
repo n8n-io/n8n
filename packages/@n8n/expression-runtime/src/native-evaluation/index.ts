@@ -1,3 +1,4 @@
+import type { WorkflowData } from '../types';
 import { getCompiled, type CompiledExpression } from './compiler';
 import {
 	EngineFallbackError,
@@ -7,18 +8,27 @@ import {
 	type NativeFallbackReason,
 } from './evaluator';
 import { MAX_DEPTH, MAX_RESULT_LENGTH, hasOwn, isArray, isObj } from './grammar';
-import type { IWorkflowDataProxyData } from '../../interfaces';
 
 const { getPrototypeOf, keys } = Object;
 
 export {
 	CALLABLE_METHODS,
+	EXTENSION_METHODS,
 	ITERATOR_METHODS,
+	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 	MAX_WORK,
+	RESERVED_NAMES,
 	TIME_METHODS,
 } from './grammar';
+export type { NativeFallbackReason } from './evaluator';
+export {
+	canVerifyNatively,
+	nativeSkeleton,
+	NativeVerifier,
+	type NativeVerifyMismatch,
+} from './verify';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
 // the expression grammar.
@@ -56,6 +66,23 @@ export {
 // expressions, evaluator.ts interprets them, and this file runs them.
 // skeleton.ts and verify.ts serve verify mode only.
 
+export interface NativeEvaluationOptions {
+	/**
+	 * Decides whether an error thrown during chunk evaluation should propagate
+	 * out of `evaluateNatively` rather than be swallowed as `undefined`.
+	 *
+	 * Defaults to rethrowing runtime expression errors and any `Error` named
+	 * `'ExpressionError'` or `'ExpressionExtensionError'`. Callers with their own
+	 * error classes (such as `n8n-workflow`) can pass an `instanceof` predicate
+	 * so minified builds still propagate those errors.
+	 */
+	shouldRethrowError?: (error: unknown) => boolean;
+}
+
+export type NativeEvaluationResult =
+	| { handled: true; value: unknown }
+	| { handled: false; fallbackReason?: NativeFallbackReason };
+
 /** Does the expression (leading `=` stripped) fit the native subset? */
 export function isNativelyEvaluable(expression: string): boolean {
 	return getCompiled(expression) !== null;
@@ -69,13 +96,14 @@ export function isNativelyEvaluable(expression: string): boolean {
  */
 export function evaluateNatively(
 	expression: string,
-	data: IWorkflowDataProxyData,
-): { handled: true; value: unknown } | { handled: false; fallbackReason?: NativeFallbackReason } {
+	data: WorkflowData,
+	options?: NativeEvaluationOptions,
+): NativeEvaluationResult {
 	const compiled = getCompiled(expression);
 	if (compiled === null) return { handled: false };
 
 	try {
-		const value = copyResult(evalCompiled(compiled, data));
+		const value = copyResult(evalCompiled(compiled, data, options));
 		return { handled: true, value };
 	} catch (error) {
 		if (error instanceof EngineFallbackError) {
@@ -141,8 +169,12 @@ function copyResult(value: unknown): unknown {
 	return copy(value, 0);
 }
 
-function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
-	const env = new Env(data);
+function evalCompiled(
+	compiled: CompiledExpression,
+	data: WorkflowData,
+	options?: NativeEvaluationOptions,
+): unknown {
+	const env = new Env(data, options?.shouldRethrowError);
 
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];

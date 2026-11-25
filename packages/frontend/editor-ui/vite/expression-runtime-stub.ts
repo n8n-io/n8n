@@ -35,6 +35,23 @@ export {
 	errorOriginOf,
 } from '../../../@n8n/expression-runtime/src/evaluator/error-classification';
 
+export {
+	CALLABLE_METHODS,
+	EXTENSION_METHODS,
+	ITERATOR_METHODS,
+	MAX_DEPTH,
+	MAX_RESULT_LENGTH,
+	MAX_STEPS,
+	MAX_WORK,
+	RESERVED_NAMES,
+	TIME_METHODS,
+	canVerifyNatively,
+	evaluateNatively,
+	isNativelyEvaluable,
+	nativeSkeleton,
+	NativeVerifier,
+} from '../../../@n8n/expression-runtime/src/native-evaluation';
+
 export { DEFAULT_BRIDGE_CONFIG, RuntimeError } from '../../../@n8n/expression-runtime/src/types';
 
 export class IsolatedVmBridge {
@@ -49,6 +66,7 @@ export { IsolateError } from '../../../@n8n/errors/src/isolate.error';
 export type {
 	IExpressionEvaluator,
 	EvaluatorConfig,
+	ExpressionEvaluationOutcome,
 	WorkflowData,
 	EvaluateOptions,
 	RuntimeBridge,
@@ -60,3 +78,10 @@ export type {
 	LogsAPI,
 	ExecuteOptions,
 } from '../../../@n8n/expression-runtime/src/types';
+
+export type {
+	NativeEvaluationOptions,
+	NativeEvaluationResult,
+	NativeFallbackReason,
+	NativeVerifyMismatch,
+} from '../../../@n8n/expression-runtime/src/native-evaluation';

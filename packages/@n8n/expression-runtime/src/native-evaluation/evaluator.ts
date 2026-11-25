@@ -1,9 +1,8 @@
 import { DateTime } from 'luxon';
 
-import { ExpressionExtensionError } from '../../errors/expression-extension.error';
-import { ExpressionError } from '../../errors/expression.error';
-import { extend } from '../../extensions';
-import type { IWorkflowDataProxyData } from '../../interfaces';
+import { ExpressionExtensionError } from '../extensions/expression-extension-error';
+import { extend } from '../extensions/extend';
+import { ExpressionError, type WorkflowData } from '../types';
 import {
 	ARRAY_METHODS,
 	EXTENSION_METHODS,
@@ -33,6 +32,16 @@ import {
 // the grammar stops compilation until it is handled here.
 
 /**
+ * Default error filter for chunk evaluation, matching the isolate `E()`
+ * handler: rethrow expression errors and swallow everything else.
+ */
+const defaultShouldRethrowError = (error: unknown): boolean =>
+	error instanceof ExpressionError ||
+	error instanceof ExpressionExtensionError ||
+	(error instanceof Error &&
+		(error.name === 'ExpressionError' || error.name === 'ExpressionExtensionError'));
+
+/**
  * One evaluation's state: the data proxy, the value bound to the callback
  * parameter while a body runs, and the step and work budgets spent so far.
  * Only one callback is ever in scope (a nested one is unrepresentable), so a
@@ -48,7 +57,10 @@ export class Env {
 
 	readonly parameters = new Map<string | number, unknown>();
 
-	constructor(readonly data: IWorkflowDataProxyData) {}
+	constructor(
+		readonly data: WorkflowData,
+		readonly shouldRethrowError: (error: unknown) => boolean = defaultShouldRethrowError,
+	) {}
 
 	charge(units: number): void {
 		this.work += units;
@@ -458,7 +470,7 @@ function evalArgs(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 }
 
 /**
- * An allowlisted extension runs through extend(), the same host dispatch the
+ * An allowlisted extension runs through extend(), the same dispatch the
  * engines call. extendSyntax rewrites the call into that dispatch whatever
  * the receiver holds: an own property does not shadow it, and a missing
  * receiver is extend()'s own error, not a TypeError. Every extension is at
@@ -566,8 +578,17 @@ function evalTimeRead(root: unknown, fn: NativeMethod | undefined): unknown {
 
 function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
 	if (node.ref === 'input') return env.data.$input;
-	if (node.ref === 'legacy') return env.data.$node[node.name];
+	if (node.ref === 'legacy') {
+		const nodes = env.data.$node;
+		if (!isObj(nodes)) {
+			throw new TypeError(`Cannot read properties of ${toStr(nodes)} (reading '${node.name}')`);
+		}
+		return nodes[node.name];
+	}
 
+	if (typeof env.data.$ !== 'function') {
+		throw new TypeError('env.data.$ is not a function');
+	}
 	return env.data.$(node.name);
 }
 
@@ -676,8 +697,8 @@ export function evalChunk(node: SimpleNode, env: Env): unknown {
 	} catch (error) {
 		const rethrow =
 			error instanceof EngineFallbackError ||
-			error instanceof ExpressionError ||
-			error instanceof ExpressionExtensionError;
+			error instanceof ExpressionExtensionError ||
+			env.shouldRethrowError(error);
 
 		if (rethrow) throw error;
 

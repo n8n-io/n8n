@@ -9,14 +9,13 @@
 // corpus cannot enumerate: -0, empty strings, nulls in arithmetic, unicode,
 // odd method arguments. Runs once per engine project (vitest.config.ts).
 
+import { CALLABLE_METHODS, EXTENSION_METHODS, ITERATOR_METHODS } from '@n8n/expression-runtime';
 import fc from 'fast-check';
 
 import * as Helpers from './helpers';
 import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
-import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
-import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
 import { Workflow } from '../src/workflow';
 
 // One pre-existing, flag-independent quickjs bridge behaviour is kept out of

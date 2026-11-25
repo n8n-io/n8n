@@ -1,15 +1,15 @@
 import type { ObservabilityProvider } from '@n8n/expression-runtime';
-import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
+import {
+	evaluateNatively,
+	EXPRESSION_METRICS,
+	MAX_DEPTH,
+	MAX_RESULT_LENGTH,
+	MAX_STEPS,
+} from '@n8n/expression-runtime';
 import { mock } from 'vitest-mock-extended';
 
 import { workflow } from './ExpressionExtensions/helpers';
 import { Expression } from '../src/expression';
-import {
-	evaluateNatively,
-	MAX_RESULT_LENGTH,
-	MAX_STEPS,
-} from '../src/expressions/native-evaluation';
-import { MAX_DEPTH } from '../src/expressions/native-evaluation/grammar';
 import type { IDataObject } from '../src/interfaces';
 
 const engine = process.env.N8N_EXPRESSION_ENGINE as 'vm' | 'legacy' | 'quickjs';

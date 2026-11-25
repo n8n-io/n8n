@@ -219,6 +219,14 @@ export interface WorkflowData {
 }
 
 /**
+ * What one engine did with one expression. `errorClass` names the failure without its message.
+ * `errorOrigin` tells where a QuickJS failure started, when the bridge knows it.
+ */
+export type ExpressionEvaluationOutcome =
+	| { ok: true; value: unknown }
+	| { ok: false; error: unknown; errorClass: string; errorOrigin?: string };
+
+/**
  * Options for evaluate().
  *
  * Note: Slice 1 is minimal. Tournament options will be added later.
