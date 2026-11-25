@@ -674,6 +674,14 @@ export class AgentExecutionOrchestratorService {
 		if (await this.resumeBackgroundForChat(resume)) return;
 		const checkpoint = await this.loadResumeCheckpoint(resume);
 		const simulationSession = await resume.simulation?.(checkpoint.memoryScope.threadId);
+		// A test chat never resumes live. A caller that resolves no session gets an error instead.
+		if (
+			!simulationSession &&
+			(await this.agentExecutionService.findThreadById(checkpoint.memoryScope.threadId))
+				?.testChat === true
+		) {
+			throw new UserError('This test chat can only resume as a test run');
+		}
 		// n8n Chat has one canonical source; the caller doesn't need to pass it.
 		const run = {
 			...resume,
