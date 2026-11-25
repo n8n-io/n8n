@@ -63,6 +63,45 @@ export class KnowledgeCollectionRepository {
 	}
 
 	/**
+	 * The shared collections that the agent can search, by name. In Phase 1 an
+	 * agent can search a collection when it has the collection and its project
+	 * owns it. The agent link alone gives no access.
+	 */
+	async findUsableByAgent(
+		agentId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<KnowledgeCollection[]> {
+		return await this.usableByAgentQuery(agentId, projectId, ctx)
+			.orderBy('collection.name', 'ASC')
+			.addOrderBy('collection.id', 'ASC')
+			.getMany();
+	}
+
+	/** Whether the agent can search at least one shared collection. Same rule as `findUsableByAgent`. */
+	async hasUsableByAgent(
+		agentId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.usableByAgentQuery(agentId, projectId, ctx).getExists();
+	}
+
+	private usableByAgentQuery(agentId: string, projectId: string, ctx: OperationContext) {
+		return this.table
+			.managerFor(ctx)
+			.createQueryBuilder(KnowledgeCollection, 'collection')
+			.innerJoin(
+				AgentKnowledgeDependency,
+				'dependency',
+				'dependency.knowledgeCollectionId = collection.id AND dependency.agentId = :agentId',
+				{ agentId },
+			)
+			.where('collection.kind = :kind', { kind: 'shared' })
+			.andWhere('collection.projectId = :projectId', { projectId });
+	}
+
+	/**
 	 * Inserts a shared collection and the owner row of its home project, in one
 	 * transaction: a shared collection has exactly one owner row.
 	 */

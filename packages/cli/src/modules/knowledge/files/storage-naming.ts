@@ -49,6 +49,29 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 	}
 }
 
+/** A mirror path has at most a collection directory and a file name. */
+const MAX_MIRROR_PATH_SEGMENTS = 2;
+
+/**
+ * A mirror path is the name of a file of the agent, or `<dir>/<name>` for a
+ * file of a collection. Each segment is checked on its own.
+ */
+export function assertKnowledgeMirrorPath(mirrorPath: string, label: string): void {
+	const segments = mirrorPath.split('/');
+	if (segments.length > MAX_MIRROR_PATH_SEGMENTS) {
+		throw new Error(`Invalid ${label} for agent knowledge storage`);
+	}
+	for (const segment of segments) {
+		assertKnowledgePathSegment(segment, label);
+	}
+}
+
+/** The directory of a mirror path, or undefined for a file at the root of the mirror. */
+export function getKnowledgeMirrorPathDir(mirrorPath: string): string | undefined {
+	const separator = mirrorPath.indexOf('/');
+	return separator === -1 ? undefined : mirrorPath.slice(0, separator);
+}
+
 function sanitizeStorageFileName(originalName: string): string {
 	const basename = path.basename(originalName);
 	const sanitized = Array.from(basename, sanitizePathCharacter).join('');

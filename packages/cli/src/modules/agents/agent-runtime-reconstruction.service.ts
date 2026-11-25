@@ -1308,20 +1308,23 @@ export class AgentRuntimeReconstructionService {
 		const { agent, agentId, projectId } = params;
 		const scope: KnowledgeConsumerScope = { kind: 'agent', projectId, agentId };
 		// Module check first, so the file repository is not touched while knowledge is off.
+		// `hasFiles` is also true for an agent whose only knowledge is a collection.
 		const hasFiles =
 			this.knowledgeAvailabilityService.isModuleActive() &&
 			(await this.knowledgeRetriever.hasFiles(scope));
 		throwIfAborted(params.abortSignal);
 		if (hasFiles) {
-			const { createKnowledgeRetrievalTools } = await import(
-				'./tools/knowledge/search-knowledge.tool.js'
-			);
+			const [{ createKnowledgeRetrievalTools }, collectionsEnabled] = await Promise.all([
+				import('./tools/knowledge/search-knowledge.tool.js'),
+				this.knowledgeAvailabilityService.isCollectionsEnabled(),
+			]);
 			throwIfAborted(params.abortSignal);
 			agent.tool(
 				createKnowledgeRetrievalTools({
 					scope,
 					retriever: this.knowledgeRetriever,
 					startToolCall: (runId, call) => this.knowledgeUsageTracker.startToolCall(runId, call),
+					collectionsEnabled,
 				}),
 			);
 		}

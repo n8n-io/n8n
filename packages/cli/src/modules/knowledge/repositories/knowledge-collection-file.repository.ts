@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { KnowledgeFile } from '../entities';
 
@@ -24,6 +24,21 @@ export class KnowledgeCollectionFileRepository {
 			// The id sort keeps the order stable when the files of one upload
 			// share the same createdAt timestamp.
 			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	/** The files of the collections, grouped by collection and in upload order. */
+	async findByCollectionIds(
+		collectionIds: string[],
+		ctx: OperationContext,
+	): Promise<KnowledgeFile[]> {
+		if (collectionIds.length === 0) {
+			return [];
+		}
+
+		return await this.table.managerFor(ctx).find(KnowledgeFile, {
+			where: { knowledgeCollectionId: In(collectionIds) },
+			order: { knowledgeCollectionId: 'ASC', createdAt: 'ASC', id: 'ASC' },
 		});
 	}
 

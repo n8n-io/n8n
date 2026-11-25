@@ -17,6 +17,7 @@ import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxProviderProxy } from '../../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../../telemetry/helpers';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
+import type { KnowledgeCollectionSourceService } from '../../retrieval/collection-source.service';
 import type { KnowledgeMirrorService } from '../../retrieval/mirror.service';
 import type { KnowledgeFileStore } from '../knowledge-file-store';
 import { KnowledgeFileService, type KnowledgeWriteRunner } from '../knowledge-file.service';
@@ -167,6 +168,7 @@ describe('KnowledgeFileService', () => {
 	let fileStore: Mocked<KnowledgeFileStore>;
 	let mirrorService: Mocked<KnowledgeMirrorService>;
 	let sandboxProviderProxy: Mocked<KnowledgeSandboxProviderProxy>;
+	let collectionSourceService: Mocked<KnowledgeCollectionSourceService>;
 	let logger: Mocked<Logger>;
 	let service: KnowledgeFileService;
 
@@ -176,6 +178,7 @@ describe('KnowledgeFileService', () => {
 			fileStore,
 			mirrorService,
 			sandboxProviderProxy,
+			collectionSourceService,
 			mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret }),
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
 			// A fresh instance keeps the defaults; the getters derive the byte limits from the overrides.
@@ -198,6 +201,8 @@ describe('KnowledgeFileService', () => {
 		fileStore.delete.mockResolvedValue(undefined);
 		mirrorService = mock<KnowledgeMirrorService>();
 		sandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
+		collectionSourceService = mock<KnowledgeCollectionSourceService>();
+		collectionSourceService.hasCollections.mockResolvedValue(false);
 		logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		service = makeService();
@@ -791,8 +796,22 @@ describe('KnowledgeFileService', () => {
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
+		expect(collectionSourceService.hasCollections).toHaveBeenCalledWith(scope);
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
+	});
+
+	it('keeps the sandbox after the final file is deleted when the scope still has a collection', async () => {
+		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
+		collectionSourceService.hasCollections.mockResolvedValue(true);
+
+		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
+
+		expect(sandboxProviderProxy.destroy).not.toHaveBeenCalled();
+		expect(mirrorService.syncMirrorInBackground).toHaveBeenCalledExactlyOnceWith(
+			scope,
+			expect.any(Function),
+		);
 	});
 
 	it('deletes the file and its blob', async () => {

@@ -196,6 +196,18 @@ export interface KnowledgeFileReference {
 	createdAt: string;
 }
 
+/**
+ * A knowledge collection that the scope can search. `dir` is the directory of
+ * its files in the mirror, so a file of the collection has the `file` value
+ * `<dir>/<name>`.
+ */
+export interface KnowledgeCollectionReference {
+	dir: string;
+	name: string;
+	description: string | null;
+	fileCount: number;
+}
+
 type KnowledgeFileIdentity = Pick<KnowledgeFileReference, 'file' | 'fileId' | 'displayName'>;
 
 export interface KnowledgeFileCitation extends KnowledgeFileIdentity {
@@ -254,6 +266,12 @@ export interface FindKnowledgeFilesResult {
 	limit: number;
 	offset: number;
 	hasMore: boolean;
+	/**
+	 * The collections the scope can search, with the directory of each. Present
+	 * only when the scope has collections, so the result of an agent without
+	 * them stays as it was.
+	 */
+	collections?: KnowledgeCollectionReference[];
 }
 
 export interface ReadKnowledgeFileRangeResult {

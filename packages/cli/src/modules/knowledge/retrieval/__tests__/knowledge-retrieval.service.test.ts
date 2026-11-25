@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxProviderProxy } from '../../knowledge-sandbox-provider-proxy';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
+import type { KnowledgeCollectionSourceService } from '../collection-source.service';
 import { KnowledgeRetrievalService } from '../knowledge-retrieval.service';
 import type { KnowledgeMirrorService } from '../mirror.service';
 import type {
@@ -17,22 +18,39 @@ describe('KnowledgeRetrievalService', () => {
 	const fileRepository = mock<KnowledgeFileRepository>();
 	const mirrorService = mock<KnowledgeMirrorService>();
 	const sandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
+	const collectionSourceService = mock<KnowledgeCollectionSourceService>();
 	const service = new KnowledgeRetrievalService(
 		fileRepository,
 		mirrorService,
 		sandboxProviderProxy,
+		collectionSourceService,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		fileRepository.hasFilesForAgent.mockResolvedValue(false);
+		collectionSourceService.hasCollections.mockResolvedValue(false);
 	});
 
-	it('answers whether the scope has files from the file repository', async () => {
+	it('answers that the scope has files from the file repository, without a collection check', async () => {
 		fileRepository.hasFilesForAgent.mockResolvedValue(true);
 
 		await expect(service.hasFiles(scope)).resolves.toBe(true);
 
 		expect(fileRepository.hasFilesForAgent).toHaveBeenCalledWith('agent-1', {});
+		expect(collectionSourceService.hasCollections).not.toHaveBeenCalled();
+	});
+
+	it('answers that a scope without files of its own has files when it has a collection', async () => {
+		collectionSourceService.hasCollections.mockResolvedValue(true);
+
+		await expect(service.hasFiles(scope)).resolves.toBe(true);
+
+		expect(collectionSourceService.hasCollections).toHaveBeenCalledWith(scope);
+	});
+
+	it('answers that a scope without files and without collections has no files', async () => {
+		await expect(service.hasFiles(scope)).resolves.toBe(false);
 	});
 
 	it('warms the sandbox when the scope has files', async () => {
@@ -43,9 +61,15 @@ describe('KnowledgeRetrievalService', () => {
 		expect(sandboxProviderProxy.warm).toHaveBeenCalledExactlyOnceWith(scope);
 	});
 
-	it('does not warm the sandbox of a scope without files', async () => {
-		fileRepository.hasFilesForAgent.mockResolvedValue(false);
+	it('warms the sandbox when the scope has a collection and no files of its own', async () => {
+		collectionSourceService.hasCollections.mockResolvedValue(true);
 
+		await service.warmSandbox(scope);
+
+		expect(sandboxProviderProxy.warm).toHaveBeenCalledExactlyOnceWith(scope);
+	});
+
+	it('does not warm the sandbox of a scope without files', async () => {
 		await service.warmSandbox(scope);
 
 		expect(sandboxProviderProxy.warm).not.toHaveBeenCalled();
@@ -56,6 +80,7 @@ describe('KnowledgeRetrievalService', () => {
 
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(fileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		expect(collectionSourceService.hasCollections).not.toHaveBeenCalled();
 	});
 
 	it('finds, searches and reads through the mirror with the scope unchanged', async () => {

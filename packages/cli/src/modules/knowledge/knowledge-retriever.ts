@@ -33,10 +33,16 @@ export interface KnowledgeRetrievalObserver {
  * inputs and outputs stay identical.
  */
 export interface KnowledgeRetriever {
-	/** Whether the scope holds any knowledge files. Consumers attach the tools only when it does. */
+	/**
+	 * Whether the scope holds any knowledge: files of its own, or a collection it
+	 * can search. Consumers attach the tools only when it does.
+	 */
 	hasFiles(scope: KnowledgeConsumerScope): Promise<boolean>;
 
-	/** Matches uploaded file names against a glob. Runs in-process, without a sandbox. */
+	/**
+	 * Matches uploaded file names against a glob. Runs in-process, without a
+	 * sandbox. The result also lists the collections of the scope, when it has any.
+	 */
 	findFiles(
 		scope: KnowledgeConsumerScope,
 		request: FindKnowledgeFilesRequest,

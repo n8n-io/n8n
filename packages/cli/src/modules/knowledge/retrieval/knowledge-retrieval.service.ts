@@ -4,6 +4,7 @@ import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgeRetrievalObserver, KnowledgeRetriever } from '../knowledge-retriever';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeCollectionSourceService } from './collection-source.service';
 import { KnowledgeMirrorService } from './mirror.service';
 import type {
 	FindKnowledgeFilesRequest,
@@ -26,10 +27,19 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly mirrorService: KnowledgeMirrorService,
 		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
+		private readonly collectionSourceService: KnowledgeCollectionSourceService,
 	) {}
 
+	/**
+	 * True when the scope has files of its own, or a collection it can search.
+	 * A collection counts also while it is empty, so that a file added to it
+	 * later reaches the agent without a change to the agent.
+	 */
 	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
+		return (
+			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
+			(await this.collectionSourceService.hasCollections(scope))
+		);
 	}
 
 	/** Boots the sandbox of the scope ahead of use. A scope without files needs no sandbox. */

@@ -18,6 +18,7 @@ import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeCollectionSourceService } from '../retrieval/collection-source.service';
 import { KnowledgeMirrorService } from '../retrieval/mirror.service';
 import { KnowledgeFileStore, type KnowledgeFileStorageReference } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
@@ -46,8 +47,9 @@ export type KnowledgeWriteRunner = <T>(write: (ctx: OperationContext) => Promise
 /**
  * Upload, listing and deletion of the knowledge files of one consumer scope.
  * An upload or a delete also refreshes the sandbox mirror of the scope, and
- * the delete of the last file removes the sandbox. The caller owns the
- * availability and ownership checks.
+ * the delete of the last file removes the sandbox, unless the scope still has
+ * a collection to search. The caller owns the availability and ownership
+ * checks.
  */
 @Service()
 export class KnowledgeFileService {
@@ -58,6 +60,7 @@ export class KnowledgeFileService {
 		private readonly fileStore: KnowledgeFileStore,
 		private readonly mirrorService: KnowledgeMirrorService,
 		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
+		private readonly collectionSourceService: KnowledgeCollectionSourceService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		private readonly config: KnowledgeConfig,
@@ -128,7 +131,11 @@ export class KnowledgeFileService {
 				});
 			});
 
-		if (await this.fileRepository.hasFilesForAgent(scope.agentId, {})) {
+		// The mirror of an agent that still searches a collection stays, without the deleted file.
+		const hasKnowledgeLeft =
+			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
+			(await this.collectionSourceService.hasCollections(scope));
+		if (hasKnowledgeLeft) {
 			this.scheduleMirrorSync(scope, writeFence);
 		} else {
 			await this.sandboxProviderProxy.destroy(scope);
