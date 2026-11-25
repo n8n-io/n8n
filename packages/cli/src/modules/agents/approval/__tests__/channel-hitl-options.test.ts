@@ -3,7 +3,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { slackHitl } from '../../integrations/platforms/slack/slack-hitl';
 import { discordHitl } from '../../integrations/platforms/discord/discord-hitl';
 
-it('combines Slack channels and users and pages only unfinished lists', async () => {
+it('fills a Slack destination page across sparse provider pages and resumes without skipping matches', async () => {
 	const httpClient = mock<HttpRequestClient>();
 	httpClient.request.mockImplementation(async (request) => {
 		const url = String(request.url);
@@ -19,8 +19,11 @@ it('combines Slack channels and users and pages only unfinished lists', async ()
 			? {
 					ok: true,
 					members: [
-						{ id: 'U2', name: 'Second reviewer' },
 						{ id: 'B1', name: 'Bot', is_bot: true },
+						...Array.from({ length: 25 }, (_, index) => ({
+							id: `U${index + 2}`,
+							name: `Reviewer ${index + 2}`,
+						})),
 					],
 				}
 			: {
@@ -35,23 +38,23 @@ it('combines Slack channels and users and pages only unfinished lists', async ()
 		query: { channel: 'slack', credentialId: 'credential', field: 'recipient', query: '' },
 	} as const;
 	const first = await slackHitl.listOptions(context);
-	expect(first.options).toEqual([
-		{ id: 'C1', name: '#approvals', kind: 'channel' },
-		{ id: 'U1', name: 'Reviewer', kind: 'user' },
+	expect(first.options.map(({ id }) => id)).toEqual([
+		'C1',
+		...Array.from({ length: 19 }, (_, index) => `U${index + 1}`),
 	]);
-	expect(first.nextCursor).toBe(JSON.stringify({ user: 'next' }));
+	expect(first.nextCursor).toBeDefined();
+	expect(httpClient.request).toHaveBeenCalledTimes(3);
 	httpClient.request.mockClear();
-	expect(
-		await slackHitl.listOptions({
-			...context,
-			query: { ...context.query, cursor: first.nextCursor },
-		}),
-	).toEqual({
-		options: [{ id: 'U2', name: 'Second reviewer', kind: 'user' }],
-		nextCursor: undefined,
+
+	const second = await slackHitl.listOptions({
+		...context,
+		query: { ...context.query, cursor: first.nextCursor },
 	});
-	expect(httpClient.request).toHaveBeenCalledOnce();
-	expect(httpClient.request).toHaveBeenCalledWith(
+	expect(second.options.map(({ id }) => id)).toEqual(
+		Array.from({ length: 7 }, (_, index) => `U${index + 20}`),
+	);
+	expect(second.nextCursor).toBeUndefined();
+	expect(httpClient.request).toHaveBeenCalledExactlyOnceWith(
 		expect.objectContaining({
 			url: expect.stringContaining('users.list?limit=200&cursor=next'),
 			disableFollowRedirect: true,
@@ -59,16 +62,18 @@ it('combines Slack channels and users and pages only unfinished lists', async ()
 	);
 });
 
-it('preserves a continuation when neither Slack list matches on this page', async () => {
+it('searches the next Slack page when the first has no matches', async () => {
 	const httpClient = mock<HttpRequestClient>();
 	httpClient.request.mockImplementation(async ({ url }) =>
-		String(url).includes('users.list')
-			? {
-					ok: true,
-					members: [{ id: 'U1', name: 'one' }],
-					response_metadata: { next_cursor: 'page-two' },
-				}
-			: { ok: true, channels: [] },
+		String(url).includes('cursor=page-two')
+			? { ok: true, members: [{ id: 'U2', name: 'two' }] }
+			: String(url).includes('users.list')
+				? {
+						ok: true,
+						members: [{ id: 'U1', name: 'one' }],
+						response_metadata: { next_cursor: 'page-two' },
+					}
+				: { ok: true, channels: [] },
 	);
 	expect(
 		await slackHitl.listOptions({
@@ -76,7 +81,7 @@ it('preserves a continuation when neither Slack list matches on this page', asyn
 			credential: { accessToken: 'test' },
 			query: { channel: 'slack', credentialId: 'credential', field: 'recipient', query: 'two' },
 		}),
-	).toEqual({ options: [], nextCursor: JSON.stringify({ user: 'page-two' }) });
+	).toEqual({ options: [{ id: 'U2', name: 'two', kind: 'user' }], nextCursor: undefined });
 });
 
 it('combines Discord text channels and people from the selected server', async () => {
@@ -134,14 +139,14 @@ it('rejects malformed destination cursors before contacting a platform', async (
 	expect(httpClient.request).not.toHaveBeenCalled();
 });
 
-it('pages Discord servers after a full page of 200 rows', async () => {
+it('pages Discord servers after a full page of 20 rows', async () => {
 	const httpClient = mock<HttpRequestClient>();
-	const fullPage = Array.from({ length: 200 }, (_, index) => ({
+	const fullPage = Array.from({ length: 20 }, (_, index) => ({
 		id: String(index + 1),
 		name: `Server ${index + 1}`,
 	}));
 	httpClient.request.mockImplementation(async ({ url }) =>
-		String(url).includes('after=200') ? [{ id: '201', name: 'Last server' }] : fullPage,
+		String(url).includes('after=20') ? [{ id: '21', name: 'Last server' }] : fullPage,
 	);
 	const context = {
 		httpClient,
@@ -150,17 +155,17 @@ it('pages Discord servers after a full page of 200 rows', async () => {
 	} as const;
 
 	const first = await discordHitl.listOptions(context);
-	expect(first.options).toHaveLength(200);
-	expect(first.nextCursor).toBe('200');
+	expect(first.options).toHaveLength(20);
+	expect(first.nextCursor).toBe('20');
 
 	const second = await discordHitl.listOptions({
 		...context,
 		query: { ...context.query, cursor: first.nextCursor },
 	});
-	expect(second).toEqual({ options: [{ id: '201', name: 'Last server' }], nextCursor: undefined });
+	expect(second).toEqual({ options: [{ id: '21', name: 'Last server' }], nextCursor: undefined });
 	expect(httpClient.request).toHaveBeenLastCalledWith(
 		expect.objectContaining({
-			url: 'https://discord.com/api/v10/users/@me/guilds?limit=200&after=200',
+			url: 'https://discord.com/api/v10/users/@me/guilds?limit=20&after=20',
 		}),
 	);
 });
@@ -201,6 +206,47 @@ it('returns Discord channels when the bot cannot list server members', async () 
 			},
 		}),
 	).toEqual({ options: [{ id: '3', name: '#approvals', kind: 'channel' }], nextCursor: undefined });
+});
+
+it('searches Discord members by name without listing server members', async () => {
+	const httpClient = mock<HttpRequestClient>();
+	httpClient.request.mockImplementation(async ({ url }) => {
+		const request = new URL(String(url));
+		if (request.pathname.endsWith('/members'))
+			throw Object.assign(new Error('Missing Access'), { response: { status: 403 } });
+		if (request.pathname.endsWith('/members/search'))
+			return [
+				{ nick: 'On-call reviewer', user: { id: '1', username: 'alex' } },
+				{ user: { id: '2', username: 'alex-bot', bot: true } },
+			];
+		return [{ id: '3', name: 'approvals', type: 0 }];
+	});
+	const context = {
+		httpClient,
+		credential: { botToken: 'test' },
+		query: {
+			channel: 'discord',
+			credentialId: 'credential',
+			field: 'recipient',
+			guildId: '42',
+			query: '',
+		},
+	} as const;
+
+	expect(
+		await discordHitl.listOptions({ ...context, query: { ...context.query, query: '@Alex' } }),
+	).toEqual({
+		options: [{ id: '1', name: 'On-call reviewer', kind: 'user' }],
+		nextCursor: undefined,
+	});
+	expect(httpClient.request).toHaveBeenCalledWith(
+		expect.objectContaining({
+			url: 'https://discord.com/api/v10/guilds/42/members/search?limit=10&query=alex',
+		}),
+	);
+	expect(httpClient.request).not.toHaveBeenCalledWith(
+		expect.objectContaining({ url: expect.stringContaining('/members?') }),
+	);
 });
 
 it('fails the Discord lookup on other member errors', async () => {
