@@ -54,10 +54,10 @@ export type EngineRole = (typeof ENGINE_ROLES)[number];
 export interface EngineRuntimeOptions {
 	/**
 	 * The roles this process runs. Defaults to all of them. `api` serves `/api`,
-	 * `orchestrator` consumes the orchestration queue and runs reconciliation,
-	 * and `step-worker` consumes the step queue and runs the wait sweeper. Every
-	 * role serves `/healthz`. Only processes on shared queues can split the roles
-	 * between them.
+	 * `orchestrator` consumes the orchestration queue and runs reconciliation and
+	 * the retention sweeper, and `step-worker` consumes the step queue and runs
+	 * the wait sweeper. Every role serves `/healthz`. Only processes on shared
+	 * queues can split the roles between them.
 	 */
 	roles?: readonly EngineRole[];
 	/** The data plane database, already initialized and migrated. */
