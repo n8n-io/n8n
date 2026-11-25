@@ -796,6 +796,10 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							:active="group.active || group.awaitingInput"
 							:awaiting-input="group.awaitingInput"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="[
+								$style.thinkingBlock,
+								{ [$style.thinkingBlockLive]: group.active || group.awaitingInput },
+							]"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -1045,6 +1049,10 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							:active="isThinkingActive(group.message)"
 							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="[
+								$style.thinkingBlock,
+								{ [$style.thinkingBlockLive]: isThinkingActive(group.message) },
+							]"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -1261,7 +1269,31 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	color: var(--text-color--danger);
 }
 
+/* Takes the row of the thinking header that replaces it, so the dots have the
+   same space above and below. */
 .typingIndicator {
-	margin-top: var(--spacing--xs);
+	align-items: center;
+	height: calc(var(--font-size--sm) * var(--line-height--lg));
+	margin-block: var(--spacing--4xs);
+}
+
+/* The space to the next step (the list gap and the message's top padding), so
+   the line has the same space above and below. */
+.thinkingBlock {
+	margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	/* Lines up with the message text, which has the same inline padding. */
+	padding-inline: var(--spacing--sm);
+}
+
+/* A live step can end with the actions row (its margin and its small buttons)
+   above the thinking line. Keep that space, so the line does not move then. */
+.thinkingBlockLive {
+	margin-top: calc(var(--spacing--xs) + var(--height--sm));
+}
+
+/* With the actions row above, or no content above, the space is already there. */
+:has(> .messageFooter) + .thinkingBlock,
+:empty + .thinkingBlock {
+	margin-top: 0;
 }
 </style>
