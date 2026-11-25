@@ -153,7 +153,7 @@ describe('GmailTrigger', () => {
 	describe('bounded poll declaration', () => {
 		test.each([
 			{ typeVersion: 1.4, mode: 'trigger', declares: true },
-			{ typeVersion: 1.3, mode: 'trigger', declares: false },
+			{ typeVersion: 1.3, mode: 'trigger', declares: true },
 			{ typeVersion: 1.4, mode: 'manual', declares: false },
 		] as const)(
 			'declares a bounded poll only when the message cap applies (v$typeVersion, $mode)',

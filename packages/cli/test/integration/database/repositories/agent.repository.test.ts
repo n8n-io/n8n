@@ -223,11 +223,7 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
-<<<<<<< HEAD
-=======
 				mock(),
-				mock<GlobalConfig>({ tags: { disabled: false } }),
->>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 				mock<TagService>(),
 				mock<FolderService>(),
 				mock(),

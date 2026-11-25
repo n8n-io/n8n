@@ -1,10 +1,6 @@
 {
   "name": "@n8n/chat",
-<<<<<<< HEAD
   "version": "2.4.0",
-=======
-  "version": "1.49.0",
->>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run --dir=../storybook dev --initial-path=/docs/chat-chat--docs",

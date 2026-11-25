@@ -209,11 +209,7 @@ function makeService() {
 		setupCompletion,
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
-<<<<<<< HEAD
-=======
 		approvalCleanup,
-		globalConfig,
->>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 		tagService,
 		folderService,
 		licenseState,

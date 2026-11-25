@@ -192,11 +192,7 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
-<<<<<<< HEAD
-=======
 		private readonly approvalCleanup: AgentApprovalCleanupService,
-		private readonly globalConfig: GlobalConfig,
->>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 		private readonly tagService: TagService,
 		private readonly folderService: FolderService,
 		private readonly licenseState: LicenseState,

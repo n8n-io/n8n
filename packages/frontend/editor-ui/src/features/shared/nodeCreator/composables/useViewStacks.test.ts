@@ -1,42 +1,3 @@
-<<<<<<< HEAD
-import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
-import { DEFAULT_SUBCATEGORY } from '@/app/constants';
-import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { mockSimplifiedNodeType } from '../__tests__/utils';
-import { useViewStacks } from './useViewStacks';
-
-describe('useViewStacks', () => {
-	beforeEach(() => {
-		setActivePinia(createTestingPinia({ stubActions: false }));
-	});
-
-	it('does not accumulate forceIncludeNodes when the same stack is opened twice', () => {
-		const nodeCreatorStore = useNodeCreatorStore();
-		nodeCreatorStore.mergedNodes = [
-			mockSimplifiedNodeType({ name: 'nodeA' }),
-			mockSimplifiedNodeType({ name: 'nodeB' }),
-		];
-
-		const viewStacks = useViewStacks();
-		const openStack = () =>
-			viewStacks.pushViewStack(
-				{
-					subcategory: DEFAULT_SUBCATEGORY,
-					title: 'Subcategory',
-					forceIncludeNodes: ['nodeB'],
-				},
-				{ resetStacks: true },
-			);
-
-		openStack();
-		const firstOpen = viewStacks.activeViewStack.items?.map((item) => item.key);
-
-		openStack();
-		const secondOpen = viewStacks.activeViewStack.items?.map((item) => item.key);
-
-		expect(secondOpen).toEqual(firstOpen);
-=======
 import { createPinia, setActivePinia } from 'pinia';
 
 import { DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/app/constants';
@@ -64,10 +25,39 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 const TRIGGER_NAME = 'n8n-nodes-base.acmeTrigger';
 
 describe('useViewStacks', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('does not accumulate forceIncludeNodes when the same stack is opened twice', () => {
+		const nodeCreatorStore = useNodeCreatorStore();
+		nodeCreatorStore.setMergeNodes([
+			mockSimplifiedNodeType({ name: 'nodeA' }),
+			mockSimplifiedNodeType({ name: 'nodeB' }),
+		]);
+
+		const viewStacks = useViewStacks();
+		const openStack = () =>
+			viewStacks.pushViewStack(
+				{
+					subcategory: DEFAULT_SUBCATEGORY,
+					title: 'Subcategory',
+					forceIncludeNodes: ['nodeB'],
+				},
+				{ resetStacks: true },
+			);
+
+		openStack();
+		const firstOpen = viewStacks.activeViewStack.items?.map((item) => item.key);
+
+		openStack();
+		const secondOpen = viewStacks.activeViewStack.items?.map((item) => item.key);
+
+		expect(secondOpen).toEqual(firstOpen);
+	});
+
 	describe('trigger name in a subcategory', () => {
 		beforeEach(() => {
-			setActivePinia(createPinia());
-
 			const nodeCreatorStore = useNodeCreatorStore();
 			nodeCreatorStore.setMergeNodes([
 				mockSimplifiedNodeType({
@@ -118,6 +108,5 @@ describe('useViewStacks', () => {
 
 			expect(openAppTriggerSubcategory()).toEqual(['Acme Trigger']);
 		});
->>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 	});
 });

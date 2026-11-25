@@ -168,21 +168,15 @@
 		"packages/@n8n/node-cli/package.json": [
 			{
 				"rule": "catalog-violations",
-<<<<<<< HEAD
 				"line": 54,
 				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "b6a694c807bc"
-=======
-				"line": 53,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9711a9b00bf9"
 			},
 			{
 				"rule": "catalog-violations",
 				"line": 49,
 				"message": "@clack/prompts appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9f6f61583b58"
->>>>>>> ba34719a31a9117002efb3db579f9aaf45bab4f5
 			}
 		],
 		"packages/quality/efficiency/scale/benchmark/package.json": [
