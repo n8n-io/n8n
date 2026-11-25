@@ -52,6 +52,7 @@ packages:
   - packages/modules/**
   - packages/extensions/**
   - packages/quality/**
+  - scripts/experimental/*
   - '!packages/quality/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:
@@ -316,6 +317,7 @@ catalog:
   '@microsoft/opentelemetry': 1.5.0
   pg-copy-streams: 7.0.0
   '@types/pg-copy-streams': 1.2.5
+  '@n8n/sandbox-client': 1.4.0
 
 catalogMode: strict
 
@@ -486,7 +488,8 @@ overrides:
   protobufjs: 7.6.5
   shell-quote: 1.11.0
   adm-zip: 0.6.1
-  ip-address@10: 10.7.1
+  ip-address@10: 10.7.6
+  socks@2: 2.8.9
   brace-expansion@5: 5.0.12
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.42

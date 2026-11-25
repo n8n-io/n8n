@@ -22,6 +22,11 @@ export const DEFAULT_STALENESS_THRESHOLDS: StalenessThresholds = {
 	runningStepMs: 600_000,
 };
 
+/** Advance past the observed deadline so it cannot match a second renewal. */
+export function nextQueuedStaleAfter(observed: Date, now: number, queuedMs: number): Date {
+	return new Date(Math.max(now + queuedMs, observed.getTime() + 1));
+}
+
 /** Throws when a threshold is not a positive whole number of milliseconds. */
 export function assertValidStalenessThresholds(thresholds: StalenessThresholds): void {
 	const invalid = Object.entries(thresholds).find(([, ms]) => !Number.isSafeInteger(ms) || ms <= 0);

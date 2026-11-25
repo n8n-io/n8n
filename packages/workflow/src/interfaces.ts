@@ -4071,6 +4071,8 @@ export interface ExecuteWorkflowOptions {
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
 	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+	/** Aborts when the calling execution is cancelled, so an awaited sub-workflow stops with it. */
+	abortSignal?: AbortSignal;
 }
 
 export type AiEvent =

@@ -45,7 +45,10 @@ import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
 } from './evaluation/agent-evaluation.contracts';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import {
+	AgentRuntimeReconstructionService,
+	type ReconstructedAgentRuntime,
+} from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
@@ -124,6 +127,7 @@ interface WorkflowAgentStreamParams {
 	toolGuardrails?: AgentToolGuardrailConfig[];
 	/** Model instance for the jailbreak/nsfw/topicalAlignment guardrail kinds. */
 	guardrailModel?: LanguageModel;
+	guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
 	/** Registry resolving guardrail tool refs to runtime tool names. */
 	toolRegistry?: ToolRegistry;
 	streamObserver?: WorkflowAgentStreamObserver;
@@ -309,6 +313,7 @@ export class AgentWorkflowExecutionService {
 		modelCredentialGatewayManaged?: boolean;
 		toolGuardrails?: AgentToolGuardrailConfig[];
 		guardrailModel?: LanguageModel;
+		guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
 		toolRegistry?: ToolRegistry;
 		error?: string;
 	}> {
@@ -343,6 +348,7 @@ export class AgentWorkflowExecutionService {
 				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
 				toolGuardrails: reconstructed.toolGuardrails,
 				guardrailModel: reconstructed.guardrailModel,
+				guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 				toolRegistry: reconstructed.toolRegistry,
 			};
 		} catch (e) {
@@ -378,6 +384,7 @@ export class AgentWorkflowExecutionService {
 		modelCredentialGatewayManaged?: boolean;
 		toolGuardrails?: AgentToolGuardrailConfig[];
 		guardrailModel?: LanguageModel;
+		guardrailWorkflowContext?: ReconstructedAgentRuntime['guardrailWorkflowContext'];
 		toolRegistry?: ToolRegistry;
 		error?: string;
 	}> {
@@ -403,6 +410,7 @@ export class AgentWorkflowExecutionService {
 				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
 				toolGuardrails: reconstructed.toolGuardrails,
 				guardrailModel: reconstructed.guardrailModel,
+				guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 				toolRegistry: reconstructed.toolRegistry,
 			};
 		} catch (e) {
@@ -518,6 +526,7 @@ export class AgentWorkflowExecutionService {
 			budget,
 			toolGuardrails,
 			guardrailModel,
+			guardrailWorkflowContext,
 			toolRegistry,
 		} = params;
 		const telemetry = await this.agentRunTracingService.build({
@@ -579,7 +588,12 @@ export class AgentWorkflowExecutionService {
 		// does: the reconstruction result carries it alongside the registry it
 		// resolves refs against.
 		if (!toolGuardrails || !toolRegistry) return options;
-		return withToolGuardrails(options, { toolGuardrails, toolRegistry, guardrailModel });
+		return withToolGuardrails(options, {
+			toolGuardrails,
+			toolRegistry,
+			guardrailModel,
+			guardrailWorkflowContext,
+		});
 	}
 
 	private recordWorkflowChunk(
@@ -828,6 +842,7 @@ export class AgentWorkflowExecutionService {
 			modelCredentialGatewayManaged,
 			toolGuardrails,
 			guardrailModel,
+			guardrailWorkflowContext,
 			toolRegistry,
 		} = prepared;
 		// Filled by `beforeFinalize` when the run waits for a human review.
@@ -842,6 +857,7 @@ export class AgentWorkflowExecutionService {
 				modelCredentialGatewayManaged,
 				toolGuardrails,
 				guardrailModel,
+				guardrailWorkflowContext,
 				toolRegistry,
 				recordingParams: { ...recordingParams, agentName: agentInstance.name },
 				...(sandboxScope
@@ -976,6 +992,7 @@ export class AgentWorkflowExecutionService {
 			modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
 			toolGuardrails: reconstructed.toolGuardrails,
 			guardrailModel: reconstructed.guardrailModel,
+			guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 			toolRegistry: reconstructed.toolRegistry,
 			snapshot,
 			resume: { runId: continuation.runId, toolCallId: call.toolCallId },
@@ -1062,6 +1079,7 @@ export class AgentWorkflowExecutionService {
 			modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
 			toolGuardrails: compiled.toolGuardrails,
 			guardrailModel: compiled.guardrailModel,
+			guardrailWorkflowContext: compiled.guardrailWorkflowContext,
 			toolRegistry: compiled.toolRegistry,
 		};
 	}
@@ -1121,6 +1139,7 @@ export class AgentWorkflowExecutionService {
 			| 'modelCredentialGatewayManaged'
 			| 'toolGuardrails'
 			| 'guardrailModel'
+			| 'guardrailWorkflowContext'
 			| 'toolRegistry'
 			| 'beforeFinalize'
 		>,
@@ -1228,6 +1247,7 @@ export class AgentWorkflowExecutionService {
 				modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
 				toolGuardrails: compiled.toolGuardrails,
 				guardrailModel: compiled.guardrailModel,
+				guardrailWorkflowContext: compiled.guardrailWorkflowContext,
 				toolRegistry: compiled.toolRegistry,
 			});
 			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);

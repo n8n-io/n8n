@@ -40,7 +40,7 @@ describe('ExecutionLedgerRowWriter', () => {
 	let workflow: WorkflowEntity;
 
 	const claimAll = async () =>
-		await txRunner.run({}, async (ctx) => await repository.claimBatch(100, ctx));
+		await txRunner.run({}, async (ctx) => (await repository.claimBatch(100, ctx)).rows);
 
 	const startedFacts = (
 		overrides: Partial<ExecutionLedgerStartedFacts> = {},

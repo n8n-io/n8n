@@ -2,6 +2,7 @@
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
+import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
@@ -1075,6 +1076,7 @@ const setupChecklistContext = computed(() => {
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const { isEnabled: isSetupHeaderEnabled } = useAgentSetupHeaderExperiment();
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
@@ -2892,7 +2894,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 
@@ -3519,7 +3521,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			:tasks="areSetupTasksVisible && !isSetupHeaderEnabled ? setupTasks : undefined"
+			@setup-task-action="onSetupTaskAction"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3527,7 +3530,6 @@ useKeybindings({
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3745,6 +3747,11 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="
+						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived
+							? setupTasks
+							: undefined
+					"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3784,6 +3791,7 @@ useKeybindings({
 					@open-preview="onOpenPreview"
 					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
+					@setup-task-action="onSetupTaskAction"
 				/>
 
 				<AgentVersionHistoryPanel

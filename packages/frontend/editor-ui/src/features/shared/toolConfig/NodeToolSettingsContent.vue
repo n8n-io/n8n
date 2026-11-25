@@ -16,6 +16,7 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -28,7 +29,7 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
@@ -90,6 +91,8 @@ const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);
+// The defaults come from the node type. Fill them one time, after the node types load.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
@@ -232,7 +235,9 @@ const hasUnavailableAgentCredential = computed(() => {
 });
 
 const isValid = computed(() => {
+	// Without the node type, the parameters can't be checked and have no defaults yet.
 	return (
+		!nodeTypesLoading.value &&
 		node.value?.name &&
 		!hasParameterIssues.value &&
 		!hasCredentialIssues.value &&
@@ -355,8 +360,9 @@ function handleChangeName(name: string) {
 }
 
 watch(
-	() => props.initialNode,
-	(initialNode) => {
+	() => [props.initialNode, nodeTypesLoading.value] as const,
+	([initialNode, loading]) => {
+		if (loading) return;
 		if (initialNode) {
 			const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
 			let nodeData =
@@ -518,7 +524,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName, tabOptions 
 			@update:model-value="localTab = $event"
 		/>
 
-		<div :class="$style.tabContent">
+		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
+			<N8nIcon icon="loader-circle" size="large" spin />
+		</div>
+		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->
 			<div v-show="selectedTab === 'params'">
 				<ParameterInputList
@@ -602,6 +611,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName, tabOptions 
 	overflow-y: auto;
 	min-height: 0;
 	padding-right: var(--spacing--lg);
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 
 .noParameters {

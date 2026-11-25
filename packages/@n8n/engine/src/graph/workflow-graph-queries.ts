@@ -1,4 +1,4 @@
-import type { GraphNode, WorkflowGraph } from './workflow-graph';
+import type { GraphEdge, GraphNode, WorkflowGraph } from './workflow-graph';
 
 /** The trigger node (the execution's entry point), or `undefined` if there is none. */
 export function findTriggerNode(graph: WorkflowGraph): GraphNode | undefined {
@@ -60,4 +60,17 @@ export function getPredecessorNodeIds(graph: WorkflowGraph, nodeId: string): str
 		}
 	}
 	return predecessors;
+}
+
+/**
+ * Orders edges the way their items concatenate when several edges feed one
+ * input slot: by the source node's position in `graph.nodes`, then by output
+ * index.
+ */
+export function compareByConcatenationOrder(
+	graph: WorkflowGraph,
+): (a: GraphEdge, b: GraphEdge) => number {
+	const nodeOrder = new Map(graph.nodes.map((node, index) => [node.id, index]));
+	return (a, b) =>
+		(nodeOrder.get(a.from) ?? 0) - (nodeOrder.get(b.from) ?? 0) || a.outputIndex - b.outputIndex;
 }

@@ -29,7 +29,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import SkillSourceReview from './SkillSourceReview.vue';
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
 import { useSkillsStore } from '../skills.store';
-import { useSkillSourceReasons } from '../skills.utils';
+import { SKIPPED_FILE_RULES, useSkillSourceReasons } from '../skills.utils';
 
 const props = defineProps<{ source: SkillSourceListItem }>();
 const emit = defineEmits<{ close: []; changed: [] }>();
@@ -85,9 +85,7 @@ const discovery = computed(() => ({
 			webUrl: update.webUrl,
 			check: update.check,
 			skippedFiles: update.check.findings.flatMap((finding) =>
-				(finding.rule === 'file_skipped' || finding.rule === 'file_unstorable') && finding.file
-					? [finding.file]
-					: [],
+				SKIPPED_FILE_RULES.has(finding.rule) && finding.file ? [finding.file] : [],
 			),
 			previewFiles: update.newSkill?.previewFiles ?? [],
 			previewTruncated: update.newSkill?.previewTruncated ?? false,

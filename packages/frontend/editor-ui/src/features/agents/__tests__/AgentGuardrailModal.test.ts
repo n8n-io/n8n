@@ -409,6 +409,20 @@ describe('AgentGuardrailModal', () => {
 		expect(saved.name).toBe('Renamed');
 	});
 
+	it('preserves the workflow when editing a workflow guardrail', async () => {
+		const guardrail = {
+			id: 'workflow-check',
+			kind: 'workflow',
+			stage: 'before',
+			workflowId: 'wf-guardrail',
+		} as const;
+		const wrapper = mountModal({ guardrail });
+
+		expect(wrapper.find('[data-testid="agent-guardrail-prompt"]').exists()).toBe(false);
+		await saveButton(wrapper).trigger('click');
+		expect(savedConfig(wrapper)).toEqual(guardrail);
+	});
+
 	it('emits remove only from the edit footer', async () => {
 		const createWrapper = mountModal();
 		expect(createWrapper.find('[data-testid="agent-guardrail-remove"]').exists()).toBe(false);

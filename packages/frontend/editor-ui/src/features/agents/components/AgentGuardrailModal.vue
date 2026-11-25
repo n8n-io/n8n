@@ -126,8 +126,9 @@ watch(
 					blockUserinfo.value = guardrail.blockUserinfo ?? true;
 					allowSubdomains.value = guardrail.allowSubdomains ?? false;
 					break;
-				default:
-					// The model-based kinds: jailbreak, nsfw, topicalAlignment.
+				case 'jailbreak':
+				case 'nsfw':
+				case 'topicalAlignment':
 					prompt.value = guardrail.prompt ?? '';
 					threshold.value = guardrail.threshold;
 			}
@@ -196,9 +197,7 @@ const kindMenuItems = computed(() =>
 	})),
 );
 
-const selectedKindLabel = computed(
-	() => kindOptions.value.find((option) => option.value === selectedKind.value)?.label ?? '',
-);
+const selectedKindLabel = computed(() => i18n.baseText(guardrailKindLabelKey(selectedKind.value)));
 
 function onKindMenuSelect(kind: string) {
 	selectedKind.value = kind as AgentToolGuardrailKind;
@@ -228,6 +227,7 @@ const piiEntityOptions = computed(() =>
 /** Light client checks; the backend schema stays the authority on save. */
 const canSave = computed(() => {
 	if (toolScope.value === 'selected' && selectedTools.value.length === 0) return false;
+	if (selectedKind.value === 'workflow') return props.guardrail?.kind === 'workflow';
 	if (selectedKind.value === 'keywords') return keywords.value.length > 0;
 	if (selectedKind.value === 'pii') {
 		return piiType.value === 'all' || piiEntities.value.length > 0;
@@ -236,7 +236,7 @@ const canSave = computed(() => {
 	return true;
 });
 
-function buildConfig(): AgentToolGuardrailConfig {
+function buildConfig(): AgentToolGuardrailConfig | undefined {
 	// The id is stable across edits; a create derives it from the name.
 	const shared = {
 		id:
@@ -247,6 +247,11 @@ function buildConfig(): AgentToolGuardrailConfig {
 	};
 
 	switch (selectedKind.value) {
+		case 'workflow': {
+			const guardrail = props.guardrail;
+			if (guardrail?.kind !== 'workflow') return;
+			return { kind: 'workflow', ...shared, stage: 'before', workflowId: guardrail.workflowId };
+		}
 		case 'keywords':
 			return { kind: 'keywords', ...shared, keywords: keywords.value };
 		case 'pii':
@@ -279,7 +284,9 @@ function buildConfig(): AgentToolGuardrailConfig {
 
 function onSave() {
 	if (!canSave.value) return;
-	emit('save', buildConfig());
+	const guardrail = buildConfig();
+	if (!guardrail) return;
+	emit('save', guardrail);
 	emit('update:open', false);
 }
 
@@ -330,9 +337,13 @@ function onRemove() {
 					</div>
 				</div>
 
-				<div :class="$style.divider" aria-hidden="true" />
+				<div v-if="selectedKind !== 'workflow'" :class="$style.divider" aria-hidden="true" />
 
-				<div :class="$style.kindOptions" data-testid="agent-guardrail-kind-options">
+				<div
+					v-if="selectedKind !== 'workflow'"
+					:class="$style.kindOptions"
+					data-testid="agent-guardrail-kind-options"
+				>
 					<template v-if="selectedKind === 'keywords'">
 						<div :class="$style.field">
 							<N8nText size="medium" bold>
@@ -519,9 +530,9 @@ function onRemove() {
 						<N8nText color="primary" bold size="small">*</N8nText>
 					</N8nText>
 					<N8nSelect
-						:model-value="stage"
+						:model-value="selectedKind === 'workflow' ? 'before' : stage"
 						size="small"
-						:disabled="disabled"
+						:disabled="disabled || selectedKind === 'workflow'"
 						data-testid="agent-guardrail-trigger"
 						@update:model-value="stage = $event"
 					>

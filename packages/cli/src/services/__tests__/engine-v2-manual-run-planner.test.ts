@@ -166,6 +166,8 @@ describe('EngineV2ManualRunPlanner', () => {
 			expect(plan.seeded).toEqual([
 				{ nodeId: A.id, iteration: 0, outputs: [[item({ from: A.name })]] },
 			]);
+			// The run data the run starts from, for the editor: the nodes that do not run again.
+			expect(Object.keys(plan.runData)).toEqual([TRIGGER.name, A.name]);
 		});
 
 		it('seeds nothing after a dirty node', () => {

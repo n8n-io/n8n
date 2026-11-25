@@ -445,6 +445,7 @@ export class SubAgentRunner {
 					toolGuardrails: reconstructed.toolGuardrails,
 					toolRegistry: reconstructed.toolRegistry,
 					guardrailModel: reconstructed.guardrailModel,
+					guardrailWorkflowContext: reconstructed.guardrailWorkflowContext,
 					guardrailModelId: reconstructed.guardrailModelId,
 					budget: budgetChargeOptions(budgetInput),
 				},

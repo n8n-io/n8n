@@ -26,15 +26,18 @@ import { generateText, type LanguageModel } from 'ai';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { attachGuardrails } from './budget-guardrail';
+import { createWorkflowGuardrailCheck } from './tools/workflow-guardrail-check';
+import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import type { ToolRegistry } from './tool-registry';
 
 /**
- * Pattern- and model-based tool guardrails for saved agents. Each configured
- * entry becomes one hook that runs at the stages its kind supports: absent
- * `stage` means every supported stage, absent `tools` means every tool. The
- * check runs on the JSON-stringified tool input (before) and final tool
+ * Pattern-, model-, and workflow-based tool guardrails for saved agents. Each
+ * configured entry becomes one hook that runs at the stages its kind supports:
+ * absent `stage` means every supported stage, absent `tools` means every tool.
+ * The check runs on the JSON-stringified tool input (before) and final tool
  * result (after). A trigger or a check failure stops the call with the code
  * `guardrail.<kind>.<id>`.
+ * Workflow checks use the structured tool input and run before the call.
  */
 
 /** The node's default trigger confidence for the model-based kinds. */
@@ -174,10 +177,12 @@ async function decide(
 }
 
 const BOTH_STAGES: ReadonlySet<'before' | 'after'> = new Set(['before', 'after']);
+const BEFORE_ONLY: ReadonlySet<'before' | 'after'> = new Set(['before']);
 
 /**
  * Stage support is a property of the kind: the pattern kinds run at both
- * stages; a workflow-backed kind (follow-up) registers before-only.
+ * stages; the model kinds run at both; a workflow-backed kind registers
+ * before-only, since the call it guards has not produced a result yet.
  */
 const SUPPORTED_STAGES: Record<AgentToolGuardrailKind, ReadonlySet<'before' | 'after'>> = {
 	keywords: BOTH_STAGES,
@@ -187,6 +192,7 @@ const SUPPORTED_STAGES: Record<AgentToolGuardrailKind, ReadonlySet<'before' | 'a
 	jailbreak: BOTH_STAGES,
 	nsfw: BOTH_STAGES,
 	topicalAlignment: BOTH_STAGES,
+	workflow: BEFORE_ONLY,
 };
 
 /** The kinds whose check runs on an LLM rather than a local pattern. */
@@ -217,6 +223,7 @@ function buildHook(
 	registry: ToolRegistry,
 	guardrailModel: LanguageModel | undefined,
 	spend: Omit<GuardrailSpend, 'callId'> | undefined,
+	guardrailWorkflowContext: WorkflowToolContext | undefined,
 ): ModelGuardrail | undefined {
 	const stages =
 		guardrail.stage === undefined ? SUPPORTED_STAGES[guardrail.kind] : new Set([guardrail.stage]);
@@ -224,6 +231,25 @@ function buildHook(
 		guardrail.tools === undefined ? undefined : resolveToolNames(guardrail.tools, registry);
 	const covers = (toolName: string) => toolNames === undefined || toolNames.has(toolName);
 	const code = `guardrail.${guardrail.kind}.${guardrail.id}`;
+
+	if (guardrail.kind === 'workflow') {
+		// A missing callable context is a construction gap, not a user
+		// misconfig, so the hook is skipped — like a model kind without a
+		// model. A missing check workflow itself fails closed at run time.
+		if (guardrailWorkflowContext === undefined) return undefined;
+		const check = createWorkflowGuardrailCheck(guardrail, guardrailWorkflowContext);
+		const hook: ModelGuardrail = {};
+		if (stages.has('before')) {
+			hook.beforeTool = async (ctx) => {
+				if (!covers(ctx.toolName)) return undefined;
+				const result = await check(ctx.toolName, ctx.input);
+				return result.tripwireTriggered || result.executionFailed
+					? { action: 'stop', code }
+					: undefined;
+			};
+		}
+		return hook;
+	}
 
 	// A model check is built per tool call so its ledger id closes over that
 	// call. Parallel tools must not share one id.
@@ -275,6 +301,8 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		guardrailModelId?: string;
 		/** Set only when a session cap or a monthly budget is on. */
 		budget?: BudgetGuardrailOptions;
+		/** Callable-workflow machinery for `workflow`-kind guardrail checks. */
+		guardrailWorkflowContext?: WorkflowToolContext;
 	},
 ): T {
 	const guardrails = input.toolGuardrails ?? [];
@@ -282,10 +310,14 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 
 	// Pattern kinds build first: a cheap stop short-circuits the model call,
 	// so a configuration cannot pay LLM spend for a call a pattern already
-	// refuses. The runner stops at the first stop, in hook order.
+	// refuses. Workflow checks build last, as the most expensive stop. The
+	// runner stops at the first stop, in hook order.
 	const ordered = [
-		...guardrails.filter((guardrail) => !MODEL_KINDS.has(guardrail.kind)),
+		...guardrails.filter(
+			(guardrail) => guardrail.kind !== 'workflow' && !MODEL_KINDS.has(guardrail.kind),
+		),
 		...guardrails.filter((guardrail) => MODEL_KINDS.has(guardrail.kind)),
+		...guardrails.filter((guardrail) => guardrail.kind === 'workflow'),
 	];
 	const spend =
 		input.budget && input.guardrailModelId
@@ -294,7 +326,13 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 
 	const hooks: ModelGuardrail[] = [];
 	for (const guardrail of ordered) {
-		const hook = buildHook(guardrail, input.toolRegistry, input.guardrailModel, spend);
+		const hook = buildHook(
+			guardrail,
+			input.toolRegistry,
+			input.guardrailModel,
+			spend,
+			input.guardrailWorkflowContext,
+		);
 		if (hook) hooks.push(hook);
 	}
 	if (hooks.length === 0) return options;
