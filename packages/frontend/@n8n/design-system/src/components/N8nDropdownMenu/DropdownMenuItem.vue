@@ -66,7 +66,7 @@ const internalSubMenuOpen = ref(false);
 // so the parent's prop never finds it closed.
 const subMenuOpenedByParent = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
-const { canScrollBottom } = useScrollEdges(childrenContainerRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(childrenContainerRef, { axis: 'vertical' });
 const subContentMaxHeight = ref<string>();
 
 const SUB_MENU_ITEM_GLIMPSE_RATIO = 0.5;
@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
 									ref="childrenContainerRef"
 									:class="$style['children-container']"
 									data-menu-items
-									:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+									v-bind="scrollMaskAttrs"
 								>
 									<template v-for="(child, childIndex) in props.children" :key="child.id">
 										<N8nDropdownMenuItem
@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
 								ref="childrenContainerRef"
 								:class="$style['children-container']"
 								data-menu-items
-								:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+								v-bind="scrollMaskAttrs"
 							>
 								<template v-for="(child, childIndex) in props.children" :key="child.id">
 									<N8nDropdownMenuItem
@@ -580,7 +580,7 @@ onBeforeUnmount(() => {
 	max-height: inherit;
 	overflow-y: auto;
 	@include scrollbar-mixins.hoverable-scroll-bar;
-	@include scrollbar-mixins.scroll-mask-when-bottom;
+	@include scrollbar-mixins.scroll-mask-when-y;
 }
 
 .section-header {

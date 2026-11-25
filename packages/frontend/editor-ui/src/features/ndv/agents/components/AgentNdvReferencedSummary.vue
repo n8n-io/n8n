@@ -35,7 +35,7 @@ const nodeTypesStore = useNodeTypesStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
 const configContentRef = ref<HTMLElement | null>(null);
-const { canScrollBottom } = useScrollEdges(configContentRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(configContentRef, { axis: 'vertical' });
 
 const ndv = inject(NdvAgentConfigKey);
 const referenced = ndv?.referenced;
@@ -148,11 +148,7 @@ async function onEditInBuilder() {
 
 		<template v-else-if="config">
 			<div :class="$style.config">
-				<div
-					ref="configContentRef"
-					:class="$style.configContent"
-					:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
-				>
+				<div ref="configContentRef" :class="$style.configContent" v-bind="scrollMaskAttrs">
 					<N8nButton
 						v-if="!isUnavailable && !props.isReadOnly"
 						size="small"
@@ -243,7 +239,7 @@ async function onEditInBuilder() {
 	scrollbar-gutter: stable;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-	@include scrollbar-mixins.scroll-mask-when-bottom;
+	@include scrollbar-mixins.scroll-mask-when-y;
 	@include scrollbar-mixins.scroll-bar;
 }
 

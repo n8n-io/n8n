@@ -69,7 +69,7 @@ const slots = defineSlots<
 >();
 
 const itemsContainerRef = ref<HTMLElement | null>(null);
-const { canScrollBottom } = useScrollEdges(itemsContainerRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(itemsContainerRef, { axis: 'vertical' });
 const searchRef = ref<{ focus: (options?: FocusOptions) => void } | null>(null);
 const searchTerm = ref('');
 const openSubMenuIndex = ref(-1);
@@ -401,11 +401,7 @@ defineExpose({ resetNavigation, highlightFirstItem });
 			</template>
 		</N8nDropdownMenuSearch>
 
-		<div
-			ref="itemsContainerRef"
-			:class="$style.items"
-			:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
-		>
+		<div ref="itemsContainerRef" :class="$style.items" v-bind="scrollMaskAttrs">
 			<slot
 				:highlighted-index="highlightedIndex"
 				:open-sub-menu-index="openSubMenuIndex"
@@ -432,7 +428,7 @@ defineExpose({ resetNavigation, highlightFirstItem });
 	min-height: 0;
 	overflow-y: auto;
 	scrollbar-width: none;
-	@include scrollbar-mixins.scroll-mask-when-bottom;
+	@include scrollbar-mixins.scroll-mask-when-y;
 
 	&::-webkit-scrollbar {
 		display: none;

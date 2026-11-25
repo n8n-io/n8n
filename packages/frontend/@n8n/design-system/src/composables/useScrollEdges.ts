@@ -5,7 +5,7 @@ import {
 	useResizeObserver,
 	type MaybeComputedElementRef,
 } from '@vueuse/core';
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch, type ComputedRef, type Ref } from 'vue';
 
 /** Ignore a sub-pixel remainder so the edge hint does not flicker. */
 const SCROLL_EDGE_THRESHOLD = 1;
@@ -38,6 +38,12 @@ export type HorizontalScrollEdges = {
 	canScrollRight: Ref<boolean>;
 };
 
+/** Present on the scroller only while that edge still hides content. */
+export type VerticalScrollMaskAttrs = {
+	'data-scroll-mask-top'?: '';
+	'data-scroll-mask-bottom'?: '';
+};
+
 export type VerticalScrollEdges = {
 	/**
 	 * True after the scroller moves down, so content is hidden above.
@@ -49,6 +55,11 @@ export type VerticalScrollEdges = {
 	 * @default false
 	 */
 	canScrollBottom: Ref<boolean>;
+	/**
+	 * Bind on the scroller that includes `scroll-mask-when-y`.
+	 * Sets the top fade, the bottom fade, or both.
+	 */
+	scrollMaskAttrs: ComputedRef<VerticalScrollMaskAttrs>;
 };
 
 function resolveElement(target: MaybeComputedElementRef | undefined): HTMLElement | null {
@@ -118,5 +129,12 @@ export function useScrollEdges(
 		return { canScrollLeft: canScrollStart, canScrollRight: canScrollEnd };
 	}
 
-	return { canScrollTop: canScrollStart, canScrollBottom: canScrollEnd };
+	const scrollMaskAttrs = computed<VerticalScrollMaskAttrs>(() => {
+		const attrs: VerticalScrollMaskAttrs = {};
+		if (canScrollStart.value) attrs['data-scroll-mask-top'] = '';
+		if (canScrollEnd.value) attrs['data-scroll-mask-bottom'] = '';
+		return attrs;
+	});
+
+	return { canScrollTop: canScrollStart, canScrollBottom: canScrollEnd, scrollMaskAttrs };
 }

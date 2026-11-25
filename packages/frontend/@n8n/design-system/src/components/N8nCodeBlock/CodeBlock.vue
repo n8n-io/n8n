@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<Omit<CodeBlockProps, 'collapsed'>>(), {
 const emit = defineEmits<Omit<CodeBlockEmits, 'update:collapsed'>>();
 const collapsed = defineModel<boolean>('collapsed', { default: true });
 const preRef = useTemplateRef<HTMLPreElement>('pre');
-const { canScrollBottom } = useScrollEdges(preRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(preRef, { axis: 'vertical' });
 const explicitHeight = ref<string>();
 const isCollapsible = ref(false);
 const { t } = useI18n();
@@ -164,7 +164,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 		<pre
 			ref="pre"
 			:class="[$style.pre, { [$style.isExpanded]: !collapsed }]"
-			:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+			v-bind="scrollMaskAttrs"
 			:style="heightStyle"
 			:aria-label="ariaLabel"
 			:tabindex="ariaLabel ? 0 : undefined"
@@ -275,7 +275,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	tab-size: 4;
 	scrollbar-width: thin;
 	scrollbar-color: gray transparent;
-	@include scroll-mask.scroll-mask-when-bottom;
+	@include scroll-mask.scroll-mask-when-y;
 
 	code {
 		/** Override background color injected by hjs **/

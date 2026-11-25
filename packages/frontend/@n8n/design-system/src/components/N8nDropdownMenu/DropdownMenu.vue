@@ -84,7 +84,7 @@ const internalOpen = ref(props.defaultOpen ?? false);
 
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const listRef = ref<HTMLElement | null>(null);
-const { canScrollBottom } = useScrollEdges(listRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(listRef, { axis: 'vertical' });
 const triggerRef = ref<InstanceType<typeof DropdownMenuTrigger> | null>(null);
 const searchableContentRef = ref<{ highlightFirstItem: () => void } | null>(null);
 const generatedContentId = `n8n-dropdown-menu-${useId()}`;
@@ -556,12 +556,7 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 						</template>
 					</DropdownMenuSearchableContent>
 
-					<div
-						v-else
-						ref="listRef"
-						:class="$style.list"
-						:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
-					>
+					<div v-else ref="listRef" :class="$style.list" v-bind="scrollMaskAttrs">
 						<DropdownMenuItems
 							:items="items"
 							:loading="loading"
@@ -648,7 +643,7 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 	max-height: inherit;
 	overflow-y: auto;
 	@include scrollbar-mixins.hoverable-scroll-bar;
-	@include scrollbar-mixins.scroll-mask-when-bottom;
+	@include scrollbar-mixins.scroll-mask-when-y;
 }
 
 .content[data-state='open'][data-side='top'] {

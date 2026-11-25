@@ -103,7 +103,7 @@ watch(
 			<N8nScrollArea
 				as-child
 				type="hover"
-				edge-fade="bottom"
+				edge-fade="y"
 				max-height="calc(var(--height--lg) * 5)"
 				:class="$style.queueScrollArea"
 			>

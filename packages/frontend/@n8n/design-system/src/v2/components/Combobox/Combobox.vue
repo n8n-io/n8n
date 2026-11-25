@@ -102,7 +102,7 @@ const inputRef = useTemplateRef<
 	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
 >('input');
 const viewportRef = useTemplateRef<InstanceType<typeof ComboboxViewport>>('viewportRef');
-const { canScrollBottom } = useScrollEdges(viewportRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(viewportRef, { axis: 'vertical' });
 
 function getInputElement(): HTMLInputElement | undefined {
 	const element: unknown = inputRef.value?.$el;
@@ -492,7 +492,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				<ComboboxViewport
 					ref="viewportRef"
 					:class="$style.comboboxViewport"
-					:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+					v-bind="scrollMaskAttrs"
 				>
 					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
 						{{ emptyText }}
@@ -778,7 +778,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--combobox-viewport--padding);
-	@include scrollbar-mixins.scroll-mask-when-bottom;
+	@include scrollbar-mixins.scroll-mask-when-y;
 }
 
 .comboboxEmpty {

@@ -218,7 +218,7 @@ const summary = computed(() => {
 			<N8nScrollArea
 				as-child
 				type="hover"
-				edge-fade="bottom"
+				edge-fade="y"
 				max-height="20vh"
 				:class="$style.details"
 				role="region"

@@ -211,7 +211,7 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
-const { canScrollBottom } = useScrollEdges(scrollRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(scrollRef, { axis: 'vertical' });
 const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
 
 /** True when the bubble of `message` shows something besides host events. */
@@ -710,12 +710,7 @@ watch(
 </script>
 
 <template>
-	<div
-		ref="scrollRef"
-		:class="$style.messages"
-		:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
-		@scroll.passive="onScroll"
-	>
+	<div ref="scrollRef" :class="$style.messages" v-bind="scrollMaskAttrs" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
 			<div
 				v-if="dividerLabels.has(group.id)"
@@ -1154,7 +1149,7 @@ watch(
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
-	@include scroll-mask.scroll-mask-when-bottom;
+	@include scroll-mask.scroll-mask-when-y;
 
 	scrollbar-width: none;
 	&::-webkit-scrollbar {

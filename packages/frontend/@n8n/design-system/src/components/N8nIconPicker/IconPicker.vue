@@ -100,7 +100,7 @@ const emojisLoaded = ref(false);
 const emojisLoading = ref(false);
 const popupVisible = ref(false);
 const scrollAreaRef = ref<HTMLElement | null>(null);
-const { canScrollBottom } = useScrollEdges(scrollAreaRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(scrollAreaRef, { axis: 'vertical' });
 
 const selectedTab = ref<TabType>(getDefaultTab());
 const searchQuery = ref('');
@@ -624,7 +624,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						role="grid"
 						:class="$style.scrollArea"
 						data-icon-picker-scroll-area
-						:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+						v-bind="scrollMaskAttrs"
 					>
 						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
@@ -675,7 +675,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						role="grid"
 						:class="$style.scrollArea"
 						data-icon-picker-scroll-area
-						:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+						v-bind="scrollMaskAttrs"
 					>
 						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
@@ -829,7 +829,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 		padding: 0 var(--spacing--2xs);
 		overflow-x: hidden;
 		overflow-y: auto;
-		@include scrollbar-mixins.scroll-mask-when-bottom;
+		@include scrollbar-mixins.scroll-mask-when-y;
 		@include scrollbar-mixins.hoverable-scroll-bar;
 	}
 

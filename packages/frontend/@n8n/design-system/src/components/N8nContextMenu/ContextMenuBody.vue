@@ -26,15 +26,11 @@ const slots = defineSlots<Omit<ContextMenuSlots<T>, 'trigger'>>();
 const $style = useCssModule();
 const { t } = useI18n();
 const scrollRef = useTemplateRef<HTMLElement>('scrollRef');
-const { canScrollBottom } = useScrollEdges(scrollRef, { axis: 'vertical' });
+const { scrollMaskAttrs } = useScrollEdges(scrollRef, { axis: 'vertical' });
 </script>
 
 <template>
-	<div
-		ref="scrollRef"
-		:class="$style.scroll"
-		:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
-	>
+	<div ref="scrollRef" :class="$style.scroll" v-bind="scrollMaskAttrs">
 		<template v-if="loading">
 			<slot name="loading">
 				<div :class="$style.items">
@@ -87,7 +83,7 @@ const { canScrollBottom } = useScrollEdges(scrollRef, { axis: 'vertical' });
 	flex: 1 1 auto;
 	overflow-y: auto;
 	@include scrollbar-mixins.hoverable-scroll-bar;
-	@include scrollbar-mixins.scroll-mask-when-bottom;
+	@include scrollbar-mixins.scroll-mask-when-y;
 }
 
 .items {

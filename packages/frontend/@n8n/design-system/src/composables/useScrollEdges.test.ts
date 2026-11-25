@@ -59,6 +59,29 @@ describe('useScrollEdges', () => {
 			return { container, ...edges };
 		}
 
+		it('sets a mask attribute for each hidden edge', async () => {
+			const element = document.createElement('div');
+			setVerticalMetrics(element, { scrollHeight: 200, clientHeight: 100, scrollTop: 0 });
+			const { scrollMaskAttrs } = await mountEdges(element);
+
+			expect(scrollMaskAttrs.value).toEqual({ 'data-scroll-mask-bottom': '' });
+
+			element.scrollTop = 40;
+			element.dispatchEvent(new Event('scroll'));
+			await nextTick();
+
+			expect(scrollMaskAttrs.value).toEqual({
+				'data-scroll-mask-top': '',
+				'data-scroll-mask-bottom': '',
+			});
+
+			element.scrollTop = 100;
+			element.dispatchEvent(new Event('scroll'));
+			await nextTick();
+
+			expect(scrollMaskAttrs.value).toEqual({ 'data-scroll-mask-top': '' });
+		});
+
 		it('reports a bottom edge while more content sits below the viewport', async () => {
 			const element = document.createElement('div');
 			setVerticalMetrics(element, { scrollHeight: 200, clientHeight: 100, scrollTop: 0 });
