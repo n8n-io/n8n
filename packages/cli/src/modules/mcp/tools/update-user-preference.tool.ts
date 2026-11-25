@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
 import type { AiPreferenceService, UrlService, TelemetryProxy } from '@n8n/backend-services';
+import { isExpectedAiPreferenceRefusal } from '@/services/ai-preference-write';
 
 import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -131,7 +132,7 @@ export const createUpdateUserPreferenceTool = (
 			before = await aiPreferenceService.getById(user, id);
 		} catch (error) {
 			const { reason, message } = classifyPreferenceWriteError(error);
-			if (reason === 'failed') {
+			if (!isExpectedAiPreferenceRefusal(error)) {
 				logger.error('Reading an AI preference over MCP failed', { error });
 			}
 			return refuse(reason, message, content?.length);
@@ -160,7 +161,7 @@ export const createUpdateUserPreferenceTool = (
 			const { reason, message } = classifyPreferenceWriteError(error);
 			// The mapped refusals carry their own text. Anything else is a fault whose message stays
 			// internal, so it goes to the log or it is lost.
-			if (reason === 'failed') {
+			if (!isExpectedAiPreferenceRefusal(error)) {
 				logger.error('Updating an AI preference over MCP failed', { error });
 			}
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {

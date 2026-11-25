@@ -106,7 +106,9 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			current.projectId !== previous.projectId ||
 			current.updatedAt.getTime() !== previous.updatedAt.getTime()
 		) {
-			throw new ConflictError('The Preference changed. Reload it and try again.');
+			throw new ConflictError('The Preference changed. Reload it and try again.', undefined, {
+				reason: 'stale',
+			});
 		}
 	}
 

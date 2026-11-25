@@ -249,6 +249,17 @@ describe('context.utils', () => {
 	});
 
 	describe('preferenceWriteRejectionReason', () => {
+		it('reports a stale write as a failure instead of a duplicate', () => {
+			expect(
+				preferenceWriteRejectionReason(
+					new ResponseError('The Preference changed. Reload it and try again.', {
+						httpStatusCode: 409,
+						meta: { reason: 'stale' },
+					}),
+				),
+			).toBe('failed');
+		});
+
 		it.each([
 			[409, 'dup', 'duplicate'],
 			[400, 'A user cannot hold more than 50 preferences', 'scope_full'],

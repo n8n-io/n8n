@@ -41,7 +41,12 @@ export function toAiPreferenceWriteRejection(error: unknown): AiPreferenceWriteR
 	if (error instanceof AiPreferenceScopeFullError) {
 		return { reason: 'scope_full', message: error.message, ...error.meta };
 	}
-	if (error instanceof ConflictError) return { reason: 'duplicate', message: error.message };
+	if (error instanceof ConflictError) {
+		return {
+			reason: error.meta?.reason === 'stale' ? 'failed' : 'duplicate',
+			message: error.message,
+		};
+	}
 	if (error instanceof ForbiddenError) return { reason: 'not_permitted', message: error.message };
 	if (isExpectedAiPreferenceRefusal(error)) return { reason: 'failed', message: error.message };
 	return { reason: 'failed', message: 'The preference could not be saved.' };

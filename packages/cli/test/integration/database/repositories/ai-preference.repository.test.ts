@@ -1,11 +1,14 @@
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { AI_PREFERENCE_MAX_PER_SCOPE, type AiPreferenceTarget } from '@n8n/api-types';
-import { AiPreferenceService } from '@n8n/backend-services';
+import { AiPreferenceService, type TelemetryProxy, type UrlService } from '@n8n/backend-services';
 import type { AiPreference, Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
+
+import { createUpdateUserPreferenceTool } from '@/modules/mcp/tools/update-user-preference.tool';
 
 import { createMember, createOwner } from '../../shared/db/users';
 
@@ -223,7 +226,7 @@ describe('AiPreferenceRepository', () => {
 			}
 		});
 
-		it.each(['update', 'updateContent'] as const)(
+		it.each(['update', 'updateContent', 'mcp'] as const)(
 			'refuses %s when a move commits after its permission check',
 			async (method) => {
 				const id = await insertPreference({ content: 'Original', userId: owner.id });
@@ -238,10 +241,21 @@ describe('AiPreferenceRepository', () => {
 						return await withWriteLock(targets, ctx, write);
 					});
 
-				const edit =
-					method === 'update'
-						? service().update(owner, id, { content: 'Stale edit' })
-						: service().updateContent(owner, id, 'Stale edit');
+				const edit = (async () => {
+					if (method === 'mcp') {
+						const tool = createUpdateUserPreferenceTool(
+							owner,
+							service(),
+							mock<TelemetryProxy>(),
+							mock<UrlService>(),
+							mockLogger(),
+						);
+						return await tool.handler({ id, content: 'Stale edit' });
+					}
+					return method === 'update'
+						? await service().update(owner, id, { content: 'Stale edit' })
+						: await service().updateContent(owner, id, 'Stale edit');
+				})();
 				const outcome = edit.catch((error: unknown) => error);
 				try {
 					await reachedLock.promise;
@@ -252,10 +266,19 @@ describe('AiPreferenceRepository', () => {
 					});
 					continueEdit.resolve(undefined);
 
-					expect(await outcome).toMatchObject({
-						httpStatusCode: 409,
-						message: 'The Preference changed. Reload it and try again.',
-					});
+					const message = 'The Preference changed. Reload it and try again.';
+					if (method === 'mcp') {
+						expect(await outcome).toMatchObject({
+							isError: true,
+							structuredContent: { saved: false, reason: 'failed', error: message },
+						});
+					} else {
+						expect(await outcome).toMatchObject({
+							httpStatusCode: 409,
+							meta: { reason: 'stale' },
+							message,
+						});
+					}
 					expect(await repository.findOneByOrFail({ id })).toMatchObject({
 						userId: null,
 						projectId: marketing.id,

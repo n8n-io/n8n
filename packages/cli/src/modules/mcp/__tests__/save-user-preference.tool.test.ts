@@ -581,6 +581,42 @@ describe('save_user_preference MCP tool', () => {
 			);
 		});
 
+		test.each(['user', 'instance'] as const)(
+			'reports an unknown saved state when a concurrent change refuses the %s review edit',
+			async (scope) => {
+				const { aiPreferenceService, telemetry, tool } = createMocks({ as: admin });
+				const message = 'The Preference changed. Reload it and try again.';
+				const write =
+					scope === 'user' ? aiPreferenceService.updateContent : aiPreferenceService.update;
+				write.mockRejectedValue(new ConflictError(message, undefined, { reason: 'stale' }));
+
+				const result = await tool.handler(
+					{ content: TEXT },
+					ctx({
+						elicitation: true,
+						review: { action: 'accept', content: { text: 'Other.', scope } },
+					}),
+				);
+
+				expect(isInputRequired(result)).toBe(false);
+				if (isInputRequired(result)) return;
+				expect(result.isError).toBe(true);
+				expect(structured(result)).toEqual({ saved: null, error: message, reason: 'failed' });
+				expect(tool.config.outputSchema!.saved.safeParse(null).success).toBe(true);
+				expect(text(result)).toContain('Read get_user_preferences');
+				expect(text(result)).not.toContain(TEXT);
+				expect(text(result)).not.toContain('for the user only');
+				expect(aiPreferenceService.create).not.toHaveBeenCalled();
+				expect(telemetry.track).toHaveBeenCalledTimes(1);
+				expect(telemetry.track).toHaveBeenCalledWith(
+					USER_CALLED_MCP_TOOL_EVENT,
+					expect.objectContaining({
+						results: { success: false, error: message, data: { reason: 'failed' } },
+					}),
+				);
+			},
+		);
+
 		test('reports a refused edit and states that the original text stands', async () => {
 			const { aiPreferenceService, tool } = createMocks();
 			aiPreferenceService.updateContent.mockRejectedValue(new ConflictError('dup'));

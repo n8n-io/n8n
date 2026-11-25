@@ -12,13 +12,13 @@ One table, `ai_preference`. See
 [the `source` column with its backfill](../../../db/src/migrations/common/1789479099132-AddSourceToAiPreference.ts)
 and [the entity](../../../db/src/entities/ai-preference.ts).
 
-| Column | Meaning |
-| --- | --- |
-| `content` | The instruction, as the person wrote it |
-| `userId` | Set for a personal preference |
-| `projectId` | Set for a project preference |
-| `source` | The surface that wrote the row: `ui`, `aia` or `mcp` |
-| `createdById` | The author. NULL after the author is deleted |
+| Column        | Meaning                                              |
+| ------------- | ---------------------------------------------------- |
+| `content`     | The instruction, as the person wrote it              |
+| `userId`      | Set for a personal preference                        |
+| `projectId`   | Set for a project preference                         |
+| `source`      | The surface that wrote the row: `ui`, `aia` or `mcp` |
+| `createdById` | The author. NULL after the author is deleted         |
 
 A CHECK constraint forbids a row that names both a user and a project. The scope of a row
 comes from the two id columns:
@@ -74,11 +74,11 @@ message internal and is logged.
 Three tools in `packages/cli/src/modules/mcp/tools/`, all behind the `aiPreference:write`
 OAuth scope:
 
-| Tool | Does |
-| --- | --- |
-| `save_user_preference` | Creates a personal preference with `source` set to `mcp`, at once, with no confirmation gate. The result names the saved text, the id and the settings page. |
-| `update_user_preference` | Changes a row by id: the text through `updateContent`, or the text and the scope together through `update`. |
-| `undo_user_preference` | Removes a row through `undoWrite`, so only what MCP saved for this user. |
+| Tool                     | Does                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `save_user_preference`   | Creates a personal preference with `source` set to `mcp`, at once, with no confirmation gate. The result names the saved text, the id and the settings page. |
+| `update_user_preference` | Changes a row by id: the text through `updateContent`, or the text and the scope together through `update`.                                                  |
+| `undo_user_preference`   | Removes a row through `undoWrite`, so only what MCP saved for this user.                                                                                     |
 
 On a client that declares the elicitation capability, the save follows the write with one
 form: the saved text, prefilled and editable. It is the second round of the same
@@ -133,6 +133,10 @@ Prompt reads return the oldest 50 rows of each scope, ordered by creation time a
 This also bounds reads from scopes that exceeded the limit before write serialization.
 Settings and API lists still show all stored rows. The read limit deletes no data.
 An edit checks that the row has not changed since the service checked its permissions.
+If it changed, the edit returns HTTP 409 with `meta.reason: 'stale'`.
+MCP and Settings classify this refusal as `failed`, not `duplicate`.
+The MCP save review returns `saved: null` without a preference snapshot and asks the
+client to read the current preferences again.
 
 Nothing bounds the rendered block itself, and that is the number to watch. One scope at the
 cap renders about 100,000 characters, and the block adds a group for every project the
@@ -149,11 +153,11 @@ bound the block, if that percentile passes 8,000 characters, which is about 2,00
 `AiPreferenceService` returns `ApplicableAiPreferences`, which groups the rows by scope
 and carries the id of each row. Three renderers read that one structure:
 
-| Function | Output | Reader |
-| --- | --- | --- |
-| `renderAiPreferencesBlock` | One `<ai-preferences>` block | The n8n Assistant turn |
-| `renderAiPreferences` | The same text with no wrapping tag | The `get_user_preferences` MCP tool |
-| `flattenAiPreferences` | One item for each preference, with its id and scope | Structured tool output |
+| Function                   | Output                                              | Reader                              |
+| -------------------------- | --------------------------------------------------- | ----------------------------------- |
+| `renderAiPreferencesBlock` | One `<ai-preferences>` block                        | The n8n Assistant turn              |
+| `renderAiPreferences`      | The same text with no wrapping tag                  | The `get_user_preferences` MCP tool |
+| `flattenAiPreferences`     | One item for each preference, with its id and scope | Structured tool output              |
 
 The prompt text carries no ids. A tool result carries them, because an edit must address
 a row.
