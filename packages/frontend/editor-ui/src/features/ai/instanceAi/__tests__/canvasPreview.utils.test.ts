@@ -21,8 +21,8 @@ const turns = (agentTree: InstanceAiAgentNode) =>
 const getLatestBuildResult = (node: InstanceAiAgentNode) => utils.getLatestBuildResult(turns(node));
 const getLatestDataTableResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestDataTableResult(turns(node));
-const getLatestDeletedDataTableId = (node: InstanceAiAgentNode) =>
-	utils.getLatestDeletedDataTableId(turns(node));
+const getLatestDeletedDataTableIds = (node: InstanceAiAgentNode) =>
+	utils.getLatestDeletedDataTableIds(turns(node));
 const getLatestWorkflowUpdateResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestWorkflowUpdateResult(turns(node));
 const getLatestAgentArtifactResult = (node: InstanceAiAgentNode) =>
@@ -64,6 +64,23 @@ function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAi
 		timeline: [],
 		...overrides,
 	};
+}
+
+/** A finished `change_data_tables` call with the given result. */
+function batchCall(
+	result: Record<string, unknown>,
+	toolCallId = 'tc-batch',
+): InstanceAiToolCallState {
+	return makeToolCall({
+		toolCallId,
+		toolName: 'change_data_tables',
+		args: { changes: [] },
+		result,
+	});
+}
+
+function applied(index: number, action: string, id: string) {
+	return { index, action, table: { id, name: `Table ${id}`, projectId: 'proj-1' }, result: {} };
 }
 
 describe('getLatestBuildResult', () => {
@@ -581,9 +598,72 @@ describe('getLatestDataTableResult', () => {
 	});
 });
 
-describe('getLatestDeletedDataTableId', () => {
+describe('getLatestDataTableResult for batch data table changes', () => {
+	test('returns the last table that the batch changed', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: true,
+					applied: [applied(0, 'create', 'dt-a'), applied(1, 'insert-rows', 'dt-b')],
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-b',
+			toolCallId: 'tc-batch',
+		});
+	});
+
+	test('ignores tables that the batch deleted', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: true,
+					applied: [
+						applied(0, 'insert-rows', 'dt-a'),
+						applied(1, 'insert-rows', 'dt-b'),
+						applied(2, 'delete', 'dt-b'),
+					],
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)?.dataTableId).toBe('dt-a');
+	});
+
+	test('returns an applied table of a batch that failed later', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: false,
+					applied: [applied(0, 'add-column', 'dt-a')],
+					failed: { index: 1, action: 'insert-rows', error: 'Bad value' },
+					skipped: [2],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)?.dataTableId).toBe('dt-a');
+	});
+
+	test('skips a batch that only deleted tables, or that is still loading', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall(
+					{ success: true, applied: [applied(0, 'create', 'dt-old')], skipped: [] },
+					'tc-1',
+				),
+				batchCall({ success: true, applied: [applied(0, 'delete', 'dt-x')], skipped: [] }, 'tc-2'),
+				{ ...batchCall({}, 'tc-3'), isLoading: true, result: undefined },
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({ dataTableId: 'dt-old', toolCallId: 'tc-1' });
+	});
+});
+
+describe('getLatestDeletedDataTableIds', () => {
 	test('returns undefined for node with no tool calls', () => {
-		expect(getLatestDeletedDataTableId(makeAgentNode())).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(makeAgentNode())).toEqual([]);
 	});
 
 	test('returns undefined for non-delete-data-table tool calls', () => {
@@ -596,7 +676,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined for loading delete-data-table call', () => {
@@ -609,7 +689,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined when delete-data-table result has success: false', () => {
@@ -622,7 +702,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined when args lacks dataTableId', () => {
@@ -635,7 +715,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns dataTableId from successful delete-data-table', () => {
@@ -648,7 +728,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBe('dt-deleted');
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-deleted']);
 	});
 
 	test('returns the latest result when multiple deletes exist', () => {
@@ -668,7 +748,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBe('dt-new');
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-new']);
 	});
 
 	test('finds result in child agent nodes', () => {
@@ -683,7 +763,39 @@ describe('getLatestDeletedDataTableId', () => {
 			],
 		});
 		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestDeletedDataTableId(parent)).toBe('dt-child');
+		expect(getLatestDeletedDataTableIds(parent)).toEqual(['dt-child']);
+	});
+
+	test('returns every table that the latest batch deleted', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: false,
+					applied: [
+						applied(0, 'delete', 'dt-a'),
+						applied(1, 'insert-rows', 'dt-b'),
+						applied(2, 'delete', 'dt-c'),
+					],
+					failed: { index: 3, action: 'delete', error: 'Not found' },
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-a', 'dt-c']);
+	});
+
+	test('skips a batch that deleted no table', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'data_tables',
+					args: { action: 'delete', dataTableId: 'dt-old' },
+					result: { success: true },
+				}),
+				batchCall({ success: true, applied: [applied(0, 'insert-rows', 'dt-b')], skipped: [] }),
+			],
+		});
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-old']);
 	});
 });
 
@@ -718,6 +830,25 @@ describe('getExecutionResultsByWorkflow', () => {
 		});
 		const results = getExecutionResultsByWorkflow(node);
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
+	});
+
+	test('extracts a failed verify-built-workflow result, so the saved canvas marks its nodes', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflow_builder_verify_built_workflow',
+					args: { workflowId: 'wf-1' },
+					result: {
+						success: false,
+						executionId: 'exec-2',
+						status: 'error',
+						nodeErrors: [{ nodeName: 'HTTP Request', message: 'Bad request' }],
+					},
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')).toEqual({ executionId: 'exec-2', status: 'error' });
 	});
 
 	test('extracts simulated node names from a verify-built-workflow result', () => {
@@ -1478,28 +1609,24 @@ describe('getAppArtifactFromToolCall', () => {
 	const expected = { appId: 'app-1', name: 'Todos', projectId: 'project-1' };
 
 	test.each([
-		['create', { action: 'create', name: 'Todos', namespace: 'todos' }, { app }],
-		['commit', { action: 'commit', appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
-	])('returns the app of a successful %s', (_label, args, result) => {
-		expect(getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result }))).toEqual(
-			expected,
-		);
+		['create_app', { blueprint: { name: 'Todos', namespace: 'todos' } }, { app }],
+		['commit_app', { appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
+	])('returns the app of a successful %s', (toolName, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName, args, result }))).toEqual(expected);
 	});
 
 	test.each([
-		['a get', { action: 'get', appId: 'app-1' }, { app }],
-		['an open', { action: 'open', appId: 'app-1' }, { app, path: 'apps/app-1' }],
-		['an error', { action: 'commit', appId: 'app-1' }, { error: 'There are no staged changes.' }],
-	])('returns undefined for %s', (_label, args, result) => {
-		expect(
-			getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result })),
-		).toBeUndefined();
+		['get_app', { appId: 'app-1' }, { app }],
+		['open_app', { appId: 'app-1' }, { app, path: 'apps/app-1' }],
+		['commit_app', { appId: 'app-1' }, { error: 'There are no staged changes.' }],
+	])('returns undefined for a %s call without a written app', (toolName, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName, args, result }))).toBeUndefined();
 	});
 
 	test('returns undefined for a call that is still running', () => {
 		expect(
 			getAppArtifactFromToolCall(
-				makeToolCall({ toolName: 'apps', args: { action: 'create' }, isLoading: true }),
+				makeToolCall({ toolName: 'create_app', args: {}, isLoading: true }),
 			),
 		).toBeUndefined();
 	});
@@ -1511,8 +1638,8 @@ describe('getLatestAppArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-create',
-					toolName: 'apps',
-					args: { action: 'create' },
+					toolName: 'create_app',
+					args: {},
 					result: { app: { id: 'app-1', name: 'One', projectId: 'project-1' } },
 				}),
 			],
@@ -1522,8 +1649,8 @@ describe('getLatestAppArtifactResult', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: 'tc-commit',
-							toolName: 'apps',
-							args: { action: 'commit', appId: 'app-2' },
+							toolName: 'commit_app',
+							args: { appId: 'app-2' },
 							result: { app: { id: 'app-2', name: 'Two', projectId: 'project-1' } },
 						}),
 					],

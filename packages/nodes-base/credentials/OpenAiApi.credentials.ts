@@ -13,6 +13,8 @@ export class OpenAiApi implements ICredentialType {
 
 	documentationUrl = 'openai';
 
+	icon = { light: 'file:icons/openAi.svg', dark: 'file:icons/openAi.dark.svg' } as const;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

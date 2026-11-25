@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 defineProps<{
 	entityType: 'credential' | 'workflow';
+	/** Hides the link to the overview, for a card that shows inside another page. */
+	hideAction?: boolean;
 }>();
 
 const locale = useI18n();
@@ -58,7 +60,7 @@ const locale = useI18n();
 					})
 				}}
 			</N8nText>
-			<N8nButton variant="outline" href="/">
+			<N8nButton v-if="!hideAction" variant="outline" href="/">
 				{{ locale.baseText('error.entityNotFound.action') }}
 			</N8nButton>
 		</N8nCard>

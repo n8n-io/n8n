@@ -31,10 +31,13 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
+function createAgentCtx(
+	opts: { resumeData?: unknown; suspend?: Mock; suspendPayload?: unknown } = {},
+) {
 	const suspend = opts.suspend ?? vi.fn();
 	return {
 		resumeData: opts.resumeData,
+		suspendPayload: opts.suspendPayload,
 		suspend,
 	};
 }
@@ -458,10 +461,7 @@ describe('research tool', () => {
 
 			expect(context.webResearchService!.fetchUrl).toHaveBeenCalledWith(
 				'https://example.com',
-				expect.objectContaining({
-					maxContentLength: undefined,
-					authorizeUrl: expect.any(Function),
-				}),
+				expect.objectContaining({ authorizeUrl: expect.any(Function) }),
 			);
 			// Content should be sanitized and wrapped in untrusted-data boundary tags.
 			const content = (result as { content: string }).content;
@@ -753,35 +753,105 @@ describe('research tool', () => {
 			expect(context.webResearchService!.fetchUrl).toHaveBeenCalled();
 		});
 
-		it('should pass maxContentLength to fetchUrl', async () => {
-			const fetchedPage = {
-				url: 'https://example.com',
-				finalUrl: 'https://example.com',
-				title: 'Example',
-				content: 'Short content',
-				truncated: false,
-				contentLength: 13,
-			};
-			const context = createMockContext({
-				permissions: { fetchUrl: 'always_allow' },
-			});
-			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
+		describe('paging', () => {
+			const fullContent = 'a'.repeat(40) + 'FACT' + 'b'.repeat(56);
 
-			const tool = createResearchTool(context);
-			await executeTool(
-				tool,
-				{
-					action: 'fetch-url' as const,
+			async function fetchPageSlice(
+				input: { maxContentLength?: number; offset?: number },
+				content = fullContent,
+			) {
+				const context = createMockContext({ permissions: { fetchUrl: 'always_allow' } });
+				context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
 					url: 'https://example.com',
-					maxContentLength: 5000,
-				},
-				createAgentCtx() as never,
-			);
+					finalUrl: 'https://example.com',
+					title: 'Example',
+					content,
+					truncated: false,
+					contentLength: content.length,
+				});
+				const tool = createResearchTool(context);
+				return (await executeTool(
+					tool,
+					{ action: 'fetch-url' as const, url: 'https://example.com', ...input },
+					createAgentCtx() as never,
+				)) as { content: string; truncated: boolean; contentLength: number; nextOffset?: number };
+			}
 
-			expect(context.webResearchService!.fetchUrl).toHaveBeenCalledWith(
-				'https://example.com',
-				expect.objectContaining({ maxContentLength: 5000 }),
-			);
+			function unwrap(content: string) {
+				return content
+					.replace(/^<untrusted_data[^>]*>\n?/, '')
+					.replace(/\n?<\/untrusted_data>$/, '');
+			}
+
+			it('should return at most maxContentLength characters from the start', async () => {
+				const result = await fetchPageSlice({ maxContentLength: 40 });
+
+				expect(unwrap(result.content)).toBe('a'.repeat(40));
+				expect(result.truncated).toBe(true);
+				expect(result.nextOffset).toBe(40);
+				expect(result.contentLength).toBe(100);
+			});
+
+			it('should return the slice that starts at offset', async () => {
+				const result = await fetchPageSlice({ maxContentLength: 10, offset: 40 });
+
+				expect(unwrap(result.content)).toBe('FACT' + 'b'.repeat(6));
+				expect(result.nextOffset).toBe(50);
+			});
+
+			it('should mark the last slice as complete', async () => {
+				const result = await fetchPageSlice({ maxContentLength: 30, offset: 80 });
+
+				expect(unwrap(result.content)).toBe('b'.repeat(20));
+				expect(result.truncated).toBe(false);
+				expect(result.nextOffset).toBeUndefined();
+			});
+
+			it('should return the full page when it fits in the default length', async () => {
+				const result = await fetchPageSlice({});
+
+				expect(unwrap(result.content)).toBe(fullContent);
+				expect(result.truncated).toBe(false);
+			});
+
+			it('should return no content when offset is past the end', async () => {
+				const result = await fetchPageSlice({ offset: 500 });
+
+				expect(unwrap(result.content)).toBe('');
+				expect(result.truncated).toBe(false);
+				expect(result.nextOffset).toBeUndefined();
+			});
+
+			it('should not split a surrogate pair at the end of a slice', async () => {
+				const content = 'abc😀def';
+
+				const first = await fetchPageSlice({ maxContentLength: 4 }, content);
+				const second = await fetchPageSlice({ offset: first.nextOffset }, content);
+
+				expect(unwrap(first.content)).toBe('abc');
+				expect(unwrap(second.content)).toBe('😀def');
+			});
+
+			it('should keep truncated when the page was cut before it reached the tool', async () => {
+				const context = createMockContext({ permissions: { fetchUrl: 'always_allow' } });
+				context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
+					url: 'https://example.com',
+					finalUrl: 'https://example.com',
+					title: 'Huge',
+					content: 'short',
+					truncated: true,
+					contentLength: 9_000_000,
+				});
+				const tool = createResearchTool(context);
+				const result = (await executeTool(
+					tool,
+					{ action: 'fetch-url' as const, url: 'https://example.com' },
+					createAgentCtx() as never,
+				)) as { truncated: boolean; nextOffset?: number };
+
+				expect(result.truncated).toBe(true);
+				expect(result.nextOffset).toBeUndefined();
+			});
 		});
 
 		// ── Same-eTLD+1 redirect auto-allow (TRUST-73) ───────────────
@@ -877,6 +947,215 @@ describe('research tool', () => {
 				expect(message).toMatch(/skip this URL/i);
 				expect(message).not.toMatch(/retry with the direct URL/i);
 			});
+
+			it('asks the user to approve a cross-domain redirect target, then follows it on resume', async () => {
+				// directus.io/docs/... redirects to directus.com/docs/... — a different
+				// registrable domain. The tool suspends for approval of the *target*
+				// host; on resume the decision applies to that host, not the original.
+				const inputUrl = 'https://directus.io/docs/guides/connect/relations';
+				const target = 'https://directus.com/docs/guides/connect/relations';
+				const allowed = new Set(['directus.io']);
+				const approveOnce = vi.fn((_runId: string, host: string) => allowed.add(host));
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((host: string) => allowed.has(host)),
+						approveOnce,
+					} as never,
+					permissions: {},
+					runId: 'run-1',
+				});
+				const page = {
+					url: inputUrl,
+					finalUrl: target,
+					title: 'Relations',
+					content: 'relations guide',
+					truncated: false,
+					contentLength: 15,
+				};
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!(target);
+						return page;
+					},
+				) as never;
+
+				const tool = createResearchTool(context);
+				const suspend = vi.fn().mockResolvedValue('suspended');
+				await tool.handler!(
+					{ action: 'fetch-url' as const, url: inputUrl },
+					createAgentCtx({ suspend }) as never,
+				);
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						domainAccess: { url: target, host: 'directus.com' },
+					}),
+				);
+
+				const result = (await tool.handler!(
+					{ action: 'fetch-url' as const, url: inputUrl },
+					createAgentCtx({
+						resumeData: { approved: true, domainAccessAction: 'allow_once' },
+						suspendPayload: suspend.mock.calls[0][0],
+					}) as never,
+				)) as { content: string; finalUrl: string };
+				expect(approveOnce).toHaveBeenCalledWith('run-1', 'directus.com');
+				expect(result.finalUrl).toBe(target);
+				expect(result.content).toContain('relations guide');
+			});
+
+			it('rethrows the redirect error when the tool cannot ask the user', async () => {
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((h: string) => h === 'directus.io'),
+					} as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!('https://directus.com/docs');
+						throw new Error('unreachable');
+					},
+				) as never;
+				const ctx = { ...createAgentCtx(), suspend: undefined };
+				await expect(
+					createResearchTool(context).handler!(
+						{ action: 'fetch-url' as const, url: 'https://directus.io/docs' },
+						ctx as never,
+					),
+				).rejects.toThrow(/skip this URL/i);
+			});
+
+			it('does not prompt for redirects to plain HTTP', async () => {
+				const inputUrl = 'https://directus.io/docs';
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((h: string) => h === 'directus.io'),
+					} as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!('http://directus.com/docs');
+						throw new Error('unreachable');
+					},
+				) as never;
+				const suspend = vi.fn();
+				await expect(
+					createResearchTool(context).handler!(
+						{ action: 'fetch-url' as const, url: inputUrl },
+						createAgentCtx({ suspend }) as never,
+					),
+				).rejects.toThrow(/redirect.*not allowed/i);
+				expect(suspend).not.toHaveBeenCalled();
+			});
+		});
+	});
+	// ── fetch-url with saveTo ───────────────────────────────────────────────
+
+	describe('fetch-url action with saveTo', () => {
+		const fullContent = 'intro '.repeat(10) + 'x'.repeat(60_000) + ' FACT_AT_THE_END';
+
+		function createSaveContext(overrides: Partial<InstanceAiContext> = {}) {
+			const files = new Map<string, string>();
+			const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
+				files.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+				await Promise.resolve();
+			});
+			const context = createMockContext({
+				permissions: { fetchUrl: 'always_allow' },
+				workspace: { filesystem: { writeFile } } as never,
+				workspaceRoot: '/home/user/workspace',
+				logger: { debug: vi.fn(), warn: vi.fn() } as never,
+				...overrides,
+			});
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
+				url: 'https://example.com/pricing',
+				finalUrl: 'https://example.com/pricing',
+				title: 'Pricing',
+				content: fullContent,
+				truncated: false,
+				contentLength: fullContent.length,
+			});
+			return { context, files, writeFile };
+		}
+
+		async function fetchAndSave(context: InstanceAiContext, saveTo: string) {
+			const tool = createResearchTool(context);
+			return (await executeTool(
+				tool,
+				{ action: 'fetch-url' as const, url: 'https://example.com/pricing', saveTo },
+				createAgentCtx() as never,
+			)) as {
+				content: string;
+				savedTo?: string;
+				saveError?: string;
+				contentLength: number;
+				nextOffset?: number;
+			};
+		}
+
+		it('should write the full page to the workspace file', async () => {
+			const { context, files } = createSaveContext();
+
+			await fetchAndSave(context, 'research/pricing.md');
+
+			const saved = files.get('research/pricing.md');
+			expect(saved).toContain(fullContent);
+			expect(saved).toContain('https://example.com/pricing');
+		});
+
+		it('should return the absolute file path and a short preview instead of the page', async () => {
+			const { context } = createSaveContext();
+
+			const result = await fetchAndSave(context, 'research/pricing.md');
+
+			expect(result.savedTo).toBe('/home/user/workspace/research/pricing.md');
+			expect(result.content).toMatch(/^<untrusted_data source="https:\/\/example\.com\/pricing">/);
+			const preview = result.content
+				.replace(/^<untrusted_data[^>]*>\n?/, '')
+				.replace(/\n?<\/untrusted_data>$/, '');
+			expect(preview).toBe(fullContent.slice(0, 500));
+			expect(result.contentLength).toBe(fullContent.length);
+			expect(result.nextOffset).toBeUndefined();
+		});
+
+		it('should accept an absolute path under the workspace root', async () => {
+			const { context, files } = createSaveContext();
+
+			await fetchAndSave(context, '/home/user/workspace/research/pricing.md');
+
+			expect(files.has('research/pricing.md')).toBe(true);
+		});
+
+		it('should not write a path outside the workspace', async () => {
+			const { context, writeFile } = createSaveContext();
+
+			const result = await fetchAndSave(context, '../outside.md');
+
+			expect(writeFile).not.toHaveBeenCalled();
+			expect(result.savedTo).toBeUndefined();
+			expect(result.saveError).toEqual(expect.any(String));
+		});
+
+		it('should return the page inline when there is no workspace', async () => {
+			const { context } = createSaveContext({ workspace: undefined });
+
+			const result = await fetchAndSave(context, 'research/pricing.md');
+
+			expect(result.savedTo).toBeUndefined();
+			expect(result.saveError).toEqual(expect.any(String));
+			expect(result.nextOffset).toBe(30_000);
+		});
+
+		it('should return the page inline when the write fails', async () => {
+			const { context, writeFile } = createSaveContext();
+			writeFile.mockRejectedValue(new Error('disk full'));
+
+			const result = await fetchAndSave(context, 'research/pricing.md');
+
+			expect(result.savedTo).toBeUndefined();
+			expect(result.saveError).toEqual(expect.any(String));
+			expect(result.nextOffset).toBe(30_000);
 		});
 	});
 });

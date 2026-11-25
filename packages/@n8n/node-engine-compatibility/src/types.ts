@@ -1,12 +1,14 @@
 import type {
 	StepExecutionContext,
 	StepSlots,
+	StepOutputSources,
 	SubExecutionResumeCause,
 	TriggerOutputs,
 	WorkflowDocument,
 	WorkflowGraph,
 } from '@n8n/engine';
 
+import type { ItemLinks } from './item-links';
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import type { DurableWaitExecuteContext } from './v1-adapters';
 import type {
@@ -48,6 +50,8 @@ export interface StepData {
 	graph: WorkflowGraph;
 	/** Completed step outputs, by node id then by iteration. */
 	outputsByNode: Record<string, Record<number, StepSlots>>;
+	/** Where a loop node's outputs came from, by node id then by iteration; absent for every other step. */
+	outputSourcesByNode?: Record<string, Record<number, StepOutputSources>>;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;
@@ -144,6 +148,8 @@ export interface CreateExecuteContextParams {
 	source: Array<ISourceData | null>;
 	additionalData: IWorkflowExecuteAdditionalData;
 	itemsByConnection: INodeExecutionData[][];
+	/** The links `itemLinks` made for `itemsByConnection`. */
+	itemLinks: ItemLinks;
 	stepContext: StepExecutionContext;
 	resumeToken?: string;
 	subWorkflowCalls: SubWorkflowCalls;

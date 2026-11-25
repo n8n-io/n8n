@@ -45,7 +45,7 @@ N8N_AI_ENABLED=true
 N8N_INSTANCE_AI_EVAL_INSTANCE=true
 N8N_INSTANCE_AI_ENABLED=true
 
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5-20250929
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-5-5
 N8N_INSTANCE_AI_MODEL_API_KEY=sk-ant-...
 
 N8N_EVAL_EMAIL=eval@example.com

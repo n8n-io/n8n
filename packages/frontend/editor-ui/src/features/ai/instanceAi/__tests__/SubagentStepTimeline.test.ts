@@ -1,8 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import SubagentStepTimeline from '../components/SubagentStepTimeline.vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import { mockedStore } from '@/__tests__/utils';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const renderComponent = createThreadComponentRenderer(SubagentStepTimeline);
 
@@ -59,6 +63,48 @@ describe('SubagentStepTimeline', () => {
 		});
 
 		expect(getByText('Searching nodes')).toBeInTheDocument();
+	});
+
+	describe('a running source write', () => {
+		function sourceWriteNode(status: InstanceAiAgentNode['status']) {
+			const { name, variant } = INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT;
+			vi.spyOn(usePostHog(), 'getVariant').mockImplementation((flag) =>
+				flag === name ? variant : undefined,
+			);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((nodeType: string) =>
+				nodeType === 'n8n-nodes-base.gmail' ? { displayName: 'Gmail' } : null,
+			) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
+			const read = makeToolCall({
+				toolCallId: 'tc-read',
+				toolName: 'get_node_types',
+				args: { nodeTypes: ['n8n-nodes-base.gmail'] },
+			});
+			const write = makeToolCall({
+				toolCallId: 'tc-write',
+				toolName: 'workspace_write_file',
+				args: { path: 'src/workflows/demo.workflow.ts' },
+				isLoading: true,
+			});
+			return makeAgentNode({
+				status,
+				toolCalls: [read, write],
+				timeline: [{ type: 'tool-call', toolCallId: 'tc-write' }],
+			});
+		}
+
+		it('names a node type the agent read while the sub-agent works', () => {
+			const { getByText } = renderComponent({ props: { agentNode: sourceWriteNode('active') } });
+
+			expect(getByText('Configuring Gmail nodes')).toBeInTheDocument();
+		});
+
+		it('keeps the plain tool label once the sub-agent stopped', () => {
+			const { queryByText } = renderComponent({
+				props: { agentNode: sourceWriteNode('cancelled') },
+			});
+
+			expect(queryByText('Configuring Gmail nodes')).toBeNull();
+		});
 	});
 
 	it('should skip child timeline entries', () => {

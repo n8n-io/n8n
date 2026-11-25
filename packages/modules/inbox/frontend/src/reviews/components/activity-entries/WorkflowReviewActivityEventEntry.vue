@@ -24,6 +24,7 @@ const props = defineProps<{
 				| 'review.approved'
 				| 'review.version_updated'
 				| 'review.closed'
+				| 'review.closed_by_user'
 				| 'workflow.archived'
 				| 'workflow.deleted'
 				| 'workflow.moved'
@@ -45,16 +46,17 @@ const closedReasonKeys: Record<WorkflowReviewClosedReason, BaseTextKey> = {
 };
 
 /**
- * A lifecycle close concludes the feed, so it renders as a callout rather than one more
- * sentence. The body is a keypath, and the stored reason, so there is nothing to fall back to.
+ * A close ends the feed, so it renders as a callout. A system close takes its body from the
+ * stored reason and renders nothing without it. A user close has no payload and names the user.
  */
 const closedCallout = computed<{ title: string; bodyKey: BaseTextKey } | null>(() => {
 	const entry = props.entry;
+	const title = i18n.baseText('workflowReviews.detail.closedCallout.title');
+	if (entry.type === 'review.closed_by_user') {
+		return { title, bodyKey: 'workflowReviews.detail.closedCallout.closedByUser' };
+	}
 	if (entry.type !== 'review.closed' || !entry.data) return null;
-	return {
-		title: i18n.baseText('workflowReviews.detail.closedCallout.title'),
-		bodyKey: closedReasonKeys[entry.data.reason],
-	};
+	return { title, bodyKey: closedReasonKeys[entry.data.reason] };
 });
 
 // A cause event's sentence names the actor when a user acted, or says the system did it.
@@ -93,7 +95,7 @@ const causeKeys: Record<
 
 /**
  * The sentence for one entry: an i18n key plus its placeholder values, one case per type.
- * `null` means "no sentence" — `review.closed` renders as a callout instead, and a
+ * `null` means "no sentence" — a close renders as a callout instead, and a
  * `workflow.published` entry with an unreadable payload has nothing to say. Other types
  * survive a bad payload with a reduced sentence: a decision loses its note, a cause event
  * its actor.
@@ -151,6 +153,7 @@ const content = computed<{
 				namesActor: true,
 			};
 		case 'review.closed':
+		case 'review.closed_by_user':
 			// Rendered as {@link closedCallout}, never as a sentence.
 			return null;
 		case 'workflow.archived':
@@ -211,6 +214,7 @@ const actorName = computed(() =>
 			<N8nText bold size="medium">{{ closedCallout.title }}</N8nText>
 			<N8nText size="medium">
 				<I18nT :keypath="closedCallout.bodyKey" scope="global">
+					<template #actor>{{ actorName }}</template>
 					<template #timestamp>
 						<time :datetime="entry.createdAt">
 							<N8nTimeAgo :date="entry.createdAt" :locale="rootStore.defaultLocale" />

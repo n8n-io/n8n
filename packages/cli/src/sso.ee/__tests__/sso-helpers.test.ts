@@ -1,6 +1,7 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { CacheService, EventService } from '@n8n/backend-services';
+import type { CacheService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, type Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -175,6 +176,7 @@ describe('sso-helpers', () => {
 				settingsRepository,
 				cacheService,
 				logger,
+				eventService,
 			);
 			Container.set(EventService, eventService);
 			Container.set(ScimSwitchReader, scimSwitchReader);
@@ -222,12 +224,43 @@ describe('sso-helpers', () => {
 				await emitSsoLoginDisabled('oidc');
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('scim.provisioning.enabled');
-				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('sso-login-disabled', {
-					protocol: 'oidc',
-					scimWasEnabled,
-				});
+				const ssoOff = vi
+					.mocked(eventService.emit)
+					.mock.calls.filter(([name]) => name === 'sso-login-disabled');
+				expect(ssoOff).toEqual([['sso-login-disabled', { protocol: 'oidc', scimWasEnabled }]]);
 			},
 		);
+
+		// The SCIM module finds SCIM off when it starts, so it reports nothing.
+		it('reports the SCIM turn-off while the SCIM module has not started', async () => {
+			savedScimSwitch('true');
+
+			await emitSsoLoginDisabled('oidc');
+
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				'scim.provisioning.enabled',
+				'false',
+				true,
+				{},
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('scim-settings-updated', {
+				user: null,
+				isActive: false,
+				change: 'disabled',
+				source: 'sso_off',
+			});
+		});
+
+		it('reports no SCIM turn-off when SCIM was off', async () => {
+			savedScimSwitch('false');
+
+			await emitSsoLoginDisabled('oidc');
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'scim-settings-updated',
+				expect.anything(),
+			);
+		});
 
 		it('reports SCIM as off when no switch is saved', async () => {
 			vi.mocked(settingsRepository.findByKey).mockResolvedValue(null);

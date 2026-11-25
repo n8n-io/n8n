@@ -8,7 +8,11 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import { LicenseMetricsRepository, SettingsRepository } from '@n8n/db';
+import {
+	AgentExecutionStatisticsRepository,
+	LicenseMetricsRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
@@ -133,6 +137,7 @@ describe('instance reporting retries', () => {
 			mockLogger(),
 			eventService,
 			outboundHttp,
+			Container.get(AgentExecutionStatisticsRepository),
 		);
 		const task = new InstanceReportingTask(service);
 

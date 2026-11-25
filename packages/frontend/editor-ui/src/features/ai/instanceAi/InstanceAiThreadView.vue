@@ -11,7 +11,7 @@ import {
 } from '@n8n/design-system';
 import { useDebounceFn, useElementSize, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentAttachment } from '@n8n/api-types';
+import type { InstanceAiAgentAttachment, InstanceAiConfirmationInputType } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
@@ -26,9 +26,18 @@ import {
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getThreadDisplayTitle,
+	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from './assistantTurn';
+import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
+import {
+	CloudBrowserLiveViewRefreshKey,
+	CloudBrowserLiveViewsKey,
+	useCloudBrowserLiveViews,
+} from './composables/useCloudBrowserLiveViews';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_APP_ID_QUERY } from './constants';
@@ -42,6 +51,7 @@ import {
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
+import ApprovalModeSelector from './components/ApprovalModeSelector.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
@@ -61,6 +71,15 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
+import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import InstanceAiCanvasRunOverlay from './components/InstanceAiCanvasRunOverlay.vue';
+import { isPendingItemFloating } from './confirmationKinds';
+import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
+import { collectActiveBuilderAgents } from './builderAgents';
+import { isStagingDraft } from './instanceAi.workflowStaging';
+import { useDraftWorkflowPreview } from './composables/useDraftWorkflowPreview';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -77,6 +96,14 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	// A run that waits for the user is still active.
+	isRunning: () => thread.isStreaming || thread.isSendingMessage,
+	isAwaitingUser: () => thread.isAwaitingUserInput,
+	isReady: () => thread.hydrationStatus === 'ready',
+	turn: () => getCurrentTurn(thread.artifactTurns),
+});
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
@@ -243,6 +270,33 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+// A reload can restore the open question from history and not the run, for example after a
+// restart. The chat still asks the question, so the canvas waits too.
+const isAwaitingUser = () => thread.isAwaitingUserInput || thread.pendingConfirmations.length > 0;
+const ANSWER_INPUT_TYPES = new Set<InstanceAiConfirmationInputType>([
+	'questions',
+	'text',
+	'continue',
+]);
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
+	turns: () => thread.artifactTurns,
+	workflowDrafts: () => thread.workflowDrafts,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
+	// A builder can still work in the background after the orchestrator run ended.
+	isRunning: () => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
+	isAwaitingUser,
+	// The card in the chat input slot comes first, as the pill focuses it. A card that waits for
+	// user input asks for an answer. Any other card asks for an approval.
+	isAwaitingApproval: () => {
+		const pending = thread.pendingConfirmations;
+		const shown = pending.find(isPendingItemFloating) ?? pending[0];
+		return !ANSWER_INPUT_TYPES.has(shown?.toolCall.confirmation.inputType ?? 'approval');
+	},
+});
+// EOF Experiment cleanup
+
 // --- Canvas / data table preview ---
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
@@ -253,9 +307,11 @@ const requestedAppId = computed(() => {
 		? appId
 		: undefined;
 });
+const cloudBrowserTasks = useCloudBrowserTasks(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	cloudBrowserTasks: () => cloudBrowserTasks.value,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
@@ -265,6 +321,7 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	...draftPreview.canvasOptions,
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -274,10 +331,38 @@ watch(
 	},
 	{ immediate: true },
 );
+
+const canvasRunState = draftPreview.useCanvasRunState(preview);
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
+watch(
+	() => {
+		const draft = preview.activeWorkflowDraft.value;
+		if (!preview.isPreviewVisible.value || !draft) return undefined;
+		return isStagingDraft(draft) ? 'staging' : 'draft';
+	},
+	(kind) => {
+		if (kind) draftPreviewTelemetry.trackCanvasRendered(kind);
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
+
+// The saved canvas loaded under its draft, so the draft has nothing left to cover.
+function handleSavedWorkflowLoaded(workflowId: string) {
+	// Only the workflow that the build works on counts, not one the user opens.
+	if (draftPreview.isBuiltWorkflow(workflowId)) draftPreviewTelemetry.trackCanvasRendered('saved');
+	thread.dismissWorkflowDrafts(workflowId);
+}
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
+		const isArtifact = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isSavedArtifactTab(tab),
+		);
+		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
 );
@@ -285,7 +370,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isSavedArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -348,6 +433,18 @@ provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openCloudBrowserTab', preview.openCloudBrowserTab);
+provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
+// Only a running task has a browser to show.
+const runningCloudBrowserTasks = computed(() =>
+	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
+);
+const cloudBrowserLiveViews = useCloudBrowserLiveViews(
+	runningCloudBrowserTasks,
+	() => props.threadId,
+);
+provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
+provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -794,31 +891,34 @@ function handleNewThreadClick() {
 								store.debugMode = showDebugPanel;
 							"
 						/>
-						<N8nTooltip
-							:content="artifactsPanelToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="showArtifactsPanelToggle"
-									icon="list"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-panel-toggle"
-									:aria-label="artifactsPanelToggleLabel"
-									:aria-pressed="showArtifactsPanel"
-									:disabled="!canShowArtifactsPanel"
-									@click="toggleArtifactsPanel"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<span v-if="showArtifactsPanelToggle">
+								<N8nTooltip
+									as-child
+									:content="artifactsPanelToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="list"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-panel-toggle"
+										:aria-label="artifactsPanelToggleLabel"
+										:aria-pressed="showArtifactsPanel"
+										:disabled="!canShowArtifactsPanel"
+										focusable-when-disabled
+										@click="toggleArtifactsPanel"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
 						<InstanceAiResourcePicker
 							v-if="showOpenResourcePicker && thread.projectId"
 							:project-id="thread.projectId"
-							:excluded-tabs="preview.openTabs.value"
+							:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
 							placement="bottom-end"
 							content-test-id="instance-ai-open-resource-picker"
 							@select="preview.openTab"
@@ -841,27 +941,29 @@ function handleNewThreadClick() {
 								</N8nTooltip>
 							</template>
 						</InstanceAiResourcePicker>
-						<N8nTooltip
-							v-else
-							:content="artifactsPreviewToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="!preview.isPreviewVisible.value"
-									icon="panel-right"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-preview-toggle"
-									:aria-label="artifactsPreviewToggleLabel"
-									:aria-pressed="preview.isPreviewVisible.value"
-									:disabled="!hasPreviewTabs"
-									@click="toggleArtifactsPreview"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition v-else name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<span v-if="!preview.isPreviewVisible.value">
+								<N8nTooltip
+									as-child
+									:content="artifactsPreviewToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="panel-right"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-preview-toggle"
+										:aria-label="artifactsPreviewToggleLabel"
+										:aria-pressed="preview.isPreviewVisible.value"
+										:disabled="!hasPreviewTabs"
+										focusable-when-disabled
+										@click="toggleArtifactsPreview"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 					</template>
 				</InstanceAiViewHeader>
 			</div>
@@ -887,7 +989,15 @@ function handleNewThreadClick() {
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
+					<!-- A thread that builds an agent always runs in Manual mode. -->
+					<template
+						v-if="!threadTargetsAgent(store.getThreadMetadata(props.threadId))"
+						#composer-controls
+					>
+						<ApprovalModeSelector :thread-id="props.threadId" />
+					</template>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1022,6 +1132,19 @@ function handleNewThreadClick() {
 								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
+								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentWorking || isAwaitingUser()"
+							/>
+							<InstanceAiCanvasRunOverlay
+								v-if="canvasRunState"
+								:state="canvasRunState"
+								@focus-chat="conversationRef?.focusPendingConfirmation()"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
@@ -1045,6 +1168,18 @@ function handleNewThreadClick() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentTestDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<!-- A viewed browser tab stays mounted, so its live view does not reload on each switch. -->
+							<InstanceAiBrowserPreview
+								v-for="browserTab in preview.viewedBrowserTabs.value"
+								v-show="
+									preview.isPreviewVisible.value &&
+									preview.activeBrowserTab.value?.id === browserTab.id
+								"
+								:key="browserTab.id"
+								:class="$style.previewSlot"
+								:task-id="browserTab.taskId"
+								:user-action="browserTab.userAction"
 							/>
 							<!-- Retain each open skill's draft while another artifact is visible. -->
 							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">

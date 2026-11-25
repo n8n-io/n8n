@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      warmPrCache:
+        description: Create backend test cache entries for pull request runs.
+        required: false
+        default: false
+        type: boolean
       affectedPackages:
         description: |
           Space-separated list of workspace packages affected by the PR, as
@@ -73,9 +78,10 @@ jobs:
     name: Backend Unit Tests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      COVERAGE_ENABLED: ${{ inputs.warmPrCache || inputs.collectCoverage }}
+      COVERAGE_SCOPE: ${{ inputs.warmPrCache && 'changed-files' || (inputs.collectCoverage && inputs.changedFiles != '' && 'changed-files' || 'all') }}
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
-      CHANGED_FILES: ${{ inputs.changedFiles }}
+      CHANGED_FILES: ${{ inputs.warmPrCache && '.github/cache-warm' || inputs.changedFiles }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -106,8 +112,15 @@ jobs:
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       # `janitor test-run` replays cached package results first, then runs the
       # rest with janitor scoping: skip, scoped (vitest related), or full.
-      - name: Test Unit (backend, except cli and nodes-base)
-        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+      # rig is excluded too: it is local dev tooling, so its tests run only in
+      # the next step, when its own files change or the changed-file list is
+      # unknown (empty).
+      - name: Test Unit (backend, except cli, nodes-base and rig)
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --filter='!@n8n/rig' --summarize
+
+      - name: Test Unit (rig)
+        if: ${{ !cancelled() && (inputs.changedFiles == '' || contains(inputs.changedFiles, 'scripts/experimental/rig/')) }}
+        run: pnpm --filter=@n8n/rig test:unit
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -126,7 +139,7 @@ jobs:
           name: backend-unit-tests
 
       - name: Upload coverage to Codecov
-        if: env.COVERAGE_ENABLED == 'true'
+        if: env.COVERAGE_ENABLED == 'true' && !inputs.warmPrCache
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -187,9 +200,10 @@ jobs:
     name: Backend Integration Tests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      COVERAGE_ENABLED: ${{ inputs.warmPrCache || inputs.collectCoverage }}
+      COVERAGE_SCOPE: ${{ inputs.warmPrCache && 'changed-files' || (inputs.collectCoverage && inputs.changedFiles != '' && 'changed-files' || 'all') }}
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
-      CHANGED_FILES: ${{ inputs.changedFiles }}
+      CHANGED_FILES: ${{ inputs.warmPrCache && '.github/cache-warm' || inputs.changedFiles }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -230,7 +244,7 @@ jobs:
           name: backend-integration-tests
 
       - name: Upload coverage to Codecov
-        if: env.COVERAGE_ENABLED == 'true'
+        if: env.COVERAGE_ENABLED == 'true' && !inputs.warmPrCache
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

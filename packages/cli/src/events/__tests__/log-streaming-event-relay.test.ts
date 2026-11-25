@@ -1,7 +1,8 @@
 import { EventService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type Person, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase, RelatedAgentRun } from 'n8n-workflow';
 import { ERROR_MESSAGE_REDACTED_MESSAGE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -15,7 +16,14 @@ describe('LogStreamingEventRelay', () => {
 	const hostId = 'host-xyz';
 	const instanceSettings = mock<InstanceSettings>({ hostId });
 	const userRepository = mock<UserRepository>();
-	new LogStreamingEventRelay(eventService, eventBus, instanceSettings, userRepository).init();
+	const agentsConfig = mock<AgentsConfig>({ serviceAccountsEnabled: true });
+	new LogStreamingEventRelay(
+		eventService,
+		eventBus,
+		instanceSettings,
+		userRepository,
+		agentsConfig,
+	).init();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -54,6 +62,104 @@ describe('LogStreamingEventRelay', () => {
 					workflowName: 'Test Workflow',
 				},
 			});
+		});
+
+		it('should include the login id on `workflow-created` when one is set', () => {
+			eventService.emit('workflow-created', {
+				user: { id: 'sa-1', role: { slug: 'global:member' } },
+				workflow: mock<IWorkflowBase>({ id: 'wf123', name: 'Test Workflow' }),
+				publicApi: 'other',
+				projectId: 'proj123',
+				projectType: 'personal',
+				loginId: 'login-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.created',
+				payload: expect.objectContaining({ userId: 'sa-1', loginId: 'login-1' }),
+			});
+		});
+
+		it('should omit the login id key on `workflow-created` when none is set', () => {
+			eventService.emit('workflow-created', {
+				user: { id: '123' },
+				workflow: mock<IWorkflowBase>({ id: 'wf123', name: 'Test Workflow' }),
+				publicApi: false,
+				projectId: 'proj123',
+				projectType: 'personal',
+			});
+
+			const [{ payload }] = eventBus.sendAuditEvent.mock.calls[0];
+			expect(payload).not.toHaveProperty('loginId');
+		});
+
+		describe('login id on workflow lifecycle events', () => {
+			const user = { id: 'sa-1' };
+			const workflow = mock<IWorkflowDb>({ id: 'wf123', name: 'Test Workflow' });
+
+			const cases = [
+				{
+					event: 'workflow-saved',
+					auditName: 'n8n.audit.workflow.updated',
+					payload: { user, workflow, publicApi: 'other' },
+				},
+				{
+					event: 'workflow-activated',
+					auditName: 'n8n.audit.workflow.activated',
+					payload: { user, workflowId: 'wf123', workflow, publicApi: 'other' },
+				},
+				{
+					event: 'workflow-deactivated',
+					auditName: 'n8n.audit.workflow.deactivated',
+					payload: {
+						user,
+						workflowId: 'wf123',
+						workflow,
+						publicApi: 'other',
+						deactivatedVersionId: 'v1',
+					},
+				},
+				{
+					event: 'workflow-archived',
+					auditName: 'n8n.audit.workflow.archived',
+					payload: { user, workflowId: 'wf123', publicApi: 'other' },
+				},
+				{
+					event: 'workflow-unarchived',
+					auditName: 'n8n.audit.workflow.unarchived',
+					payload: { user, workflowId: 'wf123', publicApi: 'other' },
+				},
+				{
+					event: 'workflow-deleted',
+					auditName: 'n8n.audit.workflow.deleted',
+					payload: {
+						user,
+						workflowId: 'wf123',
+						workflowName: 'Test Workflow',
+						projectId: 'proj123',
+						publicApi: 'other',
+					},
+				},
+			] as const;
+
+			it.each(cases)('should include the login id on `$event`', ({ event, auditName, payload }) => {
+				eventService.emit(event, { ...payload, user: { ...user }, loginId: 'login-1' });
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: auditName,
+					payload: expect.objectContaining({ userId: 'sa-1', loginId: 'login-1' }),
+				});
+			});
+
+			it.each(cases)(
+				'should omit the login id key on `$event` when none is set',
+				({ event, payload }) => {
+					eventService.emit(event, { ...payload, user: { ...user } });
+
+					const [{ payload: sent }] = eventBus.sendAuditEvent.mock.calls[0];
+					expect(sent).not.toHaveProperty('loginId');
+				},
+			);
 		});
 
 		it('should log on `n8n-package-imported` event', () => {
@@ -686,7 +792,8 @@ describe('LogStreamingEventRelay', () => {
 		});
 
 		it('should log on `workflow-post-execute` for successful execution', () => {
-			const payload = mock<RelayEventMap['workflow-post-execute']>({
+			// A plain object: a mock event would grow a key for each field that the relay reads.
+			const payload: RelayEventMap['workflow-post-execute'] = {
 				executionId: 'some-id',
 				userId: 'some-id',
 				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
@@ -698,7 +805,7 @@ describe('LogStreamingEventRelay', () => {
 				} as never),
 				projectId: 'proj-456',
 				projectName: 'My Project',
-			});
+			};
 
 			eventService.emit('workflow-post-execute', payload);
 
@@ -793,6 +900,211 @@ describe('LogStreamingEventRelay', () => {
 					projectId: 'proj-789',
 					projectName: 'Failed Project',
 				},
+			});
+		});
+
+		describe('agent fields', () => {
+			const parentAgentRun: RelatedAgentRun = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				threadId: 'thread-1',
+				runId: 'run-1',
+				toolCallId: 'call-1',
+				userId: 'user-1',
+				agentServiceAccountId: 'sa-1',
+				delegatingAgentId: 'agent-0',
+			};
+			const agentFields = {
+				agentId: 'agent-1',
+				agentServiceAccountId: 'sa-1',
+				agentRunUserId: 'user-1',
+				delegatingAgentId: 'agent-0',
+			};
+			const toolWorkflow = mock<IWorkflowBase>({ id: 'wf-tool', name: 'Lookup' });
+
+			function successfulRun(mode: IRun['mode'] = 'manual') {
+				return mock<IRun>({
+					finished: true,
+					status: 'success',
+					mode,
+					data: { resultData: {} },
+				} as never);
+			}
+
+			function failedRun(mode: IRun['mode'] = 'manual') {
+				return mock<IRun>({
+					status: 'error',
+					mode,
+					finished: false,
+					data: {
+						resultData: {
+							lastNodeExecuted: 'Stop and Error',
+							error: { node: mock<INode>({ type: 'some-type' }), message: 'some-message' },
+						},
+					},
+				} as never) as unknown as IRun;
+			}
+
+			function sentPayload() {
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledTimes(1);
+				return eventBus.sendWorkflowEvent.mock.calls[0][0].payload;
+			}
+
+			it('adds the agent fields to `n8n.workflow.started`, without the rest of the marker', () => {
+				eventService.emit('workflow-pre-execute', {
+					executionId: 'exec-1',
+					data: toolWorkflow,
+					mode: 'manual',
+					parentAgentRun,
+				});
+
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.workflow.started',
+					payload: {
+						executionId: 'exec-1',
+						userId: undefined,
+						workflowId: 'wf-tool',
+						isManual: true,
+						mode: 'manual',
+						workflowName: 'Lookup',
+						projectId: undefined,
+						projectName: undefined,
+						...agentFields,
+					},
+				});
+			});
+
+			it('adds the agent fields to `n8n.workflow.success`, without the rest of the marker', () => {
+				eventService.emit('workflow-post-execute', {
+					executionId: 'exec-1',
+					workflow: toolWorkflow,
+					runData: successfulRun(),
+					parentAgentRun,
+				});
+
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.workflow.success',
+					payload: {
+						executionId: 'exec-1',
+						success: true,
+						isManual: true,
+						mode: 'manual',
+						workflowId: 'wf-tool',
+						workflowName: 'Lookup',
+						projectId: undefined,
+						projectName: undefined,
+						...agentFields,
+					},
+				});
+			});
+
+			it('adds the agent fields to `n8n.workflow.failed`, next to the error fields', () => {
+				eventService.emit('workflow-post-execute', {
+					executionId: 'exec-1',
+					workflow: toolWorkflow,
+					runData: failedRun(),
+					parentAgentRun,
+				});
+
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.workflow.failed',
+					payload: {
+						executionId: 'exec-1',
+						success: false,
+						isManual: true,
+						mode: 'manual',
+						workflowId: 'wf-tool',
+						workflowName: 'Lookup',
+						projectId: undefined,
+						projectName: undefined,
+						lastNodeExecuted: 'Stop and Error',
+						errorNodeType: 'some-type',
+						errorMessage: 'some-message',
+						...agentFields,
+					},
+				});
+			});
+
+			it('adds no agent fields when the marker has no service account', () => {
+				const { agentServiceAccountId: _, ...markerWithoutAccount } = parentAgentRun;
+
+				eventService.emit('workflow-pre-execute', {
+					executionId: 'exec-1',
+					data: toolWorkflow,
+					mode: 'manual',
+					parentAgentRun: markerWithoutAccount,
+				});
+
+				expect(sentPayload()).not.toHaveProperty('agentId');
+			});
+
+			it('adds no agent fields when agent service accounts are off, also for a stored marker', () => {
+				agentsConfig.serviceAccountsEnabled = false;
+				try {
+					eventService.emit('workflow-pre-execute', {
+						executionId: 'exec-1',
+						data: toolWorkflow,
+						mode: 'manual',
+						parentAgentRun,
+					});
+				} finally {
+					agentsConfig.serviceAccountsEnabled = true;
+				}
+
+				expect(sentPayload()).not.toHaveProperty('agentId');
+			});
+
+			it('adds no agent fields to the run of a standalone service account', () => {
+				eventService.emit('workflow-post-execute', {
+					executionId: 'exec-1',
+					userId: 'standalone-sa',
+					workflow: toolWorkflow,
+					runData: successfulRun(),
+				});
+
+				const payload = sentPayload();
+				expect(payload).toMatchObject({ userId: 'standalone-sa' });
+				expect(payload).not.toHaveProperty('agentId');
+				expect(payload).not.toHaveProperty('agentServiceAccountId');
+			});
+
+			it('adds no agent fields to a retry, which copies the run data of the agent tool run', () => {
+				eventService.emit('workflow-pre-execute', {
+					executionId: 'exec-2',
+					userId: 'standalone-sa',
+					data: toolWorkflow,
+					mode: 'retry',
+					parentAgentRun,
+				});
+				eventService.emit('workflow-post-execute', {
+					executionId: 'exec-2',
+					userId: 'standalone-sa',
+					workflow: toolWorkflow,
+					runData: failedRun('retry'),
+					parentAgentRun,
+				});
+
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledTimes(2);
+				for (const [{ payload }] of eventBus.sendWorkflowEvent.mock.calls) {
+					expect(payload).toMatchObject({ userId: 'standalone-sa' });
+					expect(payload).not.toHaveProperty('agentId');
+				}
+			});
+
+			it('adds only the ids that the marker has', () => {
+				const { userId: _, delegatingAgentId: __, ...marker } = parentAgentRun;
+
+				eventService.emit('workflow-pre-execute', {
+					executionId: 'exec-1',
+					data: toolWorkflow,
+					mode: 'manual',
+					parentAgentRun: marker,
+				});
+
+				const payload = sentPayload();
+				expect(payload).toMatchObject({ agentId: 'agent-1', agentServiceAccountId: 'sa-1' });
+				expect(payload).not.toHaveProperty('agentRunUserId');
+				expect(payload).not.toHaveProperty('delegatingAgentId');
 			});
 		});
 
@@ -936,6 +1248,41 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('sso events', () => {
+		it('should log on `sso-settings-updated` event', () => {
+			const event: RelayEventMap['sso-settings-updated'] = {
+				user: {
+					id: '123',
+					email: 'owner@example.com',
+					firstName: 'Olga',
+					lastName: 'Owner',
+					role: { slug: 'global:owner' },
+				},
+				protocol: 'oidc',
+				loginEnabled: false,
+				fieldsChanged: ['clientSecret', 'loginEnabled'],
+				publicApi: true,
+			};
+
+			eventService.emit('sso-settings-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.sso.settings.updated',
+				payload: {
+					userId: '123',
+					_email: 'owner@example.com',
+					_firstName: 'Olga',
+					_lastName: 'Owner',
+					globalRole: 'global:owner',
+					protocol: 'oidc',
+					loginEnabled: false,
+					fieldsChanged: ['clientSecret', 'loginEnabled'],
+					publicApi: true,
+				},
+			});
+		});
+	});
+
 	describe('user events', () => {
 		it('should log on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
@@ -1009,6 +1356,139 @@ describe('LogStreamingEventRelay', () => {
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.user.deleted',
 				payload: { userId: null, source: 'scim', targetUserId: '456' },
+			});
+		});
+
+		it('should log on `agent-service-account-created` event', () => {
+			const event: RelayEventMap['agent-service-account-created'] = {
+				user: {
+					id: '123',
+					email: 'john@n8n.io',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: 'some-role' },
+				},
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			};
+
+			eventService.emit('agent-service-account-created', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: {
+					userId: '123',
+					_email: 'john@n8n.io',
+					_firstName: 'John',
+					_lastName: 'Doe',
+					globalRole: 'some-role',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+				},
+			});
+		});
+
+		it('includes the login on an `agent-service-account-created` event of a service account', () => {
+			eventService.emit('agent-service-account-created', {
+				user: { id: 'user-1' },
+				loginId: 'login-1',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: expect.objectContaining({
+					userId: 'user-1',
+					loginId: 'login-1',
+					serviceAccountId: 'sa-1',
+				}),
+			});
+		});
+
+		it('names the system on an `agent-service-account-created` event without a user', () => {
+			eventService.emit('agent-service-account-created', {
+				user: null,
+				source: 'startup',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: null,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: {
+					userId: null,
+					source: 'startup',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: null,
+				},
+			});
+		});
+
+		it('keeps the user and the source on an `agent-service-account-deleted` event of a project deletion', () => {
+			eventService.emit('agent-service-account-deleted', {
+				user: { id: 'user-1' },
+				source: 'project-deletion',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.deleted',
+				payload: expect.objectContaining({
+					userId: 'user-1',
+					source: 'project-deletion',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			});
+		});
+
+		it('includes the execution on an `agent-service-account-created` event of a run', () => {
+			eventService.emit('agent-service-account-created', {
+				user: null,
+				source: 'execution',
+				executionId: 'exec-1',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: expect.objectContaining({
+					userId: null,
+					source: 'execution',
+					executionId: 'exec-1',
+				}),
+			});
+		});
+
+		it('names the system on an `agent-service-account-deleted` event without a user', () => {
+			eventService.emit('agent-service-account-deleted', {
+				user: null,
+				source: 'scim',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.deleted',
+				payload: {
+					userId: null,
+					source: 'scim',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+				},
 			});
 		});
 
@@ -1457,7 +1937,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `credentials-created` event', () => {
+		it('should log on `credentials-created` event with `publicApi` as a boolean', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
 				credentialDescriptionLength: 0,
@@ -1470,7 +1950,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				credentialType: 'githubApi',
 				credentialId: 'cred456',
-				publicApi: false,
+				publicApi: 'editor_ui',
 				projectId: 'proj789',
 				projectType: 'Personal',
 			};
@@ -1487,7 +1967,7 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					credentialType: 'githubApi',
 					credentialId: 'cred456',
-					publicApi: false,
+					publicApi: true,
 					projectId: 'proj789',
 					projectType: 'Personal',
 				},
@@ -2154,7 +2634,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: false,
 			};
 
 			eventService.emit('public-api-key-created', event);
@@ -2180,7 +2660,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: false,
 				isOwn: true,
 			};
 
@@ -3299,6 +3779,36 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.approval-required.disabled'],
+		])('should log the approval requirement set to %s as `%s`', (value, eventName) => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_reviews_approval_required',
+				value,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {
@@ -3632,6 +4142,68 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.project-approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.project-approval-required.disabled'],
+		])(
+			'should log the project approval requirement set to %s as `%s`',
+			(requiredByProject, eventName) => {
+				eventService.emit('project-workflow-review-settings-updated', {
+					user: reviewer,
+					projectId: 'project-1',
+					requiredByProject,
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName,
+					payload: { ...redactedReviewer, projectId: 'project-1' },
+				});
+			},
+		);
+
+		it.each([
+			[
+				'Required',
+				true,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.enabled',
+			],
+			[
+				'Not required',
+				false,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled',
+			],
+		])('should log %s for a project as `%s`', (_option, requiredByInstance, eventName) => {
+			eventService.emit('project-workflow-review-required-by-instance-updated', {
+				user: reviewer,
+				projectId: 'project-1',
+				requiredByInstance,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: { ...redactedReviewer, projectId: 'project-1' },
+			});
+		});
+
+		it('should log `workflow-review.closed-by-user` with the closer and the reviewed version', () => {
+			eventService.emit('workflow-review-closed-by-user', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.closed-by-user',
+				payload: {
+					...redactedReviewer,
+					workflowId: 'wf-1',
+					versionId: 'ver-1',
+					workflowReviewRequestId: 'review-1',
+				},
+			});
+		});
 	});
 
 	describe('redaction enforcement events', () => {
@@ -3718,6 +4290,68 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					before: 'production',
 					after: 'all',
+				},
+			});
+		});
+	});
+
+	describe('public API rate limit events', () => {
+		it('should log `public-api-rate-limit.updated` with redacted user and the changed values', () => {
+			const event: RelayEventMap['public-api-rate-limit-updated'] = {
+				user: {
+					id: 'user404',
+					email: 'admin7@example.com',
+					firstName: 'Seventh',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				before: { globalReadLimit: 1200 },
+				after: { globalReadLimit: 100 },
+			};
+
+			eventService.emit('public-api-rate-limit-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.updated',
+				payload: {
+					userId: 'user404',
+					_email: 'admin7@example.com',
+					_firstName: 'Seventh',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					before: { globalReadLimit: 1200 },
+					after: { globalReadLimit: 100 },
+				},
+			});
+		});
+	});
+
+	describe('promotion settings events', () => {
+		it('should log `promotion-settings.updated` with redacted user and the changed settings', () => {
+			const event: RelayEventMap['promotion-settings-updated'] = {
+				user: {
+					id: 'user405',
+					email: 'admin8@example.com',
+					firstName: 'Eighth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				before: { whoCanApply: 'instanceAdmins' },
+				after: { whoCanApply: 'projectAdmins' },
+			};
+
+			eventService.emit('promotion-settings-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.promotion-settings.updated',
+				payload: {
+					userId: 'user405',
+					_email: 'admin8@example.com',
+					_firstName: 'Eighth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					before: { whoCanApply: 'instanceAdmins' },
+					after: { whoCanApply: 'projectAdmins' },
 				},
 			});
 		});
@@ -3863,6 +4497,141 @@ describe('LogStreamingEventRelay', () => {
 			);
 		});
 	});
+	describe('provisioning settings events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: 'global:owner' },
+		};
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'owner@n8n.io',
+			_firstName: 'Own',
+			_lastName: 'Er',
+			globalRole: 'global:owner',
+		};
+
+		it('should log a provisioning settings save with the state after it', () => {
+			eventService.emit('provisioning-settings-updated', {
+				user,
+				authenticationMethod: 'oidc',
+				assignmentMethod: 'instance_role',
+				roleMappingMethod: 'idp_rule_mapping',
+				instanceRuleCount: 0,
+				projectRuleCount: 0,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.provisioning.settings.updated',
+				payload: {
+					...redactedUser,
+					authenticationMethod: 'oidc',
+					assignmentMethod: 'instance_role',
+					roleMappingMethod: 'idp_rule_mapping',
+					instanceRuleCount: 0,
+					projectRuleCount: 0,
+				},
+			});
+		});
+	});
+
+	describe('SCIM events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: 'global:owner' },
+		};
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'owner@n8n.io',
+			_firstName: 'Own',
+			_lastName: 'Er',
+			globalRole: 'global:owner',
+		};
+
+		it.each([
+			['enabled', true, 'n8n.audit.scim.enabled'],
+			['disabled', false, 'n8n.audit.scim.disabled'],
+			['token_created', true, 'n8n.audit.scim.token.created'],
+			['token_rotated', true, 'n8n.audit.scim.token.rotated'],
+			['token_revoked', false, 'n8n.audit.scim.token.revoked'],
+		] as const)('should log a `%s` SCIM settings change', (change, isActive, auditEventName) => {
+			eventService.emit('scim-settings-updated', { user, isActive, change, source: 'user' });
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: auditEventName,
+				payload: { ...redactedUser, isActive, source: 'user' },
+			});
+		});
+
+		it.each(['sso_off', 'startup'] as const)(
+			'should log a SCIM turn-off by n8n without a user (%s)',
+			(source) => {
+				eventService.emit('scim-settings-updated', {
+					user: null,
+					isActive: false,
+					change: 'disabled',
+					source,
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.scim.disabled',
+					payload: { userId: null, isActive: false, source },
+				});
+			},
+		);
+
+		it('should log a deprovisioning policy change with both policies', () => {
+			const before = {
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			} as const;
+			const after = { onDelete: 'delete', dataAction: 'delete', transferProjectId: null } as const;
+
+			eventService.emit('scim-deprovisioning-policy-updated', {
+				user,
+				isActive: true,
+				before,
+				after,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.scim.deprovisioning.updated',
+				payload: { ...redactedUser, isActive: true, before, after },
+			});
+		});
+
+		it.each([
+			[
+				'a 429 of the IP rate limit',
+				{ operation: 'list_users', status: 429, reason: 'rate_limited' },
+			],
+			['a path without a route', { operation: 'other', status: 404, reason: 'not_found' }],
+		] as const)('should not log %s', (_, event) => {
+			eventService.emit('scim-request-rejected', event);
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
+
+		it('should log each rejected SCIM request', () => {
+			const event = { operation: 'create_user', status: 409, reason: 'conflict' } as const;
+
+			eventService.emit('scim-request-rejected', event);
+			eventService.emit('scim-request-rejected', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledTimes(2);
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.scim.request.rejected',
+				payload: { userId: null, ...event },
+			});
+		});
+	});
+
 	describe('trusted source events', () => {
 		it.each([
 			['trusted-source-created', 'n8n.audit.trusted-source.created'],
@@ -4049,6 +4818,468 @@ describe('LogStreamingEventRelay', () => {
 			});
 
 			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('login id on audit events', () => {
+		type LoginIdCase = {
+			[K in keyof RelayEventMap]: { event: K; auditName: string; payload: RelayEventMap[K] };
+		}[keyof RelayEventMap];
+
+		const user = { id: 'sa-1' };
+
+		const itCarriesLoginId = (
+			cases: readonly LoginIdCase[],
+			sender: 'sendAuditEvent' | 'sendMcpEvent' = 'sendAuditEvent',
+		) => {
+			it.each(cases)('should include the login id on `$event`', ({ event, auditName, payload }) => {
+				eventService.emit(event, { ...payload, loginId: 'login-1' });
+
+				expect(eventBus[sender]).toHaveBeenCalledWith({
+					eventName: auditName,
+					payload: expect.objectContaining({ loginId: 'login-1' }),
+				});
+			});
+
+			it.each(cases)(
+				'should omit the login id key on `$event` when none is set',
+				({ event, payload }) => {
+					eventService.emit(event, { ...payload });
+
+					expect(eventBus[sender]).toHaveBeenCalledTimes(1);
+					const [{ payload: sent }] = eventBus[sender].mock.calls[0];
+					expect(sent).not.toHaveProperty('loginId');
+				},
+			);
+		};
+
+		describe('credentials', () => {
+			itCarriesLoginId([
+				{
+					event: 'credentials-created',
+					auditName: 'n8n.audit.user.credentials.created',
+					payload: {
+						user,
+						credentialType: 'githubApi',
+						credentialId: 'cred-1',
+						credentialName: 'GitHub',
+						publicApi: 'other',
+					},
+				},
+				{
+					event: 'credentials-updated',
+					auditName: 'n8n.audit.user.credentials.updated',
+					payload: {
+						user,
+						credentialType: 'githubApi',
+						credentialId: 'cred-1',
+						credentialName: 'GitHub',
+					},
+				},
+				{
+					event: 'credentials-deleted',
+					auditName: 'n8n.audit.user.credentials.deleted',
+					payload: {
+						user,
+						credentialType: 'githubApi',
+						credentialId: 'cred-1',
+						credentialName: 'GitHub',
+						projectId: 'proj-1',
+					},
+				},
+			]);
+		});
+
+		describe('variables', () => {
+			const variable = { user, variableId: 'var-1', variableKey: 'KEY', projectId: 'proj-1' };
+
+			itCarriesLoginId([
+				{ event: 'variable-created', auditName: 'n8n.audit.variable.created', payload: variable },
+				{ event: 'variable-updated', auditName: 'n8n.audit.variable.updated', payload: variable },
+				{ event: 'variable-deleted', auditName: 'n8n.audit.variable.deleted', payload: variable },
+			]);
+		});
+
+		describe('users and email', () => {
+			itCarriesLoginId([
+				{
+					event: 'user-deleted',
+					auditName: 'n8n.audit.user.deleted',
+					payload: {
+						user,
+						publicApi: 'other',
+						targetUserOldStatus: 'active',
+						targetUserId: 'user-2',
+					},
+				},
+				{
+					event: 'user-invited',
+					auditName: 'n8n.audit.user.invited',
+					payload: {
+						user,
+						targetUserId: ['user-2'],
+						publicApi: 'other',
+						emailSent: true,
+						inviteeRole: 'global:member',
+					},
+				},
+				{
+					event: 'email-failed',
+					auditName: 'n8n.audit.user.email.failed',
+					payload: { user, messageType: 'New user invite', publicApi: 'other' },
+				},
+			]);
+		});
+
+		describe('executions', () => {
+			const executed = {
+				workflowId: 'wf-1',
+				workflowName: 'Test Workflow',
+				executionId: 'exec-1',
+				projectId: 'proj-1',
+				projectName: 'Project',
+				source: 'integrated',
+			} as const;
+			const reveal = {
+				user,
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				ipAddress: '127.0.0.1',
+				userAgent: 'test',
+				redactionPolicy: 'all',
+			} as const;
+
+			itCarriesLoginId([
+				{
+					event: 'workflow-executed',
+					auditName: 'n8n.audit.workflow.executed',
+					payload: { ...executed, user },
+				},
+				{
+					event: 'workflow-executed',
+					auditName: 'n8n.audit.workflow.executed',
+					payload: executed,
+				},
+				{
+					event: 'execution-data-revealed',
+					auditName: 'n8n.audit.execution.data.revealed',
+					payload: reveal,
+				},
+				{
+					event: 'execution-data-reveal-failure',
+					auditName: 'n8n.audit.execution.data.reveal_failure',
+					payload: { ...reveal, rejectionReason: 'denied' },
+				},
+			]);
+		});
+
+		describe('community packages', () => {
+			itCarriesLoginId([
+				{
+					event: 'community-package-installed',
+					auditName: 'n8n.audit.package.installed',
+					payload: {
+						user,
+						inputString: 'n8n-nodes-test',
+						packageName: 'n8n-nodes-test',
+						success: true,
+					},
+				},
+				{
+					event: 'community-package-updated',
+					auditName: 'n8n.audit.package.updated',
+					payload: {
+						user,
+						packageName: 'n8n-nodes-test',
+						packageVersionCurrent: '1.0.0',
+						packageVersionNew: '1.1.0',
+						packageNodeNames: ['Test'],
+					},
+				},
+				{
+					event: 'community-package-deleted',
+					auditName: 'n8n.audit.package.deleted',
+					payload: {
+						user,
+						packageName: 'n8n-nodes-test',
+						packageVersion: '1.0.0',
+						packageNodeNames: ['Test'],
+					},
+				},
+			]);
+		});
+
+		describe('promotions', () => {
+			const provider = {
+				user,
+				providerId: 'prov-1',
+				providerName: 'GitLab bot',
+				providerType: 'gitlab',
+				authType: 'token',
+			} as const;
+			const environment = {
+				user,
+				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'GitLab bot',
+				repository: 'acme/workflows',
+				direction: 'promote',
+				environmentScope: 'instance',
+			} as const;
+
+			itCarriesLoginId([
+				{
+					event: 'promotion-provider-created',
+					auditName: 'n8n.audit.promotions.provider.created',
+					payload: { ...provider, outcome: 'success', durationMs: 1 },
+				},
+				{
+					event: 'promotion-provider-updated',
+					auditName: 'n8n.audit.promotions.provider.updated',
+					payload: { ...provider, changedFields: ['name'], outcome: 'success', durationMs: 1 },
+				},
+				{
+					event: 'promotion-provider-deleted',
+					auditName: 'n8n.audit.promotions.provider.deleted',
+					payload: provider,
+				},
+				{
+					event: 'promotion-environment-created',
+					auditName: 'n8n.audit.promotions.environment.created',
+					payload: { ...environment, providerType: 'gitlab' },
+				},
+				{
+					event: 'promotion-environment-updated',
+					auditName: 'n8n.audit.promotions.environment.updated',
+					payload: { ...environment, changedFields: ['name'] },
+				},
+				{
+					event: 'promotion-environment-deleted',
+					auditName: 'n8n.audit.promotions.environment.deleted',
+					payload: environment,
+				},
+			]);
+		});
+
+		describe('role mapping', () => {
+			itCarriesLoginId([
+				{
+					event: 'role-mapping-rule-created',
+					auditName: 'n8n.audit.role-mapping.rule.created',
+					payload: {
+						user,
+						ruleId: 'rule-1',
+						ruleType: 'instance',
+						expression: 'true',
+						role: 'global:member',
+					},
+				},
+				{
+					event: 'role-mapping-rule-updated',
+					auditName: 'n8n.audit.role-mapping.rule.updated',
+					payload: { user, ruleId: 'rule-1', ruleType: 'instance', patchedFields: ['role'] },
+				},
+				{
+					event: 'role-mapping-rule-deleted',
+					auditName: 'n8n.audit.role-mapping.rule.deleted',
+					payload: { user, ruleId: 'rule-1', ruleType: 'instance' },
+				},
+			]);
+		});
+
+		describe('type policies', () => {
+			const policy = { rules: [], version: 1 };
+			const attachments = { attachments: [], version: 1 };
+
+			itCarriesLoginId([
+				{
+					event: 'node-type-policy-scope-updated',
+					auditName: 'n8n.audit.node-type-policy.scope.updated',
+					payload: {
+						updatedBy: 'sa-1',
+						kind: 'node',
+						projectId: null,
+						scopeId: 'scope-1',
+						before: null,
+						after: { defaultAction: 'allow', version: 1 },
+					},
+				},
+				{
+					event: 'node-type-policy-document-created',
+					auditName: 'n8n.audit.node-type-policy.document.created',
+					payload: {
+						updatedBy: 'sa-1',
+						kind: 'node',
+						policyId: 'policy-1',
+						origin: 'document-api',
+						after: policy,
+					},
+				},
+				{
+					event: 'node-type-policy-document-updated',
+					auditName: 'n8n.audit.node-type-policy.document.updated',
+					payload: {
+						updatedBy: 'sa-1',
+						kind: 'node',
+						policyId: 'policy-1',
+						origin: 'document-api',
+						before: policy,
+						after: policy,
+					},
+				},
+				{
+					event: 'node-type-policy-document-deleted',
+					auditName: 'n8n.audit.node-type-policy.document.deleted',
+					payload: { updatedBy: 'sa-1', kind: 'node', policyId: 'policy-1', before: policy },
+				},
+				{
+					event: 'node-type-policy-attachments-updated',
+					auditName: 'n8n.audit.node-type-policy.attachments.updated',
+					payload: {
+						updatedBy: 'sa-1',
+						kind: 'node',
+						projectId: null,
+						scopeId: 'scope-1',
+						before: attachments,
+						after: attachments,
+					},
+				},
+			]);
+		});
+
+		describe('execution limits', () => {
+			const payload = {
+				updatedBy: 'sa-1',
+				projectId: 'project-1',
+				field: 'projectMaxExecutions',
+				oldValue: 100,
+				newValue: null,
+			} as const;
+
+			itCarriesLoginId([
+				{
+					event: 'execution-limit-updated',
+					auditName: 'n8n.audit.execution-limit.updated',
+					payload,
+				},
+			]);
+
+			it('should send the changed limit with its old and new value', () => {
+				eventService.emit('execution-limit-updated', payload);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.execution-limit.updated',
+					payload,
+				});
+			});
+
+			it('should send no user for a limit that n8n changed', () => {
+				eventService.emit('execution-limit-updated', { ...payload, updatedBy: null });
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.execution-limit.updated',
+					payload: { ...payload, updatedBy: null },
+				});
+			});
+		});
+
+		describe('settings', () => {
+			itCarriesLoginId([
+				{
+					event: 'instance-policies-updated',
+					auditName: 'n8n.audit.2fa-enforcement.enabled',
+					payload: { user, settingName: '2fa_enforcement', value: true },
+				},
+				{
+					event: 'redaction-enforcement-updated',
+					auditName: 'n8n.audit.redaction-enforcement.updated',
+					payload: { user, before: 'off', after: 'production' },
+				},
+			]);
+		});
+
+		describe('packages', () => {
+			itCarriesLoginId([
+				{
+					event: 'n8n-package-imported',
+					auditName: 'n8n.audit.n8n-package.import.success',
+					payload: {
+						user,
+						projectIds: ['proj-1'],
+						folderId: null,
+						workflowIds: ['wf-1'],
+						agentIds: [],
+						options: mock<RelayEventMap['n8n-package-imported']['options']>(),
+						packageSourceId: 'source-1',
+						packageVersion: '1',
+						credentialIds: { matched: [], created: [], updated: [] },
+						counts: mock<RelayEventMap['n8n-package-imported']['counts']>(),
+					},
+				},
+				{
+					event: 'n8n-package-exported',
+					auditName: 'n8n.audit.n8n-package.export.success',
+					payload: {
+						user,
+						workflowIds: ['wf-1'],
+						counts: {
+							agents: 0,
+							workflows: 1,
+							folders: 0,
+							credentials: 0,
+							dataTables: 0,
+							variables: 0,
+							tags: 0,
+						},
+						credentialExportPolicy: 'expression-values-only',
+						includeArchived: false,
+					},
+				},
+				{
+					event: 'n8n-package-import-failed',
+					auditName: 'n8n.audit.n8n-package.import.failed',
+					payload: { user, reason: 'access-denied', projectId: 'proj-1' },
+				},
+				{
+					event: 'n8n-package-export-failed',
+					auditName: 'n8n.audit.n8n-package.export.failed',
+					payload: { user, reason: 'access-denied', workflowIds: ['wf-1'] },
+				},
+			]);
+		});
+
+		describe('agents', () => {
+			itCarriesLoginId([
+				{
+					event: 'agent-archived',
+					auditName: 'n8n.audit.agent.archived',
+					payload: { user, agentId: 'agent-1', projectId: 'proj-1' },
+				},
+				{
+					event: 'agent-unarchived',
+					auditName: 'n8n.audit.agent.unarchived',
+					payload: { user, agentId: 'agent-1', projectId: 'proj-1' },
+				},
+				{
+					event: 'agent-service-account-deleted',
+					auditName: 'n8n.audit.agent.service-account.deleted',
+					payload: { user, serviceAccountId: 'sa-1', agentId: 'agent-1', projectId: 'proj-1' },
+				},
+			]);
+		});
+
+		describe('MCP', () => {
+			itCarriesLoginId(
+				[
+					{
+						event: 'mcp-tool-called',
+						auditName: 'n8n.audit.mcp.tool.called',
+						payload: { user, toolName: 'search_workflows', status: 'success' },
+					},
+				],
+				'sendMcpEvent',
+			);
 		});
 	});
 });

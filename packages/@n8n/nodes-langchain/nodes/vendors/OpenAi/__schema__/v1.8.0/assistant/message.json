@@ -1,0 +1,12 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"output": {
+			"type": "string"
+		},
+		"threadId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

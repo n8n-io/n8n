@@ -1,6 +1,7 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { AddedNodesAndConnections } from '@/Interface';
-import { waitFor } from '@testing-library/vue';
+import { cleanup, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -45,7 +46,17 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { EngineCompatibilityReason } from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
+import {
+	DUPLICATE_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/app/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
@@ -56,6 +67,15 @@ const mockGroupTelemetry = vi.hoisted(() => ({
 	trackCollapsed: vi.fn(),
 	trackExpanded: vi.fn(),
 }));
+
+// Spies replace the modal loaders, so a canvas prefetch loads no modal code.
+vi.mock('@/app/modals/lazyModals', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/modals/lazyModals')>();
+	const loaders = Object.fromEntries(
+		Object.keys(actual.lazyModalLoaders).map((key) => [key, vi.fn(async () => ({}))]),
+	);
+	return { ...actual, lazyModalLoaders: loaders };
+});
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger', () => ({
 	useMcpJsonNudgeTrigger: () => ({ gate: mockMcpJsonNudgeGate }),
@@ -201,6 +221,9 @@ describe('NodeView', () => {
 								data-test-id="node-creation-stub-add-node"
 								@click="$emit('addNodes', { nodes: [{ type: '${SET_NODE_TYPE}', name: 'Added' }], connections: [] }); $emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes: true }); $emit('close')"
 							/>
+							<div data-test-id="node-creation-stub-above-toolbar">
+								<slot name="above-toolbar" />
+							</div>
 						</>`,
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
@@ -963,6 +986,41 @@ describe('NodeView', () => {
 		});
 	});
 
+	describe('Replace node from outside the canvas', () => {
+		const trigger = createTestNode({ id: 'trigger-1', type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([trigger]);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+		});
+
+		it('opens the replace flow on an editable canvas', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			const { findByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-replace-first');
+
+			nodeViewEventBus.emit('replaceNode', trigger.id);
+
+			await waitFor(() => expect(useNodeCreatorStore().openingContext).toBe('replacement'));
+			expect(useNodeCreatorStore().isReplacingFromSetupPanel).toBe(true);
+		});
+
+		it('ignores the request on a read-only canvas', async () => {
+			routeMock.name = VIEWS.DEMO;
+			const { findByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-replace-first');
+
+			nodeViewEventBus.emit('replaceNode', trigger.id);
+
+			expect(useNodeCreatorStore().openingContext).toBeNull();
+		});
+	});
+
 	describe('Canvas-only mode', () => {
 		it('shows the n8n logo on the canvas when canvas-only mode is enabled', async () => {
 			useSettingsStore().settings.canvasOnly = true;
@@ -989,6 +1047,67 @@ describe('NodeView', () => {
 
 			await findByTestId('canvas-stub-copy');
 			expect(queryByTestId('n8n-logo')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Modal prefetch', () => {
+		const CANVAS_MODALS: LazyModalKey[] = [
+			WORKFLOW_PUBLISH_MODAL_KEY,
+			CREDENTIAL_EDIT_MODAL_KEY,
+			WORKFLOW_SETTINGS_MODAL_KEY,
+			WORKFLOW_SHARE_MODAL_KEY,
+			DUPLICATE_MODAL_KEY,
+		];
+		let idleCallbacks: IdleRequestCallback[];
+
+		/** Renders the canvas, then runs idle callbacks until no prefetch is pending. */
+		async function renderAndRunIdle() {
+			const view = renderNodeView();
+			await view.findByTestId('canvas-stub-copy');
+			for (let callback = idleCallbacks.shift(); callback; callback = idleCallbacks.shift()) {
+				callback({ didTimeout: false, timeRemaining: () => 50 });
+				await flushPromises();
+			}
+			return view;
+		}
+
+		function loadedModals() {
+			return Object.entries(lazyModalLoaders)
+				.filter(([, load]) => vi.mocked(load).mock.calls.length > 0)
+				.map(([key]) => key);
+		}
+
+		beforeEach(() => {
+			idleCallbacks = [];
+			vi.stubGlobal(
+				'requestIdleCallback',
+				vi.fn((callback: IdleRequestCallback) => idleCallbacks.push(callback)),
+			);
+			vi.stubGlobal('cancelIdleCallback', vi.fn());
+		});
+
+		afterEach(() => {
+			cleanup();
+			vi.unstubAllGlobals();
+		});
+
+		it('prefetches the canvas modals in order, and no other modal', async () => {
+			await renderAndRunIdle();
+
+			expect(loadedModals()).toEqual(expect.arrayContaining(CANVAS_MODALS));
+			expect(loadedModals()).toHaveLength(CANVAS_MODALS.length);
+			const firstCalls = CANVAS_MODALS.map(
+				(key) => vi.mocked(lazyModalLoaders[key]).mock.invocationCallOrder[0],
+			);
+			expect(firstCalls).toEqual([...firstCalls].sort((a, b) => a - b));
+		});
+
+		it('prefetches no modal in a workflow preview', async () => {
+			routeMock.name = VIEWS.DEMO;
+
+			await renderAndRunIdle();
+
+			expect(loadedModals()).toEqual([]);
 		});
 	});
 
@@ -1023,6 +1142,141 @@ describe('NodeView', () => {
 			renderNodeView();
 
 			await waitFor(() => expect(fetchForProject).not.toHaveBeenCalled());
+		});
+	});
+
+	describe('Engine v2 compatibility', () => {
+		const BUTTON = 'engine-v2-compatibility-button';
+
+		/** Opens the list of reasons from the button, and returns its text. */
+		async function reasonsText(findByTestId: (id: string) => Promise<HTMLElement>) {
+			await userEvent.click(await findByTestId(BUTTON));
+			return (await findByTestId('engine-v2-compatibility-dialog')).textContent;
+		}
+
+		const incompatible = createTestNode({ type: SET_NODE_TYPE, name: 'Incompatible' });
+		const blockingReason: EngineCompatibilityReason = {
+			code: 'ERROR_WORKFLOW',
+			kind: 'temporary',
+			severity: 'blocking',
+			message: 'Engine v2 does not run an error workflow yet.',
+		};
+
+		// A reason for every node of the incompatible type, so the button follows the canvas.
+		const mockReasonsForIncompatibleNodes = () =>
+			mockEngineV2Compatibility({
+				reasons: (workflow) =>
+					workflow.nodes
+						.filter((node) => node.type === SET_NODE_TYPE)
+						.map((node) => ({ ...blockingReason, nodeId: node.id, nodeName: node.name })),
+			});
+
+		const setEngineV2Gate = ({ moduleActive = true, engineType = 'v2' as 'v1' | 'v2' } = {}) => {
+			useSettingsStore().settings.activeModules = moduleActive ? ['engine-v2'] : [];
+			workflowDocumentStore.mergeSettings({ engineType });
+		};
+
+		beforeEach(() => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+				mockNodeTypeDescription({ name: SET_NODE_TYPE }),
+			]);
+		});
+
+		it('shows the button above the toolbar on an editable canvas, and lists the reasons', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+
+			const { findByTestId } = renderNodeView();
+
+			const aboveToolbar = await findByTestId('node-creation-stub-above-toolbar');
+			expect(aboveToolbar).toContainElement(await findByTestId(BUTTON));
+			expect(await reasonsText(findByTestId)).toContain(
+				"Engine v2 doesn't run error workflows yet.",
+			);
+		});
+
+		it('shows the button on its own on a read-only canvas', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			expect(await findByTestId(BUTTON)).toBeInTheDocument();
+			expect(queryByTestId('node-creation-stub-above-toolbar')).not.toBeInTheDocument();
+		});
+
+		it.each([
+			['the engine-v2 module is off', { moduleActive: false }],
+			['the workflow runs on engine v1', { engineType: 'v1' as const }],
+		])('shows nothing when %s', async (_case, gate) => {
+			setEngineV2Gate(gate);
+			const { checkWorkflow } = mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+			expect(checkWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('hides the button when no reason is left', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+			workflowDocumentStore.setNodes([incompatible]);
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			expect(await findByTestId(BUTTON)).toBeInTheDocument();
+
+			workflowDocumentStore.removeNodeById(incompatible.id);
+
+			await waitFor(() => expect(queryByTestId(BUTTON)).not.toBeInTheDocument());
+		});
+
+		it('shows the reasons after an import', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+
+			nodeViewEventBus.emit('importWorkflowData', {
+				data: { nodes: [incompatible], connections: {} },
+			});
+
+			expect(await reasonsText(findByTestId)).toContain('Incompatible');
+		});
+
+		it('shows the reasons after a paste', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+			// Paste only runs on the workflow tab of a writable canvas.
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
+				await action();
+			});
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+
+			const event = new Event('paste');
+			Object.assign(event, {
+				clipboardData: {
+					getData: () => JSON.stringify({ nodes: [incompatible], connections: {} }),
+				},
+			});
+			document.dispatchEvent(event);
+
+			expect(await reasonsText(findByTestId)).toContain('Incompatible');
 		});
 	});
 
@@ -1210,6 +1464,31 @@ describe('NodeView', () => {
 					'Existing',
 					'Pasted',
 				]),
+			);
+		});
+
+		it('pastes a restricted node and warns that it is restricted', async () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+				(name) => ({ name, available: name !== MANUAL_TRIGGER_NODE_TYPE, scope: 'instance' }),
+			);
+			mockShowMessage.mockClear();
+			renderNodeView();
+
+			pasteText(pastedJson);
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ customClass: 'content-toast restricted-import-toast' }),
+				false,
 			);
 		});
 

@@ -4,6 +4,7 @@ import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import {
+	CredentialRestrictionsProviderProxy,
 	InstalledTypeRestrictionsProxy,
 	RestrictedNodeTypesProviderProxy,
 } from '@n8n/backend-services';
@@ -28,6 +29,7 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		await import('./available-types.controller.js');
 		await import('./available-credential-types.controller.js');
 		await import('./sub-workflow-policy-check.controller.js');
+		await import('./project-policies.controller.js');
 
 		// Side-effecting imports: `@PolicyCheck` registers the check on class definition.
 		await import('./node-type-policy.check.js');
@@ -38,6 +40,13 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		);
 		Container.get(RestrictedNodeTypesProviderProxy).registerProvider(
 			Container.get(NodeTypePolicyRestrictedTypesProvider),
+		);
+
+		const { CredentialTypePolicyRestrictionsProvider } = await import(
+			'./credential-restrictions.provider.js'
+		);
+		Container.get(CredentialRestrictionsProviderProxy).registerProvider(
+			Container.get(CredentialTypePolicyRestrictionsProvider),
 		);
 
 		const { NodeTypePolicyInstalledTypeRestrictionsProvider } = await import(

@@ -40,10 +40,15 @@ const source: SkillSourceListItem = {
 	projectIcon: null,
 	skillCount: 2,
 	updatesAvailable: 0,
+	newSkillsAvailable: 0,
 	updatesBlocked: 0,
 	health: 'connected',
 	lastCheckedAt: null,
+	missingSkills: [],
+	canReplaceCredential: false,
 	canReview: true,
+	canImport: true,
+	canMove: true,
 	canDelete: true,
 };
 
@@ -74,10 +79,43 @@ describe('SkillSourceDeleteDialog', () => {
 		expect(emitted('close')).toEqual([[]]);
 	});
 
+	it('removes the source and keeps its skills when Stop syncing is selected', async () => {
+		mockedStore(useSkillsStore).deleteSource.mockResolvedValue(undefined);
+		const { getByRole, emitted } = renderDialog();
+		expect(getByRole('dialog')).toHaveTextContent('keep its skills with their version history');
+		expect(getByRole('dialog')).toHaveTextContent(
+			'Agents can still use the skills. Users with edit access can edit them in n8n.',
+		);
+		expect(getByRole('dialog')).toHaveTextContent('GitHub updates stop.');
+		await userEvent.click(getByRole('button', { name: 'Stop syncing' }));
+		await waitFor(() => expect(emitted('deleted')).toEqual([[]]));
+		expect(mockedStore(useSkillsStore).deleteSource).toHaveBeenCalledWith('source-1', {
+			keepSkills: true,
+		});
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Source removed. Users with edit access can edit its skills in n8n.',
+			type: 'success',
+		});
+	});
+
+	it('offers only source deletion for an empty source', async () => {
+		const { getByRole, queryByRole } = renderDialog({
+			props: { source: { ...source, skillCount: 0 } },
+		});
+		expect(getByRole('button', { name: 'Delete source' })).toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Stop syncing' })).toBeNull();
+	});
+
+	it('disables removal without source delete permission', () => {
+		const { getByRole } = renderDialog({ props: { source: { ...source, canDelete: false } } });
+		expect(getByRole('button', { name: 'Delete skills' })).toBeDisabled();
+		expect(getByRole('button', { name: 'Stop syncing' })).toBeDisabled();
+	});
+
 	it('deletes only after confirmation and reports success', async () => {
 		const { getByRole, emitted } = renderDialog();
 		expect(mockedStore(useSkillsStore).deleteSource).not.toHaveBeenCalled();
-		await userEvent.click(getByRole('button', { name: 'Delete source' }));
+		await userEvent.click(getByRole('button', { name: 'Delete skills' }));
 		await waitFor(() => expect(emitted('deleted')).toEqual([[]]));
 		expect(mockedStore(useSkillsStore).deleteSource).toHaveBeenCalledWith('source-1');
 		expect(showMessage).toHaveBeenCalledWith({
@@ -86,7 +124,28 @@ describe('SkillSourceDeleteDialog', () => {
 		});
 	});
 
-	it('lists blocking agents and projects in the dialog and offers only Close', async () => {
+	it('shows progress only on the action that runs', async () => {
+		let finish = () => {};
+		mockedStore(useSkillsStore).deleteSource.mockReturnValue(
+			new Promise<void>((resolve) => {
+				finish = resolve;
+			}),
+		);
+		const { getByRole, emitted } = renderDialog();
+		await userEvent.click(getByRole('button', { name: 'Stop syncing' }));
+
+		const keep = getByRole('button', { name: 'Stop syncing' });
+		const destroy = getByRole('button', { name: 'Delete skills' });
+		expect(keep).toHaveAttribute('aria-busy', 'true');
+		expect(destroy).toBeDisabled();
+		expect(destroy).not.toHaveAttribute('aria-busy', 'true');
+		expect(getByRole('button', { name: 'Cancel' })).toBeDisabled();
+
+		finish();
+		await waitFor(() => expect(emitted('deleted')).toEqual([[]]));
+	});
+
+	it('lists blocking agents and still lets the user keep their skills', async () => {
 		mockedStore(useSkillsStore).deleteSource.mockRejectedValue(
 			new ResponseError('In use', {
 				httpStatusCode: 409,
@@ -106,17 +165,21 @@ describe('SkillSourceDeleteDialog', () => {
 			}),
 		);
 		const { getByRole, queryByRole, emitted } = renderDialog();
-		await userEvent.click(getByRole('button', { name: 'Delete source' }));
+		await userEvent.click(getByRole('button', { name: 'Delete skills' }));
 		await waitFor(() => expect(getByRole('dialog')).toHaveTextContent("Can't delete source"));
 		expect(getByRole('dialog')).toHaveTextContent('Research agent · Marketing');
 		expect(getByRole('dialog')).toHaveTextContent('Sales agent · Sales');
 		expect(getByRole('dialog')).toHaveTextContent('1 agent in other projects');
 		expect(getByRole('dialog')).toHaveTextContent('Nothing was deleted.');
-		expect(queryByRole('button', { name: 'Delete source' })).toBeNull();
+		expect(queryByRole('button', { name: 'Delete skills' })).toBeNull();
 		expect(emitted('deleted')).toBeUndefined();
 		expect(showMessage).not.toHaveBeenCalled();
-		await userEvent.click(getByRole('button', { name: 'Close' }));
-		expect(emitted('close')).toEqual([[]]);
+		mockedStore(useSkillsStore).deleteSource.mockResolvedValue(undefined);
+		await userEvent.click(getByRole('button', { name: 'Stop syncing' }));
+		await waitFor(() => expect(emitted('deleted')).toEqual([[]]));
+		expect(mockedStore(useSkillsStore).deleteSource).toHaveBeenLastCalledWith('source-1', {
+			keepSkills: true,
+		});
 	});
 
 	it('explains how to unblock deletion when all agents are in unreadable projects', async () => {
@@ -127,7 +190,7 @@ describe('SkillSourceDeleteDialog', () => {
 			}),
 		);
 		const { getByRole, queryByRole, emitted } = renderDialog();
-		await userEvent.click(getByRole('button', { name: 'Delete source' }));
+		await userEvent.click(getByRole('button', { name: 'Delete skills' }));
 		await waitFor(() =>
 			expect(getByRole('dialog')).toHaveTextContent(
 				"Ask a project admin to remove them from agents in projects you can't open.",
@@ -135,7 +198,7 @@ describe('SkillSourceDeleteDialog', () => {
 		);
 		expect(getByRole('dialog')).toHaveTextContent('1 agent in other projects');
 		expect(getByRole('dialog')).toHaveTextContent('Nothing was deleted.');
-		expect(queryByRole('button', { name: 'Delete source' })).toBeNull();
+		expect(queryByRole('button', { name: 'Delete skills' })).toBeNull();
 		expect(emitted('deleted')).toBeUndefined();
 		expect(emitted('close')).toBeUndefined();
 	});
@@ -144,7 +207,7 @@ describe('SkillSourceDeleteDialog', () => {
 		const error = new ResponseError('Not allowed', { httpStatusCode: 403 });
 		mockedStore(useSkillsStore).deleteSource.mockRejectedValue(error);
 		const { getByRole, emitted } = renderDialog();
-		await userEvent.click(getByRole('button', { name: 'Delete source' }));
+		await userEvent.click(getByRole('button', { name: 'Delete skills' }));
 		await waitFor(() =>
 			expect(showError).toHaveBeenCalledWith(error, 'Could not delete the source'),
 		);

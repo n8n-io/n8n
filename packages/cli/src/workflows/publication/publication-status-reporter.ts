@@ -6,12 +6,15 @@ import {
 	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	TransactionRunner,
+	type OperationContext,
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { errorChain } from '@n8n/utils/errors/error-chain';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
@@ -23,9 +26,21 @@ import type {
 	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
-import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
+
+/** A failure that only a user change can fix, for every failed trigger, so automatic retries never run it again. */
+function isPermanentFailure(error: Error): boolean {
+	return error instanceof AggregateError
+		? error.errors.every((triggerError) => isPermanentFailure(ensureError(triggerError)))
+		: errorChain(error).some(
+				(level) =>
+					level instanceof UserError ||
+					isPolicyRefusal(level) ||
+					(level instanceof Error && !isTransientActivationError(level)),
+			);
+}
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
@@ -106,20 +121,19 @@ export class PublicationStatusReporter {
 				// The record's failure stays the activation error; the abandoned
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				const { triggerStatuses } = result;
+				const { triggerState } = result;
 				await this.transactionRunner.run({}, async (ctx) => {
-					if (triggerStatuses) {
+					if (triggerState) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
-							this.toRows(record, triggerStatuses),
+							this.toRows(
+								{ publishedVersionId: triggerState.versionId },
+								triggerState.triggerStatuses,
+							),
 							ctx,
 						);
 					}
-					await this.retryStateRepository.suppressRetry(
-						record.workflowId,
-						record.publishedVersionId,
-						ctx,
-					);
+					await this.updateRetryNote(record, result.error, ctx);
 					await this.outboxRepository.markFailed(record.id, result.error.message, ctx);
 				});
 				// An expected denial, already logged as a warning by the applier — the
@@ -128,26 +142,41 @@ export class PublicationStatusReporter {
 				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				// Name a node only when the error belongs to it. Shared failures name none.
-				const failedTriggers = (triggerStatuses ?? []).filter((s) => s.status === 'failed');
-				let nodeId: string | undefined;
-				if (result.error instanceof TriggerNodeIdTooLongError) {
-					if (result.error.affectedNodes.length === 1) {
-						nodeId = result.error.affectedNodes[0]?.id;
-					}
-				} else if (!policyRefusal && failedTriggers.length === 1) {
-					nodeId = failedTriggers[0].nodeId;
-				}
-				await this.pushFailedToActivate(record.workflowId, result.error.message, nodeId);
+				await this.pushFailedToActivate(
+					record.workflowId,
+					result.error.message,
+					policyRefusal ? undefined : result.nodeId,
+				);
 				return;
 			}
 
 			case 'partial': {
 				// As on 'failed': the stored/pushed message stays about activation.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				await this.reportPartial(record, result.triggerStatuses);
+				await this.reportPartial(record, result.triggerStatuses, result.error);
 				return;
 			}
+		}
+	}
+
+	/** Ends the retries of a permanent failure and schedules the next retry of any other failure. */
+	private async updateRetryNote(
+		record: WorkflowPublicationOutbox,
+		error: Error,
+		ctx: OperationContext,
+	): Promise<void> {
+		if (isPermanentFailure(error)) {
+			await this.retryStateRepository.suppressRetry(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
+		} else {
+			await this.retryStateRepository.scheduleRetry(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
 		}
 	}
 
@@ -160,6 +189,7 @@ export class PublicationStatusReporter {
 	private async reportPartial(
 		record: WorkflowPublicationOutbox,
 		triggerStatuses: TriggerPublicationStatus[],
+		error: Error,
 	): Promise<void> {
 		const failures = triggerStatuses.filter(
 			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
@@ -178,7 +208,7 @@ export class PublicationStatusReporter {
 				this.toRows(record, triggerStatuses),
 				ctx,
 			);
-			await this.retryStateRepository.clearRetrySuppression(record.workflowId, ctx);
+			await this.updateRetryNote(record, error, ctx);
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, ctx);
 		});
 
@@ -199,7 +229,7 @@ export class PublicationStatusReporter {
 
 	/** Maps trigger publication statuses to repository row objects, stamping the published version. */
 	private toRows(
-		record: WorkflowPublicationOutbox,
+		record: Pick<WorkflowPublicationOutbox, 'publishedVersionId'>,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
 		return statuses.map((triggerStatus) => ({

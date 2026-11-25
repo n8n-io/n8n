@@ -4,8 +4,12 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { ResponseError, ConflictError, ForbiddenError } from '@n8n/errors';
-import { AiPreferenceScopeFullError, type AiPreferenceService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import {
+	AiPreferenceScopeFullError,
+	type AiPreferenceService,
+	type TelemetryTracker,
+	type UrlService,
+} from '@n8n/backend-services';
 
 /**
  * Why an assistant write did not land, in words a model can relay. The same six values as the
@@ -29,7 +33,7 @@ export type AiPreferenceWriteResult =
 	| ({ ok: false } & AiPreferenceWriteRefusal);
 
 /** The surfaces that write on the user's behalf. The settings area is a person writing. */
-export type AssistantSurface = Exclude<AiPreferenceSource, 'ui'>;
+export type AssistantSurface = Extract<AiPreferenceSource, 'aia' | 'mcp'>;
 
 /** The service refuses with HTTP error classes; an assistant surface speaks in reasons.
  *  A 4xx message is written for a person and passes through; anything else stays internal. */
@@ -49,13 +53,17 @@ export function isExpectedAiPreferenceRefusal(error: unknown): error is Response
 }
 
 /** Whole seconds between the write and now, for the undo-rate reading. */
+export function preferencesSettingsUrl(urlService: UrlService): string {
+	return `${urlService.getInstanceBaseUrl()}/settings/context/preferences`;
+}
+
 export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
 	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
 }
 
 export type AssistantPreferenceWrite = {
 	aiPreferenceService: AiPreferenceService;
-	telemetry: Telemetry;
+	telemetry: TelemetryTracker;
 	logger: Logger;
 	user: User;
 	surface: AssistantSurface;

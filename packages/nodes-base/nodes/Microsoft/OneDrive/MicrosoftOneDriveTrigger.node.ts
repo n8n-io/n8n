@@ -39,6 +39,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft OneDrive Trigger',
 		name: 'microsoftOneDriveTrigger',
+		schemaPath: 'Microsoft/OneDrive',
 		icon: 'file:oneDrive.svg',
 		group: ['trigger'],
 		version: 1,

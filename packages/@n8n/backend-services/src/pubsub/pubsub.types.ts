@@ -89,6 +89,9 @@ export namespace PubSub {
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
+		export type ReloadMcpSettings = ToCommand<'reload-mcp-settings'>;
+		export type ReloadSkillSyncSettings = ToCommand<'reload-skill-sync-settings'>;
+		export type ReloadAiPreferenceSettings = ToCommand<'reload-ai-preference-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
@@ -99,6 +102,7 @@ export namespace PubSub {
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
 		export type ReloadTypeAvailabilityPolicies = ToCommand<'reload-type-availability-policies'>;
+		export type ReloadExecutionLimits = ToCommand<'reload-execution-limits'>;
 		export type PromotionEnvironmentChanged = ToCommand<'promotion-environment-changed'>;
 	}
 
@@ -150,6 +154,9 @@ export namespace PubSub {
 		| Commands.ReloadInstanceAiSettings
 		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
+		| Commands.ReloadMcpSettings
+		| Commands.ReloadSkillSyncSettings
+		| Commands.ReloadAiPreferenceSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
@@ -160,6 +167,7 @@ export namespace PubSub {
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged
 		| Commands.ReloadTypeAvailabilityPolicies
+		| Commands.ReloadExecutionLimits
 		| Commands.PromotionEnvironmentChanged;
 
 	// ----------------------------------

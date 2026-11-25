@@ -79,6 +79,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'agent:write': [
 		'create_agent',
 		'mutate_agent',
+		'move_agent',
 		'revert_agent',
 		'archive_agent',
 		'verify_agent_mcp_server',
@@ -95,8 +96,17 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
-	'skill:read': ['search_n8n_skills', 'get_skill'],
-	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
+	'skill:read': ['search_n8n_skills', 'get_skill', 'list_skill_sources'],
+	'skill:write': [
+		'create_skill',
+		'update_skill',
+		'delete_skill',
+		'search_n8n_skills',
+		'get_skill',
+		'list_skill_sources',
+		'discover_skill_source',
+		'import_skills_from_source',
+	],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
@@ -161,6 +171,7 @@ export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
 	'create_folder',
 	'update_folder',
 	'move_workflows_to_folder',
+	'move_agent',
 ]);
 
 /**
@@ -183,7 +194,9 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_projects',
 	'search_folders',
 	'install_community_node',
-	...FOLDER_FEATURE_TOOLS,
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
 ]);
 
 /**
@@ -232,6 +245,13 @@ export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 export const SKILL_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['skill:read'],
 	...TOOLS_BY_SCOPE['skill:write'],
+]);
+
+/** Registered only while Skill Sync is on. */
+export const SKILL_SOURCE_TOOLS: ReadonlySet<string> = new Set([
+	'list_skill_sources',
+	'discover_skill_source',
+	'import_skills_from_source',
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

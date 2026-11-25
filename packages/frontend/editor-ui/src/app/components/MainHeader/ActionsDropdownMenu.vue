@@ -178,7 +178,10 @@ function handleFileImport() {
 			// Gate here, at the emitter: NodeView's 'importWorkflowData' handler is shared with
 			// the AI builder's version restore, which must not nudge.
 			void mcpJsonNudgeTrigger.gate('import_file', () =>
-				nodeViewEventBus.emit('importWorkflowData', { data: workflowData }),
+				nodeViewEventBus.emit('importWorkflowData', {
+					data: workflowData,
+					warnRestrictedNodes: true,
+				}),
 			);
 		};
 		reader.readAsText(inputRef.files[0]);
@@ -627,6 +630,7 @@ defineExpose({
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
 			content-test-id="workflow-menu"
+			extra-popper-class="ignore-key-press-canvas"
 			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
 			:sub-menu-max-height="384"

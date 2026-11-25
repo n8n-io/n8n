@@ -6,11 +6,13 @@ import {
 	RoleService,
 	JwtService,
 	PostHogClient,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthIdentity, Person, PublicUser } from '@n8n/db';
+import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
 import {
 	isPerson,
+	isServiceAccount,
 	TransactionRunner,
 	Project,
 	ProjectRelation,
@@ -40,6 +42,7 @@ import { validate as uuidValidate } from 'uuid';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
+import { ServiceAccountUsageProxy } from './service-account-usage-proxy.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
@@ -53,6 +56,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import type { UserRequest } from '@/requests';
 import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { isSamlOrOidcLoginEnabled, isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -71,6 +75,16 @@ export const INVITE_ROLE_MANAGED_MESSAGE =
 
 /** The system as the actor of a user deletion that no user asked for. */
 export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
+
+/**
+ * Removes what acts as a service account, such as an agent, when the account goes.
+ * `cleanUp` runs after the work of the account moved. `deleteInTransaction` runs in
+ * the transaction that deletes the account, before the account row goes.
+ */
+export type ServiceAccountOwnerRemoval = {
+	cleanUp: () => Promise<void>;
+	deleteInTransaction: (ctx: OperationContext) => Promise<void>;
+};
 
 @Service()
 export class UserService {
@@ -94,6 +108,7 @@ export class UserService {
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
+		private readonly serviceAccountUsage: ServiceAccountUsageProxy,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -233,6 +248,8 @@ export class UserService {
 		owner: User,
 		toInviteUsers: { [key: string]: string },
 		role: AssignableGlobalRole,
+		publicApi: PublicApiCaller,
+		ctx: OperationContext = {},
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
@@ -270,7 +287,7 @@ export class UserService {
 						this.eventService.emit('user-transactional-email-sent', {
 							userId: id,
 							messageType: 'New user invite',
-							publicApi: false,
+							publicApi,
 						});
 					}
 
@@ -284,16 +301,18 @@ export class UserService {
 					this.eventService.emit('user-invited', {
 						user: owner,
 						targetUserId: Object.values(toInviteUsers),
-						publicApi: false,
+						publicApi,
 						emailSent: result.emailSent,
 						inviteeRole: role, // same role for all invited users
+						loginId: loginIdOf(ctx),
 					});
 				} catch (e) {
 					if (e instanceof Error) {
 						this.eventService.emit('email-failed', {
 							user: owner,
 							messageType: 'New user invite',
-							publicApi: false,
+							publicApi,
+							loginId: loginIdOf(ctx),
 						});
 						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
@@ -315,7 +334,12 @@ export class UserService {
 		return `${domain}/signup?token=${token}`;
 	}
 
-	async inviteUsers(owner: User, invitations: Invitation[]) {
+	async inviteUsers(
+		owner: User,
+		invitations: Invitation[],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		const emails = invitations.map(({ email }) => email);
 
 		const existingUsers = await this.personRepository.findManyByEmail(emails);
@@ -370,6 +394,8 @@ export class UserService {
 			owner,
 			Object.fromEntries(createdUsers),
 			invitations[0].role, // same role for all invited users
+			publicApi,
+			ctx,
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
@@ -553,7 +579,12 @@ export class UserService {
 		return { users, count };
 	}
 
-	async inviteUser(inviter: User, invitations: Invitation[]) {
+	async inviteUser(
+		inviter: User,
+		invitations: Invitation[],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		if (invitations.length === 0) return [];
 
 		// While SCIM is on, admins can invite the people that the identity provider
@@ -598,7 +629,12 @@ export class UserService {
 			return { email, role };
 		});
 
-		const { usersInvited, usersCreated } = await this.inviteUsers(inviter, attributes);
+		const { usersInvited, usersCreated } = await this.inviteUsers(
+			inviter,
+			attributes,
+			publicApi,
+			ctx,
+		);
 
 		await this.externalHooks.run('user.invited', [usersCreated]);
 
@@ -611,8 +647,56 @@ export class UserService {
 	 *
 	 * The actor is a user, or the system for a deletion that no user asked for,
 	 * such as a SCIM deletion from the identity provider.
+	 *
+	 * Rejects the service account of an agent. The agent deletion deletes that
+	 * account with {@link deleteServiceAccount}.
 	 */
-	async deleteUser(actor: User | SystemDeletionActor, idToDelete: string, transferId?: string) {
+	async deleteUser(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId?: string,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
+		return await this.deleteAccount(actor, idToDelete, transferId, publicApi, ctx, {
+			allowAgentAccount: false,
+		});
+	}
+
+	/**
+	 * Deletes the service account of an agent that is being deleted, so it skips
+	 * the check that an agent acts as the account. Only
+	 * `ServiceAccountService.remove` calls this.
+	 *
+	 * `owner` is the agent that acts as the account. Its cleanup runs after the
+	 * work of the account moved or was deleted. Its row goes in the transaction
+	 * that deletes the account, because the account cannot go while the agent
+	 * exists, and both rows must go together.
+	 */
+	async deleteServiceAccount(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId: string | undefined,
+		ctx: OperationContext,
+		owner: ServiceAccountOwnerRemoval,
+	) {
+		return await this.deleteAccount(actor, idToDelete, transferId, false, ctx, {
+			allowAgentAccount: true,
+			owner,
+		});
+	}
+
+	private async deleteAccount(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId: string | undefined,
+		publicApi: PublicApiCaller,
+		ctx: OperationContext,
+		{
+			allowAgentAccount,
+			owner,
+		}: { allowAgentAccount: boolean; owner?: ServiceAccountOwnerRemoval },
+	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
 		const actorUser = actor.kind === 'system' ? null : actor;
@@ -637,6 +721,15 @@ export class UserService {
 
 		if (userToDelete.role.slug === GLOBAL_OWNER_ROLE.slug) {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
+		}
+
+		if (!allowAgentAccount && isServiceAccount(userToDelete)) {
+			const agent = await this.serviceAccountUsage.findAgent(userToDelete.id);
+			if (agent) {
+				throw new BadRequestError(
+					`This service account belongs to the agent "${agent.name}". Delete the agent instead.`,
+				);
+			}
 		}
 
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -694,7 +787,7 @@ export class UserService {
 
 		const workflowService = await this.getWorkflowService();
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await workflowService.delete(userToDelete, workflowId, true);
+			await workflowService.delete(userToDelete, workflowId, true, { publicApi });
 		}
 
 		const credentialsService = await this.getCredentialsService();
@@ -710,9 +803,16 @@ export class UserService {
 		}
 
 		// Clean up user-owned module data before account deletion, including on transfer.
-		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
+		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id], {
+			actor,
+			transferId,
+			ctx,
+		});
+
+		await owner?.cleanUp();
 
 		await this.txRunner.run({}, async (ctx) => {
+			await owner?.deleteInTransaction(ctx);
 			await ownershipTransferService.finalizeUserDeletion(
 				userToDelete.id,
 				personalProjectToDelete.id,
@@ -725,11 +825,12 @@ export class UserService {
 			// No user acts in a system deletion, so the event names the system.
 			user: actorUser,
 			...(systemActor && { source: systemActor.reason }),
-			publicApi: false,
+			publicApi,
 			targetUserOldStatus: isPerson(userToDelete) && userToDelete.isPending ? 'invited' : 'active',
 			targetUserId: idToDelete,
 			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
 			migrationUserId: transfereeId,
+			loginId: loginIdOf(ctx),
 		});
 
 		await this.externalHooks.run('user.deleted', [await this.toPublic(userToDelete)]);
@@ -737,7 +838,12 @@ export class UserService {
 		return { success: true };
 	}
 
-	async changeGlobalRole(actor: User, id: string, payload: RoleChangeRequestDto) {
+	async changeGlobalRole(
+		actor: User,
+		id: string,
+		payload: RoleChangeRequestDto,
+		publicApi: PublicApiCaller = false,
+	) {
 		const provisioningService = await this.getProvisioningService();
 
 		if (await provisioningService.isInstanceRoleManaged()) {
@@ -767,7 +873,7 @@ export class UserService {
 			userId: actor.id,
 			targetUserId: targetUser.id,
 			targetUserNewRole: payload.newRoleName,
-			publicApi: false,
+			publicApi,
 		});
 
 		return { success: true };

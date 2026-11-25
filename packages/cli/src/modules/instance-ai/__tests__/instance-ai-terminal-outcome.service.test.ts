@@ -326,6 +326,17 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledTimes(1);
 	});
 
+	it('records nothing for a task detached from its turn', async () => {
+		const { service, deps } = createService();
+
+		await service.recordBackgroundTerminalOutcome(
+			makeTask({ status: 'cancelled', detachedFromTurn: true }),
+		);
+
+		expect(terminalOutcomeStorageMock.upsert).not.toHaveBeenCalled();
+		expect(deps.eventBus.publish).not.toHaveBeenCalled();
+	});
+
 	it('keeps the outcome pending and replays it later when persistence fails', async () => {
 		terminalOutcomeStorageMock.upsert.mockRejectedValueOnce(new Error('db down'));
 		const { service, deps } = createService();
@@ -446,7 +457,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 
 		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
-			errorMessage: "You've run out of AI credits.",
+			errorMessage: "You've run out of Assistant credits.",
 			errorCode: 'quota_exhausted',
 		});
 
@@ -466,7 +477,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		const finalization = await service.finishInvalidConfirmationRun({
 			threadId: 'thread-a',
 			runId: 'run-1',
-			promptVersion: 'progressive@1',
+			promptVersion: 'concise@1',
 			abortController,
 		});
 
@@ -477,7 +488,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			'run-1',
 			'errored',
 			expect.any(String),
-			'progressive@1',
+			'concise@1',
 		);
 		expect(deps.runState.cancelThread).toHaveBeenCalledWith('thread-a');
 		expect(deps.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(

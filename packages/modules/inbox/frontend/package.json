@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-inbox",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -27,6 +27,7 @@
     "@n8n/i18n": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
     "reka-ui": "^2.5.0",

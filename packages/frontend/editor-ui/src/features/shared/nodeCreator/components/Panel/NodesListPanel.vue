@@ -178,6 +178,7 @@ function onTransitionEnd() {
 
 function cleanupopeningContext() {
 	nodeCreatorStore.openingContext = null;
+	nodeCreatorStore.isReplacingFromSetupPanel = false;
 }
 
 onMounted(() => {

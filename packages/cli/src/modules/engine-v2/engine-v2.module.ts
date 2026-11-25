@@ -15,10 +15,10 @@ import { randomBytes } from 'node:crypto';
  *
  * Main-only. In-process mode is regular mode only: the in-process engine uses
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
- * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
- * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server, the client that dials the engine, and the Redis
- * subscriber of the execution channel.
+ * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) one
+ * or more `n8n engine` processes host the data plane, with its work queues in
+ * Redis; this module then starts only the control plane server, the client that
+ * dials the engine, and the Redis subscriber of the execution channel.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
@@ -75,8 +75,16 @@ export class EngineV2Module implements ModuleInterface {
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			Container.get(EngineV2LifecycleSubscriptions).useReceiver(lifecycleEventReceiver);
 
+			const { createInMemoryWorkQueues } = await import('@n8n/engine');
+			const queues = createInMemoryWorkQueues({
+				concurrency: {
+					orchestration: engineConfig.orchestrationConcurrency,
+					step: engineConfig.stepConcurrency,
+				},
+				logger,
+			});
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender });
+			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender, queues });
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.

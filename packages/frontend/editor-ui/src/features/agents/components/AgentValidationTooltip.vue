@@ -144,6 +144,7 @@ const PUBLISH_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 
 const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 	agent: 'agents.chat.misconfigured.missing.agent' as BaseTextKey,
+	humanReview: 'agents.hitl.title',
 	channel: 'agents.builder.triggers.title' as BaseTextKey,
 	tool: 'agents.chat.misconfigured.missing.tools' as BaseTextKey,
 	mcpServer: 'agents.chat.misconfigured.missing.mcpServers' as BaseTextKey,
@@ -273,7 +274,12 @@ const overflowLabel = computed(() =>
 </script>
 
 <template>
-	<N8nTooltip :disabled="props.disabled" :content="props.fallback" :content-class="$style.tooltip">
+	<N8nTooltip
+		as-child
+		:disabled="props.disabled"
+		:content="props.fallback"
+		:content-class="$style.tooltip"
+	>
 		<template #content>
 			<div v-if="details.length > 0" :class="$style.content">
 				<div :class="$style.heading">{{ props.fallback }}</div>

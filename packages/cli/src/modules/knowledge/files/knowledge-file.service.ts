@@ -1,50 +1,53 @@
-import {
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
-	type AgentFileDto,
-} from '@n8n/api-types';
+import type { AgentFileDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { isUniqueConstraintError, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { formatMbOrGb } from '@n8n/utils/number/bytes';
 import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 
-import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import type { AgentFile } from '../entities';
+import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
+import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
-import { KnowledgeFileStore, type StoredKnowledgeFile } from './knowledge-file-store';
+import { KnowledgeMirrorService } from '../retrieval/mirror.service';
+import { KnowledgeFileStore, type KnowledgeFileStorageReference } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 import { extractPdfText } from './pdf-text';
-import { storageFileNameForOriginalFileName, toAgentFileDto } from './storage-naming';
+import { toKnowledgeContentFileName, toAgentFileDto } from './storage-naming';
 
 const MAX_FILE_METADATA_LENGTH = 255;
 
-export interface UploadedKnowledgeFile {
+export interface KnowledgeFileUploadResult {
 	file: AgentFileDto;
 	contentHash?: string;
 }
 
 /**
- * Runs the insert of one knowledge file row. The consumer wraps it in the
- * fence its own writes need: the agents module holds its project-deletion lock
- * for the duration of the write. The context the fence hands over carries its
- * transaction and reaches the repository.
+ * The fence that the consumer puts around its knowledge writes: the agents
+ * module holds its project-deletion lock for the duration of the write. The
+ * fence rejects when the consumer no longer accepts writes. The context it
+ * hands over carries its transaction and reaches the repository.
+ *
+ * An upload inserts each file row through the fence. An upload and a delete
+ * also run an empty write through it before and after the background refresh
+ * of the sandbox mirror.
  */
 export type KnowledgeWriteRunner = <T>(write: (ctx: OperationContext) => Promise<T>) => Promise<T>;
 
 /**
  * Upload, listing and deletion of the knowledge files of one consumer scope.
- * The caller owns the availability and ownership checks, and the retrieval
- * side effects (sandbox warm-up and teardown).
+ * An upload or a delete also refreshes the sandbox mirror of the scope, and
+ * the delete of the last file removes the sandbox. The caller owns the
+ * availability and ownership checks.
  */
 @Service()
 export class KnowledgeFileService {
@@ -53,8 +56,11 @@ export class KnowledgeFileService {
 	constructor(
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
+		private readonly mirrorService: KnowledgeMirrorService,
+		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly config: KnowledgeConfig,
 		logger: Logger,
 	) {
 		this.logger = logger.scoped('knowledge');
@@ -64,25 +70,27 @@ export class KnowledgeFileService {
 	async uploadFiles(
 		scope: KnowledgeConsumerScope,
 		files: Express.Multer.File[],
-		reserveRow: KnowledgeWriteRunner,
-	): Promise<UploadedKnowledgeFile[]> {
+		writeFence: KnowledgeWriteRunner,
+	): Promise<KnowledgeFileUploadResult[]> {
 		try {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(scope, files);
 
-			const uploadedFiles: KnowledgeFile[] = [];
-			const results: UploadedKnowledgeFile[] = [];
+			const uploadedFiles: AgentFile[] = [];
+			const results: KnowledgeFileUploadResult[] = [];
 			try {
 				for (const file of files) {
-					const contentHash = await this.hashUploadedFile(file.path);
-					const storedFile = await this.storeFile(scope, file, reserveRow);
+					const contentHash = await this.hashUploadForTelemetry(file.path);
+					const storedFile = await this.storeFile(scope, file, writeFence);
 					uploadedFiles.push(storedFile);
 					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
 			} catch (error) {
-				await this.cleanupUploadedFiles(uploadedFiles);
+				await this.cleanupFailedUploadBatch(uploadedFiles);
 				throw error;
 			}
+
+			this.scheduleMirrorSync(scope, writeFence);
 
 			return results;
 		} finally {
@@ -95,12 +103,15 @@ export class KnowledgeFileService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
-	}
-
-	/** Returns false when the scope has no file with this id, so nothing was deleted. */
-	async deleteFile(scope: KnowledgeConsumerScope, fileId: string): Promise<boolean> {
+	/**
+	 * Returns false when the scope has no file with this id, so nothing was deleted.
+	 * The fence guards only the mirror refresh that follows. The row delete does not run through it.
+	 */
+	async deleteFile(
+		scope: KnowledgeConsumerScope,
+		fileId: string,
+		writeFence: KnowledgeWriteRunner,
+	): Promise<boolean> {
 		const file = await this.fileRepository.findByIdAndAgentId(fileId, scope.agentId, {});
 		if (!file) {
 			return false;
@@ -116,6 +127,12 @@ export class KnowledgeFileService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
+
+		if (await this.fileRepository.hasFilesForAgent(scope.agentId, {})) {
+			this.scheduleMirrorSync(scope, writeFence);
+		} else {
+			await this.sandboxProviderProxy.destroy(scope);
+		}
 
 		return true;
 	}
@@ -141,7 +158,15 @@ export class KnowledgeFileService {
 		}
 	}
 
-	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
+	private scheduleMirrorSync(
+		scope: KnowledgeConsumerScope,
+		writeFence: KnowledgeWriteRunner,
+	): void {
+		// An empty write through the fence rejects when the consumer no longer accepts writes.
+		this.mirrorService.syncMirrorInBackground(scope, async () => await writeFence(async () => {}));
+	}
+
+	private async hashUploadForTelemetry(filePath: string): Promise<string | undefined> {
 		// The hash exists only for telemetry, so skip the extra read when telemetry is off.
 		if (!this.globalConfig.diagnostics.enabled) {
 			return undefined;
@@ -165,23 +190,27 @@ export class KnowledgeFileService {
 	private async storeFile(
 		scope: KnowledgeConsumerScope,
 		file: Express.Multer.File,
-		reserveRow: KnowledgeWriteRunner,
-	): Promise<KnowledgeFile> {
+		writeFence: KnowledgeWriteRunner,
+	): Promise<AgentFile> {
 		const fileId = generateNanoId();
-		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
+		const contentFileName = toKnowledgeContentFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
 
-		const stored = await this.fileStore.write({ agentId: scope.agentId, fileId }, content, {
-			fileName: storageFileName,
-			mimeType: file.mimetype,
-		});
+		const storageReference = await this.fileStore.write(
+			{ agentId: scope.agentId, fileId },
+			content,
+			{
+				fileName: contentFileName,
+				mimeType: file.mimetype,
+			},
+		);
 
 		try {
-			return await reserveRow(
-				async (ctx) => await this.saveFileRow(scope, fileId, file, stored, ctx),
+			return await writeFence(
+				async (ctx) => await this.saveFileRow(scope, fileId, file, storageReference, ctx),
 			);
 		} catch (error) {
-			await this.fileStore.delete([stored]).catch(() => {});
+			await this.fileStore.delete([storageReference]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
@@ -193,15 +222,15 @@ export class KnowledgeFileService {
 		scope: KnowledgeConsumerScope,
 		fileId: string,
 		file: Express.Multer.File,
-		stored: StoredKnowledgeFile,
+		storageReference: KnowledgeFileStorageReference,
 		ctx: OperationContext,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		return await this.fileRepository.saveUploadedFile(
 			{
 				id: fileId,
 				agentId: scope.agentId,
-				storedAt: stored.storedAt,
-				storageKey: stored.storageKey,
+				storedAt: storageReference.storedAt,
+				storageKey: storageReference.storageKey,
 				fileName: file.originalname,
 				mimeType: file.mimetype,
 				fileSizeBytes: file.size,
@@ -210,7 +239,8 @@ export class KnowledgeFileService {
 		);
 	}
 
-	private async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
+	/** The bytes to store for an upload. A PDF is stored as its extracted text. */
+	async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
 		if (!file.path) {
 			throw new BadRequestError('Uploaded file path is missing');
 		}
@@ -219,9 +249,9 @@ export class KnowledgeFileService {
 		if (extension === '.pdf') {
 			const extractedText = Buffer.from(await extractPdfText(file.path), 'utf-8');
 			// Extracted text can be larger than the compressed PDF, and the sandbox rejects files above the limit.
-			if (extractedText.byteLength > MAX_AGENT_FILE_SIZE_BYTES) {
+			if (extractedText.byteLength > this.config.maxFileSizeBytes) {
 				throw new KnowledgeUploadError(
-					`The text in "${file.originalname}" is larger than ${MAX_AGENT_FILE_SIZE_MB} MB`,
+					`The text in "${file.originalname}" is larger than ${this.config.maxFileSizeMb} MB`,
 					'file_size',
 				);
 			}
@@ -231,7 +261,7 @@ export class KnowledgeFileService {
 		return createReadStream(file.path);
 	}
 
-	private async cleanupUploadedFiles(files: KnowledgeFile[]): Promise<void> {
+	private async cleanupFailedUploadBatch(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
 			await this.fileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
@@ -240,7 +270,8 @@ export class KnowledgeFileService {
 		}
 	}
 
-	private validateUploadMetadata(files: Express.Multer.File[]) {
+	/** Rejects a file name or a MIME type that is too long for its column. */
+	validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
 			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
 			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
@@ -255,20 +286,20 @@ export class KnowledgeFileService {
 			0,
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
-		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		if (existingTotalSizeBytes + uploadTotalSizeBytes > this.config.maxTotalSizeBytes) {
 			throw new KnowledgeUploadError(
-				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+				`Knowledge base limit reached. The total size can't be larger than ${formatMbOrGb(this.config.maxTotalSizeBytes)}.`,
 				'total_limit',
 			);
 		}
 
 		const existingFileNames = new Set(existingFiles.map((file) => file.fileName));
-		const existingStorageNames = new Set(
-			existingFiles.map((file) => storageFileNameForOriginalFileName(file.fileName)),
+		const existingContentFileNames = new Set(
+			existingFiles.map((file) => toKnowledgeContentFileName(file.fileName)),
 		);
 
 		const batchFileNames = new Set<string>();
-		const batchStorageNames = new Set<string>();
+		const batchContentFileNames = new Set<string>();
 
 		for (const file of files) {
 			if (batchFileNames.has(file.originalname)) {
@@ -280,13 +311,13 @@ export class KnowledgeFileService {
 				throw this.duplicateFileNameError(file.originalname);
 			}
 
-			const storageFileName = storageFileNameForOriginalFileName(file.originalname);
-			if (batchStorageNames.has(storageFileName)) {
+			const contentFileName = toKnowledgeContentFileName(file.originalname);
+			if (batchContentFileNames.has(contentFileName)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
-			batchStorageNames.add(storageFileName);
+			batchContentFileNames.add(contentFileName);
 
-			if (existingStorageNames.has(storageFileName)) {
+			if (existingContentFileNames.has(contentFileName)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
 		}

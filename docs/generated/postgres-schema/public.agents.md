@@ -5,12 +5,15 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | activeVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) |  |
+| approvalWorkflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) | Private workflow that owns channel approval executions |
 | availableInMCP | boolean | false | false |  |  | Whether MCP clients granted agent scopes may operate on this agent |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) [public.agents_tags](public.agents_tags.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_knowledge_dependency](public.agent_knowledge_dependency.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) [public.agents_tags](public.agents_tags.md) [public.knowledge_collection](public.knowledge_collection.md) |  |  |
+| identityId | uuid |  | false |  | [public.user](public.user.md) | Identity the agent acts as, a service account today. Every agent has one |
 | integrations | json | '[]'::json | false |  |  |  |
 | isArchived | boolean | false | false |  |  | Whether the agent is archived: hidden, unpublished and read-only |
 | name | varchar(128) |  | false |  |  |  |
+| parentFolderId | varchar(36) |  | true |  | [public.folder](public.folder.md) | Agent folder ID, or null at the project root |
 | projectId | varchar(255) |  | true |  | [public.project](public.project.md) |  |
 | publicationRevision | integer | 0 | false |  |  |  |
 | revision | integer | 0 | false |  |  |  |
@@ -26,14 +29,19 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agents_folder_scope | CHECK | CHECK ((((scope)::text <> 'instance'::text) OR ("parentFolderId" IS NULL))) |
 | CHK_agents_scope | CHECK | CHECK (((scope)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
 | CHK_agents_scope_project | CHECK | CHECK ((((scope)::text = 'instance'::text) = ("projectId" IS NULL))) |
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| FK_agent_approval_execution_owner | FOREIGN KEY | FOREIGN KEY ("approvalWorkflowId") REFERENCES workflow_entity(id) ON DELETE RESTRICT |
+| FK_agents_identity | FOREIGN KEY | FOREIGN KEY ("identityId") REFERENCES "user"(id) ON DELETE RESTRICT |
+| FK_agents_parent_folder | FOREIGN KEY | FOREIGN KEY ("parentFolderId") REFERENCES folder(id) ON DELETE RESTRICT |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agents_availableInMCP_not_null | n | NOT NULL "availableInMCP" |
 | agents_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_id_not_null | n | NOT NULL id |
+| agents_identityId_not_null | n | NOT NULL "identityId" |
 | agents_integrations_not_null | n | NOT NULL integrations |
 | agents_isArchived_not_null | n | NOT NULL "isArchived" |
 | agents_name_not_null | n | NOT NULL name |
@@ -49,7 +57,10 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_a30d560207c4071d98aa03c179 | CREATE INDEX "IDX_a30d560207c4071d98aa03c179" ON public.agents USING btree ("projectId") |
+| IDX_agents_approvalWorkflowId | CREATE INDEX "IDX_agents_approvalWorkflowId" ON public.agents USING btree ("approvalWorkflowId") |
+| IDX_agents_identityId | CREATE UNIQUE INDEX "IDX_agents_identityId" ON public.agents USING btree ("identityId") WHERE ("identityId" IS NOT NULL) |
 | IDX_agents_projectId | CREATE INDEX "IDX_agents_projectId" ON public.agents USING btree ("projectId") |
+| IDX_agents_project_folder | CREATE INDEX "IDX_agents_project_folder" ON public.agents USING btree ("projectId", "parentFolderId") |
 | PK_9c653f28ae19c5884d5baf6a1d9 | CREATE UNIQUE INDEX "PK_9c653f28ae19c5884d5baf6a1d9" ON public.agents USING btree (id) |
 
 ## Relations
@@ -58,6 +69,7 @@
 erDiagram
 
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agents" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;approvalWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_channel_status" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -68,6 +80,7 @@ erDiagram
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_knowledge_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_publish_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_skill_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -81,16 +94,22 @@ erDiagram
 "public.agents_observation_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.knowledge_collection" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agents" }o--|| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE RESTRICT"
+"public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision
@@ -115,7 +134,30 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
 }
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
+}
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
@@ -127,6 +169,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
@@ -240,6 +283,11 @@ erDiagram
   varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }
+"public.agent_knowledge_dependency" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ knowledgeCollectionId FK
+}
 "public.agent_publish_history" {
   varchar_36_ agentId FK
   varchar_255_ author
@@ -342,6 +390,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   text resumeNotes
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.agents_observation_locks" {
   varchar_36_ agentId FK
@@ -368,6 +417,46 @@ erDiagram
 "public.agents_tags" {
   varchar_36_ agentId FK
   varchar_36_ tagId FK
+}
+"public.knowledge_collection" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_512_ description
+  varchar_16_ id
+  boolean isGlobal
+  varchar_16_ kind
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_24_ slug
+  timestamp_3__with_time_zone updatedAt
+}
+"public.user" {
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  varchar_16_ kind
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
+}
+"public.folder" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  varchar_36_ parentFolderId FK
+  varchar_36_ projectId FK
+  varchar_16_ resourceType
+  timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt

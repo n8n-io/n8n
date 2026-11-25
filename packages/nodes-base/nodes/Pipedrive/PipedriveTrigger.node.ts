@@ -84,6 +84,7 @@ export class PipedriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pipedrive Trigger',
 		name: 'pipedriveTrigger',
+		schemaPath: 'Pipedrive',
 		icon: 'file:pipedrive.svg',
 		group: ['trigger'],
 		version: [1, 1.1],

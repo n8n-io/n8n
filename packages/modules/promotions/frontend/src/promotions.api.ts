@@ -2,14 +2,16 @@ import type {
 	ApplyPackageResultDto,
 	ApplySelectionDto,
 	ContinueApplySelectionDto,
-	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
+	PromoteSelectionResultDto,
 	PromotionDirection,
+	PromotionInstanceApplyPreview,
 	PromotionPreview,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
 	PromotionReviewChanges,
 	PromotionReviewDetailsRequestDto,
+	PromotionSettings,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
 import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -40,6 +42,31 @@ export async function getPromotionResourceDetails(
 	);
 }
 
+/** The preview of a whole-instance Apply from an instance Apply environment. */
+export async function getPromotionEnvironmentChanges(
+	context: PublicApiContext,
+	environmentId: string,
+): Promise<PromotionInstanceApplyPreview> {
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		`/promotions/environments/${environmentId}/changes`,
+	);
+}
+
+export async function getPromotionEnvironmentDetails(
+	context: PublicApiContext,
+	environmentId: string,
+	payload: PromotionResourceDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/environments/${environmentId}/changes/details`,
+		payload,
+	);
+}
+
 export async function getPromotionReviewChanges(
 	context: IRestApiContext,
 	reviewId: string,
@@ -64,7 +91,7 @@ export async function promoteProjectSelection(
 	context: PublicApiContext,
 	projectId: string,
 	payload: PromoteSelectionRequestDto,
-): Promise<PromotePackageResultDto> {
+): Promise<PromoteSelectionResultDto> {
 	return await makePublicApiRequest(
 		context,
 		'POST',
@@ -99,4 +126,15 @@ export async function continueApplyProjectSelection(
 		`/promotions/projects/${projectId}/apply/continue`,
 		payload,
 	);
+}
+
+export async function getPromotionSettings(context: PublicApiContext): Promise<PromotionSettings> {
+	return await makePublicApiRequest(context, 'GET', '/promotions/settings');
+}
+
+export async function updatePromotionSettings(
+	context: PublicApiContext,
+	settings: PromotionSettings,
+): Promise<PromotionSettings> {
+	return await makePublicApiRequest(context, 'PUT', '/promotions/settings', settings);
 }

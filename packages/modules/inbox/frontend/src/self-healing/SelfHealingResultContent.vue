@@ -150,7 +150,6 @@ function onTabChange(tab: string) {
 				<N8nTabs
 					:model-value="activeTab"
 					:options="tabOptions"
-					variant="modern"
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>
@@ -265,6 +264,7 @@ function onTabChange(tab: string) {
 					:detail="detail"
 					:workflow-names="workflowNames"
 					:status-label="statusLabel"
+					:status-class="statusClass"
 				/>
 			</div>
 		</div>
@@ -381,8 +381,10 @@ function onTabChange(tab: string) {
 	border-radius: var(--radius--2xs);
 }
 
+/* The reset gives strong the medium weight, which looks like the body text. */
 .noticeTitle {
 	display: block;
+	font-weight: var(--font-weight--bold);
 }
 
 /* The global Markdown rules size paragraphs from this root. */

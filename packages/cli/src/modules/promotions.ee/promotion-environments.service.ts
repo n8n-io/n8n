@@ -13,8 +13,8 @@ import type {
 } from '@n8n/api-types';
 import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { ProjectRepository, TransactionRunner, type User } from '@n8n/db';
+import { EventService, loginIdOf } from '@n8n/backend-services';
+import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -102,6 +102,7 @@ export class PromotionEnvironmentsService {
 	async create(
 		input: CreatePromotionEnvironmentDto,
 		actor: User,
+		ctx: OperationContext = {},
 	): Promise<PromotionEnvironmentPublicDto> {
 		const provider = await this.providersService.getEntity(input.providerId);
 		this.gitService.validateRemoteUrl(input.remote.remoteUrl, provider.authType);
@@ -133,6 +134,7 @@ export class PromotionEnvironmentsService {
 			...('createBranchOnPromotion' in settings && {
 				createBranchOnPromotion: settings.createBranchOnPromotion,
 			}),
+			loginId: loginIdOf(ctx),
 		});
 
 		return await this.toPublic(Object.assign(environment, { provider }));
@@ -167,6 +169,7 @@ export class PromotionEnvironmentsService {
 		id: string,
 		input: UpdatePromotionEnvironmentDto,
 		actor: User,
+		ctx: OperationContext = {},
 	): Promise<PromotionEnvironmentPublicDto> {
 		const current = await this.getEntity(id);
 
@@ -190,33 +193,38 @@ export class PromotionEnvironmentsService {
 		const settings =
 			input.settings && (await this.checkSettings(current.direction, input.settings));
 
-		const closed = await this.txRunner.run({}, async (ctx) => {
-			const updated = await this.environmentRepository.updateEnvironment(
-				id,
-				current.providerId,
-				{
-					...(input.name !== undefined && { name: input.name }),
-					...(changesRemote && { remote }),
-					...(input.providerId !== undefined && { providerId: input.providerId }),
-					...(settings && { settings }),
-				},
-				ctx,
-			);
-			if (!updated) {
-				throw new ConflictError(
-					'The environment changed during the update. Reload it and try again.',
-				);
-			}
-			if (!invalidatesOpenReviews(current, { provider, remote })) return 0;
-			return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
-		});
-		this.logClosedReviews(id, closed, 'environment_target_changed');
-		// Compare values: a request can send the current remote again.
+		// Decide before the write, so only an update that changes the checkout takes the
+		// environment lock. Compare values: a request can send the current remote again.
 		const changesCheckout =
 			(changesRemote && !isDeepStrictEqual(remote, current.remote)) ||
 			provider.id !== current.providerId ||
 			(settings !== undefined && this.changesCheckoutBranch(current, settings));
-		if (changesCheckout) await this.checkoutCleanup.resetCheckoutAfterSettingsChange(id);
+
+		const updateRows = async () =>
+			await this.txRunner.run({}, async (trxCtx) => {
+				const updated = await this.environmentRepository.updateEnvironment(
+					id,
+					current.providerId,
+					{
+						...(input.name !== undefined && { name: input.name }),
+						...(changesRemote && { remote }),
+						...(input.providerId !== undefined && { providerId: input.providerId }),
+						...(settings && { settings }),
+					},
+					trxCtx,
+				);
+				if (!updated) {
+					throw new ConflictError(
+						'The environment changed during the update. Reload it and try again.',
+					);
+				}
+				if (!invalidatesOpenReviews(current, { provider, remote })) return 0;
+				return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), trxCtx);
+			});
+		const closed = changesCheckout
+			? await this.checkoutCleanup.changeCheckoutSettings(id, updateRows)
+			: await updateRows();
+		this.logClosedReviews(id, closed, 'environment_target_changed');
 		const changedFields = [
 			...(input.name !== undefined ? ['name' as const] : []),
 			...(input.remote !== undefined ? ['remote' as const] : []),
@@ -236,6 +244,7 @@ export class PromotionEnvironmentsService {
 				direction: current.direction,
 				environmentScope: current.scope,
 				changedFields,
+				loginId: loginIdOf(ctx),
 			});
 		}
 		return await this.findOne(id);
@@ -245,7 +254,7 @@ export class PromotionEnvironmentsService {
 	 * Cascades to this environment's project links and closes its open reviews. The
 	 * provider stays, because other environments may use it.
 	 */
-	async delete(id: string, actor: User): Promise<void> {
+	async delete(id: string, actor: User, ctx: OperationContext = {}): Promise<void> {
 		const {
 			id: environmentId,
 			name,
@@ -254,16 +263,20 @@ export class PromotionEnvironmentsService {
 			direction,
 			scope,
 		} = await this.getEntity(id);
-		// Close first: the delete clears the environment of its reviews.
-		const { closed, deleted } = await this.txRunner.run({}, async (ctx) => {
-			const closed = await this.reviewRepository.closeOpenByEnvironmentId(
-				environmentId,
-				new Date(),
-				ctx,
-			);
-			const deleted = await this.environmentRepository.deleteEnvironment(environmentId, ctx);
-			return { closed, deleted };
-		});
+		const { closed, deleted } = await this.checkoutCleanup.deleteEnvironment(
+			environmentId,
+			async () =>
+				// Close first: the delete clears the environment of its reviews.
+				await this.txRunner.run({}, async (trxCtx) => {
+					const closed = await this.reviewRepository.closeOpenByEnvironmentId(
+						environmentId,
+						new Date(),
+						trxCtx,
+					);
+					const deleted = await this.environmentRepository.deleteEnvironment(environmentId, trxCtx);
+					return { closed, deleted };
+				}),
+		);
 		this.logClosedReviews(environmentId, closed, 'environment_deleted');
 		if (deleted) {
 			this.eventService.emit('promotion-environment-deleted', {
@@ -275,9 +288,9 @@ export class PromotionEnvironmentsService {
 				repository: repositoryForEvents(remote),
 				direction,
 				environmentScope: scope,
+				loginId: loginIdOf(ctx),
 			});
 		}
-		await this.checkoutCleanup.removeDeletedEnvironment(environmentId);
 	}
 
 	async listProjects(id: string): Promise<PromotionEnvironmentProjectListPublicDto> {
@@ -358,9 +371,9 @@ export class PromotionEnvironmentsService {
 	}
 
 	/**
-	 * Reads whether this instance holds a usable checkout for the environment. A
-	 * package operation needs a checkout that was cloned from the current remote and
-	 * branch, so the flags let the UI show Connect, Reconnect, or Connected.
+	 * Reads whether this instance holds a usable checkout for the environment. An
+	 * operation clones on demand, so the flags describe a local cache only. They do
+	 * not say that the environment is connected.
 	 */
 	private async checkoutStateFor(
 		environment: PromotionEnvironment,
@@ -420,7 +433,7 @@ export class PromotionEnvironmentsService {
 	}
 
 	// Manage links only for projects the caller can edit, on top of the route's
-	// global `promotions:manageProjects` scope.
+	// global `promotions:manageEnvironments` scope.
 	private async assertProjectAccess(user: User, projectId: string) {
 		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
 		if (!allowed) throw new ForbiddenError('You do not have access to this project');

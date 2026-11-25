@@ -18,10 +18,6 @@ export class SettingsPromotionsPage extends BasePage {
 		return this.page.getByTestId(`promotion-environment-card-${direction}`);
 	}
 
-	getEnvironmentStatus(direction: Direction): Locator {
-		return this.getEnvironmentCard(direction).getByTestId('promotion-environment-status');
-	}
-
 	getProviderDialog(): Locator {
 		return this.page.getByRole('dialog');
 	}

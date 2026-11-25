@@ -1,5 +1,6 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	CHANGE_DATA_TABLES_TOOL_NAME,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
@@ -312,18 +313,73 @@ function extractDataTableId(
 	return undefined;
 }
 
-function getDeletedDataTableId(tc: ArtifactToolCall): string | undefined {
-	if (getDataTableCallAction(tc.toolName, tc.args?.action) !== 'delete') return undefined;
-	if (!successResultOf(tc)) return undefined;
-	return typeof tc.args?.dataTableId === 'string' ? tc.args.dataTableId : undefined;
+/** A table of a `change_data_tables` result, as the run reports it. */
+export interface BatchDataTable {
+	id: string;
+	name: string;
+	projectId?: string;
 }
 
-/** The dataTableId of the latest successful delete-data-table tool result. */
-export function getLatestDeletedDataTableId(turns: readonly ArtifactTurn[]): string | undefined {
-	return findLatestInTurns(turns, getDeletedDataTableId);
+interface BatchTableChange {
+	action: string;
+	table: BatchDataTable;
+}
+
+function toBatchTableChange(entry: unknown): BatchTableChange[] {
+	if (!isRecord(entry) || typeof entry.action !== 'string' || !isRecord(entry.table)) return [];
+	const { id, name, projectId } = entry.table;
+	if (typeof id !== 'string' || typeof name !== 'string') return [];
+	const table: BatchDataTable = { id, name };
+	if (typeof projectId === 'string') table.projectId = projectId;
+	return [{ action: entry.action, table }];
+}
+
+/** The applied changes of a finished batch. A failed batch still reports what it applied. */
+function batchTableChanges(tc: ArtifactToolCall): BatchTableChange[] {
+	if (tc.toolName !== CHANGE_DATA_TABLES_TOOL_NAME || tc.isLoading || !isRecord(tc.result)) {
+		return [];
+	}
+	const applied: unknown[] = Array.isArray(tc.result.applied) ? tc.result.applied : [];
+	return applied.flatMap(toBatchTableChange);
+}
+
+function batchDeletedTableIds(changes: BatchTableChange[]): Set<string> {
+	return new Set(changes.filter(({ action }) => action === 'delete').map(({ table }) => table.id));
+}
+
+/**
+ * Tables that a `change_data_tables` call changed and did not delete, in the
+ * order of its applied changes. A table can occur more than once.
+ */
+export function getChangedDataTablesFromBatch(tc: ArtifactToolCall): BatchDataTable[] {
+	const changes = batchTableChanges(tc);
+	const deleted = batchDeletedTableIds(changes);
+	return changes.map(({ table }) => table).filter(({ id }) => !deleted.has(id));
+}
+
+function getDeletedDataTableIds(tc: ArtifactToolCall): string[] | undefined {
+	if (tc.toolName === CHANGE_DATA_TABLES_TOOL_NAME) {
+		const deleted = [...batchDeletedTableIds(batchTableChanges(tc))];
+		return deleted.length > 0 ? deleted : undefined;
+	}
+	if (getDataTableCallAction(tc.toolName, tc.args?.action) !== 'delete') return undefined;
+	if (!successResultOf(tc)) return undefined;
+	return typeof tc.args?.dataTableId === 'string' ? [tc.args.dataTableId] : undefined;
+}
+
+/** The IDs of the tables that the latest successful table deletion removed. */
+export function getLatestDeletedDataTableIds(turns: readonly ArtifactTurn[]): string[] {
+	return findLatestInTurns(turns, getDeletedDataTableIds) ?? [];
+}
+
+/** The last table that a batch changed and kept, so the preview shows it. */
+function getBatchDataTableResult(tc: ArtifactToolCall): DataTableResult | undefined {
+	const table = getChangedDataTablesFromBatch(tc).at(-1);
+	return table ? { dataTableId: table.id, toolCallId: tc.toolCallId } : undefined;
 }
 
 function getDataTableResult(tc: ArtifactToolCall): DataTableResult | undefined {
+	if (tc.toolName === CHANGE_DATA_TABLES_TOOL_NAME) return getBatchDataTableResult(tc);
 	const action = getDataTableCallAction(tc.toolName, tc.args?.action) ?? '';
 	if (!DATA_TABLE_PREVIEW_ACTIONS.has(action) || tc.isLoading || !isRecord(tc.result)) {
 		return undefined;
@@ -418,11 +474,11 @@ export function getLatestSkillArtifactResult(
 	return getLatestToolArtifactResult(turns, getSkillArtifactFromToolCall);
 }
 
-/** Name of the n8n Assistant tool that builds n8n Apps. */
-export const APPS_TOOL_NAME = 'apps';
-
-/** `get` and `open` only read the app. */
-const APP_WRITE_ACTIONS = new Set(['create', 'commit']);
+/** The app tools whose result is a created or committed app. */
+const APP_WRITE_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.CREATE_APP,
+	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+]);
 
 export interface AppArtifact {
 	appId: string;
@@ -430,11 +486,9 @@ export interface AppArtifact {
 	projectId: string;
 }
 
-/** The app that a finished `apps` call created or committed. */
+/** The app that a finished `create_app` or `commit_app` call created or committed. */
 export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | undefined {
-	if (tc.toolName !== APPS_TOOL_NAME || tc.isLoading) return undefined;
-	const action = tc.args?.action;
-	if (typeof action !== 'string' || !APP_WRITE_ACTIONS.has(action)) return undefined;
+	if (!APP_WRITE_TOOL_NAMES.has(tc.toolName) || tc.isLoading) return undefined;
 	const result = unwrapUntrustedToolResult(tc.result);
 	if (!isRecord(result) || !isRecord(result.app)) return undefined;
 	const { id, name, projectId } = result.app;
@@ -444,7 +498,7 @@ export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | 
 	return { appId: id, name, projectId };
 }
 
-/** The latest app that the assistant created or committed with the `apps` tool. */
+/** The latest app that the assistant created or committed with the app tools. */
 export function getLatestAppArtifactResult(
 	turns: readonly ArtifactTurn[],
 ): ToolArtifactResult<AppArtifact> | undefined {

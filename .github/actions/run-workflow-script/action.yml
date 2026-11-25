@@ -17,16 +17,23 @@ inputs:
     description: 'Token for the Octokit client. Also exported as GITHUB_TOKEN for the module.'
     required: true
 
+outputs:
+  result:
+    description: 'The string that main() returns. Empty when it returns nothing.'
+    value: ${{ steps.run.outputs.result }}
+
 runs:
   using: 'composite'
   steps:
     - name: Run workflow script
+      id: run
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
       env:
         SCRIPT: ${{ inputs.script }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
       with:
         github-token: ${{ inputs.github-token }}
+        result-encoding: string
         script: |
           const path = require('node:path');
           const { pathToFileURL } = require('node:url');
@@ -39,4 +46,4 @@ runs:
           if (typeof main !== 'function') {
             throw new Error(`${process.env.SCRIPT} does not export main()`);
           }
-          await main();
+          return (await main()) ?? '';

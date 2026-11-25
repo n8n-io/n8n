@@ -1,7 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
+import {
+	type OperationContext,
+	SharedWorkflowRepository,
+	User,
+	WorkflowEntity,
+	type Project,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -26,8 +33,12 @@ import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subw
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService, WorkflowPublishedDataService, NodeTypesProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import {
+	UrlService,
+	WorkflowPublishedDataService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
@@ -93,7 +104,7 @@ describe('update-workflow MCP tool', () => {
 	let workflowService: WorkflowService;
 	let updateMock: Mock;
 	let urlService: UrlService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
@@ -143,7 +154,7 @@ describe('update-workflow MCP tool', () => {
 		urlService = mockInstance(UrlService, {
 			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		credentialsService = mockInstance(CredentialsService);
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
 			findOneOrFail: vi.fn().mockResolvedValue({ projectId: 'project-1' }),
@@ -219,7 +230,7 @@ describe('update-workflow MCP tool', () => {
 			subworkflowPolicyChecker,
 		);
 
-	const createTool = () =>
+	const createTool = (ctx?: OperationContext) =>
 		createUpdateWorkflowTool(
 			user,
 			workflowFinderService,
@@ -238,6 +249,7 @@ describe('update-workflow MCP tool', () => {
 			{},
 			logger,
 			postSaveMetrics,
+			ctx,
 		);
 
 	const callHandler = async (
@@ -2729,11 +2741,25 @@ describe('update-workflow MCP tool', () => {
 				expect.any(WorkflowEntity),
 				'wf-1',
 				expect.objectContaining({ aiBuilderAssisted: true, source: 'n8n-mcp' }),
+				{},
 			);
 			expect(updateMock.mock.calls[0][1].name).toBe('Renamed');
 			expect(updateMock.mock.calls[0][1].meta).toEqual(
 				expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
 			);
+		});
+
+		test('passes the operation context to workflowService.update', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await callHandler(
+				{ workflowId: 'wf-1', operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }] },
+				createTool(ctx),
+			);
+
+			expect(updateMock.mock.calls[0][4]).toBe(ctx);
 		});
 
 		test('broadcasts workflow update on success', async () => {

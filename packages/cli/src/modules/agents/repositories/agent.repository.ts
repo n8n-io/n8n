@@ -1,22 +1,31 @@
 import isEqual from 'lodash/isEqual';
-import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
+import {
+	DEFAULT_AGENTS_LIST_LIMIT,
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
+} from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
+	AgentListFilter,
+	AgentsListSortBy,
 	AgentVectorStoreProvider,
-	ListAgentsQueryDto,
+	ListAgentsOptions,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AgentTagMapping,
 	BaseRepository,
+	FolderRepository,
 	chunkIds,
 	escapeLike,
+	isUniqueConstraintError,
 	LIKE_ESCAPE_CLAUSE,
+	ServiceAccountRepository,
 	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from '@n8n/errors';
+import { ConflictError, UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -27,6 +36,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
@@ -35,7 +45,16 @@ export interface AgentListResult {
 }
 
 export type AgentSummary = ProjectScoped<
-	Pick<Agent, 'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'>
+	Pick<
+		Agent,
+		| 'id'
+		| 'name'
+		| 'projectId'
+		| 'parentFolderId'
+		| 'activeVersionId'
+		| 'availableInMCP'
+		| 'updatedAt'
+	>
 >;
 
 /** Instance agents are code-defined and read-only, so project queries must not see them. */
@@ -62,6 +81,7 @@ export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | '
 export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId'>;
 
 export type AgentSummaryFilters = {
+	parentFolderId?: string | null;
 	query?: string;
 	publishedOnly?: boolean;
 	excludeAgentId?: string;
@@ -72,10 +92,49 @@ export type AgentSummaryFilters = {
 export class AgentRepository extends BaseRepository<Agent> {
 	constructor(
 		dataSource: DataSource,
-		transactionRunner: TransactionRunner,
+		private readonly transactions: TransactionRunner,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderRepository: FolderRepository,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {
-		super(Agent, dataSource.manager, transactionRunner);
+		super(Agent, dataSource.manager, transactions);
+	}
+
+	async removeAfterApprovalCleanup(
+		id: string,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.transactions.run(ctx, async (ctx) => {
+			const manager = this.managerFor(ctx);
+			// SQLite needs a write before the read. Preserve the authored revision timestamp.
+			await manager.update(
+				Agent,
+				{ id, projectId, scope: projectScope },
+				{ updatedAt: () => '"updatedAt"' },
+			);
+			const agent = await manager.findOne(Agent, {
+				where: { id, projectId, scope: projectScope },
+				lock:
+					manager.connection.options.type === 'postgres'
+						? { mode: 'pessimistic_write' }
+						: undefined,
+			});
+			if (!agent) return;
+			if (
+				agent.approvalWorkflowId ||
+				(await manager.existsBy(AgentBackgroundJob, {
+					parentAgentId: id,
+					kind: 'approval',
+					notifiedAt: IsNull(),
+				}))
+			)
+				throw new ConflictError(
+					'An Agent approval started during cleanup. Stop its session and retry deletion.',
+				);
+			// The row lock also serializes new job references with the final delete.
+			await manager.remove(agent);
+		});
 	}
 
 	/** Whether tags are readable on agents: reads join `agent.tags` only then. */
@@ -239,6 +298,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				'agent.activeVersionId',
 				'agent.availableInMCP',
 				'agent.updatedAt',
+				'agent.parentFolderId',
 			])
 			.where(projectScopeSql)
 			.andWhere('agent.isArchived = :isArchived', { isArchived: false })
@@ -251,6 +311,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 			// `%` and `_` in the search match themselves, as in the skill search.
 			query.andWhere(`LOWER(agent.name) LIKE :query ${LIKE_ESCAPE_CLAUSE}`, {
 				query: `%${escapeLike(options.query.toLowerCase())}%`,
+			});
+		}
+
+		if (options.parentFolderId === null) {
+			query.andWhere('agent.parentFolderId IS NULL');
+		} else if (options.parentFolderId !== undefined) {
+			query.andWhere('agent.parentFolderId = :parentFolderId', {
+				parentFolderId: options.parentFolderId,
 			});
 		}
 		if (options.publishedOnly) {
@@ -268,7 +336,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		{
 			withProject = false,
 			usageCounts,
@@ -295,9 +363,12 @@ export class AgentRepository extends BaseRepository<Agent> {
 		if (projectIds !== null) {
 			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
-		this.applyFilters(query, options.filter);
+		await this.applyListFilters(query, options.filter);
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		// `offset`/`limit` are the HTTP-agnostic names; TypeORM's `skip`/`take`
+		// dedupe the joined tag rows. The default limit keeps a programmatic
+		// caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -311,7 +382,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findN8nChatListPaginated(
 		reachableProjectIds: string[] | null,
 		ownedProjectIds: string[],
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		usageCounts?: Map<string, number>,
 	): Promise<AgentListResult> {
 		if (reachableProjectIds?.length === 0 && ownedProjectIds.length === 0) {
@@ -340,13 +411,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// `true` is the default page view: drop it so owned drafts stay in the list.
 		// `false` still narrows the list to the agents not in n8n Chat yet.
 		// n8n Chat never lists archived agents, so the request cannot include them.
-		this.applyFilters(query, {
+		await this.applyListFilters(query, {
 			...options.filter,
 			availableInChat: options.filter?.availableInChat === false ? false : undefined,
 			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		// The default limit keeps a caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -407,13 +479,42 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return projectAgentOrNull(await this.chatReachableQuery(query, projectIds).getOne());
 	}
 
+	private async applyListFilters(
+		query: SelectQueryBuilder<Agent>,
+		filter: AgentListFilter | undefined,
+	) {
+		if (filter?.includeDescendants && filter.parentFolderId) {
+			const folderIds = [
+				filter.parentFolderId,
+				...(await this.folderRepository.getAllFolderIdsInHierarchy(
+					filter.parentFolderId,
+					undefined,
+					'agent',
+				)),
+			];
+			query.andWhere('agent.parentFolderId IN (:...folderIds)', { folderIds });
+			this.applyFilters(query, { ...filter, parentFolderId: undefined });
+		} else {
+			this.applyFilters(query, filter);
+		}
+	}
+
 	private applyFilters(
 		query: SelectQueryBuilder<Agent>,
-		filter: ListAgentsQueryDto['filter'],
+		filter: AgentListFilter | undefined,
 	): void {
 		if (!filter?.includeArchived) {
 			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
 		}
+
+		if (filter?.parentFolderId === null) {
+			query.andWhere('agent.parentFolderId IS NULL');
+		} else if (filter?.parentFolderId !== undefined) {
+			query.andWhere('agent.parentFolderId = :parentFolderId', {
+				parentFolderId: filter.parentFolderId,
+			});
+		}
+
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
 		}
@@ -433,6 +534,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
+		}
+		if (filter?.active !== undefined) {
+			query.andWhere(
+				filter.active ? 'agent.activeVersionId IS NOT NULL' : 'agent.activeVersionId IS NULL',
+			);
+		}
+		if (filter?.projectId) {
+			query.andWhere('agent.projectId = :filterProjectId', { filterProjectId: filter.projectId });
 		}
 	}
 
@@ -488,7 +597,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
-		sortBy?: ListAgentsQueryDto['sortBy'],
+		sortBy?: AgentsListSortBy,
 		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
@@ -554,6 +663,107 @@ export class AgentRepository extends BaseRepository<Agent> {
 		);
 	}
 
+	async moveToFolder(
+		agentId: string,
+		projectId: string,
+		parentFolderId: string | null,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			Agent,
+			{ id: agentId, projectId, scope: projectScope },
+			{ parentFolderId },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findIdsInFoldersForExport(
+		folderIds: string[],
+		projectIds: string[] | null,
+		{ includeArchived = false }: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
+		const ids: string[] = [];
+		const archivedFilter = includeArchived ? {} : { isArchived: false };
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const agents = await this.find({
+				where: {
+					scope: projectScope,
+					...(projectIds === null ? {} : { projectId: In(projectIds) }),
+					parentFolderId: In(batch),
+					...archivedFilter,
+				},
+				select: { id: true },
+			});
+			ids.push(...agents.map((agent) => agent.id));
+		}
+
+		return ids;
+	}
+
+	async findInFolders(projectId: string, folderIds: string[]): Promise<ProjectAgent[]> {
+		const agents: ProjectAgent[] = [];
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const found = await this.find({
+				where: { projectId, scope: projectScope, parentFolderId: In(batch) },
+			});
+			agents.push(...found.filter(isProjectAgent));
+		}
+
+		return agents;
+	}
+
+	async countByFolder(projectId: string, folderIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const rows = await this.createQueryBuilder('agent')
+				.select('agent.parentFolderId', 'folderId')
+				.addSelect('COUNT(agent.id)', 'count')
+				.where(projectScopeSql)
+				.andWhere('agent.projectId = :projectId', { projectId })
+				.andWhere('agent.parentFolderId IN (:...folderIds)', { folderIds: batch })
+				.andWhere('agent.isArchived = :isArchived', { isArchived: false })
+				.groupBy('agent.parentFolderId')
+				.getRawMany<{ folderId: string; count: string }>();
+
+			for (const row of rows) {
+				counts.set(row.folderId, Number(row.count));
+			}
+		}
+
+		return counts;
+	}
+
+	async relocateFolderContents(
+		projectId: string,
+		fromFolderId: string,
+		toFolderId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			Agent,
+			{ projectId, scope: projectScope, parentFolderId: fromFolderId },
+			{ parentFolderId: toFolderId },
+		);
+	}
+
+	async moveArchivedFolderContentsToRoot(
+		projectId: string,
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			await this.managerFor(ctx).update(
+				Agent,
+				{ projectId, scope: projectScope, parentFolderId: In(batch), isArchived: true },
+				{ parentFolderId: null },
+			);
+		}
+	}
+
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
 		const agent = await this.findByIdAndProjectId(id, projectId);
 		return hasN8nChatChannel(agent?.activeVersion?.schema?.integrations);
@@ -574,25 +784,97 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
-	 * Creates or renames the row of a code-defined instance agent. The row
-	 * anchors threads, executions and queue items through foreign keys. It
-	 * stores no config, because the runtime comes from code.
+	 * Inserts the row of a code-defined instance agent. The row anchors threads,
+	 * executions and queue items through foreign keys. It stores no config,
+	 * because the runtime comes from code. Returns false when a row with this id
+	 * already exists. On PostgreSQL the transaction is then aborted, so the
+	 * caller must roll it back.
 	 */
-	async ensureInstanceAgent(id: string, name: string): Promise<void> {
-		// Two mains can start at the same time: the second insert of the id must not fail.
-		await this.createQueryBuilder()
-			.insert()
-			.into(Agent)
-			.values({ id, name, scope: 'instance', projectId: null, schema: null })
-			.orIgnore()
-			.execute();
-		const existing = await this.findOneOrFail({ select: ['id', 'name', 'scope'], where: { id } });
+	async insertInstanceAgent(
+		id: string,
+		name: string,
+		identityId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		try {
+			await this.managerFor(ctx).insert(Agent, {
+				id,
+				name,
+				scope: 'instance',
+				projectId: null,
+				schema: null,
+				identityId,
+			});
+			return true;
+		} catch (error) {
+			if (isUniqueConstraintError(error)) return false;
+			throw error;
+		}
+	}
+
+	/**
+	 * Renames an instance agent and its identity when the name changed. Returns
+	 * false when no agent has this id. Throws when the id belongs to a project agent.
+	 */
+	async renameInstanceAgentIfExists(id: string, name: string): Promise<boolean> {
+		const existing = await this.findOne({
+			select: ['id', 'name', 'scope', 'identityId'],
+			where: { id },
+		});
+		if (!existing) return false;
 		if (existing.scope !== 'instance') {
 			throw new UnexpectedError(`Agent "${id}" exists as a project agent`);
 		}
 		if (existing.name !== name) {
-			await this.update({ id, scope: 'instance' }, { name });
+			await this.runInTransaction({}, async (tx, ctx) => {
+				await tx.update(Agent, { id, scope: 'instance' }, { name });
+				await this.renameIdentity(existing, name, ctx);
+			});
 		}
+		return true;
+	}
+
+	/** Deletes the agent row. Rows that reference the agent follow their FK rules. */
+	async deleteById(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(Agent, { id });
+	}
+
+	/** The agent that acts as this identity, if there is one. */
+	async findByIdentityId(identityId: string): Promise<Pick<Agent, 'id' | 'name'> | null> {
+		return await this.findOne({ select: ['id', 'name'], where: { identityId } });
+	}
+
+	/** Maps each of `identityIds` to the project of its agent. Instance agents have no project. */
+	async findProjectsByIdentityIds(
+		identityIds: string[],
+	): Promise<Map<string, { id: string; name: string }>> {
+		const projectByIdentity = new Map<string, { id: string; name: string }>();
+		for (const batch of chunkIds(identityIds)) {
+			const rows = await this.createQueryBuilder('agent')
+				.select('agent.identityId', 'identityId')
+				.addSelect('project.id', 'projectId')
+				.addSelect('project.name', 'projectName')
+				.innerJoin('agent.project', 'project')
+				.where('agent.identityId IN (:...batch)', { batch })
+				.getRawMany<{ identityId: string; projectId: string; projectName: string }>();
+			for (const { identityId, projectId, projectName } of rows) {
+				projectByIdentity.set(identityId, { id: projectId, name: projectName });
+			}
+		}
+		return projectByIdentity;
+	}
+
+	/** The identities of the agents in these projects. */
+	async findIdentityIdsInProjects(projectIds: string[]): Promise<string[]> {
+		const identityIds: string[] = [];
+		for (const batch of chunkIds(projectIds)) {
+			const agents = await this.find({
+				select: ['identityId'],
+				where: { projectId: In(batch) },
+			});
+			for (const { identityId } of agents) identityIds.push(identityId);
+		}
+		return identityIds;
 	}
 
 	async findDependencyIndexAgentIdsBatch(
@@ -925,12 +1207,25 @@ export class AgentRepository extends BaseRepository<Agent> {
 		agent: Agent,
 		ctx: OperationContext = {},
 		metadata: AgentDefinitionMetadata = {},
-		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
+		options: { allowArchivedUpdate?: boolean } = {},
+	): Promise<boolean> {
+		// The agent name is also the name of its identity, so both writes share one transaction.
+		return await this.runInTransaction(
+			ctx,
+			async (_tx, txCtx) => await this.writeDraftFenced(agent, txCtx, metadata, options),
+		);
+	}
+
+	private async writeDraftFenced(
+		agent: Agent,
+		ctx: OperationContext,
+		metadata: AgentDefinitionMetadata,
+		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean },
 	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		const previous = await this.managerFor(ctx).findOne(Agent, {
 			where: { id: agent.id },
-			select: ['integrations'],
+			select: ['integrations', 'name', 'identityId'],
 		});
 		const connectionsChanged = !isEqual(
 			(previous?.integrations ?? []).filter(isCredentialAgentIntegration),
@@ -962,11 +1257,26 @@ export class AgentRepository extends BaseRepository<Agent> {
 		const result = await query.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			// Before the in-memory fields change, so a failed rename leaves the caller's agent as stored.
+			await this.renameIdentity(previous, agent.name, ctx);
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * Keeps the identity and its personal project named after the agent, as a
+	 * person's personal project follows the person. A blank name keeps the last one.
+	 */
+	private async renameIdentity(
+		previous: Pick<Agent, 'name' | 'identityId'> | null,
+		name: string,
+		ctx: OperationContext,
+	) {
+		if (!previous || previous.name === name || name.trim() === '') return;
+		await this.serviceAccountRepository.rename(previous.identityId, name, ctx);
 	}
 
 	/** The project of each agent, to send an update push to the right project. */

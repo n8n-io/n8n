@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
-import { Container } from '@n8n/di';
+import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
 	INode,
 	LegacyRequestOptions,
 	IWorkflowExecuteAdditionalData,
@@ -20,6 +20,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 import {
 	callEvalMockHandler,
@@ -35,6 +36,7 @@ import {
 	requestOAuth1,
 	requestOAuth2,
 } from './oauth';
+import { sendHttpRequest } from './outbound-request';
 import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
 
 /**
@@ -147,7 +149,7 @@ export async function httpRequestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		return await Container.get(OutboundHttp).requests().request(requestOptions);
+		return await sendHttpRequest(requestOptions, additionalData, node);
 	} catch (error) {
 		// Keep the policy reason visible instead of reporting it as a failed API call.
 		if (hasPolicyRefusalMarker(error)) throw error;
@@ -196,7 +198,7 @@ export async function httpRequestWithAuthentication(
 					workflow,
 					node,
 				);
-				return await Container.get(OutboundHttp).requests().request(requestOptions);
+				return await sendHttpRequest(requestOptions, additionalData, node);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -222,6 +224,43 @@ export async function requestWithAuthentication(
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	let requestSent = false;
+	let response: IN8nHttpFullResponse | undefined;
+
+	const refreshAndResend = async (surfaceOriginal: () => unknown, shouldRefresh = true) => {
+		try {
+			if (credentialsDecrypted === undefined || !shouldRefresh) return surfaceOriginal();
+
+			const data = await additionalData.credentialsHelper.preAuthentication(
+				{ helpers: this.helpers },
+				credentialsDecrypted,
+				credentialsType,
+				node,
+				true,
+			);
+			if (!data) return surfaceOriginal();
+
+			Object.assign(credentialsDecrypted, data);
+			if (requestSent && hasSingleUseBody(requestOptions)) {
+				this.logger.warn(
+					`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original response instead.`,
+				);
+				return surfaceOriginal();
+			}
+			if (response?.body instanceof Readable) response.body.destroy();
+			requestOptions = await additionalData.credentialsHelper.authenticate(
+				credentialsDecrypted,
+				credentialsType,
+				requestOptions as IHttpRequestOptions,
+				workflow,
+				node,
+			);
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		} catch (error) {
+			if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
+			throw new NodeApiError(this.getNode(), error);
+		}
+	};
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
 	if (additionalData.evalLlmMockHandler) {
@@ -294,54 +333,41 @@ export async function requestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
-	} catch (error) {
-		try {
-			if (
-				credentialsDecrypted !== undefined &&
-				(additionalCredentialOptions?.preAuthenticationRetryStatusCode === undefined ||
-					shouldRetryAfterPreAuthentication(
-						error.statusCode ?? error.response?.status,
-						credentialsDecrypted,
-						additionalCredentialOptions,
-					))
-			) {
-				// try to refresh the credentials
-				const data = await additionalData.credentialsHelper.preAuthentication(
-					{ helpers: this.helpers },
-					credentialsDecrypted,
-					credentialsType,
-					node,
-					true,
-				);
-
-				if (data) {
-					// make the updated property in the credentials
-					// available to the authenticate method
-					Object.assign(credentialsDecrypted, data);
-					if (requestSent && hasSingleUseBody(requestOptions)) {
-						this.logger.warn(
-							`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
-						);
-						throw error;
-					}
-					requestOptions = await additionalData.credentialsHelper.authenticate(
-						credentialsDecrypted,
-						credentialsType,
-						requestOptions as IHttpRequestOptions,
-						workflow,
-						node,
-					);
-					// oxlint-disable-next-line typescript/no-deprecated
-					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
-				}
-			}
-			throw error;
-		} catch (error) {
-			if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
-
-			throw new NodeApiError(this.getNode(), error);
+		if (requestOptions.simple === false) {
+			// Read the status even when the caller only wants the body.
+			// oxlint-disable-next-line typescript/no-deprecated
+			response = await proxyRequestToAxios(workflow, additionalData, node, {
+				...requestOptions,
+				resolveWithFullResponse: true,
+			});
+		} else {
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 		}
+	} catch (error) {
+		const shouldRefresh =
+			credentialsDecrypted !== undefined &&
+			(additionalCredentialOptions?.preAuthenticationRetryStatusCode === undefined ||
+				shouldRetryAfterPreAuthentication(
+					error.statusCode ?? error.response?.status,
+					credentialsDecrypted,
+					additionalCredentialOptions,
+				));
+		return await refreshAndResend(() => {
+			throw error;
+		}, shouldRefresh);
 	}
+
+	const result = requestOptions.resolveWithFullResponse ? response : response?.body;
+	if (
+		credentialsDecrypted !== undefined &&
+		shouldRetryAfterPreAuthentication(
+			response?.statusCode,
+			credentialsDecrypted,
+			additionalCredentialOptions,
+		)
+	) {
+		return await refreshAndResend(() => result);
+	}
+	return result;
 }

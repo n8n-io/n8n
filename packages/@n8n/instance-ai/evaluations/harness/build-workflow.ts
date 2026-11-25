@@ -8,7 +8,6 @@
 // ---------------------------------------------------------------------------
 
 import type {
-	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiHandoffContext,
@@ -19,7 +18,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { resolveEvalPromptSettings } from './build-mode';
+import { resolveEvalPromptVersion } from './prompt-version';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -65,6 +64,7 @@ import {
 	uniquifySeedTableNames,
 } from './seed-tables';
 import { CONVERSATION_BUDGET_TURNS, INACTIVITY_TIMEOUT_MS, RunTimeoutError } from './timeouts';
+import { hitSandboxQuota } from './transient-error';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
@@ -131,8 +131,7 @@ interface MultiTurnDriverConfig {
 	threadId: string;
 	conversation: ConversationTurn[];
 	messageBudget?: number;
-	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
-	buildMode?: InstanceAiBuildMode;
+	/** Resolved wire value sent with every message (see `resolveEvalPromptVersion`). */
 	promptVersion?: string;
 	observerThresholdTokens?: number;
 	allowUserExecution?: boolean;
@@ -232,7 +231,6 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
-		config.buildMode,
 		config.promptVersion,
 		config.openingHandoffContext,
 		config.observerThresholdTokens,
@@ -254,7 +252,6 @@ async function driveMultiTurnConversation(
 			confirmationStrategy,
 			nextMessageDecider,
 			proxyResponses: config.proxyResponses,
-			buildMode: config.buildMode,
 			promptVersion: config.promptVersion,
 			observerThresholdTokens: config.observerThresholdTokens,
 			allowUserExecution: config.allowUserExecution,
@@ -346,6 +343,10 @@ export interface BuildResult {
 	priorRunFailed?: string;
 	/** Workflows the agent read that this build neither created nor seeded. Not scored. */
 	foreignWorkflowReads?: string[];
+	/** True when the sandbox service refused a sandbox because the tenant quota
+	 *  was full. Applies to a successful build too: the agent can recover on a
+	 *  later turn, but the conversation is not the one the case grades. */
+	sandboxQuotaExceeded?: boolean;
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -363,6 +364,12 @@ export function harnessFault(build: BuildResult): { reason: string; counted: boo
 	if (build.priorRunFailed) {
 		return {
 			reason: `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			counted: false,
+		};
+	}
+	if (build.sandboxQuotaExceeded) {
+		return {
+			reason: 'the sandbox service refused a sandbox because the tenant quota was full',
 			counted: false,
 		};
 	}
@@ -527,8 +534,6 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
-	buildMode?: WorkflowTestCase['buildMode'];
 	promptVersion?: string;
 	requiresMemoryCompaction?: boolean;
 	allowUserExecution?: boolean;
@@ -547,6 +552,8 @@ export interface BuildWorkflowConfig {
 	 *  after a successful build, before any scenario runs. */
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
+	/** Thread id for the build. Must be a UUID that no other build uses. Defaults to a random UUID. */
+	threadId?: string;
 	preRunWorkflowIds: Set<string>;
 	/** Data tables present before any build on this lane — the only ones the
 	 *  scenario-table eviction may delete. Omitted = no eviction. */
@@ -594,17 +601,23 @@ export function workflowExpectedForCase(
 	);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Build a workflow via Instance AI. Returns the workflow ID for use with
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
-	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
+	// A caller bug, not a build result: fail before any setup runs.
+	if (config.threadId !== undefined && !UUID_PATTERN.test(config.threadId)) {
+		throw new Error(`threadId must be a UUID, got "${config.threadId}"`);
+	}
+	const promptVersion = resolveEvalPromptVersion(config);
 	const observerThresholdTokens = config.requiresMemoryCompaction
 		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
 		: undefined;
-	const threadId = crypto.randomUUID();
+	const threadId = config.threadId ?? crypto.randomUUID();
 	// Restarted when the opening message goes out: seed restore, prior-run
 	// staging and table creation are the harness's time, not the agent's.
 	let startTime = Date.now();
@@ -635,17 +648,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				}
 			: {};
 	let parsedToolCalls: CapturedToolCall[] | undefined;
-	const foreignReadFields = () => {
+	const toolCallFaultFields = () => {
 		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
+		const quotaFields = hitSandboxQuota(toolCalls) ? { sandboxQuotaExceeded: true } : {};
 		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, [
 			...restoredWorkflowIds,
 			...restoredAgentIds,
 		]);
-		if (foreignWorkflowReads.length === 0) return {};
+		if (foreignWorkflowReads.length === 0) return quotaFields;
 		logger.warn(
 			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,
 		);
-		return { foreignWorkflowReads };
+		return { ...quotaFields, foreignWorkflowReads };
 	};
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
@@ -1235,7 +1249,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
-				buildMode,
 				promptVersion,
 				allowUserExecution: config.allowUserExecution,
 				beforeUserExecution: async (deadline) => {
@@ -1293,7 +1306,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
-				buildMode,
 				promptVersion,
 				openingHandoffContext,
 				observerThresholdTokens,
@@ -1436,7 +1448,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
 					...buildProjectFields(),
-					...foreignReadFields(),
+					...toolCallFaultFields(),
 					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
@@ -1464,7 +1476,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
 				...buildProjectFields(),
-				...foreignReadFields(),
+				...toolCallFaultFields(),
 				createdFolderIds: restoredFolderIds,
 				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
@@ -1515,7 +1527,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
-			...foreignReadFields(),
+			...toolCallFaultFields(),
 			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
@@ -1541,7 +1553,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
-			...foreignReadFields(),
+			...toolCallFaultFields(),
 			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,

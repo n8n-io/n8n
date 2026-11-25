@@ -8,7 +8,12 @@ import type {
 	IHttpRequestMethods,
 	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
+	requestPath,
+} from 'n8n-workflow';
 
 import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
@@ -99,30 +104,36 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Append',
 					value: 'append',
+					annotations: { effect: 'write', destructive: false, idempotent: false },
 					description: 'Append the data to a table',
 					action: 'Append data to a table',
 				},
 				{
 					name: 'Delete',
 					value: 'delete',
+					annotations: { effect: 'write', destructive: true, idempotent: false },
 					description: 'Delete data from a table',
 					action: 'Delete data from a table',
 				},
 				{
 					name: 'List',
 					value: 'list',
+					annotations: READ_ONLY_ANNOTATIONS,
 					description: 'List data from a table',
 					action: 'List data from a table',
 				},
 				{
 					name: 'Read',
 					value: 'read',
+					annotations: READ_ONLY_ANNOTATIONS,
 					description: 'Read data from a table',
 					action: 'Read data from a table',
 				},
 				{
 					name: 'Update',
 					value: 'update',
+					// Updates can upload attachments from URLs again.
+					annotations: { effect: 'write', destructive: true, idempotent: false },
 					description: 'Update data in a table',
 					action: 'Update data in a table',
 				},
