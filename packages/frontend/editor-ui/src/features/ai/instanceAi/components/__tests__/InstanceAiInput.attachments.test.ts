@@ -74,7 +74,7 @@ describe('InstanceAiInput — staged node attachments', () => {
 		telemetryTrack.mockClear();
 	});
 
-	it('keeps the existing input menu enabled outside the mentions rollout, with no paperclip', () => {
+	it('keeps the existing input menu enabled when the host turns mentions off, with no paperclip', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-input-menu')).toBeEnabled();

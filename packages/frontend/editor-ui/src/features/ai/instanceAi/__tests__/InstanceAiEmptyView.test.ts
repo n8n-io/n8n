@@ -275,10 +275,6 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue', () =
 	},
 }));
 
-vi.mock('@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled', () => ({
-	useIsAssistantAtMentionsEnabled: () => computed(() => true),
-}));
-
 vi.mock('uuid', () => ({
 	v4: () => 'thread-placeholder',
 }));

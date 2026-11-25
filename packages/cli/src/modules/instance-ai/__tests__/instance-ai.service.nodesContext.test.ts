@@ -1,6 +1,7 @@
 import type {
 	InstanceAiAgentAttachment,
 	InstanceAiElementAttachment,
+	InstanceAiFileAttachment,
 	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
@@ -19,35 +20,26 @@ function nodesAttachment(
 	};
 }
 
-describe('InstanceAiService — resolveContextAttachments gating', () => {
-	type GatedService = {
+describe('InstanceAiService — resolveContextAttachments', () => {
+	type ContextService = {
 		resolveContextAttachments: (
-			attachments: InstanceAiResourceAttachment[] | undefined,
-			nodeContextEnabled: boolean,
+			attachments: Array<InstanceAiResourceAttachment | InstanceAiFileAttachment> | undefined,
 		) => InstanceAiResourceAttachment[];
 	};
 
-	function createService(): GatedService {
-		return Object.create(InstanceAiService.prototype) as GatedService;
+	function createService(): ContextService {
+		return Object.create(InstanceAiService.prototype) as ContextService;
 	}
 
-	it('includes the nodes attachment when the flag is on', () => {
+	it('keeps the nodes attachment', () => {
 		const service = createService();
 
-		const result = service.resolveContextAttachments([nodesAttachment()], true);
+		const result = service.resolveContextAttachments([nodesAttachment()]);
 
 		expect(result).toEqual([nodesAttachment()]);
 	});
 
-	it('drops the nodes attachment when the flag is off, without throwing', () => {
-		const service = createService();
-
-		const result = service.resolveContextAttachments([nodesAttachment()], false);
-
-		expect(result).toEqual([]);
-	});
-
-	it('keeps workflow and agent attachments when node context is off', () => {
+	it('keeps the resource attachments by kind and drops files', () => {
 		const service = createService();
 		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
 		const agentAttachment: InstanceAiAgentAttachment = {
@@ -55,31 +47,35 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		};
-
-		const result = service.resolveContextAttachments([workflowAttachment, agentAttachment], false);
-
-		expect(result).toEqual([workflowAttachment, agentAttachment]);
-	});
-
-	it.each([true, false])('keeps an element attachment when node context is %s', (enabled) => {
-		const service = createService();
 		const elementAttachment: InstanceAiElementAttachment = {
 			type: 'element',
 			appId: 'app-1',
 			tagName: 'button',
 		};
+		const fileAttachment: InstanceAiFileAttachment = {
+			type: 'file',
+			data: 'aGk=',
+			mimeType: 'text/plain',
+			fileName: 'a.txt',
+		};
 
-		const result = service.resolveContextAttachments([elementAttachment], enabled);
+		const result = service.resolveContextAttachments([
+			elementAttachment,
+			nodesAttachment(),
+			fileAttachment,
+			agentAttachment,
+			workflowAttachment,
+		]);
 
-		expect(result).toEqual([elementAttachment]);
+		expect(result).toEqual([
+			workflowAttachment,
+			agentAttachment,
+			nodesAttachment(),
+			elementAttachment,
+		]);
 	});
 
-	it('keeps a workflow attachment alongside an enabled nodes attachment', () => {
-		const service = createService();
-		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
-
-		const result = service.resolveContextAttachments([workflowAttachment, nodesAttachment()], true);
-
-		expect(result).toEqual([workflowAttachment, nodesAttachment()]);
+	it('returns no attachments without any', () => {
+		expect(createService().resolveContextAttachments(undefined)).toEqual([]);
 	});
 });

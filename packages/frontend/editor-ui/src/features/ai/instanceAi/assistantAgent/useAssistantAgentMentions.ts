@@ -19,7 +19,6 @@ import type {
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
-import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 import { chatResourceTokenIcon } from '@/features/ai/shared/utils/chatResourceTokens';
 
 import { countMentions } from './assistantMentionAttachments';
@@ -73,7 +72,7 @@ export function useAssistantAgentMentions(options: {
 	/** No thread yet on the empty view. */
 	threadId: MaybeRefOrGetter<string | undefined>;
 	projectId: () => string | undefined;
-	/** A host gate on top of the feature flag, for example while an agent is picked. */
+	/** A host gate, for example off while an agent is picked. */
 	enabled?: () => boolean;
 	/** The composer text, when the host keeps it. */
 	draft?: Ref<string>;
@@ -91,8 +90,7 @@ export function useAssistantAgentMentions(options: {
 	const i18n = useI18n();
 	const toast = useToast();
 	const telemetry = useAssistantAtMentionsTelemetry({ threadId: options.threadId });
-	const isFlagEnabled = useIsAssistantAtMentionsEnabled();
-	const isEnabled = computed(() => isFlagEnabled.value && (options.enabled?.() ?? true));
+	const isEnabled = computed(() => options.enabled?.() ?? true);
 	const availability = useAssistantMentionAvailability({
 		enabled: isEnabled,
 		projectId: options.projectId,

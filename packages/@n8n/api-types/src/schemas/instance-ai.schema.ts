@@ -3067,9 +3067,6 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables workflow, node, and canvas group mentions in the n8n Assistant */
-export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
-
 /** Enables the conversation-history tool and the past-conversations first-turn hint */
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 

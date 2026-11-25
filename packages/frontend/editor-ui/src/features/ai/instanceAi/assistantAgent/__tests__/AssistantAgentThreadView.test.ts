@@ -516,8 +516,7 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 
 // The real picker searches the project, which its own tests cover. The stub emits the
 // selection that a test sets, and shows the props that the view passes.
-const { mentionsEnabled, mentionSelection, mentionPickerProps } = vi.hoisted(() => ({
-	mentionsEnabled: { current: true },
+const { mentionSelection, mentionPickerProps } = vi.hoisted(() => ({
 	mentionSelection: { current: undefined as unknown },
 	mentionPickerProps: { current: undefined as Record<string, unknown> | undefined },
 }));
@@ -541,13 +540,6 @@ vi.mock('@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue', () =
 		},
 	}),
 }));
-vi.mock(
-	'@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled',
-	async () => {
-		const { computed } = await import('vue');
-		return { useIsAssistantAtMentionsEnabled: () => computed(() => mentionsEnabled.current) };
-	},
-);
 vi.mock(
 	'@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability',
 	async () => {
@@ -653,7 +645,6 @@ describe('AssistantAgentThreadView', () => {
 		localStorage.clear();
 		composerAttachments.value = [];
 		referencedMessage.value = undefined;
-		mentionsEnabled.current = true;
 		mentionSelection.current = undefined;
 		mentionPickerProps.current = undefined;
 		showError.mockReset();
@@ -2801,16 +2792,6 @@ describe('AssistantAgentThreadView', () => {
 			onMenuOpenChange()(true);
 			await flushPromises();
 			expect(mentionPickerProps.current?.reference).toBeUndefined();
-		});
-
-		it('hides the picker when mentions are off', async () => {
-			mentionsEnabled.current = false;
-			const { queryByTestId } = renderView({
-				props: { threadId: 'thread-1', projectId: 'project-1' },
-			});
-			await flushPromises();
-
-			expect(queryByTestId('mention-picker-stub')).not.toBeInTheDocument();
 		});
 
 		it('puts a mentioned workflow or agent in the text, and sends it in the client context', async () => {

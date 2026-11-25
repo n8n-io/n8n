@@ -443,8 +443,6 @@ export interface InstanceAiFeatureFlags {
 	setupPanelVariant?: 'control' | 'variant';
 	/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 	nodeUsageEnabled: boolean;
-	/** Node attachments from the canvas and from Assistant mentions. */
-	nodeContextEnabled: boolean;
 	/** Folder attribution and folder scoping on the workflows list tool. */
 	folderExplorationEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
@@ -896,7 +894,6 @@ export class InstanceAiAdapterService {
 				? { setupPanelVariant }
 				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
-			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled: this.globalConfig.activityLog.enabled,

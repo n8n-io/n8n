@@ -63,9 +63,9 @@ function setup() {
 		provider: 'n8n-sandbox',
 	} as ReturnType<InstanceAiSettingsService['getSandboxStatus']>);
 	const adapterService = mock<InstanceAiAdapterService>();
-	adapterService.resolveExperimentGates.mockResolvedValue({
-		nodeContextEnabled: false,
-	} as Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>);
+	adapterService.resolveExperimentGates.mockResolvedValue(
+		{} as Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
+	);
 	const creditService = mock<InstanceAiCreditService>();
 	const archiveIfAiTemporary = vi.fn(async () => true);
 	const environment = {
@@ -190,19 +190,22 @@ function startTurn(
 			request: {
 				pushRef: 'push-1',
 				timeZone: 'Europe/Helsinki',
-				attachments: [
-					{ type: 'workflow', id: 'wf-1', name: 'Digest' },
-					{
-						type: 'nodes',
-						workflowId: 'wf-1',
-						sets: [{ nodes: [{ id: 'node-1', name: 'Slack' }] }],
-					},
-				],
+				attachments: [...turnContextAttachments],
 			},
 		},
 		...overrides,
 	};
 }
+
+/** The resource attachments of the start turn. All of them reach the agent. */
+const turnContextAttachments = [
+	{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' },
+	{
+		type: 'nodes' as const,
+		workflowId: 'wf-1',
+		sets: [{ nodes: [{ id: 'node-1', name: 'Slack' }] }],
+	},
+];
 
 describe('AssistantAgentProvider', () => {
 	describe('authorize', () => {
@@ -427,8 +430,7 @@ describe('AssistantAgentProvider', () => {
 				expect.objectContaining({
 					message: 'Build a digest',
 					timeZone: 'Europe/Helsinki',
-					// Node attachments need their gate, which is off here.
-					contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+					contextAttachments: turnContextAttachments,
 					// The agents runtime titles the thread after the turn.
 					titledByRuntime: true,
 				}),
@@ -1576,8 +1578,7 @@ describe('AssistantAgentProvider', () => {
 					messageGroupId: 'mg-1',
 					proxyConfig,
 					fileAttachments: [],
-					// The node attachment needs its gate, which is off.
-					contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+					contextAttachments: turnContextAttachments,
 					threadArtifacts: undefined,
 				});
 				// The run and the trace share one proxy token manager.
