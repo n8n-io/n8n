@@ -32,7 +32,7 @@ import type { ExploreResourcesParams, InstanceAiContext, NodeDescription } from 
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
-import { readInputFiles, workflowFilesOf } from './shared/workflow-files';
+import { describeInputFiles, readInputFiles, workflowFilesOf } from './shared/workflow-files';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -142,7 +142,8 @@ const executeNodeFileFieldsShape = {
 		.optional()
 		.describe(
 			'Store the files (binary data) of the output items as conversation files, at most 10. ' +
-				'The result lists them in `files` with a fileId. Without it, binary output is metadata only and is lost after the run.',
+				'The result lists them in `files`, and the `binary` metadata of each output item gives the fileId of its file. ' +
+				'Without it, binary output is metadata only and is lost after the run.',
 		),
 };
 
@@ -519,6 +520,20 @@ async function handleExecute(
 		};
 	}
 
+	// Read the files before the approval, so a missing file fails early and the prompt can name them.
+	const workflowFiles = workflowFilesOf(context);
+	let items: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
+	const inputFileIds: string[] = [];
+	if (input.input) {
+		items = [];
+		for (const { json, files } of input.input) {
+			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
+			if (error) return { status: 'error' as const, error: { message: error } };
+			if (binary && files) inputFileIds.push(...Object.values(files));
+			items.push(binary ? { json, binary } : { json });
+		}
+	}
+
 	const grantKey = buildExecuteNodeSessionGrantKey(input.type, input.config.parameters);
 	const allowedByScope = context.permissions?.executeNode === 'always_allow';
 	const allowedBySessionGrant =
@@ -526,9 +541,11 @@ async function handleExecute(
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const labels = await buildExecuteNodeLabels(context, input);
 		return await suspend({
 			requestId: nanoid(),
-			...(await buildExecuteNodeLabels(context, input)),
+			...labels,
+			message: labels.message + describeInputFiles((items ?? []).map((item) => item.binary)),
 			severity: 'warning' as const,
 		});
 	}
@@ -541,24 +558,13 @@ async function handleExecute(
 		await context.grantSessionToolApproval?.(grantKey);
 	}
 
-	const workflowFiles = workflowFilesOf(context);
-	let items: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
-	if (input.input) {
-		items = [];
-		for (const { json, files } of input.input) {
-			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
-			if (error) return { status: 'error' as const, error: { message: error } };
-			items.push(binary ? { json, binary } : { json });
-		}
-	}
-
 	return await executeNodeService.execute({
 		type: input.type,
 		version: input.version,
 		config: input.config,
 		input: items,
 		...(workflowFiles && input.storeFiles
-			? { storeOutputFile: workflowFiles.storeWorkflowFile }
+			? { storeOutputFile: workflowFiles.storeWorkflowFile, inputFileIds }
 			: {}),
 		timeoutMs: input.timeoutMs,
 	});

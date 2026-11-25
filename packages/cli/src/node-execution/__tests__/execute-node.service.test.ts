@@ -321,6 +321,67 @@ describe('ExecuteNodeService', () => {
 			);
 		});
 
+		it('names the stored file of each output binary on its item', async () => {
+			const stored = { id: 'filesystem-v2:b', data: 'filesystem-v2', mimeType: 'image/png' };
+			const notStored = { id: 'filesystem-v2:c', data: 'filesystem-v2', mimeType: 'image/png' };
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				successExecution([
+					{ data: { main: [[{ json: {}, binary: { data: stored, thumb: notStored } }]] } },
+				]) as never,
+			);
+			const storeOutputFiles = vi.fn(async () => ({
+				fileIdOf: (binary: { id?: string }) => (binary.id === stored.id ? 'f-1' : undefined),
+			}));
+
+			const result = await service.run(user, baseRequest({ storeOutputFiles }));
+
+			expect(result).toEqual({
+				status: 'success',
+				output: [
+					[
+						{
+							json: {},
+							binary: {
+								data: { mimeType: 'image/png', fileId: 'f-1' },
+								thumb: { mimeType: 'image/png' },
+							},
+						},
+					],
+				],
+			});
+		});
+
+		it('succeeds without files when storing them fails, because the node already ran', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				successExecution([{ data: { main: [[{ json: { sent: true } }]] } }]) as never,
+			);
+			const storeOutputFiles = vi.fn(async () => {
+				throw new Error('database down');
+			});
+
+			const result = await service.run(user, baseRequest({ storeOutputFiles }));
+
+			expect(result).toEqual({ status: 'success', output: [[{ json: { sent: true } }]] });
+			expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalled();
+		});
+
+		it('stores no output files of a redacted run', async () => {
+			executionRedactionServiceProxy.processExecution.mockImplementationOnce(async (execution) => {
+				execution.data.redactionInfo = {
+					isRedacted: true,
+					reason: 'workflow_redaction_policy',
+					canReveal: false,
+				};
+				return execution;
+			});
+			const storeOutputFiles = vi.fn();
+
+			const result = await service.run(user, baseRequest({ storeOutputFiles }));
+
+			expect(result).toMatchObject({ status: 'redacted' });
+			expect(storeOutputFiles).not.toHaveBeenCalled();
+		});
+
 		it('stores no output files of a failed run', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue({
 				data: { resultData: { runData: {}, error: { message: 'boom' } } },

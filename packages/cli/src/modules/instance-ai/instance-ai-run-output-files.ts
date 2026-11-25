@@ -42,6 +42,17 @@ export function countItemFiles(items: Iterable<{ binary?: IBinaryKeyData }>): nu
 	return count;
 }
 
+export interface StoreItemFilesOptions {
+	/**
+	 * The fileIds of the conversation files that the run got as input. A file of
+	 * them that the run passes on unchanged is not a new file, so `files` does not
+	 * list it and it does not count against the cap, as with project agents.
+	 */
+	inputFileIds?: readonly string[];
+	/** Called with each binary that has a conversation file, including a file passed on. */
+	onStored?: (binary: IBinaryData, fileId: string) => void;
+}
+
 /**
  * Store the files of some execution items as conversation files, one time for
  * each binary and at most `MAX_RUN_OUTPUT_FILES` of them. `limitReason` is the
@@ -51,7 +62,9 @@ export async function storeItemFiles(
 	items: Iterable<{ binary?: IBinaryKeyData }>,
 	storeFile: InstanceAiStoreWorkflowFile,
 	limitReason: string,
+	options: StoreItemFilesOptions = {},
 ): Promise<{ files?: InstanceAiConversationFile[]; skippedFiles?: InstanceAiSkippedFiles }> {
+	const inputFileIds = new Set(options.inputFileIds);
 	const files: InstanceAiConversationFile[] = [];
 	const skippedFiles: InstanceAiSkippedFile[] = [];
 	let skippedTotal = 0;
@@ -66,8 +79,12 @@ export async function storeItemFiles(
 		}
 		const stored = await storeFile(binary);
 		if (!stored) continue;
-		if ('reason' in stored) skip(stored);
-		else files.push(stored);
+		if ('reason' in stored) {
+			skip(stored);
+			continue;
+		}
+		options.onStored?.(binary, stored.fileId);
+		if (!inputFileIds.has(stored.fileId)) files.push(stored);
 	}
 	return {
 		...(files.length > 0 ? { files } : {}),
@@ -83,6 +100,7 @@ export async function storeItemFiles(
 export async function storeRunOutputFiles(
 	execution: IExecutionResponse,
 	storeOutputFile: InstanceAiStoreWorkflowFile,
+	inputFileIds?: readonly string[],
 ): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
 	const runData = execution.data?.resultData?.runData;
 	if (!runData || getExecutionRedaction(execution)) return {};
@@ -91,5 +109,6 @@ export async function storeRunOutputFiles(
 		items,
 		storeOutputFile,
 		`one run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
+		{ inputFileIds },
 	);
 }

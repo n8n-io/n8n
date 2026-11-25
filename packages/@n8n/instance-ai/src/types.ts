@@ -734,6 +734,11 @@ export interface InstanceAiExecutionService {
 			 * conversation file. The result lists them in `files`.
 			 */
 			storeOutputFile?: InstanceAiStoreWorkflowFile;
+			/**
+			 * The fileIds of the conversation files in `binary`. `files` does not
+			 * list a file of them that the run passes on unchanged.
+			 */
+			inputFileIds?: readonly string[];
 		},
 	): Promise<ExecutionResult>;
 	/**
@@ -859,6 +864,11 @@ export interface InstanceAiExecuteNodeService {
 		 * lists them in `files`.
 		 */
 		storeOutputFile?: InstanceAiStoreWorkflowFile;
+		/**
+		 * The fileIds of the conversation files in the `binary` of the input items.
+		 * `files` does not list a file of them that the node passes on unchanged.
+		 */
+		inputFileIds?: readonly string[];
 		timeoutMs?: number;
 	}): Promise<ExecuteNodeResult>;
 }

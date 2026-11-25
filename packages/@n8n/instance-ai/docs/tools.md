@@ -635,8 +635,12 @@ workflow without a trigger node cannot take files, so the run fails before it
 starts. After the run, the files of the last node are stored as conversation
 files with the `tool` source, one time for each binary and at most 10 for each
 run. A file of the conversation that the run passes on unchanged keeps its
-fileId and is not copied. A renamed or retyped file becomes a new file. The result lists the files in `files`, so the chat
-shows them. `skippedFiles.files` lists at most 10 files that were not stored, and
+fileId and is not copied. A renamed or retyped file becomes a new file. The
+result lists the files in `files`, so the chat shows them. `files` does not
+list an input file that the run passes on unchanged, and such a file does not
+count against the cap, as with project Agents. The approval prompt names the
+input files, because the run can send them to an outside service. A fileId that
+the conversation does not have fails the call before the prompt. `skippedFiles.files` lists at most 10 files that were not stored, and
 `skippedFiles.total` counts all of them. A redacted execution stores no
 files. Without the host functions, the input schema has no `files` field.
 
@@ -1158,9 +1162,14 @@ upstream error details are suppressed, mirroring `workflow_builder_executions(ac
 The temporary execution and its binary data are deleted after the run. With
 `storeFiles`, n8n copies the output files to conversation files before that, at
 most 10, one time for each binary. The result lists them in `files` with their
-fileId. `skippedFiles.files` lists at most 10 files that were not stored, and
-`skippedFiles.total` counts all of them. A failed or redacted run,
-or a run with output items suppressed by the privacy setting, stores no files.
+fileId, and each output item gives the fileId of its file in its `binary`
+metadata, so the model can tell which item a file belongs to. `files` does not
+list an input file that the node passes on unchanged, and such a file does not
+count against the cap. `skippedFiles.files` lists at most 10 files that were
+not stored, and `skippedFiles.total` counts all of them. A failed or redacted
+run, or a run with output items suppressed by the privacy setting, stores no
+files. When storing fails, the run still succeeds without its files, because
+the node already ran. The approval prompt names the input files.
 The input `files` entries point to the stored bytes of the conversation files,
 so the deletion does not touch them. The host offers `files` and `storeFiles`
 only when it sets `readBinary` and `storeWorkflowFile` on `storedFiles`.

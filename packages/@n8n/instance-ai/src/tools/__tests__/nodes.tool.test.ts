@@ -1096,7 +1096,12 @@ describe('nodes tools', () => {
 		});
 
 		describe('files', () => {
-			const pngBinary = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+			const pngBinary = {
+				id: 'filesystem-v2:a',
+				data: 'filesystem-v2',
+				mimeType: 'image/png',
+				fileName: 'a.png',
+			};
 
 			function contextWithFiles() {
 				const storedFiles = {
@@ -1149,6 +1154,24 @@ describe('nodes tools', () => {
 				]);
 				await request.storeOutputFile(pngBinary);
 				expect(storedFiles.storeWorkflowFile).toHaveBeenCalledWith(pngBinary);
+				// An input file that the node passes on is not a new file of the run.
+				expect(request.inputFileIds).toEqual(['file-1']);
+			});
+
+			it('names the input files in the approval prompt', async () => {
+				const { context } = contextWithFiles();
+				const suspendFn = vi.fn();
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					{
+						...executeInput,
+						input: [{ json: {}, files: { data: 'file-1' } }],
+					} as never,
+					{ suspend: suspendFn } as never,
+				);
+
+				expect(suspendFn.mock.calls[0][0].message).toMatch(/ with the file a\.png$/);
 			});
 
 			it('stores no output files without storeFiles', async () => {
@@ -1163,14 +1186,17 @@ describe('nodes tools', () => {
 				expect(executeNodeService.execute.mock.calls[0][0]).not.toHaveProperty('storeOutputFile');
 			});
 
-			it('does not run the node with a file that the conversation does not have', async () => {
+			it('does not ask for approval or run the node with a file that the conversation does not have', async () => {
 				const { context, executeNodeService } = contextWithFiles();
+				const suspendFn = vi.fn();
 
 				const result = await executeTool(
 					createExecuteNodeTool(context),
 					{ ...executeInput, input: [{ json: {}, files: { data: 'other' } }] } as never,
-					{ resumeData: { approved: true } } as never,
+					{ suspend: suspendFn } as never,
 				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
 
 				expect(result).toEqual({
 					status: 'error',

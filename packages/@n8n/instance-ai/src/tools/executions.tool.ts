@@ -394,6 +394,7 @@ async function handleRun(
 		abortSignal,
 		binary,
 		storeOutputFile: workflowFiles?.storeWorkflowFile,
+		...(binary && input.files ? { inputFileIds: Object.values(input.files) } : {}),
 	});
 	// A live test is the evidence verification cannot produce itself. Record it
 	// so the publish gate stops disclosing simulations that this run replaced.

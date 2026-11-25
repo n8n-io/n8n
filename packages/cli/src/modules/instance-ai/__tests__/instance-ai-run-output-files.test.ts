@@ -5,6 +5,7 @@ import { extractNodeOutput } from '../instance-ai.adapter.service';
 import {
 	MAX_RUN_OUTPUT_FILES,
 	MAX_RUN_SKIPPED_FILES,
+	storeItemFiles,
 	storeRunOutputFiles,
 } from '../instance-ai-run-output-files';
 
@@ -61,6 +62,23 @@ describe('storeRunOutputFiles', () => {
 			'filesystem-v2:b',
 		]);
 		expect(result).toEqual({ files: [storedFile(binary('a')), storedFile(binary('b'))] });
+	});
+
+	it('does not list an input file that the run passes on, and does not count it against the cap', async () => {
+		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES }, (_, i) => ({
+			json: {},
+			binary: { data: binary(`out-${i}`) },
+		}));
+		const execution = executionOf(
+			runOf({ Edit: [{ json: {}, binary: { data: binary('upload') } }, ...outputs] }),
+		);
+
+		const result = await storeRunOutputFiles(execution, storeOutputFile, ['file-upload.png']);
+
+		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
+		expect(result.files?.map((f) => f.fileId)).not.toContain('file-upload.png');
+		expect(result).not.toHaveProperty('skippedFiles');
 	});
 
 	it('lists the files that were not stored', async () => {
@@ -187,5 +205,26 @@ describe('extractNodeOutput with files', () => {
 
 		expect(storeFile).not.toHaveBeenCalled();
 		expect(result).not.toHaveProperty('files');
+	});
+});
+
+describe('storeItemFiles', () => {
+	it('reports the file of each binary, including an input file that it does not list', async () => {
+		const upload = binary('upload');
+		const rotated = binary('rotated');
+		const onStored = vi.fn();
+
+		const result = await storeItemFiles(
+			[{ binary: { data: upload } }, { binary: { data: rotated } }, { binary: { data: upload } }],
+			async (b) => storedFile(b),
+			'cap',
+			{ inputFileIds: ['file-upload.png'], onStored },
+		);
+
+		expect(onStored.mock.calls).toEqual([
+			[upload, 'file-upload.png'],
+			[rotated, 'file-rotated.png'],
+		]);
+		expect(result).toEqual({ files: [storedFile(rotated)] });
 	});
 });

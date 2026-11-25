@@ -2226,7 +2226,7 @@ describe('executeNodeService adapter', () => {
 		const png = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
 		const stored = { fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
 
-		async function runWithFiles(allowSendingParameterValues: boolean) {
+		async function runWithFiles(allowSendingParameterValues: boolean, inputFileIds?: string[]) {
 			mockedUserHasScopes.mockResolvedValue(true);
 			const executeNodeService = {
 				run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
@@ -2241,6 +2241,7 @@ describe('executeNodeService adapter', () => {
 				...executeRequest,
 				input: [{ json: {}, binary: { data: png } }],
 				storeOutputFile,
+				inputFileIds,
 			});
 			return { request: executeNodeService.run.mock.calls[0][1], storeOutputFile };
 		}
@@ -2254,7 +2255,17 @@ describe('executeNodeService adapter', () => {
 				{ json: {}, binary: { copy: png } },
 			]);
 			expect(storeOutputFile).toHaveBeenCalledTimes(1);
-			expect(result).toEqual({ files: [stored] });
+			expect(result).toMatchObject({ files: [stored] });
+			expect(result.fileIdOf(png)).toBe('f-1');
+			expect(result.fileIdOf({ ...png, id: 'filesystem-v2:other' })).toBeUndefined();
+		});
+
+		it('does not list an input file that the node passes on, but names it on its item', async () => {
+			const { request } = await runWithFiles(true, ['f-1']);
+
+			const result = await request.storeOutputFiles([{ json: {}, binary: { data: png } }]);
+			expect(result).not.toHaveProperty('files');
+			expect(result.fileIdOf(png)).toBe('f-1');
 		});
 
 		it('stores no output files when the privacy setting hides the output', async () => {

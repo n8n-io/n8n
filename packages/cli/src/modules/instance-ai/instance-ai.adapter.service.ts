@@ -154,6 +154,7 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IBinaryData,
 	type IBinaryKeyData,
 	type IRunData,
 	type ITaskData,
@@ -1077,15 +1078,26 @@ export class InstanceAiAdapterService {
 				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
 				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
 				// The privacy setting hides the output items, so it keeps their files out of the chat too.
-				const { storeOutputFile } = request;
+				const { storeOutputFile, inputFileIds } = request;
 				const storeOutputFiles =
 					storeOutputFile && allowSendingParameterValues
-						? async (items: Array<{ binary?: IBinaryKeyData }>) =>
-								await storeItemFiles(
+						? async (items: Array<{ binary?: IBinaryKeyData }>) => {
+								// The output items name the file of each binary, so the model can tell which item a file belongs to.
+								const fileIds = new Map<IBinaryData | string, string>();
+								const stored = await storeItemFiles(
 									items,
 									storeOutputFile,
 									`one node run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
-								)
+									{
+										inputFileIds,
+										onStored: (binary, fileId) => fileIds.set(binary.id ?? binary, fileId),
+									},
+								);
+								return {
+									...stored,
+									fileIdOf: (binary: IBinaryData) => fileIds.get(binary.id ?? binary),
+								};
+							}
 						: undefined;
 				const result = await executeNodeService.run(user, {
 					type: request.type,
@@ -2778,7 +2790,10 @@ export class InstanceAiAdapterService {
 						? options?.storeOutputFile
 						: undefined;
 					if (storeOutputFile && outcome.execution && result.status !== 'running') {
-						Object.assign(result, await storeRunOutputFiles(outcome.execution, storeOutputFile));
+						Object.assign(
+							result,
+							await storeRunOutputFiles(outcome.execution, storeOutputFile, options?.inputFileIds),
+						);
 					}
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —

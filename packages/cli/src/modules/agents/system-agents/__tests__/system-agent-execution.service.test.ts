@@ -1213,6 +1213,16 @@ describe('SystemAgentExecutionService', () => {
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 				});
 
+				it('gives no file instead of an error when a lookup fails, because the run already happened', async () => {
+					const { turn, fileBridge, attachmentService } = await startTurnWithAttachment();
+					attachmentService.findSystemAgentThreadFileByBinary.mockRejectedValue(
+						new Error('database down'),
+					);
+
+					await expect(turn.storeWorkflowFile(binary)).resolves.toBeUndefined();
+					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
+				});
+
 				it('stores inline binary data without an access check', async () => {
 					const { turn, fileBridge, binaryDataAccess } = await startTurnWithAttachment();
 					const inline = { data: 'aGk=', mimeType: 'text/plain' };

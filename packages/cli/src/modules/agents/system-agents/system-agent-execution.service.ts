@@ -1118,8 +1118,27 @@ export class SystemAgentExecutionService {
 	/**
 	 * Store a binary that a workflow run returned as a file of the thread. A file
 	 * of the thread that the run passed on unchanged gives that file, without a copy.
+	 * Gives `undefined` when storage fails: the run already happened, so an error
+	 * here must not fail the tool call and make the model run it again.
 	 */
 	private async storeWorkflowFile(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		user: User,
+		binary: IBinaryData,
+	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined> {
+		try {
+			return await this.storeWorkflowFileOrThrow(thread, resourceId, user, binary);
+		} catch (error) {
+			this.logger.warn('Failed to store a workflow file in the system chat', {
+				threadId: thread.id,
+				error,
+			});
+			return undefined;
+		}
+	}
+
+	private async storeWorkflowFileOrThrow(
 		thread: AgentExecutionThread,
 		resourceId: string,
 		user: User,
