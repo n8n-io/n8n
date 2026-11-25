@@ -754,6 +754,42 @@ describe('OAuthTokenService', () => {
 		});
 	});
 
+	describe('revokeRefreshTokensForResource', () => {
+		const resource = 'https://n8n.example.com/mcp-servers/acme';
+
+		it('deletes the tokens of one user for the resource and logs the count', async () => {
+			refreshTokenRepository.deleteByUserAndResource.mockResolvedValue(2);
+
+			await expect(service.revokeRefreshTokensForResource(resource, 'user-1')).resolves.toBe(2);
+
+			expect(refreshTokenRepository.deleteByUserAndResource).toHaveBeenCalledWith(
+				'user-1',
+				resource,
+				{},
+			);
+			expect(refreshTokenRepository.deleteByResource).not.toHaveBeenCalled();
+			expect(logger.info).toHaveBeenCalledWith('Refresh tokens revoked for resource', {
+				resource,
+				userId: 'user-1',
+				count: 2,
+			});
+		});
+
+		it('deletes the tokens of all users for the resource without a user id', async () => {
+			refreshTokenRepository.deleteByResource.mockResolvedValue(0);
+
+			await expect(service.revokeRefreshTokensForResource(resource)).resolves.toBe(0);
+
+			expect(refreshTokenRepository.deleteByResource).toHaveBeenCalledWith(resource, {});
+			expect(refreshTokenRepository.deleteByUserAndResource).not.toHaveBeenCalled();
+			expect(logger.info).toHaveBeenCalledWith('Refresh tokens revoked for resource', {
+				resource,
+				userId: undefined,
+				count: 0,
+			});
+		});
+	});
+
 	describe('getAllowedAudiences', () => {
 		it('should return canonical URL and legacy audience when expectedAudience is the canonical URL', async () => {
 			const audiences = await (service as any).getAllowedAudiences(

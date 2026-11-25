@@ -379,6 +379,20 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		]);
 	}
 
+	/**
+	 * Deletes the refresh tokens for one protected resource: of one user when `userId` is set,
+	 * otherwise of all users. Returns the count.
+	 */
+	async revokeRefreshTokensForResource(resource: string, userId?: string): Promise<number> {
+		const revoked = userId
+			? await this.refreshTokenRepository.deleteByUserAndResource(userId, resource, {})
+			: await this.refreshTokenRepository.deleteByResource(resource, {});
+
+		this.logger.info('Refresh tokens revoked for resource', { resource, userId, count: revoked });
+
+		return revoked;
+	}
+
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {
 		const result = await this.accessTokenRepository.delete({
 			token,
