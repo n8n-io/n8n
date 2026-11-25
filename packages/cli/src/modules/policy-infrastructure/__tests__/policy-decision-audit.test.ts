@@ -27,6 +27,16 @@ const targets = {
 		context: { workflow, projectId: 'proj-1' },
 		target: { workflowId: 'wf-1', workflowName: 'My workflow', projectId: 'proj-1' },
 	},
+	executionAdmission: {
+		context: {
+			artifact: { kind: 'workflow', id: 'wf-1', name: 'My workflow' },
+			projectId: 'proj-1',
+			mode: 'webhook',
+			source: null,
+			engine: 'v1',
+		},
+		target: { workflowId: 'wf-1', workflowName: 'My workflow', projectId: 'proj-1' },
+	},
 	workflowStart: {
 		context: { workflow: agent, projectId: null },
 		target: { agentId: 'agent-1', agentName: 'Support agent', projectId: null },

@@ -50,7 +50,10 @@ import {
 	type CompleteAgentDefinition,
 	type PlannedAgentDestinations,
 } from './utils/agent-definition';
-import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from './utils/extract-agent-workflow-refs';
 import {
 	findChangedCredentialReferences,
 	visitAgentCredentialReferences,
@@ -264,6 +267,7 @@ export class AgentConfigPreparationService {
 		if (localIds.some((id) => !id))
 			throw new UserError('A workflow tool references a missing workflow.');
 		const ids = new Set(localIds.filter((id): id is string => id !== undefined));
+		for (const id of extractGuardrailCheckWorkflowIds(config)) ids.add(id);
 		for (const interaction of config.hitlConfigurations ?? []) {
 			if (interaction.method === 'workflow') ids.add(interaction.workflowId);
 		}

@@ -62,6 +62,7 @@ const actions = computed(() => [
 		label: i18n.baseText('settings.promotions.environment.remove'),
 		value: 'remove' as const,
 		destructive: true,
+		divided: true,
 	},
 ]);
 
@@ -115,48 +116,52 @@ function onAction(action: 'edit' | 'connect' | 'remove') {
 		</N8nSettingsRow>
 		<N8nSettingsRow :show-divider="false">
 			<template #info>
-				<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
-				<N8nText :class="$style.remote" size="small" color="text-light">
-					{{
-						i18n.baseText('settings.promotions.environment.remoteSummary', {
-							interpolate: {
-								type: i18n.baseText(
-									`settings.promotions.providers.type.${environment.provider.type}`,
-								),
-								remoteUrl: environment.remote.remoteUrl,
-								branch,
-							},
-						})
-					}}
-				</N8nText>
-				<!-- No status from the local checkout: each main has its own, so it differs between mains. -->
-				<N8nText
-					v-if="busy === 'connect'"
-					role="status"
-					:class="$style.connectState"
-					size="small"
-					color="text-light"
-					data-test-id="promotion-environment-connecting"
-				>
-					{{ i18n.baseText('settings.promotions.environment.testingConnection') }}
-				</N8nText>
-				<N8nText
-					v-else-if="connectError"
-					role="alert"
-					:class="$style.connectState"
-					size="small"
-					color="danger"
-					data-test-id="promotion-environment-connect-error"
-				>
-					{{ connectError }}
-				</N8nText>
-			</template>
-			<template #visual>
-				<N8nIcon
-					:icon="promotionProviderIcon[environment.provider.type]"
-					color="text-dark"
-					size="xlarge"
-				/>
+				<div :class="$style.details">
+					<div :class="$style.providerIcon">
+						<N8nIcon
+							:icon="promotionProviderIcon[environment.provider.type]"
+							color="text-dark"
+							size="xlarge"
+						/>
+					</div>
+					<div :class="$style.description">
+						<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
+						<N8nText :class="$style.remote" size="small" color="text-light">
+							{{
+								i18n.baseText('settings.promotions.environment.remoteSummary', {
+									interpolate: {
+										type: i18n.baseText(
+											`settings.promotions.providers.type.${environment.provider.type}`,
+										),
+										remoteUrl: environment.remote.remoteUrl,
+										branch,
+									},
+								})
+							}}
+						</N8nText>
+						<!-- No status from the local checkout: each main has its own, so it differs between mains. -->
+						<N8nText
+							v-if="busy === 'connect'"
+							role="status"
+							:class="$style.connectState"
+							size="small"
+							color="text-light"
+							data-test-id="promotion-environment-connecting"
+						>
+							{{ i18n.baseText('settings.promotions.environment.testingConnection') }}
+						</N8nText>
+						<N8nText
+							v-else-if="connectError"
+							role="alert"
+							:class="$style.connectState"
+							size="small"
+							color="danger"
+							data-test-id="promotion-environment-connect-error"
+						>
+							{{ connectError }}
+						</N8nText>
+					</div>
+				</div>
 			</template>
 		</N8nSettingsRow>
 		<!-- No info here: the buttons get the whole row, and wrap when they do not fit. -->
@@ -207,6 +212,29 @@ function onAction(action: 'edit' | 'connect' | 'remove') {
 </template>
 
 <style lang="scss" module>
+.details {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	gap: var(--spacing--2xs);
+}
+
+.providerIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	border: var(--border-width) solid var(--border-color--subtle);
+	border-radius: var(--radius--2xs);
+}
+
+.description {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
 .remote {
 	overflow-wrap: anywhere;
 }

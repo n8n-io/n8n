@@ -10,6 +10,7 @@ export class WorkflowReviewsModule implements ModuleInterface {
 	async init() {
 		await import('./workflow-review-requests.controller.js');
 		await import('./workflow-review-project-settings.controller.js');
+		await import('./workflow-review-instance-settings.controller.js');
 		const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 		const { WorkflowReviewInboxService } = await import('./workflow-review-inbox.service.js');
 		const inbox = Container.get(WorkflowReviewInboxService);

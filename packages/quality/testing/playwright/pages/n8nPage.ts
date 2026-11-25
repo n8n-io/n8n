@@ -33,6 +33,7 @@ import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
+import { InstancePolicyPage } from './instance-policy-page';
 import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
@@ -135,6 +136,7 @@ export class n8nPage {
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
 	readonly securitySettings: SecuritySettingsPage;
+	readonly instancePolicy: InstancePolicyPage;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -217,6 +219,7 @@ export class n8nPage {
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 		this.securitySettings = new SecuritySettingsPage(page);
+		this.instancePolicy = new InstancePolicyPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		this.settingsSso = new SettingsSsoPage(page);

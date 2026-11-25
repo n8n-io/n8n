@@ -1657,6 +1657,48 @@ describe('McpService', () => {
 			});
 		});
 
+		describe('get_workflow_execution data size limit', () => {
+			const captureTools = () => {
+				const tools = new Map<string, ToolDefinition<z.ZodRawShape, ToolHandlerResult>>();
+				const createRegistrar = mcpService.createToolRegistrar.bind(mcpService);
+				vi.spyOn(mcpService, 'createToolRegistrar').mockImplementation((...args) => {
+					const register = createRegistrar(...args);
+					return (tool) => {
+						tools.set(tool.name, tool);
+						return register(tool);
+					};
+				});
+				return tools;
+			};
+
+			it('should pass EXECUTIONS_DATA_MAX_DISPLAY_SIZE as the data size limit when includeData is true', async () => {
+				const maxDisplaySize = 1024;
+				Object.assign(executionsConfig, { maxDisplaySize });
+				const executionService = Container.get(ExecutionService);
+				const workflowFinderService = Container.get(WorkflowFinderService);
+				vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(
+					createWorkflow({ id: 'workflow-1', settings: { availableInMCP: true } }),
+				);
+				vi.mocked(executionService.findOneAcrossEngines).mockResolvedValue(undefined);
+				const tools = captureTools();
+
+				await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+				const getExecutionTool = tools.get('get_workflow_execution');
+				expect(getExecutionTool).toBeDefined();
+
+				await getExecutionTool!.handler(
+					{ workflowId: 'workflow-1', executionId: 'execution-1', includeData: true },
+					{} as never,
+				);
+
+				expect(executionService.findOneAcrossEngines).toHaveBeenCalledWith(
+					'execution-1',
+					['workflow-1'],
+					expect.objectContaining({ includeData: true, maxDataSizeBytes: maxDisplaySize }),
+				);
+			});
+		});
+
 		it('should report an API-key call as such, with no OAuth client', async () => {
 			// One MCP API key exists per user, so there is no client to name and no
 			// per-key identifier worth reporting beyond the user itself.
