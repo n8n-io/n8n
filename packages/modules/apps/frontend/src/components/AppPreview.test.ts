@@ -120,7 +120,6 @@ describe('AppPreview', () => {
 		expect(frame).toHaveAttribute('src', expect.stringContaining('code=v2-1'));
 		expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation');
 		expect(createAppPreview).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v2');
-		expect(getByTestId('app-preview-version')).toHaveTextContent('Label v2');
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Build failed');
 	});
 
@@ -337,13 +336,12 @@ describe('AppPreview', () => {
 		expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
 	});
 
-	it('labels a version without a label by the end of its id', async () => {
-		vi.mocked(listAppVersions).mockResolvedValue([
-			{ ...version('01234567-89ab-7cde-8f01-23456789abcd', 'succeeded'), label: null },
-		]);
-		const { findByTestId } = renderComponent();
+	it('does not show the name of the version in the toolbar', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId, queryByText } = renderComponent();
+		await findByTestId('app-preview-frame');
 
-		expect(await findByTestId('app-preview-version')).toHaveTextContent('Version 6789abcd');
+		expect(queryByText('Label v2', { exact: false })).not.toBeInTheDocument();
 	});
 
 	it('opens the preview in a new tab with a new grant', async () => {
@@ -449,14 +447,12 @@ describe('AppPreview', () => {
 			expect(postMessage).toHaveBeenLastCalledWith(command('inspect:enable'), PREVIEW_ORIGIN);
 			expect(getByTestId('app-preview-select')).toHaveAttribute('aria-pressed', 'true');
 			expect(getByTestId('app-preview-inspect-hint')).toBeInTheDocument();
-			expect(queryByTestId('app-preview-version')).not.toBeInTheDocument();
 
 			await userEvent.click(getByTestId('app-preview-select'));
 
 			expect(postMessage).toHaveBeenLastCalledWith(command('inspect:disable'), PREVIEW_ORIGIN);
 			expect(getByTestId('app-preview-select')).toHaveAttribute('aria-pressed', 'false');
 			expect(queryByTestId('app-preview-inspect-hint')).not.toBeInTheDocument();
-			expect(getByTestId('app-preview-version')).toBeInTheDocument();
 		});
 
 		it('stops element selection with the cancel button', async () => {

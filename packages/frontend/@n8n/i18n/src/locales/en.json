@@ -466,7 +466,6 @@
 	"apps.preview.theme.label": "Theme",
 	"apps.preview.theme.light": "Light",
 	"apps.preview.theme.dark": "Dark",
-	"apps.preview.version": "Version {version}",
 	"apps.preview.building": "Building",
 	"apps.preview.buildFailed": "Build failed",
 	"apps.preview.frameTitle": "Preview of {name}",

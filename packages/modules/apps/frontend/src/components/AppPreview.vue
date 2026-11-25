@@ -25,7 +25,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { createAppPreview } from '../apps.api';
-import { getAppVersionLabel, type AppVersions } from '../composables/useAppVersions';
+import type { AppVersions } from '../composables/useAppVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
 import AppFeedbackLink from './feedback/AppFeedbackLink.vue';
 
@@ -110,10 +110,6 @@ const buildFailed = computed(() => head.value?.buildStatus === 'failed');
 const firstBuild = computed(
 	() => building.value || (!!props.assistantWorking && !latestBuilt.value && !buildFailed.value),
 );
-const versionLabel = computed(() => {
-	const version = preview.value?.version;
-	return version ? getAppVersionLabel(version) : null;
-});
 
 async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
@@ -269,15 +265,6 @@ onBeforeUnmount(() => {
 					<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
 						{{ i18n.baseText('apps.preview.buildFailed') }}
 					</N8nBadge>
-					<N8nText
-						v-if="versionLabel"
-						size="small"
-						color="text-light"
-						:class="$style.hint"
-						data-test-id="app-preview-version"
-					>
-						{{ i18n.baseText('apps.preview.version', { interpolate: { version: versionLabel } }) }}
-					</N8nText>
 				</template>
 			</div>
 			<div :class="$style.right">
