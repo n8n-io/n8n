@@ -16,6 +16,9 @@ export class ExecutionLimitsModule implements ModuleInterface {
 
 		Container.get(FoldStepRegistry).register(Container.get(ExecutionLimitUsageFoldStep));
 
+		// Loaded before the licence check so an unlicensed instance returns 403 instead of 404.
+		await import('./execution-limits.controller.js');
+
 		if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
 
 		// Loaded before the process takes work, so the first read already has the limits.

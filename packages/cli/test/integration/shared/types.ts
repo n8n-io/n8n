@@ -66,7 +66,8 @@ type EndpointGroup =
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'execution-limits';
 
 type ModuleName =
 	| 'inbox'
@@ -90,7 +91,8 @@ type ModuleName =
 	| 'workflow-reviews'
 	| 'type-availability-policies'
 	| 'inbound-auth-core'
-	| 'scim';
+	| 'scim'
+	| 'execution-limits';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

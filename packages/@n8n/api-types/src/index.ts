@@ -1154,7 +1154,9 @@ export {
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
 	EXECUTION_LIMIT_PERIOD_UNITS,
 	executionLimitMaxExecutionsSchema,
+	executionLimitPeriodUnitSchema,
 	executionLimitSettingsSchema,
+	executionLimitVersionSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';

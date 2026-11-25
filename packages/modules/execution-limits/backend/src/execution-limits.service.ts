@@ -11,7 +11,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import { ExecutionLimitAuditRepository } from './execution-limit-audit.repository';
 import {
@@ -68,14 +68,26 @@ export class ExecutionLimitsService {
 	 * Changes the given settings and keeps the others. A `null` maximum removes that limit.
 	 * An instance limit below a project limit is accepted. The project limit stays as it is.
 	 * The default limit for new projects cannot be above the instance limit.
+	 * `expectedVersion` must match the stored version; a stale version throws `ConflictError`.
 	 */
 	async updateSettings(
-		changes: Partial<ExecutionLimitSettings>,
+		changes: Partial<Omit<ExecutionLimitSettings, 'version'>>,
+		expectedVersion: number,
 		updatedBy: string | null,
 		loginId?: string,
 	): Promise<ExecutionLimitSettings> {
 		return await this.commit(updatedBy, loginId, async (ctx, current) => {
-			const merged = executionLimitSettingsSchema.safeParse({ ...current, ...changes });
+			if (current.version !== expectedVersion) {
+				throw new ConflictError(
+					`Execution limit settings changed since the last read (expected version ${expectedVersion}, found ${current.version})`,
+				);
+			}
+
+			const merged = executionLimitSettingsSchema.safeParse({
+				...current,
+				...changes,
+				version: current.version + 1,
+			});
 			if (!merged.success) {
 				throw BadRequestError.wrap('The execution limit settings are not valid', merged.error);
 			}

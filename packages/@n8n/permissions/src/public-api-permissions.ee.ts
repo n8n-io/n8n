@@ -123,6 +123,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'roleMappingRule:update',
 	'nodeTypePolicy:manage',
 	'credentialTypePolicy:manage',
+	'executionLimit:read',
+	'executionLimit:update',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;

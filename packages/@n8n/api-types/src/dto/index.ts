@@ -941,5 +941,9 @@ export {
 	ScimTransferTargetsQueryDto,
 	ScimUserCreateDto,
 } from './scim';
+export {
+	InstanceExecutionLimitDto,
+	PutInstanceExecutionLimitDto,
+} from './execution-limits/instance-execution-limit.dto';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

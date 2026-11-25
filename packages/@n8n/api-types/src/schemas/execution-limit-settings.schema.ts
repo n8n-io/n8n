@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const executionLimitPeriodUnitSchema = z.enum(['day', 'week', 'month']);
+export const executionLimitPeriodUnitSchema = z.enum(['day', 'week', 'month']);
 export const EXECUTION_LIMIT_PERIOD_UNITS = executionLimitPeriodUnitSchema.options;
 export type ExecutionLimitPeriodUnit = z.infer<typeof executionLimitPeriodUnitSchema>;
 
@@ -12,10 +12,13 @@ export const executionLimitMaxExecutionsSchema = z
 	.min(1)
 	.max(EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING);
 
+export const executionLimitVersionSchema = z.number().int().nonnegative();
+
 export const executionLimitSettingsSchema = z.object({
 	periodUnit: executionLimitPeriodUnitSchema,
 	instanceMaxExecutions: executionLimitMaxExecutionsSchema.nullable(),
 	defaultProjectMaxExecutions: executionLimitMaxExecutionsSchema.nullable(),
+	version: executionLimitVersionSchema.default(0),
 });
 
 export type ExecutionLimitSettings = z.infer<typeof executionLimitSettingsSchema>;
@@ -25,4 +28,5 @@ export const DEFAULT_EXECUTION_LIMIT_SETTINGS: ExecutionLimitSettings = {
 	periodUnit: 'month',
 	instanceMaxExecutions: null,
 	defaultProjectMaxExecutions: null,
+	version: 0,
 };
