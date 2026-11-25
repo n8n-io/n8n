@@ -30,7 +30,9 @@ function refusalFrom(error: unknown, clientSecret: string) {
 		typeof data === 'string'
 			? asFilledString(data)?.slice(0, 300)
 			: isRecord(data)
-				? (asFilledString(data.error_description) ?? asFilledString(data.error))
+				? [data.error_description, data.error, data.message, data.detail]
+						.map(asFilledString)
+						.find((value) => value !== undefined)
 				: undefined;
 
 	return said === undefined ? undefined : scrubSecretsInText(said.split(clientSecret).join('***'));
@@ -83,20 +85,24 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 			allowedDomains: config.allowedDomains,
 		});
 	} catch (error) {
-		const refusal = refusalFrom(error, clientSecret);
 		const status = httpStatusFromError(error);
+		// No HTTP answer, so there is no body of the endpoint's to keep out of the error
+		if (status === undefined) throw error;
 
-		// Only these say the credential is wrong. A 429 or a 5xx is the endpoint having a bad
-		// day, and reading it as a refusal would send the user to check a correct secret.
+		const refusal = refusalFrom(error, clientSecret);
+		const said = refusal ? `: ${refusal}` : '';
+
+		// Only these three say the credential is wrong, and reading any other status as a
+		// refusal would send the user off to check a correct ID and secret.
 		if (status === 400 || status === 401 || status === 403) {
-			throw new UserError(
-				refusal
-					? `The token endpoint refused the grant: ${refusal}`
-					: 'The token endpoint refused the grant',
-			);
+			throw new UserError(`The token endpoint refused the grant${said}`);
 		}
-		if (refusal) throw new OperationalError(`The token endpoint answered ${status}: ${refusal}`);
-		throw error;
+
+		// A 429 or a 5xx is the endpoint having a bad day. Every other status answers the
+		// token URL and the request, which the user set as well, so it is theirs to fix.
+		const message = `The token endpoint answered ${status}${said}`;
+		const theUserCanFixIt = status < 500 && status !== 429;
+		throw theUserCanFixIt ? new UserError(message) : new OperationalError(message);
 	}
 
 	const accessToken = hasAccessToken(response) ? asFilledString(response.access_token) : undefined;

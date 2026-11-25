@@ -1,5 +1,6 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import {
 	createClientCredentialsTokenSource,
@@ -142,6 +143,8 @@ describe('client credentials grant', () => {
 				(error: Error) => error,
 			);
 
+			expect(failure).toBeInstanceOf(OperationalError);
+			expect(failure).not.toBeInstanceOf(UserError);
 			expect(failure.message).not.toContain('refused the grant');
 			expect(failure.message).toContain(String(status));
 		});
@@ -158,6 +161,45 @@ describe('client credentials grant', () => {
 
 			expect(failure.message).not.toContain('secret');
 			expect(failure.message).toContain('***');
+		});
+
+		// The user types the Token URL, so a wrong one is theirs to fix and is not transient
+		it.each([404, 405, 415])('calls a %i a problem the user can fix', async (status) => {
+			requestMock.mockRejectedValue(httpError({ error: 'not_found' }, status));
+
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure).toBeInstanceOf(UserError);
+			expect(failure.message).toBe(`The token endpoint answered ${status}: not_found`);
+		});
+
+		// A token endpoint is free to word a failure any of these ways
+		it.each([
+			['a FastAPI detail', { detail: 'the client is unknown' }],
+			['a bare message', { message: 'the client is unknown' }],
+		])('reads %s', async (_case, data) => {
+			requestMock.mockRejectedValue(httpError(data, 404));
+
+			await expect(requestClientCredentialsToken(config)).rejects.toThrow(
+				'The token endpoint answered 404: the client is unknown',
+			);
+		});
+
+		// The raw error carries `response.data`, which an endpoint is free to fill with
+		// whatever it was sent, so no HTTP answer is handed on as it arrived
+		it('does not hand on the response of a failure it cannot read', async () => {
+			requestMock.mockRejectedValue(httpError({ unread: `echoed ${config.clientSecret}` }, 500));
+
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure.message).toBe('The token endpoint answered 500');
+			expect(failure).not.toHaveProperty('response');
 		});
 
 		it('rethrows an error that is not an HTTP refusal', async () => {
