@@ -117,31 +117,31 @@ export const createGetExecutionTool = (
 			// split into branches so TypeScript can narrow each return type.
 			let execution;
 			let executionData: IRunExecutionData | null | undefined;
+			let dataTooLargeToDisplay = false;
 			if (includeData) {
-				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
+				const fullExecution = await Container.get(ExecutionPersistence).findOneInWorkflows(
 					executionId,
 					[workflowId],
+					{ includeAnnotation: false, maxDataSizeBytes },
 				);
 
-<<<<<<< HEAD
-				if (fullExecution) {
+				// The loader skips data above `maxDataSizeBytes` and returns empty run data.
+				dataTooLargeToDisplay =
+					fullExecution !== undefined &&
+					'dataTooLargeToDisplay' in fullExecution &&
+					fullExecution.dataTooLargeToDisplay === true;
+				if (fullExecution && 'data' in fullExecution && !dataTooLargeToDisplay) {
 					// Redacts in place, modifying fullExecution internally
 					await executionRedactionServiceProxy.processExecution(fullExecution, { user });
+					executionData = fullExecution.data;
+				} else {
+					executionData = null;
 				}
 
 				execution = fullExecution;
-				executionData = fullExecution?.data ?? null;
 			} else {
 				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
 			}
-=======
-			// The id shape decides the store, so an engine v2 id resolves too.
-			const execution = await executionService.findOneAcrossEngines(executionId, [workflowId], {
-				includeData: withData,
-				includeAnnotation: false,
-				...(withData && { maxDataSizeBytes }),
-			});
->>>>>>> 3b3939d0 (fix: Apply execution data size limit in MCP get_workflow_execution (#45097))
 
 			if (!execution) {
 				throw new WorkflowAccessError(
@@ -150,24 +150,6 @@ export const createGetExecutionTool = (
 				);
 			}
 
-<<<<<<< HEAD
-=======
-			// `undefined` omits `data` from the output; `null` reports it as empty.
-			let executionData: IRunExecutionData | null | undefined;
-			// The loader skips data above `maxDataSizeBytes` and returns empty run data.
-			const dataTooLargeToDisplay =
-				'dataTooLargeToDisplay' in execution && execution.dataTooLargeToDisplay === true;
-			if (withData) {
-				if ('data' in execution && !dataTooLargeToDisplay) {
-					// Redacts in place, modifying execution internally
-					await executionRedactionServiceProxy.processExecution(execution, { user });
-					executionData = execution.data;
-				} else {
-					executionData = null;
-				}
-			}
-
->>>>>>> 3b3939d0 (fix: Apply execution data size limit in MCP get_workflow_execution (#45097))
 			const executionMeta = {
 				id: execution.id,
 				workflowId: execution.workflowId,

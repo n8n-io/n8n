@@ -56,6 +56,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
@@ -91,6 +92,7 @@ import type {
 	ToolHandlerResult,
 } from '../mcp.types';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
+import { createWorkflow } from './mock.utils';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -1513,12 +1515,12 @@ describe('McpService', () => {
 			it('should pass EXECUTIONS_DATA_MAX_DISPLAY_SIZE as the data size limit when includeData is true', async () => {
 				const maxDisplaySize = 1024;
 				Object.assign(executionsConfig, { maxDisplaySize });
-				const executionService = Container.get(ExecutionService);
+				const executionPersistence = mockInstance(ExecutionPersistence);
 				const workflowFinderService = Container.get(WorkflowFinderService);
 				vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(
 					createWorkflow({ id: 'workflow-1', settings: { availableInMCP: true } }),
 				);
-				vi.mocked(executionService.findOneAcrossEngines).mockResolvedValue(undefined);
+				vi.mocked(executionPersistence.findOneInWorkflows).mockResolvedValue(undefined);
 				const tools = captureTools();
 
 				await mcpService.getServer(mcpUser(), mcpFeatureFlags());
@@ -1530,10 +1532,10 @@ describe('McpService', () => {
 					{} as never,
 				);
 
-				expect(executionService.findOneAcrossEngines).toHaveBeenCalledWith(
+				expect(executionPersistence.findOneInWorkflows).toHaveBeenCalledWith(
 					'execution-1',
 					['workflow-1'],
-					expect.objectContaining({ includeData: true, maxDataSizeBytes: maxDisplaySize }),
+					expect.objectContaining({ maxDataSizeBytes: maxDisplaySize }),
 				);
 			});
 		});
