@@ -43,7 +43,7 @@ const configuration: AgentHitlConfiguration = {
 const context = { agentId: 'agent', getConfig: () => null, saveConfiguration: vi.fn() };
 
 function render(
-	overrides: Partial<AgentHitlConfiguration> = {},
+	overrides: Partial<Pick<AgentHitlConfiguration, 'name' | 'nameOverridden'>> = {},
 	approvalContext: AgentHitlContext = context,
 ) {
 	return mount(AgentHitlConfigurationModal, {

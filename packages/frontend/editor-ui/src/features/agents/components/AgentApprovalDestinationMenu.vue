@@ -222,7 +222,7 @@ async function load(entry: DestinationPage | undefined = page.value) {
 }
 
 const search = useDebounceFn((entry: DestinationPage | undefined) => {
-	if (entry === page.value) return load(entry);
+	if (entry === page.value) void load(entry);
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 function showPage(debounce = false) {

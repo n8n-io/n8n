@@ -39,7 +39,7 @@ const name = computed({
 		customName.value = value;
 	},
 });
-const expiry = ref(props.configuration.expirySeconds ?? 'none');
+const expiry = ref(props.configuration.expirySeconds);
 const expiryOptions = [
 	{ value: 'none', label: i18n.baseText('agents.hitl.expiry.none') },
 	{ value: '3600', label: i18n.baseText('agents.hitl.expiry.hour') },
@@ -67,7 +67,7 @@ onMounted(async () => {
 
 function updateExpiry(value: unknown) {
 	const seconds = Number(value);
-	if (value === 'none') expiry.value = value;
+	if (value === 'none') expiry.value = undefined;
 	else if (seconds === 3600 || seconds === 86400 || seconds === 604800) expiry.value = seconds;
 }
 function save() {
@@ -78,7 +78,7 @@ function save() {
 			id: props.configuration.id,
 			name: name.value.trim(),
 			nameOverridden: Boolean(customName.value.trim()),
-			expirySeconds: expiry.value === 'none' ? undefined : expiry.value,
+			expirySeconds: expiry.value,
 		},
 		toolsChanged.value ? toolKeys.value : undefined,
 	);
@@ -137,7 +137,7 @@ function save() {
 				</div>
 				<AgentFormSettingRow :class="$style.row" :title="i18n.baseText('agents.hitl.expiry')">
 					<N8nSelect2
-						:model-value="String(expiry)"
+						:model-value="String(expiry ?? 'none')"
 						:items="expiryOptions"
 						:teleported="false"
 						:aria-label="i18n.baseText('agents.hitl.expiry')"

@@ -167,7 +167,9 @@ describe('WorkflowToolConfigContent', () => {
 			true,
 		);
 		const toggle = getByTestId('agent-tool-approval-toggle');
-		const destination = container.querySelector('[data-testid="agent-approval-route"]')!;
+		const destination = container.querySelector<HTMLElement>(
+			'[data-testid="agent-approval-route"]',
+		)!;
 		const approval = getByTestId('agent-workflow-tool-approval');
 		const advanced = getByTestId('agent-workflow-tool-advanced');
 		const guardrails = container.querySelector('[data-testid="agent-tool-guardrails-section"]');
