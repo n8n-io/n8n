@@ -5,8 +5,8 @@ import pc from 'picocolors';
 import { SECRETS_BACKENDS, type SecretsBackend } from '../config/global-config';
 import { displayPath } from '../config/paths';
 import {
-	decryptSecretsFile,
-	encryptSecretsFile,
+	decryptEnvFile,
+	encryptEnvFile,
 	inspectSecrets,
 	keyFileHint,
 	keyFileWarning,
@@ -17,8 +17,8 @@ import {
 	saveSecretsBackend,
 	SECRETS_BACKEND_ENV_VAR,
 	secretsBackend,
-	secretsFiles,
-	secretsFileStatus,
+	envFiles,
+	envFileStatus,
 	storeKey,
 } from '../env/secret-store';
 import { RigError } from '../errors';
@@ -52,7 +52,7 @@ function plural(count: number, word: string): string {
 const statusCommand = defineCommand({
 	meta: {
 		name: 'status',
-		description: 'Show the backend, the key, and the state of each secrets file',
+		description: 'Show the backend, the key, and each env file with secrets',
 	},
 	run() {
 		const report = inspectSecrets();
@@ -81,7 +81,7 @@ const statusCommand = defineCommand({
 			);
 
 		if (report.files.length === 0) {
-			ui.step('No secrets files yet.');
+			ui.step('No env files with secrets yet.');
 			return;
 		}
 		console.log('');
@@ -96,14 +96,18 @@ const statusCommand = defineCommand({
 });
 
 const encryptCommand = defineCommand({
-	meta: { name: 'encrypt', description: 'Encrypt the plaintext values of all secrets files now' },
+	meta: {
+		name: 'encrypt',
+		description:
+			'Encrypt all plaintext secrets now: secrets.env values and sensitive keys in other env files',
+	},
 	run() {
 		if (secretsBackend().backend === 'off') {
 			throw new RigError('Secrets encryption is off.', `Run \`${RIG} secrets use <backend>\`.`);
 		}
 		let total = 0;
-		for (const file of secretsFiles()) {
-			const count = encryptSecretsFile(file);
+		for (const file of envFiles()) {
+			const count = encryptEnvFile(file);
 			if (count > 0) ui.success(`Encrypted ${plural(count, 'value')} in ${displayPath(file)}`);
 			total += count;
 		}
@@ -128,7 +132,7 @@ const useCommand = defineCommand({
 			ui.info(`rig already uses ${target}.`);
 			return;
 		}
-		const files = secretsFiles();
+		const files = envFiles();
 		const currentKey =
 			current !== 'off' && keyStoreAvailable(current) ? readKey(current) : undefined;
 		if (target !== 'off' && !keyStoreAvailable(target)) {
@@ -137,7 +141,7 @@ const useCommand = defineCommand({
 		const targetKey = target === 'off' ? undefined : readKey(target);
 		// Check all values before rig changes a file, so a failure leaves everything as it was.
 		const keyAfter = currentKey ?? targetKey;
-		const unreadable = files.filter((file) => secretsFileStatus(file, keyAfter).unreadable > 0);
+		const unreadable = files.filter((file) => envFileStatus(file, keyAfter).unreadable > 0);
 		if (unreadable.length > 0) {
 			throw new RigError(
 				`The secrets key cannot decrypt the values in ${unreadable.map(displayPath).join(', ')}.`,
@@ -147,7 +151,7 @@ const useCommand = defineCommand({
 
 		if (target === 'off') {
 			for (const file of files) {
-				const count = currentKey ? decryptSecretsFile(file, currentKey) : 0;
+				const count = currentKey ? decryptEnvFile(file, currentKey) : 0;
 				if (count > 0) ui.step(`Decrypted ${plural(count, 'value')} in ${displayPath(file)}`);
 			}
 			saveSecretsBackend('off');
@@ -168,7 +172,7 @@ const useCommand = defineCommand({
 		saveSecretsBackend(target);
 
 		let total = 0;
-		for (const file of files) total += encryptSecretsFile(file);
+		for (const file of files) total += encryptEnvFile(file);
 		ui.success(`rig keeps the secrets key in the ${keyStoreLocation(target)}.`);
 		if (total > 0) ui.step(`Encrypted ${plural(total, 'plaintext value')}.`);
 		if (target === 'file') ui.warn(`${keyFileWarning()} ${pc.dim(keyFileHint())}`);
@@ -243,8 +247,8 @@ const importKeyCommand = defineCommand({
 				`Export it first with \`${RIG} secrets export-key\`. Then add --force to replace it.`,
 			);
 		}
-		const unreadable = secretsFiles()
-			.map((file) => secretsFileStatus(file, key))
+		const unreadable = envFiles()
+			.map((file) => envFileStatus(file, key))
 			.reduce((sum, status) => sum + status.unreadable, 0);
 		if (unreadable > 0 && !args.force) {
 			throw new RigError(
@@ -259,7 +263,7 @@ const importKeyCommand = defineCommand({
 });
 
 export const secretsCommand = defineCommand({
-	meta: { name: 'secrets', description: 'Manage the encryption of secrets.env files' },
+	meta: { name: 'secrets', description: 'Manage the encryption of secrets in env files' },
 	subCommands: {
 		status: statusCommand,
 		encrypt: encryptCommand,

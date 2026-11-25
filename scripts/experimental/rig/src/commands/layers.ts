@@ -2,9 +2,10 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { GLOBAL_SECRETS_LAYER, profileName, type RigEnv, suggest } from '../environment';
-import { type DotenvEntry, readDotenv, setInDotenvFile } from '../env/dotenv';
+import type { DotenvEntry } from '../env/dotenv';
 import { resolveRunnerEnv } from '../env/resolve';
-import { readSecrets, setSecret } from '../env/secret-store';
+import { readEnvFile, setEnvValue } from '../env/secret-store';
+import { GENERATED_SECRET_KEYS } from '../env/secrets';
 import { RigError } from '../errors';
 import { RUNNER_LAYERS } from '../topology/components';
 import { layerHeader } from './lifecycle';
@@ -26,17 +27,14 @@ export function isSecretLayer(layer: string): boolean {
 	return layer === 'secrets' || layer === GLOBAL_SECRETS_LAYER;
 }
 
-/** The entries of a layer file. Secret layers come decrypted. */
+/** The entries of a layer file, decrypted. */
 export function readLayer(env: RigEnv, layer: string): DotenvEntry[] {
-	const file = env.layerFile(layer);
-	return isSecretLayer(layer) ? readSecrets(file) : readDotenv(file);
+	return readEnvFile(env.layerFile(layer));
 }
 
-/** Sets a value in a layer file. Secret layers get the value encrypted. */
+/** Sets a value in a layer file. Secret layers and sensitive keys get the value encrypted. */
 export function setInLayer(env: RigEnv, layer: string, key: string, value: string): void {
-	const file = ensureLayerFile(env, layer);
-	if (isSecretLayer(layer)) setSecret(file, key, value);
-	else setInDotenvFile(file, key, value);
+	setEnvValue(ensureLayerFile(env, layer), key, value);
 }
 
 function header(layer: string): string {
@@ -44,14 +42,14 @@ function header(layer: string): string {
 		return (
 			'# Secrets for every rig environment, for example license keys. Mode 0600.\n' +
 			'# rig encrypts the values. Edit them with `rig env edit --on global-secrets`.\n' +
-			'# The secrets.env of an environment wins over this file.\n\n'
+			'# Every other layer of an environment wins over this file.\n\n'
 		);
 	}
 	const profile = profileName(layer);
 	if (profile) {
 		return (
 			`# Profile "${profile}". Environments use it after \`rig profile on ${profile}\`.\n` +
-			'# It sits between the managed vars and shared.env of each environment.\n\n'
+			'# It sits between the global secrets and secrets.env of each environment.\n\n'
 		);
 	}
 	return layerHeader(layer);
@@ -65,6 +63,24 @@ export function ensureLayerFile(env: RigEnv, layer: string): string {
 	}
 	if (isSecretLayer(layer)) chmodSync(file, 0o600);
 	return file;
+}
+
+/**
+ * A warning when a value in the layer would override a secret that rig
+ * generated in secrets.env. The secrets no longer win over the other layers.
+ */
+export function generatedSecretWarning(
+	env: RigEnv,
+	layer: string,
+	key: string,
+): string | undefined {
+	if (isSecretLayer(layer) || !GENERATED_SECRET_KEYS.includes(key)) return undefined;
+	if (!env.hasLayerKey('secrets', key)) return undefined;
+	const consequence =
+		key === 'N8N_ENCRYPTION_KEY'
+			? ' n8n then cannot read the credentials that it saved with the generated key.'
+			: '';
+	return `rig generated ${key} in secrets.env. A value in ${env.layerLabel(layer)} overrides it.${consequence}`;
 }
 
 /** Managed values that a new value in the layer would override. */

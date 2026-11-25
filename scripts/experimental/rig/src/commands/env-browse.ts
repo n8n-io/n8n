@@ -19,12 +19,21 @@ import {
 	multiselect,
 	note,
 	outro,
+	password,
 	search,
 	select,
 	spinner,
 } from '../ui/prompt';
 import { envArg, loadEnv, offerRestart } from './common';
-import { managedConflicts, readLayer, resolveLayer, setInLayer } from './layers';
+import { isMaskedValue, isSensitiveKey } from '../env/sensitive';
+import {
+	generatedSecretWarning,
+	isSecretLayer,
+	managedConflicts,
+	readLayer,
+	resolveLayer,
+	setInLayer,
+} from './layers';
 import { RIG } from '../meta';
 
 type Pick =
@@ -42,6 +51,16 @@ const MAX_VALUE_WIDTH = 40;
 function truncate(value: string, max = MAX_VALUE_WIDTH): string {
 	const flat = value.replace(/\s+/g, ' ');
 	return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+}
+
+/** A value of the layer file for display. Masks secrets: every value of a secrets layer, and sensitive keys. */
+export function shownValue(
+	layer: string,
+	key: string,
+	value: string,
+	max = MAX_VALUE_WIDTH,
+): string {
+	return isSecretLayer(layer) || isSensitiveKey(key) ? '••••••' : truncate(value, max);
 }
 
 function customVar(name: string): EnvVarInfo {
@@ -72,7 +91,7 @@ function effectiveValues(env: RigEnv, layer: string, key: string): string[] {
 			const sources = env.resolve(component).trace.get(key) ?? [];
 			const winner = sources[sources.length - 1];
 			if (!winner || winner.layer === 'shell') return `${component.name}: ${pc.dim('not set')}`;
-			const value = winner.layer === 'secrets' ? '••••••' : truncate(winner.value, 60);
+			const value = isMaskedValue(key, winner) ? '••••••' : truncate(winner.value, 60);
 			return `${component.name}: ${value} ${pc.dim(`(${winner.label})`)}`;
 		});
 }
@@ -110,9 +129,9 @@ function details(
 		lines.push(`Format:   separated by "${info.separator}"`);
 	if (info.defaultValue !== undefined)
 		lines.push(`Default:  ${truncate(info.defaultValue, 60) || '""'}`);
-	lines.push(
-		`In ${env.layerLabel(layer)}: ${current === undefined ? pc.dim('not set') : pc.green(truncate(current, 60))}`,
-	);
+	const shown =
+		current === undefined ? pc.dim('not set') : pc.green(shownValue(layer, info.name, current, 60));
+	lines.push(`In ${env.layerLabel(layer)}: ${shown}`);
 	const effective = effectiveValues(env, layer, info.name);
 	if (effective.length > 0) {
 		lines.push('', pc.dim('Running with:'), ...effective);
@@ -133,7 +152,11 @@ function unquoteDefault(value: string | undefined): string | undefined {
 	return value?.replace(/^(['"`])(.*)\1$/, '$2');
 }
 
-async function askValue(info: EnvVarInfo, current: string | undefined): Promise<Answer> {
+async function askValue(
+	info: EnvVarInfo,
+	current: string | undefined,
+	masked: boolean,
+): Promise<Answer> {
 	const defaultValue = unquoteDefault(info.defaultValue);
 	const extras = current === undefined ? [BACK] : [UNSET, BACK];
 	const tag = (value: string) =>
@@ -160,7 +183,7 @@ async function askValue(info: EnvVarInfo, current: string | undefined): Promise<
 		);
 		const answer = await select(info.name, choices, initial?.value);
 		if (answer !== CUSTOM) return answer;
-		return await askText(info, current);
+		return await askText(info, current, masked);
 	}
 
 	if (info.kind === 'enum-list') {
@@ -179,10 +202,21 @@ async function askValue(info: EnvVarInfo, current: string | undefined): Promise<
 		return { type: 'set', value: values.join(separator) };
 	}
 
-	return await askText(info, current);
+	return await askText(info, current, masked);
 }
 
-async function askText(info: EnvVarInfo, current: string | undefined): Promise<Answer> {
+async function askText(
+	info: EnvVarInfo,
+	current: string | undefined,
+	masked: boolean,
+): Promise<Answer> {
+	if (masked) {
+		// Mask the input. Empty input keeps the value, so Enter never unsets a key by mistake.
+		const value = await password(
+			`${info.name} ${pc.dim(current === undefined ? '(empty goes back)' : '(empty keeps the value)')}`,
+		);
+		return value === '' ? { type: 'back' } : { type: 'set', value };
+	}
 	const hint =
 		info.kind === 'list'
 			? `separated by "${info.separator ?? ','}"`
@@ -218,6 +252,11 @@ async function passesGuardrails(env: RigEnv, layer: string, key: string): Promis
 	if (topologyKey) {
 		log.warn(`${key} comes from the topology. Change \`${topologyKey}\` in env.yaml instead.`);
 		return await confirm('Set it anyway?', false);
+	}
+	const generated = generatedSecretWarning(env, layer, key);
+	if (generated) {
+		log.warn(generated);
+		return await confirm('Override it?', false);
 	}
 	const conflicts = managedConflicts(env, layer, key);
 	if (conflicts.length > 0) {
@@ -296,7 +335,7 @@ export const browseCommand = defineCommand({
 						label:
 							value === undefined
 								? info.name
-								: `${pc.green('●')} ${info.name} ${pc.dim('=')} ${pc.green(truncate(value))}`,
+								: `${pc.green('●')} ${info.name} ${pc.dim('=')} ${pc.green(shownValue(layer, info.name, value))}`,
 						hint: shortDescription(info),
 					};
 					varChoices.set(info.name, choice);
@@ -365,7 +404,11 @@ export const browseCommand = defineCommand({
 
 				const current = values.get(info.name);
 				note(details(env, layer, info, current), info.name);
-				const answer = await askValue(info, current);
+				const answer = await askValue(
+					info,
+					current,
+					isSecretLayer(layer) || isSensitiveKey(info.name),
+				);
 				if (answer.type === 'back') continue;
 
 				if (answer.type === 'unset') {
@@ -375,7 +418,9 @@ export const browseCommand = defineCommand({
 					if (answer.value === current) continue;
 					if (!(await passesGuardrails(env, layer, info.name))) continue;
 					setInLayer(env, layer, info.name, answer.value);
-					log.success(`${info.name}=${truncate(answer.value, 60)} in ${env.layerLabel(layer)}`);
+					log.success(
+						`${info.name}=${shownValue(layer, info.name, answer.value, 60)} in ${env.layerLabel(layer)}`,
+					);
 				}
 				changed.add(layer);
 			} catch (error) {

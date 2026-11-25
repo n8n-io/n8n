@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { parseDotenv } from './dotenv';
-import { setSecret } from './secret-store';
+import { setEnvValue } from './secret-store';
 
 /** Secrets that `rig` generates once for each environment. */
 const GENERATED_SECRETS: Record<string, () => string> = {
@@ -12,6 +12,8 @@ const GENERATED_SECRETS: Record<string, () => string> = {
 	N8N_ENGINE_AUTH_SECRET: () => randomBytes(32).toString('hex'),
 	N8N_ENGINE_RESUME_SECRET: () => randomBytes(32).toString('hex'),
 };
+
+export const GENERATED_SECRET_KEYS: readonly string[] = Object.keys(GENERATED_SECRETS);
 
 const HEADER =
 	'# Secrets of this rig environment. Only you can read this file (mode 0600).\n' +
@@ -25,6 +27,6 @@ export function ensureSecrets(file: string): void {
 	// Only the key names matter here, so there is nothing to decrypt.
 	const present = new Set(parseDotenv(readFileSync(file, 'utf8')).map((entry) => entry.key));
 	for (const [key, generate] of Object.entries(GENERATED_SECRETS)) {
-		if (!present.has(key)) setSecret(file, key, generate());
+		if (!present.has(key)) setEnvValue(file, key, generate());
 	}
 }

@@ -2,7 +2,12 @@ import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ensureLayerFile, managedConflicts, resolveLayer } from '../src/commands/layers';
+import {
+	ensureLayerFile,
+	generatedSecretWarning,
+	managedConflicts,
+	resolveLayer,
+} from '../src/commands/layers';
 import { parseTopology, saveTopology, type TopologyInput } from '../src/config/env-yaml';
 import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
@@ -70,6 +75,31 @@ describe('secrets', () => {
 		const { env: resolved, trace } = env.resolve(main);
 		expect(resolved).toMatchObject({ LICENSE: 'local', ONLY_GLOBAL: '1' });
 		expect(trace.get('LICENSE')?.map((s) => s.layer)).toEqual(['secrets', 'secrets']);
+	});
+
+	it('should let more specific layers win over the secrets', () => {
+		write(globalSecretsFile(), 'OPENAI_API_KEY=global\nANTHROPIC_API_KEY=global\n');
+		write(profileFile('ai'), 'OPENAI_API_KEY=profile\nANTHROPIC_API_KEY=profile\n');
+		const env = makeEnv('s', { ...PRESETS.queue.topology, profiles: ['ai'] });
+		write(env.paths.secrets, 'ANTHROPIC_API_KEY=env\n');
+		write(env.paths.layerFile('worker-1'), 'OPENAI_API_KEY=worker-1\n');
+		const [main, worker] = env.processes();
+
+		expect(env.resolve(main).env).toMatchObject({
+			OPENAI_API_KEY: 'profile',
+			ANTHROPIC_API_KEY: 'env',
+		});
+		expect(env.resolve(worker).env.OPENAI_API_KEY).toBe('worker-1');
+	});
+
+	it('should warn when a layer overrides a generated secret', () => {
+		const env = makeEnv('s');
+		write(env.paths.secrets, 'N8N_ENCRYPTION_KEY=generated\n');
+		expect(generatedSecretWarning(env, 'shared', 'N8N_ENCRYPTION_KEY')).toMatch(
+			/A value in env\/shared\.env overrides it\. n8n then cannot read the credentials/,
+		);
+		expect(generatedSecretWarning(env, 'secrets', 'N8N_ENCRYPTION_KEY')).toBeUndefined();
+		expect(generatedSecretWarning(env, 'shared', 'OPENAI_API_KEY')).toBeUndefined();
 	});
 
 	it('should create secret files with mode 0600', () => {

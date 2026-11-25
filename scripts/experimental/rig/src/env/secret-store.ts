@@ -15,6 +15,7 @@ import {
 	displayPath,
 	envsDir,
 	globalSecretsFile,
+	profilesDir,
 	secretsKeyFile,
 } from '../config/paths';
 import { RigError } from '../errors';
@@ -25,12 +26,17 @@ import { type KeyStore, writePrivate } from './key-stores/common';
 import { keyFile } from './key-stores/key-file';
 import { keychain } from './key-stores/keychain';
 import { resetSecretServiceCheck, secretService } from './key-stores/secret-service';
+import { isSensitiveKey } from './sensitive';
+
+const SECRETS_FILE_NAME = 'secrets.env';
 
 /**
- * Secrets files keep their key names in plaintext and encrypt each value with
- * AES-256-GCM. The key name is the additional authenticated data, so a value
- * cannot move to another key. One random key encrypts all files. The OS
- * keystore holds it, or a 0600 file when there is no keystore.
+ * Env files keep their key names in plaintext and encrypt values with
+ * AES-256-GCM: every value of a secrets.env file, and the values of sensitive
+ * keys (see `isSensitiveKey`) in any env file. The key name is the additional
+ * authenticated data, so a value cannot move to another key. One random key
+ * encrypts all files. The OS keystore holds it, or a 0600 file when there is
+ * no keystore.
  */
 const PREFIX = 'enc:v1:';
 const ALGORITHM = 'aes-256-gcm';
@@ -189,9 +195,7 @@ function activeKey(create: boolean): Buffer {
 		keyCache.delete(cacheKey(backend));
 		const created = readKey(backend);
 		if (created) return created;
-		const orphaned = secretsFiles().filter((file) =>
-			parseDotenv(readFileSync(file, 'utf8')).some((entry) => isEncrypted(entry.value)),
-		);
+		const orphaned = envFiles().filter(hasEncryptedValues);
 		if (orphaned.length > 0) {
 			throw new RigError(
 				`The secrets key is missing from the ${STORES[backend].location()}, but ${orphaned.map(displayPath).join(', ')} has encrypted values.`,
@@ -240,7 +244,7 @@ function decryptOrThrow(key: Buffer, entry: DotenvEntry, file: string): string {
 	if (value === undefined) {
 		throw new RigError(
 			`Cannot decrypt ${entry.key} in ${displayPath(file)}:${entry.line}. The secrets key does not match.`,
-			`Import the key that encrypted it with \`${RIG} secrets import-key\`, or set the value again with \`${RIG} env set ${entry.key}=… --on <layer>\`.`,
+			`Import the key that encrypted it with \`${RIG} secrets import-key\`, or set the value again with \`${RIG} env set ${entry.key} --on <layer>\`.`,
 		);
 	}
 	return value;
@@ -255,11 +259,26 @@ function assertNotOff(file: string, entries: DotenvEntry[]): void {
 	}
 }
 
-/** Encrypts the plaintext values of dotenv text. */
-function encryptText(text: string, key: Buffer): { text: string; count: number } {
+/** A secrets.env file: rig encrypts all its values. */
+function isSecretsFile(file: string): boolean {
+	return basename(file) === SECRETS_FILE_NAME;
+}
+
+/** Whether a value must be encrypted: every value of secrets.env, and sensitive keys in any file. */
+export function mustEncrypt(file: string, name: string): boolean {
+	return isSecretsFile(file) || isSensitiveKey(name);
+}
+
+/** Plaintext entries that must be encrypted. */
+function pendingEntries(file: string, entries: DotenvEntry[]): DotenvEntry[] {
+	return entries.filter((entry) => !isEncrypted(entry.value) && mustEncrypt(file, entry.key));
+}
+
+/** Encrypts the plaintext values of dotenv text that must be encrypted. */
+function encryptText(text: string, key: Buffer, file: string): { text: string; count: number } {
 	let count = 0;
 	const result = mapDotenvValues(text, (name, value) => {
-		if (isEncrypted(value)) return undefined;
+		if (isEncrypted(value) || !mustEncrypt(file, name)) return undefined;
 		count++;
 		return encryptValue(key, name, value);
 	});
@@ -277,58 +296,76 @@ function decryptText(text: string, key: Buffer, file: string): string {
 }
 
 /**
- * Reads a secrets file and decrypts its values. Plaintext values, for example
- * from an older rig or a manual edit, get encrypted in the file.
+ * Reads an env file and decrypts its values. Plaintext values that must be
+ * encrypted, for example from an older rig or a manual edit, get encrypted in
+ * the file. A file without such values needs no key.
  */
-export function readSecrets(file: string): DotenvEntry[] {
+export function readEnvFile(file: string): DotenvEntry[] {
 	if (!existsSync(file)) return [];
 	const text = readFileSync(file, 'utf8');
 	const entries = parseDotenv(text);
-	if (entries.length === 0) return entries;
+	const pending = pendingEntries(file, entries);
+	const hasEncrypted = entries.some((entry) => isEncrypted(entry.value));
+	if (pending.length === 0 && !hasEncrypted) return entries;
 	const { backend } = secretsBackend();
 	if (backend === 'off') {
 		assertNotOff(file, entries);
 		return entries;
 	}
-	const hasPlaintext = entries.some((entry) => !isEncrypted(entry.value));
-	const key = activeKey(hasPlaintext);
+	const key = activeKey(pending.length > 0);
 	// Decrypt first: with a wrong key, the file must not get values of a second key.
 	const decrypted = entries.map((entry) =>
 		isEncrypted(entry.value) ? { ...entry, value: decryptOrThrow(key, entry, file) } : entry,
 	);
-	if (hasPlaintext) {
-		const encrypted = encryptText(text, key);
+	if (pending.length > 0) {
+		const encrypted = encryptText(text, key, file);
 		writePrivate(file, encrypted.text);
-		notice(`Encrypted ${encrypted.count} secret value(s) in ${displayPath(file)}.`);
+		notice(`Encrypted ${encrypted.count} value(s) in ${displayPath(file)}.`);
 	}
 	return decrypted;
 }
 
-/** Sets one secret. Encrypts the value unless encryption is off. */
-export function setSecret(file: string, name: string, value: string): void {
+/** Sets one value. Encrypts it when it must be encrypted, unless encryption is off. */
+export function setEnvValue(file: string, name: string, value: string): void {
 	const { backend } = secretsBackend();
-	const stored = backend === 'off' ? value : encryptValue(activeKey(true), name, value);
 	const text = existsSync(file) ? readFileSync(file, 'utf8') : '';
-	writePrivate(file, setInDotenv(text, name, stored));
+	if (backend === 'off' || !mustEncrypt(file, name)) {
+		const next = setInDotenv(text, name, value);
+		if (isSecretsFile(file)) writePrivate(file, next);
+		else writeFileSync(file, next);
+		return;
+	}
+	writePrivate(file, setInDotenv(text, name, encryptValue(activeKey(true), name, value)));
 }
 
-/** Encrypts the plaintext values of a file. Returns how many it encrypted. */
-export function encryptSecretsFile(file: string): number {
-	if (!existsSync(file)) return 0;
+/** Whether a file has encrypted values. Does not decrypt them. */
+export function hasEncryptedValues(file: string): boolean {
+	return (
+		existsSync(file) &&
+		parseDotenv(readFileSync(file, 'utf8')).some((entry) => isEncrypted(entry.value))
+	);
+}
+
+/**
+ * Encrypts the plaintext values that must be encrypted. Returns how many it
+ * encrypted. Does nothing when encryption is off.
+ */
+export function encryptEnvFile(file: string): number {
+	if (!existsSync(file) || secretsBackend().backend === 'off') return 0;
 	const text = readFileSync(file, 'utf8');
 	const entries = parseDotenv(text);
-	if (entries.every((entry) => isEncrypted(entry.value))) return 0;
+	if (pendingEntries(file, entries).length === 0) return 0;
 	const key = activeKey(true);
 	for (const entry of entries) {
 		if (isEncrypted(entry.value)) decryptOrThrow(key, entry, file);
 	}
-	const result = encryptText(text, key);
+	const result = encryptText(text, key, file);
 	writePrivate(file, result.text);
 	return result.count;
 }
 
 /** Writes the values of a file in plaintext, with the key of a backend. Returns how many changed. */
-export function decryptSecretsFile(file: string, key: Buffer): number {
+export function decryptEnvFile(file: string, key: Buffer): number {
 	if (!existsSync(file)) return 0;
 	const text = readFileSync(file, 'utf8');
 	const count = parseDotenv(text).filter((entry) => isEncrypted(entry.value)).length;
@@ -337,33 +374,46 @@ export function decryptSecretsFile(file: string, key: Buffer): number {
 	return count;
 }
 
-/** The global secrets file and the secrets file of each environment, when they exist. */
-export function secretsFiles(): string[] {
-	const files = [globalSecretsFile()];
+function envFilesIn(dir: string): string[] {
+	if (!existsSync(dir)) return [];
+	return readdirSync(dir)
+		.filter((name) => name.endsWith('.env'))
+		.sort()
+		.map((name) => join(dir, name));
+}
+
+/**
+ * Every env file that can hold encrypted values, when it exists: the global
+ * secrets, the profiles, and the secrets and layers of each environment.
+ */
+export function envFiles(): string[] {
+	const files = [globalSecretsFile(), ...envFilesIn(profilesDir())];
 	if (existsSync(envsDir())) {
 		for (const name of readdirSync(envsDir()).sort()) {
-			files.push(join(envsDir(), name, 'secrets.env'));
+			const root = join(envsDir(), name);
+			files.push(join(root, SECRETS_FILE_NAME), ...envFilesIn(join(root, 'env')));
 		}
 	}
 	return files.filter((file) => existsSync(file));
 }
 
-export interface SecretsFileStatus {
+export interface EnvFileStatus {
 	file: string;
 	encrypted: number;
+	/** Plaintext values that must be encrypted. */
 	plaintext: number;
 	/** Encrypted values that the key cannot decrypt. */
 	unreadable: number;
 }
 
 /** Counts the values of a file. Does not change it. */
-export function secretsFileStatus(file: string, key: Buffer | undefined): SecretsFileStatus {
+export function envFileStatus(file: string, key: Buffer | undefined): EnvFileStatus {
 	const entries = existsSync(file) ? parseDotenv(readFileSync(file, 'utf8')) : [];
 	const encrypted = entries.filter((entry) => isEncrypted(entry.value));
 	return {
 		file,
 		encrypted: encrypted.length,
-		plaintext: entries.length - encrypted.length,
+		plaintext: pendingEntries(file, entries).length,
 		unreadable: encrypted.filter(
 			(entry) => !key || decryptValue(key, entry.key, entry.value) === undefined,
 		).length,
@@ -377,10 +427,11 @@ export interface SecretsReport {
 	key?: Buffer;
 	/** Why rig cannot read the key. */
 	problem?: string;
-	files: SecretsFileStatus[];
+	/** Secrets files, and other env files that have encrypted or sensitive values. */
+	files: EnvFileStatus[];
 }
 
-/** The state of the backend, the key, and each secrets file. Changes nothing. */
+/** The state of the backend, the key, and each env file with secrets. Changes nothing. */
 export function inspectSecrets(): SecretsReport {
 	const choice = secretsBackend();
 	let available = true;
@@ -396,7 +447,9 @@ export function inspectSecrets(): SecretsReport {
 			}
 		}
 	}
-	const files = secretsFiles().map((file) => secretsFileStatus(file, key));
+	const files = envFiles()
+		.map((file) => envFileStatus(file, key))
+		.filter((status) => isSecretsFile(status.file) || status.encrypted > 0 || status.plaintext > 0);
 	return { choice, available, key, problem, files };
 }
 
@@ -411,11 +464,11 @@ function privateTempDir(): string {
 }
 
 /**
- * Decrypts a secrets file into a private temp file, lets `edit` change it,
- * then encrypts the result back. The temp file is always deleted.
+ * Decrypts an env file into a private temp file, lets `edit` change it, then
+ * encrypts the values that must be encrypted. The temp file is always deleted.
  * Returns `true` when the content changed.
  */
-export async function editSecrets(
+export async function editEnvFile(
 	file: string,
 	edit: (plainFile: string) => Promise<void>,
 ): Promise<boolean> {
@@ -441,9 +494,9 @@ export async function editSecrets(
 		await edit(plainFile);
 		const edited = readFileSync(plainFile, 'utf8');
 		if (edited === plain) return false;
-		const hasValues = parseDotenv(edited).length > 0;
+		const hasPending = pendingEntries(file, parseDotenv(edited)).length > 0;
 		const stored =
-			backend === 'off' || !hasValues ? edited : encryptText(edited, activeKey(true)).text;
+			backend === 'off' || !hasPending ? edited : encryptText(edited, activeKey(true), file).text;
 		writePrivate(file, stored);
 		return true;
 	} finally {

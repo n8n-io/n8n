@@ -261,20 +261,32 @@ expire.
 
 ## Env vars
 
-A later layer wins:
+A later layer wins. A more specific layer always wins over a less specific
+one:
 
 ```mermaid
 flowchart LR
-  A["1. rig defaults<br/>(ports, DB, Redis, engine)"] --> B["2. Profiles<br/>(in order)"]
-  B --> C["3. env/shared.env"]
-  C --> D["4. env/&lt;role&gt;.env<br/>main, worker, engine, launcher"]
-  D --> E["5. env/&lt;component&gt;.env<br/>e.g. worker-2"]
-  E --> F["6. secrets.env<br/>global, then env"]
-  F --> G["7. rig run -e K=V<br/>(not saved)"]
+  A["1. rig defaults<br/>(ports, DB, Redis, engine)"] --> B["2. Global secrets<br/>~/.config/rig/secrets.env"]
+  B --> C["3. Profiles<br/>(in order)"]
+  C --> D["4. secrets.env<br/>of the environment"]
+  D --> E["5. env/shared.env"]
+  E --> F["6. env/&lt;role&gt;.env<br/>main, worker, engine, launcher"]
+  F --> G["7. env/&lt;component&gt;.env<br/>e.g. worker-2"]
+  G --> H["8. rig run -e K=V<br/>(not saved)"]
 ```
 
-- Both `secrets.env` files have mode 0600. `rig` encrypts their values. See
+- Both `secrets.env` files have mode 0600. `rig` encrypts their values, and
+  the values of sensitive keys such as `OPENAI_API_KEY` in every layer. See
   [Secrets encryption](#secrets-encryption).
+- A secret can be in any layer. For example, put `OPENAI_API_KEY` in the
+  global secrets, and a different key in `env/worker-2.env`.
+- When a layer value overrides a secret that `rig` generated, for example
+  `N8N_ENCRYPTION_KEY`, `rig env set` warns and asks first.
+- `rig env set` refuses a secret value on the command line, for example
+  `OPENAI_API_KEY=sk-…`, because the shell history and the process list keep
+  it. Give only the key: `rig env set OPENAI_API_KEY`. `rig` then asks for the
+  value with a masked prompt, or reads one value from stdin. This applies to
+  sensitive keys in every layer, and to every key in the secrets layers.
 - Runners of a launcher get `env/runner-js.env` or `env/runner-py.env`, then
   `env/runner-js@<host>.env`.
 - After a change, `rig` lists the affected running components and offers a
@@ -290,8 +302,9 @@ flowchart LR
 | Show the resolved env and sources | `pnpm rig env ls worker-1` |
 | Show every layer that sets a key | `pnpm rig env explain N8N_LOG_LEVEL --on worker-2` |
 | Compare two components | `pnpm rig env diff main-1 worker-1` (also `<env>:<component>`) |
-| Set a secret of this environment | `pnpm rig env set MY_API_KEY=… --secret` |
-| Set a secret for all environments | `pnpm rig env set N8N_LICENSE_CERT=… --on global-secrets` |
+| Set a secret of this environment (asks for the value) | `pnpm rig env set MY_API_KEY --secret` |
+| Set a secret for all environments | `pnpm rig env set N8N_LICENSE_CERT --on global-secrets` |
+| Set a secret from the clipboard | `pbpaste \| pnpm rig env set OPENAI_API_KEY` |
 
 ### Profiles
 
@@ -328,12 +341,31 @@ seconds. Later runs use a cache until the commit or a scanned file changes.
 
 ## Secrets encryption
 
-`rig` encrypts each value in both `secrets.env` files with AES-256-GCM. The
-key names stay readable. One random key encrypts all values:
+`rig` encrypts values with AES-256-GCM:
+
+- Every value in both `secrets.env` files.
+- The values of sensitive keys in every other env file: the layers in `env/`
+  and the profiles. A key is sensitive when its name ends in one of these:
+  `KEY`, `PASS`, `PASSWORD`, `PASSWD`, `PASSWORD_HASH`, `SECRET`, `TOKEN`,
+  `LICENSE_CERT`, `OVERWRITE_DATA`. For example, `OPENAI_API_KEY`,
+  `VERCEL_AI_GATEWAY_API_KEY`, `N8N_AI_ANTHROPIC_KEY`, `N8N_SMTP_PASS`, and
+  `CREDENTIALS_OVERWRITE_DATA` are sensitive. `N8N_ENCRYPTION_KEY_FILE`,
+  `N8N_REDIS_KEY_PREFIX`, and `AWS_ACCESS_KEY_ID` are not, because the name
+  does not end in one of these. Some matches are not secrets, for example
+  `N8N_SSL_KEY` (a path). `rig` encrypts and masks them too.
+
+The key names stay readable. One random key encrypts all values:
 
 ```
 N8N_ENCRYPTION_KEY=enc:v1:hDz3yjBDGQNXbhqbZlUPv17sM2BY…
 ```
+
+A sensitive key can have a different value in each layer, for example one
+API key in a profile and another one in `env/worker-2.env`. `env ls`,
+`env explain`, `env diff`, and `env browse` mask sensitive values in every
+layer. `--show-secrets` shows them. Values that `rig` sets itself, for example
+`DB_POSTGRESDB_PASSWORD=postgres` for the local Postgres, always show. When
+you override such a value in a layer, `rig` masks it.
 
 The key is in the OS keystore. `rig` picks the backend on the first use and
 saves it in `secrets.backend` in the global config:
@@ -347,11 +379,15 @@ saves it in `secrets.backend` in the global config:
 
 - `rig` reads the key once for each command. Components get the decrypted
   values in their env.
-- `rig env edit --on secrets` decrypts the file into a private temp file. It
-  opens that file in your editor, then encrypts the result and deletes the
-  copy. On Linux, the copy is in `$XDG_RUNTIME_DIR`.
-- When a secrets file has plaintext values, for example after a manual edit,
-  `rig` encrypts them the next time it reads the file.
+- `rig env edit` decrypts a file with encrypted values into a private temp
+  file. It opens that file in your editor, then encrypts the result and
+  deletes the copy. On Linux, the copy is in `$XDG_RUNTIME_DIR`. Every
+  `secrets.env` file uses the temp copy.
+- When an env file has plaintext values that must be encrypted, for example
+  after a manual edit, `rig` encrypts them the next time it reads the file.
+- A file without encrypted or sensitive values does not need the key.
+- The launcher reads the runner env from `launcher/<host>.json`. That file can
+  hold decrypted values, so it has mode 0600.
 - If you lose the key, you cannot decrypt the values. n8n then cannot read the
   credentials that it encrypted with `N8N_ENCRYPTION_KEY`. Keep a backup of
   the key: `pnpm rig secrets export-key`.

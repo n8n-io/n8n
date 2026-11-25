@@ -2,7 +2,7 @@ import { cpSync } from 'node:fs';
 import { defineCommand } from 'citty';
 
 import { loadTopology, parseTopology } from '../config/env-yaml';
-import { readSecrets, setSecret } from '../env/secret-store';
+import { readEnvFile, setEnvValue } from '../env/secret-store';
 import { envPaths, selectEnvName } from '../environment';
 import { parseSlot } from '../topology/slots';
 import { ui } from '../ui/output';
@@ -34,9 +34,9 @@ export const cloneCommand = defineCommand({
 		// Copy the layer files as they are, so comments and commented-out lines stay.
 		cpSync(sourcePaths.layersDir, targetPaths.layersDir, { recursive: true });
 		// Own secrets (API keys) carry over. The generated ones stay new.
-		const generated = new Set(readSecrets(targetPaths.secrets).map((entry) => entry.key));
-		const own = readSecrets(sourcePaths.secrets).filter((entry) => !generated.has(entry.key));
-		for (const entry of own) setSecret(targetPaths.secrets, entry.key, entry.value);
+		const generated = new Set(readEnvFile(targetPaths.secrets).map((entry) => entry.key));
+		const own = readEnvFile(sourcePaths.secrets).filter((entry) => !generated.has(entry.key));
+		for (const entry of own) setEnvValue(targetPaths.secrets, entry.key, entry.value);
 		if (topology.tunnel.hostname) {
 			ui.warn(
 				`The tunnel hostname ${topology.tunnel.hostname} is now in two environments. Only one of them can run its tunnel at a time.`,
