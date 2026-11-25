@@ -1,0 +1,159 @@
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 4,8-13,464,476-497,526,530-531,536,546,556,580-644,794-985
+  s_dfe3f914c8bb46::t_8323573883a778 986
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestRunToolsNotice.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-226
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1215-1216,1233-1248
+packages/cli/src/modules/knowledge/repositories/knowledge-collection.repository.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 3,107,135-164
+  s_dfe3f914c8bb46::t_2f0a7469ba7400 165
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionModal.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 6,35,39,64,125-159,174-175,185-201,203-207,214-215,219,223-227,231-233,235,245-248,263-266,275-281,347,388-395
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 277-300,949-976
+  s_dfe3f914c8bb46::t_53aaf8d20a5a41 977
+packages/@n8n/api-types/src/knowledge/collections/create-knowledge-collection.dto.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 5-7
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 368
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-server.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 449-500
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 68-72,142-147,286-288,300,380,385-394,401-405,541-542
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_40c13529769bc0 1411-1419,1422
+  s_dfe3f914c8bb46::t_c2c915e598f509 872,914,920-922,1073-1075,1405-1409,1432-1439,1641-1648
+packages/@n8n/api-types/src/knowledge/collections/__tests__/update-knowledge-collection.dto.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-55
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-40
+packages/@n8n/db/src/migrations/common/1795524706285-AllowImportSourceOnAiPreference.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-45
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 106-110,142,145-166,260-269,274-278,280
+  s_dfe3f914c8bb46::t_40c13529769bc0 270-273
+  s_dfe3f914c8bb46::t_bd21c40e5202b3 105
+packages/@n8n/instance-ai/evaluations/__tests__/helpers/fixture-navigation.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 3-6,15-23
+  s_dfe3f914c8bb46::t_df2596d2dd8032 24-25
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsCollectionsView.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 8-10,28-29,32,35-39,53-67,69-74,96-117,258-317
+packages/cli/src/modules/knowledge/collections/__tests__/knowledge-collection-catalog.service.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1,58,131-168,385-599
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionsTable.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 5,7-8,17-20,31-35,38-75,145-153,227-238,281-285
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-navigation.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 9,17,22-64,74,83
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionsTable.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 3,6-8,34-47,60-67,196-263
+  s_dfe3f914c8bb46::t_f81983c537c4fe 264
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_c2c915e598f509 4443,4479-4480,4493-4495,4508-4516,9888-9908
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunButton.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-107
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionModal.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 335-508
+packages/cli/src/modules/knowledge/AGENTS.md
+  s_dfe3f914c8bb46::t_c2c915e598f509 11,32
+  s_dfe3f914c8bb46::t_d344d099e958f5 33
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-250
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 825-924
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-85
+packages/frontend/editor-ui/src/features/settings/context/components/DeleteCollectionDialog.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-168
+packages/frontend/editor-ui/src/features/settings/context/components/DeleteCollectionDialog.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-129
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-81
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunToolsNotice.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-242
+packages/@n8n/api-types/src/schemas/ai-preference.schema.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 15-17,19
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 7,109-250
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1,45-46,53-54,63-71,81-92
+packages/frontend/editor-ui/src/features/settings/context/collections.store.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 7,58-69,118-119
+packages/cli/test/integration/knowledge/knowledge-collections.api.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 15,363-584
+packages/@n8n/backend-services/src/services/__tests__/ai-preference.service.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 560,563,572,574,847
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1,469-470,472-479,509-510
+packages/frontend/editor-ui/src/features/settings/context/collections.api.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 8,37-62
+  s_dfe3f914c8bb46::t_42dfd354e2a7ea 63
+packages/cli/src/modules/knowledge/collections/knowledge-collection-catalog.service.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 5,11,34-36,38-40,56-58,68-69,81,86,90-96,107,119-180,197,199,241-256
+  s_dfe3f914c8bb46::t_7e2c869dc950ab 257
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-97
+packages/cli/test/integration/public-api/ai-preferences.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-5,61,69,168-169,173,181,341-342,353,538,542,545
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunChangesNote.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-31
+packages/frontend/editor-ui/src/features/settings/context/collections.api.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 6,12,116-143
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 6-24,26,28-66,91-95,100,126-159
+  s_dfe3f914c8bb46::t_3235496437c951 160
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 150,162,170,177
+packages/frontend/editor-ui/src/features/settings/context/collections.store.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 16-17,27-28,173-211
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 26,66-91,168
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 29
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentNewTestRun.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-212
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 889-959
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 20-21,107
+packages/@n8n/api-types/src/knowledge/collections/index.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 2
+packages/@n8n/api-types/src/knowledge/collections/update-knowledge-collection.dto.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-13
+packages/cli/src/modules/knowledge/collections/knowledge-collections.controller.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-5,7-16,50-72
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunModal.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-66
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsCollectionsView.vue
+  s_dfe3f914c8bb46::t_c2c915e598f509 20,30-32,59,61-66,78-90,128-129,148-159
+packages/cli/test/migration/1795524706285-allow-import-source-on-ai-preference.test.ts
+  s_dfe3f914c8bb46::t_c2c915e598f509 1-172
+docs/generated/postgres-schema/public.ai_preference.md
+  s_dfe3f914c8bb46::t_daca8118bb89ec 12,21
+docs/generated/sqlite-schema/README.md
+  s_dfe3f914c8bb46::t_eff4c103b1157a 296-297
+docs/generated/sqlite-schema/ai_preference.md
+  s_dfe3f914c8bb46::t_b1556cd304472d 9,31-33,35
+docs/generated/sqlite-schema/user.md
+  s_dfe3f914c8bb46::t_bcc8a22f6cc0d3 66
+packages/cli/src/public-api/v1/handlers/ai-preferences/spec/paths/listAiPreferences.generated.yml
+  s_dfe3f914c8bb46::t_b29560d8859e13 65
+packages/cli/src/public-api/v1/shared/spec/schemas/aiPreferencePublicDto.generated.yml
+  s_dfe3f914c8bb46::t_85d8af0d844253 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe6372ce5ee89f1e4d34be89ac4c0a8b062e8935",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

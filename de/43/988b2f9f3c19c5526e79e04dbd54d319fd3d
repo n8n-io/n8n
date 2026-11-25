@@ -1,0 +1,26 @@
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_d0ded69939cb03::t_b0c296da785d0c 25,31-35,306-320,387-399,401-403,405-406,414-415,422-423,440-441,448-450
+  s_d0ded69939cb03::t_3abb94624177e4 451
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_d0ded69939cb03::t_fb02c3c0aef315 1294
+  s_d0ded69939cb03::t_f9a23a7ab675e8 1312-1318
+  s_d0ded69939cb03::t_60301d830078b5 59-60,1130-1131,1134-1137,1244,1277-1286,1288,1291,1293,1295-1311,1319-1401
+  s_d0ded69939cb03::t_803c973b890ac9 1287,1289-1290,1292
+  s_d0ded69939cb03::t_15692b0b376af2 1402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de43988b2f9f3c19c5526e79e04dbd54d319fd3d",
+  "prompts": {},
+  "sessions": {
+    "s_d0ded69939cb03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e4e5467-72c2-4c0e-bf0f-fee7901cc39e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_4a494bfdece475::t_ad0c05d17b2403 42
+  s_4a494bfdece475::t_d149fc71c49b20 5,9-11,18,210-213,220-262
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_4a494bfdece475::t_728b4e1abccc92 81-87,102-104,108,110-111,120,122
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_d149fc71c49b20 1787-1788,1794,1796
+  s_4a494bfdece475::t_ad0c05d17b2403 151
+  s_4a494bfdece475::t_84584c5b1b840d 22-23,29,35-37,187-199,1507-1527,1529-1727,1729-1759,1761-1763,1766-1771,1773-1786,1789-1793,1795,1797-1818,1871-1882,1884-1885,1894,1896-1898,1900-1903,1905-1906
+  s_4a494bfdece475::t_69c7ccb95cedb1 1883,1886-1893,1895,1899,1904,1907
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_4a494bfdece475::t_728b4e1abccc92 128,233
+  s_4a494bfdece475::t_321ff81f26c75d 165
+  s_4a494bfdece475::t_5ac3cc2d35a8ac 129
+  s_4a494bfdece475::t_599a68e44a6316 4,49-51,53-60,124-127,130,151,232,234-243
+  s_4a494bfdece475::t_d3a172eca4eed2 244
+packages/modules/promotions/frontend/src/__tests__/missingDependencies.fixtures.ts
+  s_4a494bfdece475::t_ad0c05d17b2403 7,81-135
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_72f269ca206c5c 11629,11632,11640,11647-11648,11652-11653,11676,11686,11690,11694-11696
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_4a494bfdece475::t_3a5a2a071df325 39-42
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_cb198f14da60ba 365-367,373,381,384
+  s_4a494bfdece475::t_3a5a2a071df325 7,19,41-45,123,277-284,297-314,317-331,333-336,338,361-362,368-372,375,383,394-400,406-411,464
+  s_4a494bfdece475::t_72f269ca206c5c 129
+  s_4a494bfdece475::t_32a496dc4c724b 363-364
+  s_4a494bfdece475::t_05ec0e03900784 339-346,353-355,357,359
+  s_4a494bfdece475::t_6e24f545e0a1ca 360
+packages/modules/promotions/frontend/src/__tests__/bindings.fixtures.ts
+  s_4a494bfdece475::t_ad0c05d17b2403 69
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_529d4dd3ffe559 42,96-98,100-102,327-328,331-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65cec3b7f1e748b1ba71e9d60c786a6bcea150ea",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

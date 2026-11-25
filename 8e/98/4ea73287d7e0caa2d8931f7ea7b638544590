@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_d7d0a81b33d5c6::t_8891495d9bddb2 1190-1195
+packages/nodes-base/nodes/Form/test/hidden-auth-headers.test.ts
+  s_d7d0a81b33d5c6::t_81d17af71aee3a 139-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e984ea73287d7e0caa2d8931f7ea7b638544590",
+  "prompts": {},
+  "sessions": {
+    "s_d7d0a81b33d5c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2fb3262-6ea3-4416-83c3-76f9f4cd7d8b",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

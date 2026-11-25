@@ -1,0 +1,168 @@
+packages/nodes-base/nodes/NextCloud/actions/file/createFromText.operation.ts
+  s_69d18b007d0835::t_d7399ab26633dc 1,10,111,117-123,135-158,160,162,165,173,176-177,179-186,188-189,191-197,199,200-205
+  s_69d18b007d0835::t_68cbb99fa05cf8 187
+  s_69d18b007d0835::t_f2fa4ee9988cbf 8
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_69d18b007d0835::t_8d2e0b0049c8e9 67-76
+  s_69d18b007d0835::t_6aac7b44243654 77
+  s_50795f9787e625::t_8845515c943ee6 127,164,194,221,242,295,315,337
+  s_50795f9787e625::t_0024654168bd33 473
+  s_50795f9787e625::t_6efe0ff39c8705 202-220,222-226
+  s_50795f9787e625::t_00a8a5fda3a089 58-59
+  s_50795f9787e625::t_af8964d2ff0330 30
+  s_50795f9787e625::t_ca929dee97a993 6,8-9
+  s_50795f9787e625::t_6633181a57d163 465-472,474-479,481-489
+  s_50795f9787e625::t_7b34b1f41b5fa1 347-464,480,490-504,507-516
+  s_50795f9787e625::t_5961cc9fff4a30 60-61
+  s_0481ab2872e2f7::t_18f7c29a40e47e 14-15,17,19-21
+  s_69d18b007d0835::t_b5dfc6cd5bd9e3 18
+  s_50795f9787e625::t_6d6e113dcc4766 505-506
+  s_0481ab2872e2f7::t_a21e0ae67f268d 16
+  s_0481ab2872e2f7::t_6d96af0aaf87f5 605-618,620-621
+  s_69d18b007d0835::t_d8dd6ed4cda856 567,572,577,584,594,619
+packages/nodes-base/nodes/NextCloud/test/createFromText.operation.test.ts
+  s_69d18b007d0835::t_f840bb10e5bd4a 305,309-334,392,398,402,404-418,449-479
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_69d18b007d0835::t_d7399ab26633dc 45-49
+  s_50795f9787e625::t_1aa27bf1f82295 122-135,141,148,150-151
+  s_50795f9787e625::t_ef9c616b0d5fad 176
+  s_50795f9787e625::t_35ad5b38725e01 197-214,216-220,222-229,234-244
+  s_50795f9787e625::t_69cea396e6a433 1,6,14-15,18,25-33
+  s_50795f9787e625::t_1a7d8ae31def11 215,221,230-233
+  s_50795f9787e625::t_993ee6e90c2085 117-121,118-121
+  s_50795f9787e625::t_c3823246500501 34
+  s_0481ab2872e2f7::t_96abd8b7f9a0c1 23-24
+  s_e48526bb13ba4b::t_f4270eb09e8c2d 50-54,71-76,77-78,89-92,94-96,98-102,108-109,111,113,115
+  s_69d18b007d0835::t_db15b751271d40 93,97,106-107
+  s_69d18b007d0835::t_63ac365d79aae8 2,10
+  s_69d18b007d0835::t_f1a7081e5b2c81 269-270
+  s_69d18b007d0835::t_edad051a8697d9 80-88
+  s_69d18b007d0835::t_9869802bd18599 79,264-265
+  s_69d18b007d0835::t_eec0eb77d917e1 245-263,266-268,271-302
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_50795f9787e625::t_5e3b048625dda1 1098
+  s_50795f9787e625::t_6fdbdbaabebdff 941
+  s_50795f9787e625::t_6f9edbf0dae3d6 1074
+  s_50795f9787e625::t_d443e096a0e2e1 1212
+  s_50795f9787e625::t_3b2042dbc1d365 1334
+  s_50795f9787e625::t_01443423041350 924-926,1192,1329
+  s_50795f9787e625::t_bec200ca816bc5 23-26,28-30
+  s_0481ab2872e2f7::t_18f7c29a40e47e 27
+  s_0481ab2872e2f7::t_738e03ce1728ee 15,34,217-223,698-702,972-981,1013,1020,1031,1048,1063
+  s_69d18b007d0835::t_4a939d4d553ab5 33,160-165,410-414,962-965
+  s_69d18b007d0835::t_ab0cdbb29c843f 966-968
+  s_69d18b007d0835::t_1a4f39f7a97c65 969-971
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_50795f9787e625::t_280b9fb7096631 832-834
+  s_50795f9787e625::t_4487ae47598dd5 815-831,835-837
+  s_69d18b007d0835::t_a087e8e3a2f22c 475,490
+packages/nodes-base/credentials/NextCloudApi.credentials.ts
+  s_50795f9787e625::t_eec0727b850cca 55
+  s_0481ab2872e2f7::t_544df26a686270 9-10
+  s_0481ab2872e2f7::t_6c00374b1f499d 54,56
+packages/nodes-base/credentials/test/NextCloudApi.credentials.test.ts
+  s_50795f9787e625::t_e45a44560124fa 1-3,5-27,30-32
+  s_0481ab2872e2f7::t_ae753f201e5acc 4
+  s_0481ab2872e2f7::t_fa593e2a3404fd 28-29
+packages/nodes-base/nodes/NextCloud/constants.ts
+  s_0481ab2872e2f7::t_ae56d364d9fca9 1-8
+packages/nodes-base/nodes/NextCloud/actions/folder/search.operation.ts
+  s_e48526bb13ba4b::t_866455695f8281 129,138-141,143-171,184,197,200,238,247-248,251
+  s_e48526bb13ba4b::t_6644eec1c1a4fa 215
+  s_e48526bb13ba4b::t_63a4ea8e63d7ac 126-128
+  s_e48526bb13ba4b::t_bb4e37f42c8aa5 130
+  s_e48526bb13ba4b::t_5aefa42976f228 131-132,135-137
+  s_e48526bb13ba4b::t_755a7f69bf4a25 142
+  s_e48526bb13ba4b::t_14330b47e60f59 172-173,182
+  s_e48526bb13ba4b::t_ef186a9e99680f 185-187,194,196
+  s_e48526bb13ba4b::t_d69021cec1b1c6 198-199
+  s_e48526bb13ba4b::t_db7e7014990f64 201-203,207,213-214
+  s_e48526bb13ba4b::t_e82147dde45c1c 216-218,235-237
+  s_e48526bb13ba4b::t_a0b9eec7054616 239
+  s_e48526bb13ba4b::t_a2cbd994acb7ea 244-246
+  s_e48526bb13ba4b::t_74bcc9aa3e8548 249-250
+  s_e48526bb13ba4b::t_987d7f485cc1fe 1,3-10,11-12,15-125,133-134,175-180,188-193,204-206,219-234,240,242-243
+  s_69d18b007d0835::t_db15b751271d40 208-212
+  s_69d18b007d0835::t_764b7237443168 2,13-14
+  s_69d18b007d0835::t_bd620bf2d0ffc7 241
+  s_69d18b007d0835::t_a3b946bc8ab631 174,181,183,195
+packages/nodes-base/nodes/NextCloud/test/search.operation.test.ts
+  s_e48526bb13ba4b::t_c88dedb409fd70 72,162,227,236,252,278,282,285,287,295-308,321,330,378,398,401,409,418
+  s_e48526bb13ba4b::t_65c3ffca0a3791 69-71
+  s_e48526bb13ba4b::t_f1c8739db3c2ec 73-75,159-161
+  s_e48526bb13ba4b::t_0d6e04f6a7cb8b 163-165,224-226
+  s_e48526bb13ba4b::t_389191eb889cd7 228-230,233-235
+  s_e48526bb13ba4b::t_3e0158e86abcab 237-239,249-251
+  s_e48526bb13ba4b::t_e9db0d48a3a327 253,275-277
+  s_e48526bb13ba4b::t_d87a7041b9591c 279-281
+  s_e48526bb13ba4b::t_9f112fc58c89bc 283-284
+  s_e48526bb13ba4b::t_a1ad31ac394b96 286
+  s_e48526bb13ba4b::t_33f4421332acc6 288-290,292-294
+  s_e48526bb13ba4b::t_9421cfcedab7e6 309-311,318-319
+  s_e48526bb13ba4b::t_2972fdc689635e 322-324,327-329
+  s_e48526bb13ba4b::t_bf0032bfab4656 331,374-377
+  s_e48526bb13ba4b::t_c8a5b369cea489 379-381,395-397
+  s_e48526bb13ba4b::t_94ed00d0f7a64e 399-400
+  s_e48526bb13ba4b::t_d8e208a610640c 402-404,406-408
+  s_e48526bb13ba4b::t_8e9f04bf907384 410-412,415-417
+  s_e48526bb13ba4b::t_81b275b8abaecd 419
+  s_e48526bb13ba4b::t_508ff395030dd8 1-68,76-138,140-143,145-151,153-158,166-223,231-232,240-248,291,312-317,325-326,382-394,405,413-414
+  s_e48526bb13ba4b::t_2cdefe513e0311 254-274
+  s_69d18b007d0835::t_7e5fd78b82068a 139,144,152,320,332-360
+packages/nodes-base/utils/__tests__/query-escaping.test.ts
+  s_e48526bb13ba4b::t_0df3fc3e4dfadc 9,78-90
+packages/nodes-base/utils/query-escaping.ts
+  s_e48526bb13ba4b::t_3dacc9f6845c85 57-68
+packages/nodes-base/nodes/NextCloud/actions/file/update.operation.ts
+  s_69d18b007d0835::t_8cdb58957d8e87 2-16,18-144,147-181,190-205,207-214,216-260,262-279,296-297,300,310
+  s_69d18b007d0835::t_c57fccfbd287f1 145-146,215,261,280-286,288-295
+  s_69d18b007d0835::t_02f53ab5a1d4d2 17,182-189,206,298-299,301-309
+  s_69d18b007d0835::t_ad1837fafd37bf 1,287
+packages/nodes-base/nodes/NextCloud/test/update.operation.test.ts
+  s_69d18b007d0835::t_f1a7081e5b2c81 140-143,590
+  s_69d18b007d0835::t_249e91de20997b 174-175,186,224,226,231,251-253,277-279,288,293,346,373,375,404,444,496,548-584,593
+  s_69d18b007d0835::t_67a3e7f551ae17 177
+  s_69d18b007d0835::t_d3186f900a5547 225,227-228
+  s_69d18b007d0835::t_50f4f3236caf59 1-139,144-173,176,178-185,187-223,229-230,232-250,254-258,260-263,270-276,280-286,294-345,347-372,403,405-406,426-443,445-484,486-495,497-547,585-589,591-592,594-595
+  s_69d18b007d0835::t_b51f7a1f4e09f3 259,264-269,287,289-292,374,376-402,407-425,485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd1a6e74f606cba7e2275c7afee4ed8391e6e1d3",
+  "prompts": {},
+  "sessions": {
+    "s_0481ab2872e2f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5884e799-6268-4cb4-8513-23c91424175e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_50795f9787e625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42d12515-ea53-4ce2-9f84-b88ec831710f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_69d18b007d0835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2742f16a-41df-4d0f-909f-e67f21d45770",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_e48526bb13ba4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641211a8-07f9-490c-a870-ae90c9d0a5f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/expression-runtime/src/__tests__/extract-url-path.test.ts
+  s_65388a80ecbf7b::t_803bf9001ef0f6 1-48
+packages/@n8n/expression-runtime/vitest.config.ts
+  s_65388a80ecbf7b::t_803bf9001ef0f6 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "21f8e4d44b0f5aa14632cc7c07efb5d73759a61a",
+  "prompts": {},
+  "sessions": {
+    "s_65388a80ecbf7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90bb5139-85ba-4bec-bd28-2f97fc4ded5c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

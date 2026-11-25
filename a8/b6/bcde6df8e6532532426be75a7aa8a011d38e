@@ -1,0 +1,34 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_4e8100d4ba14d2::t_fa8dbd76874424 2
+  s_4e8100d4ba14d2::t_c006f57ae83c6c 104-130
+packages/@n8n/api-types/src/agents/dto.ts
+  s_4e8100d4ba14d2::t_69af263b90c815 809-817,842-846,891-909
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_4e8100d4ba14d2::t_66683b37a70d79 2327-2401,4556-4608
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_4e8100d4ba14d2::t_42404df944dc53 821-863
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_4e8100d4ba14d2::t_8e242be310e2bb 6,261
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_4e8100d4ba14d2::t_6ce19c3680428e 540-543,901-912,914-915,1645-1649,1732-1733,1735-1745,1759,1925,2170-2185
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_4e8100d4ba14d2::t_68f5df8c3eb344 405-409
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_4e8100d4ba14d2::t_055e7c90b0b593 23-28,105-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8b6bcde6df8e6532532426be75a7aa8a011d38e",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

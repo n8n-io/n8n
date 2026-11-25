@@ -1,0 +1,82 @@
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  s_7ab639c73035b4::t_f87a5b56b9cc88 772-774
+  s_7ab639c73035b4::t_9b8c943aed4632 771,775-784
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_7ab639c73035b4::t_312dc25442809d 194
+packages/cli/src/modules/skills/services/skill-usage-proxy.service.ts
+  s_7ab639c73035b4::t_01666be5c8b08d 72,74
+packages/@n8n/cli/src/client.ts
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 800-801
+packages/@n8n/backend-services/src/errors/rest-error-response.ts
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 2,10,34-35
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 755
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_7ab639c73035b4::t_e1efb79324e6ec 1-2,4,7-13,19-31
+  s_7ab639c73035b4::t_b425dd198ac058 14-18
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_7ab639c73035b4::t_8e5cd3d4fc6c12 370-379
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_7ab639c73035b4::t_f87a5b56b9cc88 962-965,967-974,976-1015
+  s_7ab639c73035b4::t_312dc25442809d 966,975
+  s_7ab639c73035b4::t_de4bf86bc36107 6,66
+packages/cli/src/modules/skills/__tests__/integration/skill-source-delete.integration.test.ts
+  s_7ab639c73035b4::t_de4bf86bc36107 2,93,170-178
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_7ab639c73035b4::t_e1efb79324e6ec 4,36,104-105,181-182,210-216,253,259
+  s_7ab639c73035b4::t_01666be5c8b08d 120,154-156,164-165,432,435
+  s_7ab639c73035b4::t_f87a5b56b9cc88 125-132,151-153,157-163,188-195,227
+packages/cli/src/modules/skills/services/skill-usage.contracts.ts
+  s_7ab639c73035b4::t_01666be5c8b08d 56
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_7ab639c73035b4::t_f87a5b56b9cc88 84-93,96-99
+  s_7ab639c73035b4::t_8e5cd3d4fc6c12 4,81-83,94-95,100-109
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 514
+packages/cli/src/modules/n8n-packages/spec/serialized/skill.schema.ts
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 1,15
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_7ab639c73035b4::t_01666be5c8b08d 917,923
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 175,182-183,191,199
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_7ab639c73035b4::t_312dc25442809d 657-662
+packages/cli/src/modules/agents/agent-skill-usage.ts
+  s_7ab639c73035b4::t_01666be5c8b08d 95,111
+  s_7ab639c73035b4::t_f87a5b56b9cc88 109-110
+packages/@n8n/cli/docs/commands/package.md
+  s_7ab639c73035b4::t_b4c4c6a6cdb1a5 47-49
+packages/cli/src/modules/skills/testing/skill-usage.fake.ts
+  s_7ab639c73035b4::t_01666be5c8b08d 4
+  s_7ab639c73035b4::t_f87a5b56b9cc88 114-120,124-128
+packages/cli/src/modules/n8n-packages/engine/package-skill-plan.ts
+  s_7ab639c73035b4::t_e1efb79324e6ec 3,11,143
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_7ab639c73035b4::t_8e5cd3d4fc6c12 141-142,150-151,162-165,175-176
+packages/@n8n/backend-services/src/errors/__tests__/rest-error-response.test.ts
+  s_7ab639c73035b4::t_f87a5b56b9cc88 83-92,94-96,101-103
+  s_7ab639c73035b4::t_8e5cd3d4fc6c12 82,93,97-100,104-106
+packages/cli/src/modules/n8n-packages/__tests__/standalone-skills.integration.test.ts
+  s_7ab639c73035b4::t_999ecf1d080cc2 47-51,194-197,331-334,374-378
+  s_7ab639c73035b4::t_312dc25442809d 77-78,191,359-360,373
+  s_7ab639c73035b4::t_f87a5b56b9cc88 192-193,198-199,202-216,263-271,297-299,336-340
+  s_7ab639c73035b4::t_de4bf86bc36107 12-13,172-190,200-201,217-218,261,277,292-296,300-301
+packages/cli/src/modules/skills/testing/skill-usage.contract.ts
+  s_7ab639c73035b4::t_01666be5c8b08d 288
+  s_7ab639c73035b4::t_f87a5b56b9cc88 262-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "84acdee420f660f53c04eaf6e784b7611a7f600d",
+  "prompts": {},
+  "sessions": {
+    "s_7ab639c73035b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d52-4699-7c01-97b8-37a3232a7b86",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
