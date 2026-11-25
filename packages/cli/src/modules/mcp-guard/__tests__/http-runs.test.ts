@@ -18,6 +18,7 @@ function setup(tenantExists = true, gymUrl = 'http://127.0.0.1:8083') {
 		issueMcpCredential: vi.fn(async (..._a: unknown[]) => 'tenant-token'),
 		tenantExists: vi.fn(async (_t: string) => tenantExists),
 		deleteTenant: vi.fn(async (_t: string) => {}),
+		forgetTenant: vi.fn((_t: string) => {}),
 	};
 	const registry = new HttpRunRegistry({
 		profile: GMAIL_PROFILE,
@@ -93,6 +94,24 @@ describe('HttpRunRegistry', () => {
 		await registry.getOrCreate('agent-a', model);
 
 		expect(admin.createTenant).toHaveBeenCalledTimes(2);
+	});
+
+	it('forgets the tenant before it builds the run again', async () => {
+		const { registry, admin } = setup(false);
+
+		await registry.getOrCreate('agent-a', model);
+		await registry.getOrCreate('agent-a', model);
+
+		expect(admin.forgetTenant).toHaveBeenCalledTimes(1);
+	});
+
+	it('gives the tenant back when the setup fails after the tenant was made', async () => {
+		const { registry, admin } = setup();
+		admin.issueMcpCredential.mockRejectedValueOnce(new Error('no credential'));
+
+		await expect(registry.getOrCreate('agent-a', model)).rejects.toThrow('no credential');
+
+		expect(admin.deleteTenant).toHaveBeenCalledTimes(1);
 	});
 
 	it('cleans a tenant name', async () => {

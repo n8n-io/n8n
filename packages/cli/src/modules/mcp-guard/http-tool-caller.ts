@@ -146,6 +146,12 @@ export function fromToolArgs(
 		if (typeof args.body === 'string') {
 			const type = args.contentType;
 			if (typeof type === 'string' && isSafeContentType(type)) {
+				// Latin-1 holds one byte for each character. A wider character would be cut without a sign.
+				if (Array.from(args.body).some((char) => char.charCodeAt(0) > 0xff)) {
+					throw new UnexpectedError(
+						'mcp-guard: a body with a content type must hold one byte for each character',
+					);
+				}
 				body = Buffer.from(args.body, 'latin1');
 				out['content-type'] = type;
 			} else {

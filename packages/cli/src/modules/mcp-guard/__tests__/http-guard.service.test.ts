@@ -110,6 +110,9 @@ describe('HttpGuardService', () => {
 			expect(configs.length).toBeGreaterThan(0);
 			expect(new Set(configs.map((c) => c.admin)).size).toBe(1);
 			expect(new Set(configs.map((c) => c.gymUrl))).toEqual(new Set(['http://127.0.0.1:8083']));
+			expect((configs[0].admin as unknown as { baseUrl: string }).baseUrl).toBe(
+				'http://127.0.0.1:9093',
+			);
 		});
 
 		it('uses the addresses of the environment for every vendor', () => {
@@ -121,6 +124,9 @@ describe('HttpGuardService', () => {
 
 			expect(new Set(configs.map((c) => c.gymUrl))).toEqual(new Set(['http://gym.test:8000']));
 			expect(new Set(configs.map((c) => c.admin)).size).toBe(1);
+			expect((configs[0].admin as unknown as { baseUrl: string }).baseUrl).toBe(
+				'http://gym.test:9000',
+			);
 		});
 	});
 });

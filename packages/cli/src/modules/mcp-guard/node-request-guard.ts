@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { Container } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
@@ -70,13 +71,24 @@ const BINARY_ENCODINGS: ReadonlySet<string | undefined> = new Set([
 	'stream',
 ]);
 
-async function toMockResponse(res: Response, encoding: IHttpRequestOptions['encoding']) {
+async function toMockResponse(
+	res: Response,
+	encoding: IHttpRequestOptions['encoding'],
+	fullResponse: boolean | undefined,
+) {
 	const headers: Record<string, string> = {};
 	res.headers.forEach((value, key) => {
 		headers[key] = value;
 	});
 	if (BINARY_ENCODINGS.has(encoding)) {
-		return { statusCode: res.status, headers, body: Buffer.from(await res.arrayBuffer()) };
+		const bytes = Buffer.from(await res.arrayBuffer());
+		// A node that asks only for the body of a stream calls `.on()` on it. The core wraps the bytes of a
+		// full response itself.
+		return {
+			statusCode: res.status,
+			headers,
+			body: encoding === 'stream' && !fullResponse ? Readable.from([bytes]) : bytes,
+		};
 	}
 	const text = await res.text();
 	let body: unknown = text;
@@ -105,6 +117,8 @@ export function createNodeRequestGuard(scope: NodeRequestGuardScope): EvalLlmMoc
 		// Load the guard only when a node tool makes a call. Most chats never do.
 		const { HttpGuardService } = await import('./http-guard.service.js');
 		const res = await Container.get(HttpGuardService).handle(toCapturedRequest(options), scope);
-		return res === undefined ? undefined : await toMockResponse(res, options.encoding);
+		return res === undefined
+			? undefined
+			: await toMockResponse(res, options.encoding, options.returnFullResponse);
 	};
 }

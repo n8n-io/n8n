@@ -21,6 +21,7 @@ import {
 	type PlanHydratorDeps,
 	type PlanLlm,
 } from '../plan-hydrator';
+import { SeededEntities } from '../seeded-entities';
 
 const text = (t: string): CallToolResult => ({ content: [{ type: 'text', text: t }] });
 const ID = 'a1a1a1a1-1209-4209-9209-120912091209';
@@ -114,6 +115,7 @@ function setup(
 	lookups?: PlanHydratorDeps['lookups'],
 	seedReport?: (n: number) => unknown,
 	gymFirst?: ReadonlySet<string>,
+	seeded?: SeededEntities,
 ) {
 	const prompts: string[] = [];
 	const seeds: unknown[] = [];
@@ -157,6 +159,7 @@ function setup(
 		llm,
 		lookups,
 		gymFirst,
+		seeded,
 	});
 	return { hydrator, prompts, seeds, events, seedErrors, upstreamCalls, gymCalls: () => gymCalls };
 }
@@ -218,6 +221,22 @@ describe('PlanHydrator', () => {
 				linear: { teams: [], projects: [{ ref: 'project:p', team: 'team:LHO' }] },
 			},
 		});
+	});
+
+	it('leaves out an entity that the hydrator of another vendor seeded, when both share the registry', async () => {
+		const plan = JSON.stringify({
+			overlay: { native: { linear: { teams: [{ ref: 'team:LHO', id: 'team-1' }] } } },
+		});
+		const shared = new SeededEntities();
+		const first = setup([plan], undefined, undefined, undefined, undefined, shared);
+		const second = setup([plan], undefined, undefined, undefined, undefined, shared);
+
+		await first.hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		await second.hydrator.hydrate('get_issue', { id: 'TRUST-1210' }, real);
+
+		expect(first.seeds).toHaveLength(1);
+		// Nothing is left to seed, so the second hydrator makes no seed call.
+		expect(second.seeds).toHaveLength(0);
 	});
 
 	it('does not read an object from the real service when the gym holds it', async () => {

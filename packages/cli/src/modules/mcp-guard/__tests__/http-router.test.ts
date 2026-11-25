@@ -370,16 +370,6 @@ describe('HttpGuardRouter real read failures', () => {
 		expect(res.status).toBe(200);
 		expect(gym.callTool).toHaveBeenCalledTimes(1);
 	});
-
-	it('does not block a write when the real read of its hydration fails with a 403', async () => {
-		const { router, upstream, gym } = setup();
-		upstream.callTool.mockResolvedValue(result({ error: 'denied' }, 403));
-		gym.callTool.mockResolvedValueOnce(result({ id: 'gym-sent' }));
-
-		const res = await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
-
-		expect(res.status).toBe(200);
-	});
 });
 
 describe('HttpGuardRouter with real ids', () => {

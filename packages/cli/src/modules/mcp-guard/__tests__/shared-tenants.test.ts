@@ -5,6 +5,7 @@ describe('SharedTenantAdmin', () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	function setup() {
+		vi.spyOn(GymAdmin.prototype, 'tenantExists').mockResolvedValue(true);
 		const create = vi.spyOn(GymAdmin.prototype, 'createTenant').mockResolvedValue();
 		const remove = vi.spyOn(GymAdmin.prototype, 'deleteTenant').mockResolvedValue();
 		return { admin: new SharedTenantAdmin('http://gym'), create, remove };
@@ -86,5 +87,44 @@ describe('SharedTenantAdmin', () => {
 		expect(admin.stateFor('guard-a').gymIds.has('made-1')).toBe(true);
 		await admin.deleteTenant('guard-a');
 		expect(admin.stateFor('guard-a').gymIds.has('made-1')).toBe(false);
+	});
+
+	it('makes the tenant again when the gym lost it, and clears what the vendors know of it', async () => {
+		const { admin, create } = setup();
+		await admin.createTenant('guard-a');
+		admin.stateFor('guard-a').gymIds.add('made-1');
+		vi.spyOn(GymAdmin.prototype, 'tenantExists').mockResolvedValue(false);
+
+		await admin.createTenant('guard-a');
+
+		expect(create).toHaveBeenCalledTimes(2);
+		expect(admin.stateFor('guard-a').gymIds.size).toBe(0);
+	});
+
+	it('forgets the lease of a tenant that the gym lost', async () => {
+		const { admin, remove } = setup();
+		await admin.createTenant('guard-a');
+		await admin.createTenant('guard-a');
+
+		admin.forgetTenant('guard-a');
+		await admin.createTenant('guard-a');
+		await admin.deleteTenant('guard-a');
+
+		expect(remove).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the lease when the recovery of a 409 deletes the old tenant', async () => {
+		const call = vi
+			.spyOn(GymAdmin.prototype as unknown as { call: () => Promise<unknown> }, 'call')
+			.mockRejectedValueOnce(new Error('gym PUT /x failed: 409 exists'))
+			.mockResolvedValue({});
+		const admin = new SharedTenantAdmin('http://gym');
+		const remove = vi.spyOn(admin, 'deleteTenant');
+
+		await admin.createTenant('guard-a');
+
+		expect(remove).not.toHaveBeenCalled();
+		expect(call).toHaveBeenCalledTimes(3);
+		expect(call.mock.calls[1]).toEqual(['DELETE', '/_sim/v1/tenants/guard-a']);
 	});
 });

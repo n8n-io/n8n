@@ -458,4 +458,21 @@ describe('Microsoft Graph paths', () => {
 
 		expect(call.name).toBe('read_get_messages');
 	});
+
+	it('refuses a body with a content type that holds a character wider than one byte', () => {
+		expect(() =>
+			fromToolArgs(
+				'https://x.test',
+				{ method: 'POST', path: '/p', body: '日本', contentType: 'text/plain' },
+				{},
+			),
+		).toThrow('one byte');
+		expect(
+			fromToolArgs(
+				'https://x.test',
+				{ method: 'POST', path: '/p', body: 'caf\u00e9', contentType: 'text/plain' },
+				{},
+			).body,
+		).toEqual(Buffer.from([0x63, 0x61, 0x66, 0xe9]));
+	});
 });

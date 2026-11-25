@@ -126,7 +126,7 @@ describe('createNodeRequestGuard', () => {
 		});
 	});
 
-	it.each(['arraybuffer', 'blob', 'stream'] as const)(
+	it.each(['arraybuffer', 'blob'] as const)(
 		'returns the bytes of the answer unchanged for the encoding %s',
 		async (encoding) => {
 			const bytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x00, 0xff, 0x80, 0xc3, 0x28]);
@@ -143,6 +143,27 @@ describe('createNodeRequestGuard', () => {
 			expect(answer.body.equals(bytes)).toBe(true);
 		},
 	);
+
+	it('returns a readable stream for the body of a stream answer, and bytes for a full response', async () => {
+		const bytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x00, 0xff]);
+		handle.mockImplementation(async () => new Response(new Uint8Array(bytes)));
+		const guard = createNodeRequestGuard(scope);
+		const url = 'https://www.googleapis.com/drive/v3/files/x/export';
+
+		const body = (await guard({ url, encoding: 'stream' }, {} as never)) as {
+			body: Readable;
+		};
+		const chunks: Buffer[] = [];
+		for await (const chunk of body.body) chunks.push(chunk as Buffer);
+		const full = (await guard(
+			{ url, encoding: 'stream', returnFullResponse: true },
+			{} as never,
+		)) as { body: Buffer };
+
+		expect(body.body).toBeInstanceOf(Readable);
+		expect(Buffer.concat(chunks).equals(bytes)).toBe(true);
+		expect(Buffer.isBuffer(full.body)).toBe(true);
+	});
 
 	it('returns text for an answer that is no JSON, and keeps broken JSON as text', async () => {
 		handle.mockResolvedValueOnce(new Response('plain', { status: 403 }));
