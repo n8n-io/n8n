@@ -6,6 +6,7 @@ import type {
 	OutputPanel,
 	MainPanelDimensions,
 	MainPanelType,
+	NodeVersionChange,
 } from './ndv.types';
 import { useStorage } from '@n8n/composables/useStorage';
 import {
@@ -25,7 +26,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { computed, inject, ref, type ShallowRef } from 'vue';
+import { computed, inject, ref, shallowRef, watch, type ShallowRef } from 'vue';
 import { PANE_DEFAULT_DISPLAY_MODE, resolveDisplayMode } from './ndv.utils';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
@@ -111,6 +112,8 @@ function defineNDVStore(id: NDVStoreId) {
 
 		const highlightDraggables = ref(false);
 		const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
+		// Keyed by node id. Only ever replaced, never mutated in place.
+		const nodeVersionChanges = shallowRef<Record<string, NodeVersionChange>>({});
 
 		const workflowDocumentStore = useWorkflowDocumentStore(id);
 		const executionStateStore = useWorkflowExecutionStateStore(id);
@@ -241,6 +244,7 @@ function defineNDVStore(id: NDVStoreId) {
 		const unsetActiveNodeName = (): void => {
 			activeNodeName.value = null;
 			lastSetActiveNodeSource.value = undefined;
+			nodeVersionChanges.value = {};
 		};
 
 		const setActiveNodeName = (nodeName: string, source: TelemetryNdvSource): void => {
@@ -402,6 +406,18 @@ function defineNDVStore(id: NDVStoreId) {
 			focusedInputPath.value = path;
 		};
 
+		const setNodeVersionChange = (nodeId: string, change: NodeVersionChange): void => {
+			nodeVersionChanges.value = { ...nodeVersionChanges.value, [nodeId]: change };
+		};
+
+		// A publish ends the session in which the version change can be reviewed.
+		watch(
+			() => workflowDocumentStore.activeVersionId,
+			() => {
+				nodeVersionChanges.value = {};
+			},
+		);
+
 		return {
 			activeNode,
 			ndvInputData,
@@ -441,6 +457,7 @@ function defineNDVStore(id: NDVStoreId) {
 			isTableHoverOnboarded,
 			mainPanelDimensions,
 			lastSetActiveNodeSource,
+			nodeVersionChanges,
 			setActiveNodeName,
 			unsetActiveNodeName,
 			setInputNodeName,
@@ -467,6 +484,7 @@ function defineNDVStore(id: NDVStoreId) {
 			setHighlightDraggables,
 			updateNodeParameterIssues,
 			setFocusedInputPath,
+			setNodeVersionChange,
 		};
 	});
 }

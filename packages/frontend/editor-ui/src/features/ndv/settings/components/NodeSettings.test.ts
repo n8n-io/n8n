@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, shallowRef } from 'vue';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
@@ -821,10 +821,11 @@ describe('NodeSettings', () => {
 
 			expect(workflowDocumentStore.getNodeByName(httpNode.name)?.typeVersion).toBe(1);
 			expect(markStateDirty).not.toHaveBeenCalled();
+			expect(useNDVStore(workflowDocumentStore.documentId).nodeVersionChanges).toEqual({});
 		});
 
 		it('writes a version that shares its description with other versions', async () => {
-			const { findByTestId, workflowDocumentStore } = renderVersioned({
+			const { findByTestId, workflowDocumentStore, getByTestId } = renderVersioned({
 				nodeTypes: [typeV1, typeV2AndV2Point1],
 				stubs: pickerStubsEmitting(2.1),
 			});
@@ -834,7 +835,55 @@ describe('NodeSettings', () => {
 			const node = workflowDocumentStore.getNodeByName(httpNode.name);
 			expect(node?.typeVersion).toBe(2.1);
 			expect(node?.parameters.mode).toBe('fast');
+
+			const banner = getByTestId('node-version-change-banner');
+			expect(banner).toHaveTextContent('Updated to version 2.1. All parameters are set.');
+			expect(banner.querySelector('details')).toBeNull();
 		});
+
+		it.each([
+			['the panel has no active node', null],
+			['another node is the active node', 'Other node'],
+		])('updates the node but keeps no version change when %s', async (_, activeNodeName) => {
+			const node = nodeOnVersion(1);
+			const { findByTestId, queryByTestId, workflowDocumentStore } = renderVersioned({
+				node,
+				props: { activeNode: node },
+				beforeMount: () => {
+					useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).activeNodeName =
+						activeNodeName;
+				},
+			});
+
+			await fireEvent.click(await findByTestId('node-version-select'));
+
+			expect(workflowDocumentStore.getNodeByName(httpNode.name)?.typeVersion).toBe(2);
+			expect(useNDVStore(workflowDocumentStore.documentId).nodeVersionChanges).toEqual({});
+			expect(queryByTestId('node-version-change-banner')).not.toBeInTheDocument();
+		});
+
+		it.each([true, false])(
+			'shows the banner of a stored version change only with the flag on: %s',
+			async (enabled) => {
+				versionPickerFlag.enabled = enabled;
+				const node = nodeOnVersion(1);
+				const { findByTestId, queryByTestId } = renderVersioned({
+					node,
+					beforeMount: () => {
+						useNDVStore(
+							createWorkflowDocumentId(useWorkflowsStore().workflowId),
+						).setNodeVersionChange(node.id, { setAside: [], changedDefaults: [], fromVersion: 1 });
+					},
+				});
+				await findByTestId('tab-params');
+
+				if (enabled) {
+					expect(queryByTestId('node-version-change-banner')).toBeInTheDocument();
+				} else {
+					expect(queryByTestId('node-version-change-banner')).not.toBeInTheDocument();
+				}
+			},
+		);
 
 		it('writes the default for a value that the new version does not accept', async () => {
 			const formatProperty = (options: string[]) => ({
@@ -918,6 +967,48 @@ describe('NodeSettings', () => {
 				});
 				expect(hiddenIssuesBefore).toBe('credentials,url,timeout');
 				expect(parameters).toHaveAttribute('data-hidden-issues', '');
+			});
+
+			it('keeps the version change with the version the node came from', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate();
+
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(node?.typeVersion).toBe(2);
+				expect(useNDVStore(workflowDocumentStore.documentId).nodeVersionChanges).toEqual({
+					[httpNode.id]: {
+						setAside: [],
+						changedDefaults: [
+							{ name: 'timeout', displayName: 'Timeout', oldDefault: 10, newDefault: 30 },
+						],
+						fromVersion: 1,
+					},
+				});
+			});
+
+			it('turns the banner green when the required parameter of that version gets a value', async () => {
+				const { getByTestId, findByText } = await renderAndUpdate();
+
+				const banner = getByTestId('node-version-change-banner');
+				expect(banner).toHaveTextContent(
+					'Updated to version 2. Set the highlighted parameters below.',
+				);
+				const [defaultsRow] = within(getByTestId('node-version-change-defaults')).getAllByRole(
+					'listitem',
+				);
+				expect(Array.from(defaultsRow.children, (part) => part.textContent)).toEqual([
+					'Timeout',
+					'10',
+					'→',
+					'30',
+				]);
+
+				ndvEventBus.emit('updateParameterValue', {
+					node: httpNode.name,
+					name: 'parameters.token',
+					value: 'x',
+				});
+
+				expect(await findByText(/All parameters are set\./)).toBeInTheDocument();
 			});
 		});
 

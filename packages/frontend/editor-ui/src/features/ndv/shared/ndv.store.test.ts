@@ -58,6 +58,70 @@ describe('ndv.store', () => {
 		expect(useNDVStore(createWorkflowDocumentId('wf-a')).activeNodeName).toBe('Node A');
 	});
 
+	describe('node version changes', () => {
+		const change = { setAside: [], changedDefaults: [], fromVersion: 1 };
+
+		const createStores = () => {
+			const id = createWorkflowDocumentId('wf-version-change');
+			return { ndvStore: useNDVStore(id), documentStore: useWorkflowDocumentStore(id) };
+		};
+
+		it('keeps one entry per node id', () => {
+			const { ndvStore } = createStores();
+
+			ndvStore.setNodeVersionChange('node-a', change);
+			ndvStore.setNodeVersionChange('node-b', { ...change, fromVersion: 2 });
+
+			expect(ndvStore.nodeVersionChanges).toEqual({
+				'node-a': change,
+				'node-b': { ...change, fromVersion: 2 },
+			});
+		});
+
+		it('clears every entry when the panel closes', () => {
+			const { ndvStore } = createStores();
+			ndvStore.setActiveNodeName('Node A', 'other');
+			ndvStore.setNodeVersionChange('node-a', change);
+			ndvStore.setNodeVersionChange('node-b', change);
+
+			ndvStore.unsetActiveNodeName();
+
+			expect(ndvStore.nodeVersionChanges).toEqual({});
+		});
+
+		it('clears every entry when the active version changes', async () => {
+			const { ndvStore, documentStore } = createStores();
+			ndvStore.setNodeVersionChange('node-a', change);
+
+			documentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+			await nextTick();
+
+			expect(ndvStore.nodeVersionChanges).toEqual({});
+		});
+
+		it('keeps the entry when the active version is set to the same id', async () => {
+			const { ndvStore, documentStore } = createStores();
+			documentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+			await nextTick();
+			ndvStore.setNodeVersionChange('node-a', change);
+
+			documentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+			await nextTick();
+
+			expect(ndvStore.nodeVersionChanges).toEqual({ 'node-a': change });
+		});
+
+		it('keeps the entry when the open node is renamed', () => {
+			const { ndvStore } = createStores();
+			ndvStore.setActiveNodeName('Node A', 'other');
+			ndvStore.setNodeVersionChange('node-a', change);
+
+			ndvStore.setActiveNodeName('Node A renamed', 'other');
+
+			expect(ndvStore.nodeVersionChanges).toEqual({ 'node-a': change });
+		});
+	});
+
 	describe('panel display mode', () => {
 		const map: RunDataDisplayModeContribution = {
 			id: 'map',
