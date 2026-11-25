@@ -53,6 +53,8 @@ const assistant = capabilityRegistry.use(capabilities.createMcpServerAssistantHa
 const projectId = computed(() => String(route.params.projectId));
 const serverId = computed(() => String(route.params.serverId));
 const permissions = computed(() => getMcpServerPermissions(projectId.value));
+/** The Assistant on this page changes the server, so a project viewer does not get it. */
+const canUseAssistant = computed(() => assistant.available.value && permissions.value.canUpdate);
 
 const server = ref<McpServerResponse | null>(null);
 const loading = ref(true);
@@ -355,7 +357,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 						</div>
 						<div :class="$style.actions">
 							<N8nButton
-								v-if="assistant.available.value"
+								v-if="canUseAssistant"
 								variant="outline"
 								size="small"
 								icon="n8n-assistant"

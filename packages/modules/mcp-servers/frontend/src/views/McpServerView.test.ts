@@ -137,6 +137,13 @@ describe('McpServerView', () => {
 			expect(screen.queryByTestId('stub-build')).not.toBeInTheDocument();
 		});
 
+		it('shows no "Assistant" to a project viewer', async () => {
+			provideAssistant();
+			await renderPage(VIEWER);
+
+			expect(screen.queryByTestId('mcp-server-assistant-button')).not.toBeInTheDocument();
+		});
+
 		it('docks the Assistant panel of the server beside the page', async () => {
 			provideAssistant();
 			await renderPage();
