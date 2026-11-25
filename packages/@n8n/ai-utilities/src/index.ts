@@ -18,6 +18,7 @@ export {
 	N8nLlmTracing,
 	anthropicTokensUsageParser,
 	openAiTokensUsageParser,
+	usageMetadataTokensUsageParser,
 } from './utils/n8n-llm-tracing';
 export { extractRespondingModel, toRunDataGeneration } from './utils/extract-responding-model';
 export { redactHeaderValues } from './utils/redact-headers';
@@ -143,4 +144,10 @@ export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/wind
 
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
-export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';
+export {
+	supplyModel,
+	getSuppliedModelOptions,
+	type SuppliedModel,
+	type SupplyModelOptions,
+	type OpenAiModel,
+} from './suppliers/supplyModel';

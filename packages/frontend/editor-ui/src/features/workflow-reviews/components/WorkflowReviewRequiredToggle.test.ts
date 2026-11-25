@@ -18,10 +18,11 @@ vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 
 const TestHost = defineComponent({
 	components: { N8nDropdownMenu, WorkflowReviewRequiredToggle },
+	props: { lockedBy: { type: String, default: null } },
 	template: `
 		<N8nDropdownMenu :default-open="true" :items="[{ id: 'action', label: 'Action' }]">
 			<template #footer>
-				<WorkflowReviewRequiredToggle workflow-id="workflow-1" />
+				<WorkflowReviewRequiredToggle workflow-id="workflow-1" :locked-by="lockedBy" />
 			</template>
 		</N8nDropdownMenu>
 	`,
@@ -104,6 +105,29 @@ describe('WorkflowReviewRequiredToggle', () => {
 		expect(store.isReviewRequired('workflow-2')).toBe(false);
 	});
 
+	it.each([
+		['instance', 'This policy is set by your instance admin.'],
+		['project', 'This policy is set by your project admin.'],
+	])(
+		'shows review as required and locked with the reason when the %s requires approval',
+		async (lockedBy, reason) => {
+			const pinia = createPinia();
+			const store = useReviewRequiredStore(pinia);
+			const { getByRole, findAllByText } = renderComponent({ pinia, props: { lockedBy } });
+			await userEvent.click(getByRole('button'));
+
+			const reviewItem = getByRole('menuitemcheckbox', { name: /Review required/ });
+			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
+			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
+			await userEvent.hover(reviewItem.parentElement!);
+			expect(await findAllByText(reason)).not.toHaveLength(0);
+
+			await userEvent.click(reviewItem);
+
+			expect(store.isReviewRequired('workflow-1')).toBe(false);
+		},
+	);
+
 	describe('with an open review', () => {
 		// Seed through fetchStatus — the store exposes its state read-only.
 		const seedOpenReview = async (pinia: Pinia) => {
@@ -121,6 +145,7 @@ describe('WorkflowReviewRequiredToggle', () => {
 			} as const;
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValueOnce({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [openReview],
 			});
 			await useWorkflowReviewStatusStore(pinia).fetchStatus('workflow-1');

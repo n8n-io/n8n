@@ -19,7 +19,7 @@ export class NetlifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Netlify Trigger',
 		name: 'netlifyTrigger',
-		icon: 'file:netlify.svg',
+		icon: { light: 'file:netlify.svg', dark: 'file:netlify.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',

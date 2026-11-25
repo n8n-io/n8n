@@ -6,6 +6,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationReason,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
@@ -73,6 +74,14 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.Transfer]: 'update',
 };
 
+/** Whether a user asked for the publication; records from before the `reason` column count as `publish`. */
+function isUserIntent(record: WorkflowPublicationOutbox): boolean {
+	const reason = record.reason ?? WorkflowPublicationReason.Publish;
+	return (
+		reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer
+	);
+}
+
 /** Removes every old trigger and adds every new one, so unchanged triggers also register again. */
 function replaceAllTriggers(oldTriggers: INode[], newTriggers: INode[]): TriggerDiff {
 	return {
@@ -108,6 +117,7 @@ export class WorkflowPublicationApplier {
 		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly workflowPublisherService: WorkflowPublisherService,
+		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -270,12 +280,21 @@ export class WorkflowPublicationApplier {
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
+				// A user publication keeps the full attempt budget even when a retry note exists.
+				let retriedNodeIds = new Set<INode['id']>();
+				if (!isUserIntent(record)) {
+					retriedNodeIds = await this.triggerStatusRepository.findRetriedTriggerNodeIds(
+						record.workflowId,
+						newVersion.versionId,
+					);
+				}
 				const outcome = await this.workflowTriggerActivator.activate(
 					workflow,
 					newVersion,
 					toAdd,
 					activationMode,
 					abort,
+					retriedNodeIds,
 				);
 				return withTeardownFailures(
 					this.classifyActivationOutcome(
@@ -649,11 +668,8 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
-		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		const isUserIntent =
-			reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer;
-		if (isUserIntent && oldVersion === null) return 'activate';
-		return ACTIVATION_MODE_BY_REASON[reason];
+		if (isUserIntent(record) && oldVersion === null) return 'activate';
+		return ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
 	}
 
 	/**
@@ -741,7 +757,11 @@ export class WorkflowPublicationApplier {
 			};
 		}
 
-		return { type: 'partial', triggerStatuses };
+		return {
+			type: 'partial',
+			triggerStatuses,
+			error: this.toActivationError(outcome.failures),
+		};
 	}
 
 	/**
@@ -780,7 +800,8 @@ export class WorkflowPublicationApplier {
 		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		return new Error(
+		return new AggregateError(
+			failures.map(({ error }) => error),
 			formatFailedActivationError(
 				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
 			),

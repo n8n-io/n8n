@@ -385,12 +385,16 @@ export class SourceControlImportService {
 		const remoteCredentialFilesRead = await mapInBatches(
 			remoteCredentialFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file) => {
+			async (file): Promise<ExportableCredential | undefined> => {
 				this.logger.debug(`Parsing credential file ${file}`);
-				const remote = jsonParse<ExportableCredential>(
-					await fsReadFile(file, { encoding: 'utf8' }),
-				);
-				return remote;
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				try {
+					return jsonParse<ExportableCredential>(fileContent);
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse credential from file ${file}: ${reason}`);
+					return undefined;
+				}
 			},
 		);
 
@@ -409,7 +413,7 @@ export class SourceControlImportService {
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
-			.filter((remote) => {
+			.filter((remote): remote is NonNullable<typeof remote> => {
 				if (!remote?.id) {
 					return false;
 				}
@@ -419,7 +423,9 @@ export class SourceControlImportService {
 				}
 				const owner = remote.ownedBy;
 				return (
-					!owner || context.hasAccessToAllProjects() || context.findAuthorizedProjectByOwner(owner)
+					!owner ||
+					context.hasAccessToAllProjects() ||
+					!!context.findAuthorizedProjectByOwner(owner)
 				);
 			})
 			.map((remote) => {
@@ -743,23 +749,32 @@ export class SourceControlImportService {
 		const remoteProjects = await mapInBatches(
 			remoteProjectFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file) => {
+			async (file): Promise<ExportableProjectWithFileName | undefined> => {
 				this.logger.debug(`Parsing project file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
-				const parsedProject = jsonParse<ExportableProject>(fileContent);
-
-				return {
-					...parsedProject,
-					filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
-				};
+				try {
+					const parsedProject = jsonParse<ExportableProject>(fileContent);
+					return {
+						...parsedProject,
+						filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
+					};
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse project from file ${file}: ${reason}`);
+					return undefined;
+				}
 			},
 		);
 
+		const remoteProjectsParsed = remoteProjects.filter(
+			(remoteProject): remoteProject is ExportableProjectWithFileName =>
+				remoteProject !== undefined,
+		);
 		if (context.hasAccessToAllProjects()) {
-			return remoteProjects;
+			return remoteProjectsParsed;
 		}
 
-		return remoteProjects.filter((remoteProject) => {
+		return remoteProjectsParsed.filter((remoteProject) => {
 			return context.findAuthorizedProjectByOwner(remoteProject.owner);
 		});
 	}
@@ -829,9 +844,6 @@ export class SourceControlImportService {
 		const folders = await this.folderRepository.find({ select: ['id'] });
 		const existingFolderIds = folders.map((f) => f.id);
 
-		const allSharedWorkflows = await this.sharedWorkflowRepository.findWithFields(candidateIds, {
-			select: ['workflowId', 'role', 'projectId'],
-		});
 		const importWorkflowsResult = [];
 
 		// Due to SQLite concurrency issues, we cannot save all workflows at once
@@ -844,7 +856,6 @@ export class SourceControlImportService {
 				autoPublish,
 				existingWorkflows,
 				existingFolderIds,
-				allSharedWorkflows,
 				personalProject,
 			);
 
@@ -862,7 +873,6 @@ export class SourceControlImportService {
 		autoPublish: AutoPublishMode,
 		existingWorkflows: WorkflowEntity[],
 		existingFolderIds: string[],
-		allSharedWorkflows: Array<{ workflowId: string; role: string; projectId: string }>,
 		personalProject: Project,
 	): Promise<WorkflowImportResult | undefined> {
 		this.logger.debug(`Importing workflow file ${candidate.file}`);
@@ -949,6 +959,7 @@ export class SourceControlImportService {
 			await this.preparePublishStateForImport(
 				existingWorkflow,
 				importedWorkflow,
+				versionId,
 				autoPublish,
 				userId,
 			);
@@ -973,10 +984,6 @@ export class SourceControlImportService {
 		// side effects (e.g. closing open review requests) ourselves.
 		const archivedByPull =
 			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
-
-		const localOwner = allSharedWorkflows.find(
-			(w) => w.workflowId === id && w.role === 'workflow:owner',
-		);
 
 		await this.workflowRepository.upsertImportedContent(
 			{
@@ -1009,14 +1016,13 @@ export class SourceControlImportService {
 			return;
 		}
 
-		await this.syncResourceOwnership({
-			resourceId: id,
-			remoteOwner: owner,
-			localOwner,
-			fallbackProject: personalProject,
-			repository: this.sharedWorkflowRepository,
-			targetOwnerProject,
-		});
+		const moved = await this.sharedWorkflowRepository.syncImportedWorkflowOwner(
+			id,
+			targetOwnerProject.id,
+		);
+		if (moved) {
+			await this.workflowMutationHooks.afterWorkflowsTransferred([id], null);
+		}
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
@@ -1115,9 +1121,7 @@ export class SourceControlImportService {
 
 		try {
 			this.logger.debug(`Publishing imported workflow id ${workflowId}`);
-			await this.workflowService.activateWorkflow(user, workflowId, {
-				versionId,
-			});
+			await this.workflowService.activateWorkflowFromSourceControlPull(user, workflowId, versionId);
 			return { success: true };
 		} catch (e) {
 			const error = ensureError(e);
@@ -1301,15 +1305,18 @@ export class SourceControlImportService {
 						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 					);
 
-					await this.syncResourceOwnership({
-						resourceId: credential.id,
-						remoteOwner: credential.ownedBy,
-						localOwner,
-						fallbackProject: personalProject,
-						repository: this.sharedCredentialsRepository,
+					if (localOwner && localOwner.projectId !== targetOwnerProject.id) {
+						await this.sharedCredentialsRepository.deleteByIds(
+							[credential.id],
+							localOwner.projectId,
+							transactionManager,
+						);
+					}
+					await this.sharedCredentialsRepository.makeOwner(
+						[credential.id],
+						targetOwnerProject.id,
 						transactionManager,
-						targetOwnerProject,
-					});
+					);
 				});
 
 				return {
@@ -2223,43 +2230,6 @@ export class SourceControlImportService {
 		return new UnexpectedError(message, { cause: error });
 	}
 
-	/**
-	 * Syncs ownership of a resource (workflow or credential) during import.
-	 * Handles ownership transfer by removing old ownership and assigning new ownership.
-	 */
-	private async syncResourceOwnership({
-		resourceId,
-		remoteOwner,
-		localOwner,
-		fallbackProject,
-		repository,
-		transactionManager,
-		targetOwnerProject,
-	}: {
-		resourceId: string;
-		remoteOwner: RemoteResourceOwner | null | undefined;
-		localOwner: { projectId: string } | undefined;
-		fallbackProject: Project;
-		repository: SharedWorkflowRepository | SharedCredentialsRepository;
-		transactionManager?: EntityManager;
-		targetOwnerProject?: Project;
-	}): Promise<Project> {
-		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
-
-		const trx = transactionManager ?? this.workflowRepository.manager;
-
-		// remove old ownership if it changed
-		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;
-		if (shouldRemoveOldOwner) {
-			await repository.deleteByIds([resourceId], localOwner.projectId, trx);
-		}
-
-		// Set new ownership
-		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
-
-		return targetOwnerProject;
-	}
-
 	private async resolveTargetOwnerProject(
 		remoteOwner: RemoteResourceOwner | null | undefined,
 		fallbackProject: Project,
@@ -2448,6 +2418,7 @@ export class SourceControlImportService {
 	 *
 	 * @param existingWorkflow - The existing workflow entity, if it exists
 	 * @param importedWorkflow - The workflow being imported (mutated by this method)
+	 * @param versionId - The version the import publishes
 	 * @param autoPublish - The auto-publish mode
 	 * @param userId - The ID of the user performing the import
 	 * @returns Object indicating whether to publish after import and any activation error
@@ -2455,6 +2426,7 @@ export class SourceControlImportService {
 	private async preparePublishStateForImport(
 		existingWorkflow: WorkflowEntity | undefined,
 		importedWorkflow: IWorkflowToImport,
+		versionId: string,
 		autoPublish: AutoPublishMode,
 		userId: string,
 	): Promise<{
@@ -2482,7 +2454,10 @@ export class SourceControlImportService {
 		let publishingErrorDetails: WorkflowPublishBlockedDetails | undefined;
 		if (mustUnpublishLocal && shouldAutoPublishRemote && existingWorkflow) {
 			try {
-				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id);
+				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id, {
+					versionId,
+					fromSourceControlPull: true,
+				});
 			} catch (error) {
 				if (!(error instanceof WorkflowPublishBlockedError)) throw error;
 

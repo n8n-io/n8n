@@ -94,6 +94,19 @@ describe('TypeORMObservationLogStore resume state', () => {
 		expect(await store.getResumeState(noCursorScope)).toBeNull();
 	});
 
+	it('keeps the stored working set when a cursor write has none', async () => {
+		await store.setCursor({ ...cursor, workingSet: 'Plan\n- [ ] Ship it' });
+		const moved = {
+			...cursor,
+			lastObservedMessageId: 'm3',
+			updatedAt: new Date('2026-01-01T00:00:04.000Z'),
+		};
+
+		await store.setCursor(moved);
+
+		expect(await store.getCursor(scope)).toEqual({ ...moved, workingSet: 'Plan\n- [ ] Ship it' });
+	});
+
 	it('saves over a cursor that an Observer commit moved', async () => {
 		await store.setCursor(cursor);
 		await store.saveResumeState(state);

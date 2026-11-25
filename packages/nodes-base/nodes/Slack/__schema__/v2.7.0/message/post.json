@@ -33,14 +33,7 @@
                                                     },
                                                     "style": {
                                                         "type": "object",
-                                                        "properties": {
-                                                            "bold": {
-                                                                "type": "boolean"
-                                                            },
-                                                            "italic": {
-                                                                "type": "boolean"
-                                                            }
-                                                        }
+                                                        "properties": {}
                                                     },
                                                     "text": {
                                                         "type": "string"
@@ -133,5 +126,5 @@
             "type": "boolean"
         }
     },
-    "version": 3
+    "version": 4
 }

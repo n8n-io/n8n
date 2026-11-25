@@ -658,6 +658,7 @@ export class ScalingService {
 						msg.sessionId,
 						msg.messageId,
 						msg.response,
+						msg.toolName,
 					);
 					break;
 				default:
@@ -690,7 +691,7 @@ export class ScalingService {
 						lastNodeExecuted: msg.lastNodeExecuted,
 						usedDynamicCredentials: msg.usedDynamicCredentials,
 						metadata: msg.metadata,
-						...(msg.failedBeforeStart && { failedBeforeStart: true }),
+						...(msg.failedBeforeStart && { failedBeforeStart: msg.failedBeforeStart }),
 						startedAt: new Date(msg.startedAt),
 						stoppedAt: new Date(msg.stoppedAt),
 						// Dropping `waitTill` here makes the caller mistake a waiting execution
@@ -739,6 +740,7 @@ export class ScalingService {
 		sessionId: string,
 		messageId: string,
 		response: unknown,
+		toolName?: string,
 	): Promise<void> {
 		try {
 			if (mcpType === 'service') {
@@ -787,7 +789,7 @@ export class ScalingService {
 						context: { executionId },
 					});
 
-					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult);
+					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult, toolName);
 				}
 			}
 		} catch (error) {

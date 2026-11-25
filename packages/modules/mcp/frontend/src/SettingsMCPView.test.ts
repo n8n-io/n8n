@@ -1,9 +1,10 @@
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import type { McpExposeAllOffer } from '@n8n/frontend-module-sdk';
+import type { McpExposeAllOffer, McpPreferencesEntryPoints } from '@n8n/frontend-module-sdk';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { Mock } from 'vitest';
 import {
 	createComponentRenderer,
@@ -119,6 +120,7 @@ const enableMcpSettings = () => {
 			mcpAccessEnabled: true,
 			mcpManagedByEnv: false,
 			autoExposeNewWorkflows: false,
+			preferencesEnabled: true,
 		},
 	};
 };
@@ -138,6 +140,7 @@ describe('SettingsMCPView', () => {
 
 		settingsStore.settings = {
 			enterprise: {},
+			aiPreferences: { enabled: true, managedByEnv: false },
 		} as FrontendSettings;
 
 		settingsStore.moduleSettings = {
@@ -145,6 +148,7 @@ describe('SettingsMCPView', () => {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			},
 		};
 
@@ -660,6 +664,7 @@ describe('SettingsMCPView', () => {
 					mcpAccessEnabled: false,
 					mcpManagedByEnv: true,
 					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
 				},
 			};
 
@@ -827,6 +832,220 @@ describe('SettingsMCPView', () => {
 				expect.anything(),
 				'Could not update setting',
 			);
+		});
+	});
+
+	describe('preferences switch', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+			mcpStore.preferencesEnabled = true;
+		});
+
+		it.each([true, false])(
+			'shows the saved value %s to a user with mcp:manage',
+			async (preferencesEnabled) => {
+				mcpStore.preferencesEnabled = preferencesEnabled;
+
+				const { getByTestId } = createComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute(
+					'aria-checked',
+					String(preferencesEnabled),
+				);
+				expect(getByTestId('mcp-preferences-toggle')).not.toBeDisabled();
+			},
+		);
+
+		it('hides the switch from a user without mcp:manage', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('mcp-context-section')).toBeNull();
+		});
+
+		it('saves the new value', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('mcp-preferences-toggle'));
+			await waitAllPromises();
+
+			expect(mcpStore.setPreferencesEnabled).toHaveBeenCalledWith(false);
+		});
+
+		it('shows a toast error when saving fails', async () => {
+			mcpStore.setPreferencesEnabled.mockRejectedValueOnce(new Error('nope'));
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('mcp-preferences-toggle'));
+			await waitAllPromises();
+
+			expect(useToast().showError).toHaveBeenCalledWith(
+				expect.anything(),
+				'Could not update setting',
+			);
+		});
+
+		it('shows Preferences as off and disabled while the global preferences switch is off', async () => {
+			settingsStore.settings = {
+				enterprise: {},
+				aiPreferences: { enabled: false, managedByEnv: false },
+			} as FrontendSettings;
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
+		});
+
+		it('disables the switch when MCP settings are managed by env', async () => {
+			mcpStore.mcpManagedByEnv = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
+		});
+
+		it.each([true, false])(
+			'shows the enterprise readiness badge only on the enterprise plan: %s',
+			async (isEnterprisePlan) => {
+				settingsStore.isEnterprisePlan = isEnterprisePlan;
+
+				const { queryAllByTestId } = createComponent({ pinia });
+				await waitAllPromises();
+
+				expect(queryAllByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveLength(
+					isEnterprisePlan ? 1 : 0,
+				);
+			},
+		);
+	});
+
+	describe('preferences entry points experiment', () => {
+		let entryPoints: MockProxy<McpPreferencesEntryPoints>;
+
+		const provideEntryPoints = (
+			entryPoint: ReturnType<McpPreferencesEntryPoints['entryPoint']>,
+			preferenceCount = 0,
+		) => {
+			entryPoints = mock<McpPreferencesEntryPoints>();
+			entryPoints.entryPoint.mockReturnValue(entryPoint);
+			entryPoints.isBannerDismissed.mockReturnValue(false);
+			entryPoints.fetchPreferenceCount.mockResolvedValue(preferenceCount);
+			capabilityRegistry.provide(capabilities.mcpPreferencesEntryPoints, entryPoints);
+		};
+
+		beforeEach(() => {
+			enableMcpSettings();
+			mcpStore.preferencesEnabled = true;
+		});
+
+		it('tracks exposure and shows no entry point for control', async () => {
+			provideEntryPoints(undefined);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(entryPoints.trackExposure).toHaveBeenCalled();
+			expect(entryPoints.fetchPreferenceCount).not.toHaveBeenCalled();
+			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
+			expect(queryByTestId('mcp-preferences-connection-row')).toBeNull();
+		});
+
+		it('tracks exposure again when the assigned variant arrives after mount', async () => {
+			const variant = ref<string>();
+			provideEntryPoints(undefined);
+			entryPoints.trackExposure.mockImplementation(() => {
+				void variant.value;
+			});
+
+			createComponent({ pinia });
+			await waitAllPromises();
+			variant.value = 'control';
+			await nextTick();
+
+			expect(entryPoints.trackExposure).toHaveBeenCalledTimes(2);
+		});
+
+		it('shows the banner to a user without preferences and opens the preferences page', async () => {
+			provideEntryPoints('banner', 0);
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(entryPoints.fetchPreferenceCount).toHaveBeenCalled();
+			await userEvent.click(getByTestId('mcp-preferences-banner-button'));
+
+			expect(entryPoints.trackEntryPointClicked).toHaveBeenCalledWith('banner');
+			expect(routerPush).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+		});
+
+		it('dismisses the banner', async () => {
+			provideEntryPoints('banner', 0);
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+			await userEvent.click(getByTestId('mcp-preferences-banner-dismiss'));
+
+			expect(entryPoints.dismissBanner).toHaveBeenCalled();
+		});
+
+		it('hides the banner from a user with preferences', async () => {
+			provideEntryPoints('banner', 2);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
+		});
+
+		it('does not load the count after the user dismissed the banner', async () => {
+			provideEntryPoints('banner', 0);
+			entryPoints.isBannerDismissed.mockReturnValue(true);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(entryPoints.fetchPreferenceCount).not.toHaveBeenCalled();
+			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
+		});
+
+		it.each([
+			[0, 'Tell connected clients how you like to build, like which nodes to avoid.', 'Set up'],
+			[3, 'Connected clients follow your 3 preferences when they build with you.', 'Manage'],
+		])('shows the connection row for %s preferences', async (count, description, buttonLabel) => {
+			provideEntryPoints('connection_row', count);
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			const row = getByTestId('mcp-preferences-connection-row');
+			expect(row).toHaveTextContent(description);
+			await userEvent.click(within(row).getByRole('button', { name: buttonLabel }));
+
+			expect(entryPoints.trackEntryPointClicked).toHaveBeenCalledWith('connection_row');
+			expect(routerPush).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+		});
+
+		it('hides the connection row and shows a toast error when the count does not load', async () => {
+			provideEntryPoints('connection_row');
+			entryPoints.fetchPreferenceCount.mockRejectedValueOnce(new Error('nope'));
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(useToast().showError).toHaveBeenCalledWith(
+				expect.anything(),
+				'Could not load preferences',
+			);
+			expect(queryByTestId('mcp-preferences-connection-row')).toBeNull();
 		});
 	});
 });

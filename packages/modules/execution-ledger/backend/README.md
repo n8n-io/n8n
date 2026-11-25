@@ -9,6 +9,10 @@ binds `ExecutionLedgerRowWriter` to that service. When the module is off, the se
 nothing. The writer records workflow runs only (`entityType = workflow`). Agent messages have no
 execution row and get their own hook in a later ticket.
 
+A row has a null `projectId` when the workflow has no owner project. The `ExecutionLedger` service
+also logs an error for it. A fold step that counts for each project must skip the row. A fold step
+that counts for the instance must include it.
+
 Every 5 seconds, the `execution-ledger-fold` system task claims a batch of rows and runs every
 registered fold step on it, in one transaction with a savepoint for each step. When a step fails,
 the whole batch rolls back and stays in the ledger. When no step is registered, the fold does not

@@ -54,7 +54,8 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
  * trigger-status rows recorded for a version other than the active one, and
  * published workflows with no trigger-status rows at all (also the expected
  * state for anything published before the service was enabled). All heal
- * through the same enqueue path.
+ * through the same enqueue path, as does a failed publication whose retry
+ * note is due.
  */
 @Service()
 export class WorkflowPublicationReconciler {
@@ -146,29 +147,40 @@ export class WorkflowPublicationReconciler {
 				const startedAt = Date.now();
 				try {
 					const surplus = await this.removeGhostTriggers(await this.findSurplusWorkflowIds());
-					const missing = await this.republishWorkflows(
+					const enqueuedThisPass = new Set<WorkflowId>();
+					const republish = async (
+						workflowIds: WorkflowId[],
+						logMessage: string,
+					): Promise<number> => {
+						for (const workflowId of workflowIds) enqueuedThisPass.add(workflowId);
+						return await this.republishWorkflows(workflowIds, logMessage, reason);
+					};
+
+					const missing = await republish(
 						await this.findMissingActiveWorkflows(),
 						'Re-publishing workflows with missing in-memory triggers',
-						reason,
 					);
 					// After the missing-trigger drain, so workflows that pass already
 					// converged are not re-detected (and double-counted) as skewed.
-					const versionSkew = await this.republishWorkflows(
+					const versionSkew = await republish(
 						await this.outboxRepository.findVersionSkewedWorkflowIds(),
 						'Re-enqueuing workflows whose published version diverged from the active version',
-						reason,
 					);
 					// Also after the earlier drains, for the same reason: rows those
 					// passes already converged must not be re-detected here.
-					const statusDrift = await this.republishWorkflows(
+					const statusDrift = await republish(
 						await this.outboxRepository.findTriggerStatusDriftedWorkflowIds(),
 						'Re-enqueuing workflows whose trigger-status rows lag the active version',
-						reason,
 					);
-					const unreported = await this.republishWorkflows(
+					const unreported = await republish(
 						await this.outboxRepository.findUnreportedPublishedWorkflowIds(),
 						'Re-enqueuing published workflows that no publication reported trigger statuses for',
-						reason,
+					);
+					// Last, so dead workflows never delay healthy ones; a workflow an
+					// earlier step already tried in this pass gets no second attempt.
+					await republish(
+						(await this.findRetryWorkflowIds(reason)).filter((id) => !enqueuedThisPass.has(id)),
+						'Retrying failed publications on their backoff schedule',
 					);
 
 					span.setAttribute('n8n.publication.deficient_workflows', missing);
@@ -287,6 +299,18 @@ export class WorkflowPublicationReconciler {
 		}
 
 		return missing;
+	}
+
+	/**
+	 * A restart or takeover pass retries every scheduled retry once; an interval
+	 * pass takes only due ones, within the worker pool's free capacity.
+	 */
+	private async findRetryWorkflowIds(reason: WorkflowPublicationReason): Promise<WorkflowId[]> {
+		return reason === WorkflowPublicationReason.Reconcile
+			? await this.outboxRepository.findRetryDueWorkflowIds(
+					this.workflowsConfig.workflowPublicationConcurrency,
+				)
+			: await this.outboxRepository.findRetryScheduledWorkflowIds();
 	}
 
 	private async republishWorkflows(

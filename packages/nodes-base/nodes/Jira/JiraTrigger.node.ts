@@ -150,6 +150,7 @@ export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Trigger',
 		name: 'jiraTrigger',
+		schemaPath: 'Jira',
 		icon: 'file:jira.svg',
 		group: ['trigger'],
 		version: [1, 1.1],

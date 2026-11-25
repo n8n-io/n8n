@@ -47,6 +47,10 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
+// Clear .home horizontal padding (8px expanded, 6px collapsed) + 1px sidebar border + 4px gap
+// so the popover and its caret sit outside the sidebar border.
+const SIDEBAR_HINT_SIDE_OFFSET_EXPANDED = 13;
+const SIDEBAR_HINT_SIDE_OFFSET_COLLAPSED = 11;
 
 type Props = {
 	collapsed: boolean;
@@ -275,6 +279,9 @@ onBeforeUnmount(() => {
 				:title="locale.baseText('agents.n8nChatHint.newChatSidebar.title')"
 				:body="locale.baseText('agents.n8nChatHint.newChatSidebar.body')"
 				side="right"
+				:side-offset="
+					props.collapsed ? SIDEBAR_HINT_SIDE_OFFSET_COLLAPSED : SIDEBAR_HINT_SIDE_OFFSET_EXPANDED
+				"
 			>
 				<N8nMenuItem
 					:item="instanceAi"

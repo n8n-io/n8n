@@ -14,9 +14,14 @@ import {
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type StepOutputSources,
 	type StepStatus,
 } from '../execution/execution.types';
-import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
+import {
+	DEFAULT_STALENESS_THRESHOLDS,
+	nextQueuedStaleAfter,
+	type StalenessThresholds,
+} from '../execution/staleness';
 import {
 	StepNotFoundError,
 	type DueStep,
@@ -198,14 +203,19 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
+				outputSources: null,
 				waitDeclaration: row.wait_declaration,
 				resumeCause: row.resume_cause,
 			};
 		});
 	}
 
-	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
-		return await this.transition(id, 'running', 'completed', { outputs });
+	async completeStep(
+		id: string,
+		outputs: StepSlots,
+		outputSources: StepOutputSources | null,
+	): Promise<boolean> {
+		return await this.transition(id, 'running', 'completed', { outputs, outputSources });
 	}
 
 	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
@@ -318,7 +328,7 @@ export class TypeOrmStepStore implements StepStore {
 	async renewQueuedStep(id: string, staleAfter: Date): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, status: 'queued', staleAfter },
-			{ staleAfter: this.staleAfterFor('queued') },
+			{ staleAfter: nextQueuedStaleAfter(staleAfter, Date.now(), this.staleness.queuedMs) },
 		);
 		return result.affected === 1;
 	}
@@ -394,6 +404,7 @@ export class TypeOrmStepStore implements StepStore {
 		to: StepStatus,
 		fields: {
 			outputs?: StepSlots;
+			outputSources?: StepOutputSources | null;
 			error?: StepError;
 			waitDeclaration?: WaitDeclaration;
 			waitTill?: Date | null;

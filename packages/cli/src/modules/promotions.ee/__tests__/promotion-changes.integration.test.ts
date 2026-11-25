@@ -49,6 +49,7 @@ import {
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { TagService } from '@/services/tag.service';
+import { createAgent } from '@test-integration/db/agents';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -185,13 +186,7 @@ async function exportPreviewBaseline(environment: PromotionEnvironment, owner: U
 
 /** The source a preview reports for an environment created by `createInstanceEnvironments`. */
 function sourceOf(environment: PromotionEnvironment) {
-	return {
-		environmentId: environment.id,
-		environmentName: environment.name,
-		providerType: 'git',
-		branchName: 'main',
-		...(environment.direction === 'promote' ? { createBranchOnPromotion: false } : {}),
-	};
+	return { environmentId: environment.id, branchName: 'main' };
 }
 
 /** The resources that the operation changes. Unchanged resources only give context. */
@@ -233,21 +228,19 @@ it.each(['whole', 'selection'] as const)(
 			project,
 		);
 		const agents = Container.get(AgentRepository);
-		await agents.save([
-			{
-				id: 'active-agent',
-				name: 'Active Agent',
-				projectId: project.id,
-				parentFolderId: nested.id,
-			},
-			{
-				id: 'archived-agent',
-				name: 'Archived Agent',
-				projectId: project.id,
-				parentFolderId: agentFolder.id,
-				isArchived: true,
-			},
-		]);
+		await createAgent({
+			id: 'active-agent',
+			name: 'Active Agent',
+			projectId: project.id,
+			parentFolderId: nested.id,
+		});
+		await createAgent({
+			id: 'archived-agent',
+			name: 'Archived Agent',
+			projectId: project.id,
+			parentFolderId: agentFolder.id,
+			isArchived: true,
+		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		const service = Container.get(PromotionsService);
 		const options = { commitMessage: 'Workflow changes' };
@@ -333,9 +326,11 @@ it("previews against the project's environment, not the instance one", async () 
 		.expect(200);
 	expect(linkedPreview.body.source).toEqual({
 		environmentId: projectPromote.id,
-		environmentName: 'Project',
-		providerType: 'git',
 		branchName: 'production',
+	});
+	expect(linkedPreview.body.environment).toEqual({
+		name: 'Project',
+		providerType: 'git',
 		createBranchOnPromotion: false,
 	});
 	const otherPreview = await agent
@@ -347,7 +342,7 @@ it("previews against the project's environment, not the instance one", async () 
 it('lists new, changed, moved, archived, restored and deleted workflows through the endpoint', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Preview', owner);
-	await Container.get(AgentRepository).save({
+	await createAgent({
 		id: 'local-agent',
 		name: 'Local Agent',
 		projectId: project.id,
@@ -1027,7 +1022,23 @@ describe('resources in the preview', () => {
 		expect(await promoteShown(beforePromotion)).toEqual(stopped);
 		expect(await remoteHead()).toBe(promotedHead);
 
-		expect(await promoteShown(await loadPreview())).toMatchObject({ status: 'promoted' });
+		// An admin turns on a new branch for each Promote during the review. The confirmation
+		// named the base branch as the target, so the Promote stops.
+		const environmentRepository = Container.get(PromotionEnvironmentRepository);
+		const { id, providerId } = environments.promote;
+		const promoteSettings = (createBranchOnPromotion: boolean) => ({
+			settings: { schemaVersion: 1 as const, baseBranchName: 'main', createBranchOnPromotion },
+		});
+		const beforeSetting = await loadPreview();
+		await environmentRepository.updateEnvironment(id, providerId, promoteSettings(true), {});
+		expect(await promoteShown(beforeSetting)).toEqual(stopped);
+		expect(await remoteHead()).toBe(promotedHead);
+		await environmentRepository.updateEnvironment(id, providerId, promoteSettings(false), {});
+
+		// A rename only labels the preview, so the Promote goes ahead.
+		const beforeRename = await loadPreview();
+		await environmentRepository.updateEnvironment(id, providerId, { name: 'Production' }, {});
+		expect(await promoteShown(beforeRename)).toMatchObject({ status: 'promoted' });
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
@@ -1429,5 +1440,54 @@ describe('resources in the preview', () => {
 				after: expect.objectContaining({ name: 'Invoice' }),
 			}),
 		]);
+	}, 30_000);
+
+	it('fetches the commit of a change list that another main served', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Finance', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		// Another clone pushes, so this main's checkout is older than the branch.
+		await exportPreviewBaseline(environments.apply, owner);
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Invoice local' });
+		const key = `workflow:${workflow.id}`;
+		const commitSha = await remoteHead();
+
+		const { body } = await server
+			.publicApiAgentWithCookie(owner)
+			.post(`/promotions/projects/${project.id}/changes/apply/details`)
+			.send({ commitSha, keys: [key] })
+			.expect(200);
+
+		expect(body.details).toEqual([
+			expect.objectContaining({
+				key,
+				before: expect.objectContaining({ name: 'Invoice local' }),
+				after: expect.objectContaining({ name: 'Invoice' }),
+			}),
+		]);
+	}, 30_000);
+
+	it('fails with 400 when the branch does not hold the commit of the change list', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Finance', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		// A commit that the remote never received, as after a force-push.
+		const { dir, git } = await (sourceFixture ??= createSourceFixture());
+		await writeFile(path.join(dir, 'README.md'), '# Workflows\n');
+		await git.add('README.md').commit('Not pushed');
+		const commitSha = (await git.revparse(['HEAD'])).trim();
+
+		const { body } = await server
+			.publicApiAgentWithCookie(owner)
+			.post(`/promotions/projects/${project.id}/changes/apply/details`)
+			.send({ commitSha, keys: [`workflow:${workflow.id}`] })
+			.expect(400);
+
+		expect(body.message).toBe(
+			'The branch no longer has the commit of the preview. Load the preview again.',
+		);
 	}, 30_000);
 });

@@ -96,8 +96,17 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
-	'skill:read': ['search_n8n_skills', 'get_skill'],
-	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
+	'skill:read': ['search_n8n_skills', 'get_skill', 'list_skill_sources'],
+	'skill:write': [
+		'create_skill',
+		'update_skill',
+		'delete_skill',
+		'search_n8n_skills',
+		'get_skill',
+		'list_skill_sources',
+		'discover_skill_source',
+		'import_skills_from_source',
+	],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
@@ -236,6 +245,13 @@ export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 export const SKILL_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['skill:read'],
 	...TOOLS_BY_SCOPE['skill:write'],
+]);
+
+/** Registered only while Skill Sync is on. */
+export const SKILL_SOURCE_TOOLS: ReadonlySet<string> = new Set([
+	'list_skill_sources',
+	'discover_skill_source',
+	'import_skills_from_source',
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

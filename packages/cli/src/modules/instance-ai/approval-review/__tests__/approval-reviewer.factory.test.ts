@@ -85,7 +85,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 				decision: 'approve',
 				reason: 'The user asked to publish it.',
 			});
-			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 30, resourceId: 'user-1' });
+			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 200, resourceId: 'user-1' });
 			expect(judgeApproval).toHaveBeenCalledWith(
 				{
 					conversation: [{ role: 'user', text: 'Publish Lead router' }],
@@ -175,7 +175,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 
 		it('tells the judge when it read only the newest messages of the thread', async () => {
 			getMessages.mockResolvedValue(
-				Array.from({ length: 30 }, () => ({
+				Array.from({ length: 200 }, () => ({
 					role: 'user',
 					content: [{ type: 'text', text: 'Publish Lead router' }],
 				})),
@@ -362,6 +362,62 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 			const [, properties] = telemetry.track.mock.calls[0];
 			expect(properties).toMatchObject({ judge_duration_ms: 5 });
 			expect(properties?.review_duration_ms).toBeGreaterThanOrEqual(25);
+		});
+
+		it('records the decision in the trace that the run has when it reviews', async () => {
+			const startChildRun = vi.fn(async () => ({ id: 'review-run' }));
+			let tracing: InstanceAiTraceContext | undefined;
+			const reviewer = createReviewer({ getTracing: () => tracing });
+			// A resumed run has a new trace. The host attaches it after it builds the reviewer.
+			tracing = {
+				actorRun: { id: 'actor-run' },
+				startChildRun,
+				finishRun: vi.fn(async () => {}),
+			} as unknown as InstanceAiTraceContext;
+
+			await reviewer.onReviewed(approval, {
+				decision: 'ask',
+				decidedBy: 'rule',
+				reason: 'Auto mode always asks you to confirm this action.',
+				route: 'always-ask',
+			});
+
+			expect(startChildRun).toHaveBeenCalledWith(
+				{ id: 'actor-run' },
+				expect.objectContaining({
+					name: 'approval: review',
+					metadata: {
+						tool_name: 'publish_workflow',
+						tool_call_id: 'call-1',
+						approval_route: 'always-ask',
+						approval_decision: 'ask',
+						approval_decided_by: 'rule',
+						approval_judge_failed: false,
+					},
+				}),
+			);
+		});
+
+		it('keeps the review when the trace fails', async () => {
+			const tracing = {
+				actorRun: { id: 'actor-run' },
+				startChildRun: vi.fn(async () => await Promise.reject(new Error('trace down'))),
+			} as unknown as InstanceAiTraceContext;
+			const reviewer = createReviewer({ getTracing: () => tracing });
+
+			await expect(
+				reviewer.onReviewed(approval, {
+					decision: 'approve',
+					decidedBy: 'rule',
+					reason: 'Low-risk action that is easy to undo.',
+					route: 'low-risk',
+				}),
+			).resolves.toBeUndefined();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.APPROVAL_DECIDED_IN_AUTO_MODE,
+				expect.objectContaining({ route: 'low-risk', decision: 'approve' }),
+			);
 		});
 
 		it('tracks a judge that failed', async () => {

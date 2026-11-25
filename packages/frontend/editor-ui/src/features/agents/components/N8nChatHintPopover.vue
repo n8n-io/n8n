@@ -16,8 +16,9 @@ const props = withDefaults(
 		agentId?: string;
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		align?: 'start' | 'center' | 'end';
+		sideOffset?: number;
 	}>(),
-	{ agentId: undefined, side: 'bottom', align: 'start' },
+	{ agentId: undefined, side: 'bottom', align: 'start', sideOffset: undefined },
 );
 
 const i18n = useI18n();
@@ -52,6 +53,7 @@ function dismiss() {
 		:open="open"
 		:side="props.side"
 		:align="props.align"
+		:side-offset="props.sideOffset"
 		show-arrow
 		:enable-scrolling="false"
 		suppress-auto-focus

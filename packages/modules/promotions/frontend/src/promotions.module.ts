@@ -2,6 +2,7 @@ import type { PromotionDirection } from '@n8n/api-types';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { capabilities, capabilityRegistry, defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
 
@@ -35,13 +36,22 @@ const projectScopes = (projectId: string) => {
 
 // Users who cannot promote or apply see no promotions UI, so a direct link leads home.
 // Apply from a project role ships with LIGO-1476. Until then only the instance role counts.
-const requireOperationScope = (direction: PromotionDirection) => (to: RouteLocationNormalized) => {
-	const canOperate =
-		direction === 'promote'
-			? projectScopes(String(to.params.projectId)).includes('promotions:promote')
-			: useRBACStore().hasScope('promotions:apply');
-	return (isPromotionsEnabled() && canOperate) || { name: VIEWS.HOMEPAGE };
-};
+const requireOperationScope =
+	(direction: PromotionDirection, otherScopes: Scope[] = []) =>
+	(to: RouteLocationNormalized) => {
+		const required: Scope[] = [
+			direction === 'promote' ? 'promotions:promote' : 'promotions:apply',
+			...otherScopes,
+		];
+		let canOperate: boolean;
+		if (direction === 'promote') {
+			const scopes = projectScopes(String(to.params.projectId));
+			canOperate = required.every((scope) => scopes.includes(scope));
+		} else {
+			canOperate = useRBACStore().hasScope(required, {}, { mode: 'allOf' });
+		}
+		return (isPromotionsEnabled() && canOperate) || { name: VIEWS.HOMEPAGE };
+	};
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
@@ -66,7 +76,8 @@ const instanceApplyRoute: RouteRecordRaw = {
 	component: PreviewView,
 	props: { direction: 'apply' },
 	meta: { middleware: ['authenticated', 'custom'] },
-	beforeEnter: requireOperationScope('apply'),
+	// Unlike a project preview, this page lists the instance environments.
+	beforeEnter: requireOperationScope('apply', ['promotions:readEnvironments']),
 };
 
 export const PromotionsModule = defineFrontendModule({

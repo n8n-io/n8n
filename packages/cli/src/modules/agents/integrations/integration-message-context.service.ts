@@ -1,5 +1,6 @@
 import type { ToolContext } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
@@ -99,7 +100,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		if (derivedThreadId === origin.threadId) return;
 		// The first task to message a thread keeps the binding. Every task still
 		// records what it sent, so the reply turn sees all of it.
-		const existing = await this.resolveSession(derivedThreadId);
+		const existing = await this.resolveLiveBinding(derivedThreadId);
 		await this.recordRecipient(
 			origin.threadId,
 			options.recipientId ?? derivedThreadId,
@@ -112,10 +113,14 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	}
 
 	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
-		const binding = await this.resolveSession(derivedThreadId);
+		const binding = await this.readBinding(derivedThreadId);
 		if (!binding) return null;
-		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const origin = await this.threadRepository.findOneBy({ id: binding.threadId });
+		if (!origin) {
+			await this.clearBinding(derivedThreadId, binding.threadId);
+			return null;
+		}
+		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const originMetadata = this.parseMetadata(origin?.metadata);
 		const bound = this.readBoundThreads(originMetadata[BOUND_THREADS_METADATA_KEY]);
 		const recipient = bound[derivedThreadId] ?? derivedThreadId;
@@ -137,7 +142,26 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		};
 	}
 
+	/**
+	 * The session that the thread is bound to. A binding to a deleted session
+	 * counts as no binding, so a missed cleanup does not route replies there.
+	 */
 	async resolveSession(derivedThreadId: string): Promise<SessionBinding | null> {
+		const binding = await this.readBinding(derivedThreadId);
+		if (!binding) return null;
+		return (await this.threadRepository.existsBy({ id: binding.threadId })) ? binding : null;
+	}
+
+	/** Like {@link resolveSession}, and also clears a binding to a deleted session. */
+	private async resolveLiveBinding(derivedThreadId: string): Promise<SessionBinding | null> {
+		const binding = await this.readBinding(derivedThreadId);
+		if (!binding) return null;
+		if (await this.threadRepository.existsBy({ id: binding.threadId })) return binding;
+		await this.clearBinding(derivedThreadId, binding.threadId);
+		return null;
+	}
+
+	private async readBinding(derivedThreadId: string): Promise<SessionBinding | null> {
 		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const value = this.parseMetadata(thread?.metadata)[CONTINUE_AS_METADATA_KEY];
 		return isSessionBinding(value) ? value : null;
@@ -192,7 +216,8 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	}
 
 	async unbindSession(derivedThreadId: string): Promise<void> {
-		const binding = await this.resolveSession(derivedThreadId);
+		// Read the stored binding, so a binding to a deleted session is cleared too.
+		const binding = await this.readBinding(derivedThreadId);
 		// A rebind may have changed the binding since it was read. Clear only the
 		// state that was read, and touch the origin map only when it was cleared.
 		let cleared = false;
@@ -214,32 +239,47 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		if (cleared && binding) await this.removeBoundThread(binding.threadId, derivedThreadId);
 	}
 
-	async clearSessionBindings(originThreadId: string): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
-		const bound = this.readBoundThreads(
-			this.parseMetadata(existing?.metadata)[BOUND_THREADS_METADATA_KEY],
-		);
-		const derivedThreadIds = Object.keys(bound);
-		if (derivedThreadIds.length === 0) return;
-		for (const id of derivedThreadIds) await this.clearBinding(id);
-		await this.threadRepository.patchThread(
-			originThreadId,
-			(row) => ({
-				metadata: JSON.stringify({
-					...this.parseMetadata(row.metadata),
-					[BOUND_THREADS_METADATA_KEY]: {},
-				}),
-			}),
-			{},
+	/**
+	 * The threads that the task session holds a binding on. Read this before the
+	 * task thread is deleted, because the list is stored on that thread.
+	 */
+	async findBoundThreadIds(originThreadId: string, ctx: OperationContext): Promise<string[]> {
+		const metadata = await this.threadRepository.findMetadataById(originThreadId, ctx);
+		return Object.keys(
+			this.readBoundThreads(this.parseMetadata(metadata)[BOUND_THREADS_METADATA_KEY]),
 		);
 	}
 
-	/** Drops the binding and the task messages that waited for a reply. */
-	private async clearBinding(derivedThreadId: string): Promise<void> {
-		await this.writeMetadata(derivedThreadId, undefined, {
-			[CONTINUE_AS_METADATA_KEY]: undefined,
-			[OUTBOUND_METADATA_KEY]: undefined,
-		});
+	/**
+	 * Unbinds the given threads from a task session that was deleted. A thread
+	 * that is now bound to a different session keeps that binding.
+	 */
+	async clearSessionBindings(originThreadId: string, boundThreadIds: string[]): Promise<void> {
+		for (const id of boundThreadIds) await this.clearBinding(id, originThreadId);
+	}
+
+	/**
+	 * Drops the binding and the task messages that waited for a reply. A thread
+	 * that is now bound to a different session keeps that binding.
+	 */
+	private async clearBinding(derivedThreadId: string, originThreadId: string): Promise<void> {
+		// `patchThread` skips a thread that no longer exists, so no empty row is created.
+		await this.threadRepository.patchThread(
+			derivedThreadId,
+			(row) => {
+				const metadata = this.parseMetadata(row.metadata);
+				const binding = metadata[CONTINUE_AS_METADATA_KEY];
+				if (!isSessionBinding(binding) || binding.threadId !== originThreadId) return null;
+				return {
+					metadata: JSON.stringify({
+						...metadata,
+						[CONTINUE_AS_METADATA_KEY]: undefined,
+						[OUTBOUND_METADATA_KEY]: undefined,
+					}),
+				};
+			},
+			{},
+		);
 	}
 
 	private async removeBoundThread(originThreadId: string, derivedThreadId: string): Promise<void> {

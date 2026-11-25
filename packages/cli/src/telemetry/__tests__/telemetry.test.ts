@@ -45,7 +45,7 @@ describe('Telemetry', () => {
 	let postHog: PostHogClient;
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
-	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId, installId: undefined });
 	const globalConfig = mock<GlobalConfig>({
 		diagnostics: { enabled: true },
 		logging: { level: 'info', outputs: ['console'] },
@@ -527,6 +527,25 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_crashed).toBeUndefined();
 			expect(execBuffer['2'].manual_crashed).toBeUndefined();
 		});
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep counts for workflow id "%s" as an own entry',
+			(workflowId) => {
+				telemetry.trackWorkflowExecution({
+					workflow_id: workflowId,
+					is_manual: true,
+					success: true,
+				});
+
+				const execBuffer = telemetry.getCountsBuffer();
+				expect(Object.hasOwn(execBuffer, workflowId)).toBe(true);
+				// A fresh entry, not a built-in reached through the key.
+				expect(Object.getPrototypeOf(execBuffer[workflowId])).toBe(Object.prototype);
+				expect(execBuffer[workflowId].manual_success?.count).toBe(1);
+				expect(Object.hasOwn(Object.prototype, 'manual_success')).toBe(false);
+				expect(Object.hasOwn(Object, 'manual_success')).toBe(false);
+			},
+		);
 	});
 
 	describe('trackApiInvocation', () => {
@@ -572,7 +591,7 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
 			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
 			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
-			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, n8n_node: 0, other: 3 });
+			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 3 });
 		});
 
 		test('should count calls per route, result and caller', () => {
@@ -653,8 +672,8 @@ describe('Telemetry', () => {
 		test.each([
 			{
 				client: 'editor_ui',
-				clients: { editor_ui: 1, n8n_node: 0, other: 2 },
-				endpointsByClient: { editor_ui: { 'GET /workflows': 1 }, n8n_node: {} },
+				clients: { editor_ui: 1, n8n_node: 0, n8n_cli: 0, other: 2 },
+				endpointsByClient: { editor_ui: { 'GET /workflows': 1 }, n8n_node: {}, n8n_cli: {} },
 				routes: [
 					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					{ route: 'GET /workflows', result: '2xx', caller: 'editor_ui', calls: 1 },
@@ -663,11 +682,21 @@ describe('Telemetry', () => {
 			},
 			{
 				client: 'n8n_node',
-				clients: { editor_ui: 0, n8n_node: 1, other: 2 },
-				endpointsByClient: { editor_ui: {}, n8n_node: { 'GET /workflows': 1 } },
+				clients: { editor_ui: 0, n8n_node: 1, n8n_cli: 0, other: 2 },
+				endpointsByClient: { editor_ui: {}, n8n_node: { 'GET /workflows': 1 }, n8n_cli: {} },
 				routes: [
 					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					{ route: 'GET /workflows', result: '2xx', caller: 'n8n_node', calls: 1 },
+					{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
+				],
+			},
+			{
+				client: 'n8n_cli',
+				clients: { editor_ui: 0, n8n_node: 0, n8n_cli: 1, other: 2 },
+				endpointsByClient: { editor_ui: {}, n8n_node: {}, n8n_cli: { 'GET /workflows': 1 } },
+				routes: [
+					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+					{ route: 'GET /workflows', result: '2xx', caller: 'n8n_cli', calls: 1 },
 					{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
 				],
 			},
@@ -947,6 +976,78 @@ describe('Telemetry', () => {
 		});
 	});
 
+	describe('install ID', () => {
+		const installId = 'test-install-id';
+		const traits = { version: '1.0' } as Record<string, string | number>;
+
+		beforeEach(() => {
+			instanceSettings.installId = installId;
+		});
+
+		afterEach(() => {
+			instanceSettings.installId = undefined;
+		});
+
+		test('should add install_id next to instance_id on tracked events', () => {
+			telemetry.track('Test Event', { user_id: '1234' });
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: `${instanceId}#1234`,
+					properties: expect.objectContaining({ instance_id: instanceId, install_id: installId }),
+				}),
+			);
+			expect(postHog.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					properties: expect.objectContaining({ instance_id: instanceId, install_id: installId }),
+				}),
+			);
+		});
+
+		test('should add installId to RudderStack identify traits', () => {
+			telemetry.identify({ name: 'Test User' });
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith({
+				userId: instanceId,
+				traits: { name: 'Test User', instanceId, installId },
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should add install_id to the instance group traits without changing the group key', () => {
+			telemetry.groupIdentify({ traits, postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: { ...traits, install_id: installId },
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits: { ...traits, install_id: installId },
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should not send group traits when there were none to send', () => {
+			telemetry.groupIdentify({ userId: 'owner-1', postHog: { userId: 'owner-1' } });
+
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith(
+				expect.objectContaining({ traits: undefined }),
+			);
+		});
+
+		test('should leave install_id out while the install ID is unknown', () => {
+			instanceSettings.installId = undefined;
+
+			telemetry.track('Test Event', { user_id: '1234' });
+
+			const [[payload]] = mockRudderStack.track.mock.calls;
+			expect(payload.properties).not.toHaveProperty('install_id');
+		});
+	});
+
 	describe('track() with registry entries', () => {
 		const TEST_TELEMETRY = defineTelemetryEvents({
 			USER_TESTED_REGISTRY_ENTRY: {
@@ -1163,8 +1264,8 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					user_id: 'user1',
 					total_calls: 1,
-					clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, other: 1 }),
-					endpoints_by_client: JSON.stringify({ editor_ui: {}, n8n_node: {} }),
+					clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 1 }),
+					endpoints_by_client: JSON.stringify({ editor_ui: {}, n8n_node: {}, n8n_cli: {} }),
 					routes: JSON.stringify([
 						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					]),
@@ -1308,7 +1409,7 @@ const mockPulsePacketSources = () => {
 	mockInstance(UserRepository, { countUsersByRole: async () => ({ owner: 1 }) });
 	mockInstance(ProjectRepository, { getProjectCounts: async () => ({ personal: 3, team: 2 }) });
 	mockInstance(ProjectRelationRepository, {
-		countUsersByRole: async () => ({
+		countPeopleByRole: async () => ({
 			'project:admin': 4,
 			'project:chatUser': 0,
 			'project:editor': 0,

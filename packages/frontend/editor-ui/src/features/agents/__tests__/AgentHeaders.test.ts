@@ -43,6 +43,11 @@ vi.mock('@n8n/design-system', () => ({
 		name: 'N8nTooltip',
 		template: '<div><slot /><slot name="content" /></div>',
 	},
+	// Renders the card in place, so the tests read it without hovering.
+	N8nHoverCard: {
+		name: 'N8nHoverCard',
+		template: '<div><slot name="trigger" /><slot name="content" /></div>',
+	},
 	N8nToggle: {
 		name: 'N8nToggle',
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
@@ -300,6 +305,76 @@ describe('AgentSessionTimelineHeader metadata', () => {
 		expect(wrapper.get('[data-testid="agent-session-timeline-metadata"]').text()).toContain(
 			`($${expected})`,
 		);
+	});
+
+	it('shows credits instead of the cost when the session used Assistant credits', () => {
+		const wrapper = mountHeader({ metadata: { ...metadata, totalCredits: 3.456 } });
+
+		const usage = wrapper.get('[data-testid="agent-session-timeline-metadata"] li:nth-child(2)');
+		expect(usage.find('[data-testid="agent-session-timeline-credits"]').exists()).toBe(true);
+		expect(usage.text()).not.toContain('$');
+	});
+
+	describe('usage breakdown', () => {
+		const usage = {
+			inputTokens: 26_328,
+			cacheReadTokens: 25_864,
+			cacheWriteTokens: 460,
+			outputTokens: 43,
+			totalTokens: 26_371,
+			turns: 3,
+		};
+
+		function mountWithUsage(extra: Partial<SessionTimelineMetadata> = {}) {
+			return mount(AgentSessionTimelineHeader, {
+				props: {
+					breadcrumbItems: [],
+					projectIcon: { type: 'icon', value: 'user' },
+					sessionTitle: 'Review invoices',
+					sessionOptions: [],
+					showLangsmithExport: false,
+					langsmithExportLoading: false,
+					metadata: { ...metadata, usage, ...extra },
+				},
+				global: { stubs: { N8nIcon: iconStub } },
+			});
+		}
+
+		it('shows the token split and cost of the whole session', () => {
+			const detail = mountWithUsage()
+				.get('[data-testid="agent-session-timeline-usage-detail"]')
+				.text();
+
+			expect(detail).toContain('agentSessions.timeline.usage.sessionTitle');
+			expect(detail).toContain('25,864');
+			expect(detail).toContain('26,371');
+			expect(detail).toContain('$0.012');
+		});
+
+		it('shows credits instead of the cost when the session used Assistant credits', () => {
+			const detail = mountWithUsage({ totalCredits: 36.724 })
+				.get('[data-testid="agent-session-timeline-usage-detail"]')
+				.text();
+
+			expect(detail).toContain('agentSessions.timeline.usage.credits');
+			expect(detail).toContain('36.72');
+			expect(detail).not.toContain('$');
+		});
+
+		it('makes the token count a button only when the session has a breakdown', () => {
+			const withTurns = mountWithUsage();
+			expect(withTurns.get('[data-testid="agent-session-timeline-usage"]').element.tagName).toBe(
+				'BUTTON',
+			);
+
+			const withoutTurns = mountWithUsage({ usage: { ...usage, turns: 0 } });
+			expect(withoutTurns.get('[data-testid="agent-session-timeline-usage"]').element.tagName).toBe(
+				'SPAN',
+			);
+			expect(
+				withoutTurns.find('[data-testid="agent-session-timeline-usage-detail"]').exists(),
+			).toBe(false);
+		});
 	});
 
 	it('does not show metadata before it loads', () => {
