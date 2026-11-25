@@ -130,10 +130,12 @@ function globalConfigStub(
 		allowSendingParameterValues?: boolean;
 		queueMode?: boolean;
 		maxExecutionTimeout?: number;
+		diagnosticsEnabled?: boolean;
 	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
+		diagnostics: { enabled: overrides.diagnosticsEnabled ?? false },
 		executions: {
 			mode: overrides.queueMode ? 'queue' : 'regular',
 			maxTimeout: overrides.maxExecutionTimeout ?? 3600,
@@ -6859,6 +6861,7 @@ function createAdapterWithGatewayMock(
 		instanceContext?: InstanceContextService;
 		aiPreferenceService?: unknown;
 		logger?: unknown;
+		diagnosticsEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -6878,7 +6881,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ diagnosticsEnabled: overrides?.diagnosticsEnabled });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -10351,5 +10354,115 @@ describe('createContext: appService', () => {
 		).rejects.toThrow('Cannot modify apps on a protected instance.');
 		await context.appService?.exportDraft(APP_ID);
 		expect(sources.commit).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — agentFeedbackService
+// ---------------------------------------------------------------------------
+
+describe('createContext: agentFeedbackService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService({ diagnosticsEnabled = true } = {}) {
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			logger,
+			telemetry,
+			diagnosticsEnabled,
+		});
+		return { service, telemetry };
+	}
+
+	it('is present when telemetry is enabled', () => {
+		const { service } = buildService();
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeDefined();
+	});
+
+	it('is absent when telemetry is disabled', () => {
+		const { service } = buildService({ diagnosticsEnabled: false });
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeUndefined();
+	});
+
+	it('tracks the feedback as a registered telemetry event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'blocked',
+			summary: 'build_workflow rejects valid code with the same error.',
+			toolName: 'build-workflow',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK,
+			{
+				user_id: 'user-1',
+				thread_id: 't1',
+				run_id: 'r1',
+				category: 'bug',
+				severity: 'blocked',
+				summary: 'build_workflow rejects valid code with the same error.',
+				tool_name: 'build-workflow',
+			},
+		);
+	});
+
+	it('removes secrets from the summary before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'The API key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789 failed.',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain(
+			'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+		);
+	});
+
+	it('removes a secret that crosses the summary length cap, then cuts the summary', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: `${'x'.repeat(990)} ${secret} ${'y'.repeat(500)}`,
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		const { summary } = properties as { summary: string };
+		expect(summary).not.toContain('sk-ant-api03-abcdefghij');
+		expect(summary.length).toBeLessThanOrEqual(1003);
+	});
+
+	it('removes secrets from the tool name before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'A tool failed.',
+			toolName: 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain('abcdefghijklmnopqrstuvwxyz0123456789');
 	});
 });

@@ -614,10 +614,14 @@ export {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES,
+	INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES,
 } from './schemas/instance-ai.schema';
 
 export type {
 	InstanceAiPromptConfiguration,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
 	InstanceAiPrefillPayload,
@@ -1071,9 +1075,11 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
+	agentPublishSendTargetSchema,
+	AGENT_PUBLISH_SEND_TARGETS_LIMIT,
+	type AgentPublishSendTarget,
 	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalModeSchema,
@@ -1151,3 +1157,23 @@ export {
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';
+
+export {
+	AGENT_SAFE_TESTING_FLAG,
+	toolCallRouteSchema,
+	toolCallReasonSchema,
+	toolCallSimulationSchema,
+	agentChatModeSchema,
+	type AgentChatMode,
+	toolTestKindSchema,
+	toolTestCapabilitySchema,
+} from './schemas/agent-safe-testing.schema';
+export type {
+	ToolCallRoute,
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestability,
+	ToolTestKind,
+	ToolTestCapability,
+	AgentTestRunToolsResponse,
+} from './schemas/agent-safe-testing.schema';

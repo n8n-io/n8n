@@ -150,7 +150,6 @@ function onTabChange(tab: string) {
 				<N8nTabs
 					:model-value="activeTab"
 					:options="tabOptions"
-					variant="modern"
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>

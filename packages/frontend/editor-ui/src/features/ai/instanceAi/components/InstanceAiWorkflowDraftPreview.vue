@@ -9,20 +9,22 @@ import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.ty
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 
 import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
-import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
+import { useStaggeredList } from '../composables/useStaggeredList';
+import { draftNodeKey, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 const props = defineProps<{
 	draft: WorkflowDraft;
 	/** The agent is still working, so a save can still replace this draft. */
 	building: boolean;
-	/** The run waits on the user in the chat, for an answer or an approval. */
-	waiting?: boolean;
 }>();
 
 const i18n = useI18n();
 const eventBus = createEventBus<CanvasEventBusEvents>();
-const { documentStore } = useDraftWorkflowDocument(() => props.draft);
+// New nodes join one at a time, so the canvas grows with a rhythm.
+const visibleNodes = useStaggeredList(() => props.draft.workflow.nodes, { key: draftNodeKey });
+const visibleDraft = computed(() => withDraftNodes(props.draft, visibleNodes.value));
+const { documentStore } = useDraftWorkflowDocument(() => visibleDraft.value);
 // The editor canvas reads its workflow from this key, so it renders the draft.
 provide(WorkflowDocumentStoreKey, documentStore);
 
@@ -32,7 +34,7 @@ const canvasId = computed(() => `instance-ai-draft-${props.draft.filePath}`);
 // Fit the view when the agent adds nodes, so the newest one is on screen. A change
 // to existing nodes keeps the viewport the user has.
 watch(
-	() => props.draft.workflow.nodes.map((node) => node.name),
+	() => visibleNodes.value.map((node) => node.name),
 	(names, previous) => {
 		// Wait for the canvas to render the new nodes, so the fit includes them.
 		if (names.some((name) => !previous.includes(name))) {
@@ -56,15 +58,8 @@ watch(
 			:striped-background="false"
 			:class="$style.canvas"
 		/>
-		<!-- The run waits on the user, so nothing builds. The chat asks for the answer. -->
-		<template v-if="building">
-			<AgentBuildingIndicator
-				v-if="!waiting"
-				:show-label="false"
-				data-test-id="instance-ai-draft-building-wave"
-			/>
-		</template>
-		<div v-else :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
+		<!-- The thread view shows the building wave over the canvas while the agent works. -->
+		<div v-if="!building" :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
 			<N8nText size="small" color="text-base">
 				{{ i18n.baseText('instanceAi.workflowDraft.unsaved') }}
 			</N8nText>

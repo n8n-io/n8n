@@ -110,6 +110,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedbackService,
 	InstanceAiSkillService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
@@ -461,6 +462,9 @@ export interface InstanceAiFeatureFlags {
 	preferencesNoteVariant?: string;
 }
 
+const AGENT_FEEDBACK_SUMMARY_MAX_LENGTH = 1000;
+const AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH = 100;
+
 @Service()
 export class InstanceAiAdapterService {
 	private readonly logger: Logger;
@@ -729,6 +733,10 @@ export class InstanceAiAdapterService {
 			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
 				: {}),
+			// Reports go out only as telemetry. Without it the tool would make calls that do nothing.
+			...(this.globalConfig.diagnostics.enabled
+				? { agentFeedbackService: this.createAgentFeedbackAdapter(user) }
+				: {}),
 			skillService: this.getSkillService(
 				user,
 				assistantSkillsEnabled === true,
@@ -924,6 +932,33 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/**
+	 * The summary and the tool name are agent-written text, so secrets and personal data
+	 * are removed here. Redaction runs on the full text before the cut, so a secret
+	 * that crosses the cut is still found.
+	 */
+	private createAgentFeedbackAdapter(user: User): InstanceAiAgentFeedbackService {
+		return {
+			send: ({ category, severity, summary, toolName, threadId, runId }) => {
+				this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK, {
+					user_id: user.id,
+					...(threadId ? { thread_id: threadId } : {}),
+					...(runId ? { run_id: runId } : {}),
+					category,
+					severity,
+					summary: redactTelemetryText(summary, { maxLength: AGENT_FEEDBACK_SUMMARY_MAX_LENGTH }),
+					...(toolName
+						? {
+								tool_name: redactTelemetryText(toolName, {
+									maxLength: AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH,
+								}),
+							}
+						: {}),
+				});
+			},
 		};
 	}
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TypeUsage } from '@n8n/api-types';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
@@ -9,6 +10,7 @@ import TypeAccessSelect from './TypeAccessSelect.vue';
 import type { RelatedTypeItem } from './useRelatedTypeIndex';
 import { useTypeAccessEdits } from './useTypeAccessEdits';
 import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
+import { useInstancePolicy } from '../useInstancePolicy';
 
 const {
 	kind,
@@ -30,9 +32,34 @@ const i18n = useI18n();
 const NodeTypeIcon = computed(() => componentRegistry.get('node-type-icon'));
 const CredentialTypeIcon = computed(() => componentRegistry.get('credential-type-icon'));
 const { accessOf, isLocked, canManage, setAccess } = useTypeAccessEdits();
+const instancePolicy = useInstancePolicy();
 
 const expanded = ref(false);
-const visibleItems = computed(() => (expanded.value ? items : items.slice(0, SECTION_LIMIT)));
+
+/** The same counts as the Uses, Workflows and Active workflows columns of the policy table. */
+function usageText(usage: TypeUsage): string {
+	if (usage.uses === 0) return i18n.baseText('typeAvailabilityPolicies.usage.none');
+	return i18n.baseText('typeAvailabilityPolicies.usage.summary', {
+		interpolate: {
+			uses: i18n.baseText('typeAvailabilityPolicies.usage.times', {
+				adjustToNumber: usage.uses,
+				interpolate: { count: String(usage.uses) },
+			}),
+			workflows: i18n.baseText('typeAvailabilityPolicies.usage.workflows', {
+				adjustToNumber: usage.workflows,
+				interpolate: { count: String(usage.workflows) },
+			}),
+			active: String(usage.activeWorkflows),
+		},
+	});
+}
+
+const visibleItems = computed(() =>
+	(expanded.value ? items : items.slice(0, SECTION_LIMIT)).map((item) => {
+		const usage = instancePolicy.usageOf(kind, item.name);
+		return { ...item, usage: usage ? usageText(usage) : undefined };
+	}),
+);
 </script>
 
 <template>
@@ -57,7 +84,18 @@ const visibleItems = computed(() => (expanded.value ? items : items.slice(0, SEC
 					:credential-type-name="item.name"
 					:size="iconSize"
 				/>
-				<N8nText size="medium" color="text-dark" :class="$style.name">{{ item.label }}</N8nText>
+				<div :class="$style.name">
+					<N8nText tag="p" size="medium" color="text-dark">{{ item.label }}</N8nText>
+					<N8nText
+						v-if="item.usage"
+						tag="p"
+						size="small"
+						color="text-light"
+						data-test-id="type-access-item-usage"
+					>
+						{{ item.usage }}
+					</N8nText>
+				</div>
 				<TypeAccessSelect
 					v-if="canManage(kind)"
 					:model-value="accessOf(kind, item.name)"

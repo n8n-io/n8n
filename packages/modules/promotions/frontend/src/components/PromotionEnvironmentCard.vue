@@ -14,7 +14,11 @@ import { useRouter } from 'vue-router';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
 import { PROMOTION_INSTANCE_APPLY_VIEW } from '../promotions.constants';
-import { promotionEnvironmentBranch, promotionProviderIcon } from '../promotionsSettings.utils';
+import {
+	promotionDirectionIcon,
+	promotionEnvironmentBranch,
+	promotionProviderIcon,
+} from '../promotionsSettings.utils';
 import PromoteInstanceDialog from './PromoteInstanceDialog.vue';
 import PromotionMissingProjectsButton from './PromotionMissingProjectsButton.vue';
 
@@ -79,10 +83,19 @@ function onAction(action: 'edit' | 'connect' | 'remove') {
 
 <template>
 	<div>
-		<N8nSettingsRow
-			:title="i18n.baseText(`settings.promotions.environments.${environment.direction}.title`)"
-			:show-divider="false"
-		>
+		<N8nSettingsRow :show-divider="false">
+			<template #info>
+				<div :style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing--2xs)' }">
+					<N8nIcon
+						:icon="promotionDirectionIcon[environment.direction]"
+						color="text-dark"
+						size="small"
+					/>
+					<N8nText bold size="medium" color="text-dark">
+						{{ i18n.baseText(`settings.promotions.environments.${environment.direction}.title`) }}
+					</N8nText>
+				</div>
+			</template>
 			<template #action>
 				<N8nActionToggle
 					:actions="actions"

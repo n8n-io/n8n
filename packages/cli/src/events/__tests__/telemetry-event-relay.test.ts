@@ -2238,6 +2238,11 @@ describe('TelemetryEventRelay', () => {
 				expected: { public_api: true, public_api_client: 'n8n_node' },
 			},
 			{
+				descriptionLength: 0,
+				publicApi: 'n8n_cli',
+				expected: { public_api: true, public_api_client: 'n8n_cli' },
+			},
+			{
 				descriptionLength: 18,
 				publicApi: 'other',
 				expected: { public_api: true, public_api_client: 'other' },
@@ -6524,6 +6529,29 @@ describe('TelemetryEventRelay', () => {
 			);
 			expect(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review a user closed with the closer and the reviewed version', () => {
+			eventService.emit('workflow-review-closed-by-user', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW.getValidationError(payload),
 			).toBeNull();
 		});
 

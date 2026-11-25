@@ -24,13 +24,14 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 
 describe('ChatEmbedModal', () => {
 	it('should render correctly', async () => {
-		renderComponent();
+		const { getByTestId } = renderComponent();
 
-		await waitFor(() => expect(document.querySelector('.n8n-tabs .tab.activeTab')).toBeVisible());
+		await waitFor(() => expect(getByTestId('chatEmbed-modal')).toBeInTheDocument());
 
-		const tabs = document.querySelectorAll('.n8n-tabs .tab');
-		const activeTab = document.querySelector('.n8n-tabs .tab.activeTab');
-		const editor = document.querySelector('.cm-editor');
+		const modalContainer = getByTestId('chatEmbed-modal');
+		const tabs = modalContainer.querySelectorAll('.n8n-tabs .tab');
+		const activeTab = modalContainer.querySelector('.n8n-tabs .tab[data-state="active"]');
+		const editor = modalContainer.querySelector('.cm-editor');
 
 		expect(tabs).toHaveLength(4);
 		expect(activeTab).toBeVisible();

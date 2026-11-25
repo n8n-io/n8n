@@ -10,12 +10,16 @@ const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
+	fetchCredentialTypeUsage: vi.fn(),
 }));
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy: mocks.fetchInstancePolicy,
 	fetchInstanceAccess: mocks.fetchInstanceAccess,
 	saveInstancePolicy: mocks.saveInstancePolicy,
+	fetchNodeTypeUsage: mocks.fetchNodeTypeUsage,
+	fetchCredentialTypeUsage: mocks.fetchCredentialTypeUsage,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -636,6 +640,48 @@ describe('useInstancePolicyStore', () => {
 
 			expect(result.status).toBe('failed');
 			expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+		});
+	});
+
+	// `useTypeUsage.test.ts` covers the counts of one kind.
+	describe('loadUsage', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const SLACK_USAGE = { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 };
+
+		beforeEach(() => {
+			mocks.fetchNodeTypeUsage.mockResolvedValue({ [SLACK]: SLACK_USAGE });
+			mocks.fetchCredentialTypeUsage.mockResolvedValue({});
+		});
+
+		it('keeps the counts of each kind apart', async () => {
+			const store = useInstancePolicyStore();
+
+			await store.loadUsage('node');
+
+			expect(store.usageOf('node', SLACK)).toEqual(SLACK_USAGE);
+			expect(store.usageOf('credential', 'slackApi')).toBeNull();
+			expect(mocks.fetchCredentialTypeUsage).not.toHaveBeenCalled();
+		});
+
+		it('reads only the kinds that have no counts yet', async () => {
+			const store = useInstancePolicyStore();
+			await store.loadUsage('node');
+
+			await store.loadMissingUsage(['node', 'credential']);
+
+			expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
+			expect(mocks.fetchCredentialTypeUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads the counts of a kind again after a failed read', async () => {
+			mocks.fetchNodeTypeUsage.mockRejectedValueOnce(new Error('offline'));
+			const store = useInstancePolicyStore();
+			await store.loadUsage('node');
+			expect(store.usageOf('node', SLACK)).toBeNull();
+
+			await store.loadMissingUsage(['node']);
+
+			expect(store.usageOf('node', SLACK)).toEqual(SLACK_USAGE);
 		});
 	});
 });

@@ -151,6 +151,7 @@ function onDialogOpenUpdate(open: boolean) {
 		:open="modalOpen"
 		size="2xlarge"
 		:header="i18n.baseText('chatEmbed.title')"
+		:data-test-id="`${CHAT_EMBED_MODAL_KEY}-modal`"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>

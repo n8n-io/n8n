@@ -123,12 +123,24 @@ const FAILED_SKILL_REASON_KEYS: Partial<Record<SkillSourceReason, BaseTextKey>> 
 	unreachable: 'settings.context.skills.connect.failed.reason.unreachable',
 };
 
+/** The rules that say why the import leaves a file out. */
+export const SKIPPED_FILE_RULES: ReadonlySet<SkillScanRule> = new Set([
+	'file_skipped',
+	'file_unstorable',
+	'file_too_large',
+	'file_over_skill_limit',
+]);
+
 /** The text for each rule of the security check. The server text is English only. */
 const SKILL_SCAN_RULE_KEYS = {
 	invalid_skill: 'settings.context.skills.connect.check.rule.invalidSkill',
 	over_limit: 'settings.context.skills.connect.check.rule.overLimit',
 	file_skipped: 'settings.context.skills.connect.check.rule.fileSkipped',
 	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
+	file_too_large: 'settings.context.skills.connect.check.rule.fileTooLarge',
+	file_over_skill_limit: 'settings.context.skills.connect.check.rule.fileOverSkillLimit',
+	script_file: 'settings.context.skills.connect.check.rule.scriptFile',
+	binary_file: 'settings.context.skills.connect.check.rule.binaryFile',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
 	risky_url: 'settings.context.skills.connect.check.rule.riskyUrl',

@@ -25,6 +25,12 @@ const inputRuntimeSchema = z.discriminatedUnion('type', [
 		agentId: agentIdSchema,
 		skillId: z.string().min(1),
 		referencePaths: z.array(z.string().min(1)).max(20).optional(),
+		referenceOffset: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.describe('Pass nextOffset from the previous result with only that file in referencePaths'),
 	}),
 	z.object({ type: z.literal('tasks'), agentId: agentIdSchema }),
 	z.object({ type: z.literal('custom-tools'), agentId: agentIdSchema }),
