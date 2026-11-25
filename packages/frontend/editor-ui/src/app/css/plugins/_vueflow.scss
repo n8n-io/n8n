@@ -60,8 +60,8 @@
 	}
 
 	.minimap-node-n8n-nodes-base-stickyNote {
-		fill: var(--color--foreground--shade-1);
-		opacity: 0.2;
+		fill: var(--sticky--border-color);
+		opacity: 0.5;
 	}
 
 	@include breakpoints.breakpoint('xs-only') {
