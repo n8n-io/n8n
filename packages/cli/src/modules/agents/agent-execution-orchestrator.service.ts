@@ -284,6 +284,8 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	onAdmitted?: () => Promise<void>;
+	/** A test turn: no background wake runs after it, because a wake would run unsimulated. */
+	skipBackgroundWake?: boolean;
 	onRuntimeStarted?: () => void;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
@@ -1288,6 +1290,13 @@ export class AgentExecutionOrchestratorService {
 				throw new OperationalError('Production n8n Chat wake identity is no longer valid');
 			}
 		}
+		// A wake runs unsimulated, so a test chat never gets one. Throwing keeps the job results.
+		if (
+			isDraft &&
+			(await this.agentExecutionService.findThreadById(memory.threadId))?.testChat === true
+		) {
+			throw new OperationalError('A test chat does not run background wakes');
+		}
 		if (isDraft) {
 			setup = await this.preparePreviewChat({
 				agentId,
@@ -1422,9 +1431,10 @@ export class AgentExecutionOrchestratorService {
 			chatSurface: config.chatSurface,
 			acceptsSteering: !config.pauseReport,
 			onExecutionStarted: config.onExecutionStarted,
-			onSettled: config.isWakeRun
-				? undefined
-				: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
+			onSettled:
+				config.isWakeRun || config.skipBackgroundWake
+					? undefined
+					: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
 			prepare: async () => await this.prepareChatTurn(config),
 		});
 	}
@@ -1601,7 +1611,10 @@ export class AgentExecutionOrchestratorService {
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
-				if (!suspended) await this.requestPendingBackgroundWake(threadId);
+				// A wake after a test turn would run unsimulated.
+				if (!suspended && !config.simulationSession) {
+					await this.requestPendingBackgroundWake(threadId);
+				}
 			},
 			prepare: async () => await this.prepareChatResume(config, checkpoint, runtime),
 		});
@@ -1951,6 +1964,7 @@ export class AgentExecutionOrchestratorService {
 				// Before the agent runs, so a later turn of this chat never runs live.
 				await config.simulationSession?.markTestChat();
 			},
+			skipBackgroundWake: config.simulationSession !== undefined,
 			access: setup.access,
 			messageContext,
 			agentInstance: runtime.agent,
