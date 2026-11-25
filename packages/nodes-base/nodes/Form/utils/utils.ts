@@ -25,6 +25,8 @@ import {
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
 	jsonParse,
+	recordConsumedAuth,
+	redactedHeaders,
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
@@ -479,6 +481,23 @@ export function addFormResponseDataToReturnItem(
 	}
 }
 
+/** First Form Trigger version that hides the headers used by its built-in authentication. */
+export const HIDE_CONSUMED_AUTH_HEADERS_VERSION = 2.8;
+
+/**
+ * Request headers for the "Show Headers" output. From version 2.8, the Form Trigger shows the
+ * headers that its built-in authentication used as hidden, so their values are not stored.
+ */
+export function getFormOutputHeaders(context: IWebhookFunctions) {
+	const { type, typeVersion } = context.getNode();
+
+	if (type === FORM_TRIGGER_NODE_TYPE && typeVersion >= HIDE_CONSUMED_AUTH_HEADERS_VERSION) {
+		return redactedHeaders(context.getRequestObject());
+	}
+
+	return context.getHeaderData();
+}
+
 export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
 	formFields: FormFieldsParameter,
@@ -568,7 +587,7 @@ export async function prepareFormReturnItem(
 	returnItem.json.formMode = mode;
 
 	if (context.getNodeParameter('options.showHeaders', false)) {
-		returnItem.json.headers = context.getHeaderData();
+		returnItem.json.headers = getFormOutputHeaders(context);
 	}
 
 	if (
@@ -1168,6 +1187,7 @@ async function authenticateFormUserOrRespond(
 			const token = typeof formToken === 'string' ? formToken : '';
 			const validation = await context.validateN8nOAuth2Token(token, resourceUrl);
 			if (validation.valid) {
+				recordConsumedAuth(req, ['x-auth-token']);
 				// Seeds the run. The subject rides in the seal, so a worker never needs the token.
 				await context.establishTriggerIdentity(token, resourceUrl, validation.user.id);
 				return {
