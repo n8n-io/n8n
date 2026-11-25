@@ -4,7 +4,12 @@ import {
 	type InstanceContextReach,
 } from '@n8n/api-types';
 import type { TelemetryProxy } from '@n8n/backend-services';
-import type { RunTokenUsage, WorkSummary } from '@n8n/instance-ai';
+import {
+	deriveAssistantUsageTier,
+	listAssistantToolsUsed,
+	type RunTokenUsage,
+	type WorkSummary,
+} from '@n8n/instance-ai';
 import { TELEMETRY_EVENT, type AssistantRuntime } from '@n8n/telemetry';
 
 import type { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
@@ -76,6 +81,8 @@ export function trackInstanceContextTurn(
 		context_surfaces: input.reach.surfaces,
 		asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
 		tool_calls: input.workSummary?.totalToolCalls ?? 0,
+		usage_tier: deriveAssistantUsageTier(input.workSummary?.toolCalls ?? []),
+		tools_used: listAssistantToolsUsed(input.workSummary?.toolCalls ?? []),
 		// A suspended turn spends tokens in each segment, so these are per segment and
 		// sum over the shared `run_id`. Absent when the segment reported no usage.
 		...(input.usage

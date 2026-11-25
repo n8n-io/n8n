@@ -146,6 +146,7 @@ const allActions = [
 ] as const;
 
 type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
+export type EvalConfigToolAction = FullInput['action'];
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),

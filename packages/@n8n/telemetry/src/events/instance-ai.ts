@@ -2,6 +2,7 @@ import {
 	INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES,
 	INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES,
 	INSTANCE_AI_PREFILL_TYPES,
+	assistantUsageTierSchema,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -241,6 +242,16 @@ const instanceContextTurnSchema = z.object({
 		.boolean()
 		.describe('This segment asked for missing information. Combine segments with OR.'),
 	tool_calls: z.number().int().describe('Total tool calls in this segment'),
+	usage_tier: z
+		.enum(assistantUsageTierSchema.options)
+		.describe(
+			'How much this segment used the Assistant, from tools that returned a result and were not denied. strict: built, changed or ran something. broad: only read the instance, debugged, or searched the docs or the web. none: only questions, node lookups or internal steps. Take the highest tier per run_id. The broad metric counts broad and strict.',
+		),
+	tools_used: z
+		.array(z.string())
+		.describe(
+			'The tools that usage_tier counts, each once and sorted. skills and eval-config add the action, for example skills:list. MCP tools and other tools that are not built in show as other, and the agent sandbox tools as workspace.',
+		),
 	turn_prompt_tokens: z
 		.number()
 		.int()

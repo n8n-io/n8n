@@ -413,6 +413,8 @@ export type {
 	SubAgentTaskDifficulty,
 } from './runtime/tools/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/write-todos-tool';
+export { FIND_TOOLS_TOOL_NAME } from './runtime/tools/tool-catalog';
+export { READ_HISTORY_TOOL_NAME } from './runtime/memory/history-recall-tool';
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';

@@ -12,6 +12,8 @@ const segment = {
 	context_surfaces: [],
 	asked_clarifying_question: false,
 	tool_calls: 0,
+	usage_tier: 'none',
+	tools_used: [],
 	status: 'completed',
 };
 
@@ -129,6 +131,24 @@ describe('instance context turn properties', () => {
 			).not.toBeNull();
 		},
 	);
+
+	it.each(['none', 'broad', 'strict'])('accepts usage tier %s', (usage_tier) => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({
+				...absentSegment,
+				usage_tier,
+			}),
+		).toBeNull();
+	});
+
+	it.each([undefined, 'medium', true])('rejects an invalid usage tier: %s', (usage_tier) => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({
+				...absentSegment,
+				usage_tier,
+			}),
+		).not.toBeNull();
+	});
 
 	it('uses new absence reasons from the shared schema', async () => {
 		vi.resetModules();

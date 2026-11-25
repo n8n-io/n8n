@@ -141,6 +141,7 @@ const importSourceAction = connectPublicSkillSourceSchema.extend({
 const sourceActions = [listSourcesAction, discoverSourceAction, importSourceAction] as const;
 
 type FullInput = z.infer<(typeof allActions)[number] | (typeof sourceActions)[number]>;
+export type SkillsToolAction = FullInput['action'];
 
 type WriteAction = 'create' | 'update' | 'delete';
 

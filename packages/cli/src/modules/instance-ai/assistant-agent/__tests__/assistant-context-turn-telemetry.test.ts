@@ -106,6 +106,8 @@ describe('AssistantContextTurnTelemetry', () => {
 				block_chars: 400,
 				tool_calls: 1,
 				asked_clarifying_question: false,
+				usage_tier: 'none',
+				tools_used: ['load_skill'],
 				turn_prompt_tokens: 100,
 				turn_completion_tokens: 20,
 				turn_total_tokens: 120,
@@ -114,6 +116,28 @@ describe('AssistantContextTurnTelemetry', () => {
 				hub_skill_attempt_count: 1,
 				hub_skill_load_count: 1,
 				hub_skill_loaded_ids: ['skill-1'],
+			}),
+		]);
+	});
+
+	it('reports a turn that built something as usage', () => {
+		const { turn, rows } = setup();
+		turn.setContext(context);
+		const toolName = 'workflow_builder_build_workflow';
+		turn.observeChunk({ type: 'tool-call', toolCallId: 'build-1', toolName, input: {} });
+		turn.observeChunk({
+			type: 'tool-result',
+			toolCallId: 'build-1',
+			toolName,
+			output: { success: true },
+		});
+
+		turn.report('completed');
+
+		expect(rows()).toEqual([
+			expect.objectContaining({
+				usage_tier: 'strict',
+				tools_used: ['workflow_builder_build_workflow'],
 			}),
 		]);
 	});
