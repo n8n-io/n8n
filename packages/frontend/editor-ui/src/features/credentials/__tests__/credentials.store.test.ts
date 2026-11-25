@@ -648,6 +648,34 @@ describe('credentials.store', () => {
 		});
 	});
 
+	describe('updateCredential', () => {
+		it.each(['Use for production reports', null])(
+			'passes description %j in the update request',
+			async (description) => {
+				const store = useCredentialsStore();
+				const credential = mock<ICredentialsResponse>({ id: 'cred-1', description });
+				vi.mocked(credentialsApi.updateCredential).mockResolvedValue(credential);
+
+				await store.updateCredential({
+					id: credential.id,
+					data: {
+						id: credential.id,
+						name: 'Reporting account',
+						type: 'httpBasicAuth',
+						data: { user: 'reports' },
+						description,
+					},
+				});
+
+				expect(credentialsApi.updateCredential).toHaveBeenCalledExactlyOnceWith(
+					mockRootStore.restApiContext,
+					credential.id,
+					expect.objectContaining({ description, data: { user: 'reports' } }),
+				);
+			},
+		);
+	});
+
 	describe('setCredentialSharedWith', () => {
 		it('should pass isGlobal parameter when setting credential sharing', async () => {
 			const store = useCredentialsStore();

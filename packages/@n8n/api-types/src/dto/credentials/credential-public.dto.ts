@@ -17,7 +17,7 @@ export const credentialSharedPublicSchema = z.object({
 });
 
 export const credentialPublicSchema = publicApiCredentialResponseSchema.extend({
-	description: z.string().nullable().optional().openapi({
+	description: z.string().nullable().openapi({
 		example: 'Read-only key for the reporting database',
 		description: 'Plain text description of the credential, or null.',
 	}),

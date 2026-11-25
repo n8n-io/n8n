@@ -55,6 +55,27 @@ describe.each([true, false])('credential exports with decrypted=%s', (decrypted)
 		});
 		expect(stored.description).toBe('Read-only reporting account');
 	});
+
+	test('exports an empty description as null', async () => {
+		await createCredentials({
+			...(await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), {
+					name: 'Undescribed account',
+					type: 'test',
+					data: { apiKey: 'test-key' },
+				}),
+			)),
+		});
+		const outputFile = path.join(testOutputDir, 'output.json');
+
+		await command.run(['--all', `--output=${outputFile}`, ...(decrypted ? ['--decrypted'] : [])]);
+
+		const exported: Array<Record<string, unknown>> = JSON.parse(
+			fs.readFileSync(outputFile, 'utf-8'),
+		);
+		expect(exported).toHaveLength(1);
+		expect(exported[0]).toHaveProperty('description', null);
+	});
 });
 
 test('should reject --all with --projectId', async () => {
