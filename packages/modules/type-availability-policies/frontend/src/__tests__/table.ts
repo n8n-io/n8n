@@ -1,6 +1,11 @@
 import { within } from '@testing-library/vue';
 
 type GetByTestId = (id: string) => HTMLElement;
+type GetByRole = (role: string, options?: object) => HTMLElement;
+
+/** The trigger of the access filter of the instance policy table. */
+export const accessFilter = (getByRole: GetByRole) =>
+	getByRole('combobox', { name: 'Filter by access' });
 
 /** Cell lookups in the instance policy table, for the row of `defaultName` unless a name is given. */
 export function policyTableCells(defaultName: string) {

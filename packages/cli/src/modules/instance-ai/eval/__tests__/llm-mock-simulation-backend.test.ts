@@ -55,6 +55,12 @@ function setup() {
 }
 
 describe('LlmMockSimulationBackend', () => {
+	// The backend loads the mocks when a world opens. Load them once here, so the first test
+	// does not pay the import time.
+	beforeAll(async () => {
+		await import('../agent-execution.service.js');
+	}, 60_000);
+
 	beforeEach(() => vi.clearAllMocks());
 
 	it('serves node, workflow, MCP and web search tools, and nothing else', async () => {
@@ -297,6 +303,22 @@ describe('LlmMockSimulationBackend', () => {
 		);
 	});
 
+	it('gives the stop signal to the web search mock', async () => {
+		const { backend, webSearch } = setup();
+		webSearch.mockReturnValue(new Promise(() => {}));
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const controller = new AbortController();
+
+		const reply = world.handleRequest(
+			{ protocol: 'web_search', args: { query: 'n8n' } },
+			{ toolName: 'web_search', signal: controller.signal },
+		);
+		controller.abort();
+
+		await expect(reply).rejects.toThrow('The test run was stopped.');
+		expect(webSearch).toHaveBeenCalledWith({ query: 'n8n' }, { signal: controller.signal });
+	});
+
 	it('answers MCP and web search through their mocks', async () => {
 		const { backend, mcpFetch, webSearch } = setup();
 		mcpFetch.mockResolvedValue(
@@ -333,8 +355,26 @@ describe('LlmMockSimulationBackend', () => {
 			status: 200,
 			body: '{"jsonrpc":"2.0","id":1,"result":{}}',
 		});
-		expect(webSearch).toHaveBeenCalledWith({ query: 'n8n' });
+		expect(webSearch).toHaveBeenCalledWith({ query: 'n8n' }, { signal: undefined });
 		expect(searchReply).toMatchObject({ outcome: 'served', body: { results: [] } });
+	});
+
+	it.each([
+		['https://user:secret@mcp.acme.io/mcp/key-123?token=abc', 'https://mcp.acme.io'],
+		['ftp://mcp.acme.io/key-123', 'https://mcp.invalid'],
+		['not a url', 'https://mcp.invalid'],
+	])('gives the mock only the origin of the MCP URL %s', async (origin, expected) => {
+		const { backend } = setup();
+		await backend.openWorld({
+			testChatId: 'chat-1',
+			agent: { ...agent, tools: [{ toolName: 'acme', kind: 'mcp', origin }] },
+			firstMessage: 'hi',
+		});
+
+		const { servers } = vi.mocked(createMcpMockFetch).mock.calls[0][0];
+		expect(servers).toEqual([
+			expect.objectContaining({ url: `${expected}/n8n-mcp-server/acme`, origin: expected }),
+		]);
 	});
 
 	it('answers an MCP server it does not know with unsupported', async () => {

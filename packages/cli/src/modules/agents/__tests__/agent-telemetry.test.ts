@@ -76,6 +76,30 @@ describe('agent telemetry', () => {
 		});
 	});
 
+	it('reports node tools from a community package as community_node', () => {
+		const nodeTool = (nodeType: string) => ({
+			type: 'node' as const,
+			name: nodeType,
+			node: { nodeType, nodeTypeVersion: 1, nodeParameters: {} },
+		});
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-5-5',
+			instructions: 'Be helpful',
+			tools: [
+				nodeTool('n8n-nodes-base.slack'),
+				nodeTool('@n8n/n8n-nodes-langchain.toolCalculator'),
+				nodeTool('n8n-nodes-example.exampleNode'),
+				nodeTool('@scope/n8n-nodes-example.scopedNode'),
+			],
+		};
+
+		expect(buildAgentConfigurationTelemetryFromConfig(config)).toMatchObject({
+			tool_types: ['community_node', 'node'],
+			tool_count: 4,
+		});
+	});
+
 	it('uses empty dimensions for missing optional config', () => {
 		expect(buildAgentConfigurationTelemetryFromConfig(null)).toEqual({
 			model: null,

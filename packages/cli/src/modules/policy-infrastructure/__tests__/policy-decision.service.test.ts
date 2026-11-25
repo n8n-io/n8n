@@ -4,6 +4,7 @@ import {
 	type CredentialDecryptContext,
 	type CredentialSaveContext,
 	type CredentialTransferContext,
+	type ExecutionAdmissionContext,
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
@@ -204,6 +205,41 @@ class StartOnlyCheck implements RegisteredPolicyCheck {
 	readonly id = 'start-only';
 
 	onWorkflowStart = vi.fn(async (): Promise<PolicyCheckResult> => ({ violations: [] }));
+}
+
+const admissionContext: ExecutionAdmissionContext = {
+	artifact: { kind: 'workflow', id: 'wf-1', name: 'Billing sync' },
+	projectId: 'proj-1',
+	mode: 'webhook',
+	source: null,
+	engine: 'v1',
+};
+
+@Service()
+class AdmissionCheck implements RegisteredPolicyCheck {
+	readonly id = 'admission';
+
+	async onExecutionAdmission(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+}
+
+@Service()
+class BrokenAdmissionCheck implements RegisteredPolicyCheck {
+	readonly id = 'broken-admission';
+
+	async onExecutionAdmission(): Promise<PolicyCheckResult> {
+		throw new Error('the policy snapshot is unreadable');
+	}
+}
+
+@Service()
+class HangingAdmissionCheck implements RegisteredPolicyCheck {
+	readonly id = 'hanging-admission';
+
+	async onExecutionAdmission(): Promise<PolicyCheckResult> {
+		return await new Promise(() => {});
+	}
 }
 
 const serviceWith = (...classes: PolicyCheckClass[]) => {
@@ -696,6 +732,130 @@ describe('PolicyDecisionService', () => {
 
 			const decision = await service.enforce('workflowSave', saveContext, unattended);
 			expect(decision.violations).toEqual([slackBlocked]);
+		});
+	});
+
+	describe('executionAdmission', () => {
+		it('returns the violation a check raises', async () => {
+			const decision = await serviceWith(AdmissionCheck).enforce(
+				'executionAdmission',
+				admissionContext,
+				unattended,
+			);
+
+			expect(decision.violations).toEqual([slackBlocked]);
+		});
+
+		it('allows when no checks are registered', async () => {
+			const service = serviceWith();
+
+			expect(await service.enforce('executionAdmission', admissionContext, unattended)).toEqual({
+				violations: [],
+			});
+			expect(service.hasChecksFor('executionAdmission')).toBe(false);
+		});
+
+		it('blocks with a 503 when a check throws, without its message', async () => {
+			const error = await serviceWith(BrokenAdmissionCheck)
+				.enforce('executionAdmission', admissionContext, unattended)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PolicyCheckFailedError);
+			expect((error as PolicyCheckFailedError).httpStatusCode).toBe(503);
+			expect((error as PolicyCheckFailedError).message).not.toContain('snapshot');
+		});
+
+		it('treats a check that overruns the 250 ms deadline as a failure', async () => {
+			vi.useFakeTimers();
+
+			try {
+				let settled = false;
+				const pending = serviceWith(HangingAdmissionCheck)
+					.enforce('executionAdmission', admissionContext, unattended)
+					.catch((e: unknown) => e)
+					.finally(() => {
+						settled = true;
+					});
+
+				await vi.advanceTimersByTimeAsync(249);
+				expect(settled).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+				expect(await pending).toBeInstanceOf(PolicyCheckFailedError);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps the check error and writes no audit line or event on evaluate', async () => {
+			const { service, audit, emit } = auditedServiceWith(BrokenAdmissionCheck);
+
+			const decision = await service.evaluate('executionAdmission', admissionContext);
+
+			expect(decision.checkErrors?.[0].checkId).toBe('broken-admission');
+			expect(audit).not.toHaveBeenCalled();
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('writes no audit line or event when no check is registered', async () => {
+			const { service, audit, emit } = auditedServiceWith();
+
+			await service.enforce('executionAdmission', admissionContext, unattended);
+
+			expect(audit).not.toHaveBeenCalled();
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('names a workflow admission by id and name, with no agent fields', async () => {
+			const { service, audit } = auditedServiceWith(AdmissionCheck);
+
+			await service.enforce('executionAdmission', admissionContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				workflowId: 'wf-1',
+				workflowName: 'Billing sync',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('agentId');
+		});
+
+		it('names an agent admission as an agent, with no workflow fields', async () => {
+			const { service, audit } = auditedServiceWith(AdmissionCheck);
+			const agentContext: ExecutionAdmissionContext = {
+				...admissionContext,
+				artifact: { kind: 'agent', id: 'agent-1', name: 'Support agent' },
+				mode: 'agent',
+			};
+
+			await service.enforce('executionAdmission', agentContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
+		it('records a system actor by reason, with no execution id when none is given', async () => {
+			const { service, emit } = auditedServiceWith(AdmissionCheck);
+
+			await service.enforce('executionAdmission', admissionContext, unattended);
+
+			expect(emit).toHaveBeenCalledWith(
+				'policy-decision-blocked',
+				expect.objectContaining({ actorType: 'system', systemReason: 'execution' }),
+			);
+			expect(emit.mock.calls[0][1]).not.toHaveProperty('executionId');
+		});
+
+		it('records the execution id of a system actor when one is given', async () => {
+			const { service, emit } = auditedServiceWith(AdmissionCheck);
+			const actor: PolicyActor = { kind: 'system', reason: 'execution', executionId: 'exec-1' };
+
+			await service.enforce('executionAdmission', admissionContext, actor);
+
+			expect(emit.mock.calls[0][1]).toHaveProperty('executionId', 'exec-1');
 		});
 	});
 

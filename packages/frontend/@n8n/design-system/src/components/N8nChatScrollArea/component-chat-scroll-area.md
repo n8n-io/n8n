@@ -117,7 +117,7 @@ async function onLoadOlder() {
 N8nChatScrollArea                # position: relative; height: 100%
 ├── .viewport                    # overflow-y: auto; full width.
 │   ├── .topSentinel             # IntersectionObserver → load-older
-│   ├── slot default 						 # message list   
+│   ├── slot default 						 # message list; fills the free height, so `height: 100%` works
 		└── ScrollDownButton   			 # Optional shown if last message isn't in view
 │   ├── .spacer          
 │   └── .bottomSentinel          # IntersectionObserver → isAtBottom

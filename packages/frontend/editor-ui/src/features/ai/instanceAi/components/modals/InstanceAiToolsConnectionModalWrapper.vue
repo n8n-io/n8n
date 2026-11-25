@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
@@ -172,6 +173,8 @@ async function discoverDraft(
 }
 
 const isLoadingCredentials = ref(false);
+// The credential setup of an MCP connector needs the credential types. Browser Use does not.
+const { isLoading: credentialTypesLoading } = useCredentialTypesLoad();
 
 /**
  * App startup does not wait for credentials, so the store can still be empty.
@@ -192,7 +195,6 @@ if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
 	void loadCredentials();
-	void credentialsStore.fetchCredentialTypes(false);
 }
 
 // Clear the state on close so the next open starts
@@ -526,7 +528,7 @@ function retryConnection(item: McpServerConnectionItem): void {
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
 		:show-suggestion-footer="true"
-		:loading="isLoadingCredentials"
+		:loading="isLoadingCredentials || (settingsStore.isMcpAvailable && credentialTypesLoading)"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"

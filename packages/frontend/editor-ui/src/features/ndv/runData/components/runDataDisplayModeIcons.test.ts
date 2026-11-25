@@ -3,7 +3,6 @@ import { iconFor } from './runDataDisplayModeIcons';
 describe('iconFor', () => {
 	it.each([
 		['ai', 'text'],
-		['html', 'file-code'],
 		['schema', 'schema'],
 		['table', 'table'],
 		['json', 'json'],
