@@ -46,10 +46,14 @@ function createService(): ServiceMock {
 	return {
 		list: vi.fn().mockResolvedValue([server]),
 		get: vi.fn().mockResolvedValue(detail),
+		getServer: vi.fn().mockResolvedValue(server),
+		getTool: vi.fn().mockResolvedValue({ server, tool, toolDraftsAvailable: true }),
+		workflowNames: vi.fn().mockResolvedValue([]),
+		assertCanWrite: vi.fn().mockResolvedValue(undefined),
 		create: vi.fn().mockResolvedValue(server),
 		update: vi.fn().mockResolvedValue(server),
 		delete: vi.fn().mockResolvedValue(undefined),
-		listToolCandidates: vi.fn().mockResolvedValue([]),
+		listToolCandidates: vi.fn().mockResolvedValue({ candidates: [], unusable: 0, more: false }),
 		addTools: vi.fn().mockResolvedValue([tool]),
 		updateTool: vi.fn().mockResolvedValue(tool),
 		generateTool: vi.fn().mockResolvedValue({ status: 'drafted', tool }),
@@ -198,13 +202,13 @@ describe('custom-mcp-servers tool', () => {
 				input,
 				resumeCtx(true, 'session'),
 			);
-			expect(grantSessionToolApproval).toHaveBeenCalledWith('custom-mcp-servers:write');
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('custom-mcp-servers:create');
 
 			const suspend = vi.fn();
 			await executeTool(
 				createCustomMcpServersTool(
 					createContext(service, {
-						sessionApprovedToolKeys: new Set(['custom-mcp-servers:write']),
+						sessionApprovedToolKeys: new Set(['custom-mcp-servers:create']),
 					}),
 				),
 				input,
@@ -213,6 +217,57 @@ describe('custom-mcp-servers tool', () => {
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(service.create).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the grant to this action, so other writes still ask', async () => {
+			const context = createContext(service, {
+				sessionApprovedToolKeys: new Set(['custom-mcp-servers:create']),
+			});
+			const suspend = vi.fn();
+
+			await executeTool(
+				createCustomMcpServersTool(context),
+				{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['workflow-2'] },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalled();
+			expect(service.addTools).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('write access', () => {
+		it.each<[Record<string, unknown>, string]>([
+			[{ action: 'delete', serverId: SERVER_ID, projectId: 'project-2' }, 'delete'],
+			[{ action: 'update', serverId: SERVER_ID, name: 'Other' }, 'update'],
+			[{ action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID }, 'update'],
+			[{ action: 'create', name: 'Sales Tools' }, 'create'],
+		])('shows no card when the user cannot make the change: %j', async (input, change) => {
+			service.assertCanWrite.mockRejectedValue(
+				new Error('User does not have the required permissions in this project'),
+			);
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(createCustomMcpServersTool(createContext(service)), input, suspendCtx(suspend)),
+			).rejects.toThrow('User does not have the required permissions in this project');
+
+			expect(service.assertCanWrite).toHaveBeenCalledWith(input.projectId, change);
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('reads one tool, not the whole server, for a tool card', async () => {
+			await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{ action: 'update-tool', serverId: SERVER_ID, toolId: TOOL_ID, description: 'New' },
+				suspendCtx(vi.fn()),
+			);
+
+			expect(service.getTool).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				TOOL_ID,
+			);
+			expect(service.get).not.toHaveBeenCalled();
 		});
 	});
 
@@ -242,7 +297,10 @@ describe('custom-mcp-servers tool', () => {
 		it('asks again even when the user allowed other writes for this conversation', async () => {
 			const suspend = vi.fn();
 			const context = createContext(service, {
-				sessionApprovedToolKeys: new Set(['custom-mcp-servers:write']),
+				sessionApprovedToolKeys: new Set([
+					'custom-mcp-servers:delete',
+					'custom-mcp-servers:create',
+				]),
 			});
 
 			await executeTool(createCustomMcpServersTool(context), input, suspendCtx(suspend));
@@ -310,27 +368,61 @@ describe('custom-mcp-servers tool', () => {
 		);
 	});
 
-	it('lists the workflows that can be tools, without asking', async () => {
+	it('marks its output as untrusted data', () => {
+		expect(createCustomMcpServersTool(createContext(service)).outputTrust).toBe('untrusted');
+	});
+
+	describe('tool-candidates', () => {
 		const candidates = [
 			{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },
-			{
-				workflowId: 'workflow-3',
-				name: 'Form intake',
-				description: null,
-				reason: 'missing_trigger',
-			},
 		];
-		service.listToolCandidates.mockResolvedValue(candidates);
-		const suspend = vi.fn();
 
-		const result = await executeTool(
-			createCustomMcpServersTool(createContext(service)),
-			{ action: 'tool-candidates', serverId: SERVER_ID },
-			suspendCtx(suspend),
-		);
+		it('lists the workflows that can be tools, without asking', async () => {
+			service.listToolCandidates.mockResolvedValue({ candidates, unusable: 0, more: false });
+			const suspend = vi.fn();
 
-		expect(result).toEqual({ candidates });
-		expect(suspend).not.toHaveBeenCalled();
+			const result = await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{ action: 'tool-candidates', serverId: SERVER_ID },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({ candidates, more: false, unusableLeftOut: 0 });
+			expect(service.listToolCandidates).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				{ query: undefined, limit: 50, includeUnusable: false },
+			);
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('passes the query and the limit, and says what it left out', async () => {
+			service.listToolCandidates.mockResolvedValue({ candidates, unusable: 3, more: true });
+
+			const result = await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{
+					action: 'tool-candidates',
+					serverId: SERVER_ID,
+					query: 'lead',
+					limit: 1,
+					includeUnusable: false,
+				},
+				suspendCtx(vi.fn()),
+			);
+
+			expect(service.listToolCandidates).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				{ query: 'lead', limit: 1, includeUnusable: false },
+			);
+			expect(result).toEqual({
+				candidates,
+				more: true,
+				unusableLeftOut: 3,
+				note:
+					'More workflows fit. Pass a query, or a higher limit, to see them. ' +
+					'3 workflows that cannot be a tool are left out. Pass includeUnusable to see why.',
+			});
+		});
 	});
 
 	describe('add-tools', () => {
@@ -341,9 +433,7 @@ describe('custom-mcp-servers tool', () => {
 		};
 
 		it('names the workflows on the card', async () => {
-			service.listToolCandidates.mockResolvedValue([
-				{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },
-			]);
+			service.workflowNames.mockResolvedValue([{ workflowId: 'workflow-2', name: 'Lead score' }]);
 			const suspend = vi.fn();
 
 			await executeTool(
@@ -360,6 +450,35 @@ describe('custom-mcp-servers tool', () => {
 				}),
 			);
 			expect(service.addTools).not.toHaveBeenCalled();
+		});
+
+		it.each([0, 101])('shows no card for %i workflows', async (count) => {
+			const suspend = vi.fn();
+			const workflowIds = Array.from({ length: count }, (_, i) => `workflow-${i}`);
+
+			await expect(
+				executeTool(
+					createCustomMcpServersTool(createContext(service)),
+					{ ...input, workflowIds },
+					suspendCtx(suspend),
+				),
+			).rejects.toThrow('Invalid input. workflowIds:');
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('reads only the names of the given workflows for the card', async () => {
+			await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				input,
+				suspendCtx(vi.fn()),
+			);
+
+			expect(service.workflowNames).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				['workflow-2', 'workflow-4'],
+			);
+			expect(service.listToolCandidates).not.toHaveBeenCalled();
+			expect(service.get).not.toHaveBeenCalled();
 		});
 
 		it('adds the tools after the approval', async () => {
@@ -428,7 +547,31 @@ describe('custom-mcp-servers tool', () => {
 		expect(result).toEqual({ success: true, toolId: TOOL_ID });
 	});
 
+	it('asks before each removal, even after "Allow for this chat"', async () => {
+		const grantSessionToolApproval = vi.fn();
+		const input = { action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID };
+		await executeTool(
+			createCustomMcpServersTool(createContext(service, { grantSessionToolApproval })),
+			input,
+			resumeCtx(true, 'session'),
+		);
+		expect(grantSessionToolApproval).not.toHaveBeenCalled();
+
+		const suspend = vi.fn();
+		await executeTool(
+			createCustomMcpServersTool(
+				createContext(service, {
+					sessionApprovedToolKeys: new Set(['custom-mcp-servers:remove-tool']),
+				}),
+			),
+			input,
+			suspendCtx(suspend),
+		);
+		expect(suspend).toHaveBeenCalled();
+	});
+
 	it('tells the model when the tool is not on the server', async () => {
+		service.getTool.mockRejectedValue(new Error('Tool not found'));
 		const suspend = vi.fn();
 
 		await expect(
@@ -437,7 +580,7 @@ describe('custom-mcp-servers tool', () => {
 				{ action: 'remove-tool', serverId: SERVER_ID, toolId: 'other-tool' },
 				suspendCtx(suspend),
 			),
-		).rejects.toThrow('The server has no tool with the ID "other-tool".');
+		).rejects.toThrow('Tool not found');
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
@@ -506,7 +649,7 @@ describe('custom-mcp-servers tool', () => {
 		});
 
 		it('refuses without a card when AI drafts are not available', async () => {
-			service.get.mockResolvedValue({ ...detail, toolDraftsAvailable: false });
+			service.getTool.mockResolvedValue({ server, tool, toolDraftsAvailable: false });
 			const suspend = vi.fn();
 
 			const result = await executeTool(
@@ -521,6 +664,16 @@ describe('custom-mcp-servers tool', () => {
 				reason: 'AI drafts are not available for this user. Write the text with update-tool.',
 			});
 			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('fails when AI drafts turned off between the card and the approval', async () => {
+			service.generateTool.mockResolvedValue({ status: 'not_available', tool });
+
+			await expect(
+				executeTool(createCustomMcpServersTool(createContext(service)), input, resumeCtx(true)),
+			).rejects.toThrow(
+				'AI drafts are not available for this user. Write the text with update-tool.',
+			);
 		});
 	});
 });

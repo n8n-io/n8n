@@ -201,6 +201,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 		name,
 		'instance',
 	]),
+	[DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS, 'custom_mcp_servers'],
 ]);
 
 /** One line on what each n8n tool group holds, shown next to its tool names. */
@@ -213,6 +214,9 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	agents: 'build and configure standalone n8n Agents',
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
+	// Without this line the model reads "MCP server" as an MCP Server Trigger workflow.
+	custom_mcp_servers:
+		'build and change custom MCP servers: a project server that serves chosen workflows as tools to AI clients, with the n8n sign-in. Not an MCP Server Trigger workflow',
 };
 
 /** Returns the description of a tool group, or undefined when it has none. */

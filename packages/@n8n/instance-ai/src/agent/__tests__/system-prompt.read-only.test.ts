@@ -16,6 +16,19 @@ describe('getSystemPrompt — read-only instance', () => {
 		},
 	);
 
+	it.each([undefined, false, true])(
+		'only mentions custom MCP server changes when the tool is wired: %s',
+		(customMcpServersEnabled) => {
+			const prompt = getSystemPrompt({ branchReadOnly: true, customMcpServersEnabled });
+			const available = prompt.split('The following operations remain available:')[1];
+			if (customMcpServersEnabled)
+				expect(available).toContain(
+					'Creating, editing, and deleting custom MCP servers and their tools',
+				);
+			else expect(prompt).not.toContain('custom MCP servers');
+		},
+	);
+
 	it('allows data table row writes and blocks data table structure changes', () => {
 		const prompt = getSystemPrompt({ branchReadOnly: true });
 		const [blocked, available] = prompt

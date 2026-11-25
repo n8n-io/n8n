@@ -109,6 +109,8 @@ function buildSingleAlwaysAllowKey(
 	}
 	const action = typeof args.action === 'string' ? args.action : '';
 	if (toolName === 'skills' && action === 'import-from-source') return null;
+	// The backend asks before each removal of a server tool, so the UI stores no grant for it.
+	if (toolName === 'custom-mcp-servers' && action === 'remove-tool') return null;
 	const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 	// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 	// workflow the user approved. Without a workflow ID, refuse to store a key (fail closed).

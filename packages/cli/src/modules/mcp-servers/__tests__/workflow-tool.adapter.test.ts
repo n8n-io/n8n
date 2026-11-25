@@ -11,13 +11,13 @@ const WORKFLOW_ID = 'workflow-1';
 
 function setup() {
 	const runner = mock<CallableWorkflowRunner>();
+	const sharedWorkflows = mock<SharedWorkflowRepository>();
+	const workflows = mock<WorkflowRepository>();
 	return {
 		runner,
-		adapter: new WorkflowToolAdapter(
-			runner,
-			mock<SharedWorkflowRepository>(),
-			mock<WorkflowRepository>(),
-		),
+		sharedWorkflows,
+		workflows,
+		adapter: new WorkflowToolAdapter(runner, sharedWorkflows, workflows),
 	};
 }
 
@@ -38,6 +38,30 @@ describe('WorkflowToolAdapter', () => {
 			callable: false,
 			reason: 'not_callable',
 		});
+	});
+
+	it('lists the workflows of the project without the check, and leaves out archived ones', async () => {
+		const { runner, sharedWorkflows, workflows, adapter } = setup();
+		sharedWorkflows.findOwnedWorkflowIdsByProjects.mockResolvedValue(['w-1', 'w-2']);
+		workflows.findByIds.mockResolvedValue([
+			Object.assign(new WorkflowEntity(), { id: 'w-1', name: 'Lead score', description: null }),
+			Object.assign(new WorkflowEntity(), { id: 'w-2', name: 'Old', isArchived: true }),
+		]);
+
+		await expect(adapter.list(PROJECT_ID)).resolves.toEqual([
+			{ workflowId: 'w-1', name: 'Lead score', description: null },
+		]);
+		expect(runner.check).not.toHaveBeenCalled();
+	});
+
+	it('lists only the given workflows that the project owns', async () => {
+		const { sharedWorkflows, workflows, adapter } = setup();
+		sharedWorkflows.findOwnedWorkflowIdsByProjects.mockResolvedValue(['w-1', 'w-2']);
+		workflows.findByIds.mockResolvedValue([]);
+
+		await adapter.list(PROJECT_ID, ['w-2', 'w-9']);
+
+		expect(workflows.findByIds).toHaveBeenCalledWith(['w-2'], expect.anything());
 	});
 
 	it('runs the workflow through the shared runner, with the wait of the caller', async () => {

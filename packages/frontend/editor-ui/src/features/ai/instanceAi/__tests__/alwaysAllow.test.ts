@@ -133,6 +133,13 @@ describe('buildAlwaysAllowKeys', () => {
 		expect(buildAlwaysAllowKeys('skills', { action: 'import-from-source' })).toEqual([]);
 	});
 
+	it('keys the custom MCP server grants per action, as the backend does', () => {
+		expect(buildAlwaysAllowKeys('custom-mcp-servers', { action: 'add-tools' })).toEqual([
+			'custom-mcp-servers:add-tools',
+		]);
+		expect(buildAlwaysAllowKeys('custom-mcp-servers', { action: 'remove-tool' })).toEqual([]);
+	});
+
 	it.each(['unarchive', 'publish', 'restore-version', 'update-version'])(
 		'matches the backend per-workflow grant for the workflows %s action',
 		(action) => {

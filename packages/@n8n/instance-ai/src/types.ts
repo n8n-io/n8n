@@ -35,6 +35,8 @@ import type {
 	McpServerToolDraftResponse,
 	McpServerToolResponse,
 	SaveSkillDto,
+	UpdateMcpServerDto,
+	UpdateMcpServerToolDto,
 	SkillDetail,
 	SkillListResponse,
 	SkillSaveResponse,
@@ -1393,6 +1395,21 @@ export interface CustomMcpServerRef {
 	projectId?: string;
 }
 
+export interface CustomMcpServerCandidateQuery {
+	/** Only workflows whose name or description contains this text, in any case. */
+	query?: string;
+	limit: number;
+	includeUnusable?: boolean;
+}
+
+export interface CustomMcpServerCandidatePage {
+	candidates: McpServerToolCandidate[];
+	/** Checked workflows that are not in `candidates`, because they cannot be a tool. */
+	unusable: number;
+	/** `true` when the page stopped at the limit, and at least one more workflow fits. */
+	more: boolean;
+}
+
 /**
  * The builder actions on custom MCP servers. The adapter calls the same module services as the
  * REST API, with the same project scopes, and marks each event with the source "assistant".
@@ -1400,8 +1417,32 @@ export interface CustomMcpServerRef {
 export interface InstanceAiCustomMcpServerService {
 	/** The servers of one project, or of every project that the user can list. */
 	list(projectId?: string): Promise<McpServerResponse[]>;
-	/** One server with its tools. */
+	/** One server with its tools. It checks every tool, so a card reads `getServer` or `getTool`. */
 	get(ref: CustomMcpServerRef): Promise<McpServerDetailResponse>;
+	/** One server, without its tools. */
+	getServer(ref: CustomMcpServerRef): Promise<McpServerResponse>;
+	/** One tool with its server. It checks only this tool. */
+	getTool(
+		ref: CustomMcpServerRef,
+		toolId: string,
+	): Promise<{
+		server: McpServerResponse;
+		tool: McpServerToolResponse;
+		toolDraftsAvailable: boolean;
+	}>;
+	/** The names of these workflows of the project, for an approval card. */
+	workflowNames(
+		ref: CustomMcpServerRef,
+		workflowIds: string[],
+	): Promise<Array<{ workflowId: string; name: string }>>;
+	/**
+	 * Throws when the user cannot make this change in the project, or when a conversation bound
+	 * to a project writes to another project. The tool calls it before it shows a card.
+	 */
+	assertCanWrite(
+		projectId: string | undefined,
+		change: 'create' | 'update' | 'delete',
+	): Promise<void>;
 	create(input: {
 		projectId?: string;
 		name: string;
@@ -1409,18 +1450,21 @@ export interface InstanceAiCustomMcpServerService {
 		slug?: string;
 		description?: string;
 	}): Promise<McpServerResponse>;
-	update(
-		ref: CustomMcpServerRef,
-		changes: { name?: string; description?: string },
-	): Promise<McpServerResponse>;
+	update(ref: CustomMcpServerRef, changes: UpdateMcpServerDto): Promise<McpServerResponse>;
 	delete(ref: CustomMcpServerRef): Promise<void>;
-	/** Every workflow of the project, with the reason when it cannot be a tool. */
-	listToolCandidates(ref: CustomMcpServerRef): Promise<McpServerToolCandidate[]>;
+	/**
+	 * The first workflows of the project in name order, up to `limit`. Without
+	 * `includeUnusable`, only the workflows that can be a tool.
+	 */
+	listToolCandidates(
+		ref: CustomMcpServerRef,
+		options: CustomMcpServerCandidateQuery,
+	): Promise<CustomMcpServerCandidatePage>;
 	addTools(ref: CustomMcpServerRef, workflowIds: string[]): Promise<McpServerToolResponse[]>;
 	updateTool(
 		ref: CustomMcpServerRef,
 		toolId: string,
-		changes: { toolName?: string; description?: string },
+		changes: UpdateMcpServerToolDto,
 	): Promise<McpServerToolResponse>;
 	/** "Generate": an AI draft of one field, or of both fields without `field`. */
 	generateTool(

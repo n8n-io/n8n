@@ -94,6 +94,87 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 		expect(detail).toEqual({ ...server, tools: [tool], toolDraftsAvailable: true });
 	});
 
+	describe('reads for an approval card', () => {
+		it('reads one tool and its server, without the other tools', async () => {
+			servers.get.mockResolvedValue(server);
+			tools.getTool.mockResolvedValue(tool);
+			tools.draftsAvailable.mockResolvedValue(false);
+
+			const result = await createService().getTool({ serverId: SERVER_ID }, TOOL_ID);
+
+			expect(access.resolveProjectId).toHaveBeenCalledWith(['mcpServer:read'], undefined);
+			expect(tools.getTool).toHaveBeenCalledWith('bound', SERVER_ID, TOOL_ID);
+			expect(tools.listTools).not.toHaveBeenCalled();
+			expect(result).toEqual({ server, tool, toolDraftsAvailable: false });
+		});
+
+		it('reads only the names of the given workflows', async () => {
+			tools.workflowNames.mockResolvedValue([{ workflowId: 'workflow-1', name: 'Lead score' }]);
+
+			await createService().workflowNames({ serverId: SERVER_ID, projectId: 'project-1' }, [
+				'workflow-1',
+			]);
+
+			expect(access.resolveProjectId).toHaveBeenCalledWith(['mcpServer:update'], 'project-1');
+			expect(tools.workflowNames).toHaveBeenCalledWith('project-1', ['workflow-1']);
+			expect(tools.findCandidates).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('assertCanWrite', () => {
+		it.each(['create', 'update', 'delete'] as const)(
+			'checks the %s scope and the bound project',
+			async (change) => {
+				await createService().assertCanWrite('project-1', change);
+
+				expect(access.resolveProjectId).toHaveBeenCalledWith([`mcpServer:${change}`], 'project-1');
+				expect(access.assertInBoundProject).toHaveBeenCalledWith('project-1');
+			},
+		);
+
+		it('throws when the user has no scope in the project', async () => {
+			access.resolveProjectId.mockRejectedValue(
+				new Error('User does not have the required permissions in this project'),
+			);
+
+			await expect(createService().assertCanWrite('project-2', 'delete')).rejects.toThrow(
+				'User does not have the required permissions in this project',
+			);
+		});
+	});
+
+	describe('input checks of the REST DTOs', () => {
+		const ref = { serverId: SERVER_ID, projectId: 'project-1' };
+		const ids = (count: number) => Array.from({ length: count }, (_, i) => `workflow-${i}`);
+
+		it.each([0, 101])('refuses to add %i workflows', async (count) => {
+			await expect(createService().addTools(ref, ids(count))).rejects.toThrow();
+			expect(tools.addWorkflowTools).not.toHaveBeenCalled();
+		});
+
+		it('adds 100 workflows', async () => {
+			tools.addWorkflowTools.mockResolvedValue([tool]);
+
+			await createService().addTools(ref, ids(100));
+
+			expect(tools.addWorkflowTools).toHaveBeenCalledWith('project-1', SERVER_ID, ids(100), actor);
+		});
+
+		it('refuses a server description over the limit', async () => {
+			await expect(
+				createService().update(ref, { description: 'x'.repeat(2001) }),
+			).rejects.toThrow();
+			expect(servers.update).not.toHaveBeenCalled();
+		});
+
+		it('refuses a tool name that AI clients cannot call', async () => {
+			await expect(
+				createService().updateTool(ref, TOOL_ID, { toolName: 'Not a tool name' }),
+			).rejects.toThrow();
+			expect(tools.updateTool).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('create', () => {
 		it('makes the slug from the name, and marks the event with the Assistant source', async () => {
 			servers.create.mockResolvedValue(server);
@@ -163,14 +244,14 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 	});
 
 	it('runs the tool actions with the update scope, as the REST routes do', async () => {
-		tools.listCandidates.mockResolvedValue([]);
+		tools.findCandidates.mockResolvedValue({ candidates: [], unusable: 0, more: false });
 		tools.addWorkflowTools.mockResolvedValue([tool]);
 		tools.updateTool.mockResolvedValue(tool);
 		tools.draftTool.mockResolvedValue({ status: 'drafted', tool });
 		const service = createService();
 		const ref = { serverId: SERVER_ID, projectId: 'project-1' };
 
-		await service.listToolCandidates(ref);
+		await service.listToolCandidates(ref, { query: 'lead', limit: 20 });
 		await service.addTools(ref, ['workflow-1']);
 		await service.updateTool(ref, TOOL_ID, { toolName: 'campaign_stats' });
 		await service.generateTool(ref, TOOL_ID, 'description');
@@ -180,16 +261,24 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 		for (const call of access.resolveProjectId.mock.calls) {
 			expect(call).toEqual([['mcpServer:update'], 'project-1']);
 		}
-		expect(tools.listCandidates).toHaveBeenCalledWith('project-1', SERVER_ID);
+		expect(tools.findCandidates).toHaveBeenCalledWith('project-1', SERVER_ID, {
+			query: 'lead',
+			limit: 20,
+		});
 		expect(tools.addWorkflowTools).toHaveBeenCalledWith(
 			'project-1',
 			SERVER_ID,
 			['workflow-1'],
 			actor,
 		);
-		expect(tools.updateTool).toHaveBeenCalledWith('project-1', SERVER_ID, TOOL_ID, {
-			toolName: 'campaign_stats',
-		});
+		// The Assistant wrote the text, so the tool keeps the draft source of an AI draft.
+		expect(tools.updateTool).toHaveBeenCalledWith(
+			'project-1',
+			SERVER_ID,
+			TOOL_ID,
+			{ toolName: 'campaign_stats' },
+			'ai',
+		);
 		expect(tools.draftTool).toHaveBeenCalledWith(
 			user,
 			'project-1',

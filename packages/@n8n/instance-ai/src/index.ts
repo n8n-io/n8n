@@ -780,6 +780,8 @@ export type {
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiAppService,
+	CustomMcpServerCandidatePage,
+	CustomMcpServerCandidateQuery,
 	CustomMcpServerRef,
 	InstanceAiCustomMcpServerService,
 	InstanceAiDataTableService,

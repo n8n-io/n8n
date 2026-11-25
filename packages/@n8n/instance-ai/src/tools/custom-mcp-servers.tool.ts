@@ -1,10 +1,10 @@
 import { Tool } from '@n8n/agents';
 import {
 	MCP_SERVER_DESCRIPTION_MAX_LENGTH,
+	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	mcpServerNameSchema,
 	mcpServerSlugSchema,
 	mcpServerToolNameSchema,
-	type McpServerDetailResponse,
 	type McpServerResponse,
 	type McpServerToolResponse,
 } from '@n8n/api-types';
@@ -34,11 +34,11 @@ const projectIdField = z
 	);
 const serverIdField = z.string().describe('The server ID from the list action');
 const toolIdField = z.string().describe('The tool ID from the get action');
-// The server and the tool descriptions have the same length limit.
+// One field for both texts. The adapter applies the exact limit of each with its REST DTO.
 const descriptionField = z
 	.string()
 	.trim()
-	.max(MCP_SERVER_DESCRIPTION_MAX_LENGTH)
+	.max(Math.max(MCP_SERVER_DESCRIPTION_MAX_LENGTH, MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH))
 	.optional()
 	.describe(
 		'For a server: what the server is for. AI clients get it as the server instructions. For a tool: when an AI client should call the tool, and what it returns',
@@ -86,13 +86,33 @@ const deleteAction = z.object({
 	...serverRefShape,
 });
 
+const CANDIDATE_LIMIT_DEFAULT = 50;
+const CANDIDATE_LIMIT_MAX = 100;
+
 const toolCandidatesAction = z.object({
 	action: z
 		.literal('tool-candidates')
 		.describe(
-			'List the workflows of the project of the server. reason is null when the workflow can be a tool, and else says why it cannot',
+			'List the workflows of the project of the server that can be a tool, in name order. The result counts the workflows that it left out',
 		),
 	...serverRefShape,
+	query: z
+		.string()
+		.optional()
+		.describe('Only workflows whose name or description contains this text, in any case'),
+	limit: z
+		.number()
+		.int()
+		.positive()
+		.max(CANDIDATE_LIMIT_MAX)
+		.optional()
+		.describe(`The most workflows to return. Default: ${CANDIDATE_LIMIT_DEFAULT}`),
+	includeUnusable: z
+		.boolean()
+		.optional()
+		.describe(
+			'Also list the workflows that cannot be a tool. Their reason says why. Use it to tell the user why a workflow is not on the server',
+		),
 });
 
 const addToolsAction = z.object({
@@ -165,39 +185,68 @@ const DESCRIPTION =
 	'To build a server: create it, read tool-candidates, add the workflows that fit with add-tools, then improve the tool text with generate. ' +
 	'A workflow that is not published, or has no "When Executed by Another Workflow" trigger, cannot be a tool. Fix it with the workflow tools first.';
 
-/** One grant covers every write that is not a delete, as one "Allow for this chat" answer. */
-const WRITE_GRANT_KEY = `${DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS}:write`;
+type WriteAction = Exclude<Input['action'], 'list' | 'get' | 'tool-candidates'>;
+
+/**
+ * "Allow for this chat" covers one action, as in the skills tool. The key matches the
+ * fallback key of the UI, `<tool>:<action>`. A removal and a delete always ask.
+ */
+const SESSION_GRANT_ACTIONS: ReadonlySet<WriteAction> = new Set([
+	'create',
+	'update',
+	'add-tools',
+	'update-tool',
+	'generate',
+]);
+
+/** The project scope of each change, as on the REST routes: `mcpServer:<change>`. */
+const WRITE_SCOPE: Record<WriteAction, 'create' | 'update' | 'delete'> = {
+	create: 'create',
+	update: 'update',
+	delete: 'delete',
+	'add-tools': 'update',
+	'update-tool': 'update',
+	generate: 'update',
+	'remove-tool': 'update',
+};
+
+function sessionGrantKey(action: WriteAction): string {
+	return `${DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS}:${action}`;
+}
 
 const BLOCKED_RESULT = { success: false, denied: true, reason: 'Action blocked by admin' };
 
 /**
- * `write`: every change that is not a delete. It asks first, unless the user allowed writes
- * for this conversation. `delete` has its own admin permission and never takes that grant.
+ * Every write asks first, unless the user allowed this action for the conversation. `delete`
+ * has its own admin permission, and neither it nor `remove-tool` takes a session grant.
  */
-type ApprovalKind = 'write' | 'delete';
-
 async function withApproval<T extends object>(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
-	kind: ApprovalKind,
+	action: WriteAction,
+	/** The project of the change. Without it, the project of this conversation or the personal one. */
+	projectId: string | undefined,
 	request: () => Promise<Omit<ConfirmationSuspendPayload, 'requestId'>>,
 	run: () => Promise<T>,
 ) {
-	const permission = kind === 'delete' ? context.permissions?.deleteMcpServer : undefined;
+	const permission = action === 'delete' ? context.permissions?.deleteMcpServer : undefined;
 	if (permission === 'blocked') return BLOCKED_RESULT;
 
 	const { resumeData } = ctx;
+	const grantable = SESSION_GRANT_ACTIONS.has(action);
 	const granted =
 		permission === 'always_allow' ||
-		(kind === 'write' && context.sessionApprovedToolKeys?.has(WRITE_GRANT_KEY) === true);
+		(grantable && context.sessionApprovedToolKeys?.has(sessionGrantKey(action)) === true);
 	if (!granted && !resumeData) {
+		// No card for a change that the user cannot make: the write would only fail after the approval.
+		await requireService(context).assertCanWrite(projectId, WRITE_SCOPE[action]);
 		return await ctx.suspend({ requestId: nanoid(), ...(await request()) });
 	}
 	if (resumeData && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
-	if (kind === 'write' && resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(WRITE_GRANT_KEY);
+	if (grantable && resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(sessionGrantKey(action));
 	}
 	return { success: true, ...(await run()) };
 }
@@ -233,12 +282,6 @@ function toRef(input: { serverId: string; projectId?: string }): CustomMcpServer
 	return { serverId: input.serverId, projectId: input.projectId };
 }
 
-function findTool(server: McpServerDetailResponse, toolId: string): McpServerToolResponse {
-	const tool = server.tools.find(({ id }) => id === toolId);
-	if (!tool) throw new Error(`The server has no tool with the ID "${toolId}".`);
-	return tool;
-}
-
 function changesMessage(
 	changes: { name?: string; description?: string },
 	nameChange: (name: string) => string,
@@ -269,20 +312,44 @@ async function handleUpdate(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'update',
+		input.projectId,
 		async () => ({
 			message: changesMessage(
 				changes,
 				(name) => `Rename the server to "${name}".`,
 				'Change the description of the server. AI clients get it as the server instructions.',
 			),
-			resourceName: (await service.get(toRef(input))).name,
+			resourceName: (await service.getServer(toRef(input))).name,
 			severity: 'info',
 		}),
 		async () => ({
 			server: summary(await service.update(toRef(input), changes)),
 		}),
 	);
+}
+
+async function handleToolCandidates(
+	service: InstanceAiCustomMcpServerService,
+	input: ActionInput<'tool-candidates'>,
+) {
+	const page = await service.listToolCandidates(toRef(input), {
+		query: input.query,
+		limit: input.limit ?? CANDIDATE_LIMIT_DEFAULT,
+		includeUnusable: input.includeUnusable === true,
+	});
+	const notes = [
+		page.more ? 'More workflows fit. Pass a query, or a higher limit, to see them.' : undefined,
+		page.unusable > 0
+			? `${countWorkflows(page.unusable)} that cannot be a tool are left out. Pass includeUnusable to see why.`
+			: undefined,
+	].filter((note) => note !== undefined);
+	return {
+		candidates: page.candidates,
+		more: page.more,
+		unusableLeftOut: page.unusable,
+		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
+	};
 }
 
 async function handleAddTools(
@@ -294,13 +361,14 @@ async function handleAddTools(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'add-tools',
+		input.projectId,
 		async () => {
-			const [server, candidates] = await Promise.all([
-				service.get(toRef(input)),
-				service.listToolCandidates(toRef(input)),
+			const [server, workflowNames] = await Promise.all([
+				service.getServer(toRef(input)),
+				service.workflowNames(toRef(input), input.workflowIds),
 			]);
-			const names = new Map(candidates.map(({ workflowId, name }) => [workflowId, name]));
+			const names = new Map(workflowNames.map(({ workflowId, name }) => [workflowId, name]));
 			const workflows = input.workflowIds.map((id) => names.get(id) ?? id).join(', ');
 			return {
 				message: `Add ${countWorkflows(input.workflowIds.length)} as tools: ${workflows}.`,
@@ -328,11 +396,12 @@ async function handleUpdateTool(
 			reason: 'Pass a toolName or a description to change.',
 		};
 	}
-	const tool = findTool(await service.get(toRef(input)), input.toolId);
+	const { tool } = await service.getTool(toRef(input), input.toolId);
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'update-tool',
+		input.projectId,
 		async () => ({
 			message: `${changesMessage(
 				{ name: changes.toolName, description: changes.description },
@@ -357,11 +426,10 @@ async function handleGenerate(
 	input: ActionInput<'generate'>,
 	ctx: ConfirmationToolContext,
 ) {
-	const server = await service.get(toRef(input));
-	if (!server.toolDraftsAvailable) {
+	const { tool, toolDraftsAvailable } = await service.getTool(toRef(input), input.toolId);
+	if (!toolDraftsAvailable) {
 		return { success: false, refused: true, reason: DRAFTS_NOT_AVAILABLE };
 	}
-	const tool = findTool(server, input.toolId);
 	const fields = {
 		toolName: 'the tool name',
 		description: 'the tool description',
@@ -370,7 +438,8 @@ async function handleGenerate(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'generate',
+		input.projectId,
 		async () => ({
 			message: `Write ${target} again with AI, from the workflow.`,
 			resourceName: tool.toolName,
@@ -391,12 +460,12 @@ async function handleRemoveTool(
 	input: ActionInput<'remove-tool'>,
 	ctx: ConfirmationToolContext,
 ) {
-	const server = await service.get(toRef(input));
-	const tool = findTool(server, input.toolId);
+	const { server, tool } = await service.getTool(toRef(input), input.toolId);
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'remove-tool',
+		input.projectId,
 		async () => ({
 			message: `Remove the tool from ${server.name}. AI clients cannot call it after this.`,
 			resourceName: tool.toolName,
@@ -419,8 +488,9 @@ async function handleDelete(
 		context,
 		ctx,
 		'delete',
+		input.projectId,
 		async () => {
-			const server = await service.get(toRef(input));
+			const server = await service.getServer(toRef(input));
 			return {
 				message: `Delete the server. AI clients lose access to its tools now. Its URL /mcp-servers/${server.slug} stays reserved. You cannot undo this.`,
 				resourceName: server.name,
@@ -435,54 +505,69 @@ async function handleDelete(
 }
 
 export function createCustomMcpServersTool(context: InstanceAiContext) {
-	return new Tool(DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS)
-		.description(DESCRIPTION)
-		.input(sanitizeInputSchema(inputSchema))
-		.suspend(confirmationSuspendSchema)
-		.resume(confirmationResumeSchema)
-		.handler(async (input: Input, ctx: ConfirmationToolContext) => {
-			const service = requireService(context);
-			switch (input.action) {
-				case 'list':
-					return { servers: (await service.list(input.projectId)).map(summary) };
-				case 'get': {
-					const { tools, toolDraftsAvailable, ...server } = await service.get(toRef(input));
-					return {
-						server: summary(server),
-						tools: tools.map(toolSummary),
-						generateAvailable: toolDraftsAvailable,
-					};
-				}
-				case 'create': {
-					const { action: _action, ...create } = input;
-					return await withApproval(
-						context,
-						ctx,
-						'write',
-						async () => ({
-							message:
-								'Create a custom MCP server. AI clients can connect to it after you add tools.',
-							resourceName: input.name,
-							severity: 'info',
-						}),
-						async () => ({ server: summary(await service.create(create)) }),
+	return (
+		new Tool(DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS)
+			.description(DESCRIPTION)
+			.input(sanitizeInputSchema(inputSchema))
+			// Project members write the server, tool, and workflow text that this tool returns.
+			.untrustedOutput()
+			.suspend(confirmationSuspendSchema)
+			.resume(confirmationResumeSchema)
+			.handler(async (rawInput: Input, ctx: ConfirmationToolContext) => {
+				// The provider schema drops some bounds, such as the size of workflowIds, so the
+				// handler checks the input again before it shows a card.
+				const parsed = inputSchema.safeParse(rawInput);
+				if (!parsed.success) {
+					const issues = parsed.error.issues.map(
+						({ path, message }) => `${path.join('.') || 'input'}: ${message}`,
 					);
+					throw new Error(`Invalid input. ${issues.join('; ')}`);
 				}
-				case 'update':
-					return await handleUpdate(context, service, input, ctx);
-				case 'delete':
-					return await handleDelete(context, service, input, ctx);
-				case 'tool-candidates':
-					return { candidates: await service.listToolCandidates(toRef(input)) };
-				case 'add-tools':
-					return await handleAddTools(context, service, input, ctx);
-				case 'update-tool':
-					return await handleUpdateTool(context, service, input, ctx);
-				case 'generate':
-					return await handleGenerate(context, service, input, ctx);
-				case 'remove-tool':
-					return await handleRemoveTool(context, service, input, ctx);
-			}
-		})
-		.build();
+				const input = parsed.data;
+				const service = requireService(context);
+				switch (input.action) {
+					case 'list':
+						return { servers: (await service.list(input.projectId)).map(summary) };
+					case 'get': {
+						const { tools, toolDraftsAvailable, ...server } = await service.get(toRef(input));
+						return {
+							server: summary(server),
+							tools: tools.map(toolSummary),
+							generateAvailable: toolDraftsAvailable,
+						};
+					}
+					case 'create': {
+						const { action: _action, ...create } = input;
+						return await withApproval(
+							context,
+							ctx,
+							'create',
+							input.projectId,
+							async () => ({
+								message:
+									'Create a custom MCP server. AI clients can connect to it after you add tools.',
+								resourceName: input.name,
+								severity: 'info',
+							}),
+							async () => ({ server: summary(await service.create(create)) }),
+						);
+					}
+					case 'update':
+						return await handleUpdate(context, service, input, ctx);
+					case 'delete':
+						return await handleDelete(context, service, input, ctx);
+					case 'tool-candidates':
+						return await handleToolCandidates(service, input);
+					case 'add-tools':
+						return await handleAddTools(context, service, input, ctx);
+					case 'update-tool':
+						return await handleUpdateTool(context, service, input, ctx);
+					case 'generate':
+						return await handleGenerate(context, service, input, ctx);
+					case 'remove-tool':
+						return await handleRemoveTool(context, service, input, ctx);
+				}
+			})
+			.build()
+	);
 }
