@@ -18,6 +18,8 @@ export interface GeneratedCase {
 	extraTriggers: Array<{ block: Block | null; attach: number | null }>;
 	/** Which trigger fires, modulo the count of triggers. 0 is the main trigger. */
 	fired: number;
+	/** Random edges. `from` and `to` select nodes, from 0 to 1. */
+	rawEdges: Array<{ from: number; out: number; to: number; in: number }>;
 }
 
 const MAIN_TRIGGER = 'Trigger';
@@ -95,6 +97,15 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 				}),
 			);
 		}
+		if (has('fanInPlain')) {
+			options.push(
+				fc.record({
+					kind: fc.constant('fanInPlain' as const),
+					sources: fc.array(sub, { minLength: 2, maxLength: width }),
+					target: plainDraft,
+				}),
+			);
+		}
 		if (has('loop') && rules.features.loops && loops.length > 0) {
 			// The body is a chain of plain nodes. Engine v2 refuses nested loops, and
 			// a body that branches has more than one way back.
@@ -162,6 +173,17 @@ export function generatedCaseArb(rules: ParityRules): fc.Arbitrary<GeneratedCase
 				)
 			: fc.constant([]),
 		fired: fc.nat({ max: 2 }),
+		rawEdges: rules.features.rawEdges
+			? fc.array(
+					fc.record({
+						from: pick,
+						out: fc.integer({ min: 0, max: 3 }),
+						to: pick,
+						in: fc.integer({ min: 0, max: 1 }),
+					}),
+					{ maxLength: 2 },
+				)
+			: fc.constant([]),
 	});
 }
 
@@ -258,9 +280,20 @@ export function toIr(generated: GeneratedCase): IrWorkflow {
 	});
 
 	const triggerKeys = triggers.map((trigger) => trigger.key);
+	const nodeKeys = state.nodes.map((node) => node.key);
+	const rawEdges: IrEdge[] = generated.rawEdges.flatMap((raw) => {
+		const from = pickFrom([...triggerKeys, ...nodeKeys], raw.from);
+		const to = pickFrom(nodeKeys, raw.to);
+		return from !== undefined && to !== undefined ? [{ from, out: raw.out, to, in: raw.in }] : [];
+	});
+
 	const subWorkflows = lowerSubWorkflows(state);
-	const { edges } = state;
+	const edges = [...state.edges, ...rawEdges];
 	const nodes = toIrNodes(state.nodes, edges);
+	for (const edge of rawEdges) {
+		const node = nodes.find((candidate) => candidate.key === edge.to);
+		if (node) node.via = 'rawEdge';
+	}
 
 	return {
 		triggers,

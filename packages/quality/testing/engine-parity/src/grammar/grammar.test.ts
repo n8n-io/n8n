@@ -142,7 +142,7 @@ describe('grammar', () => {
 		expect([...modes].sort()).toEqual([false, true]);
 	});
 
-	it.each(['code', 'subWorkflows', 'multiTrigger'])(
+	it.each(['code', 'subWorkflows', 'multiTrigger', 'full'])(
 		'makes cases that the SDK can print as code for the "%s" rule set',
 		(name) => {
 			for (const parityCase of sample(name, 3, 20)) {

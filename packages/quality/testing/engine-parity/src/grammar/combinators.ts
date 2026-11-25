@@ -10,6 +10,7 @@ import type { CombinatorId, IrEdge } from './ir';
  * Every block has one way in and one way out. Other branches end where they
  * stop. Only `merge` joins branches again, on two different inputs. So by
  * default no input gets more than one connection, which engine v2 refuses.
+ * `fanInPlain` breaks this rule on purpose.
  */
 export type NodeDraft = { catalogId: string; params: ParamDraft };
 
@@ -24,6 +25,8 @@ export type Block =
 	| { kind: 'fanOut'; targets: Block[] }
 	/** Two branches into the two inputs of a Merge node. */
 	| { kind: 'merge'; node: NodeDraft; left: Block | null; right: Block | null }
+	/** Many branches into input 0 of one node. Engine v2 refuses this today. */
+	| { kind: 'fanInPlain'; sources: Block[]; target: NodeDraft }
 	/** Split In Batches: output 1 runs the body, which returns to input 0. Output 0 continues. */
 	| { kind: 'loop'; node: NodeDraft; body: Block | null }
 	/** A node with `onError: continueErrorOutput`. Its error output goes to the handler. */
@@ -149,6 +152,14 @@ export function lowerBlock(block: Block, flow: Flow, state: LowerState): Flow {
 			return after(key, 0, upstream);
 		}
 
+		case 'fanInPlain': {
+			const sources = block.sources.map((source) => lowerBlock(source, flow, state));
+			const upstream = union(...sources.map((source) => source.upstream));
+			const key = place(state, block.target, 'fanInPlain', upstream);
+			for (const source of sources) connect(state, source.ends, key, 0);
+			return after(key, 0, upstream);
+		}
+
 		case 'loop': {
 			const key = place(state, block.node, 'loop', flow.upstream);
 			connect(state, flow.ends, key, 0);
@@ -195,6 +206,8 @@ export function blockSize(block: Block): number {
 			return block.targets.reduce((sum, target) => sum + blockSize(target), 0);
 		case 'merge':
 			return 1 + sizeOf(block.left) + sizeOf(block.right);
+		case 'fanInPlain':
+			return 1 + block.sources.reduce((sum, source) => sum + blockSize(source), 0);
 		case 'loop':
 			return 1 + sizeOf(block.body);
 		case 'errorOutput':

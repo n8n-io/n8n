@@ -7,8 +7,8 @@ import type { Diff } from '../oracle/compare';
  * does not run it, or the converted graph is not the workflow.
  */
 export interface Finding {
-	kind: 'refused' | 'timeout' | 'droppedEdge';
-	engine: 'v1' | 'v2';
+	kind: 'refused' | 'timeout' | 'droppedEdge' | 'portOutOfRange';
+	engine: 'v1' | 'v2' | 'check';
 	message: string;
 	detail?: unknown;
 }

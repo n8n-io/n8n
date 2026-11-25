@@ -57,12 +57,13 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 ## How it works
 
 1. **Grammar** (`src/grammar`). fast-check generates a structure tree of
-   combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`, `loop`,
-   `errorOutput`, `subWorkflow`) with node parameter drafts from the
+   combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`, `fanInPlain`,
+   `loop`, `errorOutput`, `subWorkflow`) with node parameter drafts from the
    catalog. fast-check shrinks this tree. `toIr` lowers it to the plain-data IR
    (`ir.ts`) and fills expression holes with the names of upstream nodes.
    Every shape is valid by construction: each block has one way in and one way
-   out, and only `merge` joins branches.
+   out, and only `merge` joins branches. `fanInPlain` and `rawEdge` break the
+   rules on purpose.
 2. **Compile** (`src/compile/to-sdk.ts`). The IR goes through
    `@n8n/workflow-sdk` with `connect()` and `regenerateNodeIds()`, so the same
    seed gives byte-identical JSON.
@@ -88,7 +89,7 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 | L2 | Items for each node, run and output, as a multiset | Fail |
 | L3 | Item order and run order | Warning (fail for nodes with `orderSensitive`) |
 | L4 | `pairedItem` lineage | Warning |
-| E | The check accepts the case, but an engine refuses it or times out, or the converter drops an edge | Finding |
+| E | The check accepts the case, but an engine refuses it or times out, the converter drops an edge, or an edge uses a port that does not exist | Finding |
 
 A refusal or a timeout fails the run. The other findings show in the summary
 only.

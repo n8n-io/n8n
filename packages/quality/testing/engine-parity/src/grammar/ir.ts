@@ -26,9 +26,11 @@ export type CombinatorId =
 	| 'switch'
 	| 'fanOut'
 	| 'merge'
+	| 'fanInPlain'
 	| 'loop'
 	| 'errorOutput'
 	| 'subWorkflow'
+	| 'rawEdge'
 	| 'trigger';
 
 export type IrItem = { json: Record<string, unknown> };

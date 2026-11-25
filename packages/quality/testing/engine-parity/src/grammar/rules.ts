@@ -23,6 +23,8 @@ export interface ParityRules {
 		loops: boolean;
 		/** `onError: continueErrorOutput` (the `errorOutput` combinator). */
 		errorOutputs: boolean;
+		/** Random extra edges, which can make shapes that are not valid. */
+		rawEdges: boolean;
 		/** More than one trigger. One of them fires. */
 		multiTrigger: boolean;
 	};
@@ -55,7 +57,7 @@ const base: Omit<ParityRules, 'name'> = {
 	nodes: ['set.manual', 'set.raw', 'if.condition', 'merge.append', 'splitOut', 'noOp'],
 	combinators: ['chain', 'branch', 'fanOut', 'merge'],
 	limits: { depth: 4, nodes: 12, width: 3, items: 5 },
-	features: { loops: false, errorOutputs: false, multiTrigger: false },
+	features: { loops: false, errorOutputs: false, rawEdges: false, multiTrigger: false },
 	expressions: { ghostRate: 0.05 },
 	severity: { L3: 'warning', L4: 'warning' },
 };
@@ -98,6 +100,29 @@ export const ruleSets: Record<string, ParityRules> = {
 		...base,
 		name: 'multiTrigger',
 		features: { ...base.features, multiTrigger: true },
+	},
+	rawEdges: {
+		...base,
+		name: 'rawEdges',
+		combinators: ['chain', 'branch', 'fanOut', 'merge', 'fanInPlain'],
+		features: { ...base.features, rawEdges: true },
+	},
+	full: {
+		...base,
+		name: 'full',
+		nodes: [...FIRST_SET, 'splitInBatches', 'code.allItems', 'code.eachItem', 'executeWorkflow'],
+		combinators: [
+			'chain',
+			'branch',
+			'switch',
+			'fanOut',
+			'merge',
+			'loop',
+			'errorOutput',
+			'subWorkflow',
+		],
+		limits: { depth: 5, nodes: 16, width: 3, items: 5 },
+		features: { loops: true, errorOutputs: true, rawEdges: false, multiTrigger: true },
 	},
 };
 
