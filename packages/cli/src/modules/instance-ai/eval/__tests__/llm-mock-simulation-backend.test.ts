@@ -5,12 +5,15 @@ import type { SimulatedAgent } from '@/modules/agents/simulation/tool-simulation
 
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { LlmMockSimulationBackend } from '../llm-mock-simulation-backend';
-import { createMcpMockFetch } from '../mcp-mock-fetch';
+import { createMcpMockFetch, MCP_MOCK_GENERATION_FAILURE_PREFIX } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
 import { createWebSearchMock, WEB_SEARCH_MOCK_FAILURE_NOTE } from '../web-search-mock';
 
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
-vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn() }));
+vi.mock('../mcp-mock-fetch', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../mcp-mock-fetch')>()),
+	createMcpMockFetch: vi.fn(),
+}));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 vi.mock('../web-search-mock', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../web-search-mock')>()),
@@ -184,6 +187,94 @@ describe('LlmMockSimulationBackend', () => {
 
 		expect(mcpReply).toMatchObject({ outcome: 'unavailable' });
 		expect(searchReply).toMatchObject({ outcome: 'unavailable' });
+	});
+
+	it('says unavailable when the MCP mock failed to generate a tool result', async () => {
+		const { backend, mcpFetch } = setup();
+		mcpFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					id: 1,
+					result: {
+						content: [
+							{ type: 'text', text: `${MCP_MOCK_GENERATION_FAILURE_PREFIX} "create_issue"` },
+						],
+						isError: true,
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		const reply = await world.handleRequest(
+			{ protocol: 'mcp', server: 'linear', method: 'POST', body: { method: 'tools/call' } },
+			{ toolName: 'linear_create_issue' },
+		);
+
+		expect(reply).toMatchObject({ outcome: 'unavailable' });
+	});
+
+	it('serves an error that the mock made up as a tool result', async () => {
+		const { backend, mcpFetch } = setup();
+		mcpFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					id: 1,
+					result: { content: [{ type: 'text', text: 'Issue FIN-9 not found' }], isError: true },
+				}),
+				{ status: 200 },
+			),
+		);
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		const reply = await world.handleRequest(
+			{ protocol: 'mcp', server: 'linear', method: 'POST', body: { method: 'tools/call' } },
+			{ toolName: 'linear_get_issue' },
+		);
+
+		expect(reply).toMatchObject({ outcome: 'served', source: 'made_up' });
+	});
+
+	it('does not ask the mock when the run is already stopped', async () => {
+		const { backend, httpMock, mcpFetch, webSearch } = setup();
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const controller = new AbortController();
+		controller.abort();
+
+		for (const request of [
+			{ protocol: 'http' as const, method: 'POST', url: 'https://slack.com/api/x', headers: {} },
+			{ protocol: 'mcp' as const, server: 'linear', method: 'POST', body: {} },
+			{ protocol: 'web_search' as const, args: { query: 'n8n' } },
+		]) {
+			await expect(
+				world.handleRequest(request as never, { toolName: 't', signal: controller.signal }),
+			).rejects.toThrow('The test run was stopped.');
+		}
+		expect(httpMock).not.toHaveBeenCalled();
+		expect(mcpFetch).not.toHaveBeenCalled();
+		expect(webSearch).not.toHaveBeenCalled();
+	});
+
+	it('stops waiting for a generation when the run stops', async () => {
+		const { backend, httpMock } = setup();
+		httpMock.mockReturnValue(new Promise(() => {}));
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const controller = new AbortController();
+
+		const reply = world.handleRequest(
+			{ protocol: 'http', method: 'POST', url: 'https://slack.com/api/x', headers: {} },
+			{ toolName: 'Send_Slack', signal: controller.signal },
+		);
+		controller.abort();
+
+		await expect(reply).rejects.toThrow('The test run was stopped.');
+		expect(httpMock).toHaveBeenCalledWith(
+			expect.objectContaining({ abortSignal: controller.signal }),
+			expect.anything(),
+		);
 	});
 
 	it('answers MCP and web search through their mocks', async () => {
