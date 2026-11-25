@@ -46,11 +46,22 @@ jobs:
         env:
           N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
+      # Checkout the OIDC helper from the workflow revision so dispatching
+      # against older refs (predating this script) still works.
+      - name: Checkout Currents OIDC helper
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .currents-oidc-helper
+          sparse-checkout: .github/scripts/currents-oidc.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Mint Currents record key
         env:
           CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
           FALLBACK_CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
-        run: node .github/scripts/currents-oidc.mjs mint
+        run: node .currents-oidc-helper/.github/scripts/currents-oidc.mjs mint
 
       - name: Run Workflow Tests
         run: pnpm --filter=n8n-playwright test:workflows --workers 4
@@ -66,4 +77,4 @@ jobs:
       - name: Revoke Currents OIDC record key
         if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
         continue-on-error: true
-        run: node .github/scripts/currents-oidc.mjs revoke
+        run: node .currents-oidc-helper/.github/scripts/currents-oidc.mjs revoke

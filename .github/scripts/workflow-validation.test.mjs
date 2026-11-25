@@ -719,6 +719,12 @@ describe('test-e2e-reusable.yml', () => {
 
 			const wfCallable = workflowFile('test-workflows-callable.yml');
 			const wfJob = wfCallable.jobs.run_workflow_tests;
+			const wfCheckout = stepNamed(wfCallable, 'run_workflow_tests', 'Checkout repository');
+			const wfHelperCheckout = stepNamed(
+				wfCallable,
+				'run_workflow_tests',
+				'Checkout Currents OIDC helper',
+			);
 			const wfMint = stepNamed(wfCallable, 'run_workflow_tests', 'Mint Currents record key');
 			const wfRun = stepNamed(wfCallable, 'run_workflow_tests', 'Run Workflow Tests');
 			const wfSchema = stepNamed(wfCallable, 'run_workflow_tests', 'Run Workflow Schema Tests');
@@ -727,6 +733,16 @@ describe('test-e2e-reusable.yml', () => {
 				'run_workflow_tests',
 				'Revoke Currents OIDC record key',
 			);
+			assert.ok(wfJob.steps.indexOf(wfCheckout) < wfJob.steps.indexOf(wfHelperCheckout));
+			assert.ok(wfJob.steps.indexOf(wfHelperCheckout) < wfJob.steps.indexOf(wfMint));
+			assert.equal(wfHelperCheckout.with.ref, '${{ github.sha }}');
+			assert.equal(wfHelperCheckout.with['sparse-checkout'], '.github/scripts/currents-oidc.mjs');
+			assert.equal(wfHelperCheckout.with['sparse-checkout-cone-mode'], false);
+			assert.equal(wfHelperCheckout.with['persist-credentials'], false);
+			const helperPath = `${wfHelperCheckout.with.path}/.github/scripts/currents-oidc.mjs`;
+			assert.ok(wfHelperCheckout.with.path, 'OIDC helper must check out into a separate path');
+			assert.equal(wfMint.run, `node ${helperPath} mint`);
+			assert.equal(wfRevoke.run, `node ${helperPath} revoke`);
 			assert.ok(wfJob.steps.indexOf(wfMint) < wfJob.steps.indexOf(wfRun));
 			assert.equal(wfRun.env.CURRENTS_RECORD_KEY, undefined);
 			assert.equal(wfSchema.env.CURRENTS_RECORD_KEY, undefined);
