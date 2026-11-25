@@ -707,7 +707,7 @@ describe('McpClient HTTP error status', () => {
 			const cause =
 				transport === 'streamable'
 					? new StreamableHTTPError(503, 'Private diagnostic body')
-					: new SseError(429, 'Private diagnostic body', undefined);
+					: new SseError(429, 'Private diagnostic body', new Event('error'));
 			const error = new Error('Connection failed', { cause });
 			clientConnect.mockRejectedValue(error);
 			const client = new McpClient([
@@ -776,11 +776,26 @@ describe('McpClient HTTP error status', () => {
 		},
 	);
 
+	it('preserves a string rejection in warnings and verification', async () => {
+		clientConnect.mockRejectedValue('Connection failed');
+		const client = new McpClient([
+			{ name: 'unavailable', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+		const failures = [{ server: 'unavailable', error: 'Connection failed' }];
+		try {
+			expect(await client.listTools()).toEqual([]);
+			expect(client.getConnectionFailures()).toEqual(failures);
+			expect(await client.verify()).toEqual({ ok: false, errors: failures });
+		} finally {
+			await client.close();
+		}
+	});
+
 	it('retains SSE status in a nested connection error', async () => {
 		const { SseError } = await import('@modelcontextprotocol/sdk/client/sse.js');
 		clientConnect.mockRejectedValue(
 			new Error('Connection failed', {
-				cause: new SseError(429, 'Unavailable', undefined),
+				cause: new SseError(429, 'Unavailable', new Event('error')),
 			}),
 		);
 		const client = new McpClient([

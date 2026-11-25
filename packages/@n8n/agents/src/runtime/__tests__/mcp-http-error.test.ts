@@ -10,7 +10,7 @@ describe('MCP HTTP error formatting', () => {
 			]);
 			for (const error of [
 				new StreamableHTTPError(status, 'Unavailable'),
-				new SseError(status, 'Unavailable', undefined),
+				new SseError(status, 'Unavailable', new Event('error')),
 			]) {
 				const message = error.message;
 				expect(await withMcpHttpStatus(error, message)).toBe(`HTTP ${status}: ${message}`);

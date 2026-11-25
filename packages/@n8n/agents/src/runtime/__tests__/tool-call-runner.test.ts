@@ -370,7 +370,9 @@ describe('ToolCallRunner MCP HTTP errors', () => {
 			runId: 'run-1',
 		});
 		expect(result.outcome).toBe('error');
-		if (result.outcome !== 'error') throw new Error('Expected a failed tool call');
+		if (result.outcome !== 'error' || typeof result.error !== 'string') {
+			throw new Error('Expected a failed tool call with an error message');
+		}
 		expect(result.error).toContain('<untrusted_data');
 		expect(result.error).toContain(originalMessage);
 		expect(result.error.includes('HTTP 429')).toBe(mcpTool);
