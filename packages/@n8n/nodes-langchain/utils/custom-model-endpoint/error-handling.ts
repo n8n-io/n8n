@@ -161,6 +161,20 @@ function withoutSecretsInJson(raw: string, secrets: string[]): string {
 }
 
 /**
+ * The closing frame of a chat stream, which the client asks for by default. Every mark of
+ * the shape is required, so a refusal that merely names itself one does not reach it.
+ */
+function isClosingUsageFrame(parsed: Record<string, unknown>): boolean {
+	return (
+		parsed.object === 'chat.completion.chunk' &&
+		Array.isArray(parsed.choices) &&
+		parsed.choices.length === 0 &&
+		isRecord(parsed.usage) &&
+		typeof parsed.usage.total_tokens === 'number'
+	);
+}
+
+/**
  * What this node reads as an answer, and nothing else.
  *
  * The set of refusals a gateway can send is open: every vendor and every proxy in front of
@@ -180,9 +194,7 @@ function isAnswer(parsed: unknown): boolean {
 	return (
 		// No choices is what the client reports as an empty answer, so it is not one
 		(Array.isArray(parsed.choices) && parsed.choices.length > 0) ||
-		// The closing frame of a chat stream, which the client asks for by default. It has
-		// to name itself one and carry the count, so a refusal does not reach this arm.
-		(parsed.object === 'chat.completion.chunk' && isRecord(parsed.usage)) ||
+		isClosingUsageFrame(parsed) ||
 		modelIdsIn(parsed) !== undefined ||
 		parsed.object === 'response' ||
 		Array.isArray(parsed.output) ||
@@ -214,9 +226,28 @@ function endOfLastFrame(text: string): number {
 }
 
 /**
- * Filters the payload of a frame and leaves the `data:` prefix and the other protocol
- * lines as they arrived, so a listed value that is also an ordinary word cannot rewrite
- * the framing itself.
+ * Filters the value of every line that is not a `data:` line. The field names and the
+ * `data:` prefix are left alone, so a listed value that is also a word of the protocol
+ * cannot rewrite the framing.
+ */
+function withoutSecretsInMetadata(frame: string, secrets: string[]): string {
+	// The separators are captured, so joining the parts gives the bytes back unchanged
+	return frame
+		.split(/(\r\n|\n|\r)/)
+		.map((part, at) => {
+			if (at % 2 === 1 || part.startsWith('data:')) return part;
+			const colon = part.indexOf(':');
+			// No colon is a field with no value, so there is nothing of the gateway's in it
+			return colon === -1
+				? part
+				: part.slice(0, colon + 1) + withoutKnownSecrets(part.slice(colon + 1), secrets);
+		})
+		.join('');
+}
+
+/**
+ * Filters the payload of a frame and the values of its other lines, and leaves the
+ * `data:` prefix and the field names as they arrived.
  */
 function withoutSecretsInFrame(frame: string, secrets: string[]): string {
 	const data = frameData(frame);
@@ -230,14 +261,15 @@ function withoutSecretsInFrame(frame: string, secrets: string[]): string {
 		return withoutSecretsInJson(content, secrets) + boundary;
 	}
 
+	const metadataSafe = withoutSecretsInMetadata(frame, secrets);
 	const safe = withoutSecretsInJson(data, secrets);
-	if (safe === data) return frame;
+	if (safe === data) return metadataSafe;
 
-	const spliced = frame.split(data).join(safe);
+	const spliced = metadataSafe.split(data).join(safe);
 	// A payload carried over several `data:` lines is joined from them, so it is not a
 	// substring of the frame and the splice finds nothing. The bytes are then the only
 	// way to reach it.
-	return spliced === frame ? withoutKnownSecrets(frame, secrets) : spliced;
+	return spliced === metadataSafe ? withoutKnownSecrets(frame, secrets) : spliced;
 }
 
 const ENDS_A_FRAME = /(?:\r\n\r\n|\n\n|\r\r)$/;

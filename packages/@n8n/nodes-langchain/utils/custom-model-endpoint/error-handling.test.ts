@@ -916,6 +916,25 @@ describe('every shape a gateway can answer with', () => {
 		expect(await throughWith(frame, ['1'])).toBe(frame);
 	});
 
+	// The payload of a frame is not the only place a gateway can put a value back
+	it('keeps a credential out of the event name of a filtered frame', async () => {
+		const frame = `event: ${KEY}\ndata: {"error":{"message":"rejected"}}\n\n`;
+
+		const surfaced = await throughWith(frame, [KEY]);
+
+		expect(surfaced).not.toContain(KEY);
+		expect(surfaced.startsWith('event: ')).toBe(true);
+		expect(surfaced).toContain('data: {"error"');
+	});
+
+	// Naming the frame is not enough on its own, so a gateway that leaves the count out
+	// keeps the filter rather than passing as the closing frame
+	it('still filters a chunk that names itself the closing frame without the count', async () => {
+		const frame = `data: {"object":"chat.completion.chunk","choices":[],"usage":{},"message":"bad key ${KEY}"}\n\n`;
+
+		expect(await throughWith(frame, [KEY])).not.toContain(KEY);
+	});
+
 	// The arm above needs both marks, so a refusal that happens to carry an empty choices
 	// list and a count does not pass as one
 	it('still filters a refusal shaped like the closing usage frame', async () => {
