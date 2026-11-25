@@ -65,8 +65,13 @@ runs:
         node_ready=false
         safe_chain_ready=false
 
+        if [ -r /opt/bmi-manifest.env ]; then
+          # shellcheck disable=SC1091
+          . /opt/bmi-manifest.env
+        fi
+
         PNPM_BIN="$(command -v pnpm || true)"
-        if [ -n "$PNPM_BIN" ] && [ "$(pnpm --version 2>/dev/null || true)" = "$EXPECTED_PNPM_VERSION" ]; then
+        if [ -n "$PNPM_BIN" ] && { [ "${BMI_DEFAULT_PNPM:-}" = "$EXPECTED_PNPM_VERSION" ] || [ "$(pnpm --version 2>/dev/null || true)" = "$EXPECTED_PNPM_VERSION" ]; }; then
           pnpm_ready=true
           echo "pnpm-ready=true" >> "$GITHUB_OUTPUT"
           if [ "$RUNNER_OS" != "Windows" ]; then
@@ -87,13 +92,12 @@ runs:
         fi
 
         SAFE_CHAIN_BIN="$HOME/.safe-chain/bin/safe-chain"
-        if [ -x "$SAFE_CHAIN_BIN" ] \
-          && "$SAFE_CHAIN_BIN" -v 2>/dev/null | grep -Fq "Current safe-chain version: ${EXPECTED_SAFE_CHAIN_VERSION}"; then
+        if [ -x "$SAFE_CHAIN_BIN" ] && { [ "${BMI_SAFE_CHAIN_VERSION:-}" = "$EXPECTED_SAFE_CHAIN_VERSION" ] || "$SAFE_CHAIN_BIN" -v 2>/dev/null | grep -Fq "Current safe-chain version: ${EXPECTED_SAFE_CHAIN_VERSION}"; }; then
           safe_chain_ready=true
           echo "safe-chain-ready=true" >> "$GITHUB_OUTPUT"
         fi
 
-        echo "Preinstalled tools: pnpm=${pnpm_ready} node=${node_ready} safe-chain=${safe_chain_ready}"
+        echo "Preinstalled tools (${BMI_IMAGE:-standard} ${BMI_BASE:-host}): pnpm=${pnpm_ready} node=${node_ready} safe-chain=${safe_chain_ready}"
 
     # Windows cannot activate a POSIX home path from the restored cache.
     - name: Restore pnpm executable
