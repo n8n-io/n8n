@@ -32,7 +32,11 @@ const props = withDefaults(defineProps<Omit<CodeBlockProps, 'collapsed'>>(), {
 const emit = defineEmits<Omit<CodeBlockEmits, 'update:collapsed'>>();
 const collapsed = defineModel<boolean>('collapsed', { default: true });
 const preRef = useTemplateRef<HTMLPreElement>('pre');
-const { scrollMaskAttrs } = useScrollEdges(preRef, { axis: 'vertical' });
+const { scrollMaskAttrs, canScrollTop, canScrollBottom } = useScrollEdges(preRef, {
+	axis: 'vertical',
+});
+/** The preview fade stays until the block can scroll. */
+const showsPreviewFade = computed(() => !canScrollTop.value && !canScrollBottom.value);
 const explicitHeight = ref<string>();
 const isCollapsible = ref(false);
 const { t } = useI18n();
@@ -163,7 +167,13 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	<div :class="$style.codeBlock">
 		<pre
 			ref="pre"
-			:class="[$style.pre, { [$style.isExpanded]: !collapsed }]"
+			:class="[
+				$style.pre,
+				{
+					[$style.isExpanded]: !collapsed,
+					[$style.previewFade]: showsPreviewFade,
+				},
+			]"
 			v-bind="scrollMaskAttrs"
 			:style="heightStyle"
 			:aria-label="ariaLabel"
@@ -276,6 +286,12 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	scrollbar-width: thin;
 	scrollbar-color: gray transparent;
 	@include scroll-mask.scroll-mask-when-y;
+
+	// A block that does not scroll keeps the collapsed-preview fade.
+	// The edge mask replaces it after the content overflows.
+	&.previewFade {
+		@include scroll-mask.scroll-mask(bottom);
+	}
 
 	code {
 		/** Override background color injected by hjs **/
