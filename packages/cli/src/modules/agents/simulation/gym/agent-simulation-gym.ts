@@ -40,9 +40,14 @@ export interface AgentSimulationGymTenant {
 
 	/**
 	 * Answers one request for a vendor in this tenant, signed with a token the tenant minted.
-	 * `undefined` when the Gym does not simulate the host.
+	 * `undefined` when the Gym does not simulate the host. `signal` aborts when the test run stops,
+	 * so the Gym can drop the work.
 	 */
-	handle(vendor: string, request: GymRequest): Promise<GymResponse | undefined>;
+	handle(
+		vendor: string,
+		request: GymRequest,
+		options?: { signal?: AbortSignal },
+	): Promise<GymResponse | undefined>;
 
 	/** Frees the tenant. Safe to call more than once. */
 	close(): Promise<void>;

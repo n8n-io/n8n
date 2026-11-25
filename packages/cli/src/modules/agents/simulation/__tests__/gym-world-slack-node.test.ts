@@ -160,14 +160,13 @@ describe('a Slack tool in a test chat on the Gym backend', () => {
 
 		await runSlackTool(session);
 
-		expect(handle).toHaveBeenCalledWith(
-			'slack',
-			expect.objectContaining({
-				method: 'POST',
-				url: expect.stringContaining('slack.com/api/chat.postMessage'),
-			}),
-		);
-		const [, request] = handle.mock.calls[0] as [string, GymRequest];
+		expect(handle).toHaveBeenCalledTimes(1);
+		const [vendor, request] = handle.mock.calls[0] as [string, GymRequest];
+		expect(vendor).toBe('slack');
+		expect(request).toMatchObject({
+			method: 'POST',
+			url: expect.stringContaining('slack.com/api/chat.postMessage'),
+		});
 		expect(JSON.stringify(request)).not.toContain('xoxb-real-looking-token');
 		expect(slackApi.isDone()).toBe(false);
 		expect(session.takeDecision('tc-1')).toEqual({

@@ -208,6 +208,41 @@ describe('GymSimulationBackend', () => {
 		await expect(backend.openWorld(openInput)).rejects.toThrow('no free tenant slot');
 	});
 
+	describe('when the test run stops', () => {
+		it('stops waiting for a pending reply and passes the signal to the tenant', async () => {
+			const { backend, tenants } = setup();
+			const world = await backend.openWorld(openInput);
+			const handle = vi.spyOn(tenants[0], 'handle').mockReturnValue(new Promise(() => {}));
+			const controller = new AbortController();
+
+			const reply = world.handleRequest(post('never answered'), {
+				...call,
+				signal: controller.signal,
+			});
+			await vi.waitFor(() => expect(handle).toHaveBeenCalled());
+			controller.abort();
+
+			await expect(reply).rejects.toThrow('The test run was stopped.');
+			expect(handle).toHaveBeenCalledWith('slack', expect.anything(), {
+				signal: controller.signal,
+			});
+		});
+
+		it('does not ask the Gym when the run already stopped', async () => {
+			const { backend, gym, tenants } = setup();
+			const world = await backend.openWorld(openInput);
+			const handle = vi.spyOn(tenants[0], 'handle');
+			const controller = new AbortController();
+			controller.abort();
+
+			await expect(
+				world.handleRequest(post('too late'), { ...call, signal: controller.signal }),
+			).rejects.toThrow('The test run was stopped.');
+			expect(gym.vendorForHost).not.toHaveBeenCalled();
+			expect(handle).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('before a module binds the Gym', () => {
 		it('reports every tool as blocked because the simulator is unavailable', async () => {
 			const { backend } = setup({ bound: false });

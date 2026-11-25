@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { ToolCallEvidence, ToolTestCapability } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from '@n8n/errors';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import type {
 	OpenWorldInput,
@@ -94,7 +94,8 @@ export class GymSimulationBackend implements SimulationBackend {
 		return {
 			worldId: tenant.id,
 			backend: this.id,
-			handleRequest: async (request) => await this.handleRequest(gym, tenant, request),
+			handleRequest: async (request, call) =>
+				await this.handleRequest(gym, tenant, request, call.signal),
 		};
 	}
 
@@ -108,7 +109,10 @@ export class GymSimulationBackend implements SimulationBackend {
 		gym: AgentSimulationGym,
 		tenant: AgentSimulationGymTenant,
 		request: OutboundRequest,
+		signal: AbortSignal | undefined,
 	): Promise<SimulatedReply> {
+		// A stopped run neither starts nor waits for a reply. The session then blocks the call.
+		if (signal?.aborted) throw stoppedError();
 		if (request.protocol === 'mcp') {
 			return { outcome: 'unsupported', detail: KIND_GAPS.mcp };
 		}
@@ -127,16 +131,24 @@ export class GymSimulationBackend implements SimulationBackend {
 		let vendor: string | undefined;
 		let response: GymResponse | undefined;
 		try {
-			vendor = await gym.vendorForHost(host);
+			vendor = await untilStopped(gym.vendorForHost(host), signal);
 			if (!vendor)
 				return { outcome: 'unsupported', detail: `The test world does not have ${host}.` };
-			response = await tenant.handle(vendor, {
-				method: request.method,
-				url: request.url,
-				headers: request.headers,
-				body: request.body,
-			});
+			response = await untilStopped(
+				tenant.handle(
+					vendor,
+					{
+						method: request.method,
+						url: request.url,
+						headers: request.headers,
+						body: request.body,
+					},
+					signal ? { signal } : undefined,
+				),
+				signal,
+			);
 		} catch (error) {
+			if (signal?.aborted) throw stoppedError();
 			this.logger.warn('The test world failed to answer a request', {
 				host,
 				error: error instanceof Error ? error.message : String(error),
@@ -183,6 +195,20 @@ function unsupportedTool(tool: SimulatedTool, detail: string): ToolTestCapabilit
 		reason: 'unsupported_by_simulator',
 		detail,
 	};
+}
+
+function stoppedError() {
+	return new OperationalError('The test run was stopped.');
+}
+
+/** Stops waiting for the Gym when the run stops, even if the Gym ignores the signal. */
+async function untilStopped<T>(work: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+	if (!signal) return await work;
+	return await new Promise<T>((resolve, reject) => {
+		const onAbort = () => reject(stoppedError());
+		signal.addEventListener('abort', onAbort, { once: true });
+		work.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+	});
 }
 
 function flattenHeaders(headers: GymResponse['headers']): Record<string, string> {
