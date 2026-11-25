@@ -929,6 +929,7 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="isVersionPickerEnabled && node && nodeType && versionChange"
 					:node="node"
 					:node-type="nodeType"
+					:key="`${versionChange.fromVersion}-${node.typeVersion}`"
 					:change="versionChange"
 					:class="$style.versionChangeBanner"
 				/>
@@ -1102,7 +1103,7 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .versionChangeBanner {
-	margin-bottom: var(--spacing--sm);
+	margin: var(--spacing--xs) 0 var(--spacing--sm);
 }
 
 .uiBlocker {

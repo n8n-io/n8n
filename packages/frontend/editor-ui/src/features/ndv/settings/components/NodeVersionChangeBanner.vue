@@ -10,6 +10,7 @@ import { N8nCallout, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { MASK } from '@/app/utils/maskSecret';
 import type { NodeVersionChange } from '@/features/ndv/shared/ndv.types';
 import {
 	collectPasswordNames,
@@ -35,9 +36,10 @@ const hasIssues = computed(
 		) !== null,
 );
 
-const oldProperties = computed(
-	() => nodeTypesStore.getNodeType(props.node.type, props.change.fromVersion)?.properties ?? [],
+const oldType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.change.fromVersion),
 );
+const oldProperties = computed(() => oldType.value?.properties ?? []);
 
 function format(
 	value: NodeParameterValueType,
@@ -58,14 +60,17 @@ const setAsideRows = computed(() => {
 	const passwordNames = collectPasswordNames(oldProperties.value);
 
 	return props.change.setAside.map(({ name, path, displayName, value }) => ({
+		name,
 		// Two nested values can share a label, so a nested row shows its full name.
 		label: path.length === 1 ? displayName : name,
-		value: format(value, path, oldProperties.value, passwordNames),
+		// Without the old description, the password parameters are unknown.
+		value: oldType.value ? format(value, path, oldProperties.value, passwordNames) : MASK,
 	}));
 });
 
 const changedDefaultRows = computed(() =>
 	props.change.changedDefaults.map(({ name, displayName, oldDefault, newDefault }) => ({
+		name,
 		label: displayName,
 		oldValue: format(oldDefault, [name], oldProperties.value),
 		newValue: format(newDefault, [name], props.nodeType.properties),
@@ -88,22 +93,18 @@ const changedDefaultRows = computed(() =>
 				/>
 				<span>
 					{{
-						i18n.baseText('nodeSettings.versionChange.updated', {
-							interpolate: { version: String(node.typeVersion) },
-						})
-					}}
-					{{
 						i18n.baseText(
 							hasIssues
 								? 'nodeSettings.versionChange.setHighlighted'
 								: 'nodeSettings.versionChange.allSet',
+							{ interpolate: { version: String(node.typeVersion) } },
 						)
 					}}
 				</span>
 			</div>
 
 			<details v-if="setAsideRows.length > 0" data-test-id="node-version-change-set-aside">
-				<summary>
+				<summary :class="$style.summary">
 					{{
 						i18n.baseText('nodeSettings.versionChange.setAside.summary', {
 							adjustToNumber: setAsideRows.length,
@@ -112,8 +113,8 @@ const changedDefaultRows = computed(() =>
 					}}
 				</summary>
 				<div>{{ i18n.baseText('nodeSettings.versionChange.setAside.title') }}</div>
-				<ul :class="$style.rows">
-					<li v-for="(row, index) in setAsideRows" :key="index" :class="$style.row">
+				<ul :class="$style.rows" role="list">
+					<li v-for="row in setAsideRows" :key="row.name" :class="$style.row">
 						<span>{{ row.label }}</span>
 						<span :class="$style.chip">{{ row.value }}</span>
 					</li>
@@ -121,7 +122,7 @@ const changedDefaultRows = computed(() =>
 			</details>
 
 			<details v-if="changedDefaultRows.length > 0" data-test-id="node-version-change-defaults">
-				<summary>
+				<summary :class="$style.summary">
 					{{
 						i18n.baseText('nodeSettings.versionChange.changedDefaults.summary', {
 							adjustToNumber: changedDefaultRows.length,
@@ -130,22 +131,24 @@ const changedDefaultRows = computed(() =>
 					}}
 				</summary>
 				<div>{{ i18n.baseText('nodeSettings.versionChange.changedDefaults.title') }}</div>
-				<ul :class="$style.rows">
-					<li v-for="(row, index) in changedDefaultRows" :key="index" :class="$style.row">
+				<ul :class="$style.rows" role="list">
+					<li v-for="row in changedDefaultRows" :key="row.name" :class="$style.row">
 						<span>{{ row.label }}</span>
 						<span :class="$style.chip">{{ row.oldValue }}</span>
-						<span aria-hidden="true">→</span>
+						<span>→</span>
 						<span :class="$style.chip">{{ row.newValue }}</span>
 					</li>
 				</ul>
 			</details>
 
-			<div>{{ i18n.baseText('nodeSettings.versionChange.behaviour') }}</div>
+			<div>{{ i18n.baseText('nodeSettings.versionChange.behavior') }}</div>
 		</div>
 	</N8nCallout>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -156,6 +159,12 @@ const changedDefaultRows = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.summary {
+	cursor: pointer;
+
+	@include focus.focus-visible-ring;
 }
 
 .dangerIcon {

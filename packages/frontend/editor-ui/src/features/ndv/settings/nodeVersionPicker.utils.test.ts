@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { MASK } from '@/app/utils/maskSecret';
 import {
 	collectPasswordNames,
 	formatVersionChangeValue,
@@ -160,7 +161,16 @@ describe('formatVersionChangeValue', () => {
 				properties,
 				new Set(['secret']),
 			),
-		).toBe('••••••');
+		).toBe(MASK);
+	});
+
+	it.each([
+		['a top-level password parameter', ['apiKey'], 'apiKey'],
+		['an item of a password parameter', ['secrets', 0], 'secrets'],
+	])('masks %s', (_, path, passwordName) => {
+		expect(formatVersionChangeValue('hunter2', path, properties, new Set([passwordName]))).toBe(
+			MASK,
+		);
 	});
 
 	it('masks a password key inside an object value', () => {
@@ -171,6 +181,6 @@ describe('formatVersionChangeValue', () => {
 				properties,
 				new Set(['secret']),
 			),
-		).toBe('{"header":[{"name":"X-Key","secret":"••••••"}]}');
+		).toBe(`{"header":[{"name":"X-Key","secret":"${MASK}"}]}`);
 	});
 });

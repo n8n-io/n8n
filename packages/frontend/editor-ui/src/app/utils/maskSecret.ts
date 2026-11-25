@@ -1,4 +1,4 @@
-const MASK = '••••••••';
+export const MASK = '••••••••';
 
 /** Builds the masked form of a secret from the start and the end that the UI may show. */
 export function maskSecretParts(start: string, end: string): string {

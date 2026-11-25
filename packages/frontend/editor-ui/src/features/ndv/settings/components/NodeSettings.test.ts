@@ -841,14 +841,17 @@ describe('NodeSettings', () => {
 			expect(banner.querySelector('details')).toBeNull();
 		});
 
-		it('updates the node but keeps no version change when the panel has no active node', async () => {
+		it.each([
+			['the panel has no active node', null],
+			['another node is the active node', 'Other node'],
+		])('updates the node but keeps no version change when %s', async (_, activeNodeName) => {
 			const node = nodeOnVersion(1);
 			const { findByTestId, queryByTestId, workflowDocumentStore } = renderVersioned({
 				node,
 				props: { activeNode: node },
 				beforeMount: () => {
 					useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).activeNodeName =
-						null;
+						activeNodeName;
 				},
 			});
 
@@ -874,7 +877,11 @@ describe('NodeSettings', () => {
 				});
 				await findByTestId('tab-params');
 
-				expect(queryByTestId('node-version-change-banner') !== null).toBe(enabled);
+				if (enabled) {
+					expect(queryByTestId('node-version-change-banner')).toBeInTheDocument();
+				} else {
+					expect(queryByTestId('node-version-change-banner')).not.toBeInTheDocument();
+				}
 			},
 		);
 
@@ -944,18 +951,18 @@ describe('NodeSettings', () => {
 
 				const node = workflowDocumentStore.getNodeByName(httpNode.name);
 				expect(node?.typeVersion).toBe(2);
-				expect(
-					useNDVStore(workflowDocumentStore.documentId).nodeVersionChanges[node?.id ?? ''],
-				).toEqual({
-					setAside: [],
-					changedDefaults: [
-						{ name: 'timeout', displayName: 'Timeout', oldDefault: 10, newDefault: 30 },
-					],
-					fromVersion: 1,
+				expect(useNDVStore(workflowDocumentStore.documentId).nodeVersionChanges).toEqual({
+					[httpNode.id]: {
+						setAside: [],
+						changedDefaults: [
+							{ name: 'timeout', displayName: 'Timeout', oldDefault: 10, newDefault: 30 },
+						],
+						fromVersion: 1,
+					},
 				});
 			});
 
-			it('shows the banner until the required parameter of that version has a value', async () => {
+			it('turns the banner green when the required parameter of that version gets a value', async () => {
 				const { getByTestId, findByText } = await renderAndUpdate();
 
 				const banner = getByTestId('node-version-change-banner');

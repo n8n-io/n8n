@@ -4,6 +4,7 @@ import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { MASK } from '@/app/utils/maskSecret';
 import type { NodeVersionChange } from '@/features/ndv/shared/ndv.types';
 import NodeVersionChangeBanner from './NodeVersionChangeBanner.vue';
 
@@ -202,7 +203,18 @@ describe('NodeVersionChangeBanner', () => {
 
 		const bucket = getByTestId('node-version-change-set-aside');
 		expect(bucket.querySelector('summary')).toHaveTextContent("1 value didn't carry over");
-		expect(rowTexts(bucket)).toEqual([['Auth', '{"user":"bob","password":"••••••"}']]);
+		expect(rowTexts(bucket)).toEqual([['Auth', `{"user":"bob","password":"${MASK}"}`]]);
 		expect(queryByText(/hunter2/)).not.toBeInTheDocument();
+	});
+
+	it('masks every value that did not carry over when the old version has no description', () => {
+		const { getByTestId, queryByText } = renderBanner({ setAside, fromVersion: 9 });
+
+		expect(rowTexts(getByTestId('node-version-change-set-aside'))).toEqual([
+			['Legacy Field', MASK],
+			['rules.values[0].kind', MASK],
+			['rules.values[1].kind', MASK],
+		]);
+		expect(queryByText('abc')).not.toBeInTheDocument();
 	});
 });
