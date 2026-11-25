@@ -1297,6 +1297,9 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 }
 
 .chatColumn {
+	// No top padding, so the fade of the messages ends at the input, not above it.
+	--agent-chat-input-padding: 0 var(--spacing--sm) var(--spacing--xs);
+
 	display: flex;
 	flex-direction: column;
 	flex: 1;
