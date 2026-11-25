@@ -488,6 +488,8 @@ interface ComposerMentionMode {
 	handleSelect: (selection: AssistantMentionSelection) => void;
 	saveSelection: () => void;
 	handleCaretMove: () => void;
+	/** Keys while the picker is open: arrows and Enter move through it, so Enter does not send. */
+	handlePickerKeydown: (event: KeyboardEvent) => void;
 	submission: (text: string, staged: readonly InstanceAiResourceAttachment[]) => MentionSubmission;
 	/** The text was sent: its mentions leave the draft, but the user did not remove them. */
 	handleSent: (text: string) => void;
@@ -513,6 +515,14 @@ const stagedMentionMode: ComposerMentionMode = {
 	saveSelection: stagedMentions.saveSelection,
 	handleCaretMove: () => {
 		void stagedMentions.handleCaretMove();
+	},
+	handlePickerKeydown: (event) => {
+		const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
+		const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+		const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
+		if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
+		event.preventDefault();
+		event.stopPropagation();
 	},
 	submission: () => ({
 		attachments: [],
@@ -540,6 +550,8 @@ const inlineMentionMode: ComposerMentionMode = {
 	handleSelect: inlineMentions.handleSelect,
 	saveSelection: () => {},
 	handleCaretMove: () => {},
+	// Only keys from the editor go to the picker, so a focused button keeps its own Enter.
+	handlePickerKeydown: inlineMentions.handleKeydown,
 	submission: (text, staged) => {
 		const mentioned = inlineMentions.attachmentsFor(text);
 		const workflowIds = mentioned.flatMap((attachment) => {
@@ -889,13 +901,7 @@ function handleComposerKeydown(event: KeyboardEvent): void {
 		}
 		return;
 	}
-	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
-	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
-	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
-	if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
-
-	event.preventDefault();
-	event.stopPropagation();
+	mentionMode.value.handlePickerKeydown(event);
 }
 
 function handleTabAutocomplete() {

@@ -8,6 +8,7 @@ import {
 	mentionAttachmentsOf,
 	mentionHref,
 	type PickedMention,
+	withoutAttachedResources,
 } from '../assistantMentionTokens';
 
 const workflowItem: AssistantWorkflowMentionItem = {
@@ -136,5 +137,41 @@ describe('assistantMentionTokens', () => {
 				text,
 			),
 		).toBe(false);
+	});
+
+	it('drops a nodes mention only when the same nodes are already attached', () => {
+		const grouped = { nodes: [{ id: 'x' }], canvasGroupId: 'g-1' };
+		const attached = {
+			type: 'nodes' as const,
+			workflowId: 'wf-1',
+			sets: [{ nodes: [{ id: 'a' }] }, grouped],
+		};
+		// The same sets in another order are the same resource.
+		const same = {
+			type: 'nodes' as const,
+			workflowId: 'wf-1',
+			sets: [grouped, { nodes: [{ id: 'a' }] }],
+		};
+		const otherNodes = {
+			type: 'nodes' as const,
+			workflowId: 'wf-1',
+			sets: [{ nodes: [{ id: 'b' }] }],
+		};
+		const otherWorkflow = { ...same, workflowId: 'wf-2' };
+
+		expect(withoutAttachedResources([same, otherNodes, otherWorkflow], [attached])).toEqual([
+			otherNodes,
+			otherWorkflow,
+		]);
+	});
+
+	it('drops a workflow or agent mention that is already attached', () => {
+		const workflow = { type: 'workflow' as const, id: 'wf-1' };
+		const agent = { type: 'agent' as const, id: 'ag-1', projectId: 'project-1' };
+		const otherAgent = { ...agent, id: 'ag-2' };
+
+		expect(withoutAttachedResources([workflow, agent, otherAgent], [workflow, agent])).toEqual([
+			otherAgent,
+		]);
 	});
 });

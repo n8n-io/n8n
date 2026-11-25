@@ -875,6 +875,27 @@ describe('InstanceAiInput — inline mentions', () => {
 		expect(message).toBe('Fix [@Orders](n8n-resource://workflow/w1) today');
 	});
 
+	it('keeps Enter for a focused button while the picker is open', async () => {
+		const { container, getByTestId } = renderMentionsInput({ props: { inlineMentions: true } });
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+		const editor = container.querySelector<HTMLElement>('[contenteditable]');
+		if (!editor) throw new Error('No editor');
+
+		await userEvent.type(editor, '@Ord');
+		await waitFor(() =>
+			expect(getByTestId('mention-picker-stub')).toHaveAttribute('data-query', 'Ord'),
+		);
+
+		const pressEnter = (target: HTMLElement) => {
+			const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+			target.dispatchEvent(event);
+			return event.defaultPrevented;
+		};
+		expect(pressEnter(getByTestId('mention-picker-open'))).toBe(false);
+		// Enter in the editor picks from the open list, so it does not send.
+		expect(pressEnter(editor)).toBe(true);
+	});
+
 	it('turns the mentions into plain text when the project changes', async () => {
 		const { container, emitted, findByTestId, getByTestId, queryByTestId, rerender } =
 			renderMentionsInput({ props: { inlineMentions: true } });
