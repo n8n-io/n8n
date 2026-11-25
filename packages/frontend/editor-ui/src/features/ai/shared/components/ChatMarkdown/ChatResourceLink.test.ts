@@ -82,6 +82,34 @@ describe('ChatResourceLink', () => {
 		expect(openDataTablePreview).toHaveBeenCalledWith('dt1', 'p1');
 	});
 
+	it('opens the preview for an app link to a known agent with the project of the path', () => {
+		const openAgentPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/agents/a1',
+				label: 'Agent',
+				resources: [{ type: 'agent', id: 'a1', name: 'Agent' }],
+				openAgentPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openAgentPreview).toHaveBeenCalledWith('a1', 'p1');
+	});
+
+	it('opens the preview for an app link to a known app', () => {
+		const openAppPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/apps/app1',
+				label: 'App',
+				resources: [{ type: 'app', id: 'app1', name: 'App' }],
+				openAppPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openAppPreview).toHaveBeenCalledWith('app1');
+	});
+
 	it('keeps the new tab for an app link to a resource that the thread does not know', () => {
 		const openWorkflowPreview = vi.fn(() => true);
 		const wrapper = mount(ChatResourceLink, {
