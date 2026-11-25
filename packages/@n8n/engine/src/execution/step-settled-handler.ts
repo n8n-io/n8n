@@ -80,12 +80,8 @@ export class StepSettledHandler {
 
 		await this.advanceExecution(execution, step, node);
 
-		// Last, so an error before this line leaves the `stale_after` time on the
-		// step. The reconciliation sweeper then publishes `step:settled` to the
-		// orchestration queue again.
-		//
-		// Not awaited, so the next message does not wait for this write. A write
-		// that fails has the same result as an error before this line.
+		// We acknowledge the settled step once its successors have been planned.
+		// Not awaited, so the next message does not wait for this write.
 		void this.stepStore.acknowledgeSettledStep(step.id).catch((error: unknown) => {
 			this.logger.warn('Acknowledgement of a settled step failed', {
 				executionId: execution.id,
@@ -201,10 +197,8 @@ export class StepSettledHandler {
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
 		// returned, so it isn't announced twice either.
-		// A crash between the insert and the publishes loses the messages of the
-		// new rows. The reconciliation sweeper publishes them again: `step:ready`
-		// to the step queue for a row that is still `queued`, and `step:settled`
-		// to the orchestration queue for a row that was created settled.
+		// If we crash after creating the steps but before announcing them, the
+		// reconciler re-announces them.
 		const created = await this.stepStore.createSteps(execution.id, [
 			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
 			...toSeed.map((key) => ({
