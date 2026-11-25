@@ -2,35 +2,11 @@ import { nanoid } from 'nanoid';
 
 import { EDIT_FIELDS_SET_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
-import type { ApiHelpers } from '../../../services/api-helper';
+import { assertReviewsModuleActive, scheduleTriggerNode } from './review-helpers';
 
 // Turning reviews on changes what the Publish button does for every workflow on
 // the instance, so this spec needs an instance of its own.
 test.use({ capability: { env: { TEST_ISOLATION: 'workflow-reviews' } } });
-
-/** Approval publishes the workflow, so it needs a trigger that can be activated. */
-function scheduleTriggerNode() {
-	return {
-		id: nanoid(),
-		name: 'Schedule Trigger',
-		type: 'n8n-nodes-base.scheduleTrigger',
-		typeVersion: 1.2,
-		position: [0, 0] as [number, number],
-		parameters: { rule: { interval: [{ field: 'days' }] } },
-	};
-}
-
-/**
- * The reviews module is only started at boot, and only if the license allows it,
- * so `enableFeature` alone cannot switch it on. Check it up front to fail with a
- * clear reason instead of a 404 halfway through the flow.
- */
-async function assertReviewsModuleActive(api: ApiHelpers): Promise<void> {
-	expect(
-		await api.getActiveModules(),
-		'the workflow-reviews module is not active: the instance needs a license granting feat:workflowReviews at startup',
-	).toContain('workflow-reviews');
-}
 
 test.describe(
 	'Workflow reviews @licensed',
@@ -110,7 +86,7 @@ test.describe(
 			await authorN8n.workflowReviewControls.submitChangesToReview('Release candidate 2');
 
 			// --- The reviewer approves, which publishes the reviewed version ---
-			await reviewerN8n.workflowReviews.approve('Looks good now');
+			await reviewerN8n.workflowReviews.approve();
 			await expect(reviewerN8n.workflowReviews.getSelectedRequestStatus()).toHaveAttribute(
 				'aria-label',
 				'Closed | Approved',

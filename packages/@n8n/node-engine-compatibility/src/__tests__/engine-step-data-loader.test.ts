@@ -60,4 +60,33 @@ describe('createEngineStepDataLoader', () => {
 			a: { 0: [[{ json: { from: 'a' } }]], 1: [[{ json: { from: 'a2' } }]] },
 		});
 	});
+
+	it('keeps the output sources of a node whose id is `__proto__` under its own key', async () => {
+		const sources = [
+			[{ nodeId: 't', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 }],
+			null,
+		];
+		const executionStore = {
+			loadExecution: vi.fn().mockResolvedValue({ id: 'exec-1', graph }),
+		} as unknown as ExecutionStore;
+		const stepStore = {
+			loadAllSteps: vi.fn().mockResolvedValue([
+				{
+					nodeId: '__proto__',
+					iteration: 0,
+					status: 'completed',
+					outputs: [[{ json: {} }], null],
+					outputSources: sources,
+				},
+			]),
+		} as unknown as StepStore;
+
+		const stepData = await createEngineStepDataLoader(executionStore, stepStore)(context);
+
+		expect(Object.keys(stepData.outputSourcesByNode ?? {})).toEqual(['__proto__']);
+		expect(
+			Object.getOwnPropertyDescriptor(stepData.outputSourcesByNode, '__proto__')?.value,
+		).toEqual({ 0: sources });
+		expect(Object.prototype).not.toHaveProperty('0');
+	});
 });

@@ -1,10 +1,12 @@
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	HumanMessage,
 	AIMessage,
 	SystemMessage,
 	ToolMessage,
+	mapStoredMessagesToChatMessages,
 	trimMessages,
 } from '@langchain/core/messages';
 import type { Mock, Mocked } from 'vitest';
@@ -17,6 +19,7 @@ import {
 	extractToolCallId,
 	buildMessagesFromSteps,
 	cleanupOrphanedMessages,
+	removeEmptyTurns,
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
@@ -57,6 +60,49 @@ describe('memoryManagement', () => {
 			const result = await loadMemory(mockMemory);
 
 			expect(result).toEqual([]);
+		});
+
+		it('should drop a turn with an empty human message so history starts with a human message', async () => {
+			// Shape from GH #39670: the provider rejects messages.0 with empty user content
+			const chatHistory = [
+				new HumanMessage(''),
+				new AIMessage('Stale answer'),
+				new HumanMessage('Price today?'),
+				new AIMessage('42 EUR/MWh'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toEqual(chatHistory.slice(2));
+		});
+
+		it('should drop a tool call turn with an empty final AI message and keep the other turns', async () => {
+			const toolCallMessage = new AIMessage({
+				content: '',
+				tool_calls: [{ id: 'call-1', name: 'lookup', args: {}, type: 'tool_call' }],
+			});
+			const goodTurn = [
+				new HumanMessage('Second'),
+				new AIMessage({
+					content: '',
+					tool_calls: [{ id: 'call-2', name: 'lookup', args: {}, type: 'tool_call' }],
+				}),
+				new ToolMessage({ content: 'ok', tool_call_id: 'call-2', name: 'lookup' }),
+				new AIMessage('Done'),
+			];
+			const chatHistory = [
+				new HumanMessage('First'),
+				toolCallMessage,
+				new ToolMessage({ content: 'ok', tool_call_id: 'call-1', name: 'lookup' }),
+				new AIMessage({ content: [] }),
+				...goodTurn,
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toEqual(goodTurn);
 		});
 
 		it('should remove orphaned ToolMessage at start of chat history', async () => {
@@ -215,6 +261,70 @@ describe('memoryManagement', () => {
 
 			expect(result).toEqual(chatHistory);
 			expect(trimMessages).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('removeEmptyTurns', () => {
+		it.each([
+			['empty string', new HumanMessage('')],
+			['blank string', new HumanMessage('   ')],
+			['empty array', new HumanMessage({ content: [] })],
+			['blank text block', new AIMessage({ content: [{ type: 'text', text: ' ' }] })],
+			['null content', new AIMessage({ content: null as unknown as string })],
+		])('should drop a turn with %s content', (_, emptyMessage) => {
+			const kept = [new HumanMessage('Hi'), new AIMessage('Hello')];
+			const turn =
+				emptyMessage.getType() === 'human'
+					? [emptyMessage, new AIMessage('x')]
+					: [new HumanMessage('q'), emptyMessage];
+
+			expect(removeEmptyTurns([...turn, ...kept])).toEqual(kept);
+		});
+
+		it('should keep system messages in place when their turn is dropped', () => {
+			const system = new SystemMessage('Be brief');
+			const kept = [new HumanMessage('Hi'), new AIMessage('Hello')];
+
+			expect(removeEmptyTurns([new HumanMessage('q'), system, new AIMessage(''), ...kept])).toEqual(
+				[system, ...kept],
+			);
+		});
+
+		it('should use getType() of items that are not BaseMessage and keep items without it', () => {
+			const duck = (type: string, content: string) =>
+				({ getType: () => type, content }) as unknown as BaseMessage;
+			const plain = { role: 'human', content: 'x' } as unknown as BaseMessage;
+			const kept = [duck('human', 'Hi'), duck('ai', 'Hello'), plain];
+
+			expect(removeEmptyTurns([new HumanMessage('q'), new AIMessage(''), ...kept])).toEqual(kept);
+			expect(removeEmptyTurns([duck('human', 'q'), duck('ai', ''), ...kept])).toEqual(kept);
+		});
+
+		it('should drop a turn read from a stored row in the { type, data: { content } } shape', () => {
+			// GH #39670: Postgres Chat Memory reads a row as { type, data: rest-of-row }. A row that
+			// another writer stored as { type, data: { content } } gives a message with empty content.
+			const rows = [
+				{ type: 'human', data: { content: 'Price today?' } },
+				{ type: 'ai', data: { content: '42 EUR/MWh' } },
+				{ type: 'human', content: 'And tomorrow?' },
+				{ type: 'ai', content: '40 EUR/MWh' },
+			];
+			const chatHistory = mapStoredMessagesToChatMessages(
+				rows.map(({ type, ...data }) => ({ type, data }) as never),
+			);
+			expect(chatHistory[0].content).toEqual([]);
+
+			expect(removeEmptyTurns(chatHistory)).toEqual(chatHistory.slice(2));
+		});
+
+		it('should keep messages with non-text or non-empty content and system messages', () => {
+			const chatHistory = [
+				new SystemMessage(''),
+				new HumanMessage({ content: [{ type: 'image_url', image_url: { url: 'data:' } }] }),
+				new AIMessage({ content: [{ type: 'text', text: 'A cat' }] }),
+			];
+
+			expect(removeEmptyTurns(chatHistory)).toBe(chatHistory);
 		});
 	});
 

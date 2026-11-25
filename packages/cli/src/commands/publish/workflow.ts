@@ -29,6 +29,7 @@ export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSche
 		await super.init();
 		await this.initLicense();
 		await this.initPolicyEnforcement();
+		await this.initWorkflowReviews();
 		await this.initExternalHooks();
 	}
 

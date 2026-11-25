@@ -38,6 +38,12 @@ function assistantMessage(agentTree: InstanceAiAgentNode): InstanceAiMessage {
 }
 
 describe('toArtifactTurns', () => {
+	it('keeps the run of the agent tree, which the workflow drafts of the run name', () => {
+		const [turn] = toArtifactTurns([assistantMessage(agentNode({ runId: 'run-7' }))]);
+
+		expect(turn.runId).toBe('run-7');
+	});
+
 	it('keeps the attachments and the hand-off context of a user message', () => {
 		const context: InstanceAiHandoffContext = {
 			source: 'credential-modal',

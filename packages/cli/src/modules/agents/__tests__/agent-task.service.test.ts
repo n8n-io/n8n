@@ -509,6 +509,24 @@ describe('AgentTaskService', () => {
 			expect(second).toMatchObject({ task: { name: 'Renamed task' }, changed: false });
 		});
 
+		it('gives the draft a new version when a task changes', async () => {
+			// The go live card shows task names and is re-asked when the draft version changes.
+			const task = makeTask();
+			const agent = makeAgent();
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
+
+			await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+
+			expect(agent.versionId).not.toBe('ver-1');
+		});
+
 		it('moves the schedule to another timezone', async () => {
 			const task = arrangeUpdate();
 

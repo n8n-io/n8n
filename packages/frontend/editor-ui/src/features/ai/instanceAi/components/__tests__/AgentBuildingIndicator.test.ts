@@ -11,4 +11,10 @@ describe('AgentBuildingIndicator', () => {
 		expect(getByTestId('instance-ai-agent-building-indicator')).toBeVisible();
 		expect(getByTestId('instance-ai-agent-building-indicator')).toHaveAttribute('role', 'status');
 	});
+
+	it('shows only the wave when the label is off', () => {
+		const { queryByTestId } = renderComponent({ props: { showLabel: false } });
+
+		expect(queryByTestId('instance-ai-agent-building-indicator')).toBeNull();
+	});
 });

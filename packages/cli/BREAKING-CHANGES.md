@@ -43,6 +43,26 @@ If your pipeline imports packages with missing credentials, add this scope to it
 
 ## Promotions (preview)
 
+The 12 promotion scopes are now 8. Four setup scopes replace the old setup scopes:
+
+| New scope | Replaces |
+| --- | --- |
+| `promotions:manageProviders` | `promotions:create`, `promotions:update`, `promotions:delete`, `promotions:discover` (for providers) |
+| `promotions:readProviders` | `promotions:read`, `promotions:list` (for providers) |
+| `promotions:manageEnvironments` | `promotions:create`, `promotions:update`, `promotions:delete`, `promotions:connect`, `promotions:manageProjects` (for environments) |
+| `promotions:readEnvironments` | `promotions:read`, `promotions:list` (for environments) |
+
+`promotions:promote`, `promotions:apply`, `promotions:readReviews` and `promotions:approveReviews` do not change.
+An API key with an old scope gets 403 for that operation.
+Edit the API key and select the new scopes.
+There is no automatic conversion.
+
+Promote and its CLI commands no longer need `variable:list` on the API key.
+A key with only `promotions:promote` can preview and promote.
+A key with only `promotions:apply` can preview, apply and continue.
+The change details of a preview show variable values when the user's role can list variables.
+The scopes of the API key no longer decide this.
+
 The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
 Read `resources` instead.
 Each resource has a `type`, `id`, `change` and `selectable` field.
@@ -55,6 +75,12 @@ The endpoint no longer accepts the `search`, `sort` and `order` query parameters
 The CLI `promotion-environment list-changes` command shows the changed resources of all types.
 It no longer accepts `--search`, `--sort` and `--order`.
 It needs an n8n instance with this change.
+
+The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/promote` now returns a `status`.
+`promoted` means that the push succeeded. Only this status has `counts` and `git`.
+`preview-changed` means that nothing was pushed. It occurs only when the request sends `expectedPreviewRevision`.
+Read `status` before you read `counts` and `git`.
+The change preview now always returns `revision`, also for `promote`.
 
 # 2.0.0
 

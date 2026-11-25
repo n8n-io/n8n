@@ -437,7 +437,7 @@ describe('buildTimelineBlocks', () => {
 	) {
 		const toolCallsById = Object.fromEntries(toolCalls.map((tc) => [tc.toolCallId, tc]));
 		const childrenById = Object.fromEntries(children.map((c) => [c.agentId, c]));
-		return buildTimelineBlocks(entries, toolCallsById, childrenById, status);
+		return buildTimelineBlocks(entries, toolCallsById, childrenById, status, true);
 	}
 
 	test('merges consecutive reasoning and generic tool calls into one thinking block', () => {
@@ -491,7 +491,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'apps',
+					toolName: 'create_app',
 					confirmation: {
 						requestId: 'req-1',
 						severity: 'info',
@@ -833,6 +833,21 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
+	test('leaves out a cloud browser sub-agent', () => {
+		const backgroundChild = makeAgentNode({
+			agentId: 'browser-1',
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			taskId: 'task-1',
+		});
+
+		const blocks = blocksOf([{ type: 'child', agentId: 'browser-1' }], [], 'completed', [
+			backgroundChild,
+		]);
+
+		expect(blocks).toEqual([]);
+	});
+
 	test('does not hide unrelated trace tools when child is not a builder', () => {
 		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
 			type: 'child',
@@ -1077,7 +1092,7 @@ describe('buildTimelineBlocks — instance context', () => {
 
 	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */
 	test('puts the entry inside a thinking block rather than standing it alone', () => {
-		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed');
+		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed', true);
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type).toBe('thinking');
@@ -1092,7 +1107,7 @@ describe('buildTimelineBlocks — instance context', () => {
 			responseId: 'r1',
 		};
 
-		const blocks = buildTimelineBlocks([contextEntry, reasoning], {}, {}, 'completed');
+		const blocks = buildTimelineBlocks([contextEntry, reasoning], {}, {}, 'completed', true);
 
 		expect(blocks).toHaveLength(1);
 		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
@@ -1102,24 +1117,8 @@ describe('buildTimelineBlocks — instance context', () => {
 	test('leads the trace, so the turn reads in the order things happened', () => {
 		const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is what failed.' };
 
-		const blocks = buildTimelineBlocks([contextEntry, answer], {}, {}, 'completed');
+		const blocks = buildTimelineBlocks([contextEntry, answer], {}, {}, 'completed', true);
 
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
-});
-
-test('keeps an automatic skill update in the trace before the answer', () => {
-	const update: InstanceAiTimelineEntry = {
-		type: 'skill-update',
-		runId: 'run-1',
-		skillId: 'hub:1',
-		name: 'Writing',
-		version: 'v2',
-		change: 'updated',
-	};
-	const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is the answer.' };
-	expect(buildTimelineBlocks([update, answer], {}, {}, 'completed')).toEqual([
-		{ type: 'thinking', key: 'thinking-0', entries: [update], active: false },
-		{ type: 'text', key: 'text-1', entry: answer },
-	]);
 });

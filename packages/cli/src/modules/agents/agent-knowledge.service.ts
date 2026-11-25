@@ -1,11 +1,11 @@
 import type { AgentFileDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+import { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import {
 	KnowledgeFileService,
 	type KnowledgeWriteRunner,
-	type UploadedKnowledgeFile,
+	type KnowledgeFileUploadResult,
 } from '@/modules/knowledge/files/knowledge-file.service';
 import { cleanupUploadedTempFiles } from '@/modules/knowledge/files/knowledge-upload.middleware';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
@@ -31,14 +31,14 @@ export class AgentKnowledgeService {
 		private readonly knowledgeRetrievalService: KnowledgeRetrievalService,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
-		private readonly logger: Logger,
+		private readonly knowledgeFileCleanupService: KnowledgeFileCleanupService,
 	) {}
 
 	async uploadFiles(
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-	): Promise<UploadedKnowledgeFile[]> {
+	): Promise<KnowledgeFileUploadResult[]> {
 		let scope: KnowledgeConsumerScope;
 		try {
 			scope = await this.scopeFor(agentId, projectId, { forWrite: true });
@@ -68,22 +68,15 @@ export class AgentKnowledgeService {
 		return await this.knowledgeFileService.deleteFile(scope, fileId, this.writeFence(projectId));
 	}
 
-	/**
-	 * Cleanup for the agent and project deletion cascades. With the knowledge
-	 * module off its entity is not registered, so the rows cannot be read: the
-	 * database cascade still removes them with the agent, but their stored bytes
-	 * stay (see the knowledge module AGENTS.md).
-	 */
+	/** Cleans up files before the agent or project deletion cascades remove their references. */
 	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
+		const scope: KnowledgeConsumerScope = { kind: 'agent', projectId, agentId };
 		if (!this.knowledgeAvailabilityService.isModuleActive()) {
-			this.logger.warn(
-				'Knowledge module is inactive, so the stored knowledge file bytes of the deleted agent are kept',
-				{ agentId },
-			);
+			await this.knowledgeFileCleanupService.deleteStoredBytes(scope);
 			return;
 		}
 
-		await this.knowledgeFileService.deleteAll({ kind: 'agent', projectId, agentId });
+		await this.knowledgeFileService.deleteAll(scope);
 	}
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */

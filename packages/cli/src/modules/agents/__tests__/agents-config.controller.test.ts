@@ -2,7 +2,7 @@ import { budgetMonthKey } from '@n8n/agents';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentConfigService } from '../agent-config.service';
@@ -44,7 +44,7 @@ describe('AgentsConfigController getValidation', () => {
 			agentValidationService,
 			mock<CredentialsService>(),
 			agentRepository,
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			mock<AgentSpendLedger>(),
 			mock<AgentsService>(),
 		);
@@ -72,7 +72,7 @@ describe('AgentsConfigController getBudget', () => {
 			mock<AgentValidationService>(),
 			mock<CredentialsService>(),
 			agentRepository,
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			agentSpendLedger,
 			mock<AgentsService>(),
 		);
@@ -108,7 +108,7 @@ describe('AgentsConfigController putConfig', () => {
 			mock<AgentValidationService>(),
 			mock<CredentialsService>(),
 			mock<AgentRepository>(),
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			mock<AgentSpendLedger>(),
 			agentsService,
 		);
@@ -138,7 +138,7 @@ describe('AgentsConfigController putConfig', () => {
 			mock<AgentValidationService>(),
 			mock<CredentialsService>(),
 			mock<AgentRepository>(),
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			mock<AgentSpendLedger>(),
 			agentsService,
 		);
@@ -164,7 +164,7 @@ describe('AgentsConfigController putConfig', () => {
 			mock<AgentValidationService>(),
 			mock<CredentialsService>(),
 			mock<AgentRepository>(),
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			mock<AgentSpendLedger>(),
 			agentsService,
 		);

@@ -8,7 +8,7 @@ import {
 
 const minimalConfig = {
 	name: 'test-agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help the user.',
 };
 
@@ -912,12 +912,11 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 			blockUserinfo: true,
 			allowSubdomains: false,
 		},
-		{ kind: 'customRegex', regex: [{ name: 'ticket', value: '[A-Z]+-\\d+' }] },
 		{ kind: 'jailbreak' },
 		{ kind: 'jailbreak', prompt: 'Detect jailbreaks', threshold: 0.7 },
 		{ kind: 'nsfw', threshold: 0 },
 		{ kind: 'topicalAlignment', prompt: 'Stay on topic', threshold: 1 },
-		{ kind: 'customPrompt', prompt: 'Check the output' },
+		{ kind: 'workflow', workflowId: 'wf-1' },
 	])('accepts a valid %s guardrail', (guardrail) => {
 		expect(parseGuardrails([{ ...baseGuardrail, ...guardrail }]).success).toBe(true);
 	});
@@ -933,9 +932,27 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 		expect(parseGuardrails([{ ...baseGuardrail, kind: 'profanity' }]).success).toBe(false);
 	});
 
-	it('rejects a missing stage', () => {
+	it('accepts a missing stage: it then runs at every stage the kind supports', () => {
 		const { stage: _, ...noStage } = { ...baseGuardrail, kind: 'keywords', keywords: ['a'] };
-		expect(parseGuardrails([noStage]).success).toBe(false);
+		expect(parseGuardrails([noStage]).success).toBe(true);
+	});
+
+	it('accepts missing tools: it then covers every tool', () => {
+		const { tools: _, ...noTools } = { ...baseGuardrail, kind: 'keywords', keywords: ['a'] };
+		expect(parseGuardrails([noTools]).success).toBe(true);
+	});
+
+	it('accepts a guardrail with neither stage nor tools', () => {
+		const {
+			stage: _,
+			tools: __,
+			...bare
+		} = {
+			...baseGuardrail,
+			kind: 'keywords',
+			keywords: ['a'],
+		};
+		expect(parseGuardrails([bare]).success).toBe(true);
 	});
 
 	it('rejects an empty tools array', () => {
@@ -976,19 +993,28 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 		).toBe(false);
 	});
 
-	it.each(['[A-Z', '(', '*'])('rejects a customRegex value of %s that does not parse', (value) => {
+	it('rejects the discarded customRegex kind', () => {
 		expect(
-			parseGuardrails([{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value }] }])
-				.success,
+			parseGuardrails([
+				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: 'a+' }] },
+			]).success,
 		).toBe(false);
 	});
 
-	it('accepts a customRegex value in /pattern/flags literal form', () => {
-		expect(
-			parseGuardrails([
-				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: '/ticket-\\d+/gi' }] },
-			]).success,
-		).toBe(true);
+	it('rejects a workflow guardrail without a check workflow id', () => {
+		expect(parseGuardrails([{ ...baseGuardrail, kind: 'workflow' }]).success).toBe(false);
+	});
+
+	it('rejects a workflow guardrail at the after stage', () => {
+		const result = parseGuardrails([
+			{ ...baseGuardrail, kind: 'workflow', workflowId: 'wf-1', stage: 'after' },
+		]);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe(
+				'A workflow guardrail cannot run after a tool call',
+			);
+		}
 	});
 });
 
@@ -1025,6 +1051,19 @@ describe('findToolGuardrailRefIssues', () => {
 							],
 						},
 					],
+				},
+			},
+		});
+
+		expect(issues).toEqual([]);
+	});
+
+	it('returns no issues when a guardrail omits tools', () => {
+		const issues = findToolGuardrailRefIssues({
+			tools: configuredTools,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['a'] }],
 				},
 			},
 		});

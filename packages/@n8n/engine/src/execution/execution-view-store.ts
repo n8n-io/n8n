@@ -7,6 +7,7 @@ import type {
 	StepSlots,
 	StepStatus,
 	WorkflowDocument,
+	StepOutputSources,
 } from './execution.types';
 
 /**
@@ -35,6 +36,8 @@ export interface ExecutionListFilter {
 	hostMode?: string;
 	/** Only the sub-executions of this execution. */
 	parentExecutionId?: string;
+	/** `true` for sub-executions only, `false` for top-level executions only. */
+	hasParent?: boolean;
 	createdAfter?: string;
 	createdBefore?: string;
 }
@@ -87,16 +90,30 @@ export interface StepView {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
 	createdAt: string;
 	updatedAt: string;
 }
 
+/** An execution that a step of another execution started. */
+export interface SubExecutionView {
+	executionId: string;
+	workflowId: string;
+	/** The step that started it. */
+	stepId: string;
+}
+
 /** An execution with its steps, read as one query so the two cannot disagree. */
 export interface ExecutionWithStepsView extends ExecutionView {
 	/** Every step of the execution, oldest first. Empty if it has run none yet. */
 	steps: StepView[];
+	/** The workflow of the parent execution, or `null` for a top-level execution. */
+	parentWorkflowId: string | null;
+	/** The executions that the steps started, oldest first. */
+	subExecutions: SubExecutionView[];
 }
 
 /**

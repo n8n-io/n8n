@@ -25,8 +25,9 @@ export class EngineConfig {
 	 * control plane side. Remote mode needs `N8N_ENGINE_BASE_URL` and
 	 * `N8N_ENGINE_AUTH_SECRET`.
 	 *
-	 * The mode also sets how execution responses reach the control plane:
-	 * in memory for `in-process`, and over Redis for `remote`.
+	 * In `remote` mode, this instance and every engine process use Redis. Set
+	 * the same `QUEUE_BULL_REDIS_*` variables and `N8N_REDIS_KEY_PREFIX` on each
+	 * of them, also when you don't use queue mode.
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';
@@ -57,7 +58,8 @@ export class EngineConfig {
 	 *
 	 * Set this whenever the engine does not answer on `http://127.0.0.1:<port>`,
 	 * for example when `N8N_ENGINE_HOST` names a specific interface, or once the
-	 * engine runs out of process.
+	 * engine runs out of process. The URL must reach an engine process that runs
+	 * the `api` role.
 	 */
 	@Env('N8N_ENGINE_BASE_URL')
 	baseUrl: string = '';
@@ -73,8 +75,65 @@ export class EngineConfig {
 	databaseUrl: string = '';
 
 	/**
-	 * Shared secret the control plane signs its identity token with and the engine
-	 * verifies against. Both planes must hold the same value.
+	 * How many workflow steps one engine process runs at the same time, where
+	 * each step is one run of one node. In `in-process` mode, the engine process
+	 * is the n8n main process. A higher value uses more memory. An `n8n engine`
+	 * process uses it only when it runs the `step-worker` role.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_STEP_CONCURRENCY', positiveIntSchema)
+	stepConcurrency: number = 1;
+
+	/**
+	 * How many planning tasks one engine process runs at the same time. A
+	 * planning task starts an execution, or decides what runs next after a step
+	 * finishes. In `in-process` mode, the engine process is the n8n main
+	 * process. An `n8n engine` process uses it only when it runs the
+	 * `orchestrator` role.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_ORCHESTRATION_CONCURRENCY', positiveIntSchema)
+	orchestrationConcurrency: number = 1;
+
+	/**
+	 * Comma-separated list of the engine roles an `n8n engine` process runs, for
+	 * example `api,orchestrator`. `api` serves the engine API, `orchestrator`
+	 * plans executions, and `step-worker` runs the nodes. When unset, the process
+	 * runs all three, and the command's `--roles` flag overrides this variable.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_ROLES')
+	roles: string = '';
+
+	/**
+	 * Maximum number of connections in the engine's Postgres connection pool, for
+	 * each engine process. Raise it when the engine reports connection timeouts
+	 * while the database responds normally.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DATABASE_POOL_SIZE', positiveIntSchema)
+	databasePoolSize: number = 10;
+
+	/**
+	 * How long in milliseconds the engine waits for a Postgres connection, either
+	 * a new one or a free one from the pool. When the wait runs out, the work that
+	 * needed the connection fails. A step can fail, or an execution can stop
+	 * making progress.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT', positiveIntSchema.max(2147483647))
+	databaseConnectionTimeoutMs: number = 20_000;
+
+	/**
+	 * Shared secret, at least 32 characters, that authenticates calls between the
+	 * n8n main and the engine. Set the same value on the main and on every
+	 * `n8n engine` process that runs the `api` or `step-worker` role. In
+	 * `in-process` mode, n8n generates one when it's unset.
 	 *
 	 * This is in development and not ready for use.
 	 */
@@ -100,7 +159,12 @@ export class EngineConfig {
 	@Env('N8N_ENGINE_CONTROL_PLANE_HOST')
 	controlPlaneHost: string = '127.0.0.1';
 
-	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
+	/**
+	 * URL that the engine uses to reach the control plane server of the n8n main,
+	 * for example `https://n8n-main:3001`. An `n8n engine` process that runs the
+	 * `step-worker` role needs it. In `in-process` mode, the engine uses loopback
+	 * when it's unset.
+	 */
 	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
 	controlPlaneBaseUrl: string = '';
 

@@ -67,9 +67,16 @@ Every event follows this schema:
   userId?: string;     // user attribution when supplied by the publisher
   responseId?: string; // groups events from one streamed response segment
   ts?: number;         // epoch ms stamped at publish — replays reconstruct real timing from it
+  detachedFromTurn?: boolean; // the agent outlives the turn that started it (cloud browser tasks)
   payload: object;     // event-specific data
 }
 ```
+
+Detached agents can keep running after the run that started them completes,
+fails, or is cancelled. Each event they publish carries `detachedFromTurn: true`.
+This tells the durable event log and the client to accept the event even though
+the run has ended. Both track completed runs and agents, so they need the flag
+on each event to identify detached work.
 
 The `runId` correlates all events started by one user message. This includes
 events from detached work that continues after the orchestrator responds. The
@@ -286,6 +293,24 @@ also emit `tool-error` if its resume path throws.
 | `workflowId` | string | Workflow being set up (for `setup_workflow`) |
 | `projectId` | string | Scopes actions to a project (e.g., credential creation) |
 | `domainAccess` | `{url, host}` | Renders domain-access approval UI instead of generic confirm |
+| `askReason` | `{kind: 'judge', text}` \| `{kind: 'always-ask' \| 'too-long' \| 'judge-failed'}` | Why Auto approval mode showed the card. Absent in Manual mode |
+
+### `auto-approval`
+
+Auto approval mode ran a tool call without its approval card. The event comes
+before the call's `tool-result`. `decidedBy` is `judge` when the judge model
+approved the call, or `rule` when the action is on the low-risk list.
+`message` is the text that the card would have shown, and `reason` is the
+judge's one-sentence reason, or the fixed rule's explanation when `decidedBy`
+is `rule`. The reducer folds the fact onto the tool call as
+`autoApproval`, and the thread shows it as a collapsed line.
+
+```json
+{"type":"auto-approval","runId":"run_abc123","agentId":"orchestrator-run_abc123","payload":{"toolCallId":"tc_abc123","message":"Publish \"Lead router\"","reason":"The user asked to publish this workflow.","decidedBy":"judge"}}
+```
+
+An approval that Auto mode sends to the user produces a normal
+`confirmation-request` that carries `askReason`.
 
 ### `tasks-update`
 
@@ -724,6 +749,7 @@ creating duplicate messages.
 | `agent-spawned` | `parentId`, `role`, `tools` | Sub-agent created |
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
+| `auto-approval` | `toolCallId`, `message`, `reason`, `decidedBy` (`judge` or `rule`) | Auto approval mode ran the call without its card |
 | `tasks-update` | `tasks` | Task checklist created/updated |
 | `instance-context` | `injection` | What the turn was handed as instance context (once, before the agent runs) |
 | `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |

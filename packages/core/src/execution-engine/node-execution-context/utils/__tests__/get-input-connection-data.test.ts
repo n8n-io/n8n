@@ -18,7 +18,7 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, createRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -241,6 +241,40 @@ describe('getInputConnectionData', () => {
 				`Error in sub-node ${node.name}`,
 			);
 			expect(supplyData).toHaveBeenCalled();
+		});
+
+		it('should record the sub-node error in a run-data map without a prototype', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: connectionType,
+					required: true,
+				},
+			];
+			const runData: IRunData = {};
+			Object.setPrototypeOf(runData, null);
+			const context = new ExecuteContext(
+				workflow,
+				agentNode,
+				additionalData,
+				'internal',
+				createRunExecutionData({ resultData: { runData } }),
+				0,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+			);
+			vi.spyOn(context, 'getNode').mockReturnValue(agentNode);
+			vi.spyOn(context, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
+
+			supplyData.mockRejectedValueOnce(new Error('supplyData error'));
+
+			await expect(context.getInputConnectionData(connectionType, 0)).rejects.toThrow(
+				`Error in sub-node ${node.name}`,
+			);
+			expect(runData[node.name]).toHaveLength(1);
 		});
 
 		it('should propagate configuration errors', async () => {
@@ -554,6 +588,46 @@ describe('getInputConnectionData', () => {
 			expect(result).toEqual([mockTool]);
 			expect(supplyData).toHaveBeenCalled();
 		});
+
+		it('should not execute a node used as a tool when the signal of the tool call is aborted', async () => {
+			const execute = vi.fn().mockResolvedValue([[{ json: { result: 'success' } }]]);
+			const nodeAsToolType = mock<INodeType>({
+				supplyData: undefined,
+				execute,
+				description: {
+					name: 'nodeAsTool',
+					description: 'A node used as a tool',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+			});
+			const nodeAsTool = mock<INode>({
+				name: 'Node As Tool',
+				type: 'test.nodeAsTool',
+				disabled: false,
+				parameters: {},
+			});
+			nodeTypes.getByNameAndVersion
+				.calledWith(nodeAsTool.type, expect.anything())
+				.mockReturnValue(nodeAsToolType);
+			workflow.getNode.calledWith(nodeAsTool.name).mockReturnValue(nodeAsTool);
+			workflow.getParentNodes
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
+				.mockReturnValue([nodeAsTool.name]);
+			agentNodeType.description.inputs = [{ type: NodeConnectionTypes.AiTool, required: true }];
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: nodeAsTool.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
+			const [tool] = (await executeContext.getInputConnectionData(
+				NodeConnectionTypes.AiTool,
+				0,
+			)) as DynamicStructuredTool[];
+
+			const result = await tool.func({}, undefined, { signal: AbortSignal.abort() });
+
+			expect(result).toBe('Error during node execution: Execution was cancelled');
+			expect(execute).not.toHaveBeenCalled();
+		});
 	});
 });
 
@@ -744,9 +818,9 @@ describe('makeHandleToolInvocation', () => {
 		);
 		await handleToolInvocation(toolArgs);
 
-		expect(contextFactory).toHaveBeenCalledWith(0);
-		expect(contextFactory).toHaveBeenCalledWith(1);
-		expect(contextFactory).toHaveBeenCalledWith(2);
+		expect(contextFactory).toHaveBeenCalledWith(0, undefined);
+		expect(contextFactory).toHaveBeenCalledWith(1, undefined);
+		expect(contextFactory).toHaveBeenCalledWith(2, undefined);
 	});
 
 	describe('retry functionality', () => {
@@ -1009,6 +1083,30 @@ describe('makeHandleToolInvocation', () => {
 
 			await expect(result).rejects.toThrow('Execution was cancelled');
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
+		});
+
+		it('should store the outcome of a tool call that is aborted during execution', async () => {
+			const connectedNode = mock<INode>({ name: 'Test Tool', retryOnFail: false });
+			const connectedNodeType = mock<INodeType>({
+				execute: vi.fn().mockImplementation(() => {
+					abortController.abort();
+					throw new Error('Execution failed');
+				}),
+			});
+
+			handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				runExecutionData,
+			);
+
+			await expect(handleToolInvocation(toolArgs)).rejects.toThrow('Execution was cancelled');
+			expect((mockContext as IExecuteFunctions).addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.objectContaining({ message: 'Execution was cancelled' }),
+			);
 		});
 
 		it('should complete successfully if not aborted', async () => {

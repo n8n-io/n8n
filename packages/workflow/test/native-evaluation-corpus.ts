@@ -252,11 +252,23 @@ export const HANDLED_CORPUS: string[] = [
 	"={{ $json.item.my_object.hasField('addresses') }}",
 	'={{ $json.item.count.round(1) }}',
 	'={{ $json.item.count.isEven() }}',
+	'={{ $json.item.count.format() }}',
+	"={{ $json.item.count.format('') }}",
+	'={{ $json.item.when.format() }}',
+	'={{ $json.item.name.urlEncode() }}',
+	'={{ $json.item.name.base64Decode() }}',
+	"={{ $json.item.count.format('not a locale') }}",
+	'={{ $json.item.my_object.urlEncode() }}',
+	"={{ '\\uD800'.urlEncode() }}",
+	"={{ 'a\\uD83Db'.urlEncode() }}",
+	"={{ '7aCA'.base64Decode() }}",
+	"={{ 'a@b.com'.base64Decode() }}",
 	'={{ $json.item.active.toInt() }}',
 	'={{ $json.item.when.isEmpty() }}',
 	'={{ $json.item.names.map(n => n.toTitleCase()) }}',
 	'={{ $input.first().json.item.names.first() }}',
 	"={{ $('Source').item.json.item.my_object.toJsonString() }}",
+	"={{ $json.item.active\n  ? 'a\\\n\\\nb'\n  : 'c' }}",
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:
@@ -479,11 +491,7 @@ export const DECLINED_CORPUS: string[] = [
 	// A comment hides the call from the extendSyntax regex.
 	'={{ $json.item.names.first /* c */ () }}',
 	'={{ $json.item.names.first // c\n () }}',
-	'={{ $json.item.count.format() }}',
-	'={{ $json.item.when.format() }}',
 	'={{ $json.item.name.extractUrlPath() }}',
-	'={{ $json.item.name.urlEncode() }}',
-	'={{ $json.item.name.base64Decode() }}',
 	'={{ $json.item.name.padStart(8) }}',
 	// sort()/fill() mutate the receiver in place; only immutable variants are
 	// allowlisted. A callback makes any call non-simple.

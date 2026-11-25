@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import nock from 'nock';
+import { text } from 'node:stream/consumers';
 import { Readable } from 'stream';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -550,5 +551,174 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		).rejects.toBe(refusal);
 
 		expect(proxyRequestToAxiosMock).not.toHaveBeenCalled();
+	});
+
+	describe('resolved response streams', () => {
+		beforeEach(() => proxyRequestToAxiosMock.mockReset());
+
+		test.each([true, false])(
+			'releases the original stream before resending with full response set to %s',
+			async (fullResponse) => {
+				const originalBody = Readable.from(['Original response']);
+				const retryBody = Readable.from(['Retry response']);
+				const retryResponse = { statusCode: 200, body: retryBody };
+				mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValueOnce(undefined);
+				proxyRequestToAxiosMock
+					.mockResolvedValueOnce({ statusCode: 401, body: originalBody })
+					.mockImplementationOnce(async () => {
+						expect(originalBody.destroyed).toBe(true);
+						return fullResponse ? retryResponse : retryBody;
+					});
+
+				const result = await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					{
+						method: 'GET',
+						uri: 'https://api.example.com/items',
+						simple: false,
+						resolveWithFullResponse: fullResponse,
+					},
+					mockWorkflow,
+					mockNode,
+					mockAdditionalData,
+				);
+
+				expect(result).toBe(fullResponse ? retryResponse : retryBody);
+				expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+				expect(retryBody.destroyed).toBe(false);
+				expect(await text(retryBody)).toBe('Retry response');
+			},
+		);
+
+		test.each([
+			{ reason: 'no token was refreshed', status: 401, refresh: false, singleUseBody: false },
+			{ reason: 'the request body is consumed', status: 401, refresh: true, singleUseBody: true },
+			{ reason: 'the response succeeded', status: 200, refresh: true, singleUseBody: false },
+			{ reason: 'the status does not refresh', status: 403, refresh: true, singleUseBody: false },
+		])('keeps the original stream readable when $reason', async (testCase) => {
+			const originalBody = Readable.from(['Original response']);
+			const response = { statusCode: testCase.status, body: originalBody };
+			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue(
+				testCase.refresh ? { accessToken: 'fresh' } : undefined,
+			);
+			proxyRequestToAxiosMock.mockResolvedValueOnce(response);
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				{
+					method: testCase.singleUseBody ? 'POST' : 'GET',
+					uri: 'https://api.example.com/items',
+					body: testCase.singleUseBody ? Readable.from(['Request body']) : undefined,
+					simple: false,
+					resolveWithFullResponse: true,
+				},
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toBe(response);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+			expect(originalBody.destroyed).toBe(false);
+			expect(await text(originalBody)).toBe('Original response');
+		});
+	});
+});
+
+const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+
+/** Injects a different trace span for each call, so a retry is distinguishable. */
+const otelWithSpans = () => {
+	let calls = 0;
+	return {
+		injectTraceHeaders: vi.fn(
+			(_executionId: string, _nodeName: string | undefined, headers: Record<string, string>) => {
+				calls += 1;
+				Object.assign(headers, {
+					traceparent: TRACEPARENT.replace(/-01$/, `-0${calls}`),
+				});
+			},
+		),
+		extractInboundBaggage: vi.fn(),
+	};
+};
+
+describe('httpRequestWithAuthentication trace headers', () => {
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockWorkflow = mock<Workflow>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
+	mockAdditionalData.evalLlmMockHandler = undefined;
+
+	const request = vi.fn();
+	const requests = vi.fn();
+	const outboundHttp = mock<OutboundHttp>({ requests });
+	const options: IHttpRequestOptions = { method: 'GET', url: 'https://api.example.com/items' };
+
+	const send = async () =>
+		await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			{ ...options },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
+		Container.set(OutboundHttp, outboundHttp);
+		mockNode.name = 'test-node';
+		mockAdditionalData.executionId = 'exec-1';
+		(mockAdditionalData as IWorkflowExecuteAdditionalData).otel = otelWithSpans();
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		// A new object with only the credential header, so trace headers must be added after it
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => ({
+				...(requestOptions as IHttpRequestOptions),
+				headers: { Authorization: 'Bearer x' },
+			}),
+		);
+	});
+
+	test('sends the trace headers together with the credential header', async () => {
+		request.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(request.mock.calls[0][0].headers).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/^00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-/),
+		});
+		expect(mockAdditionalData.otel?.injectTraceHeaders).toHaveBeenCalledWith(
+			'exec-1',
+			'test-node',
+			expect.any(Object),
+		);
+	});
+
+	test('sends the trace headers again on the retry after a 401', async () => {
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(request.mock.calls[1][0].headers).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/-02$/),
+		});
 	});
 });

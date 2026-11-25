@@ -162,7 +162,7 @@ describe('CreateAgentHistoryTable Migration', () => {
 					agentId: publishedAgentId,
 					publishedFromVersionId: publishedVersionId,
 					publishedById: userId,
-					schema: { name: 'Published Agent', model: 'anthropic/claude-sonnet-4-5' },
+					schema: { name: 'Published Agent', model: 'anthropic/claude-sonnet-5-5' },
 				});
 			});
 
@@ -383,7 +383,7 @@ describe('CreateAgentHistoryTable Migration', () => {
 					agentId: publishedAgentId,
 					publishedFromVersionId: publishedVersionId,
 					publishedById: userId,
-					schema: { name: 'Published Agent', model: 'anthropic/claude-sonnet-4-5' },
+					schema: { name: 'Published Agent', model: 'anthropic/claude-sonnet-5-5' },
 				});
 			});
 

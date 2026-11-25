@@ -2,7 +2,7 @@ import { AgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Be helpful',
 };
 
@@ -135,7 +135,7 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 				observationalMemory: {
 					observerModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'anthropic-key',
 					},
 				},
@@ -145,7 +145,7 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		expect(parsed.memory?.observationalMemory).toMatchObject({
 			observerModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
 			reflectorModel: {
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'anthropic-key',
 			},
 		});
@@ -240,6 +240,30 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		});
 		expect(parsed.success).toBe(true);
 	});
+
+	it.each([64_000, 0])('preserves a memory window cap of %i', (maxContextWindowTokens) => {
+		const parsed = AgentJsonConfigSchema.parse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { windowShares: { maxContextWindowTokens } },
+			},
+		});
+		expect(parsed.memory?.observationalMemory).toEqual({
+			windowShares: { maxContextWindowTokens },
+		});
+	});
+
+	it('rejects a negative memory window cap', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { windowShares: { maxContextWindowTokens: -1 } },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
 });
 
 describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
@@ -281,7 +305,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 					enabled: true,
 					credential: 'credential-id',
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'anthropic-key',
 					},
 				},
@@ -290,7 +314,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 
 		expect(parsed.memory?.episodicMemory).toMatchObject({
 			reflectorModel: {
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'anthropic-key',
 			},
 		});

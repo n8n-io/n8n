@@ -28,7 +28,7 @@ a deployable engine worker) without touching core logic.
 
 ## Layers (today, all in this package)
 
-- **Core (decides)** — `graph/`, `execution/`, `admittance/`. Pure
+- **Core (decides)** — `graph/`, `execution/`, `reconciliation/`, `retention/`, `admittance/`. Pure
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
@@ -40,25 +40,45 @@ a deployable engine worker) without touching core logic.
   in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
-  (in-memory default). The Postgres/ORM coupling lives *here only*.
+  (`InMemoryWorkQueue`, and `RedisWorkQueue` on a Redis list). The Postgres/ORM
+  coupling lives *here only*. `createInMemoryWorkQueues` builds the pair of
+  in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
+  the engine sets the list names and the message schemas. The host gives the
+  Redis connections, the key prefix and the concurrency limits.
+  `RedisWorkQueue` never closes a connection. A queue opens its consumer
+  connection on its first `start()`, so a process that only publishes to a
+  queue opens none for it. The factory's `close()` closes only the consumer
+  connections that were opened; the host closes the publisher. The engine has
+  no runtime dependency on `ioredis`; the adapter declares the client commands
+  it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
-  internal topology: the queues, the stores, the handlers, the workers, the HTTP
-  app and the start/stop order. It takes the adapters a host chooses and returns
-  a running engine, so no host repeats the wiring. A data plane database is not
-  optional — the factory's type requires one, and each composition root refuses
-  to start without it rather than serving `/healthz` while unable to run a
-  workflow.
+  internal topology: the stores, the handlers, the workers, the HTTP app and the
+  start/stop order. It takes the adapters a host chooses and returns a running
+  engine, so no host repeats the wiring. The host gives it the queues. It
+  starts and stops the queues its roles consume, but never closes their
+  connections.
+  A process runs one or more roles (all three by default): `api` mounts `/api`,
+  `orchestrator` runs the orchestration worker and the reconciliation sweeper,
+  and `step-worker` runs the step worker and the wait sweeper. Every role serves
+  `/healthz`. Roles can be split over processes only on shared queues: the
+  in-memory queues need all three roles in one process. Only the `api` role
+  needs an identity verifier, and the factory refuses that role without one.
+  A data plane database is not optional — the factory's type requires one, and
+  each composition root refuses to start without it rather than serving
+  `/healthz` while unable to run a workflow.
 - **Composition roots** — `serve.ts` (standalone) and, in integrated mode,
   `packages/cli`. These construct the concrete adapters (the `DataSource`, the
-  admittance policy, the v1 step executor) and hand them to
-  `createEngineRuntime`. **Construction lives here, not in the core** — but the
-  topology does not: that belongs to the factory.
+  admittance policy, the v1 step executor and, in the `n8n engine` process, the
+  Redis connections for the work queues) and hand them to the engine factories
+  (`createEngineRuntime`, `createInMemoryWorkQueues`, `createRedisWorkQueues`).
+  **Construction lives here, not in the core** — but the topology does not:
+  that belongs to the factories.
 
 ## Rules that keep the seams extractable
 
-- Core modules (`graph`, `execution`, `admittance`) don't import `express`,
+- Core modules (`graph`, `execution`, `reconciliation`, `retention`, `admittance`) don't import `express`,
   `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
   `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
   is one-way: `database/` imports the interface + domain types from the core, not
@@ -76,6 +96,18 @@ a deployable engine worker) without touching core logic.
 - When serving infra is extracted, add a `dependency-purity.test.ts` (as
   `@n8n/scheduler` does) to enforce the allowlist. Until then, this doc is the
   intent.
+
+## Migrations are additive
+
+Change the schema only with a new migration, for example one that adds a
+column. Never edit a migration that is already on master. Engine databases
+persist, and a database that ran a migration does not run it again, so an edit
+never reaches it.
+
+A new migration gets a timestamp later than the last one and its entry in
+`src/database/migrations/index.ts`. Add its file name to the
+`unicorn/filename-case` exemptions in `oxlint.config.mts` and
+`eslint.config.mjs`. Mirror a new column or index in the entity decorators.
 
 ## Crash recovery: reconciliation, not transactions
 

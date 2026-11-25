@@ -8,6 +8,7 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Generation, LLMResult } from '@langchain/core/outputs';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
@@ -32,7 +33,49 @@ type ProviderTokenUsageResult = TokenUsageResult & {
 	totalCost?: number;
 };
 
-type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+export type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+
+function readUsageMetadata(generation: Generation) {
+	const message = 'message' in generation ? generation.message : undefined;
+	if (!isRecord(message)) return undefined;
+
+	const usage = message.usage_metadata;
+	if (!isRecord(usage)) return undefined;
+
+	const inputTokens = typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
+	const outputTokens = typeof usage.output_tokens === 'number' ? usage.output_tokens : 0;
+
+	return {
+		inputTokens,
+		outputTokens,
+		totalTokens:
+			typeof usage.total_tokens === 'number' ? usage.total_tokens : inputTokens + outputTokens,
+	};
+}
+
+/**
+ * Reads the LangChain-standard `usage_metadata` off the generation message. Use it for providers
+ * that report usage there and leave `llmOutput` empty, such as AWS Bedrock Converse.
+ */
+export function usageMetadataTokensUsageParser(result: LLMResult): TokenUsageResult {
+	let promptTokens = 0;
+	let completionTokens = 0;
+	let totalTokens = 0;
+
+	// One entry for each prompt, and only its first candidate. A provider asked for several
+	// candidates reports usage once for the request and repeats it on each, so summing the
+	// inner array would count the prompt tokens again for every candidate.
+	for (const [generation] of result.generations) {
+		const usage = generation && readUsageMetadata(generation);
+		if (!usage) continue;
+
+		promptTokens += usage.inputTokens;
+		completionTokens += usage.outputTokens;
+		totalTokens += usage.totalTokens;
+	}
+
+	return { completionTokens, promptTokens, totalTokens };
+}
 
 /** Anthropic Messages usage. Cached input tokens count as prompt tokens. */
 export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult {
@@ -55,22 +98,10 @@ export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult 
 	};
 }
 
-/** A ChatGeneration carries its `message`; a plain Generation carries only text. */
-function hasMessage(generation: unknown): generation is { message: unknown } {
-	return typeof generation === 'object' && generation !== null && 'message' in generation;
-}
-
-/** Only AI messages declare `usage_metadata`; `BaseMessage` does not. */
-function hasUsageMetadata(message: unknown): message is {
-	usage_metadata?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
-} {
-	return typeof message === 'object' && message !== null && 'usage_metadata' in message;
-}
-
 /** The reported OpenAI `tokenUsage` shape; a partial payload falls through to the message. */
 function isReportedTokenUsage(
 	usage: unknown,
-): usage is { promptTokens: number; completionTokens: number } {
+): usage is Partial<ProviderTokenUsageResult> & { promptTokens: number; completionTokens: number } {
 	if (typeof usage !== 'object' || usage === null) return false;
 	if (!('promptTokens' in usage) || typeof usage.promptTokens !== 'number') return false;
 	if (!('completionTokens' in usage) || typeof usage.completionTokens !== 'number') return false;
@@ -85,11 +116,7 @@ function isReportedTokenUsage(
  * over recomputing input + output; the `tokenUsage` payload carries no total the
  * default parser trusts, so that branch recomputes.
  */
-export function openAiTokensUsageParser(result: LLMResult): {
-	completionTokens: number;
-	promptTokens: number;
-	totalTokens: number;
-} {
+export function openAiTokensUsageParser(result: LLMResult): TokenUsageResult {
 	const reportedUsage: unknown = result.llmOutput?.tokenUsage;
 	// Correct only because handleLLMEnd receives @langchain/openai's raw _generate
 	// output. If it ever receives a post-generate() LLMResult, _combineLLMOutput
@@ -103,24 +130,14 @@ export function openAiTokensUsageParser(result: LLMResult): {
 			completionTokens,
 			promptTokens,
 			totalTokens: promptTokens + completionTokens,
+			cost: reportedUsage.cost ?? reportedUsage.totalCost,
 		};
 	}
 
-	const generation = result.generations?.[0]?.[0];
-	const message = generation && hasMessage(generation) ? generation.message : undefined;
-	if (hasUsageMetadata(message)) {
-		// Responses: prefer the provider's total, then fall back to input + output.
-		const promptTokens = message.usage_metadata?.input_tokens ?? 0;
-		const completionTokens = message.usage_metadata?.output_tokens ?? 0;
-		const totalTokens = message.usage_metadata?.total_tokens ?? promptTokens + completionTokens;
-		return {
-			completionTokens,
-			promptTokens,
-			totalTokens,
-		};
-	}
-
-	return { completionTokens: 0, promptTokens: 0, totalTokens: 0 };
+	// Responses reports usage on the message, the same place Bedrock Converse does, so the
+	// message branch is shared rather than written twice. A chat model returns one generation
+	// for one prompt, so summing and reading [0][0] agree on every response either path sees.
+	return usageMetadataTokensUsageParser(result);
 }
 
 type RunDetail = {

@@ -14,6 +14,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -39,7 +40,12 @@ import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { hasNewWorkflowQuery, withoutNewWorkflowQuery } from '@/app/utils/workflowUtils';
 
-export function useWorkflowInitialization() {
+export function useWorkflowInitialization(
+	options: {
+		/** Shows a failed workflow load in place. Without it, the app opens an error page. */
+		onLoadError?: (error: unknown, workflowId: string) => void;
+	} = {},
+) {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
@@ -242,9 +248,9 @@ export function useWorkflowInitialization() {
 			return promises;
 		})();
 
-		if (nodeTypesStore.allNodeTypes.length === 0) {
-			loadPromises.push(nodeTypesStore.getNodeTypes());
-		}
+		// Joins the node types load that startup began, so the canvas sends no second request.
+		// A new instance on each call retries a load that failed.
+		loadPromises.push(useNodeTypesLoad().whenLoaded());
 
 		try {
 			// important to load community nodes to render them correctly
@@ -406,6 +412,10 @@ export function useWorkflowInitialization() {
 			);
 			void workflowsStore.fetchLastSuccessfulExecution();
 		} catch (error) {
+			if (options.onLoadError) {
+				options.onLoadError(error, id);
+				return;
+			}
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 404) {
 				return await router.replace({
 					name: VIEWS.ENTITY_NOT_FOUND,

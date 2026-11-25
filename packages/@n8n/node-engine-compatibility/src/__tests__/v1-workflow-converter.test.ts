@@ -427,6 +427,48 @@ describe('V1WorkflowConverter', () => {
 				),
 			).not.toThrow();
 		});
+
+		const toNoOp = { 'When clicking Execute': { main: [[main('No Operation')]] } };
+		const convertNoOp = (extra: Partial<INode>) => () =>
+			converter.convert(
+				workflow({
+					nodes: [manualTrigger, node('noop-uuid', 'No Operation', extra)],
+					connections: toNoOp,
+				}),
+			);
+
+		it.each<{ setting: string; extra: Partial<INode>; error: string }>([
+			{ setting: 'Retry On Fail', extra: { retryOnFail: true }, error: 'Retry On Fail' },
+			{
+				setting: 'Always Output Data',
+				extra: { alwaysOutputData: true },
+				error: 'Always Output Data',
+			},
+			{ setting: 'Execute Once', extra: { executeOnce: true }, error: 'Execute Once' },
+		])('rejects a node with $setting on', ({ extra, error }) => {
+			expect(convertNoOp(extra)).toThrow(UnsupportedWorkflowError);
+			expect(convertNoOp(extra)).toThrow(error);
+		});
+
+		it('accepts a node with the execution settings explicitly off', () => {
+			expect(
+				convertNoOp({ retryOnFail: false, alwaysOutputData: false, executeOnce: false }),
+			).not.toThrow();
+		});
+
+		it('ignores the execution settings of the fired trigger', () => {
+			expect(() =>
+				converter.convert(
+					workflow({
+						nodes: [
+							{ ...manualTrigger, retryOnFail: true, alwaysOutputData: true, executeOnce: true },
+							node('noop-uuid', 'No Operation'),
+						],
+						connections: toNoOp,
+					}),
+				),
+			).not.toThrow();
+		});
 	});
 
 	describe('edges', () => {

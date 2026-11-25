@@ -1,6 +1,14 @@
-import type { AgentDto, AgentListItemDto, AgentSkillVersionInfo } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type {
+	AgentDto,
+	AgentListItemDto,
+	AgentListPublicItemDto,
+	AgentPublicDto,
+	AgentSkillVersionInfo,
+} from '@n8n/api-types';
+import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+import { FolderService } from '@/services/folder.service';
 
 import type { ValidAgentConfigValidationResponse } from './agent-publish.service';
 import { AgentRunnableStateService, type AgentRunnableState } from './agent-runnable-state.service';
@@ -8,7 +16,19 @@ import type { Agent } from './entities/agent.entity';
 
 @Service()
 export class AgentResponseMapper {
-	constructor(private readonly runnableState: AgentRunnableStateService) {}
+	constructor(
+		private readonly runnableState: AgentRunnableStateService,
+		private readonly folderService: FolderService,
+	) {}
+
+	async toPublicDto(agent: Agent, projectId: string, user: User): Promise<AgentPublicDto> {
+		const dto = await this.toAgentDto(agent, projectId, user);
+		const [folder] = agent.parentFolderId
+			? await this.folderService.getFoldersByIds([agent.parentFolderId])
+			: [];
+
+		return toAgentPublicDto(dto, folder);
+	}
 
 	async toAgentDto(
 		agent: Agent,
@@ -36,6 +56,7 @@ export function mapAgentDto(agent: Agent, state: AgentRunnableState): AgentDto {
 		id: agent.id,
 		name: agent.name ?? '',
 		projectId: agent.projectId ?? '',
+		parentFolderId: agent.parentFolderId ?? null,
 		project: mapProject(agent.project),
 		availableInMCP: agent.availableInMCP ?? false,
 		isArchived: agent.isArchived,
@@ -58,17 +79,68 @@ export function mapAgentDto(agent: Agent, state: AgentRunnableState): AgentDto {
 }
 
 /**
+ * Public API single-agent shape: `AgentDto` minus builder-only state.
+ * Create, GET, and PUT responses share this one shape.
+ */
+export function toAgentPublicDto(agent: AgentDto, folder?: Folder): AgentPublicDto {
+	return {
+		id: agent.id,
+		name: agent.name,
+		projectId: agent.projectId,
+		parentFolder: folder
+			? {
+					id: folder.id,
+					name: folder.name,
+					parentFolderId: folder.parentFolderId,
+					createdAt: folder.createdAt.toISOString(),
+					updatedAt: folder.updatedAt.toISOString(),
+				}
+			: null,
+		project: agent.project,
+		availableInMCP: agent.availableInMCP,
+		isArchived: agent.isArchived,
+		versionId: agent.versionId,
+		activeVersionId: agent.activeVersionId,
+		createdAt: agent.createdAt,
+		updatedAt: agent.updatedAt,
+		config: agent.config,
+		configHash: agent.configHash,
+		tools: agent.tools,
+		activeVersion: agent.activeVersion,
+	};
+}
+
+/**
+ * List row of the Public API list. `config` is absent for the same reason as
+ * {@link mapAgentListItem}: a list row must not be a full-replace body.
+ */
+export function mapAgentListPublicItem(agent: Agent): AgentListPublicItemDto {
+	return {
+		id: agent.id,
+		name: agent.name ?? '',
+		projectId: agent.projectId ?? '',
+		availableInMCP: agent.availableInMCP ?? false,
+		isArchived: agent.isArchived,
+		versionId: agent.versionId ?? null,
+		activeVersionId: agent.activeVersionId ?? null,
+		createdAt: toIsoTimestamp(agent.createdAt),
+		updatedAt: toIsoTimestamp(agent.updatedAt),
+	};
+}
+
+/**
  * List row. `config` is absent so the row is not a full-replace body.
  * The list services attach `skillVersions` to the row (one batched read per
  * page), so the card can flag skill-only changes without loading the agent.
  */
 export function mapAgentListItem(
-	agent: Agent & { skillVersions?: Record<string, AgentSkillVersionInfo> },
+	agent: Agent & { skillVersions?: Record<string, AgentSkillVersionInfo>; folderPath?: string[] },
 ): AgentListItemDto {
 	return {
 		id: agent.id,
 		name: agent.name ?? '',
 		projectId: agent.projectId ?? '',
+		parentFolderId: agent.parentFolderId ?? null,
 		project: mapProject(agent.project),
 		availableInMCP: agent.availableInMCP ?? false,
 		isArchived: agent.isArchived,
@@ -79,6 +151,7 @@ export function mapAgentListItem(
 		personalisation: agent.schema?.personalisation ?? null,
 		hasConfig: isPresent(agent.schema),
 		...(agent.skillVersions === undefined ? {} : { skillVersions: agent.skillVersions }),
+		...(agent.folderPath === undefined ? {} : { folderPath: agent.folderPath }),
 	};
 }
 

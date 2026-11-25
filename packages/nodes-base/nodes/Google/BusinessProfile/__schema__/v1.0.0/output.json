@@ -1,0 +1,38 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"comment": {
+			"type": "string"
+		},
+		"createTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"reviewer": {
+			"properties": {
+				"displayName": {
+					"type": "string"
+				},
+				"profilePhotoUrl": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"reviewId": {
+			"type": "string"
+		},
+		"reviewReplyUrl": {
+			"type": "string"
+		},
+		"starRating": {
+			"type": "string"
+		},
+		"updateTime": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -2071,7 +2071,10 @@ describe('WorkflowService', () => {
 				versionId: TARGET_VERSION_ID,
 			});
 
-			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+				fromSourceControlPull: false,
+			});
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
@@ -2717,6 +2720,17 @@ describe('WorkflowService', () => {
 				event: 'deactivated',
 				userId: null,
 			});
+		});
+
+		test('calls the workflow.deactivate hook with the workflow and the hook context only', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
+
+			expect(externalHooksMock.run).toHaveBeenCalledExactlyOnceWith('workflow.deactivate', [
+				expect.objectContaining({ id: WORKFLOW_ID }),
+				expect.anything(),
+			]);
 		});
 
 		test('does nothing when the workflow does not exist', async () => {

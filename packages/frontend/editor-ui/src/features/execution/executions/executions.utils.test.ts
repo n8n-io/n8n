@@ -3,7 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
 	executionFilterToQueryFilter,
+	getDefaultExecutionFilters,
+	getExecutionEngine,
 	hasCancellableExecutions,
+	isEngineV2ExecutionId,
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
@@ -145,6 +148,15 @@ describe('executionFilterToQueryFilter()', () => {
 		expect(executionFilterToQueryFilter({ status: 'new' }).status).toStrictEqual(
 			expect.arrayContaining(['new']),
 		);
+	});
+
+	it('adds no engine for any engine, the default', () => {
+		expect(getDefaultExecutionFilters().engine).toBe('all');
+		expect(executionFilterToQueryFilter(getDefaultExecutionFilters())).not.toHaveProperty('engine');
+	});
+
+	it.each(['v1', 'v2'] as const)('adds the %s engine', (engine) => {
+		expect(executionFilterToQueryFilter({ engine }).engine).toBe(engine);
 	});
 });
 
@@ -903,5 +915,28 @@ describe('hasCancellableExecutions', () => {
 
 	it('returns false for an empty executions list', () => {
 		expect(hasCancellableExecutions([])).toBe(false);
+	});
+});
+
+describe('isEngineV2ExecutionId', () => {
+	it('returns true for a UUID v7', () => {
+		expect(isEngineV2ExecutionId('019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b')).toBe(true);
+	});
+
+	it.each([
+		['a numeric v1 ID', '123'],
+		['a UUID v4', '3b241101-e2bb-4255-8caf-4136c566a962'],
+		['an empty string', ''],
+	])('returns false for %s', (_label, executionId) => {
+		expect(isEngineV2ExecutionId(executionId)).toBe(false);
+	});
+});
+
+describe('getExecutionEngine', () => {
+	it.each([
+		['v1', '123'],
+		['v2', '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b'],
+	])('returns %s for execution %s', (engine, executionId) => {
+		expect(getExecutionEngine(executionId)).toBe(engine);
 	});
 });
