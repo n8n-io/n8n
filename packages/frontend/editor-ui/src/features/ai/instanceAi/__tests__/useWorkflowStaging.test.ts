@@ -7,6 +7,8 @@ import type {
 } from '@n8n/api-types';
 import { effectScope, nextTick, ref } from 'vue';
 
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
+import type { ArtifactTurn } from '../artifactTurns';
 import { useWorkflowStaging } from '../composables/useWorkflowStaging';
 import type { WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
 
@@ -14,12 +16,12 @@ function call(toolName: string, args: Record<string, unknown> = {}): InstanceAiT
 	return { toolCallId: `${toolName}-${JSON.stringify(args)}`, toolName, args, isLoading: false };
 }
 
-function tree(toolCalls: InstanceAiToolCallState[]): InstanceAiAgentNode {
+function tree(toolCalls: InstanceAiToolCallState[], isLive = true): InstanceAiAgentNode {
 	return {
 		runId: 'run-1',
 		agentId: 'agent-1',
 		role: 'orchestrator',
-		status: 'active',
+		status: isLive ? 'active' : 'completed',
 		textContent: '',
 		reasoning: '',
 		toolCalls,
@@ -52,7 +54,7 @@ function assistantMessage(
 		content: '',
 		reasoning: '',
 		isStreaming,
-		agentTree: tree(toolCalls),
+		agentTree: tree(toolCalls, isStreaming),
 	};
 }
 
@@ -66,7 +68,7 @@ function setup(initial: InstanceAiMessage[], options: { enabled?: boolean } = {}
 	const scope = effectScope();
 	const staging = scope.run(() =>
 		useWorkflowStaging({
-			messages: () => messages.value,
+			turns: () => toArtifactTurns(messages.value),
 			workflowDrafts: () => drafts.value,
 			enabled: () => enabled.value,
 			describeType,
@@ -366,5 +368,44 @@ describe('useWorkflowStaging, building', () => {
 		const { building } = setup([userMessage(), assistantMessage([loadBuilder], false)]);
 
 		expect(building.value).toBe(false);
+	});
+});
+
+describe('useWorkflowStaging, Agents runtime turns', () => {
+	function setupTurns(turns: ArtifactTurn[]) {
+		const scope = effectScope();
+		return scope.run(() =>
+			useWorkflowStaging({
+				turns: () => turns,
+				workflowDrafts: () => ({}),
+				enabled: () => true,
+				describeType,
+			}),
+		)!;
+	}
+
+	it('stages a live turn that has no run id under the id of the turn', () => {
+		const { stagingDraft, building } = setupTurns([
+			{ id: 'turn-user', role: 'user', isLive: false, toolCalls: [] },
+			{ id: 'turn-1', role: 'assistant', isLive: true, toolCalls: [loadBuilder, readSlack] },
+		]);
+
+		expect(building.value).toBe(true);
+		expect(stagingDraft.value).toMatchObject({ filePath: 'staging:turn-1', runId: 'turn-1' });
+	});
+
+	it('takes the build target from the attachment of the user turn', () => {
+		const { buildTarget } = setupTurns([
+			{
+				id: 'turn-user',
+				role: 'user',
+				isLive: false,
+				toolCalls: [],
+				attachments: [{ type: 'workflow', id: 'wf-9' }] as ArtifactTurn['attachments'],
+			},
+			{ id: 'turn-1', role: 'assistant', isLive: true, toolCalls: [loadBuilder] },
+		]);
+
+		expect(buildTarget.value).toEqual({ workflowId: 'wf-9', source: 'request' });
 	});
 });

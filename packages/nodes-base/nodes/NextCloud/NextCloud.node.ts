@@ -19,7 +19,7 @@ import {
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest, webDavPath } from './GenericFunctions';
+import { nextCloudApiRequest, parseFolderList, webDavPath } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
@@ -28,7 +28,7 @@ export class NextCloud implements INodeType {
 		name: 'nextCloud',
 		icon: 'file:nextcloud.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Nextcloud',
 		defaults: {
@@ -874,6 +874,7 @@ export class NextCloud implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData().slice();
 		const returnData: INodeExecutionData[] = [];
+		const nodeVersion = this.getNode().typeVersion;
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 		let credentials;
@@ -1397,6 +1398,9 @@ export class NextCloud implements INodeType {
 							returnData.push({ json: { id: value }, pairedItem: { item: i } });
 						});
 					}
+				} else if (resource === 'folder' && operation === 'list' && nodeVersion >= 1.1) {
+					const folderItems = await parseFolderList(responseData);
+					returnData.push(...folderItems.map((json) => ({ json, pairedItem: { item: i } })));
 				} else if (resource === 'folder' && operation === 'list') {
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(

@@ -102,14 +102,12 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start', 'Set']);
 	});
 
-	it('shows the building wave with no label while the agent works', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+	it('shows no "not saved" badge while the agent works', () => {
+		const { queryByTestId } = renderComponent({
 			pinia: createTestingPinia({ stubActions: false }),
 			props: { draft: draft(['Start']), building: true },
 		});
 
-		expect(getByTestId('instance-ai-draft-building-wave')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-agent-building-indicator')).toBeNull();
 		expect(queryByTestId('instance-ai-workflow-draft-badge')).toBeNull();
 	});
 
@@ -150,23 +148,13 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 		expect(canvasProps.current?.nodes.map((n) => n.type)).toContain(CANVAS_NODE_GROUP_TYPE);
 	});
 
-	it('hides the building wave while the run waits on the user', () => {
-		const { queryByTestId } = renderComponent({
-			pinia: createTestingPinia({ stubActions: false }),
-			props: { draft: draft(['Start']), building: true, waiting: true },
-		});
-
-		expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
-	});
-
 	it('labels the draft as not saved once the agent stops', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia: createTestingPinia({ stubActions: false }),
 			props: { draft: draft(['Start']), building: false },
 		});
 
 		expect(getByTestId('instance-ai-workflow-draft-badge')).toHaveTextContent(/not saved/i);
-		expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
 	});
 
 	it('fits the view when a new revision adds nodes', async () => {

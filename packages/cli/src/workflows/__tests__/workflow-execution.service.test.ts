@@ -434,20 +434,71 @@ describe('WorkflowExecutionService', () => {
 
 			expect(returned).toBeUndefined();
 			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 			expect(responsePromise.reject).toHaveBeenCalledWith(contextError);
 			expect(errorReporter.error).toHaveBeenCalledWith(contextError, { shouldBeLogged: false });
 		});
 
-		test('commits neither the cursor nor an execution when preExecute blocks the run', async () => {
+		test('holds the cursor when preExecute blocks a poll that declared itself bounded', async () => {
 			const blocked = new Error('execution limit reached');
 			workflowRunner.prepareNewExecution.mockRejectedValue(new PreExecuteBlockedError(blocked));
 
-			const returned = await runPolledWorkflow();
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				undefined,
+				'none',
+				true,
+			);
 
 			expect(returned).toBeUndefined();
 			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(responsePromise.reject).toHaveBeenCalledWith(blocked);
+		});
+
+		test('advances the cursor alone when preExecute blocks a poll that did not declare itself bounded', async () => {
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+			workflowRunner.prepareNewExecution.mockRejectedValue(
+				new PreExecuteBlockedError(new Error('execution limit reached')),
+			);
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				fence,
+			);
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledExactlyOnceWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor,
+				fence,
+			});
+			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('rejects the response promise with the refusal cause before committing the cursor', async () => {
+			const blocked = new Error('execution limit reached');
+			const dbError = new Error('database unavailable');
+			workflowRunner.prepareNewExecution.mockRejectedValue(new PreExecuteBlockedError(blocked));
+			pollCursorService.commitCursorOnly.mockRejectedValue(dbError);
+
+			await expect(runPolledWorkflow()).rejects.toBe(dbError);
+
 			expect(responsePromise.reject).toHaveBeenCalledWith(blocked);
 		});
 

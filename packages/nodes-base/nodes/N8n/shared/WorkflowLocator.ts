@@ -56,7 +56,6 @@ export const workflowIdLocator: INodeProperties = {
 	name: 'workflowId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
-	description: 'Workflow to filter the executions by',
 	modes: [
 		{
 			displayName: 'From List',

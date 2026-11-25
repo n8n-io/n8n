@@ -18,13 +18,18 @@ on:
         required: false
         type: string
         default: ''
+      affectedHead:
+        description: Commit to compare with affectedBase. Empty means the checked-out commit.
+        required: false
+        type: string
+        default: ''
 
 env:
   # Each shard runs two workers with a 6 GB cap. This fits the runner's 15.2 GB.
   NODE_OPTIONS: --max-old-space-size=6144
   # Read by `turbo --affected`. If the base is missing, turbo lints every package.
   TURBO_SCM_BASE: ${{ inputs.affectedBase }}
-  TURBO_SCM_HEAD: HEAD
+  TURBO_SCM_HEAD: ${{ inputs.affectedHead || 'HEAD' }}
 
 jobs:
   lint:

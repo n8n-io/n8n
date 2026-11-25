@@ -7,6 +7,7 @@ import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.ser
 
 import type { ApplyPreviewService } from '../apply-preview.service';
 import type { LocalPackageEntities } from '../local-package-entities.service';
+import type { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { PromotePreviewService } from '../promote-preview.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -51,10 +52,12 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			mock<N8nPackagesService>(),
 			mock<SharedWorkflowRepository>(),
 			reviewGate,
+			mock<PromotionCredentialSelectionService>(),
 		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,
 		mock(),
+		mock<PromotionCredentialSelectionService>(),
 	);
 
 	beforeEach(() => {

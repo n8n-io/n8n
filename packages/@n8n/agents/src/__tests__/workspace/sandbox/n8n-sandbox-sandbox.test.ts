@@ -118,7 +118,7 @@ describe('start()', () => {
 			await sandbox.start();
 
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(mockCreateSandbox).toHaveBeenCalledWith({});
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ egress: 'public' });
 			expect(sandbox.id).toBe('sb-123');
 		});
 
@@ -126,7 +126,7 @@ describe('start()', () => {
 			const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), ephemeral: true });
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true, egress: 'public' });
 		});
 
 		it('times out stalled creation and removes a sandbox created after the timeout', async () => {
@@ -160,7 +160,7 @@ describe('start()', () => {
 
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, egress: 'public' });
 			expect(mockGetSandbox).not.toHaveBeenCalled();
 			expect(sandbox.id).toBe(id);
 		});
@@ -176,7 +176,7 @@ describe('start()', () => {
 			});
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true, egress: 'public' });
 		});
 
 		it('does not delete a deterministic sandbox when creation times out', async () => {
@@ -208,7 +208,7 @@ describe('start()', () => {
 			await sandbox.stop();
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123' });
+			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123', egress: 'public' });
 			expect(sandbox.id).toBe('sb-123');
 		});
 
@@ -348,7 +348,7 @@ describe('recovery when the remote sandbox is gone', () => {
 		expect(result.stdout).toBe('ok');
 		expect(mockGetSandbox).toHaveBeenCalledWith(id);
 		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-		expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
+		expect(mockCreateSandbox).toHaveBeenCalledWith({ id, egress: 'public' });
 		expect(mockExec).toHaveBeenCalledTimes(2);
 	});
 

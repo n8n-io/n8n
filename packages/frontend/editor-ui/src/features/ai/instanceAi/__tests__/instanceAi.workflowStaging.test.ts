@@ -1,5 +1,7 @@
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
+
 import {
 	getWorkflowStaging,
 	isStagingDraft,
@@ -43,45 +45,65 @@ function tree(
 	};
 }
 
+/** The run of a tree, as both runtimes give it: its tool calls and those of its sub-agents. */
+function runOf(node: InstanceAiAgentNode) {
+	const [turn] = toArtifactTurns([
+		{
+			id: 'm-1',
+			role: 'assistant',
+			createdAt: '',
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: node,
+		},
+	]);
+	return { runId: node.runId ?? node.agentId, toolCalls: turn.toolCalls };
+}
+
 const loadBuilder = () => call('load_skill', { name: 'workflow-builder' });
 const KNOWN_TYPES = new Set(['n8n-nodes-base.gmail', 'n8n-nodes-base.slack', 'n8n-nodes-base.set']);
 const hasNodeType = (type: string) => KNOWN_TYPES.has(type);
 
 describe('getWorkflowStaging', () => {
 	it('is undefined before the workflow builder skill loads', () => {
-		expect(getWorkflowStaging(tree([call('search_nodes')]), { hasNodeType })).toBeUndefined();
+		expect(
+			getWorkflowStaging(runOf(tree([call('search_nodes')])), { hasNodeType }),
+		).toBeUndefined();
 	});
 
 	it('starts when the workflow builder skill loads, by name or by id', () => {
-		expect(getWorkflowStaging(tree([loadBuilder()]), { hasNodeType })).toEqual({
+		expect(getWorkflowStaging(runOf(tree([loadBuilder()])), { hasNodeType })).toEqual({
 			runId: 'run-1',
 			nodes: [],
 		});
 		const byId = tree([call('load_skill', { skillId: 'workflow-builder' }, { isLoading: true })]);
-		expect(getWorkflowStaging(byId, { hasNodeType })).toBeDefined();
+		expect(getWorkflowStaging(runOf(byId), { hasNodeType })).toBeDefined();
 	});
 
 	it('adds each requested node type once, in the order the agent asked for it', () => {
 		const staging = getWorkflowStaging(
-			tree([
-				loadBuilder(),
-				call('get_node_types', {
-					nodeTypes: [
-						'n8n-nodes-base.slack',
-						{
-							nodeType: 'n8n-nodes-base.gmail',
-							version: 2.1,
-							resource: 'message',
-							operation: 'send',
-						},
-					],
-				}),
-				call(
-					'get_node_types',
-					{ nodeTypes: ['n8n-nodes-base.slack', 'n8n-nodes-base.set'] },
-					{ isLoading: true, result: undefined },
-				),
-			]),
+			runOf(
+				tree([
+					loadBuilder(),
+					call('get_node_types', {
+						nodeTypes: [
+							'n8n-nodes-base.slack',
+							{
+								nodeType: 'n8n-nodes-base.gmail',
+								version: 2.1,
+								resource: 'message',
+								operation: 'send',
+							},
+						],
+					}),
+					call(
+						'get_node_types',
+						{ nodeTypes: ['n8n-nodes-base.slack', 'n8n-nodes-base.set'] },
+						{ isLoading: true, result: undefined },
+					),
+				]),
+			),
 			{ hasNodeType },
 		);
 
@@ -100,10 +122,12 @@ describe('getWorkflowStaging', () => {
 
 	it('keeps nodes from a schema read that failed', () => {
 		const staging = getWorkflowStaging(
-			tree([
-				loadBuilder(),
-				call('get_node_types', { nodeTypes: ['n8n-nodes-base.slack'] }, { error: 'boom' }),
-			]),
+			runOf(
+				tree([
+					loadBuilder(),
+					call('get_node_types', { nodeTypes: ['n8n-nodes-base.slack'] }, { error: 'boom' }),
+				]),
+			),
 			{ hasNodeType },
 		);
 
@@ -112,7 +136,9 @@ describe('getWorkflowStaging', () => {
 
 	it('skips node types the editor does not know', () => {
 		const staging = getWorkflowStaging(
-			tree([loadBuilder(), call('get_node_types', { nodeTypes: ['acme.unknown', { bad: 1 }] })]),
+			runOf(
+				tree([loadBuilder(), call('get_node_types', { nodeTypes: ['acme.unknown', { bad: 1 }] })]),
+			),
 			{ hasNodeType },
 		);
 
@@ -121,7 +147,7 @@ describe('getWorkflowStaging', () => {
 
 	it('includes the calls of sub-agents', () => {
 		const child = tree([call('get_node_types', { nodeTypes: ['n8n-nodes-base.set'] })]);
-		const staging = getWorkflowStaging(tree([loadBuilder()], [child]), { hasNodeType });
+		const staging = getWorkflowStaging(runOf(tree([loadBuilder()], [child])), { hasNodeType });
 
 		expect(staging?.nodes.map((node) => node.nodeType)).toEqual(['n8n-nodes-base.set']);
 	});
@@ -137,7 +163,9 @@ describe('getWorkflowStaging', () => {
 			call('workflow_builder_build_workflow', { filePath: 'a.ts', workflowId: 'wf-1' }),
 		],
 	])('is undefined when %s', (_, editCall) => {
-		expect(getWorkflowStaging(tree([loadBuilder(), editCall]), { hasNodeType })).toBeUndefined();
+		expect(
+			getWorkflowStaging(runOf(tree([loadBuilder(), editCall])), { hasNodeType }),
+		).toBeUndefined();
 	});
 
 	it('stays ended after a build of the run saved the workflow', () => {
@@ -149,7 +177,7 @@ describe('getWorkflowStaging', () => {
 		const verify = call('workflow_builder_verify_built_workflow', { workflowId: 'wf-new' });
 
 		expect(
-			getWorkflowStaging(tree([loadBuilder(), saved, verify]), { hasNodeType }),
+			getWorkflowStaging(runOf(tree([loadBuilder(), saved, verify])), { hasNodeType }),
 		).toBeUndefined();
 	});
 
@@ -165,8 +193,12 @@ describe('getWorkflowStaging', () => {
 			{ result: { success: false, filePath: 'a.ts' } },
 		);
 
-		expect(getWorkflowStaging(tree([loadBuilder(), running]), { hasNodeType })).toBeDefined();
-		expect(getWorkflowStaging(tree([loadBuilder(), blocked]), { hasNodeType })).toBeDefined();
+		expect(
+			getWorkflowStaging(runOf(tree([loadBuilder(), running])), { hasNodeType }),
+		).toBeDefined();
+		expect(
+			getWorkflowStaging(runOf(tree([loadBuilder(), blocked])), { hasNodeType }),
+		).toBeDefined();
 	});
 });
 

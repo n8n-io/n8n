@@ -6,6 +6,7 @@ import type {
 	QuickJSHandle,
 	QuickJSRuntime,
 	QuickJSWASMModule as QuickJSWasm,
+	VmCallResult,
 } from 'quickjs-emscripten-core';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
@@ -28,6 +29,7 @@ import {
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
+	unboxPrimitive,
 } from '../runtime/transfer';
 import { HostDataResolver } from './host-data-resolver';
 import { errorOriginOf, tagErrorOrigin } from '../evaluator/error-classification';
@@ -40,6 +42,9 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import { BATCH_READ_LIMITS, batchReadBudget, readBatchAtPath } from './batch-read';
+import type { BatchReadBudget } from './batch-read';
+import type { BatchRequest } from '../runtime/lazy-proxy';
 
 /**
  * The instantiated WASM module that new bridges use, cached after the first
@@ -183,12 +188,12 @@ function readGuestString(
 // ============================================================================
 // Sentinel helpers
 //
-// QuickJS's vm.dump() loses Date / NaN / Map / Set / Error type identity
-// (Date → ISO string, NaN → null, Map/Set/Error → empty plain object). Inside
-// the QuickJS context we wrap those values as sentinel objects
-// ({ __isDate: true, __isoString: ... } etc.) before they cross the boundary,
-// then unwrap them on the host side. The isolated-vm bridge does NOT need this
-// — structured clone preserves type identity natively.
+// QuickJS's vm.dump() loses Date / NaN / boxed primitive / Map / Set / Error
+// type identity (Date → ISO string, NaN → null, boxed primitives / Map / Set /
+// Error → plain objects). Inside the QuickJS context we wrap those values as
+// sentinel objects ({ __isDate: true, __isoString: ... } etc.) before they cross
+// the boundary, then unwrap them on the host side. The isolated-vm bridge does
+// NOT need this — structured clone preserves type identity natively.
 // ============================================================================
 
 function isDateSentinel(value: unknown): value is { __isDate: true; __isoString: string } {
@@ -216,6 +221,64 @@ function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
 		(value as Record<string, unknown>).__isUndefined === true &&
 		Object.keys(value).length === 1
 	);
+}
+
+type BoxedPrimitiveSentinel =
+	| { __isBoxedPrimitive: 'string'; __value: string }
+	| { __isBoxedPrimitive: 'number'; __value: number | string }
+	| { __isBoxedPrimitive: 'boolean'; __value: boolean }
+	| { __isBoxedPrimitive: 'bigint'; __value: string };
+
+function isBoxedPrimitiveSentinel(value: unknown): value is BoxedPrimitiveSentinel {
+	if (typeof value !== 'object' || value === null) return false;
+	const kind: unknown = Reflect.get(value, '__isBoxedPrimitive');
+	const inner: unknown = Reflect.get(value, '__value');
+	switch (kind) {
+		case 'string':
+		case 'bigint':
+			return typeof inner === 'string';
+		case 'number':
+			return typeof inner === 'number' || typeof inner === 'string';
+		case 'boolean':
+			return typeof inner === 'boolean';
+		default:
+			return false;
+	}
+}
+
+const toBoxedObject: (value: string | number | boolean | bigint) => unknown = Object;
+
+function encodeBoxedNumber(value: number): number | string {
+	if (Object.is(value, -0)) return '-0';
+	return Number.isFinite(value) ? value : String(value);
+}
+
+function wrapBoxedPrimitive(value: object): BoxedPrimitiveSentinel | undefined {
+	const primitive = unboxPrimitive(value);
+	if (primitive === undefined) return undefined;
+	switch (typeof primitive) {
+		case 'string':
+			return { __isBoxedPrimitive: 'string', __value: primitive };
+		case 'number':
+			return { __isBoxedPrimitive: 'number', __value: encodeBoxedNumber(primitive) };
+		case 'boolean':
+			return { __isBoxedPrimitive: 'boolean', __value: primitive };
+		case 'bigint':
+			return { __isBoxedPrimitive: 'bigint', __value: primitive.toString() };
+	}
+}
+
+function rebuildBoxedPrimitive(sentinel: BoxedPrimitiveSentinel): unknown {
+	switch (sentinel.__isBoxedPrimitive) {
+		case 'string':
+			return toBoxedObject(sentinel.__value);
+		case 'number':
+			return toBoxedObject(Number(sentinel.__value));
+		case 'boolean':
+			return toBoxedObject(sentinel.__value);
+		case 'bigint':
+			return toBoxedObject(BigInt(sentinel.__value));
+	}
 }
 
 /** The name of a thrown value: the `name` of an Error, else its `typeof`. */
@@ -294,8 +357,8 @@ function unescapeTransferValue(value: EscapedTransferValue): unknown {
 }
 
 /**
- * Recursively reconstruct Date objects, NaN values, Map, and Set from
- * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
+ * Recursively reconstruct Date objects, NaN values, boxed primitives, Map, and
+ * Set from sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
  */
 function unwrapSentinels(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
@@ -319,6 +382,7 @@ function unwrapSentinels(value: unknown): unknown {
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
 	if (isUndefinedSentinel(value)) return undefined;
+	if (isBoxedPrimitiveSentinel(value)) return rebuildBoxedPrimitive(value);
 	if (isErrorValueSentinel(value)) {
 		const ErrorCtor =
 			(
@@ -358,6 +422,7 @@ const TRANSFER_MARKER_KEYS = new Set([
 	'__isDate',
 	'__isNaN',
 	'__isUndefined',
+	'__isBoxedPrimitive',
 	'__isErrorValue',
 	'__isMap',
 	'__isSet',
@@ -368,9 +433,9 @@ const TRANSFER_MARKER_KEYS = new Set([
 
 /**
  * Recursively wrap host values that JSON.stringify would flatten (Date, NaN,
- * Map, Set) into the same sentinel format the guest transfer wrapper uses,
- * escaping user objects whose keys collide with the markers. The guest
- * rebuilds real instances via __unwrapFromHost (see injectTransferWrapper),
+ * boxed primitives, Map, Set) into the same sentinel format the guest transfer
+ * wrapper uses, escaping user objects whose keys collide with the markers. The
+ * guest rebuilds real instances via __unwrapFromHost (see injectTransferWrapper),
  * so host-callback results match what isolated-vm's structured clone delivers.
  */
 function wrapSpecialValuesForGuest(value: unknown): unknown {
@@ -394,6 +459,8 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
 	if (Array.isArray(value)) return wrapArrayForGuest(value);
+	const boxed = wrapBoxedPrimitive(value);
+	if (boxed !== undefined) return boxed;
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
@@ -403,6 +470,11 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	}
 	return collides ? { __isEscaped: true, __value: result } : result;
 }
+
+/** Matches a marker key as it reads in JSON. No marker key holds a regular expression character. */
+const MARKER_KEY_IN_JSON = new RegExp(
+	[...TRANSFER_MARKER_KEYS].map((key) => safeStringify(key)).join('|'),
+);
 
 /** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
 function wrapArrayForGuest(value: unknown[]): unknown {
@@ -443,6 +515,14 @@ function loadRuntimeBundle(): string {
 	throw new Error(
 		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
 	);
+}
+
+/**
+ * False only when the JSON of a host value holds no sentinel of
+ * wrapSpecialValuesForGuest. The guest can then use the parsed JSON as it is.
+ */
+function mayHoldGuestSentinel(json: string): boolean {
+	return MARKER_KEY_IN_JSON.test(json);
 }
 
 /**
@@ -1052,10 +1132,10 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	/**
 	 * Wrap __prepareForTransfer so values that don't survive vm.dump()
-	 * (Date, NaN, Map, Set, Error) are converted to sentinel objects.
-	 * The host post-processes vm.dump() output to reconstruct real instances
-	 * via unwrapSentinels(). Also injects __unwrapFromHost, the guest-side
-	 * reverse: it rebuilds instances from the sentinels the host's
+	 * (Date, NaN, boxed primitives, Map, Set, Error) are converted to sentinel
+	 * objects. The host post-processes vm.dump() output to reconstruct real
+	 * instances via unwrapSentinels(). Also injects __unwrapFromHost, the
+	 * guest-side reverse: it rebuilds instances from the sentinels the host's
 	 * wrapSpecialValuesForGuest() emits for callback results.
 	 */
 	private injectTransferWrapper(): void {
@@ -1066,11 +1146,93 @@ export class QuickJsBridge implements RuntimeBridge {
 	// An expression can replace a built-in, so keep the ones from context setup.
 	var parseJSON = JSON.parse;
 	var defineProperty = Object.defineProperty;
+	var getPrototypeOf = Object.getPrototypeOf;
+	var objectPrototype = Object.prototype;
+	var isPrototypeOf = objectPrototype.isPrototypeOf;
+	var objectToString = objectPrototype.toString;
 	var objectKeys = Object.keys;
+	var sameValue = Object.is;
+	var reflectApply = Reflect.apply;
 	var isArray = Array.isArray;
+	var isFiniteNumber = Number.isFinite;
+	var BoxedObject = Object;
+	var BoxedString = String;
+	var BoxedNumber = Number;
+	var BoxedBigInt = typeof BigInt === 'function' ? BigInt : undefined;
+	var stringPrototype = String.prototype;
+	var stringValueOf = stringPrototype.valueOf;
+	var numberPrototype = Number.prototype;
+	var numberValueOf = numberPrototype.valueOf;
+	var booleanPrototype = Boolean.prototype;
+	var booleanValueOf = booleanPrototype.valueOf;
+	var bigIntPrototype = BoxedBigInt ? BoxedBigInt.prototype : undefined;
+	var bigIntValueOf = bigIntPrototype ? bigIntPrototype.valueOf : undefined;
+	var bigIntToString = bigIntPrototype ? bigIntPrototype.toString : undefined;
 	// Define own data keys so a JSON __proto__ key stays part of the data.
 	function defineOwnValue(target, key, value) {
 		defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
+	}
+	function tryUnbox(fn, target) {
+		try {
+			return { ok: true, value: reflectApply(fn, target, []) };
+		} catch (_e) {
+			return { ok: false };
+		}
+	}
+	function hasPrototype(proto, target) {
+		try {
+			return reflectApply(isPrototypeOf, proto, [target]);
+		} catch (_e) {
+			return false;
+		}
+	}
+	function encodeBoxedNumber(value) {
+		if (sameValue(value, -0)) return '-0';
+		return isFiniteNumber(value) ? value : BoxedString(value);
+	}
+	var boxedSpecs = [
+		{ kind: 'string', proto: stringPrototype, tag: '[object String]', unbox: stringValueOf, encode: function(v) { return v; } },
+		{ kind: 'number', proto: numberPrototype, tag: '[object Number]', unbox: numberValueOf, encode: encodeBoxedNumber },
+		{ kind: 'boolean', proto: booleanPrototype, tag: '[object Boolean]', unbox: booleanValueOf, encode: function(v) { return v; } },
+	];
+	if (bigIntPrototype && bigIntValueOf && bigIntToString) {
+		boxedSpecs.push({
+			kind: 'bigint',
+			proto: bigIntPrototype,
+			tag: '[object BigInt]',
+			unbox: bigIntValueOf,
+			encode: function(v) { return reflectApply(bigIntToString, v, []); },
+		});
+	}
+	function wrapBoxedPrimitive(v) {
+		var proto;
+		try {
+			proto = getPrototypeOf(v);
+		} catch (_e) {
+			return null;
+		}
+		if (proto === objectPrototype || proto === null) return null;
+		for (var i = 0; i < boxedSpecs.length; i++) {
+			var spec = boxedSpecs[i];
+			if (proto === spec.proto) {
+				var unboxed = tryUnbox(spec.unbox, v);
+				if (unboxed.ok) return { __isBoxedPrimitive: spec.kind, __value: spec.encode(unboxed.value) };
+			}
+		}
+		var tag = '';
+		try {
+			tag = reflectApply(objectToString, v, []);
+		} catch (_e) {
+			tag = '';
+		}
+		for (var j = 0; j < boxedSpecs.length; j++) {
+			var fallback = boxedSpecs[j];
+			if (tag === fallback.tag || hasPrototype(fallback.proto, v)) {
+				var unboxed2 = tryUnbox(fallback.unbox, v);
+				if (unboxed2.ok) return { __isBoxedPrimitive: fallback.kind, __value: fallback.encode(unboxed2.value) };
+			}
+		}
+		return null;
 	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
@@ -1123,6 +1285,8 @@ export class QuickJsBridge implements RuntimeBridge {
 			return { __isSet: true, __values: values };
 		}
 		if (isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
+		var boxed = wrapBoxedPrimitive(v);
+		if (boxed !== null) return boxed;
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
@@ -1176,8 +1340,8 @@ export class QuickJsBridge implements RuntimeBridge {
 			var key = keys[i];
 			if (
 				key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
-				key === '__isErrorValue' || key === '__isMap' || key === '__isSet' ||
-				key === '__isEscaped'
+				key === '__isBoxedPrimitive' || key === '__isErrorValue' || key === '__isMap' ||
+				key === '__isSet' || key === '__isEscaped'
 			) {
 				collides = true;
 			}
@@ -1203,13 +1367,18 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Reverse direction: rebuild real instances from the sentinels the host's
 	// wrapSpecialValuesForGuest() produces for callback results.
-	globalThis.__unwrapFromHost = function(json) {
-		return unwrapFromHost(parseJSON(json));
+	globalThis.__unwrapFromHost = function(json, holdsSentinel) {
+		var parsed = parseJSON(json);
+		return holdsSentinel ? unwrapFromHost(parsed) : parsed;
 	};
 	function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
 		if (v.__isDate === true) return new Date(v.__isoString);
 		if (v.__isNaN === true) return NaN;
+		if (v.__isBoxedPrimitive === 'string') return BoxedObject(v.__value);
+		if (v.__isBoxedPrimitive === 'number') return BoxedObject(BoxedNumber(v.__value));
+		if (v.__isBoxedPrimitive === 'boolean') return BoxedObject(v.__value);
+		if (v.__isBoxedPrimitive === 'bigint' && BoxedBigInt) return BoxedObject(BoxedBigInt(v.__value));
 		if (v.__isMap === true) {
 			var m = new Map();
 			for (var i = 0; i < v.__entries.length; i++) {
@@ -1374,12 +1543,15 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * (see execute()) instead of being set as VM globals: `execute()` can
 	 * re-enter synchronously (e.g. `$evaluateExpression`), and globals would
 	 * let the nested call's callbacks clobber the in-flight outer call's data
-	 * bindings. This mirrors IsolatedVmBridge's closure-scoped `$0`/`$1`/`$2`
+	 * bindings. This mirrors IsolatedVmBridge's closure-scoped `$0` to `$3`
 	 * evalClosureSync references.
 	 *
 	 * Callers must dispose the returned handles when the call completes.
 	 */
-	private createCallbackHandles(resolver: HostDataResolver): QuickJSHandle[] {
+	private createCallbackHandles(
+		resolver: HostDataResolver,
+		budget: BatchReadBudget,
+	): QuickJSHandle[] {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
@@ -1404,6 +1576,25 @@ export class QuickJsBridge implements RuntimeBridge {
 					const index = vm.dump(indexHandle) as number;
 					try {
 						const result = getArrayElement(resolver, pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__readBatchImpl', (pathHandle, startHandle, stepHandle, requestHandle) => {
+					try {
+						const result = readBatchAtPath(
+							resolver,
+							vm.dump(pathHandle) as string[],
+							vm.dump(startHandle) as number,
+							vm.dump(stepHandle) as number,
+							vm.dump(requestHandle) as BatchRequest,
+							BATCH_READ_LIMITS,
+							budget,
+						);
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1463,8 +1654,10 @@ export class QuickJsBridge implements RuntimeBridge {
 	 *
 	 * For primitives, uses the dedicated vm.newXxx() methods.
 	 * For complex objects (arrays, objects), uses JSON round-trip via evalCode.
+	 * A guest error while it builds the value, such as out of memory, comes back
+	 * as an error result, so the host function throws it in the guest.
 	 */
-	private hostValueToQuickJSHandle(value: unknown): QuickJSHandle {
+	private hostValueToQuickJSHandle(value: unknown): QuickJSHandle | VmCallResult<QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		// Building a value runs guest code, which a broken runtime must not do.
@@ -1484,8 +1677,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (value instanceof Date) {
 			const dateResult = this.vm.evalCode(`(new Date(${value.getTime()}))`);
 			if (dateResult.error) {
-				dateResult.error.dispose();
-				return this.vm.undefined;
+				return { error: dateResult.error };
 			}
 			return dateResult.value;
 		}
@@ -1496,12 +1688,16 @@ export class QuickJsBridge implements RuntimeBridge {
 		// JSON keys must keep their data meaning, including __proto__.
 		const unwrapFn = this.vm.getProp(this.vm.global, '__unwrapFromHost');
 		const jsonHandle = this.vm.newString(json);
-		const result = this.vm.callFunction(unwrapFn, this.vm.undefined, jsonHandle);
+		const result = this.vm.callFunction(
+			unwrapFn,
+			this.vm.undefined,
+			jsonHandle,
+			mayHoldGuestSentinel(json) ? this.vm.true : this.vm.false,
+		);
 		jsonHandle.dispose();
 		unwrapFn.dispose();
 		if (result.error) {
-			result.error.dispose();
-			return this.vm.undefined;
+			return { error: result.error };
 		}
 		return result.value;
 	}
@@ -1537,7 +1733,8 @@ export class QuickJsBridge implements RuntimeBridge {
 		// and its cycle collector runs late. So the callbacks read the data from a
 		// resolver that `finally` disposes, else a finished call's data stays in memory.
 		const resolver = new HostDataResolver(data);
-		const callbackHandles = this.createCallbackHandles(resolver);
+		const budget = batchReadBudget(this.config.memoryLimit, BATCH_READ_LIMITS);
+		const callbackHandles = this.createCallbackHandles(resolver, budget);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1550,10 +1747,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			// as plain functions; the isolated-vm bridge wires ivm.Callback there,
 			// while QuickJS host functions are already plain functions in the context.
 			const wrappedCode = `
-(function(__getValueAtPathImpl, __getArrayElementImpl, __callHostImpl) {
+(function(__getValueAtPathImpl, __getArrayElementImpl, __readBatchImpl, __callHostImpl) {
   var __ctx = buildContext({
     getValueAtPath: __getValueAtPathImpl,
     getArrayElement: __getArrayElementImpl,
+    readBatch: __readBatchImpl,
     callHost: __callHostImpl,
   }, ${timezone});
   try {

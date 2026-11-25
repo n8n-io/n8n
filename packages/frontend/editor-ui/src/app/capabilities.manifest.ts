@@ -8,6 +8,7 @@ import type {
 
 import type { IWorkflowSettings, ModalKey } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
@@ -75,6 +76,14 @@ const mcpExposeAllOffer = {
 		);
 		return await useExposeAllWorkflowsToMcpOffer().offerToExposeAllWorkflows(onExposed);
 	},
+};
+
+// The flag payload holds the form address, so the form can change without a release.
+const APPS_FEEDBACK_FORM_URL_REMOTE_CONFIG_KEY = 'config_apps_feedback_form_url';
+
+const appsFeedbackFormUrl = () => {
+	const payload = usePostHog().getFeatureFlagPayload(APPS_FEEDBACK_FORM_URL_REMOTE_CONFIG_KEY);
+	return typeof payload === 'string' ? payload : undefined;
 };
 
 const projectPermissions = {
@@ -162,7 +171,7 @@ const tagNames = {
 	nameOf: (id: string) => useTagsStore().tagsById[id]?.name,
 };
 
-// The stores skip a load only after it ends, so callers that start together share one load. It
+// The stores share a load that runs, so callers that start together send one request per type list. This promise
 // waits for both requests, also after one fails, so a retry does not repeat a request that still runs.
 let typeDescriptionsLoad: Promise<void> | undefined;
 
@@ -200,6 +209,7 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.tagNames, tagNames);
 	capabilityRegistry.provide(capabilities.typeDescriptions, typeDescriptions);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
+	capabilityRegistry.provide(capabilities.appsFeedbackFormUrl, appsFeedbackFormUrl);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup

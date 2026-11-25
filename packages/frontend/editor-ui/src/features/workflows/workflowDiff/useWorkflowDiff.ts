@@ -18,6 +18,7 @@ import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCan
 import type { IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -124,6 +125,7 @@ function createDiffRenderData(
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	side: string,
+	nodeTypes: { isLoading: ComputedRef<boolean>; isLoaded: ComputedRef<boolean> },
 ) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
@@ -149,9 +151,11 @@ function createDiffRenderData(
 	}
 
 	watch(
-		[workflowRef, workflowNodes],
-		([wf]) => {
-			if (!wf?.id) return;
+		// `isLoaded` also hydrates again when the node types arrive after a failed load.
+		[workflowRef, workflowNodes, nodeTypes.isLoading, nodeTypes.isLoaded],
+		([wf, , isLoading]) => {
+			// The workflow object reads the node types once, when it hydrates.
+			if (!wf?.id || isLoading) return;
 
 			disposeStores();
 
@@ -185,6 +189,7 @@ export const useWorkflowDiff = (
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
 	const nodeTypesStore = useNodeTypesStore();
+	const nodeTypes = useNodeTypesLoad();
 
 	const sourceRefs = createWorkflowRefs(sourceWorkflow);
 	const targetRefs = createWorkflowRefs(targetWorkflow);
@@ -193,11 +198,13 @@ export const useWorkflowDiff = (
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		'source',
+		nodeTypes,
 	);
 	const { renderData: targetRenderData, dispose: disposeTarget } = createDiffRenderData(
 		targetRefs.workflowRef,
 		targetRefs.workflowNodes,
 		'target',
+		nodeTypes,
 	);
 
 	const sourceDiff = createWorkflowDiff(
