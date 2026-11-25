@@ -290,14 +290,16 @@ export class SchedulerConfig {
 
 	/**
 	 * Whether n8n's internal maintenance jobs (for example pruning old executions,
-	 * compacting insights data, or renewing the license) run on the durable
-	 * scheduler instead of n8n's in-process timers. Requires
-	 * `N8N_SCHEDULER_ENABLED` to also be on. Set to false to run them on
-	 * in-process timers.
+	 * compacting insights data, or renewing the license) are scheduled by the
+	 * durable scheduler instead of n8n's in-process timers. Requires
+	 * {@link enabled} to also be on. Set to false to keep them on in-process
+	 * timers.
 	 *
-	 * Give every main the same value, and the same `N8N_SCHEDULER_ENABLED`. If you
-	 * upgrade from a version before 2.45.0 with a rolling deploy, a job can run
-	 * twice while old and new versions run side by side.
+	 * In a multi-instance setup that upgrades from a version before 2.45.0 with a
+	 * rolling deploy, the older instances still run these jobs on their own timers,
+	 * so the same job could run twice at the same time.
+	 *
+	 * Give every instance the same value, and the same {@link enabled}.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = true;
