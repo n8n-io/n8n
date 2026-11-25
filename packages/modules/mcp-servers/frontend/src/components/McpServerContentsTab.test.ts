@@ -238,6 +238,21 @@ describe('McpServerContentsTab', () => {
 			);
 		});
 
+		it('resets the field to the saved text when the save fails', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.updateTool.mockRejectedValue(new Error('The name is taken.'));
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			const name = getByTestId('mcp-tool-row-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'get_numbers');
+			await fireEvent.blur(name);
+
+			await waitFor(() => expect(name).toHaveValue('get_campaign_numbers'));
+			expect(toast.showError).toHaveBeenCalledTimes(1);
+		});
+
 		it('does not save a tool name that breaks the rules', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
 			const { findByTestId, getByTestId } = render();
@@ -422,19 +437,37 @@ describe('McpServerContentsTab', () => {
 				expect(getByTestId(`mcp-tool-row-generating-${testId}`)).toBeInTheDocument();
 				expect(getByTestId(`mcp-tool-row-generate-${testId}`)).toBeDisabled();
 
-				call.resolve({
-					status: 'drafted',
-					tool: tool({ description: 'Returns the KPIs of one campaign.', draftSource: 'ai' }),
-				});
+				const text = field === 'toolName' ? 'get_campaign_kpis' : 'Returns the KPIs.';
+				call.resolve({ status: 'drafted', tool: tool({ [field]: text, draftSource: 'ai' }) });
 
 				await waitFor(() =>
 					expect(queryByTestId(`mcp-tool-row-generating-${testId}`)).not.toBeInTheDocument(),
 				);
-				expect(getByTestId('mcp-tool-row-description-input')).toHaveValue(
-					'Returns the KPIs of one campaign.',
-				);
+				expect(getByTestId(`mcp-tool-row-${testId}-input`)).toHaveValue(text);
 			},
 		);
+
+		it('keeps the name that the builder types while "Generate" writes the description', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const call = deferred<unknown>();
+			api.draftTool.mockReturnValue(call.promise);
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			await userEvent.click(getByTestId('mcp-tool-row-generate-description'));
+			const name = getByTestId('mcp-tool-row-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'get_kpis');
+			call.resolve({
+				status: 'drafted',
+				tool: tool({ description: 'Returns the KPIs.', draftSource: 'ai' }),
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('mcp-tool-row-description-input')).toHaveValue('Returns the KPIs.'),
+			);
+			expect(name).toHaveValue('get_kpis');
+		});
 
 		it('hides the "Generate" buttons without the Assistant', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()], false));

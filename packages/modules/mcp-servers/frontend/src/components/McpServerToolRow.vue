@@ -50,12 +50,20 @@ const expanded = ref(props.initiallyExpanded ?? false);
 const toolName = ref(props.tool.toolName);
 const description = ref(props.tool.description);
 
-// A save or a failed save gives a new tool object, so the fields show what the server has.
+/** The field that the builder types in. A new tool object does not reset it. */
+const editing = ref<McpServerToolDraftField | null>(null);
+
+// A save, a failed save, or a draft gives a new tool object. A field takes the server text when
+// that text changed, or when the builder does not type in it, so a failed save resets it.
 watch(
 	() => props.tool,
-	(tool) => {
-		toolName.value = tool.toolName;
-		description.value = tool.description;
+	(tool, previous) => {
+		if (tool.toolName !== previous.toolName || editing.value !== 'toolName') {
+			toolName.value = tool.toolName;
+		}
+		if (tool.description !== previous.description || editing.value !== 'description') {
+			description.value = tool.description;
+		}
 	},
 );
 
@@ -81,11 +89,13 @@ function onMenu(action: string) {
 }
 
 function saveName() {
+	editing.value = null;
 	if (nameInvalid.value || toolName.value === props.tool.toolName) return;
 	emit('update', { toolName: toolName.value });
 }
 
 function saveDescription() {
+	editing.value = null;
 	const value = description.value.trim();
 	if (value === props.tool.description) return;
 	emit('update', { description: value });
@@ -188,6 +198,7 @@ function saveDescription() {
 							:maxlength="MCP_SERVER_TOOL_NAME_MAX_LENGTH"
 							:disabled="isGenerating('toolName')"
 							data-test-id="mcp-tool-row-name-input"
+							@focus="editing = 'toolName'"
 							@blur="saveName"
 						>
 							<template v-if="isGenerating('toolName')" #suffix>
@@ -236,6 +247,7 @@ function saveDescription() {
 							:disabled="isGenerating('description')"
 							:class="$style.resizable"
 							data-test-id="mcp-tool-row-description-input"
+							@focus="editing = 'description'"
 							@blur="saveDescription"
 						>
 							<template v-if="isGenerating('description')" #suffix>

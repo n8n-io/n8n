@@ -69,6 +69,18 @@ function replaceTool(updated: McpServerToolResponse) {
 	server.value.tools = server.value.tools.map((tool) => (tool.id === updated.id ? updated : tool));
 }
 
+/** A "Generate" answer changes only its field, so a save that ran meanwhile keeps its text. */
+function mergeDraftedField(drafted: McpServerToolResponse, field: McpServerToolDraftField) {
+	const current = server.value?.tools.find(({ id }) => id === drafted.id);
+	if (!current) return;
+	replaceTool({
+		...current,
+		[field]: drafted[field],
+		draftSource: drafted.draftSource,
+		updatedAt: drafted.updatedAt,
+	});
+}
+
 async function load() {
 	loading.value = true;
 	try {
@@ -122,7 +134,8 @@ async function requestDraft(tool: McpServerToolResponse, field?: McpServerToolDr
 		tool.id,
 		field,
 	);
-	replaceTool(drafted);
+	if (field) mergeDraftedField(drafted, field);
+	else replaceTool(drafted);
 }
 
 /**
