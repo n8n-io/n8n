@@ -19,7 +19,7 @@ import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
 import { EngineMtls } from '../engine-mtls';
-import type { EngineSubWorkflowController } from '../engine-workflow-resolve.controller';
+import type { EngineWorkflowResolveController } from '../engine-workflow-resolve.controller';
 
 const authSecret = 'a'.repeat(32);
 
@@ -29,6 +29,7 @@ describe('EngineControlPlaneServer', () => {
 	let serverLogger: Logger;
 	let credentialsController: EngineCredentialsController;
 	let dataTablesController: EngineDataTablesController;
+	let workflowResolveController: EngineWorkflowResolveController;
 	let baseUrl: string;
 
 	const engineConfig = (overrides: Partial<EngineConfig> = {}) =>
@@ -62,7 +63,7 @@ describe('EngineControlPlaneServer', () => {
 			mtls,
 			credentialsController,
 			dataTablesController,
-			mock<EngineSubWorkflowController>(),
+			workflowResolveController,
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();
@@ -72,6 +73,7 @@ describe('EngineControlPlaneServer', () => {
 		serverLogger = mock<Logger>();
 		credentialsController = mock<EngineCredentialsController>();
 		dataTablesController = mock<EngineDataTablesController>();
+		workflowResolveController = mock<EngineWorkflowResolveController>();
 		await startServer();
 
 		baseUrl = `http://127.0.0.1:${server.port}`;
@@ -221,6 +223,41 @@ describe('EngineControlPlaneServer', () => {
 
 			expect(response.status).toBe(401);
 			expect(dataTablesController.call).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('workflow resolve route', () => {
+		const body = { kind: 'error-workflow', executionId: 'exec-1' };
+
+		const postResolve = (token?: string) => {
+			const req = request(baseUrl).post('/internal/workflows/resolve');
+			if (token) req.set('Authorization', `Bearer ${token}`);
+			return req.send(body);
+		};
+
+		beforeEach(() => {
+			vi.mocked(workflowResolveController.resolveWorkflow).mockImplementation(
+				async (_req: Request, res: Response) => {
+					res.status(200).json({ kind: 'error-workflow' });
+				},
+			);
+		});
+
+		it('hands an authenticated request with its parsed body to the controller', async () => {
+			const response = await postResolve(mintActionToken(authSecret, 'workflows:resolve'));
+
+			expect(response.status).toBe(200);
+			expect(workflowResolveController.resolveWorkflow).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ body }),
+				expect.anything(),
+			);
+		});
+
+		it('rejects a token for another scope before the controller sees it', async () => {
+			const response = await postResolve(mintActionToken(authSecret, 'data-tables:use'));
+
+			expect(response.status).toBe(401);
+			expect(workflowResolveController.resolveWorkflow).not.toHaveBeenCalled();
 		});
 	});
 

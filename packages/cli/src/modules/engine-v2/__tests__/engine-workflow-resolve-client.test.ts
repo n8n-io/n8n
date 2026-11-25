@@ -3,13 +3,16 @@ import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import { EngineSubWorkflowClient } from '../engine-workflow-resolve-client';
+import { EngineWorkflowResolveClient } from '../engine-workflow-resolve-client';
 import type {
+	ResolvedErrorWorkflow,
+	ResolvedSubWorkflow,
+	ResolveErrorWorkflowRequest,
 	ResolveSubWorkflowRequest,
-	ResolveSubWorkflowResponse,
 } from '../engine-workflow-resolve.contract';
 
 const request: ResolveSubWorkflowRequest = {
+	kind: 'sub-workflow',
 	workflowId: 'wf-sub',
 	executionId: '01a03900-0000-7000-8000-000000000001',
 	parent: {
@@ -22,17 +25,38 @@ const request: ResolveSubWorkflowRequest = {
 	items: [{ json: { a: 1 } }],
 };
 
-const resolved: ResolveSubWorkflowResponse = {
+const resolved: ResolvedSubWorkflow = {
+	kind: 'sub-workflow',
 	workflowId: 'wf-sub',
 	graph: { nodes: [{ id: 't', name: 'Trigger', type: 'trigger' }], edges: [] },
 	workflow: { id: 'wf-sub' },
 	triggerOutputs: [[{ json: { a: 1 } }]],
 	returnLastRunOnly: false,
+	resolveErrorWorkflowOnFailure: false,
 };
 
-describe('EngineSubWorkflowClient', () => {
+const source: ResolveErrorWorkflowRequest['source'] = {
+	executionId: '01a03900-0000-7000-8000-00000000000a',
+	workflowId: 'failed-wf',
+	workflow: { id: 'failed-wf', nodes: [] },
+	hostMode: 'trigger',
+	hasParent: false,
+};
+
+const resolvedErrorWorkflow: ResolvedErrorWorkflow = {
+	kind: 'error-workflow',
+	workflowId: 'err-wf',
+	graph: { nodes: [{ id: 't', name: 'Error Trigger', type: 'trigger' }], edges: [] },
+	workflow: { id: 'err-wf' },
+	triggerOutputs: [[{ json: { execution: { id: 'exec' } } }]],
+	resolveErrorWorkflowOnFailure: false,
+	projectId: 'project-1',
+};
+
+describe('EngineWorkflowResolveClient', () => {
 	let http: HttpRequestClient;
-	let client: EngineSubWorkflowClient;
+	let transport: EngineControlPlaneTransport;
+	let client: EngineWorkflowResolveClient;
 	let signal: AbortSignal;
 
 	const respondWith = (statusCode: number, body: unknown = resolved) => {
@@ -41,19 +65,23 @@ describe('EngineSubWorkflowClient', () => {
 
 	beforeEach(() => {
 		http = mock<HttpRequestClient>();
-		const transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => http) });
-		client = new EngineSubWorkflowClient(transport);
+		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => http) });
+		client = new EngineWorkflowResolveClient(transport);
 		signal = new AbortController().signal;
 	});
 
-	it('posts the request to the resolve endpoint without following redirects, and returns the resolved sub-workflow', async () => {
+	it('asks for a token with the workflow resolve scope', () => {
+		expect(transport.forScope).toHaveBeenCalledExactlyOnceWith('workflows:resolve');
+	});
+
+	it('posts the request to the resolve endpoint without following redirects, and returns the resolved workflow', async () => {
 		respondWith(200);
 
 		await expect(client.resolve(request, signal)).resolves.toEqual(resolved);
 
 		expect(http.request).toHaveBeenCalledWith(
 			expect.objectContaining({
-				url: '/internal/sub-workflows/resolve',
+				url: '/internal/workflows/resolve',
 				method: 'POST',
 				body: request,
 				json: true,
@@ -63,7 +91,18 @@ describe('EngineSubWorkflowClient', () => {
 		);
 	});
 
-	it('reports a refusal to the node with the message the control plane gave', async () => {
+	it('returns a resolved error workflow for an error workflow request', async () => {
+		const errorRequest = {
+			kind: 'error-workflow' as const,
+			executionId: '01a03900-0000-7000-8000-000000000002',
+			source,
+		};
+		respondWith(200, resolvedErrorWorkflow);
+
+		await expect(client.resolve(errorRequest, signal)).resolves.toEqual(resolvedErrorWorkflow);
+	});
+
+	it('reports a refusal with the message the control plane gave', async () => {
 		respondWith(403, { code: 403, message: 'The sub-workflow limits which workflows can call it' });
 
 		const refusal = client.resolve(request, signal);
@@ -86,11 +125,14 @@ describe('EngineSubWorkflowClient', () => {
 		await expect(client.resolve(request, signal)).rejects.toThrow(/404/);
 	});
 
-	it('reports a rejected token as operational, since the planes disagree and not the caller', async () => {
-		respondWith(401, { code: 401, message: 'Unauthorized' });
+	it.each([401, 408, 429])(
+		'reports a %i as operational, because a later try can succeed',
+		async (statusCode) => {
+			respondWith(statusCode, { code: statusCode, message: 'Try again' });
 
-		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
-	});
+			await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
+		},
+	);
 
 	it('reports a server failure as operational', async () => {
 		respondWith(500, { message: 'boom' });
@@ -104,15 +146,23 @@ describe('EngineSubWorkflowClient', () => {
 		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
 	});
 
-	it('rejects a malformed 200 body', async () => {
-		respondWith(200, { workflowId: 'wf-sub' });
-
-		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
-	});
-
-	it('rejects a 200 body whose graph edges lack a slot index', async () => {
-		const edges = [{ from: 't', to: 's' }];
-		respondWith(200, { ...resolved, graph: { ...resolved.graph, edges } });
+	it.each([
+		['a body without a kind', { ...resolved, kind: undefined }],
+		['a body of the other kind', resolvedErrorWorkflow],
+		[
+			'a body without resolveErrorWorkflowOnFailure',
+			{ ...resolved, resolveErrorWorkflowOnFailure: undefined },
+		],
+		[
+			'a body whose graph edges lack a slot index',
+			{ ...resolved, graph: { ...resolved.graph, edges: [{ from: 't', to: 's' }] } },
+		],
+		[
+			'a sub-workflow body without returnLastRunOnly',
+			{ ...resolved, returnLastRunOnly: undefined },
+		],
+	])('rejects a 200 body with %s', async (_name, body) => {
+		respondWith(200, body);
 
 		await expect(client.resolve(request, signal)).rejects.toThrow(/malformed/);
 	});

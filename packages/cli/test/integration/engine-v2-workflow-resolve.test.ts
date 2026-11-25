@@ -1,9 +1,16 @@
-import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createActiveWorkflow,
+	createWorkflow,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
 import type { IWorkflowDb, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mintActionToken } from '@n8n/engine';
+import type { JsonObject } from '@n8n/engine';
+import { ErrorTrigger } from 'n8n-nodes-base/nodes/ErrorTrigger/ErrorTrigger.node';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import type {
 	IConnections,
@@ -16,15 +23,21 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
-import { EngineSubWorkflowClient } from '@/modules/engine-v2/engine-workflow-resolve-client';
-import type { ResolveSubWorkflowRequest } from '@/modules/engine-v2/engine-workflow-resolve.contract';
-import { SUB_WORKFLOWS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
+import { WORKFLOWS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
+import { EngineWorkflowResolveClient } from '@/modules/engine-v2/engine-workflow-resolve-client';
+import type {
+	ResolveErrorWorkflowRequest,
+	ResolveSubWorkflowRequest,
+} from '@/modules/engine-v2/engine-workflow-resolve.contract';
 
 import { createMember } from './shared/db/users';
 import { buildDefaultNodes, initNodeTypes } from './shared/utils';
 
 const TRIGGER_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
+const ERROR_TRIGGER_TYPE = 'n8n-nodes-base.errorTrigger';
 const SUB_EXECUTION_ID = '01a03900-0000-7000-8000-000000000001';
+const ERROR_EXECUTION_ID = '01a03900-0000-7000-8000-000000000002';
+const FAILED_EXECUTION_ID = '01a03900-0000-7000-8000-00000000000a';
 const TRIGGER_NAME = 'When Executed by Another Workflow';
 
 const triggerNode: INode = {
@@ -66,11 +79,26 @@ const connections: IConnections = {
 	[TRIGGER_NAME]: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 };
 
+const errorTriggerNode: INode = {
+	id: 'error-trigger',
+	name: 'Error Trigger',
+	type: ERROR_TRIGGER_TYPE,
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
+
+const nodeTypesFor = (trigger: INodeType) => ({
+	...buildDefaultNodes(),
+	[TRIGGER_TYPE]: { type: trigger, sourcePath: '' },
+	[ERROR_TRIGGER_TYPE]: { type: new ErrorTrigger(), sourcePath: '' },
+});
+
 /**
- * The data plane side (`EngineSubWorkflowClient`) against the real control
+ * The data plane side (`EngineWorkflowResolveClient`) against the real control
  * plane server, the policy checker and the test database.
  */
-describe('Engine v2 sub-workflow resolve (integration)', () => {
+describe('Engine v2 workflow resolve (integration)', () => {
 	const authSecret = 'a'.repeat(64);
 
 	let server: EngineControlPlaneServer;
@@ -80,10 +108,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
-		await initNodeTypes({
-			...buildDefaultNodes(),
-			[TRIGGER_TYPE]: { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
-		});
+		await initNodeTypes(nodeTypesFor(new ExecuteWorkflowTrigger()));
 
 		const engineConfig = Container.get(EngineConfig);
 		engineConfig.authSecret = authSecret;
@@ -123,6 +148,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		workflowId: string,
 		overrides: Partial<ResolveSubWorkflowRequest> = {},
 	): ResolveSubWorkflowRequest => ({
+		kind: 'sub-workflow',
 		workflowId,
 		executionId: SUB_EXECUTION_ID,
 		parent: {
@@ -137,7 +163,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 	});
 
 	const resolve = async (body: ResolveSubWorkflowRequest) =>
-		await Container.get(EngineSubWorkflowClient).resolve(body, new AbortController().signal);
+		await Container.get(EngineWorkflowResolveClient).resolve(body, new AbortController().signal);
 
 	it('resolves the draft of a sub-workflow for a manual run and shapes the trigger outputs from the items', async () => {
 		const workflow = await subWorkflow({});
@@ -149,15 +175,14 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		expect(result.graph.nodes[0].type).toBe('trigger');
 		expect(result.triggerOutputs).toEqual([[{ json: { a: 1 } }]]);
 		expect(result.returnLastRunOnly).toBe(false);
+		// Neither a named error workflow nor an Error Trigger of its own.
+		expect(result.resolveErrorWorkflowOnFailure).toBe(false);
 		expect(result.workflow).toMatchObject({ id: workflow.id });
 	});
 
 	it('runs the trigger under the sub-execution id', async () => {
 		// A stand-in trigger that reports the id it runs under, in the real one's place.
-		await initNodeTypes({
-			...buildDefaultNodes(),
-			[TRIGGER_TYPE]: { type: new ReportsExecutionId(), sourcePath: '' },
-		});
+		await initNodeTypes(nodeTypesFor(new ReportsExecutionId()));
 		try {
 			const workflow = await subWorkflow({});
 
@@ -165,10 +190,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 
 			expect(result.triggerOutputs).toEqual([[{ json: { executionId: SUB_EXECUTION_ID } }]]);
 		} finally {
-			await initNodeTypes({
-				...buildDefaultNodes(),
-				[TRIGGER_TYPE]: { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
-			});
+			await initNodeTypes(nodeTypesFor(new ExecuteWorkflowTrigger()));
 		}
 	});
 
@@ -246,12 +268,109 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		headers.set('content-type', 'application/json');
 		headers.set('authorization', `Bearer ${mintActionToken(authSecret, 'credentials:read')}`);
 
-		const response = await fetch(`${baseUrl}${SUB_WORKFLOWS_RESOLVE_PATH}`, {
+		const response = await fetch(`${baseUrl}${WORKFLOWS_RESOLVE_PATH}`, {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request(workflow.id)),
 		});
 
 		expect(response.status).toBe(401);
+	});
+	describe('an error workflow', () => {
+		const errorWorkflow = async (settings: Record<string, string> = {}) =>
+			await createActiveWorkflow(
+				{
+					name: 'Error handler',
+					settings: { engineType: 'v2', ...settings },
+					nodes: [errorTriggerNode, setNode],
+					connections: {
+						[errorTriggerNode.name]: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					},
+				},
+				member,
+			);
+
+		/** The failed execution of the parent workflow, whose stored settings name the error workflow. */
+		const source = (settings: Record<string, string>): ResolveErrorWorkflowRequest['source'] => ({
+			executionId: FAILED_EXECUTION_ID,
+			workflowId: parent.id,
+			workflow: {
+				id: parent.id,
+				name: parent.name,
+				nodes: [setNode],
+				settings: { engineType: 'v2', ...settings },
+			} as unknown as JsonObject,
+			hostMode: 'trigger',
+			hasParent: false,
+			failedStep: { nodeName: 'Set', error: { name: 'Error', message: 'boom' } },
+		});
+
+		const resolveError = async (errorSource: ResolveErrorWorkflowRequest['source']) =>
+			await Container.get(EngineWorkflowResolveClient).resolve(
+				{ kind: 'error-workflow', executionId: ERROR_EXECUTION_ID, source: errorSource },
+				new AbortController().signal,
+			);
+
+		it('resolves the published error workflow from its Error Trigger, with the error item as its output', async () => {
+			const workflow = await errorWorkflow();
+
+			const result = await resolveError(source({ errorWorkflow: workflow.id }));
+
+			expect(result.kind).toBe('error-workflow');
+			expect(result.workflowId).toBe(workflow.id);
+			expect(result.graph.nodes.map(({ name }) => name)).toEqual([errorTriggerNode.name, 'Set']);
+			expect(result.triggerOutputs).toEqual([
+				[
+					{
+						json: expect.objectContaining({
+							execution: expect.objectContaining({
+								id: FAILED_EXECUTION_ID,
+								url: expect.stringContaining(
+									`/workflow/${parent.id}/executions/${FAILED_EXECUTION_ID}`,
+								),
+								lastNodeExecuted: 'Set',
+								mode: 'trigger',
+							}),
+							workflow: { id: parent.id, name: parent.name },
+						}),
+					},
+				],
+			]);
+			expect(result.resolveErrorWorkflowOnFailure).toBe(false);
+		});
+
+		it('runs in the project of the failed workflow', async () => {
+			const workflow = await errorWorkflow();
+
+			const result = await resolveError(source({ errorWorkflow: workflow.id }));
+
+			expect(result.projectId).toBe((await getPersonalProject(member)).id);
+		});
+
+		it('refuses when the settings name no error workflow', async () => {
+			await expect(resolveError(source({}))).rejects.toThrow(UserError);
+		});
+
+		it('refuses an error workflow that does not run on engine v2', async () => {
+			const workflow = await createActiveWorkflow(
+				{ nodes: [errorTriggerNode, setNode], connections: {} },
+				member,
+			);
+
+			await expect(resolveError(source({ errorWorkflow: workflow.id }))).rejects.toThrow(
+				/engine v1/,
+			);
+		});
+
+		it('refuses an error workflow without an Error Trigger', async () => {
+			const workflow = await createActiveWorkflow(
+				{ settings: { engineType: 'v2' }, nodes: [setNode], connections: {} },
+				member,
+			);
+
+			await expect(resolveError(source({ errorWorkflow: workflow.id }))).rejects.toThrow(
+				/no enabled Error Trigger/,
+			);
+		});
 	});
 });
