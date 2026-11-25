@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+  ai_agent 7762-7764,7777-7779,10383-10427
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 9,44-46,411-415,457-464,1223-1225,1395,1400-1403,1435-1453,1506-1507,1509,1529,1540-1545,1549,1585-1586,1599,1603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3b6b912a386d413b75904f342239ec7cc915ed6",
+  "prompts": {}
+}

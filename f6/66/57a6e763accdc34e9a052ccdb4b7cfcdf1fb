@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_bdca855aba37bc 11723-11724
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_1f9851f447f6cc 30,300-303,315-316,319,418,424,427,430,477-501,507-508,541-543,780,783,785,799-800,805-806,808-815,821,829
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_4a494bfdece475::t_3c53db2bcafbd9 20,306-314
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_4a494bfdece475::t_b81722c02b664f 146-149
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_0d4b290937a2cc 1652-1667,1669-1685,1690,1695,1803,1812,1823,1852-1853,1856-1858,1860-1862,1873,1927,1938-1939,1957,1963,1976,1998-1999,2001-2006,2049-2051,2057,2067,2071,2294-2296,2298
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_59972103a64d76 41,357,361-362
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f66657a6e763accdc34e9a052ccdb4b7cfcdf1fb",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

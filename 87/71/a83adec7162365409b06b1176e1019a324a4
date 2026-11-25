@@ -1,0 +1,21 @@
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_1f53aabf8d8112::t_6f040f217763c5 1428
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_1f53aabf8d8112::t_9dfe494e528e46 1078
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8771a83adec7162365409b06b1176e1019a324a4",
+  "prompts": {},
+  "sessions": {
+    "s_1f53aabf8d8112": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc69c435-2b0e-4363-8884-c360516f0295",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
