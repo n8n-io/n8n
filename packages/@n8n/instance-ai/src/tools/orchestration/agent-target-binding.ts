@@ -8,13 +8,14 @@
  */
 import { AGENT_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
 	AGENT_PREVIEW_SESSION_METADATA_KEY,
+	parseAgentPreviewSession,
 	type AgentPreviewSession,
-} from './agent-preview-session-binding';
+} from './agent-test-session-binding';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 
@@ -71,6 +72,28 @@ export async function readPendingAgentTarget(
 	} catch {
 		return undefined;
 	}
+}
+
+/** The agent binding keys of a thread, parsed. A malformed key reads as not set. */
+export interface AgentTargetsMetadata {
+	bound: AgentBuilderTarget | undefined;
+	pending: PendingAgentTarget | undefined;
+	/** The session registry: each agent the thread addressed. */
+	targets: AgentBuilderTarget[];
+	previewSession: AgentPreviewSession | undefined;
+}
+
+/** Read the agent binding keys from thread metadata, for a client that shows them. */
+export function readAgentTargetsMetadata(
+	metadata: Record<string, unknown> | undefined,
+): AgentTargetsMetadata {
+	const pending = pendingAgentTargetSchema.safeParse(metadata?.[PENDING_AGENT_METADATA_KEY]);
+	return {
+		bound: parseTarget(metadata?.[METADATA_KEY]),
+		pending: pending.success ? pending.data : undefined,
+		targets: Object.values(parseRegistry(metadata?.[REGISTRY_METADATA_KEY])),
+		previewSession: parseAgentPreviewSession(metadata?.[AGENT_PREVIEW_SESSION_METADATA_KEY]),
+	};
 }
 
 /** Normalize an addressing key so "Support Triage", "support_triage" and
@@ -299,6 +322,32 @@ export function withBoundAgentTarget(
 }
 
 /**
+ * The thread metadata that binds an agent subject, the same binding the editor
+ * writes before it opens a thread on the current runtime. A pending agent gets
+ * the pending marker, so a build reuses its id. When the editor saved the
+ * pending agent, the marker becomes the binding. Returns `undefined` when the
+ * thread already targets an agent.
+ */
+export function withAgentSubject(
+	metadata: Record<string, unknown>,
+	subject: { id: string; projectId: string; name?: string; pending?: true },
+): Record<string, unknown> | undefined {
+	if (parseTarget(metadata[METADATA_KEY])) return undefined;
+	const { id: agentId, projectId, name } = subject;
+	const pending = pendingAgentTargetSchema.safeParse(metadata[PENDING_AGENT_METADATA_KEY]);
+	if (
+		pending.success &&
+		(subject.pending || pending.data.agentId !== agentId || pending.data.projectId !== projectId)
+	) {
+		return undefined;
+	}
+	if (subject.pending) {
+		return { ...metadata, [PENDING_AGENT_METADATA_KEY]: { projectId, agentId } };
+	}
+	return withBoundAgentTarget(metadata, { agentId, projectId, ...(name ? { name } : {}) });
+}
+
+/**
  * Whether this thread's own lifecycle metadata authorizes adopting an existing
  * agent row under `target` — the proof behind the idempotent create/adopt path
  * (AGENT-553). The pending marker alone is not enough: whichever writer binds
@@ -325,6 +374,12 @@ export function threadAuthorizesAgentAdoption(
 	}
 	const bound = parseTarget(metadata[METADATA_KEY]);
 	return bound?.agentId === target.agentId && bound.projectId === target.projectId;
+}
+
+/** Whether the thread builds or edits an agent: it has a bound, a pending or an earlier agent target. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	const { bound, pending, targets } = readAgentTargetsMetadata(metadata);
+	return bound !== undefined || pending !== undefined || targets.length > 0;
 }
 
 /**

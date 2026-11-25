@@ -18,7 +18,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getCustomCredentialHeader } from '@utils/helpers';
+import { getCustomCredentialHeader, getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { searchModels } from './methods/searchModels';
@@ -138,7 +138,7 @@ export class LmChatAnthropic implements INodeType {
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		defaultVersion: 1.6,
-		description: 'Language Model Anthropic',
+		description: 'Run Claude models, with optional adaptive thinking and streaming',
 		defaults: {
 			name: 'Anthropic Chat Model',
 		},
@@ -749,7 +749,7 @@ export class LmChatAnthropic implements INodeType {
 		};
 
 		const chatAnthropicParams: ChatAnthropicInput = {
-			anthropicApiKey: credentials.apiKey,
+			anthropicApiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,

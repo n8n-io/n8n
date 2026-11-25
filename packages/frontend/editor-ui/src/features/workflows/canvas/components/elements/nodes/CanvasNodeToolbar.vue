@@ -43,7 +43,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
-const { isDisabled, render, name, isDeprecated } = useCanvasNode();
+const { isDisabled, isRestricted, render, name, isDeprecated } = useCanvasNode();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -88,6 +88,8 @@ const classes = computed(() => ({
 }));
 
 const isExecuteNodeVisible = computed(() => {
+	if (isRestricted.value) return false;
+
 	if (props.readOnly && !props.canExecute) {
 		return false;
 	}
@@ -113,6 +115,7 @@ const isDisableNodeVisible = computed(
 	() =>
 		!props.readOnly &&
 		!isDeprecated.value &&
+		!isRestricted.value &&
 		(render.value.type === CanvasNodeRenderType.Default ||
 			render.value.type === CanvasNodeRenderType.Agent),
 );
@@ -202,13 +205,20 @@ function onAddToChat() {
 		@click.stop
 	>
 		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
-			<N8nTooltip v-if="isExecuteNodeVisible" placement="top" :content="executeNodeTooltip">
+			<N8nTooltip
+				v-if="isExecuteNodeVisible"
+				as-child
+				placement="top"
+				:content="executeNodeTooltip"
+			>
+				<template #content>{{ executeNodeTooltip }}</template>
 				<N8nIconButton
 					variant="ghost"
 					data-test-id="execute-node-button"
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled || !!unusableCredentialReason"
+					:focusable-when-disabled="!isExecuting && (isDisabled || !!unusableCredentialReason)"
 					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
@@ -327,8 +337,8 @@ function onAddToChat() {
 	}
 }
 
-.forceVisible {
-	opacity: 1 !important;
+.canvasNodeToolbar.forceVisible .canvasNodeToolbarItems {
+	opacity: 1;
 }
 
 .statusIcons {

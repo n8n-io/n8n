@@ -1,3 +1,4 @@
+import { slackHitl } from './slack-hitl';
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
@@ -43,6 +44,7 @@ import {
 	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
+import { SlackMethodsService } from './slack-methods.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
 import { buildSlackOriginDraft, fetchSlackOriginNames } from './slack-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
@@ -54,7 +56,12 @@ import type { DecodedThread, OriginInput } from '../../integration-origin-suppor
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
-	constructor(private readonly agentRepository: AgentRepository) {
+	readonly hitl = slackHitl;
+
+	constructor(
+		private readonly agentRepository: AgentRepository,
+		private readonly slackMethodsService: SlackMethodsService,
+	) {
 		super();
 	}
 
@@ -65,6 +72,10 @@ export class SlackIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Slack';
 
 	readonly displayIcon = 'slack';
+
+	// Slack rejects `markdown_text` over 12,000 characters. The margin covers
+	// mentions that the adapter expands to user IDs.
+	readonly maxMessageLength = 11_000;
 
 	readonly builderGuidance = {
 		capabilities: [
@@ -118,6 +129,9 @@ export class SlackIntegration extends AgentChatIntegration {
 		'add_reaction',
 		'do_not_respond',
 	]);
+
+	// Slack accepts files up to 1 GB. The Slack UI shows up to 10 files on one message.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 1024 * 1024 * 1024 };
 
 	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
 		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
@@ -229,6 +243,19 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
 		return await fetchSlackOriginNames(input, origin);
+	}
+
+	/** One install belongs to one workspace, and `auth.test` names both. */
+	async describeAccount(credential: Record<string, unknown>) {
+		const response = await this.slackMethodsService.callSlackApi<{
+			user?: unknown;
+			team?: unknown;
+		}>('auth.test', {}, { authorization: `Bearer ${this.extractBotToken(credential)}` });
+		if (!response.ok) return undefined;
+		return {
+			botName: typeof response.user === 'string' ? response.user : undefined,
+			workspaceNames: typeof response.team === 'string' ? [response.team] : undefined,
+		};
 	}
 
 	resolveEpisodicScope({

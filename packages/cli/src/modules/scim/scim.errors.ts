@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** Requested SCIM resource does not exist. Maps to HTTP 404. */
 export class ScimResourceNotFoundError extends UserError {
@@ -21,6 +21,9 @@ export class ScimForbiddenError extends UserError {
 	}
 }
 
+/** The request tries to delete, deactivate or change the email of the instance owner. Maps to HTTP 403. */
+export class ScimOwnerProtectedError extends ScimForbiddenError {}
+
 /** Filter expression is not supported. Maps to HTTP 400 with scimType "invalidFilter". */
 export class ScimInvalidFilterError extends UserError {
 	constructor(filter: string) {
@@ -32,5 +35,25 @@ export class ScimInvalidFilterError extends UserError {
 export class ScimInvalidValueError extends UserError {
 	constructor(detail: string) {
 		super(detail);
+	}
+}
+
+/**
+ * Another request changed the SCIM token while this one replaced it. Maps to
+ * HTTP 409 on `POST /rest/scim/token`.
+ */
+export class ScimTokenConflictError extends UserError {
+	constructor() {
+		super('The SCIM token changed during this request. Load the token state again and retry.');
+	}
+}
+
+/**
+ * SCIM provisioning cannot turn on while SAML or OIDC single sign-on is off.
+ * Maps to HTTP 400 on `PATCH /rest/scim/config`.
+ */
+export class ScimSsoRequiredError extends UserError {
+	constructor() {
+		super('Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.');
 	}
 }

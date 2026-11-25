@@ -91,10 +91,10 @@ const workflowSettingsStubs = {
 		template:
 			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 	},
-	// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
+	// Stub N8nSwitch to prevent spurious update:model-value emissions in jsdom.
 	// userEvent.click simulates pointer movement that can trigger the switch
 	// during mouse path traversal, toggling executionTimeout and breaking save.
-	ElSwitch: {
+	N8nSwitch: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template:
@@ -466,18 +466,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the error workflow dropdown
-			const errorWorkflowRow = getByTestId('error-workflow');
-			const combobox = within(errorWorkflowRow).getByRole('combobox');
-			await userEvent.click(combobox);
-
-			// Wait for dropdown to appear and select "No Workflow"
-			await waitFor(async () => {
-				const option = within(document.body as HTMLElement).getAllByRole('option');
-				const noWorkflow = option.find((o) => o.textContent?.includes('No Workflow'));
-				expect(noWorkflow).toBeTruthy();
-				await userEvent.click(noWorkflow!);
-			});
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[0]).toHaveTextContent('No Workflow');
+			await userEvent.click(dropdownItems[0]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -498,17 +489,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the error workflow dropdown
-			const errorWorkflowRow = getByTestId('error-workflow');
-			await userEvent.click(within(errorWorkflowRow).getByRole('combobox'));
-
-			// Wait for dropdown and select the test workflow
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const testWorkflow = options.find((o) => o.textContent?.includes('Test Workflow'));
-				expect(testWorkflow).toBeTruthy();
-				await userEvent.click(testWorkflow!);
-			});
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[1]).toHaveTextContent('Test Workflow');
+			await userEvent.click(dropdownItems[1]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -862,6 +845,27 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Execution Order & Binary Mode', () => {
+		it('should hide the Execution Logic row when the engine type is v2', async () => {
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-execution-order')).not.toBeInTheDocument();
+		});
+
+		it('should show the Execution Logic row for a stored engine v2 when the engine-v2 module is inactive', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'engine-v2',
+			);
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-execution-order')).toBeInTheDocument();
+		});
+
 		it('should render execution order dropdown with correct options', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
@@ -1181,17 +1185,11 @@ describe('WorkflowSettingsVue', () => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// Open the credential resolver dropdown
-			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
-			await userEvent.click(within(resolverContainer).getByRole('combobox'));
-
-			// Wait for dropdown and select "Test Resolver 2"
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const resolver = options.find((o) => o.textContent?.includes('Test Resolver 2'));
-				expect(resolver).toBeTruthy();
-				await userEvent.click(resolver!);
-			});
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
+			await userEvent.click(dropdownItems[1]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1256,16 +1254,11 @@ describe('WorkflowSettingsVue', () => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// Open the dropdown and pick the n8n system resolver
-			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
-			await userEvent.click(within(resolverContainer).getByRole('combobox'));
-
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const systemResolver = options.find((o) => o.textContent?.includes('N8n Resolver'));
-				expect(systemResolver).toBeTruthy();
-				await userEvent.click(systemResolver!);
-			});
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
+			await userEvent.click(dropdownItems[2]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1554,17 +1547,11 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the production redaction dropdown
-			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			await userEvent.click(within(productionSelect).getByRole('combobox'));
-
-			// Select "Redact"
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-				expect(redactOption).toBeTruthy();
-				await userEvent.click(redactOption!);
-			});
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
+			);
+			expect(productionItems[1]).toHaveTextContent('Redact');
+			await userEvent.click(productionItems[1]);
 			await flushPromises();
 
 			toast.showError.mockClear();
@@ -1599,28 +1586,18 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the production redaction dropdown and select "Redact"
-			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			await userEvent.click(within(productionSelect).getByRole('combobox'));
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-				expect(redactOption).toBeTruthy();
-				await userEvent.click(redactOption!);
-			});
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
+			);
+			expect(productionItems[1]).toHaveTextContent('Redact');
+			await userEvent.click(productionItems[1]);
 			await flushPromises();
 
-			// Open the manual redaction dropdown and select "Redact"
-			const manualSelect = getByTestId('workflow-settings-redact-manual-select');
-			await userEvent.click(within(manualSelect).getByRole('combobox'));
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const redactOption = options.find(
-					(o) => o.textContent?.trim() === 'Redact' && !o.classList.contains('selected'),
-				);
-				expect(redactOption).toBeTruthy();
-				await userEvent.click(redactOption!);
-			});
+			const manualItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-manual-select'),
+			);
+			expect(manualItems[1]).toHaveTextContent('Redact');
+			await userEvent.click(manualItems[1]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1797,17 +1774,11 @@ describe('WorkflowSettingsVue', () => {
 				) as HTMLInputElement;
 				expect(manualInput.value).toBe('Redact');
 
-				// Switch production to "Default - Do not redact"
-				const productionSelect = getByTestId('workflow-settings-redact-production-select');
-				await userEvent.click(within(productionSelect).getByRole('combobox'));
-				await waitFor(async () => {
-					const options = within(document.body as HTMLElement).getAllByRole('option');
-					const defaultOption = options.find(
-						(o) => o.textContent?.trim() === 'Default - Do not redact',
-					);
-					expect(defaultOption).toBeTruthy();
-					await userEvent.click(defaultOption!);
-				});
+				const productionItems = await getDropdownItems(
+					getByTestId('workflow-settings-redact-production-select'),
+				);
+				expect(productionItems[0]).toHaveTextContent('Default - Do not redact');
+				await userEvent.click(productionItems[0]);
 				await flushPromises();
 
 				// Manual select should have visibly reset to "Default - Do not redact"

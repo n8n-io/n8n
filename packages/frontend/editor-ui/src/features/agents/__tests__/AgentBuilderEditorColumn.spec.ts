@@ -7,10 +7,22 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentResource } from '../types';
+import type {
+	SetupTask,
+	SetupTaskId,
+} from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 
 const track = vi.fn();
+const triggerRedesignEnabled = vi.hoisted(() => ({ value: false }));
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
+}));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isFeatureEnabled: () => triggerRedesignEnabled.value,
+		isVariantEnabled: () => triggerRedesignEnabled.value,
+	}),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'session-xyz' }),
@@ -36,7 +48,12 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@n8n/design-system', () => ({
 	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
-	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nButton: {
+		template:
+			'<button :disabled="disabled" :data-variant="variant" :data-icon="icon" @click="$emit(\'click\', $event)">{{ label }}<slot /></button>',
+		props: ['disabled', 'variant', 'icon', 'label'],
+		emits: ['click'],
+	},
 	N8nCard: {
 		name: 'N8nCard',
 		template: '<div v-bind="$attrs"><slot /></div>',
@@ -77,7 +94,11 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
 		emits: ['click'],
 	},
-	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+	N8nTooltip: {
+		template:
+			'<div data-testid="stub-tooltip" :data-disabled="disabled" :data-content="content"><slot /><slot name="content" /></div>',
+		props: ['disabled', 'content'],
+	},
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
@@ -115,6 +136,14 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 		template: '<div data-testid="agent-files-panel" />',
 		props: ['agentId', 'files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
+	},
+}));
+
+vi.mock('../components/AgentMemoryEntriesPanel.vue', () => ({
+	default: {
+		name: 'AgentMemoryEntriesPanel',
+		template: '<div data-testid="agent-memory-entries-panel" />',
+		props: ['projectId', 'agentId', 'disabled'],
 	},
 }));
 
@@ -179,7 +208,10 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		isPreviewOpen: boolean;
 		agent: AgentResource | null;
+		tasks: Array<SetupTask<SetupTaskId>>;
+		hidePreviewButton: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -198,7 +230,7 @@ async function mountColumn(
 			],
 			localConfig: {
 				name: 'Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help the user.',
 				memory: { enabled: true, storage: 'n8n' },
 			},
@@ -212,6 +244,9 @@ async function mountColumn(
 			appliedSkills: [],
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
+			isPreviewOpen: overrides.isPreviewOpen,
+			tasks: overrides.tasks,
+			hidePreviewButton: overrides.hidePreviewButton,
 			executionsDescription: '',
 		},
 		global: {
@@ -226,6 +261,7 @@ async function mountColumn(
 					props: ['showModel', 'showInstructions'],
 					emits: ['update:config'],
 				},
+				AgentSetupTasks: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
@@ -236,6 +272,35 @@ async function mountColumn(
 describe('AgentBuilderEditorColumn', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		triggerRedesignEnabled.value = false;
+	});
+
+	it('places setup tasks beside Test Agent and forwards task actions', async () => {
+		const task: SetupTask<SetupTaskId> = {
+			id: 'add-tool',
+			titleKey: 'agents.builder.setupTasks.addTool',
+			required: false,
+			state: 'todo',
+			visible: true,
+			action: { labelKey: 'agents.builder.setupTasks.addTool', target: { kind: 'tool' } },
+		};
+		const wrapper = await mountColumn({ tasks: [task] });
+		const actions = wrapper.get('[data-testid="agent-identity-actions"]');
+		const setupTasks = actions.getComponent(AgentSetupTasks);
+		expect(setupTasks.props('tasks')).toEqual([task]);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
+
+		setupTasks.vm.$emit('action', task);
+		expect(wrapper.emitted('setup-task-action')).toEqual([[task]]);
+
+		await wrapper.setProps({ hidePreviewButton: true });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(true);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(false);
+
+		await wrapper.setProps({ tasks: undefined });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
+		await wrapper.setProps({ tasks: [] });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
 	});
 
 	it.each([
@@ -257,6 +322,79 @@ describe('AgentBuilderEditorColumn', () => {
 			name,
 		});
 		expect(wrapper.emitted('update:activeMainTab')).toEqual([[tab], [tab]]);
+	});
+
+	it.each([
+		{
+			label: 'opens',
+			isPreviewOpen: false,
+			event: 'open-preview',
+			payload: ['primary'],
+			accessibleLabel: 'agents.builder.preview.button',
+		},
+		{
+			label: 'closes',
+			isPreviewOpen: true,
+			event: 'close-preview',
+			payload: [],
+			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
+		},
+	])(
+		'$label Preview from the preview action',
+		async ({ isPreviewOpen, event, payload, accessibleLabel }) => {
+			const wrapper = await mountColumn({
+				isPreviewOpen,
+				agent: { id: 'agent-1', isRunnable: true } as AgentResource,
+			});
+			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
+			expect(previewButton.text()).toBe(accessibleLabel);
+
+			await previewButton.trigger('click');
+			expect(wrapper.emitted(event)).toEqual([payload]);
+			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
+		},
+	);
+
+	it('disables preview with a tooltip when the agent is not runnable', async () => {
+		const wrapper = await mountColumn({
+			agent: { id: 'agent-1', isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('false');
+		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
+			'agents.builder.preview.disabledTooltip',
+		);
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
+	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
+		const wrapper = await mountColumn({
+			isPreviewOpen: true,
+			agent: { id: 'agent-1', isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeUndefined();
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
+	it('shows the outlined test action beside the Agent title', async () => {
+		const wrapper = await mountColumn();
+		const titleRow = wrapper.get('[data-testid="agent-builder-identity-header"]');
+		expect(titleRow.find('[data-testid="agent-identity-header"]').exists()).toBe(true);
+		expect(
+			titleRow.get('[data-testid="agent-header-preview-btn"]').attributes('data-variant'),
+		).toBe('outline');
 	});
 
 	it('keeps initialization, programmatic tab changes, and Evals telemetry silent', async () => {
@@ -446,21 +584,34 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('renders named Agent tab cards', async function rendersNamedCards() {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
+	it.each([false, true])(
+		'renders named Agent tab cards with trigger redesign %s',
+		async (enabled) => {
+			triggerRedesignEnabled.value = enabled;
+			const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+			const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
 
-		expect(
-			panels.map(function getPanelHeader(panel) {
-				return panel.props('header');
-			}),
-		).toEqual([
-			'agents.builder.skills.title',
-			'agents.builder.triggers.title',
-			'agents.builder.capabilities.title',
-			'agents.builder.memory.title',
-		]);
-	});
+			expect(
+				panels.map(function getPanelHeader(panel) {
+					return panel.props('header');
+				}),
+			).toEqual(
+				enabled
+					? [
+							'agents.builder.triggers.title',
+							'agents.builder.skills.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.memory.title',
+						]
+					: [
+							'agents.builder.skills.title',
+							'agents.builder.triggers.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.memory.title',
+						],
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'handles preview clicks from the Triggers card when runnable is %s',
@@ -489,7 +640,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(budgetPanel.exists()).toBe(true);
 		expect(budgetPanel.props('config')).toMatchObject({
 			name: 'Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 		});
 		expect(budgetPanel.props('disabled')).toBe(false);
 		expect(budgetPanel.props('projectId')).toBe('project-1');
@@ -498,7 +649,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
 			name: 'Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 		});
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');

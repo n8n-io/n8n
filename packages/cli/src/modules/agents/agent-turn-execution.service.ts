@@ -1,4 +1,6 @@
 import type {
+	AgentDbMessage,
+	AgentInputBoundary,
 	Agent as RuntimeAgent,
 	ExecutionOptions,
 	ResumeOptions,
@@ -9,17 +11,25 @@ import type {
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
+import {
+	toHostInstructionMessage,
+	type AgentCompletingBoundaryHook,
+	type AgentHostInstruction,
+} from './types/agent-host-instruction';
 import type { AgentTurnFinalizeOutcome, FormattedTurnError } from './types/agent-turn-outcome';
+import { AgentSandboxFilesService, usedWorkspace } from './agent-sandbox-files.service';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
@@ -52,14 +62,25 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 interface ExecuteTurnConfig {
 	admittedExecution?: AgentExecutionAdmission;
 	onAdmitted?: () => Promise<void>;
+	/** Runs when the agent runtime starts. An abort before it means the agent did not run. */
+	onRuntimeStarted?: () => void;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	mcpServerAttributions: Map<string, string>;
 	context: RecordingContext;
+	/**
+	 * The memory resource of the files that the turn stores from its sandbox.
+	 * A system chat sets it, because it reads its files by resource.
+	 */
+	fileResourceId?: string;
 	prepare: () => Promise<AgentTurnRequest>;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
+	/** Set false to keep additional input queued without cancelling the turn. */
+	acceptsSteering?: boolean;
+	/** Adds one host instruction when the agent tries to stop. See `AgentCompletingBoundaryHook`. */
+	onCompletingBoundary?: AgentCompletingBoundaryHook;
 	/**
 	 * The controller of the chat turn. Defaults to a new controller. A cancel
 	 * aborts it, and the caller can abort it to stop the turn at any time. The
@@ -96,7 +117,7 @@ interface TurnExecutionState {
 	runId?: string;
 }
 
-/** Preview and n8n Chat both run under one of these — a steerable, cancellable chat turn. */
+/** Controls cancellation for Preview and n8n Chat turns. */
 interface ChatExecutionControl {
 	controller: AbortController;
 	dispose: () => void;
@@ -127,6 +148,7 @@ export class AgentTurnExecutionService {
 		private readonly steering: AgentMessageSteeringService,
 		private readonly toolApprovalService: AgentToolApprovalService,
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -149,6 +171,9 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
+		const { agentId, threadId } = config.context;
+		const activeRun = { agentId, getWorkspace: () => config.agentInstance.getWorkspace() };
+		this.sandboxFiles.trackRun(threadId, activeRun);
 		try {
 			config.onRecorderCreated?.(recorder);
 			turn = await config.prepare();
@@ -164,12 +189,26 @@ export class AgentTurnExecutionService {
 
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
-		} catch (error) {
 			if (
-				(await this.isStoppedChatTurn(turn, config)) &&
-				!(error instanceof AgentExecutionRecordingError)
-			)
+				!state.receivedFinish &&
+				state.executionError === undefined &&
+				state.executionId &&
+				(await this.isStoppedTurn(turn, config))
+			) {
+				const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
+				recorder.record(finish);
+				yield finish;
+			}
+		} catch (error) {
+			const { isAbortError } = await import('@n8n/agents');
+			if ((await this.isStoppedTurn(turn, config)) && isAbortError(error)) {
+				if (state.executionId && !state.receivedFinish) {
+					const finish: StreamChunk = { type: 'finish', finishReason: 'cancelled' };
+					recorder.record(finish);
+					yield finish;
+				}
 				return;
+			}
 
 			state.executionError = error;
 			const formatted = await config.formatError?.(error);
@@ -177,6 +216,7 @@ export class AgentTurnExecutionService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			this.sandboxFiles.untrackRun(threadId, activeRun);
 			chatControl?.dispose();
 			if (turn && state.executionId) {
 				try {
@@ -189,16 +229,16 @@ export class AgentTurnExecutionService {
 		}
 	}
 
-	private async isStoppedChatTurn(
+	private async isStoppedTurn(
 		turn: AgentTurnRequest | undefined,
 		config: ExecuteTurnConfig,
 	): Promise<boolean> {
 		const signal = turn?.options.abortSignal;
-		if (!signal?.aborted || config.chatSurface === undefined) return false;
+		if (!signal?.aborted) return false;
+		if (signal.reason === SESSION_STOPPED_REASON) return true;
+		if (config.chatSurface === undefined) return false;
 		const { isAbortError } = await import('@n8n/agents');
-		return Boolean(
-			config.chatSurface !== undefined && signal?.aborted && isAbortError(signal.reason),
-		);
+		return isAbortError(signal.reason);
 	}
 
 	private createChatExecutionControl(
@@ -235,6 +275,7 @@ export class AgentTurnExecutionService {
 		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;
+			config.onRuntimeStarted?.();
 			const started = await config.agentInstance.stream(turn.input, turn.options);
 			state.runId = started.runId;
 			return started.stream;
@@ -245,6 +286,7 @@ export class AgentTurnExecutionService {
 			...options,
 			onResumeClaimed: async () => {
 				state.executionStarted = true;
+				config.onRuntimeStarted?.();
 				recorder.recordHitlResponse(options.toolCallId, resumeData);
 				await options.onResumeClaimed?.();
 			},
@@ -277,13 +319,17 @@ export class AgentTurnExecutionService {
 				continue;
 			}
 
-			// The runtime reports requested stops as errors. Keep chat outcomes consistent.
+			// Report requested stops consistently across chat and integration streams.
 			if (
-				(chunk.type === 'error' || (chunk.type === 'finish' && chunk.finishReason === 'error')) &&
-				(await this.isStoppedChatTurn(turn, config))
+				(chunk.type === 'error' || chunk.type === 'finish') &&
+				(await this.isStoppedTurn(turn, config))
 			) {
-				if (chunk.type === 'error') continue;
-				chunk = { ...chunk, finishReason: 'cancelled' };
+				if (chunk.type === 'error') {
+					const { isAbortError } = await import('@n8n/agents');
+					if (isAbortError(chunk.error)) continue;
+				} else if (state.executionError === undefined) {
+					chunk = { ...chunk, finishReason: 'cancelled' };
+				}
 			}
 
 			if (chunk.type === 'error') {
@@ -293,6 +339,13 @@ export class AgentTurnExecutionService {
 				recorder.record(chunk);
 			}
 
+			if (chunk.type === 'usage' && state.executionId) {
+				this.agentExecutionService.reportUsage(
+					{ ...config.context, executionId: state.executionId },
+					chunk.usage,
+					Math.max(0, Date.now() - recorder.startedAt.getTime()),
+				);
+			}
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
 			if (chunk.type === 'finish') state.receivedFinish = true;
@@ -317,8 +370,16 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		chatControl?: ChatExecutionControl,
 	): Promise<void> {
-		const finalize = async () =>
+		const finalize = async () => {
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
+			// A checkpoint can finish saving after Stop first checks the session.
+			if (turn.options.abortSignal?.reason === SESSION_STOPPED_REASON)
+				await this.chatExecutionService.cancelSessionSuspension(
+					config.context.agentId,
+					config.context.threadId,
+					executionId,
+				);
+		};
 		if (chatControl) {
 			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
 		} else {
@@ -333,7 +394,8 @@ export class AgentTurnExecutionService {
 		executionId: string,
 		state: TurnExecutionState,
 	): Promise<void> {
-		const cancelled = this.isCancelled(turn, recorder, state);
+		const cancelled = await this.isCancelled(turn, recorder, state);
+		await this.syncSandboxOutputs(config, recorder);
 		await this.runBeforeFinalize(config, recorder, executionId, state, cancelled);
 		const record = recorder.getMessageRecord();
 		let hitlStatus: RecordMessageParams['hitlStatus'];
@@ -372,15 +434,33 @@ export class AgentTurnExecutionService {
 		});
 	}
 
-	private isCancelled(
+	private async isCancelled(
 		turn: AgentTurnRequest,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-	): boolean {
+	): Promise<boolean> {
+		if (state.executionError !== undefined) {
+			const { isAbortError } = await import('@n8n/agents');
+			if (!isAbortError(state.executionError)) return false;
+		}
 		return (
 			turn.options.abortSignal?.aborted === true ||
 			(!state.receivedFinish && !recorder.suspended && recorder.getMessageRecord().error === null)
 		);
+	}
+
+	/** Store the new files of the sandbox `outputs/` before the turn ends, for each status. */
+	private async syncSandboxOutputs(config: ExecuteTurnConfig, recorder: ExecutionRecorder) {
+		if (!usedWorkspace(recorder.getMessageRecord().timeline)) return;
+		const workspace = config.agentInstance.getWorkspace();
+		if (!workspace) return;
+		const { agentId, projectId, threadId } = config.context;
+		await this.sandboxFiles.syncOutputs(workspace, {
+			agentId,
+			projectId,
+			threadId,
+			...(config.fileResourceId ? { resourceId: config.fileResourceId } : {}),
+		});
 	}
 
 	/** Give the host the outcome of the turn before the record is final. */
@@ -589,7 +669,7 @@ export class AgentTurnExecutionService {
 			{
 				...turn.recording,
 				previewChat: config.chatSurface === 'preview' ? true : undefined,
-				acceptsSteering: chatControl !== undefined,
+				acceptsSteering: chatControl !== undefined && config.acceptsSteering !== false,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
 				allowSuspendedPredecessor: config.automaticPreviewContinuation,
 				...(config.backgroundJobSignal
@@ -601,6 +681,44 @@ export class AgentTurnExecutionService {
 		state.executionId = admission.executionId;
 		turn.options.abortSignal?.throwIfAborted();
 		return admission;
+	}
+
+	/**
+	 * Lets the host add one instruction when the agent tries to stop. Input that
+	 * the user steered into the turn goes first: the hook runs again at the next
+	 * stop. Steering stays open while the instruction continues the turn, so a
+	 * message that the user types during that step still joins this turn.
+	 */
+	private withHostInstruction(
+		onCompletingBoundary: AgentCompletingBoundaryHook,
+		steer: ((boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>) | undefined,
+		abortSignal: AbortSignal | undefined,
+		executionId: string,
+	): (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]> {
+		let instructionAdded = false;
+		return async (boundary) => {
+			if (instructionAdded || !boundary.completing || !boundary.canContinue) {
+				return steer ? await steer(boundary) : [];
+			}
+			if (steer) {
+				const steered = await steer({ ...boundary, completing: false });
+				if (steered.length > 0 || abortSignal?.aborted) return steered;
+			}
+			let instruction: AgentHostInstruction | undefined;
+			try {
+				instruction = await onCompletingBoundary();
+			} catch (error) {
+				this.logger.warn('The completing boundary hook failed; the turn ends without it', {
+					executionId,
+					error: getErrorMessage(error),
+				});
+			}
+			if (instruction) {
+				instructionAdded = true;
+				return [toHostInstructionMessage(instruction, boundary.lastCreatedAt)];
+			}
+			return steer ? await steer(boundary) : [];
+		};
 	}
 
 	private async startAcceptedTurn(
@@ -622,6 +740,7 @@ export class AgentTurnExecutionService {
 				...turn.options.persistence.hostMetadata,
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
+			turn.options.persistence.persistSettledSuspensions = true;
 		} else if (turn.type === 'resume') {
 			turn.options.hostMetadata = {
 				...turn.options.hostMetadata,
@@ -629,18 +748,29 @@ export class AgentTurnExecutionService {
 			};
 		}
 
-		if (chatControl) {
-			turn.options.onInputBoundary = async (boundary) => {
-				const result = await this.steering.consume(
-					{ ...config.context, executionId, resourceId: turn.recording.resourceId },
-					boundary,
-					recorder,
-					turn.options.abortSignal!,
-				);
-				if (result.stopped) chatControl.controller.abort();
-				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
-				return result.messages;
-			};
+		const steer =
+			chatControl && config.acceptsSteering !== false
+				? async (boundary: AgentInputBoundary) => {
+						const result = await this.steering.consume(
+							{ ...config.context, executionId, resourceId: turn.recording.resourceId },
+							boundary,
+							recorder,
+							turn.options.abortSignal!,
+						);
+						if (result.stopped) chatControl.controller.abort();
+						for (const event of result.events) state.steeredMessages.set(event.message.id, event);
+						return result.messages;
+					}
+				: undefined;
+		if (config.onCompletingBoundary) {
+			turn.options.onInputBoundary = this.withHostInstruction(
+				config.onCompletingBoundary,
+				steer,
+				turn.options.abortSignal,
+				executionId,
+			);
+		} else if (steer) {
+			turn.options.onInputBoundary = steer;
 		}
 
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);

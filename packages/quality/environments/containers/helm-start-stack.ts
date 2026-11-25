@@ -2,7 +2,7 @@
 import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
-import { createHelmStack, type HelmStackMode } from './helm-stack';
+import { createHelmStack } from './helm-stack';
 
 const colors = {
 	reset: '\x1b[0m',
@@ -31,9 +31,13 @@ ${colors.yellow}Usage:${colors.reset}
   pnpm stack:helm [options]
 
 ${colors.yellow}Options:${colors.reset}
-  --mode <mode>         standalone (SQLite, default) or queue (PostgreSQL + Redis + workers)
-  --image <image>       n8n Docker image (default: n8nio/n8n:local)
-  --chart-ref <ref>     Git branch/tag for n8n-hosting repo (default: main)
+  --example <name>      Chart example to install (default: standalone). The name is a file in
+                        charts/n8n/examples, without .yaml. "minimal" is queue mode
+                        (PostgreSQL + Redis + one worker).
+  --image <image>       n8n Docker image (default: n8nio/n8n:local). The runner image is the
+                        same name with "runners" as the last path segment.
+  --chart-ref <ref>     Git branch/tag for n8n-hosting repo (default: the tag pinned in
+                        helm-stack.ts). Needs chart 2.0 or later.
   --chart-repo <url>    Git repo URL (default: https://github.com/n8n-io/n8n-hosting.git)
   --k3s-image <image>   K3s image (default: rancher/k3s:v1.32.2-k3s1)
   --env <KEY=VALUE>     Set environment variable in n8n pods (repeatable)
@@ -44,11 +48,11 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Start with default local image${colors.reset}
   pnpm stack:helm
 
-  ${colors.bright}# Test specific n8n version against specific chart${colors.reset}
-  pnpm stack:helm --image n8nio/n8n:1.80.0 --chart-ref v1.2.0
+  ${colors.bright}# Test a published n8n version against a chart branch${colors.reset}
+  pnpm stack:helm --image n8nio/n8n:nightly --chart-ref main
 
-  ${colors.bright}# Queue mode (PostgreSQL + Redis + workers)${colors.reset}
-  pnpm stack:helm --mode queue --image n8nio/n8n:latest
+  ${colors.bright}# Queue mode (PostgreSQL + Redis + one worker)${colors.reset}
+  pnpm stack:helm --example minimal
 
   ${colors.bright}# E2E test mode (requires INCLUDE_TEST_CONTROLLER image)${colors.reset}
   pnpm stack:helm --env E2E_TESTS=true --env NODE_ENV=development
@@ -59,7 +63,7 @@ ${colors.yellow}Examples:${colors.reset}
 ${colors.yellow}Prerequisites:${colors.reset}
   • Docker with privileged container support
   • helm and kubectl CLIs installed locally
-  • n8n Docker image built locally (pnpm build:docker) or available on Docker Hub
+  • n8n and runner Docker images built locally (pnpm build:docker) or available on Docker Hub
   • See HELM-TESTING.md for full requirements
 
 ${colors.yellow}Notes:${colors.reset}
@@ -75,7 +79,7 @@ async function main() {
 		args: process.argv.slice(2),
 		options: {
 			help: { type: 'boolean', short: 'h' },
-			mode: { type: 'string' },
+			example: { type: 'string' },
 			image: { type: 'string' },
 			'chart-ref': { type: 'string' },
 			'chart-repo': { type: 'string' },
@@ -94,8 +98,6 @@ async function main() {
 
 	log.header('Starting n8n Helm Stack');
 
-	const mode = (values.mode as HelmStackMode) || undefined;
-
 	// Parse --env KEY=VALUE pairs into a record
 	const envOverrides: Record<string, string> = {};
 	for (const entry of values.env ?? []) {
@@ -112,7 +114,7 @@ async function main() {
 		helmChartRef: values['chart-ref'],
 		helmChartRepo: values['chart-repo'],
 		k3sImage: values['k3s-image'],
-		mode,
+		example: values.example,
 		env: Object.keys(envOverrides).length > 0 ? envOverrides : undefined,
 	});
 
@@ -140,7 +142,7 @@ async function main() {
 	if (envOverrides.E2E_TESTS === 'true') {
 		log.info('Run tests against this instance:');
 		log.info(
-			`  ${colors.bright}N8N_BASE_URL=${stack.baseUrl} RESET_E2E_DB=true npx playwright test tests/e2e/building-blocks/ --workers=1${colors.reset}`,
+			`  ${colors.bright}N8N_BASE_URL=${stack.baseUrl} RESET_E2E_DB=true npx playwright test --project=e2e tests/e2e/nodes/code-node-api.spec.ts --workers=1${colors.reset}`,
 		);
 	}
 

@@ -47,8 +47,18 @@ type AccessibleCredential = Awaited<
 >[number];
 
 const credentials = [
-	mock<CredentialsEntity>({ id: 'postgres-cred', name: 'Documents', type: 'postgres' }),
-	mock<CredentialsEntity>({ id: 'embed-cred', name: 'Embedding model', type: 'openAiApi' }),
+	mock<CredentialsEntity>({
+		id: 'postgres-cred',
+		name: 'Documents',
+		type: 'postgres',
+		isResolvable: false,
+	}),
+	mock<CredentialsEntity>({
+		id: 'embed-cred',
+		name: 'Embedding model',
+		type: 'openAiApi',
+		isResolvable: false,
+	}),
 ];
 const accessibleCredentials = credentials.map(({ id }) => mock<AccessibleCredential>({ id }));
 const user = mock<User>({ id: 'user-1' });
@@ -94,6 +104,7 @@ describe('Agent vector-store connection tests', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'project-1',
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith('project-1');
 		expect(getBase).toHaveBeenCalledWith({ projectId: 'project-1', userId: 'user-1' });
@@ -103,11 +114,11 @@ describe('Agent vector-store connection tests', () => {
 	});
 
 	it.each([
-		['postgres-cred', 'user'],
-		['postgres-cred', 'project'],
-		['embed-cred', 'user'],
-		['embed-cred', 'project'],
-	])('rejects %s outside the %s scope before decrypting it', async (credentialId, scope) => {
+		['postgres-cred', 'user', 'credential'],
+		['postgres-cred', 'project', 'credential'],
+		['embed-cred', 'user', 'embedding credential'],
+		['embed-cred', 'project', 'embedding credential'],
+	])('rejects %s outside the %s scope before decrypting it', async (credentialId, scope, role) => {
 		if (scope === 'user') {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				accessibleCredentials.filter(({ id }) => id !== credentialId),
@@ -121,7 +132,7 @@ describe('Agent vector-store connection tests', () => {
 
 		await expect(controller.testConnection(request, response, { vectorStore })).resolves.toEqual({
 			success: false,
-			message: `Credential "${credentialId}" not found or not accessible`,
+			message: `Could not resolve the ${role} of vector store "product_docs"`,
 		});
 
 		expect(credentialsHelper.getDecrypted).not.toHaveBeenCalledWith(

@@ -3,13 +3,13 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { TagEntity } from '../../entities';
+import { AgentTagMapping, FolderTagMapping, TagEntity, WorkflowTagMapping } from '../../entities';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { TagRepository } from '../tag.repository';
 
 describe('TagRepository', () => {
-	mockEntityManager(TagEntity);
+	const entityManager = mockEntityManager(TagEntity);
 	Container.set(TransactionRunner, mock<TransactionRunner>());
 	const tagRepository = Container.get(TagRepository);
 
@@ -45,6 +45,11 @@ describe('TagRepository', () => {
 				'wm',
 				expect.any(Function),
 			);
+			expect(queryBuilder.loadRelationCountAndMap).toHaveBeenCalledWith(
+				'tag.agentUsageCount',
+				'tag.agentMappings',
+				'am',
+			);
 
 			// The usage-count sub-query must exclude archived workflows — invoke the
 			// callback passed to loadRelationCountAndMap against a mock sub-query
@@ -67,6 +72,17 @@ describe('TagRepository', () => {
 			expect(queryBuilder.limit).not.toHaveBeenCalled();
 		});
 
+		it('sums the workflow and agent counts into one usageCount', async () => {
+			queryBuilder.getMany.mockResolvedValue([
+				{ id: 'tag-1', name: 'one', usageCount: 2, agentUsageCount: 1 },
+			] as never);
+
+			const [tag] = await tagRepository.findAllWithUsageCount({});
+
+			expect(tag.usageCount).toBe(3);
+			expect(tag).not.toHaveProperty('agentUsageCount');
+		});
+
 		it('orders by name and limits when requested', async () => {
 			queryBuilder.getMany.mockResolvedValue([]);
 
@@ -74,6 +90,35 @@ describe('TagRepository', () => {
 
 			expect(queryBuilder.orderBy).toHaveBeenCalledWith('tag.name', 'ASC');
 			expect(queryBuilder.limit).toHaveBeenCalledWith(10);
+		});
+	});
+
+	describe('reconcileTagId', () => {
+		it('re-keys workflow, folder and agent mappings to the new tag id', async () => {
+			entityManager.findOneByOrFail.mockResolvedValue({
+				id: 'tag-old',
+				name: 'prod',
+				createdAt: new Date('2026-01-01'),
+			});
+
+			await tagRepository.reconcileTagId('tag-old', 'tag-new', {});
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				WorkflowTagMapping,
+				{ tagId: 'tag-old' },
+				{ tagId: 'tag-new' },
+			);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				FolderTagMapping,
+				{ tagId: 'tag-old' },
+				{ tagId: 'tag-new' },
+			);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentTagMapping,
+				{ tagId: 'tag-old' },
+				{ tagId: 'tag-new' },
+			);
+			expect(entityManager.delete).toHaveBeenCalledWith(TagEntity, { id: 'tag-old' });
 		});
 	});
 });

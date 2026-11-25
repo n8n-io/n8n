@@ -1,4 +1,5 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -8,7 +9,6 @@ import type { AgentContextService } from '@/modules/agents/agent-context.service
 import type { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import type { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import { builderTelemetrySessionProperties } from '@/modules/agents/builder/builder-session';
-import type { Telemetry } from '@/telemetry';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 
@@ -26,7 +26,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const builder = mock<AgentsBuilderService>();
 	const drafts = mock<AgentDraftService>();
 	const context = mock<AgentContextService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const user = mock<User>({ id: 'user-1' });
 	const providerFor = vi.fn(() => mock<CredentialProvider>());
 	const credentials = mock<InstanceAiCredentialService>();
@@ -87,6 +87,36 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			});
 		},
 	);
+
+	it('tracks Agent credential requests with the user and run context', () => {
+		const { delegate, telemetry } = setup();
+		const session = { threadId: 'thread-1', runId: 'run-1' };
+		const expected = {
+			agent_id: 'agent-1',
+			user_id: 'user-1',
+			thread_id: 'thread-1',
+			run_id: 'run-1',
+			credential_type: 'slackApi',
+		};
+
+		delegate.trackCredentialRequest?.('agent-1', session, {
+			credentialType: 'slackApi',
+			outcome: 'requested',
+		});
+		delegate.trackCredentialRequest?.('agent-1', session, {
+			credentialType: 'slackApi',
+			outcome: 'skipped',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL,
+			expected,
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			...expected,
+			outcome: 'skipped',
+		});
+	});
 
 	it('creates the agent inside the Assistant session, so the creation event carries it', async () => {
 		const { delegate, drafts, user } = setup();

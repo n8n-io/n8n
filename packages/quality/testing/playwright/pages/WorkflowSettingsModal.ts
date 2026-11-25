@@ -23,6 +23,17 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.container.getByTestId('workflow-settings-error-workflow');
 	}
 
+	getErrorWorkflowList(): Locator {
+		// The select teleports the list outside the modal content.
+		return this.page.getByRole('listbox').filter({ visible: true });
+	}
+
+	getErrorWorkflowWarning(workflowName: string): Locator {
+		return this.getVisiblePopoverOption(workflowName, { exact: true }).locator(
+			'[data-grace-area-trigger]',
+		);
+	}
+
 	getTimezoneField(): Locator {
 		return this.container.getByTestId('workflow-settings-timezone');
 	}

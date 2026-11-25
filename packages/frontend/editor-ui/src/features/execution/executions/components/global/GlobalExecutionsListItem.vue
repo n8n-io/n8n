@@ -7,15 +7,24 @@ import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { checkExhaustive } from '@/app/utils/typeGuards';
-import type { IconColor } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconColor } from '@n8n/design-system';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { isIndefiniteWait } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
 import { type IconName } from '@n8n/design-system';
 
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nCheckbox, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import EngineBadge from '@/app/components/EngineBadge.vue';
+import { getExecutionEngine } from '@/features/execution/executions/executions.utils';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -47,6 +56,12 @@ const props = withDefaults(
 const style = useCssModule();
 const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
+const settingsStore = useSettingsStore();
+
+const engine = computed(() => getExecutionEngine(props.execution.id));
+const engineTooltip = computed(() =>
+	locale.baseText('executionsList.engine.tooltip', { interpolate: { engine: engine.value } }),
+);
 
 const isStopping = ref(false);
 
@@ -61,6 +76,37 @@ const isWaitTillIndefinite = computed(() => {
 });
 
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
+
+const actionItems = computed((): Array<DropdownMenuItemProps<Command>> => {
+	const items: Array<DropdownMenuItemProps<Command>> = [];
+
+	if (isRetriable.value) {
+		items.push(
+			{
+				id: 'retrySaved',
+				label: locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+				disabled: !props.workflowPermissions.execute,
+				testId: 'execution-retry-saved-dropdown-item',
+			},
+			{
+				id: 'retryOriginal',
+				label: locale.baseText('executionsList.retryWithOriginalWorkflow'),
+				disabled: !props.workflowPermissions.execute,
+				testId: 'execution-retry-original-dropdown-item',
+			},
+		);
+	}
+
+	items.push({
+		id: 'delete',
+		label: locale.baseText('generic.delete'),
+		disabled: !props.executionPermissions.delete,
+		testId: 'execution-delete-dropdown-item',
+		destructive: true,
+	});
+
+	return items;
+});
 
 const EXECUTION_STATUS = {
 	CRASHED: 'crashed',
@@ -249,7 +295,13 @@ async function handleActionItemClick(commandData: Command) {
 			<ExecutionsTime v-else :start-time="execution.startedAt ?? execution.createdAt" />
 		</td>
 		<td>
-			<span v-if="execution.id">{{ execution.id }}</span>
+			<template v-if="execution.id && settingsStore.isEngineV2Enabled">
+				<EngineBadge :engine="engine" class="mr-3xs" data-test-id="execution-engine-badge" />
+				<N8nTooltip :content="engineTooltip" placement="top">
+					<span data-test-id="execution-id">{{ execution.id }}</span>
+				</N8nTooltip>
+			</template>
+			<span v-else-if="execution.id">{{ execution.id }}</span>
 			<span v-if="execution.retryOf">
 				<br />
 				<small> ({{ locale.baseText('executionsList.retryOf') }} {{ execution.retryOf }}) </small>
@@ -295,44 +347,21 @@ async function handleActionItemClick(commandData: Command) {
 			</N8nButton>
 		</td>
 		<td>
-			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton variant="outline" icon="ellipsis" />
-				<template #dropdown>
-					<ElDropdownMenu
-						:class="{
-							[$style.actions]: true,
-							[$style.deleteOnly]: !isRetriable,
-						}"
-					>
-						<ElDropdownItem
-							v-if="isRetriable"
-							data-test-id="execution-retry-saved-dropdown-item"
-							:class="$style.retryAction"
-							command="retrySaved"
-							:disabled="!workflowPermissions.execute"
-						>
-							{{ locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-						</ElDropdownItem>
-						<ElDropdownItem
-							v-if="isRetriable"
-							data-test-id="execution-retry-original-dropdown-item"
-							:class="$style.retryAction"
-							command="retryOriginal"
-							:disabled="!workflowPermissions.execute"
-						>
-							{{ locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-						</ElDropdownItem>
-						<ElDropdownItem
-							data-test-id="execution-delete-dropdown-item"
-							:class="$style.deleteAction"
-							command="delete"
-							:disabled="!executionPermissions.delete"
-						>
-							{{ locale.baseText('generic.delete') }}
-						</ElDropdownItem>
-					</ElDropdownMenu>
+			<N8nDropdownMenu
+				v-if="!isRunning"
+				:items="actionItems"
+				placement="bottom-end"
+				@select="handleActionItemClick"
+			>
+				<template #trigger>
+					<N8nIconButton
+						variant="outline"
+						icon="ellipsis"
+						data-test-id="execution-actions-menu"
+						@click.stop
+					/>
 				</template>
-			</ElDropdown>
+			</N8nDropdownMenu>
 		</td>
 	</tr>
 </template>

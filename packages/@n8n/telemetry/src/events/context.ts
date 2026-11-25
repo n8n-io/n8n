@@ -1,3 +1,9 @@
+import {
+	SKILL_LINK_REVIEW_REASONS,
+	SKILL_SCAN_RULES,
+	SKILL_SOURCE_REASONS,
+	skillScopeSchema,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -36,39 +42,101 @@ const optionalUserId = z
 		'The acting user. Absent on the events the editor fires, which identify the user already',
 	);
 
-/** Where a skill lives. An agent skill takes its project from its agent. */
+/** Where a skill lives. */
 const skillScope = z
-	.enum(['project', 'agent', 'instance'])
-	.describe('Where the skill lives: one project, one agent, or the whole instance');
+	.enum(skillScopeSchema.options)
+	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
 const skillProjectId = z
 	.string()
 	.optional()
-	.describe(
-		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
-	);
+	.describe('The project of a project skill. Absent for an instance skill');
 
-/** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
+/**
+ * The surface that wrote the skill: the values of `skill.source` without `import`, as a
+ * package import reports no skill telemetry.
+ */
 const skillSource = z
-	.enum(['ui', 'agent', 'mcp', 'assistant'])
+	.enum(['ui', 'agent', 'mcp', 'assistant', 'github'])
 	.describe(
-		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder',
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder. `github` is Skill Sync from a GitHub source',
 	);
 
 /** Whether a person or an assistant wrote the text. */
 const skillMethod = z
-	.enum(['manual', 'upload', 'ai'])
+	.enum(['manual', 'upload', 'ai', 'sync'])
 	.describe(
-		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
+		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. `sync` is a skill that Skill Sync imported from a source. Count only `manual` and `upload` for the skills people write by hand',
 	);
+
+/** The type of a Skill Sync source. */
+const skillSourceProvider = z.enum(['github']).describe('The type of the source, such as GitHub');
+
+/** Whether n8n reads a source with a credential. */
+const skillSourceAccess = z
+	.enum(['public', 'credential'])
+	.describe(
+		'Whether n8n reads the source with a credential. `public` reads it without one, also after its credential is deleted. `credential` does not mean the source is private',
+	);
+
+/** Where a source puts its skills. */
+const skillSourceScopeType = z
+	.enum(['global', 'team', 'personal'])
+	.describe('The scope of the source: Global, a team project, or a personal project');
+
+const skillSourceStatus = z
+	.enum(['success', 'failure'])
+	.describe('Whether the action succeeded. A failure carries a reason code');
+
+const skillSourceHealth = z.enum([
+	'connected',
+	'credential_issue',
+	'source_unavailable',
+	'delayed',
+]);
+
+const skillSourceReason = z
+	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
+	.optional()
+	.describe(
+		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. `unexpected` is a failure with no known reason. A success carries only `too_many_skills` or `too_deep`, when the source had skills that n8n did not list. Absent on other successes',
+	);
+
+/** Where a synced skill comes from. Both are absent for a skill that Skill Sync did not import. */
+const skillOrigin = {
+	source_provider: skillSourceProvider
+		.optional()
+		.describe('The type of the source of a synced skill, such as GitHub'),
+	source_access: skillSourceAccess
+		.optional()
+		.describe('Whether n8n reads the source of a synced skill with a credential'),
+};
 
 const preferenceExampleId = z
 	.enum(['workflows', 'agents', 'credentials', 'answers'])
 	.optional()
 	.describe(
 		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
+	);
+
+const emptyPreferencesNoteVariant = z
+	.enum(['control', 'variant'])
+	.describe(
+		'Variant of the 147_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
+	);
+
+const recommendedSkillsVariant = z
+	.enum(['variant'])
+	.describe(
+		'Variant of the 143_recommended_skills feature flag. Only the treatment shows the cards',
+	);
+
+const recommendedSkillsEntryPoint = z
+	.enum(['empty_state', 'create_menu', 'agent_skill_modal'])
+	.describe(
+		'`empty_state` is the Skills page with no skills. `create_menu` is the entry in the "Create skills" menu, which shows the cards in a dialog. `agent_skill_modal` is the "Recommended" tab of the skill picker of an agent',
 	);
 
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
@@ -223,6 +291,18 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 
+	ASSISTANT_PREFERENCES_NOTE_EXPOSED: {
+		name: 'Assistant preferences note exposed',
+		description:
+			'An n8n Assistant turn of a user with no saved preferences reached the point where experiment 147 adds a note about preferences. Fires in both arms, at most 3 times for each user and at most once in 24 hours. Only `variant` adds the note, which tells the assistant to mention after the task that the user can save a preference. Use it as the exposure of the experiment.',
+		properties: z.object({
+			user_id: userId,
+			thread_id: z.string().describe('The n8n Assistant thread of the turn'),
+			variant: emptyPreferencesNoteVariant,
+			'$feature/147_assistant_empty_preferences_note': emptyPreferencesNoteVariant,
+		}),
+	},
+
 	ASSISTANT_SAVED_PREFERENCE: {
 		name: 'Assistant saved preference',
 		description:
@@ -344,6 +424,28 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			read_only: z.boolean().describe('Whether the user may only read the skill'),
 		}),
 	},
+	USER_VIEWED_SKILL_DIAGRAMS: {
+		name: 'User viewed skill diagrams',
+		description:
+			'The read-only skill view finished the Mermaid diagrams of one skill file, on the Skills settings page or in the agent builder. Fires once for each file view that has a Mermaid block, when the last diagram ends, and again when the theme changes. A diagram that does not render shows its source as code with no error, so `failed` and `timed_out` are the only signal that valid diagrams stay as code.',
+		properties: z.object({
+			file: z
+				.enum(['skill', 'reference'])
+				.describe('`skill` is SKILL.md. `reference` is a reference file'),
+			rendered: z.number().describe('Diagrams that show as an image'),
+			invalid: z.number().describe('Blocks that Mermaid rejects. The view shows them as code'),
+			failed: z
+				.number()
+				.describe(
+					'Blocks where the render sandbox answered without a diagram, or sent one the view cannot show',
+				),
+			timed_out: z
+				.number()
+				.describe(
+					'Blocks where the render sandbox did not answer in 10 seconds, for example because a content security policy blocks its scripts',
+				),
+		}),
+	},
 	USER_DOWNLOADED_SKILL: {
 		name: 'User downloaded skill',
 		description:
@@ -360,7 +462,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -368,6 +470,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			project_id: skillProjectId,
 			source: skillSource,
 			method: skillMethod,
+			...skillOrigin,
 		}),
 	},
 	USER_UPDATED_SKILL: {
@@ -384,10 +487,279 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
 		}),
 	},
+	USER_VIEWED_RECOMMENDED_SKILLS: {
+		name: 'User viewed recommended skills',
+		description:
+			'The recommended skills of experiment 143 appeared: as cards on the Skills settings page (in the empty state or in the dialog of the "Create skills" menu), or in the skill picker of an agent. Fires each time the cards appear, and each time the skill picker opens.',
+		properties: z.object({
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
+	USER_ADDED_RECOMMENDED_SKILL: {
+		name: 'User added recommended skill',
+		description:
+			'A user saved a skill that a recommended skill card of experiment 143 filled in. Fires once the create succeeds, so a card click that the user cancels reports nothing.',
+		properties: z.object({
+			recommended_skill_id: z
+				.enum(['humanizer', 'cold-email', 'research'])
+				.describe('The recommended skill that filled the create form'),
+			skill_id: skillId.optional().describe('Not set for the agent skill picker'),
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
+	MCP_LISTED_SKILLS: {
+		name: 'MCP listed skills',
+		description:
+			'An MCP client called `skills/list` or `skills/get` of the MCP skills extension. Both return skill entries without their text. Claude Code lists the skills each time it connects, so this counts sessions that receive the skills, not skill use.',
+		properties: z.object({
+			user_id: userId,
+			method: z
+				.enum(['skills/list', 'skills/get'])
+				.describe('`skills/list` returns one page of skills. `skills/get` returns one skill'),
+			count: z.number().describe('Skills the response returned'),
+		}),
+	},
+	MCP_READ_SKILL_FILE: {
+		name: 'MCP read skill file',
+		description:
+			'An MCP client read one file of a skill through `resources/read` of the MCP skills extension. Fires on a successful read only. Claude Code reads each SKILL.md when it connects and keeps it in a cache by digest, so a SKILL.md read means a skill was loaded or changed, not used. A reference read is the nearest sign that a model used the skill.',
+		properties: z.object({
+			user_id: userId,
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			file: z
+				.enum(['skill_md', 'reference'])
+				.describe('`skill_md` is the SKILL.md file. `reference` is a file under `references/`'),
+			...skillOrigin,
+		}),
+	},
+	USER_CHANGED_SKILL_SOURCE_SCOPE: {
+		name: 'User changed skill source scope',
+		description:
+			'A source scope move committed or failed. Read-only previews do not emit this event.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			from_scope_type: skillSourceScopeType,
+			to_scope_type: skillSourceScopeType,
+			skill_count: z.number(),
+			status: skillSourceStatus,
+			reason: z.enum([...SKILL_SOURCE_REASONS, 'agent_in_use', 'unexpected']).optional(),
+		}),
+	},
+
+	USER_CONNECTED_SKILL_SOURCE: {
+		name: 'User connected skill source',
+		description:
+			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
+		properties: z.object({
+			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
+			provider: skillSourceProvider,
+			access: skillSourceAccess,
+			scope_type: skillSourceScopeType,
+			duplicate_result: z
+				.enum(['none', 'warning', 'blocked'])
+				.describe(
+					'Whether the same source is in another scope the user can see (`warning`), or in Global or this scope (`blocked`)',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_IMPORTED_SKILLS_FROM_SOURCE: {
+		name: 'User imported skills from source',
+		description:
+			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content. Rows before CONTEXT-481 counted every file outside `references/*.md` in `skipped_files` and `skipped_script_files`. Later rows count only a file with a path that n8n cannot store, a file over the size limit of one file, and a file over the limits of one skill, so both numbers fall to almost 0. Do not compare them across that change.',
+		properties: z.object({
+			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
+			provider: skillSourceProvider,
+			access: skillSourceAccess,
+			scope_type: skillSourceScopeType,
+			first_or_more: z
+				.enum(['first', 'more'])
+				.describe('`first` is the import of a new connect. `more` adds skills to a source'),
+			selected: z.number().describe('Skills the user picked'),
+			imported: z.number().describe('Skills that came in'),
+			name_taken: z
+				.number()
+				.describe('Picked skills that did not come in, as the scope had the name'),
+			blocked: z
+				.number()
+				.describe('Picked skills that did not come in, as the security check blocked them'),
+			needs_review: z
+				.number()
+				.describe(
+					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
+				),
+			skipped_files: z
+				.number()
+				.describe(
+					'Files of the imported skills that the import left out. See the event description for the change of meaning with CONTEXT-481',
+				),
+			skipped_file_extensions: z
+				.record(z.string(), z.number())
+				.describe(
+					'The `skipped_files` by lowercase extension, such as `{ ".py": 3, ".png": 2 }`. `none` counts files with no extension. `other` counts extensions outside a fixed list of known file types, and the extensions after the 20 most common',
+				),
+			skipped_script_files: z
+				.number()
+				.describe(
+					'The `skipped_files` that are scripts or code, such as `.py`, `.sh`, `.js` or `.ts`. The security check flags these for review',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
+		name: 'Skill source check flagged skill',
+		description:
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. A check that finds a new skill in a connected source fires it once for each new content of that skill. Counts rule codes only, never names, files or content. Rows before CONTEXT-481 reported a script as `file_skipped`, because the import left it out. Later rows report a kept script as `script_file`, and at `update` only when the script is new or changed. `binary_file` and `file_over_skill_limit` start with that change.',
+		properties: z.object({
+			user_id: z
+				.string()
+				.optional()
+				.describe(
+					'The user who read the link or clicked Check for updates. Absent for a check that runs in the background',
+				),
+			provider: skillSourceProvider,
+			stage: z
+				.enum(['import', 'update'])
+				.describe(
+					'`import` is the picker of a connect, or a new skill that a check found in a connected source. `update` is a new version from the source',
+				),
+			verdict: z
+				.enum(['needs_review', 'blocked'])
+				.describe(
+					'`needs_review` imports only after the user ticks "I reviewed the warnings". `blocked` cannot come in',
+				),
+			rule_codes: z
+				.array(z.enum(SKILL_SCAN_RULES))
+				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+			link_reason_codes: z
+				.array(z.enum(SKILL_LINK_REVIEW_REASONS))
+				.optional()
+				.describe(
+					'Why each `risky_url` finding needs review, each reason one time. Absent when no link needs review',
+				),
+		}),
+	},
+	SKILL_SOURCE_UPDATE_FOUND: {
+		name: 'Skill source update found',
+		description:
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog. With CONTEXT-481 the import keeps the files outside `references/*.md`. A skill that was synced before that change, and that has such files in its source, counts one update at its first check after the upgrade, although the source did not change.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			trigger: z
+				.enum(['background', 'manual'])
+				.describe(
+					'`background` is the check that runs on its own, every hour by default. `manual` is Check now',
+				),
+			skills_with_updates: z.number().describe('Synced skills with a new update in this check'),
+			pass: z.number().describe('New updates that the security check passed'),
+			needs_review: z.number().describe('New updates that the security check flagged for review'),
+			blocked: z.number().describe('New updates that the security check blocked'),
+		}),
+	},
+	USER_CHECKED_SKILL_SOURCE_NOW: {
+		name: 'User checked skill source now',
+		description:
+			'A user clicked Check for updates on a synced skill, which checks its whole source. Fires once per click, also when the check fails, with the reason code, and when n8n did not check again because the source was checked less than a minute ago.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			updates_found: z
+				.number()
+				.describe('Skills of the source with an update that waits for review, after the check'),
+			new_skills_found: z
+				.number()
+				.optional()
+				.describe('New skills that are not hidden from the count, after the check'),
+			throttled: z
+				.boolean()
+				.describe(
+					'True when the source was checked less than a minute ago, so n8n did not check it again',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			kind: z
+				.enum(['update', 'new'])
+				.describe('An update to a synced skill, or a new skill hidden from the count'),
+			action: z.enum(['accept', 'skip']),
+			verdict: z.enum(['pass', 'needs_review', 'blocked']),
+			bulk: z.boolean().describe('Whether the request selected more than one skill'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_DELETED_SKILL_SOURCE: {
+		name: 'User deleted skill source',
+		description:
+			'A user removed a source. The user deleted its synced skills, or kept them as normal skills that n8n can edit (`skills_kept`). Fires after the transaction commits or fails. An agent draft or published pin blocks a delete of the skills with reason skills_in_use. A request for a skill list that changed in the meantime fails with reason stale. Contains no skill, source, agent, or project names.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			skills_kept: z
+				.boolean()
+				.describe(
+					'True when the user chose Stop syncing in the dialog, so the skills stay. This choice does not fire `User stopped skill sync`',
+				),
+			status: skillSourceStatus,
+			reason: z.enum(['skills_in_use', 'stale', 'unexpected']).optional(),
+		}),
+	},
+	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
+		name: 'User updated skill source credential',
+		description:
+			'A user replaced the credential of a skill source. Fires after validation and the write succeed or fail. Contains no credential names, identifiers, or secrets.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_HEALTH_CHANGED: {
+		name: 'Skill source health changed',
+		description:
+			'A source check or credential replacement changed the health of a skill source. Repeated results do not report. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			previous_health: skillSourceHealth,
+			health: skillSourceHealth,
+		}),
+	},
+	USER_STOPPED_SKILL_SYNC: {
+		name: 'User stopped skill sync',
+		description:
+			'A user stopped syncing one synced skill. The skill keeps its versions and becomes a normal skill that n8n can edit. Fires once the link is removed.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			had_pending_update: z
+				.boolean()
+				.describe('Whether an update from the source waited for review. Stop syncing drops it'),
+		}),
+	},
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits, also when the user removes the source with its last skill. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

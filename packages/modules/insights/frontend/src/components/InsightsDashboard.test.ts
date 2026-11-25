@@ -18,20 +18,25 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within, screen, waitFor } from '@testing-library/vue';
 import { vi } from 'vitest';
-import { defineComponent, h, reactive } from 'vue';
+import { cloneVNode, defineComponent, h, reactive, type Slots } from 'vue';
 
 import InsightsDashboard from './InsightsDashboard.vue';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { useInsightsStore } from '../insights.store';
 import type { InsightsSummaryDisplay } from '../insights.types';
 
-// Called in a hook, not at module scope: the design-system mock below is hoisted above the
+// Load lazy children before test timers start. Their Vite transforms can exceed assertion timeouts.
+import './charts/InsightsChartTotal.vue';
+import './charts/InsightsChartFailed.vue';
+import './charts/InsightsChartFailureRate.vue';
+import './charts/InsightsChartTimeSaved.vue';
+import './charts/InsightsChartAverageRuntime.vue';
+import './tables/InsightsTableWorkflows.vue';
+import './InsightsPaywall.vue';
+
+// Initialize in a hook: the design-system mock below is hoisted above the
 // imports, and `@n8n/frontend-test-utils` reaches design-system through its renderer.
 let emitterHandles: ReturnType<typeof useEmitters<'n8nDataTableServer'>>;
-
-beforeAll(() => {
-	emitterHandles = useEmitters<'n8nDataTableServer'>();
-});
 
 const mockRoute = reactive<{
 	params: {
@@ -59,6 +64,27 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
 		...original,
+		// Keep the Insights preset logic and slots. Calendar layout and popover timers have separate tests.
+		N8nDateRangePicker: {
+			props: ['open', 'modelValue', 'maxValue', 'minValue'],
+			emits: ['update:open', 'update:modelValue'],
+			setup(
+				props: { open: boolean },
+				{ emit, slots }: { emit: (event: 'update:open', value: boolean) => void; slots: Slots },
+			) {
+				return () =>
+					h('div', [
+						slots
+							.trigger?.()
+							.map((trigger) =>
+								cloneVNode(trigger, { onClick: () => emit('update:open', !props.open) }),
+							),
+						props.open
+							? h('div', { 'data-test-id': 'date-range-presets' }, slots.presets?.())
+							: null,
+					]);
+			},
+		},
 		// A plain options object, not `defineComponent`. This factory is hoisted above the
 		// imports and runs while `@n8n/frontend-test-utils` is still initialising — it reaches
 		// design-system through its renderer — so calling anything imported from `vue` here
@@ -291,13 +317,7 @@ const openDatePicker = async (getByRole: (role: string, options?: object) => HTM
 	expect(trigger).toBeInTheDocument();
 	await userEvent.click(trigger);
 
-	const controllingId = trigger.getAttribute('aria-controls');
-	expect(controllingId).toBeDefined();
-
-	const picker = document.getElementById(controllingId as string);
-	expect(picker).toBeInTheDocument();
-
-	return picker as HTMLElement;
+	return screen.getByTestId('date-range-presets');
 };
 
 const selectProject = async (projectName: string) => {
@@ -347,6 +367,7 @@ describe('InsightsDashboard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.setSystemTime(date);
+		emitterHandles = useEmitters<'n8nDataTableServer'>();
 
 		mockRoute.params.insightType = INSIGHT_TYPES.TOTAL;
 
@@ -587,7 +608,7 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			await waitAllPromises();
+			await vi.dynamicImportSettled();
 
 			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
 				page: 1,
@@ -610,14 +631,12 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			await waitAllPromises();
+			await vi.dynamicImportSettled();
 
-			await waitFor(() => {
-				emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
-					page: 0,
-					itemsPerPage: 25,
-					sortBy: [{ id: 'failed', desc: false }],
-				});
+			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
+				page: 0,
+				itemsPerPage: 25,
+				sortBy: [{ id: 'failed', desc: false }],
 			});
 
 			expectStoreExecutions({
@@ -634,14 +653,12 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			await waitAllPromises();
+			await vi.dynamicImportSettled();
 
-			await waitFor(() => {
-				emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
-					page: 0,
-					itemsPerPage: 25,
-					sortBy: [],
-				});
+			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
+				page: 0,
+				itemsPerPage: 25,
+				sortBy: [],
 			});
 
 			expectStoreExecutions({
@@ -756,7 +773,7 @@ describe('InsightsDashboard', () => {
 			});
 
 			await selectProject(teamProjects[0].name);
-			await waitAllPromises();
+			await vi.dynamicImportSettled();
 			vi.clearAllMocks();
 
 			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {

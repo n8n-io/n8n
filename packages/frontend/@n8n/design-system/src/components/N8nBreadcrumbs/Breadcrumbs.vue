@@ -271,7 +271,7 @@ const handleTooltipClose = () => {
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<N8nLink v-if="item.href" :to="item.href" theme="text">
+					<N8nLink v-if="item.href" :to="item.href" :underline="false" theme="text">
 						<span v-if="item.icon" :class="$style.itemContent">
 							<N8nIcon
 								v-if="item.icon.type === 'icon'"
@@ -428,6 +428,21 @@ const handleTooltipClose = () => {
 
 	:global(.el-skeleton__item) {
 		margin: 0;
+	}
+
+	// The tooltip is always dark, so the default light skeleton looks like a white block.
+	// Size the placeholder like one line of text and tint it for the dark background.
+	:global(.el-skeleton__item),
+	:global(.el-skeleton.is-animated .el-skeleton__item) {
+		height: var(--font-size--xs);
+		border-radius: var(--radius--4xs);
+		background: linear-gradient(
+			90deg,
+			var(--color--white-alpha-100) 25%,
+			var(--color--white-alpha-250) 37%,
+			var(--color--white-alpha-100) 63%
+		);
+		background-size: 400% 100%;
 	}
 }
 

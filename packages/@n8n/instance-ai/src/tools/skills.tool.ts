@@ -1,12 +1,18 @@
 import {
 	agentSkillShape,
+	connectPublicSkillSourceSchema,
+	discoverPublicSkillSourceSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	projectSkillDetailsForModel,
+	skillReferenceReadError,
 	SKILLS_MAX_PAGE_SIZE,
+	skillReferenceReadShape,
 	skillScopeSchema,
 	type InstanceAiPermissionMode,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
@@ -34,17 +40,19 @@ interface ConfirmationToolContext {
 
 const skillIdField = z.string().describe('The skill ID from the list action');
 
-const projectIdField = z
-	.string()
+const projectIdDescription =
+	'A project ID. For list, filters by project. For other actions, required when scope is project and absent otherwise';
+const projectIdField = z.string().optional().describe(projectIdDescription);
+const scopeDescription =
+	'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope';
+
+const scopeField = skillScopeSchema.describe(scopeDescription);
+
+const availableToAssistantField = z
+	.boolean()
 	.optional()
 	.describe(
-		'A project ID. list: only skills of this project. create and update: required when scope is project, absent otherwise',
-	);
-
-const scopeField = z
-	.enum(['project', 'instance'])
-	.describe(
-		'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope',
+		'Allow the n8n Assistant to use the skill. On update, changing only this setting keeps the content version',
 	);
 
 const skillContentShape = {
@@ -57,7 +65,7 @@ const skillContentShape = {
 };
 
 const listAction = z.object({
-	action: z.literal('list').describe('Search the skills hub'),
+	action: z.literal('list').describe('Search skills'),
 	query: z.string().max(200).optional().describe('Filter by skill name or description'),
 	filterByScope: skillScopeSchema.optional().describe('Only skills of this scope'),
 	projectId: projectIdField,
@@ -75,18 +83,18 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Read a skill with its instructions, references, skillHash and the agents that use it',
+			'Read a skill with its instructions, reference paths, bounded text content, skillHash and the agents that use it. Read omitted paths separately with referencePath.',
 		),
 	skillId: skillIdField,
+	...skillReferenceReadShape,
 });
 
 const createAction = z.object({
-	action: z
-		.literal('create')
-		.describe('Create a skill in the skills hub. It is not attached to any agent'),
+	action: z.literal('create').describe('Create a skill. It is not attached to any agent'),
 	scope: scopeField,
 	projectId: projectIdField,
 	skill: z.object(skillContentShape).strict(),
+	availableToAssistant: availableToAssistantField,
 });
 
 const updateAction = z.object({
@@ -100,9 +108,12 @@ const updateAction = z.object({
 	name: skillContentShape.name.optional(),
 	description: skillContentShape.description.optional(),
 	instructions: skillContentShape.instructions.optional(),
-	references: skillContentShape.references,
+	references: skillContentShape.references.describe(
+		'Replace the text files. Read all parts of the files you want to keep before replacing them. Binary files you do not name stay in the skill.',
+	),
 	scope: scopeField.optional(),
 	projectId: projectIdField,
+	availableToAssistant: availableToAssistantField,
 });
 
 const deleteAction = z.object({
@@ -114,13 +125,28 @@ const deleteAction = z.object({
 
 const allActions = [listAction, getAction, createAction, updateAction, deleteAction] as const;
 
-type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
+const sourceTargetFields = {
+	projectId: discoverPublicSkillSourceSchema.shape.projectId.describe(projectIdDescription),
+	scope: scopeField,
+};
+const listSourcesAction = z.object({ action: z.literal('list-sources') });
+const discoverSourceAction = discoverPublicSkillSourceSchema.extend({
+	...sourceTargetFields,
+	action: z.literal('discover-source'),
+});
+const importSourceAction = connectPublicSkillSourceSchema.extend({
+	...sourceTargetFields,
+	action: z.literal('import-from-source'),
+});
+const sourceActions = [listSourcesAction, discoverSourceAction, importSourceAction] as const;
+
+type FullInput = z.infer<(typeof allActions)[number] | (typeof sourceActions)[number]>;
 
 type WriteAction = 'create' | 'update' | 'delete';
 
 function requireSkillService(context: InstanceAiContext): InstanceAiSkillService {
 	const { skillService } = context;
-	if (!skillService) throw new Error('The skills hub is not available on this instance.');
+	if (!skillService) throw new Error('Skills are not available on this instance.');
 	return skillService;
 }
 
@@ -135,7 +161,7 @@ function sessionGrantKey(action: WriteAction): string {
 	return `${DOMAIN_TOOL_IDS.SKILLS}:${action}`;
 }
 
-function summary(item: SkillListItem) {
+function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 	return {
 		id: item.id,
 		name: item.name,
@@ -143,21 +169,27 @@ function summary(item: SkillListItem) {
 		scope: item.scope,
 		projectId: item.projectId,
 		projectName: item.projectName,
-		agentId: item.agentId,
-		agentName: item.agentName,
+		...(assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
 		canEdit: item.canEdit,
 		canDelete: item.canDelete,
+		sourceId: item.sourceId,
+		syncState: item.syncState,
 	};
 }
 
-function details(detail: SkillDetail) {
+function details(
+	detail: SkillDetail,
+	assistantSkillsEnabled: boolean,
+	reference?: SkillReferenceRead,
+) {
 	return {
-		...summary(detail),
-		skill: detail.skill,
+		...summary(detail, assistantSkillsEnabled),
+		...projectSkillDetailsForModel(detail.skill, reference),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
+		syncedFrom: detail.syncedFrom,
 	};
 }
 
@@ -206,6 +238,19 @@ function scopeRefusal(scope: 'project' | 'instance' | undefined, projectId: stri
 	return reason ? { success: false, refused: true, reason } : undefined;
 }
 
+function changesContent(input: Extract<FullInput, { action: 'update' }>): boolean {
+	return [input.name, input.description, input.instructions, input.references].some(
+		(field) => field !== undefined,
+	);
+}
+
+function availabilityMessage(availableToAssistant: boolean | undefined): string {
+	if (availableToAssistant === undefined) return '';
+	return availableToAssistant
+		? ' Allow the n8n Assistant to use it.'
+		: ' Stop the n8n Assistant from using it.';
+}
+
 async function audience(
 	context: InstanceAiContext,
 	scope: 'project' | 'instance',
@@ -214,6 +259,11 @@ async function audience(
 	if (scope === 'instance' || !projectId) return 'for every project on this instance';
 	const project = await context.workspaceService?.getProject?.(projectId);
 	return `in the project "${project?.name ?? projectId}"`;
+}
+
+/** Tell the host that the assistant created or changed a skill, so it shows the skill's tab. */
+async function reportChangedSkill(context: InstanceAiContext, skill: { id: string; name: string }) {
+	await context.onArtifactChanged?.({ type: 'skill', id: skill.id, name: skill.name });
 }
 
 function movesSkill(
@@ -238,11 +288,15 @@ async function handleCreate(
 		'create',
 		async () => ({
 			requestId: nanoid(),
-			message: `Create the skill ${await audience(context, input.scope, input.projectId)}`,
+			message: `Create the skill ${await audience(context, input.scope, input.projectId)}${input.availableToAssistant ? ', and allow the n8n Assistant to use it' : ''}`,
 			resourceName: input.skill.name,
 			severity: 'info',
 		}),
-		async () => ({ skill: details(await service.create(input)) }),
+		async () => {
+			const created = details(await service.create(input), service.assistantSkillsEnabled);
+			await reportChangedSkill(context, created);
+			return { skill: created };
+		},
 	);
 }
 
@@ -275,14 +329,16 @@ async function handleUpdate(
 					: '';
 			return {
 				requestId: nanoid(),
-				message: `Save a new version of the skill.${move} ${usedByMessage(current)}`,
+				message: `${changesContent(input) ? 'Save a new version of the skill.' : 'Update the skill.'}${move}${availabilityMessage(input.availableToAssistant)} ${usedByMessage(current)}`,
 				resourceName: current.name,
 				severity: 'warning',
 			};
 		},
 		async () => {
-			const { skill: _skill, ...saved } = await service.update(skillId, update);
-			return { saved };
+			const { skill, ...saved } = await service.update(skillId, update);
+			await reportChangedSkill(context, { id: saved.id, name: skill.name });
+			// The name lets the assistant show the skill tab without a second read.
+			return { saved: { ...saved, name: skill.name } };
 		},
 	);
 }
@@ -326,13 +382,69 @@ async function handleDelete(
 	);
 }
 
+async function handleImportFromSource(
+	context: InstanceAiContext,
+	sources: NonNullable<InstanceAiSkillService['sources']>,
+	{ action: _action, ...input }: z.infer<typeof importSourceAction>,
+	ctx: ConfirmationToolContext,
+) {
+	if (permissionFor(context, 'create') === 'blocked') return BLOCKED_RESULT;
+	const refusal = scopeRefusal(input.scope, input.projectId);
+	if (refusal) return refusal;
+	if (!ctx.resumeData) {
+		// The service applies the import rules, so the card names what the import takes.
+		const { source, importable, failed } = await sources.checkImport(input);
+		const target = await audience(context, input.scope, input.projectId);
+		const { label, ref, path } = source;
+		const names = importable.map(({ name }) => name).join(', ');
+		const selection =
+			importable.length === 1 ? '1 synced skill' : `${importable.length} synced skills`;
+		const leftOut =
+			failed.length === 0
+				? ''
+				: failed.length === 1
+					? ' 1 selected skill cannot come in.'
+					: ` ${failed.length} selected skills cannot come in.`;
+		return await ctx.suspend({
+			requestId: nanoid(),
+			resourceName: `${label}${ref ? ` · ${ref}` : ''}${path ? ` · ${path}` : ''}`,
+			message: `Connect this source and import ${selection} ${target}: ${names}.${leftOut}`,
+			severity: 'warning',
+		});
+	}
+	if (!ctx.resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+	const result = await sources.connect(input);
+	for (const { skillId, name } of result.imported) {
+		await reportChangedSkill(context, { id: skillId, name });
+	}
+	return { success: true, ...result };
+}
+
 export function createSkillsTool(context: InstanceAiContext) {
-	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
+	const actions =
+		context.skillService?.assistantSkillsEnabled === true
+			? allActions
+			: ([
+					listAction,
+					getAction,
+					createAction.omit({ availableToAssistant: true }),
+					updateAction.omit({ availableToAssistant: true }),
+					deleteAction,
+				] as const);
+	const sources = context.skillService?.sources;
+	const inputSchema = sanitizeInputSchema(
+		z.discriminatedUnion('action', sources ? [...actions, ...sourceActions] : [...actions]),
+	);
 
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
-			'Manage skills in the skills hub: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.',
+			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
+				'This tool does not attach a skill to an agent.' +
+				(sources
+					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
+					: ''),
 		)
 		.input(inputSchema)
 		.untrustedOutput()
@@ -350,17 +462,35 @@ export function createSkillsTool(context: InstanceAiContext) {
 						limit: input.limit ?? DEFAULT_LIST_LIMIT,
 						skip: input.skip ?? 0,
 					});
-					return { count, skills: data.map(summary) };
+					return {
+						count,
+						skills: data.map((item) => summary(item, service.assistantSkillsEnabled)),
+					};
 				}
-				case 'get':
-					return details(await service.get(input.skillId));
+				case 'get': {
+					const reason = skillReferenceReadError(input);
+					if (reason) return { success: false, refused: true, reason };
+					return details(await service.get(input.skillId), service.assistantSkillsEnabled, input);
+				}
 				case 'create':
 					return await handleCreate(context, service, input, ctx);
 				case 'update':
 					return await handleUpdate(context, service, input, ctx);
 				case 'delete':
 					return await handleDelete(context, service, input, ctx);
+				case 'list-sources':
+					if (sources) return { sources: await sources.list() };
+					break;
+				case 'discover-source': {
+					const { action: _action, ...target } = input;
+					if (sources) return await sources.discover(target);
+					break;
+				}
+				case 'import-from-source':
+					if (sources) return await handleImportFromSource(context, sources, input, ctx);
+					break;
 			}
+			throw new Error('Skill Sync is not available.');
 		})
 		.build();
 }

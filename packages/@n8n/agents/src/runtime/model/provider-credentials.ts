@@ -9,7 +9,7 @@ const apiKeyCreds = z.object({
 
 /**
  * Per-provider Zod schemas for credential validation.
- * Keys are the provider prefixes used in model IDs (e.g. 'anthropic' in 'anthropic/claude-sonnet-4-5').
+ * Keys are the provider prefixes used in model IDs (e.g. 'anthropic' in 'anthropic/claude-sonnet-5-5').
  */
 export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	openai: apiKeyCreds.extend({
@@ -150,7 +150,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			}
 		}),
 	'aws-bedrock': z.object({
-		region: z.string().min(1, 'AWS region is required'),
+		region: z
+			.string()
+			.min(1, 'AWS region is required')
+			.regex(/^[a-z]{2}(-[a-z]+)+-\d+$/, 'Use an AWS region such as us-east-1'),
 		accessKeyId: z.string().min(1, 'AWS accessKeyId is required'),
 		secretAccessKey: z.string().min(1, 'AWS secretAccessKey is required'),
 		sessionToken: z.string().optional(),

@@ -4,6 +4,8 @@
  * scope-parity / discover run.
  */
 import './audit.public.controller';
+import './agents.public.controller';
+import './ai-preferences.public.controller';
 import './community-packages.public.controller';
 import './credential-type-policies.public.controller';
 import './credentials.public.controller';
@@ -20,6 +22,7 @@ import './node-type-policies.public.controller';
 import './otel.public.controller';
 import './projects.public.controller';
 import './promotions.public.controller';
+import './rate-limits.public.controller';
 import './role-mapping-rules.public.controller';
 import './roles.public.controller';
 import './security-policy.public.controller';

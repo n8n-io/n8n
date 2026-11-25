@@ -31,6 +31,19 @@ function policedWorkflowForAgent(
 export class AgentPolicyService {
 	constructor(private readonly policyEnforcementService: PolicyEnforcementService) {}
 
+	async evaluateSave(
+		projectId: string,
+		agentId: string | null,
+		content: PolicedAgentContent,
+		stored: PolicedAgentContent | null,
+	) {
+		return await this.policyEnforcementService.evaluateWorkflowSave({
+			workflow: policedWorkflowForAgent(agentId, content),
+			storedWorkflow: stored === null ? null : policedWorkflowForAgent(agentId, stored),
+			projectId,
+		});
+	}
+
 	/** `stored` is the draft this write replaces, loaded by the caller; `null` for a create. */
 	async enforceSave(
 		projectId: string,

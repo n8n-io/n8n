@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { UrlService } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -9,11 +10,12 @@ import { AgentIntegrationsController } from '../agent-integrations.controller';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import type { ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { AgentIntegrationAccountService } from '../integrations/agent-integration-account.service';
 import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import { LockedError } from '@n8n/errors';
 import {
 	expectProjectScopedAgentRoutes,
@@ -30,7 +32,9 @@ function makeController({
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	instanceSettings = mock<InstanceSettings>(),
-	collaborationService = mock<CollaborationService>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
+	urlService = mock<UrlService>(),
+	accountService = mock<AgentIntegrationAccountService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -39,7 +43,9 @@ function makeController({
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	instanceSettings?: Mocked<InstanceSettings>;
-	collaborationService?: Mocked<CollaborationService>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
+	urlService?: Mocked<UrlService>;
+	accountService?: Mocked<AgentIntegrationAccountService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -53,14 +59,17 @@ function makeController({
 			channelStatusRepository,
 			statusReporter,
 			instanceSettings,
-			collaborationService,
+			agentWriteLockService,
+			urlService,
+			accountService,
 		),
+		accountService,
 		managementService,
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
-		collaborationService,
+		agentWriteLockService,
 	};
 }
 
@@ -73,6 +82,7 @@ describe('AgentIntegrationsController route access scopes', () => {
 		['connectIntegration', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
+		['webhookUrl', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -250,7 +260,7 @@ describe('AgentIntegrationsController integration management', () => {
 	});
 
 	it('validates the write lock before connecting an integration', async () => {
-		const { controller, collaborationService, agentRepository, managementService } =
+		const { controller, agentWriteLockService, agentRepository, managementService } =
 			makeController();
 		const integration = {
 			type: 'slack',
@@ -271,7 +281,7 @@ describe('AgentIntegrationsController integration management', () => {
 			integration as never,
 		);
 
-		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+		expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 			'user-1',
 			'push-ref-1',
 			agent.projectId,
@@ -281,13 +291,13 @@ describe('AgentIntegrationsController integration management', () => {
 	});
 
 	it('propagates a LockedError from validateAgentWriteLock on connect', async () => {
-		const { controller, collaborationService, agentRepository } = makeController();
+		const { controller, agentWriteLockService, agentRepository } = makeController();
 		const integration = {
 			type: 'slack',
 			credentialId: 'credential-1',
 		} satisfies AgentIntegrationConfig;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		collaborationService.validateAgentWriteLock.mockRejectedValue(
+		agentWriteLockService.validateAgentWriteLock.mockRejectedValue(
 			new LockedError(
 				'Cannot connect integration for agent - another user currently has write access',
 			),
@@ -612,7 +622,7 @@ describe('AgentIntegrationsController channel status', () => {
 	it('reports a channel with a live row as connected and one without as starting', async () => {
 		const { response, channelStatusRepository } = await statusOf(publishedAgent, [liveRow(slack)]);
 
-		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id);
+		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id, {});
 		expect(response.integrations).toEqual([
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
@@ -698,5 +708,93 @@ describe('AgentIntegrationsController channel status', () => {
 				'agent-1',
 			),
 		).rejects.toThrow('Agent "agent-1" not found');
+	});
+});
+
+describe('AgentIntegrationsController integration account', () => {
+	const request = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+	it('looks up the agent in the project and describes its credential for the type', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			mock<ProjectAgent>({
+				integrations: [
+					{ type: 'slack', credentialId: '' },
+					{ type: 'discord', credentialId: 'cred-discord' },
+					{ type: 'slack', credentialId: 'cred-slack' },
+				] as AgentIntegrationConfig[],
+			}),
+		);
+		const accountService = mock<AgentIntegrationAccountService>();
+		accountService.describe.mockResolvedValue({ botName: 'bot', workspaceNames: ['Acme'] });
+		const { controller } = makeController({ agentRepository, accountService });
+
+		await expect(
+			controller.integrationAccount(request, mock(), 'agent-1', 'slack'),
+		).resolves.toEqual({ botName: 'bot', workspaceNames: ['Acme'] });
+		expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith('agent-1', 'project-1');
+		expect(accountService.describe).toHaveBeenCalledWith({
+			user: { id: 'user-1' },
+			projectId: 'project-1',
+			type: 'slack',
+			credentialId: 'cred-slack',
+		});
+	});
+
+	it('returns an empty account when the agent has no credential for the type', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			mock<ProjectAgent>({
+				integrations: [
+					{ type: 'discord', credentialId: 'cred-discord' },
+				] as AgentIntegrationConfig[],
+			}),
+		);
+		const accountService = mock<AgentIntegrationAccountService>();
+		const { controller } = makeController({ agentRepository, accountService });
+
+		await expect(
+			controller.integrationAccount(request, mock(), 'agent-1', 'slack'),
+		).resolves.toEqual({});
+		expect(accountService.describe).not.toHaveBeenCalled();
+	});
+
+	it('throws when the agent is not in the project', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const accountService = mock<AgentIntegrationAccountService>();
+		const { controller } = makeController({ agentRepository, accountService });
+
+		await expect(
+			controller.integrationAccount(request, mock(), 'agent-1', 'slack'),
+		).rejects.toThrow('Agent "agent-1" not found');
+		expect(accountService.describe).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentIntegrationsController webhook channel URL', () => {
+	it('returns the channel URL of the agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>());
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
+
+		await expect(
+			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
+		expect(urlService.getAgentWebhookUrl).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('returns the URL of an agent that is not saved yet', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
+
+		await expect(
+			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
 	});
 });

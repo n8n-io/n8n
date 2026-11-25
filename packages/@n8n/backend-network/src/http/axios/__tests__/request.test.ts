@@ -510,7 +510,7 @@ describe('httpRequest', () => {
 	});
 
 	describe('redirects', () => {
-		test.each([[undefined], [true]])(
+		test.each([[true]])(
 			'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
 			async (sendCredentialsOnCrossOriginRedirect) => {
 				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
@@ -537,29 +537,91 @@ describe('httpRequest', () => {
 			},
 		);
 
-		test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
-			nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
-			nock('https://otherdomain.com')
-				.get('/test')
-				.reply(200, function () {
-					return this.req.headers;
-				});
+		test.each([[undefined], [false]])(
+			'should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
+				nock('https://otherdomain.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
 
-			const response = (await httpRequest({
-				url: `${baseUrl}/redirect`,
-				auth: {
-					username: 'testuser',
-					password: 'testpassword',
-				},
-				headers: {
-					'X-Other-Header': 'otherHeaderContent',
-				},
-				sendCredentialsOnCrossOriginRedirect: false,
-			})) as { authorization: undefined; 'x-other-header': string };
+				const response = (await httpRequest({
+					url: `${baseUrl}/redirect`,
+					auth: {
+						username: 'testuser',
+						password: 'testpassword',
+					},
+					headers: {
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { authorization: undefined; 'x-other-header': string };
 
-			expect(response.authorization).toBeUndefined();
-			expect(response['x-other-header']).toBe('otherHeaderContent');
-		});
+				expect(response.authorization).toBeUndefined();
+				expect(response['x-other-header']).toBe('otherHeaderContent');
+			},
+		);
+
+		test.each([
+			['https://example.com', 'http://example.com', undefined],
+			['http://example.com', 'https://example.com:8443', undefined],
+			['https://example.com', 'https://sub.example.com', undefined],
+			['https://example.com', 'https://sub.example.com', false],
+		])(
+			'should not forward credential headers on a redirect from %s to %s when sendCredentialsOnCrossOriginRedirect is %s',
+			async (fromOrigin, toOrigin, sendCredentialsOnCrossOriginRedirect) => {
+				nock(fromOrigin)
+					.get('/redirect')
+					.reply(301, '', { Location: `${toOrigin}/test` });
+				nock(toOrigin)
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
+
+				const response = (await httpRequest({
+					url: `${fromOrigin}/redirect`,
+					headers: {
+						authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					sendCredentialsOnCrossOriginRedirect,
+				})) as Record<string, string | undefined>;
+
+				expect(response.authorization).toBeUndefined();
+				expect(response.cookie).toBeUndefined();
+				expect(response['x-other-header']).toBe('otherHeaderContent');
+			},
+		);
+
+		test.each([[undefined], [false]])(
+			'should forward credential headers on a redirect from http to https on the same host when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				nock('http://example.com')
+					.get('/redirect')
+					.reply(301, '', { Location: 'https://example.com/test' });
+				nock('https://example.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
+
+				const response = (await httpRequest({
+					url: 'http://example.com/redirect',
+					headers: {
+						authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+					},
+					sendCredentialsOnCrossOriginRedirect,
+				})) as Record<string, string | undefined>;
+
+				expect(response.authorization).toBe('Bearer secret');
+				expect(response.cookie).toBe('session=secret');
+			},
+		);
 
 		test.each([[undefined], [true], [false]])(
 			'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',

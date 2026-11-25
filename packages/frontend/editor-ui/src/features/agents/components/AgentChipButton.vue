@@ -18,6 +18,8 @@ const props = withDefaults(
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
 		invalidReasons?: string[];
+		/** Replaces the warning triangle on an `invalid` chip, drawn in the error colour. */
+		invalidIcon?: IconName;
 		/** Marks the chip as usable in preview but blocking publish (e.g. an unpublished workflow). */
 		warning?: boolean;
 		/** Human-readable reasons behind `warning`; ignored while `invalid` is set. */
@@ -33,6 +35,7 @@ const props = withDefaults(
 		active: false,
 		invalid: false,
 		invalidReasons: () => [],
+		invalidIcon: undefined,
 		warning: false,
 		warningReasons: () => [],
 		restriction: null,
@@ -114,9 +117,15 @@ const emit = defineEmits<{
 		</N8nTooltip>
 		<N8nTooltip v-if="showAlertIcon" :disabled="reasons.length === 0" placement="top">
 			<N8nIcon
-				icon="triangle-alert"
+				:icon="props.invalid && props.invalidIcon ? props.invalidIcon : 'triangle-alert'"
 				:size="14"
-				:class="[$style.alertIcon, { [$style.warningIcon]: !props.invalid }]"
+				:class="[
+					$style.alertIcon,
+					{
+						[$style.warningIcon]: !props.invalid,
+						[$style.errorIcon]: props.invalid && props.invalidIcon,
+					},
+				]"
 				:data-testid="props.invalid ? 'agent-chip-invalid-icon' : 'agent-chip-warning-icon'"
 			/>
 			<template #content>
@@ -193,6 +202,10 @@ const emit = defineEmits<{
 
 .warningIcon {
 	color: var(--color--warning);
+}
+
+.errorIcon {
+	color: var(--color--danger);
 }
 
 .nonClickable {

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 
 import {
@@ -21,9 +22,15 @@ import { TarPackageReader } from '../../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { PackageImportConfig } from '../../n8n-packages.config';
 import type { SerializedAgent } from '../../spec/serialized/agent.schema';
+import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import { N8nPackageParser } from '../n8n-package-parser';
 
-const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
+const parser = new N8nPackageParser(
+	mock<Logger>(),
+	mock<NodeTypes>(),
+	mock<WorkflowSerializer>(),
+	mock<CredentialTypes>(),
+);
 const limits = new PackageImportConfig();
 const agentTarget = 'agents/support';
 const agentPath = `${agentTarget}/agent.json`;
@@ -68,6 +75,18 @@ describe('N8nPackageParser.getAgents', () => {
 		];
 	}
 
+	it('does not read folder files for loose Agents', async () => {
+		fixture.manifest.folders = [
+			{ id: 'unrelated', name: 'Unrelated', target: 'folders/unrelated' },
+		];
+		const reader = memoryReader(fixture);
+		const readFile = vi.spyOn(reader, 'readFile');
+
+		await parser.getAgents(reader);
+
+		expect(readFile.mock.calls.some(([file]) => file.endsWith('/folder.json'))).toBe(false);
+	});
+
 	it.each([
 		{ name: 'loose Agents', fixture: looseAgentsFixture, prefix: '' },
 		{ name: 'whole project', fixture: projectAgentsFixture, prefix: 'projects/operations/' },
@@ -88,7 +107,7 @@ describe('N8nPackageParser.getAgents', () => {
 			const expected = input.files[`${target}/agent.json`] as SerializedAgent;
 			expect(parsed.config).toMatchObject({
 				model: '',
-				skills: [{ id: 'shared-skill' }],
+				skills: [{ id: `${expected.id}_skill` }],
 				tools: [{ id: 'shared_tool', enabled: false, requireApproval: true }],
 				tasks: [{ id: `${parsed.sourceAgentId}_task`, enabled: false }],
 				mcpServers: [{ name: 'Reference', url: '' }],
@@ -97,7 +116,6 @@ describe('N8nPackageParser.getAgents', () => {
 				versionId: 'draft-version',
 				publishedVersionId: 'published-version',
 			});
-			expect(parsed.skills).toEqual(expected.skills);
 			expect(parsed.tools).toEqual(expected.tools);
 			expect(parsed.tasks).toEqual({
 				[`${parsed.sourceAgentId}_task`]: {
@@ -108,6 +126,32 @@ describe('N8nPackageParser.getAgents', () => {
 				},
 			});
 		}
+	});
+
+	it('derives Agent placement from its folder path and rejects workflow folders', async () => {
+		const nestedTarget = 'folders/team/agents/support';
+		fixture.manifest.folders = [{ id: 'folder-1', name: 'Team', target: 'folders/team' }];
+		fixture.manifest.agents = [{ id: agent.id, name: agent.name, target: nestedTarget }];
+		fixture.files['folders/team/folder.json'] = {
+			id: 'folder-1',
+			name: 'Team',
+			parentFolderId: null,
+			resourceType: 'agent',
+		};
+		fixture.files[`${nestedTarget}/agent.json`] = agent;
+		fixture.files[`${nestedTarget}/agent-metadata.json`] =
+			fixture.files['agents/support/agent-metadata.json'];
+
+		const [parsed] = await parser.getAgents(memoryReader(fixture));
+
+		expect(parsed.parentFolderId).toBe('folder-1');
+		fixture.files['folders/team/folder.json'] = {
+			id: 'folder-1',
+			name: 'Team',
+			parentFolderId: null,
+		};
+
+		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow('Agent folder');
 	});
 
 	it('scopes Agents by the requested package prefix', async () => {
@@ -151,7 +195,6 @@ describe('N8nPackageParser.getAgents', () => {
 			config: null,
 			availableInMCP: true,
 			metadata: { versionId: null, publishedVersionId: null },
-			skills: agent.skills,
 			tools: agent.tools,
 		});
 	});
@@ -187,8 +230,6 @@ describe('N8nPackageParser.getAgents', () => {
 	});
 
 	it.each([
-		['skills', 'shared-skill', { instructions: 42 }],
-		['skills', 'shared-skill', { references: [{ path: '../guide.md', content: 'Guide' }] }],
 		['tools', 'shared_tool', { code: 42 }],
 		['tools', 'shared_tool', { descriptor: { name: 'Incomplete' } }],
 		['tasks', 'support_source_task', { timezone: 'Invalid/Zone' }],
@@ -204,7 +245,6 @@ describe('N8nPackageParser.getAgents', () => {
 	});
 
 	it.each([
-		['skills', 'invalid id'],
 		['tools', 'invalid-id'],
 		['tasks', 'x'.repeat(33)],
 	] as const)('validates inline %s body IDs: %s', async (collection, id) => {
@@ -212,6 +252,13 @@ describe('N8nPackageParser.getAgents', () => {
 			...agent,
 			[collection]: { [id]: Object.values(agent[collection])[0] },
 		};
+		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow(
+			`${agentPath} failed schema validation`,
+		);
+	});
+
+	it('rejects skill bodies inside agent.json', async () => {
+		fixture.files[agentPath] = { ...agent, skills: {} };
 		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow(
 			`${agentPath} failed schema validation`,
 		);
@@ -228,7 +275,7 @@ describe('N8nPackageParser.getAgents', () => {
 		},
 	);
 
-	it.each(['skills', 'tools', 'tasks'] as const)(
+	it.each(['tools', 'tasks'] as const)(
 		'rejects runtime fields in inline %s bodies',
 		async (collection) => {
 			const [id, body] = Object.entries(agent[collection])[0];
@@ -268,20 +315,25 @@ describe('N8nPackageParser.getAgents', () => {
 		);
 	});
 
-	it.each(['skills', 'tools', 'tasks'] as const)(
-		'requires a body for disabled %s',
-		async (collection) => {
-			const missingId = Object.keys(agent[collection])[0];
-			agent[collection] = {};
-			await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow(
-				`${collection} asset "${missingId}" without a body`,
-			);
-		},
-	);
+	it.each(['tools', 'tasks'] as const)('requires a body for disabled %s', async (collection) => {
+		const missingId = Object.keys(agent[collection])[0];
+		agent[collection] = {};
+		await expect(parser.getAgents(memoryReader(fixture))).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'agent-invalid',
+						sourceAgentId: agent.id,
+						path: `${agentPath}#${collection}.${missingId}`,
+					},
+				],
+			},
+		});
+	});
 
 	it('validates inline bodies that have no configuration reference', async () => {
 		agent.config = null;
-		fixture.files[agentPath] = { ...agent, skills: { 'shared-skill': {} } };
+		fixture.files[agentPath] = { ...agent, skills: { support_source_skill: {} } };
 		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow(
 			`${agentPath} failed schema validation`,
 		);
@@ -296,4 +348,55 @@ describe('N8nPackageParser.getAgents', () => {
 			);
 		},
 	);
+});
+
+describe('N8nPackageParser.getSkills', () => {
+	const skillPath = 'skills/support_source_skill/skill.json';
+	let fixture: AgentPackageFixture;
+
+	beforeEach(() => {
+		fixture = looseAgentsFixture();
+	});
+
+	it('reads every skill with its scope and frontmatter', async () => {
+		const skills = await parser.getSkills(memoryReader(fixture));
+		expect(skills.map(({ id }) => id)).toEqual(['support_source_skill', 'research_source_skill']);
+		expect(skills[0]).toMatchObject({
+			scope: 'project',
+			skill: { name: 'Support reference' },
+			frontmatter: { license: 'MIT' },
+		});
+	});
+
+	it.each([
+		['an ID that differs from the manifest', { id: 'other_skill' }, 'declares id'],
+		['the scope of one Agent', { scope: 'agent' }, 'failed schema validation'],
+		['a skill that names an Agent', { agentId: 'support_source' }, 'failed schema validation'],
+		['n8n Assistant availability', { availableToAssistant: true }, 'failed schema validation'],
+	])('rejects %s', async (_case, fields, message) => {
+		fixture.files[skillPath] = { ...(fixture.files[skillPath] as object), ...fields };
+		await expect(parser.getSkills(memoryReader(fixture))).rejects.toThrow(message);
+	});
+
+	it.each([
+		['a non-text instruction', { instructions: 42 }],
+		['instructions without text', { instructions: '   ' }],
+		['a reference outside the skill', { references: [{ path: '../guide.md', content: 'Guide' }] }],
+		['allowed tools', { allowedTools: ['lookup'] }],
+		['a runtime field', { createdAt: '2026-10-01' }],
+	])('rejects a skill body with %s', async (_case, fields) => {
+		const file = fixture.files[skillPath] as SerializedSkill;
+		fixture.files[skillPath] = { ...file, skill: { ...file.skill, ...fields } };
+		await expect(parser.getSkills(memoryReader(fixture))).rejects.toThrow(
+			`${skillPath} failed schema validation`,
+		);
+	});
+
+	it('rejects an invalid skill ID', async () => {
+		fixture.manifest.skills[0].id = 'invalid id';
+		fixture.files[skillPath] = { ...(fixture.files[skillPath] as object), id: 'invalid id' };
+		await expect(parser.getSkills(memoryReader(fixture))).rejects.toThrow(
+			`${skillPath} failed schema validation`,
+		);
+	});
 });

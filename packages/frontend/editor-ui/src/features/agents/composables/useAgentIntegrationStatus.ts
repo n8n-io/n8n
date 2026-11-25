@@ -5,6 +5,7 @@ import {
 	type AgentChannelRuntimeStatus,
 	type AgentDisconnectIntegrationResponse,
 	type AgentIntegrationConnectResponse,
+	type AgentIntegrationDraftEntry,
 	type AgentIntegrationStatusEntry,
 	type AgentIntegrationSettings,
 } from '@n8n/api-types';
@@ -27,6 +28,7 @@ type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
 
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
+	n8nChatPublishedEnabled: Ref<boolean>;
 	connectedCredentials: Ref<Record<string, string>>;
 	integrationSettings: Ref<Record<string, AgentIntegrationSettings | undefined>>;
 	integrationApproval: Ref<Record<string, AgentApproval | undefined>>;
@@ -64,6 +66,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 	if (!state) {
 		state = {
 			statuses: ref({}),
+			n8nChatPublishedEnabled: ref(false),
 			connectedCredentials: ref({}),
 			integrationSettings: ref({}),
 			integrationApproval: ref({}),
@@ -103,6 +106,7 @@ function applyStatus(
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
 	source: 'server' | 'config',
+	drafts: AgentIntegrationDraftEntry[] = [],
 ): void {
 	const fromServer = source === 'server';
 	const previousStatuses = { ...state.statuses.value };
@@ -120,6 +124,10 @@ function applyStatus(
 		state.integrationSettings.value[type] = undefined;
 		state.integrationApproval.value[type] = undefined;
 		state.runtimeErrors.value[type] = '';
+	}
+	// A draft stays unconfigured, but its setup form starts from its settings.
+	for (const draft of drafts) {
+		state.integrationSettings.value[draft.type] = draft.settings;
 	}
 	for (const integration of integrations) {
 		// Only `starting` is the seed guessing at runtime state, and only a guess
@@ -158,9 +166,10 @@ export function syncAgentIntegrationStatusCache(
 	agentId: string,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
+	drafts: AgentIntegrationDraftEntry[] = [],
 ): void {
 	// Seeded from the agent's own configuration, not from the status endpoint.
-	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, 'config');
+	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, 'config', drafts);
 }
 
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
@@ -177,6 +186,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
+				state.n8nChatPublishedEnabled.value = result.n8nChat?.publishedEnabled ?? false;
 				// The report keeps n8n Chat while only the published version has it.
 				// The builder edits the draft, so a draft without it is unavailable.
 				const integrations = (result.integrations ?? []).filter(
@@ -184,7 +194,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 						integration.type !== N8N_CHAT_INTEGRATION_TYPE ||
 						result.n8nChat?.draftEnabled !== false,
 				);
-				applyStatus(state, integrationTypes, integrations, 'server');
+				applyStatus(state, integrationTypes, integrations, 'server', result.drafts ?? []);
 			} catch {
 				// Mark only types the server hasn't answered for as `unknown` — a
 				// transient network failure shouldn't claim that a channel the server
@@ -303,6 +313,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 
 	return {
 		statuses: state.statuses,
+		n8nChatPublishedEnabled: state.n8nChatPublishedEnabled,
 		connectedCredentials: state.connectedCredentials,
 		integrationSettings: state.integrationSettings,
 		integrationApproval: state.integrationApproval,

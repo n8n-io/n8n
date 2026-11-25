@@ -3,6 +3,7 @@ import { defineComponent, h, ref, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { NodeDiffStatus } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -43,6 +44,16 @@ vi.mock('@/features/workflows/workflowDiff/useWorkflowDiff', () => ({
 	useWorkflowDiff: vi.fn(),
 }));
 
+const showError = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage: vi.fn() }),
+}));
+
+const whenNodeTypesLoaded = vi.hoisted(() => vi.fn());
+vi.mock('@/app/composables/useNodeTypesLoad', () => ({
+	useNodeTypesLoad: () => ({ whenLoaded: whenNodeTypesLoaded }),
+}));
+
 vi.mock('@/app/plugins/telemetry', () => ({
 	telemetry: { track: vi.fn() },
 }));
@@ -50,48 +61,6 @@ vi.mock('@/app/plugins/telemetry', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ instanceId: 'test-instance' }),
 }));
-
-// Mock element-plus dropdown components to make @visible-change testable in jsdom
-vi.mock('element-plus', async (importOriginal) => {
-	const actual = await importOriginal<Record<string, unknown>>();
-	return {
-		...actual,
-		ElDropdown: defineComponent({
-			props: ['trigger', 'popperOptions', 'popperClass'],
-			emits: ['visible-change'],
-			setup(_, { slots, emit }) {
-				return () =>
-					h('div', [
-						h(
-							'button',
-							{
-								'data-test-id': 'el-dropdown-trigger',
-								onClick: () => emit('visible-change', true),
-							},
-							slots.default?.(),
-						),
-						h('div', { 'data-test-id': 'el-dropdown-content' }, slots.dropdown?.()),
-					]);
-			},
-		}),
-		ElDropdownMenu: defineComponent({
-			setup(_, { slots }) {
-				return () => h('div', slots.default?.());
-			},
-		}),
-		ElDropdownItem: defineComponent({
-			emits: ['click'],
-			setup(_, { slots, emit }) {
-				return () =>
-					h(
-						'li',
-						{ class: 'workflow-diff-node-item', onClick: (e: Event) => emit('click', e) },
-						slots.default?.(),
-					);
-			},
-		}),
-	};
-});
 
 // Mock stores
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -166,6 +135,24 @@ describe('WorkflowDiffView', () => {
 		capturedApplyLayoutProps = { top: undefined, bottom: undefined };
 		createTestingPinia();
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
+		whenNodeTypesLoaded.mockResolvedValue(undefined);
+	});
+
+	it('shows an error toast when the node types fail to load', async () => {
+		const error = new Error('node types');
+		whenNodeTypesLoaded.mockRejectedValueOnce(error);
+
+		render(WorkflowDiffView);
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledWith(error, 'workflowDiff.error.loadNodeTypes');
+	});
+
+	it('shows no error toast when the node types load', async () => {
+		render(WorkflowDiffView);
+		await flushPromises();
+
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('names the navigation actions for assistive technology', () => {
@@ -285,7 +272,7 @@ describe('WorkflowDiffView', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('el-dropdown-trigger'));
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
 
 			await waitFor(() => {
 				expect(telemetry.track).toHaveBeenCalledWith('user_opens_diff_changes_list', {
@@ -319,7 +306,7 @@ describe('WorkflowDiffView', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('el-dropdown-trigger'));
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
 
 			await waitFor(() => expect(getByText('Test Node')).toBeInTheDocument());
 			await userEvent.click(getByText('Test Node'));

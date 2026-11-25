@@ -1,17 +1,29 @@
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
 import {
-	isContextEnabledOnceEvaluated,
-	isContextPreferencesEnabledOnceEvaluated,
+	canManageContextPreferences,
+	isContextPreferencesEnabled,
 	isContextSkillsEnabled,
 } from './context.utils';
 
+/** PostHog can still load the flags on a page reload, so wait for them before the check. */
+async function collectionsGuard() {
+	const collectionsEnabled = useIsCollectionsEnabled();
+	if (!collectionsEnabled.value) {
+		await waitForFeatureFlagsWithTimeout(usePostHog(), 3000);
+	}
+	return collectionsEnabled.value || { name: VIEWS.HOMEPAGE };
+}
+
 /**
  * No `custom` middleware: the initializer would gate the routes on a backend module,
- * which preferences do not have. The flag checks run in `beforeEnter`. The sidebar
- * entry stays with the shell, which hides module pages without a backend module.
+ * which preferences do not have. The preferences, skills and collections checks run in
+ * `beforeEnter`. The sidebar entry stays with the shell, which hides module pages without a
+ * backend module.
  */
 export const ContextModule: FrontendModuleDescription = {
 	id: 'context',
@@ -30,7 +42,6 @@ export const ContextModule: FrontendModuleDescription = {
 					pageCategory: 'settings',
 				},
 			},
-			beforeEnter: async () => (await isContextEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
 		},
 		{
 			path: 'context/preferences',
@@ -42,8 +53,8 @@ export const ContextModule: FrontendModuleDescription = {
 					pageCategory: 'settings',
 				},
 			},
-			beforeEnter: async () =>
-				(await isContextPreferencesEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
+			beforeEnter: () =>
+				isContextPreferencesEnabled() || canManageContextPreferences() || { name: VIEWS.HOMEPAGE },
 		},
 		{
 			path: 'context/skills',
@@ -56,6 +67,29 @@ export const ContextModule: FrontendModuleDescription = {
 				},
 			},
 			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
+		},
+		{
+			path: 'context/collections',
+			name: VIEWS.SETTINGS_CONTEXT_COLLECTIONS,
+			component: async () => await import('./views/SettingsCollectionsView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: collectionsGuard,
+		},
+		{
+			path: 'collections/:collectionId',
+			name: VIEWS.KNOWLEDGE_COLLECTION,
+			props: true,
+			component: async () => await import('./views/CollectionView.vue'),
+			meta: {
+				projectRoute: true,
+				middleware: ['authenticated'],
+			},
+			beforeEnter: collectionsGuard,
 		},
 	],
 };

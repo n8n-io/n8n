@@ -1,0 +1,74 @@
+diff --git a/dist/node/cjs/connection/grpc.js b/dist/node/cjs/connection/grpc.js
+index 62152968ba3489eb9ed7c9d3e1e7075742cfc444..b2ea1b625bee7f0e6d510cff606509abfdc989a0 100644
+--- a/dist/node/cjs/connection/grpc.js
++++ b/dist/node/cjs/connection/grpc.js
+@@ -102,13 +102,27 @@ const grpcClient = (config) => {
+         'grpc.max_send_message_length': config.grpcMaxMessageLength,
+         'grpc.max_receive_message_length': config.grpcMaxMessageLength,
+     };
++    let address = config.grpcAddress;
+     if (config.grpcProxyUrl) {
+-        // grpc.http_proxy is not used by grpc.js under-the-hood
+-        // only uses the env var and whether http_proxy is enabled
+-        process.env.grpc_proxy = config.grpcProxyUrl;
+-        channelOptions['grpc.enabled_http_proxy'] = true;
++        // Use per-channel options so the proxy only applies to this client.
++        const proxy = new URL(config.grpcProxyUrl);
++        address = `${proxy.hostname}:${proxy.port || 80}`;
++        channelOptions['grpc.enable_http_proxy'] = 0;
++        channelOptions['grpc.http_connect_target'] = `dns:${config.grpcAddress}`;
++        channelOptions['grpc.default_authority'] = config.grpcAddress;
++        if (proxy.username) {
++            const decode = (value) => {
++                try {
++                    return decodeURIComponent(value);
++                }
++                catch {
++                    return value;
++                }
++            };
++            channelOptions['grpc.http_connect_creds'] = `${decode(proxy.username)}:${decode(proxy.password)}`;
++        }
+     }
+-    const channel = (0, nice_grpc_1.createChannel)(config.grpcAddress, config.grpcSecure ? nice_grpc_1.ChannelCredentials.createSsl() : nice_grpc_1.ChannelCredentials.createInsecure(), channelOptions);
++    const channel = (0, nice_grpc_1.createChannel)(address, config.grpcSecure ? nice_grpc_1.ChannelCredentials.createSsl() : nice_grpc_1.ChannelCredentials.createInsecure(), channelOptions);
+     const client = clientFactory.create(weaviate_js_1.WeaviateDefinition, channel);
+     const health = clientFactory.create(health_js_1.HealthDefinition, channel);
+     return {
+diff --git a/dist/node/esm/connection/grpc.js b/dist/node/esm/connection/grpc.js
+index bf5a09614ef2fe69e89228afed9911a1038e6989..e9998bf8e5ede1f34abf2936a1f76dcc116092d8 100644
+--- a/dist/node/esm/connection/grpc.js
++++ b/dist/node/esm/connection/grpc.js
+@@ -96,13 +96,27 @@ export const grpcClient = (config) => {
+         'grpc.max_send_message_length': config.grpcMaxMessageLength,
+         'grpc.max_receive_message_length': config.grpcMaxMessageLength,
+     };
++    let address = config.grpcAddress;
+     if (config.grpcProxyUrl) {
+-        // grpc.http_proxy is not used by grpc.js under-the-hood
+-        // only uses the env var and whether http_proxy is enabled
+-        process.env.grpc_proxy = config.grpcProxyUrl;
+-        channelOptions['grpc.enabled_http_proxy'] = true;
++        // Use per-channel options so the proxy only applies to this client.
++        const proxy = new URL(config.grpcProxyUrl);
++        address = `${proxy.hostname}:${proxy.port || 80}`;
++        channelOptions['grpc.enable_http_proxy'] = 0;
++        channelOptions['grpc.http_connect_target'] = `dns:${config.grpcAddress}`;
++        channelOptions['grpc.default_authority'] = config.grpcAddress;
++        if (proxy.username) {
++            const decode = (value) => {
++                try {
++                    return decodeURIComponent(value);
++                }
++                catch {
++                    return value;
++                }
++            };
++            channelOptions['grpc.http_connect_creds'] = `${decode(proxy.username)}:${decode(proxy.password)}`;
++        }
+     }
+-    const channel = createChannel(config.grpcAddress, config.grpcSecure ? ChannelCredentials.createSsl() : ChannelCredentials.createInsecure(), channelOptions);
++    const channel = createChannel(address, config.grpcSecure ? ChannelCredentials.createSsl() : ChannelCredentials.createInsecure(), channelOptions);
+     const client = clientFactory.create(WeaviateDefinition, channel);
+     const health = clientFactory.create(HealthDefinition, channel);
+     return {

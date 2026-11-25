@@ -38,6 +38,36 @@ const readsA = (name: string): INode =>
 		options: {},
 	});
 
+const FILE_TEXT = 'the partial run reads this file from the earlier run';
+
+/** A Set node that provides the text to store in a file. */
+const text = (name: string): INode =>
+	node(name, 'n8n-nodes-base.set', {
+		assignments: {
+			assignments: [{ id: 'text-id', name: 'text', value: FILE_TEXT, type: 'string' }],
+		},
+		includeOtherFields: true,
+		options: {},
+	});
+
+/** A Convert to File node that stores `text` as a file under `data`. */
+const writesFile = (name: string): INode =>
+	node(name, 'n8n-nodes-base.convertToFile', {
+		operation: 'toText',
+		sourceProperty: 'text',
+		binaryPropertyName: 'data',
+		options: { fileName: 'out.txt' },
+	});
+
+/** An Extract from File node that reads the file under `data` back into `text`. */
+const readsFile = (name: string): INode =>
+	node(name, 'n8n-nodes-base.extractFromFile', {
+		operation: 'text',
+		binaryPropertyName: 'data',
+		destinationKey: 'text',
+		options: {},
+	});
+
 const chain = (...names: string[]): IConnections =>
 	Object.fromEntries(
 		names
@@ -59,16 +89,41 @@ const workflow = (name: string) => ({
 	pinData: {},
 });
 
+// Trigger (pinned to three items) -> Loop -> A -> Loop; Loop's done slot -> After.
+const loopWorkflow = (name: string) => ({
+	name: `Manual run partial ${name}`,
+	nodes: [
+		node(TRIGGER_NAME, 'n8n-nodes-base.manualTrigger'),
+		{
+			...node('Loop', 'n8n-nodes-base.splitInBatches', { batchSize: 1, options: {} }),
+			typeVersion: 3,
+		},
+		stamp('A', 'a'),
+		stamp('After', 'after'),
+	],
+	connections: {
+		...chain(TRIGGER_NAME, 'Loop'),
+		...chain('A', 'Loop'),
+		Loop: {
+			main: [[{ node: 'After', type: 'main', index: 0 }], [{ node: 'A', type: 'main', index: 0 }]],
+		},
+	} satisfies IConnections,
+	pinData: { [TRIGGER_NAME]: [{ json: { i: 1 } }, { json: { i: 2 } }, { json: { i: 3 } }] },
+});
+
 const runDataOf = (execution: { data: string }): IRunData =>
 	flatted.parse(execution.data).resultData.runData;
 
 const firstItem = (runData: IRunData, nodeName: string) =>
 	runData[nodeName][0].data?.main[0]?.[0]?.json;
 
+const firstFile = (runData: IRunData, nodeName: string) =>
+	runData[nodeName][0].data?.main[0]?.[0]?.binary?.data;
+
 test.describe(
 	'Manual run to a node',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should reuse the results before the destination and run nothing after it @engine:v2', async ({
@@ -138,6 +193,36 @@ test.describe(
 			}
 		});
 
+		test('should reuse a result that holds a file and read the file after it @engine:v2', async ({
+			api,
+		}) => {
+			const { id: workflowId } = await api.workflows.createWorkflow({
+				...workflow('file'),
+				nodes: [
+					node(TRIGGER_NAME, 'n8n-nodes-base.manualTrigger'),
+					text('A'),
+					writesFile('B'),
+					readsFile('C'),
+				],
+			});
+
+			const first = await api.workflows.runManually(workflowId, TRIGGER_NAME);
+			const fullRun = runDataOf(await api.workflows.waitForExecutionById(first.executionId));
+			// The result names a file in the store: an inline copy would not prove
+			// that the second run can still open what the first one wrote.
+			expect(firstFile(fullRun, 'B')?.id).toEqual(expect.any(String));
+
+			const second = await api.workflows.runToNode(workflowId, 'C', { runData: fullRun });
+			const execution = await api.workflows.waitForExecutionById(second.executionId);
+			expect(execution.status).toBe('success');
+
+			const partialRun = runDataOf(execution);
+			// B was reused: its result still points at the file of the first run.
+			expect(firstFile(partialRun, 'B')).toEqual(firstFile(fullRun, 'B'));
+			// C ran on that result and read the file back.
+			expect(firstItem(partialRun, 'C')?.text).toBe(FILE_TEXT);
+		});
+
 		test('should use pinned data instead of running the pinned node @engine:v2', async ({
 			api,
 		}) => {
@@ -181,6 +266,29 @@ test.describe(
 
 			const partialRun = runDataOf(execution);
 			expect(firstItem(partialRun, 'C')?.fromA).toEqual(firstItem(upToB, 'A')?.a);
+		});
+
+		test('should reuse every pass of a finished loop before the destination @engine:v2', async ({
+			api,
+		}) => {
+			const { id: workflowId } = await api.workflows.createWorkflow(loopWorkflow('loop'));
+
+			const first = await api.workflows.runManually(workflowId, TRIGGER_NAME);
+			const fullRun = runDataOf(await api.workflows.waitForExecutionById(first.executionId));
+			expect(fullRun.A).toHaveLength(3);
+
+			const second = await api.workflows.runToNode(workflowId, 'After', { runData: fullRun });
+			const execution = await api.workflows.waitForExecutionById(second.executionId);
+			expect(execution.status).toBe('success');
+
+			const partialRun = runDataOf(execution);
+			// No pass of the loop ran again: A's three stamps are the first run's.
+			const stampsOf = (runData: IRunData) =>
+				runData.A.map((run) => run.data?.main[0]?.[0]?.json.a);
+			expect(stampsOf(partialRun)).toEqual(stampsOf(fullRun));
+			// After ran again, on everything the loop collected.
+			expect(firstItem(partialRun, 'After')?.after).not.toEqual(firstItem(fullRun, 'After')?.after);
+			expect(partialRun.After[0].data?.main[0]).toHaveLength(3);
 		});
 	},
 );

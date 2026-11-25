@@ -15,7 +15,12 @@ import PromotionEnvironmentUpdate from '../commands/promotion-environment/update
 import PromotionProviderDelete from '../commands/promotion-provider/delete';
 import PromotionProviderGet from '../commands/promotion-provider/get';
 import PromotionProviderList from '../commands/promotion-provider/list';
+import PromotionProviderListBranches from '../commands/promotion-provider/list-branches';
+import PromotionProviderListRepositories from '../commands/promotion-provider/list-repositories';
 import PromotionProviderUpdate from '../commands/promotion-provider/update';
+import PromotionSettingsGet from '../commands/promotion-settings/get';
+import PromotionSettingsUpdate from '../commands/promotion-settings/update';
+import { commands } from '../index';
 
 type CommandClass = new (argv: string[], config: Config) => { run: () => Promise<void> };
 
@@ -59,6 +64,22 @@ const CASES: WiringCase[] = [
 		flags: { limit: 5 },
 		method: 'listPromotionProviders',
 		callArgs: [5],
+	},
+	{
+		title: 'promotion-provider list-repositories',
+		commandClass: PromotionProviderListRepositories,
+		args: { id: 'prov-1' },
+		flags: { search: 'flows', limit: 5 },
+		method: 'listPromotionProviderRepositories',
+		callArgs: ['prov-1', 'flows', 5],
+	},
+	{
+		title: 'promotion-provider list-branches',
+		commandClass: PromotionProviderListBranches,
+		args: { id: 'prov-1', repository: 'acme/flows' },
+		flags: { search: 'release', limit: 5 },
+		method: 'listPromotionProviderBranches',
+		callArgs: ['prov-1', 'acme/flows', 'release', 5],
 	},
 	{
 		title: 'promotion-provider update',
@@ -127,7 +148,7 @@ const CASES: WiringCase[] = [
 		commandClass: PromotionEnvironmentListChanges,
 		args: { projectId: 'proj-1', direction: 'promote' },
 		method: 'listProjectPromotionChanges',
-		callArgs: ['proj-1', 'promote', {}],
+		callArgs: ['proj-1', 'promote'],
 	},
 	{
 		title: 'promotion-environment add-project',
@@ -142,6 +163,12 @@ const CASES: WiringCase[] = [
 		args: { id: 'env-1', projectId: 'proj-1' },
 		method: 'removeProjectFromPromotionEnvironment',
 		callArgs: ['env-1', 'proj-1'],
+	},
+	{
+		title: 'promotion-settings get',
+		commandClass: PromotionSettingsGet,
+		method: 'getPromotionSettings',
+		callArgs: [],
 	},
 ];
 
@@ -170,5 +197,44 @@ describe('promotion commands call the client method that belongs to them', () =>
 		await command.run();
 
 		expect(call).toHaveBeenCalledWith(...callArgs);
+	});
+});
+
+describe('promotion-settings', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('registers both commands', () => {
+		expect(commands['promotion-settings:get']).toBe(PromotionSettingsGet);
+		expect(commands['promotion-settings:update']).toBe(PromotionSettingsUpdate);
+	});
+
+	it('update keeps the settings of the flags that were left out', async () => {
+		const command = instantiate(PromotionSettingsUpdate);
+		const internals = command as unknown as Internals;
+		const updatePromotionSettings = vi.fn().mockResolvedValue({});
+		const client = {
+			getPromotionSettings: vi.fn().mockResolvedValue({
+				whoCanPromote: 'instanceAdmins',
+				whoCanApprove: 'projectAdmins',
+				whoCanApply: 'instanceAdmins',
+			}),
+			updatePromotionSettings,
+		};
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: {},
+			flags: { 'who-can-promote': 'projectAdminsAndEditors' },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue(client as unknown as N8nClient);
+		vi.spyOn(internals, 'output').mockImplementation(() => {});
+
+		await command.run();
+
+		expect(updatePromotionSettings).toHaveBeenCalledWith({
+			whoCanPromote: 'projectAdminsAndEditors',
+			whoCanApprove: 'projectAdmins',
+			whoCanApply: 'instanceAdmins',
+		});
 	});
 });

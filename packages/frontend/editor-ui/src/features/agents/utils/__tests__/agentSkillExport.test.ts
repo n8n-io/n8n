@@ -22,13 +22,11 @@ async function blobBytes(blob: Blob): Promise<Uint8Array> {
 
 describe('agentSkillExport', () => {
 	it('writes frontmatter and the instructions', () => {
-		expect(agentSkillToMarkdown({ ...base, allowedTools: ['search'] })).toBe(
+		expect(agentSkillToMarkdown(base)).toBe(
 			[
 				'---',
 				'name: research-search',
 				'description: "Find research: cite the evidence."',
-				'allowed_tools:',
-				'  - search',
 				'---',
 				'',
 				base.instructions,
@@ -65,6 +63,16 @@ describe('agentSkillExport', () => {
 			return file;
 		});
 		await expect(useAgentSkillImport().importSkillFiles(files)).resolves.toEqual(skill);
+	});
+
+	it('keeps a binary asset byte for byte at its original path', async () => {
+		const { blob } = await exportAgentSkill({
+			...base,
+			references: [{ path: 'assets/icons/logo.png', content: 'AP8K', isBinary: true }],
+		});
+
+		const entries = unzipSync(await blobBytes(blob));
+		expect(entries['research-search/assets/icons/logo.png']).toEqual(new Uint8Array([0, 255, 10]));
 	});
 
 	it.each(['.', '..', '  '])('names the folder `skill` for the name %j', async (name) => {

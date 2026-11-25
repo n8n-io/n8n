@@ -43,15 +43,15 @@ const steps = [
 	{
 		id: 'workflow-code',
 		label: 'Generated workflow code',
-		toolName: 'workflow_builder_workflows',
-		args: { action: 'get-as-code' },
+		toolName: 'get_workflow_as_code',
+		args: {},
 		result: { code: 'const workflow = {\n  nodes: [scheduleTrigger, slackMessage],\n};' },
 	},
 	{
 		id: 'workflows-list',
 		label: 'Listed workflows',
-		toolName: 'workflow_builder_workflows',
-		args: { action: 'list' },
+		toolName: 'list_workflows',
+		args: {},
 		result: {
 			workflows: [
 				{ name: 'Daily lead sync', active: true, updated: 'Today' },
@@ -117,8 +117,7 @@ const StoryToolResultRenderer = defineComponent({
 	computed: {
 		code(): string | undefined {
 			const result = this.result as { code?: unknown };
-			const toolArgs = this.toolArgs as { action?: unknown } | undefined;
-			return this.toolName === 'workflow_builder_workflows' && toolArgs?.action === 'get-as-code'
+			return this.toolName === 'get_workflow_as_code'
 				? typeof result.code === 'string'
 					? result.code
 					: undefined
@@ -265,8 +264,8 @@ Reasoning.args = {
 export const CodeResult = Template.bind({});
 CodeResult.args = {
 	label: 'Generated workflow code',
-	toolName: 'workflow_builder_workflows',
-	toolArgs: { action: 'get-as-code' },
+	toolName: 'get_workflow_as_code',
+	toolArgs: {},
 	result: {
 		code: `const workflow = {
   nodes: [
@@ -280,8 +279,8 @@ CodeResult.args = {
 export const TableResult = Template.bind({});
 TableResult.args = {
 	label: 'Listed workflows',
-	toolName: 'workflow_builder_workflows',
-	toolArgs: { action: 'list' },
+	toolName: 'list_workflows',
+	toolArgs: {},
 	result: {
 		workflows: [
 			{ name: 'Daily lead sync', active: true, updated: 'Today' },

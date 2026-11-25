@@ -12,18 +12,12 @@ export function targetSkillsSkill(): RuntimeSkill {
 		name: 'Agent Builder Target Skills',
 		description:
 			'Use when creating or editing target-agent skills: the user asks for skills, the agent has two or more separate jobs with their own procedures, or an existing skill needs a change; not for an agent with one job, builder guidance, or universal target-agent instructions.',
-		recommendedTools: [
-			'agent-context',
-			'agent_builder_update_skill',
-			'agent_builder_create_skills',
-			'agent_builder_ask_questions',
-			'agent_builder_patch_config',
-		],
+		recommendedToolGroups: ['agents'],
 		allowedTools: [
 			'agent-context',
 			'agent_builder_update_skill',
 			'agent_builder_create_skills',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
 		],
@@ -57,6 +51,11 @@ instructions.
 - The request changes only a tool, integration, model, or memory setting and
   does not add or change how the target agent performs a function.
 
+## Name
+
+Each skill name must be unique in the project. Case, spaces, hyphens, and
+underscores do not count, so "Daily Report" and "daily-report" are the same name.
+
 ## Description (routing contract)
 
 ${SKILL_DESCRIPTION_RULE}
@@ -74,7 +73,7 @@ write a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). Derive missing domain detail from the user's
 stated goal as stated assumptions, and list them in your summary. For missing
-domain details, use \`agent_builder_ask_questions\` only when even a reasonable
+domain details, use \`ask_user\` only when even a reasonable
 assumption is impossible — never during an initial build: add the open decision
 to the pending setup instead, per the Initial Build rules in the
 \`agent-builder\` skill. For approval to update an attached skill after a field
@@ -95,8 +94,9 @@ vague skill.
 - For a field removal or rename, read every attached skill body, even when its
   description does not mention the field. Call \`agent-context({ type: "skill", skillId: "<id>" })\` for
   every attached id. Its default response includes reference paths and sizes
-  but omits reference content; pass every listed path in \`referencePaths\` so
-  you can search all attached skill content.
+  but omits reference content. Read text paths in batches of up to 20 in \`referencePaths\`.
+  When the result has \`omittedReferencePaths\`, read the skill again with those paths.
+  When a file has \`nextOffset\`, read that path alone with \`referenceOffset\` set to that value.
 - Call \`agent-context({ type: "skill", skillId: "<id>" })\` only for the relevant attached skill for
   other skill work. Follow its reference paths and sizes; request reference
   content when the change needs it.
@@ -111,10 +111,10 @@ vague skill.
   \`baseSkillHash\`.
   Do not create a replacement skill. Pass \`null\` for \`references\` to remove
   all references; do not pass an empty array. The skill can be shared with other
-  agents: an update saves its next version for every agent that uses it. When replacing \`references\`, first read the content of every existing
-  reference that must be preserved, because the field is replaced as a whole.
+  agents: an update saves its next version for every agent that uses it. Before replacing \`references\`,
+  read all parts of every file you want to keep. Confirm that each page has the same \`skillHash\`.
 - Before you update any attached skill because a field was removed or renamed,
-  use \`agent_builder_ask_questions\` to get explicit confirmation for the
+  use \`ask_user\` to get explicit confirmation for the
   skill changes. Builder context does not show who else uses a skill, so treat
   it as potentially shared. The update saves a version that every draft
   following the latest version will use. If the user does not clearly confirm,
@@ -152,6 +152,9 @@ vague skill.
 - Omit fields you cannot fill confidently. Do not invent tool names or file paths.
 - Scripts are not supported in this phase. Do not pass scripts or non-markdown
   linked files to \`agent_builder_create_skills\` or \`agent_builder_update_skill\`.
+- In \`agent_builder_update_skill\`, \`references\` replaces the Markdown files of the
+  skill. Pass every Markdown file that stays. The scripts, binary files, and other
+  files of the skill stay as they are.
 
 ## Rules
 

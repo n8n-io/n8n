@@ -1,4 +1,5 @@
 import type { CredentialProvider } from '@n8n/agents';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -6,12 +7,12 @@ import {
 	type InstanceAiBuilderDelegate,
 	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import { runInBuilderTelemetrySession } from '@/modules/agents/builder/builder-session';
-import { Telemetry } from '@/telemetry';
 
 @Service()
 export class InstanceAiBuilderDelegateAdapterService {
@@ -19,7 +20,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly builder: AgentsBuilderService,
 		private readonly drafts: AgentDraftService,
 		private readonly context: AgentContextService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	createDelegate(
@@ -66,6 +67,25 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await this.context.readArtifact(user, projectId, agentId),
 			validateAgent: async (agentId) =>
 				await this.builder.validateAgent(user, projectId, agentId, credentialProviderFor),
+			getCredentialDefaults: async (agentId) =>
+				await this.builder.getCredentialDefaults(user, projectId, agentId),
+			trackCredentialRequest: (agentId, session, { credentialType, outcome }) => {
+				const properties = {
+					agent_id: agentId,
+					user_id: user.id,
+					thread_id: session.threadId,
+					run_id: session.runId,
+					credential_type: credentialType,
+				};
+				if (outcome === 'requested') {
+					this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, properties);
+					return;
+				}
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+					...properties,
+					outcome,
+				});
+			},
 		};
 	}
 

@@ -9,8 +9,8 @@ import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	DbLock,
 	DbLockService,
+	PersonRepository,
 	SharedWorkflowRepository,
-	UserRepository,
 	WorkflowHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -18,6 +18,7 @@ import {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
+	type Person,
 	type User,
 	type WorkflowReviewRequest,
 } from '@n8n/db';
@@ -54,7 +55,7 @@ export class WorkflowReviewRequestSubmissionService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly eventService: EventService,
@@ -62,20 +63,21 @@ export class WorkflowReviewRequestSubmissionService {
 		private readonly stateNotifier: WorkflowReviewStateNotifier,
 	) {}
 
-	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
+	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<Person[]> {
 		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
 			this.roleService.rolesWithScope('project', ['workflow:read']),
 			this.roleService.rolesWithScope('global', ['workflow:read']),
 		]);
 
-		const users = await this.userRepository.findEligibleByProjectOrGlobalRoles({
+		// Only a person can review a workflow.
+		const people = await this.personRepository.findEligibleByProjectOrGlobalRoles({
 			projectId,
 			projectRoleSlugs,
 			globalRoleSlugs,
 		});
 
-		return users
-			.filter((user) => !user.isPending && user.id !== excludeUserId)
+		return people
+			.filter((person) => !person.isPending && person.id !== excludeUserId)
 			.sort((a, b) => a.email.localeCompare(b.email));
 	}
 

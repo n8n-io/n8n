@@ -1,7 +1,12 @@
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import type {
+	BuiltTool,
+	InterruptibleToolContext,
+	LegacyCallConverter,
+	ToolContext,
+} from '../types';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
@@ -12,6 +17,7 @@ export const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
 	displayName: z.string().optional(),
+	description: z.string().optional(),
 	supportsSessionApproval: z.boolean().optional(),
 	args: z.unknown(),
 });
@@ -21,6 +27,8 @@ export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
 export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 	scope: z.enum(['once', 'session']).optional(),
+	/** Why the action was declined. The agent reads it, so it can explain the decline. */
+	reason: z.string().optional(),
 });
 
 export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -41,6 +49,10 @@ type OutputType<TOutput> = TOutput extends z.ZodType ? z.infer<TOutput> : unknow
 
 export interface ApprovalConfig {
 	requireApproval?: boolean;
+	/** Additional context shown in the approval request. */
+	approvalNotice?: string;
+	/** Set false when each call needs a separate decision. */
+	allowSessionApproval?: boolean;
 	needsApprovalFn?: (args: unknown) => Promise<boolean> | boolean;
 }
 
@@ -124,7 +136,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			const grantKey = JSON.stringify(['tool', currentTool.name]);
 			const approvalContext = interruptCtx.approvalContext;
 			if (interruptCtx.resumeData === undefined) {
-				if (approvalContext?.approvedKeys.has(grantKey)) {
+				if (config.allowSessionApproval !== false && approvalContext?.approvedKeys.has(grantKey)) {
 					if (config.requireApproval || hasConditionalApproval) {
 						emitToolExecutionStart(currentTool, input, interruptCtx);
 					}
@@ -136,11 +148,17 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				}
 				if (needs) {
 					const displayName = getToolApprovalDisplayName(currentTool);
+					const description = [interruptCtx.approvalDescription, config.approvalNotice]
+						.filter(Boolean)
+						.join('\n\n');
 					return await interruptCtx.suspend(
 						{
 							type: 'approval',
 							toolName: currentTool.name,
-							...(approvalContext ? { supportsSessionApproval: true } : {}),
+							...(description ? { description } : {}),
+							...(approvalContext && config.allowSessionApproval !== false
+								? { supportsSessionApproval: true }
+								: {}),
 							...(displayName ? { displayName } : {}),
 							args: approvalContext?.getDisplayArgs
 								? approvalContext.getDisplayArgs(currentTool.name, input)
@@ -159,13 +177,20 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			}
 
 			const decision = APPROVAL_RESUME_SCHEMA.parse(interruptCtx.resumeData);
-			if (decision.scope === 'session' && !approvalContext) {
+			if (
+				decision.scope === 'session' &&
+				(!approvalContext || config.allowSessionApproval === false)
+			) {
 				throw new Error('Session approvals are not available for this tool.');
 			}
 			await approvalContext?.onDecision(grantKey, decision);
 			interruptCtx.abortSignal?.throwIfAborted();
 			if (!decision.approved) {
-				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
+				const message = `Tool "${currentTool.name}" was not approved`;
+				return {
+					declined: true,
+					message: decision.reason ? `${message}: ${decision.reason}` : message,
+				};
 			}
 			if (tool.suspendSchema === undefined) {
 				return await originalHandler(input, interruptCtx);
@@ -239,7 +264,11 @@ export class Tool<
 
 	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
+	private toTraceOutputFn?: (output: OutputType<TOutput>) => unknown;
+
 	private outputTrustValue?: BuiltTool['outputTrust'];
+
+	private requiresWorkspaceValue?: true;
 
 	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
 
@@ -255,6 +284,10 @@ export class Tool<
 
 	private legacyNamesValue?: string[];
 
+	private legacyActionsValue?: Record<string, string[]>;
+
+	private legacyResumeOnlyValue?: { convert: LegacyCallConverter };
+
 	constructor(name: string) {
 		this.name = name;
 	}
@@ -265,6 +298,30 @@ export class Tool<
 	 */
 	legacyNames(...names: string[]): this {
 		this.legacyNamesValue = [...(this.legacyNamesValue ?? []), ...names];
+		return this;
+	}
+
+	/**
+	 * Declare that calls of a former tool resolve to this tool when their
+	 * `action` input is one of `actions`. Use it when a multi-action tool became
+	 * one tool for each action.
+	 */
+	legacyActions(legacyName: string, ...actions: string[]): this {
+		const current = this.legacyActionsValue?.[legacyName] ?? [];
+		this.legacyActionsValue = {
+			...this.legacyActionsValue,
+			[legacyName]: [...current, ...actions],
+		};
+		return this;
+	}
+
+	/**
+	 * Keep the former names and former actions for resume only. A suspended
+	 * call under a former name resumes here with `convert(formerName, input)`
+	 * as its input. A new model call under a former name fails as an unknown tool.
+	 */
+	legacyForResumeOnly(convert: LegacyCallConverter): this {
+		this.legacyResumeOnlyValue = { convert };
 		return this;
 	}
 
@@ -347,6 +404,15 @@ export class Tool<
 		return this;
 	}
 
+	/**
+	 * Derive data for the host's execution trace from the handler output.
+	 * The `tool-result` stream chunk carries it as `traceOutput`. The model never sees it.
+	 */
+	toTraceOutput(fn: (output: OutputType<TOutput>) => unknown): this {
+		this.toTraceOutputFn = fn;
+		return this;
+	}
+
 	/** End the run, without another model call, when `fn` returns true for an output. */
 	endsTurnWhen(fn: (output: OutputType<TOutput>) => boolean): this {
 		this.endsTurnFn = fn;
@@ -356,6 +422,12 @@ export class Tool<
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	untrustedOutput(): this {
 		this.outputTrustValue = 'untrusted';
+		return this;
+	}
+
+	/** Mark the handler as one that uses the agent's workspace, so the runtime prepares it early. */
+	requiresWorkspace(): this {
+		this.requiresWorkspaceValue = true;
 		return this;
 	}
 
@@ -435,6 +507,8 @@ export class Tool<
 		const built: BuiltTool = {
 			name: this.name,
 			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
+			...(this.legacyActionsValue ? { legacyActions: this.legacyActionsValue } : {}),
+			...(this.legacyResumeOnlyValue ? { legacyResumeOnly: this.legacyResumeOnlyValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
@@ -442,7 +516,9 @@ export class Tool<
 			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
+			toTraceOutput: this.toTraceOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			...(this.requiresWorkspaceValue ? { requiresWorkspace: true } : {}),
 			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,

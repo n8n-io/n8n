@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 import { QuickJsBridge } from '../bridge/quickjs-bridge';
@@ -199,6 +200,73 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Value types at the transfer boundary', () => {
+		describe.each([
+			{ label: 'returns a custom result', parser: '() => ({ name: "custom" })' },
+			{ label: 'throws', parser: '() => { throw new Error("custom parser"); }' },
+		])('host data with a JSON parser that $label', ({ parser }) => {
+			it.each(['$json.profile.name', '$json.rows[0].name', '$input.first().json.profile.name'])(
+				'reads %s',
+				(access) => {
+					const json = { profile: { name: 'from host' }, rows: [{ name: 'from host' }] };
+					const data = { $json: json, $input: { first: () => ({ json }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const original = JSON.parse; JSON.parse = ${parser}; try { return ${access}; } finally { JSON.parse = original; } })() }}`,
+							data,
+							caller,
+						),
+					).toBe('from host');
+				},
+			);
+		});
+
+		describe.each([
+			{ label: 'plain', properties: {} },
+			{ label: 'transfer marker', properties: { __n8nType: 'user data' } },
+			{ label: 'bridge marker', properties: { __isDate: true } },
+		])('own JSON keys in a $label object', ({ properties }) => {
+			const payload = {
+				...(JSON.parse('{"__proto__":{"flag":1},"kept":2}') as Record<string, unknown>),
+				...properties,
+			};
+
+			it.each(['$json.error', '$input.first().json.error'])(
+				'keeps own JSON keys when reading %s',
+				(access) => {
+					const error = Object.assign(new Error('from host'), { payload });
+					const data = { $json: { error }, $input: { first: () => ({ json: { error } }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const value = ${access}.payload; return [Object.hasOwn(value, "__proto__"), Object.entries(value)]; })() }}`,
+							data,
+							caller,
+						),
+					).toEqual([true, Object.entries(payload)]);
+				},
+			);
+
+			it.each([
+				{ label: 'plain object', expression: '({ payload })' },
+				{ label: 'Error', expression: 'Object.assign(new Error("from guest"), { payload })' },
+				{
+					label: 'class instance',
+					expression: 'new (class { constructor() { this.payload = payload; } })()',
+				},
+			])('keeps own JSON keys when returning a $label', ({ expression }) => {
+				const result = evaluator.evaluate(
+					`{{ (() => { const payload = JSON.parse(${JSON.stringify(JSON.stringify(payload))}); return ${expression}; })() }}`,
+					{},
+					caller,
+				) as { payload: Record<string, unknown> };
+
+				expect(Object.hasOwn(result.payload, '__proto__')).toBe(true);
+				expect(result.payload).toStrictEqual(payload);
+				expect(Object.getPrototypeOf(result.payload)).toBe(Object.prototype);
+			});
+		});
+
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);
@@ -264,6 +332,108 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(setEntry).toEqual(expected);
 		});
 
+		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+			};
+
+			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
+			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
+
+			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
+			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
+		});
+
+		it('should return a user object with an __isError key as data', () => {
+			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
+
+			expect(
+				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
+			).toEqual({ __isError: true, message: 'hi' });
+			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
+				__isError: true,
+				message: 'from data',
+			});
+		});
+
+		describe.each([
+			{ key: '__isError', properties: { __isError: true } },
+			{ key: '__isArray', properties: { __isArray: true, __length: 2 } },
+			{ key: '__isObject', properties: { __isObject: true, __keys: ['message'] } },
+		])('Error data with $key', ({ key, properties }) => {
+			it.each(['$error', '$json.error', '$json.errors[0]'])('reads %s as an Error', (access) => {
+				const error = Object.assign(new Error('from data'), properties);
+				const json = { error, errors: [error] };
+				const data = { $error: error, $json: json, $input: { first: () => ({ json }) } };
+
+				expect(evaluator.evaluate('{{ $input.first().json.error.message }}', data, caller)).toBe(
+					'from data',
+				);
+				expect(
+					evaluator.evaluate(
+						`{{ (() => { const error = ${access}; return [error.message, error.name, error instanceof Error, Array.isArray(error), error.${key}]; })() }}`,
+						data,
+						caller,
+					),
+				).toEqual(['from data', 'Error', true, false, true]);
+			});
+		});
+
+		it('finds Error data with an __isError key through the in operator', () => {
+			const error = Object.assign(new Error('from data'), { __isError: true });
+
+			expect(evaluator.evaluate('{{ "error" in $json }}', { $json: { error } }, caller)).toBe(true);
+		});
+
+		it('should convert the values inside an object with an __isError key in an object or an array', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]), u: undefined }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+				u: undefined,
+			};
+
+			expect(evaluator.evaluate(`{{ ({ a: ${flagged} }) }}`, data, caller)).toStrictEqual({
+				a: expected,
+			});
+			expect(evaluator.evaluate(`{{ [${flagged}] }}`, data, caller)).toStrictEqual([expected]);
+		});
+
+		it('should give host-call data with an __isError key to the expression as data', () => {
+			const item = {
+				json: {
+					flag: { __isError: true, message: 'm', when: new Date('2024-01-15T00:00:00.000Z') },
+				},
+			};
+			const data = {
+				$input: {
+					first: () => item,
+					last: () => ({ __isError: true, message: 'root' }),
+					all: () => ({ __n8nEscaped: true, __value: 1 }),
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $input.first() }}', data, caller)).toEqual(item);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.flag.when.getTime() }}', data, caller),
+			).toBe(item.json.flag.when.getTime());
+			expect(evaluator.evaluate('{{ $input.last().message }}', data, caller)).toBe('root');
+			expect(evaluator.evaluate('{{ $input.all() }}', data, caller)).toEqual({
+				__n8nEscaped: true,
+				__value: 1,
+			});
+		});
+
 		it('should preserve Date objects (structured-cloneable)', () => {
 			const data = { $json: {} };
 			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data, caller);
@@ -271,6 +441,335 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect((result as Date).getFullYear()).toBe(2024);
 			expect((result as Date).getMonth()).toBe(0);
 			expect((result as Date).getDate()).toBe(15);
+		});
+
+		describe('Boxed primitives', () => {
+			it.each([
+				{ expr: 'new String("ab")', expected: 'ab' },
+				{ expr: 'new String("")', expected: '' },
+				{ expr: 'new String("x\\u0000y")', expected: 'x\0y' },
+				{ expr: 'new String("\\ud800")', expected: '\ud800' },
+			])('should return $expr as a String object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(String);
+				expect((result as { valueOf(): string }).valueOf()).toBe(expected);
+			});
+
+			it.each([
+				{ expr: 'new Number(5)', expected: 5 },
+				{ expr: 'new Number(0)', expected: 0 },
+				{ expr: 'new Number(-0)', expected: -0 },
+				{ expr: 'new Number(NaN)', expected: NaN },
+				{ expr: 'new Number(Infinity)', expected: Infinity },
+				{ expr: 'new Number(-Infinity)', expected: -Infinity },
+			])('should return $expr as a Number object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(Number);
+				expect(Object.is((result as { valueOf(): number }).valueOf(), expected)).toBe(true);
+			});
+
+			it.each([
+				{ expr: 'new Boolean(true)', expected: true },
+				{ expr: 'new Boolean(false)', expected: false },
+			])('should return $expr as a Boolean object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(Boolean);
+				expect((result as { valueOf(): boolean }).valueOf()).toBe(expected);
+			});
+
+			it.each([
+				{ expr: 'Object(1n)', expected: 1n },
+				{ expr: 'Object(-9007199254740993n)', expected: -9007199254740993n },
+			])('should return $expr as a BigInt object', ({ expr, expected }) => {
+				const result = evaluator.evaluate(`{{ ${expr} }}`, { $json: {} }, caller);
+
+				expect(result).toBeInstanceOf(BigInt);
+				expect((result as { valueOf(): bigint }).valueOf()).toBe(expected);
+			});
+
+			it('should preserve boxed primitives in objects, arrays, Maps, Sets, Errors and class instances', () => {
+				const inObject = evaluator.evaluate(
+					'{{ ({ s: new String("ab"), n: new Number(-0), b: new Boolean(false), bi: Object(1n) }) }}',
+					{ $json: {} },
+					caller,
+				) as Record<string, { valueOf(): unknown }>;
+				expect(inObject.s).toBeInstanceOf(String);
+				expect(inObject.s.valueOf()).toBe('ab');
+				expect(inObject.n).toBeInstanceOf(Number);
+				expect(Object.is(inObject.n.valueOf(), -0)).toBe(true);
+				expect(inObject.b).toBeInstanceOf(Boolean);
+				expect(inObject.b.valueOf()).toBe(false);
+				expect(inObject.bi).toBeInstanceOf(BigInt);
+				expect(inObject.bi.valueOf()).toBe(1n);
+
+				const inArray = evaluator.evaluate(
+					'{{ [new String("ab"), new Number(NaN), new Boolean(true), Object(2n)] }}',
+					{ $json: {} },
+					caller,
+				) as Array<{ valueOf(): unknown }>;
+				expect(inArray[0]).toBeInstanceOf(String);
+				expect(inArray[0].valueOf()).toBe('ab');
+				expect(inArray[1]).toBeInstanceOf(Number);
+				expect(Number.isNaN(inArray[1].valueOf())).toBe(true);
+				expect(inArray[2]).toBeInstanceOf(Boolean);
+				expect(inArray[2].valueOf()).toBe(true);
+				expect(inArray[3]).toBeInstanceOf(BigInt);
+				expect(inArray[3].valueOf()).toBe(2n);
+
+				const inMap = evaluator.evaluate(
+					'{{ new Map([[new String("k"), new Number(5)]]) }}',
+					{ $json: {} },
+					caller,
+				) as Map<{ valueOf(): unknown }, { valueOf(): unknown }>;
+				const [[mapKey, mapVal]] = [...inMap.entries()];
+				expect(mapKey).toBeInstanceOf(String);
+				expect(mapKey.valueOf()).toBe('k');
+				expect(mapVal).toBeInstanceOf(Number);
+				expect(mapVal.valueOf()).toBe(5);
+
+				const inSet = evaluator.evaluate(
+					'{{ new Set([new Boolean(false)]) }}',
+					{ $json: {} },
+					caller,
+				) as Set<{ valueOf(): unknown }>;
+				const [setVal] = [...inSet.values()];
+				expect(setVal).toBeInstanceOf(Boolean);
+				expect(setVal.valueOf()).toBe(false);
+
+				const inError = evaluator.evaluate(
+					'{{ Object.assign(new Error("e", { cause: new String("c") }), { s: new String("ab"), n: new Number(5), b: new Boolean(true), bi: Object(3n) }) }}',
+					{ $json: {} },
+					caller,
+				) as Error & Record<string, { valueOf(): unknown }>;
+				expect(inError).toBeInstanceOf(Error);
+				expect(inError.cause).toBeInstanceOf(String);
+				expect((inError.cause as { valueOf(): unknown }).valueOf()).toBe('c');
+				expect(inError.s).toBeInstanceOf(String);
+				expect(inError.s.valueOf()).toBe('ab');
+				expect(inError.n).toBeInstanceOf(Number);
+				expect(inError.n.valueOf()).toBe(5);
+				expect(inError.b).toBeInstanceOf(Boolean);
+				expect(inError.b.valueOf()).toBe(true);
+				expect(inError.bi).toBeInstanceOf(BigInt);
+				expect(inError.bi.valueOf()).toBe(3n);
+
+				const inClass = evaluator.evaluate(
+					'{{ (() => { class Box { constructor() { this.s = new String("ab"); this.n = new Number(5); this.b = new Boolean(true); } } return new Box(); })() }}',
+					{ $json: {} },
+					caller,
+				) as Record<string, { valueOf(): unknown }>;
+				expect(inClass.s).toBeInstanceOf(String);
+				expect(inClass.s.valueOf()).toBe('ab');
+				expect(inClass.n).toBeInstanceOf(Number);
+				expect(inClass.n.valueOf()).toBe(5);
+				expect(inClass.b).toBeInstanceOf(Boolean);
+				expect(inClass.b.valueOf()).toBe(true);
+			});
+
+			it('should keep real subclasses and ignore overridden valueOf or extra marker keys', () => {
+				const subclasses = evaluator.evaluate(
+					'{{ (() => { class S extends String {} class N extends Number {} class B extends Boolean {} return [new S("ab"), new N(5), new B(false)]; })() }}',
+					{ $json: {} },
+					caller,
+				) as Array<{ valueOf(): unknown }>;
+				expect(subclasses[0]).toBeInstanceOf(String);
+				expect(subclasses[0].valueOf()).toBe('ab');
+				expect(subclasses[1]).toBeInstanceOf(Number);
+				expect(subclasses[1].valueOf()).toBe(5);
+				expect(subclasses[2]).toBeInstanceOf(Boolean);
+				expect(subclasses[2].valueOf()).toBe(false);
+
+				const mutated = evaluator.evaluate(
+					'{{ Object.assign(new String("ab"), { valueOf: () => "fake", __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z", __isError: true }) }}',
+					{ $json: {} },
+					caller,
+				);
+				expect(mutated).toBeInstanceOf(String);
+				expect(mutated).not.toBeInstanceOf(DateTime);
+				expect((mutated as { valueOf(): string }).valueOf()).toBe('ab');
+				expect(Object.keys(mutated as object)).toEqual(['0', '1']);
+			});
+
+			it('should return prototype-only wrapper mimics as plain objects', () => {
+				for (const proto of ['String', 'Number', 'Boolean', 'BigInt']) {
+					const result = evaluator.evaluate(
+						`{{ Object.create(${proto}.prototype) }}`,
+						{ $json: {} },
+						caller,
+					);
+					expect(result).toStrictEqual({});
+				}
+
+				const spoof = evaluator.evaluate(
+					'{{ Object.assign(Object.create(String.prototype), { __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }) }}',
+					{ $json: {} },
+					caller,
+				);
+				expect(spoof).not.toBeInstanceOf(DateTime);
+				expect(spoof).toStrictEqual({
+					__n8nType: 'DateTime',
+					__isoString: '2024-01-15T00:00:00.000Z',
+				});
+			});
+
+			it('should read boxed primitives from workflow data through lazy proxies and host calls', () => {
+				const err = Object.assign(new Error('from host', { cause: Object('cause') }), {
+					s: Object('ab'),
+				});
+				const json = {
+					s: Object('x\0y'),
+					n: Object(-0),
+					nan: Object(NaN),
+					b: Object(false),
+					bi: Object(9007199254740993n),
+					xr: runInNewContext('new String("xr")') as object,
+					arr: [Object('item')],
+					err,
+				};
+				const data = { $json: json, $input: { first: () => ({ json }) } };
+
+				for (const root of ['$json', '$input.first().json']) {
+					const s = evaluator.evaluate(`{{ ${root}.s }}`, data, caller);
+					expect(s).toBeInstanceOf(String);
+					expect((s as { valueOf(): string }).valueOf()).toBe('x\0y');
+
+					const n = evaluator.evaluate(`{{ ${root}.n }}`, data, caller);
+					expect(n).toBeInstanceOf(Number);
+					expect(Object.is((n as { valueOf(): number }).valueOf(), -0)).toBe(true);
+
+					const nan = evaluator.evaluate(`{{ ${root}.nan }}`, data, caller);
+					expect(nan).toBeInstanceOf(Number);
+					expect(Number.isNaN((nan as { valueOf(): number }).valueOf())).toBe(true);
+
+					const b = evaluator.evaluate(`{{ ${root}.b }}`, data, caller);
+					expect(b).toBeInstanceOf(Boolean);
+					expect((b as { valueOf(): boolean }).valueOf()).toBe(false);
+
+					const bi = evaluator.evaluate(`{{ ${root}.bi }}`, data, caller);
+					expect(bi).toBeInstanceOf(BigInt);
+					expect((bi as { valueOf(): bigint }).valueOf()).toBe(9007199254740993n);
+
+					const xr = evaluator.evaluate(`{{ ${root}.xr }}`, data, caller);
+					expect(xr).toBeInstanceOf(String);
+					expect((xr as { valueOf(): string }).valueOf()).toBe('xr');
+
+					const arrItem = evaluator.evaluate(`{{ ${root}.arr[0] }}`, data, caller);
+					expect(arrItem).toBeInstanceOf(String);
+					expect((arrItem as { valueOf(): string }).valueOf()).toBe('item');
+
+					const errStr = evaluator.evaluate(`{{ ${root}.err.s }}`, data, caller);
+					expect(errStr).toBeInstanceOf(String);
+					expect((errStr as { valueOf(): string }).valueOf()).toBe('ab');
+
+					expect(evaluator.evaluate(`{{ ${root}.s instanceof String }}`, data, caller)).toBe(true);
+				}
+			});
+
+			it('should read circular, getter-backed, and error-bearing own fields on boxed primitives lazily', () => {
+				const selfRef = Object('ab') as object & { self?: unknown };
+				selfRef.self = selfRef;
+
+				const cycleA = Object('a') as object & { other?: unknown };
+				const cycleB = Object(2) as object & { other?: unknown };
+				cycleA.other = cycleB;
+				cycleB.other = cycleA;
+
+				const readLazy = vi.fn(() => 'computed');
+				const withGetters = Object('ab') as object;
+				Object.defineProperty(withGetters, 'ok', { value: 1, enumerable: true });
+				Object.defineProperty(withGetters, 'lazy', { get: readLazy, enumerable: true });
+				Object.defineProperty(withGetters, 'boom', {
+					get() {
+						const err = new Error('getter boom');
+						err.name = 'ExpressionError';
+						throw err;
+					},
+					enumerable: true,
+				});
+
+				const withErrorValue = Object.assign(Object('ab') as object, {
+					ok: 2,
+					err: new Error('field error'),
+				});
+				const withHiddenOnly = Object.defineProperty(Object(5) as object, 'meta', { value: 1 });
+				const withHiddenAndEnum = Object.defineProperty(
+					Object.assign(Object('ab') as object, { visible: 'yes' }),
+					'secret',
+					{ value: 'no' },
+				);
+				const topLevel = Object.assign(Object('top') as object, { tag: 'root' });
+
+				const data = {
+					$json: {
+						selfRef,
+						cycleA,
+						withGetters,
+						withErrorValue,
+						withHiddenOnly,
+						withHiddenAndEnum,
+					},
+					$topBoxed: topLevel,
+				};
+
+				expect(evaluator.evaluate('{{ $json.selfRef + "!" }}', data, caller)).toBe('ab!');
+				expect(evaluator.evaluate('{{ $json.selfRef.self + "!" }}', data, caller)).toBe('ab!');
+				expect(evaluator.evaluate('{{ $json.selfRef.self instanceof String }}', data, caller)).toBe(
+					true,
+				);
+				expect(evaluator.evaluate('{{ $json.cycleA.other + 1 }}', data, caller)).toBe(3);
+				expect(evaluator.evaluate('{{ $json.cycleA.other.other + "!" }}', data, caller)).toBe('a!');
+
+				expect(evaluator.evaluate('{{ $json.withGetters + "!" }}', data, caller)).toBe('ab!');
+				expect(evaluator.evaluate('{{ $json.withGetters.ok }}', data, caller)).toBe(1);
+				expect(evaluator.evaluate('{{ Object.keys($json.withGetters) }}', data, caller)).toEqual([
+					'0',
+					'1',
+					'ok',
+					'lazy',
+					'boom',
+				]);
+				expect(readLazy).not.toHaveBeenCalled();
+
+				expect(
+					evaluator.evaluate(
+						'{{ [$json.withGetters.lazy, $json.withGetters.lazy] }}',
+						data,
+						caller,
+					),
+				).toEqual(['computed', 'computed']);
+				expect(readLazy).toHaveBeenCalledTimes(1);
+
+				expect(() => evaluator.evaluate('{{ $json.withGetters.boom }}', data, caller)).toThrow(
+					'getter boom',
+				);
+
+				expect(evaluator.evaluate('{{ $json.withErrorValue.ok }}', data, caller)).toBe(2);
+				expect(
+					evaluator.evaluate('{{ $json.withErrorValue.err instanceof Error }}', data, caller),
+				).toBe(true);
+				expect(evaluator.evaluate('{{ $json.withErrorValue.err.message }}', data, caller)).toBe(
+					'field error',
+				);
+
+				expect(evaluator.evaluate('{{ $json.withHiddenOnly.meta }}', data, caller)).toBe(1);
+				expect(evaluator.evaluate('{{ $json.withHiddenOnly + 1 }}', data, caller)).toBe(6);
+				expect(evaluator.evaluate('{{ Object.keys($json.withHiddenOnly) }}', data, caller)).toEqual(
+					[],
+				);
+				expect(evaluator.evaluate('{{ $json.withHiddenAndEnum.secret }}', data, caller)).toBe('no');
+				expect(evaluator.evaluate('{{ $json.withHiddenAndEnum.visible }}', data, caller)).toBe(
+					'yes',
+				);
+				expect(
+					evaluator.evaluate('{{ Object.keys($json.withHiddenAndEnum) }}', data, caller),
+				).toEqual(['0', '1', 'visible']);
+
+				expect(evaluator.evaluate('{{ $topBoxed + "!" }}', data, caller)).toBe('top!');
+				expect(evaluator.evaluate('{{ $topBoxed.tag }}', data, caller)).toBe('root');
+			});
 		});
 	});
 
@@ -456,10 +955,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		it('should keep a marker that an error flag guards inside a class instance as data', () => {
 			const data = { $json: {} };
 
-			// An object carrying `__isError` leaves the guest walk before the walk can
-			// escape it, so it reaches the host with its keys as they were written.
-			// It sits inside a class instance, which the host reads as data, so the
-			// key that names a type is the user's own and must stay a string.
+			// An object carrying `__isError` sits inside a class instance, which the
+			// host reads as data, so the key that names a type is the user's own and
+			// must stay a string.
 			const result = evaluator.evaluate(
 				'{{ (function(){ function Row(){ this.m = { __isError: true, __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
 				data,
@@ -535,6 +1033,17 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ 0/0 }}', data, caller)).toBeNaN();
 	});
 
+	it('should keep undefined Map values and Set values', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Map([["a", undefined]]) }}', data, caller)).toStrictEqual(
+			new Map([['a', undefined]]),
+		);
+		expect(evaluator.evaluate('{{ new Set([undefined]) }}', data, caller)).toStrictEqual(
+			new Set([undefined]),
+		);
+	});
+
 	it('should honor locale and options in toLocaleString/toLocaleTimeString', () => {
 		const data = { $json: { n: 1234.5, iso: '2024-01-15T10:30:00.000Z' } };
 
@@ -554,6 +1063,93 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBe('10:30 AM');
 	});
 
+	describe('returned Error fields', () => {
+		it.each(['detail', 'toJSON'])(
+			'should return the original Error when a hidden %s getter throws',
+			async (key) => {
+				const bridge = createBridge();
+				await bridge.initialize();
+				try {
+					const result = bridge.execute(
+						`return Object.defineProperties(new TypeError('original'), {
+							${key}: { get() { throw new RangeError('getter failed'); } },
+							code: { value: 400 }
+						});`,
+						{},
+					) as Error;
+
+					expect(result).toBeInstanceOf(TypeError);
+					expect(result.message).toBe('original');
+					expect(Object.hasOwn(result, key)).toBe(false);
+					expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+						value: 400,
+						enumerable: false,
+					});
+				} finally {
+					await bridge.dispose();
+				}
+			},
+		);
+
+		it.each([
+			{ label: 'function', expression: '() => 1' },
+			{ label: 'Promise', expression: '(async () => 1)()' },
+			{ label: 'symbol', expression: 'Symbol("detail")' },
+		])('should omit a $label from an Error', ({ expression }) => {
+			for (const nested of [false, true]) {
+				const result = evaluator.evaluate(
+					`{{ (() => {
+						const value = ${expression};
+						const detail = ${nested ? '{ code: 400, values: [value, { value }] }' : 'value'};
+						return Object.assign(new TypeError('original', { cause: detail }), {
+							code: 400, detail, toJSON: () => detail
+						});
+					})() }}`,
+					{ $json: {} },
+					caller,
+				) as Error & { code: number; detail: unknown; toJSON: () => unknown };
+				const expected = nested
+					? { code: 400, values: [undefined, { value: undefined }] }
+					: undefined;
+
+				expect(result).toBeInstanceOf(TypeError);
+				expect(result.message).toBe('original');
+				expect(result.code).toBe(400);
+				expect(result.detail).toStrictEqual(expected);
+				expect(result.cause).toStrictEqual(expected);
+				expect(result.toJSON()).toStrictEqual(expected);
+			}
+		});
+
+		it('should keep non-enumerable custom fields', async () => {
+			const bridge = createBridge();
+			await bridge.initialize();
+			try {
+				// Expressions cannot call defineProperties. Set up the fields in the guest directly.
+				const result = bridge.execute(
+					`return Object.defineProperties(new TypeError('original'), {
+						code: { value: 400 },
+						detail: { value: new Error('inner') },
+						visible: { value: true, enumerable: true }
+					});`,
+					{},
+				) as Error & { detail: Error };
+
+				expect(result).toBeInstanceOf(TypeError);
+				expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+					value: 400,
+					enumerable: false,
+				});
+				expect(result.detail).toBeInstanceOf(Error);
+				expect(result.detail.message).toBe('inner');
+				expect(Object.keys(result)).toEqual(['visible']);
+				expect(JSON.stringify(result)).toBe('{"visible":true}');
+			} finally {
+				await bridge.dispose();
+			}
+		});
+	});
+
 	it('should throw when the result cannot be cloned (function or Promise)', () => {
 		const data = { $json: {} };
 
@@ -564,6 +1160,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			'could not be cloned',
 		);
 		expect(() => evaluator.evaluate('{{ ({ fn: () => 1 }) }}', data, caller)).toThrow(
+			'could not be cloned',
+		);
+		expect(() => evaluator.evaluate('{{ ({ task: (async () => 1)() }) }}', data, caller)).toThrow(
 			'could not be cloned',
 		);
 	});
@@ -685,12 +1284,46 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ ({ __isNaN: true }) }}', data, caller)).toEqual({
 			__isNaN: true,
 		});
+		expect(evaluator.evaluate('{{ ({ __isUndefined: true }) }}', data, caller)).toEqual({
+			__isUndefined: true,
+		});
 		expect(
 			evaluator.evaluate('{{ ({ nested: { __isSet: true, __values: [1] } }) }}', data, caller),
 		).toEqual({ nested: { __isSet: true, __values: [1] } });
 		expect(evaluator.evaluate('{{ ({ __isEscaped: true, __value: 1 }) }}', data, caller)).toEqual({
 			__isEscaped: true,
 			__value: 1,
+		});
+		expect(
+			evaluator.evaluate(
+				'{{ ({ __isBoxedPrimitive: "bigint", __value: "not-a-bigint" }) }}',
+				data,
+				caller,
+			),
+		).toEqual({
+			__isBoxedPrimitive: 'bigint',
+			__value: 'not-a-bigint',
+		});
+		const mixed = evaluator.evaluate(
+			'{{ ({ __isBoxedPrimitive: "string", __value: new String("real") }) }}',
+			data,
+			caller,
+		) as { __isBoxedPrimitive: string; __value: unknown };
+		expect(mixed.__isBoxedPrimitive).toBe('string');
+		expect(mixed.__value).toBeInstanceOf(String);
+		expect((mixed.__value as { valueOf(): string }).valueOf()).toBe('real');
+	});
+
+	it('should keep an __isUndefined key on a class instance property that also has __isError', () => {
+		const data = { $json: {} };
+		const fromClass = (property: string) =>
+			`{{ (() => { class C { constructor() { this.x = ${property}; } } return new C(); })() }}`;
+
+		expect(
+			evaluator.evaluate(fromClass('{ __isError: true, __isUndefined: true }'), data, caller),
+		).toEqual({ x: { __isError: true, __isUndefined: true } });
+		expect(evaluator.evaluate(fromClass('undefined'), data, caller)).toStrictEqual({
+			x: undefined,
 		});
 	});
 
@@ -1006,6 +1639,132 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			'inner|OUTER_VALUE',
 		);
 	});
+
+	describe('host value reads', () => {
+		const rows = [
+			{ id: 1, tags: ['a', 'b'] },
+			{ id: 2, tags: ['c'] },
+		];
+
+		it('reads a host getter once when the guest copies its whole value', () => {
+			const read = vi.fn(() => ({ rows, count: rows.length }));
+			const data = {
+				get $json() {
+					return read();
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({ rows, count: 2 });
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('recreates an evicted $item() result when copying a lazy value', () => {
+			const item = vi.fn((index: number) => ({ $json: { index, rows } }));
+			const node = vi.fn((name: string) => ({ json: { name, rows } }));
+			const data = { $item: item, $: node } as unknown as WorkflowData;
+
+			expect(
+				evaluator.evaluate(
+					'{{ [$item(0).$json.rows, $item(0).$json.index, $item(1).$json.index, $("A").json.rows, $("A").json.name] }}',
+					data,
+					caller,
+				),
+			).toEqual([rows, 0, 1, rows, 'A']);
+			// Copying the returned rows reads item 0 again after item 1.
+			expect(item.mock.calls).toEqual([[0], [1], [0]]);
+			expect(node.mock.calls).toEqual([['A']]);
+		});
+
+		it('reads the host data again in the next evaluation', () => {
+			let current = 'first';
+			const data = {
+				get $json() {
+					return { value: current };
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('first');
+			current = 'second';
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('second');
+		});
+
+		it('reads a getter again after it threw', () => {
+			let attempts = 0;
+			const data = {
+				$json: {
+					get flaky() {
+						attempts++;
+						if (attempts === 1) throw new Error('not ready');
+						return 'ready';
+					},
+				},
+			};
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { try { return $json.flaky; } catch (e) { return $json.flaky; } })() }}',
+					data,
+					caller,
+				),
+			).toBe('ready');
+			expect(attempts).toBe(2);
+		});
+	});
+
+	describe('concat of workflow data arrays', () => {
+		const data = { $json: { list: [1, [2, 3], { id: 4 }], other: ['a'] } };
+
+		it.each([
+			['{{ $json.list.concat($json.other) }}', [1, [2, 3], { id: 4 }, 'a']],
+			['{{ [0].concat($json.list, 9, $json.other) }}', [0, 1, [2, 3], { id: 4 }, 9, 'a']],
+			['{{ $json.list.concat() }}', [1, [2, 3], { id: 4 }]],
+			['{{ $json.list[1].concat($json.list[2]) }}', [2, 3, { id: 4 }]],
+			['{{ [].concat.length }}', 1],
+			['{{ [].concat.name }}', 'concat'],
+			['{{ $json.other.concat("b", [["c"]]) }}', ['a', 'b', ['c']]],
+			[
+				'{{ (() => { const list = $json.list; list.push(5); return list.concat($json.other); })() }}',
+				[1, [2, 3], { id: 4 }, 5, 'a'],
+			],
+			[
+				'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = false; return [0].concat(list).length; })() }}',
+				2,
+			],
+			[
+				'{{ (() => { const list = $json.other; list.constructor = { [Symbol.species]: function () { return { tag: "mine" }; } }; return list.concat("b").tag; })() }}',
+				'mine',
+			],
+		])('%s', (expression, expected) => {
+			expect(evaluator.evaluate(expression, data, caller)).toEqual(expected);
+		});
+
+		it.runIf(!isQuickJS)('keeps the holes of a workflow data array', () => {
+			const result = evaluator.evaluate(
+				'{{ (() => { const list = $json.list; delete list[0]; return list.concat($json.other); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).toHaveLength(4);
+			expect(0 in (result as unknown[])).toBe(false);
+		});
+
+		it('keeps a non-spreadable workflow data array whole after an expression replaces Boolean', () => {
+			evaluator.evaluate(
+				'{{ (function () { this.Boolean = () => true; return "x"; })() }}',
+				data,
+				caller,
+			);
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = 0; return [0].concat(list).length; })() }}',
+					{ $json: { other: ['a', 'b'] } },
+					caller,
+				),
+			).toBe(2);
+		});
+	});
 });
 
 describe(`Integration: ${engineName} error handling`, () => {
@@ -1072,6 +1831,48 @@ describe(`Integration: ${engineName} error handling`, () => {
 			).toThrow(MemoryLimitError);
 		} finally {
 			await bridge.dispose();
+		}
+	});
+
+	it('should throw MemoryLimitError when a template expression exceeds memory limit', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => newBridge({ memoryLimit: 8, timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		const caller = {};
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+		try {
+			expect(() =>
+				evaluator.evaluate(
+					'{{ Array.from({ length: 3000000 }, (_, i) => ({ i })).length }}',
+					{},
+					caller,
+				),
+			).toThrow(MemoryLimitError);
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
+		}
+	});
+
+	it.each([
+		'{{ $json.list.concat($json.list).length }}',
+		'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat(list).length; })() }}',
+	])('should concat workflow data arrays within a small memory limit: %s', async (expression) => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => newBridge({ memoryLimit: 16, timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		const caller = {};
+		const data = { $json: { list: Array.from({ length: 200_000 }, () => 1) } };
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+		try {
+			expect(evaluator.evaluate(expression, data, caller)).toBe(400_000);
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
 		}
 	});
 });

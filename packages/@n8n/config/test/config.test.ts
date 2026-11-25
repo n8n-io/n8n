@@ -5,6 +5,7 @@ import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
 import {
+	AgentsConfig,
 	DEFAULT_CONTENT_SECURITY_POLICY,
 	GlobalConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
@@ -60,6 +61,8 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 			oauthBrowserBinding: false,
+			oauthCimdEnabled: false,
+			oauthClientMetadataUrl: '',
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -85,6 +88,7 @@ describe('GlobalConfig', () => {
 		},
 		editorBaseUrl: '',
 		webhookUrl: '',
+		agentWebhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -289,6 +293,7 @@ describe('GlobalConfig', () => {
 				schedulerMetricsInterval: 20,
 				includePollTriggerMetrics: false,
 				includeSystemTaskMetrics: false,
+				includeAgentMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -304,8 +309,10 @@ describe('GlobalConfig', () => {
 				includeWorkflowPublicationMetrics: false,
 				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
+				includeExecutionLedgerMetrics: false,
 			},
 			additionalNonUIRoutes: '',
+			agentWebhook: 'agent-webhook',
 			disableProductionWebhooksOnMainProcess: false,
 			disableUi: false,
 			form: 'form',
@@ -358,18 +365,21 @@ describe('GlobalConfig', () => {
 		},
 		instanceAi: {
 			workflowSuggestionsEnabled: false,
-			model: 'anthropic/claude-opus-4-8',
+			assistantAgentEnabled: false,
+			model: 'anthropic/claude-opus-5-5',
 			modelUrl: '',
+			modelRequestLabels: false,
 			modelApiKey: '',
 			vertexProjectId: '',
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
-			reflectorObservationTokens: 40_000,
-			midRunObservation: false,
+			utilityModel: '',
+			approvalJudgeModel: '',
+			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -403,6 +413,12 @@ describe('GlobalConfig', () => {
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
+			observationMaxWindowTokens: 200_000,
+			observationLogPlacement: 'message',
+			observationFailurePolicy: 'retry',
+			observerMaxBatches: 5,
+			reflectionMode: 'background',
+			historyRecall: true,
 		},
 		queue: {
 			health: {
@@ -463,12 +479,20 @@ describe('GlobalConfig', () => {
 			grantTokenTtl: 30,
 			insecureMode: false,
 		},
+		codeExecution: {
+			backend: 'task-runners',
+			sandbox: {
+				url: '',
+				apiKey: '',
+				scope: 'execution',
+			},
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
-			profilesSampleRate: 0,
+			profilingEnabled: false,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
 			webhookTracesSampleRate: 0.05,
@@ -514,12 +538,12 @@ describe('GlobalConfig', () => {
 			jitterRatio: 0.1,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'new',
-			enabledForPollTriggers: false,
+			enabledForPollTriggers: true,
 			pollTimeoutSeconds: 45,
 			maxAttempts: 5,
 			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
-			durableCursorsEnabled: false,
+			durableCursorsEnabled: true,
 			enabledForSystemTasks: false,
 			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
@@ -528,6 +552,11 @@ describe('GlobalConfig', () => {
 			ownerReconciliationBatchSize: 500,
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
+		},
+		leases: {
+			leaseSeconds: 20,
+			renewSeconds: 5,
+			marginSeconds: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -552,7 +581,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
@@ -594,6 +623,7 @@ describe('GlobalConfig', () => {
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
+				maxResumeAttempts: 2,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',
@@ -606,6 +636,11 @@ describe('GlobalConfig', () => {
 		},
 		memoryGuard: {
 			enabled: false,
+			holdLevel: 0.8,
+			resumeLevel: 0.75,
+			stopLevel: 0.85,
+			criticalLevel: 0.95,
+			stopsToUnpublish: 3,
 		},
 		diagnostics: {
 			enabled: true,
@@ -729,6 +764,8 @@ describe('GlobalConfig', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			workflowReviewsEnabled: false,
+			workflowReviewsAlwaysRequired: false,
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
@@ -736,6 +773,10 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+			skillSyncManagedByEnv: false,
+			skillSyncEnabled: false,
+			preferencesManagedByEnv: false,
+			preferencesEnabled: false,
 			communityPackagesManagedByEnv: false,
 			communityPackages: '',
 		},
@@ -745,15 +786,22 @@ describe('GlobalConfig', () => {
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
-			skillsHubEnabled: false,
 			modules: [],
+			humanReviewEnabled: false,
 			backgroundTasksEnabled: false,
+			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			maxGeneratedFileSizeMb: 50,
+			maxGeneratedFileCount: 100,
+			maxGeneratedTotalMb: 500,
+			maxTotalMb: 1536,
+			maxImportMb: 200,
 			channelReconcileIntervalSeconds: 60,
+			webhookChannelRateLimit: 300,
 			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
@@ -779,11 +827,11 @@ describe('GlobalConfig', () => {
 
 	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
 		process.env = {
-			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
 
-		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+		expect(config.scheduler.durableCursorsEnabled).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
@@ -802,15 +850,6 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingRecordOutputs).toBe(false);
-	});
-
-	it('should parse N8N_AGENTS_SKILLS_HUB_ENABLED from env variables', () => {
-		process.env = {
-			N8N_AGENTS_SKILLS_HUB_ENABLED: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.skillsHubEnabled).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
@@ -861,9 +900,13 @@ describe('GlobalConfig', () => {
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
+			N8N_WORKFLOW_REVIEWS_ENABLED: 'true',
+			N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED: 'true',
 		};
 		const config = Container.get(GlobalConfig);
 
+		// structuredClone omits prototype getters.
+		const { humanReviewEnabled: _humanReviewEnabled, ...agentDefaults } = defaultConfig.agents;
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -916,9 +959,14 @@ describe('GlobalConfig', () => {
 				responseBodyReadTimeout: 300000,
 			},
 			agents: {
-				...defaultConfig.agents,
+				...agentDefaults,
 				sandboxEphemeral: true,
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
+			},
+			instanceSettingsLoader: {
+				...defaultConfig.instanceSettingsLoader,
+				workflowReviewsEnabled: true,
+				workflowReviewsAlwaysRequired: true,
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();
@@ -974,6 +1022,49 @@ describe('GlobalConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
 		);
+	});
+
+	describe('memory guard config', () => {
+		it('should read the levels and the stops to unpublish from env variables', () => {
+			process.env = {
+				N8N_MEMORY_GUARD_RESUME_LEVEL: '0.6',
+				N8N_MEMORY_GUARD_HOLD_LEVEL: '0.7',
+				N8N_MEMORY_GUARD_STOP_LEVEL: '0.8',
+				N8N_MEMORY_GUARD_CRITICAL_LEVEL: '0.9',
+				N8N_MEMORY_GUARD_STOPS_TO_UNPUBLISH: '0',
+			};
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard).toMatchObject({
+				resumeLevel: 0.6,
+				holdLevel: 0.7,
+				stopLevel: 0.8,
+				criticalLevel: 0.9,
+				stopsToUnpublish: 0,
+			});
+		});
+
+		it('should fall back to the default levels when the levels do not increase', () => {
+			process.env = { N8N_MEMORY_GUARD_HOLD_LEVEL: '0.9' };
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard).toMatchObject({
+				resumeLevel: 0.75,
+				holdLevel: 0.8,
+				stopLevel: 0.85,
+				criticalLevel: 0.95,
+			});
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('Memory guard levels must increase'),
+			);
+		});
+
+		it('should reject a level above 1 and fall back to its default', () => {
+			process.env = { N8N_MEMORY_GUARD_CRITICAL_LEVEL: '95' };
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard.criticalLevel).toBe(0.95);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_MEMORY_GUARD_CRITICAL_LEVEL'),
+			);
+		});
 	});
 
 	describe('database recovery config validation', () => {
@@ -1224,6 +1315,19 @@ describe('GlobalConfig', () => {
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
+	});
+
+	it('falls back to the default for a negative or infinite agent file cap', () => {
+		process.env = {
+			N8N_AGENTS_FILES_MAX_TOTAL_MB: '-1',
+			N8N_AGENTS_FILES_MAX_IMPORT_MB: 'Infinity',
+			N8N_AGENTS_FILES_MAX_GENERATED_COUNT: '20',
+		};
+
+		const config = Container.get(AgentsConfig);
+		expect(config.maxTotalMb).toEqual(1536);
+		expect(config.maxImportMb).toEqual(200);
+		expect(config.maxGeneratedFileCount).toEqual(20);
 	});
 
 	describe('health endpoint transformation', () => {

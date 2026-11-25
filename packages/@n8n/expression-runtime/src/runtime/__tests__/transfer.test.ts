@@ -1,14 +1,18 @@
+import { runInNewContext } from 'node:vm';
 import { describe, it, expect, vi } from 'vitest';
 
 import { __prepareForTransfer } from '../serialize';
 import type { SentinelDecoder, TransferSentinel } from '../transfer';
 import {
+	isBoxedPrimitive,
 	isEscapedTransferValue,
 	isOpaqueTransferValue,
 	isPlainObject,
 	isStructuredCloneBuiltin,
 	isTransferSentinel,
 	transferTypeOf,
+	unboxPrimitive,
+	ERROR_SENTINEL_KEY,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
 	TRANSFER_OPAQUE_KEY,
@@ -63,7 +67,7 @@ describe('transfer framing', () => {
 
 		it('should name every key that makes an object look like framing', () => {
 			expect([...TRANSFER_FRAMING_KEYS].sort()).toEqual(
-				[TRANSFER_TYPE_KEY, TRANSFER_ESCAPED_KEY, TRANSFER_OPAQUE_KEY].sort(),
+				[TRANSFER_TYPE_KEY, TRANSFER_ESCAPED_KEY, TRANSFER_OPAQUE_KEY, ERROR_SENTINEL_KEY].sort(),
 			);
 		});
 	});
@@ -88,6 +92,66 @@ describe('transfer framing', () => {
 			expect(isStructuredCloneBuiltin(new Error('x'))).toBe(true);
 			expect(isStructuredCloneBuiltin(new ArrayBuffer(1))).toBe(true);
 			expect(isStructuredCloneBuiltin(new Uint8Array(1))).toBe(true);
+			expect(isStructuredCloneBuiltin(Object('ab') as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(5) as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(true) as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(1n) as object)).toBe(true);
+		});
+
+		it('should unbox real boxed primitives including subclasses and cross-realm values', () => {
+			class SubString extends String {}
+			class SubNumber extends Number {}
+			class SubBoolean extends Boolean {}
+
+			const mutated = Object.assign(Object('ab') as object, {
+				valueOf: () => 'fake',
+				[Symbol.toStringTag]: 'Fake',
+			});
+
+			expect(unboxPrimitive(Object('ab') as object)).toBe('ab');
+			expect(unboxPrimitive(Object('') as object)).toBe('');
+			expect(unboxPrimitive(Object(5) as object)).toBe(5);
+			expect(Object.is(unboxPrimitive(Object(-0) as object), -0)).toBe(true);
+			expect(Number.isNaN(unboxPrimitive(Object(NaN) as object))).toBe(true);
+			expect(unboxPrimitive(Object(Infinity) as object)).toBe(Infinity);
+			expect(unboxPrimitive(Object(-Infinity) as object)).toBe(-Infinity);
+			expect(unboxPrimitive(Object(true) as object)).toBe(true);
+			expect(unboxPrimitive(Object(false) as object)).toBe(false);
+			expect(unboxPrimitive(Object(1n) as object)).toBe(1n);
+			expect(unboxPrimitive(Object(0n) as object)).toBe(0n);
+			expect(unboxPrimitive(new SubString('sub'))).toBe('sub');
+			expect(unboxPrimitive(new SubNumber(7))).toBe(7);
+			expect(unboxPrimitive(new SubBoolean(false))).toBe(false);
+			expect(unboxPrimitive(mutated)).toBe('ab');
+			expect(unboxPrimitive(runInNewContext('new String("xr")') as object)).toBe('xr');
+			expect(unboxPrimitive(runInNewContext('new Number(9)') as object)).toBe(9);
+			expect(unboxPrimitive(runInNewContext('new Boolean(false)') as object)).toBe(false);
+			expect(unboxPrimitive(runInNewContext('Object(2n)') as object)).toBe(2n);
+		});
+
+		it('should reject objects that mimic a boxed primitive without its internal slot', () => {
+			for (const candidate of [
+				{},
+				Object.create(null) as object,
+				Object.create(String.prototype) as object,
+				Object.create(Number.prototype) as object,
+				Object.create(Boolean.prototype) as object,
+				Object.create(BigInt.prototype) as object,
+				{ [Symbol.toStringTag]: 'String' },
+				{ [Symbol.toStringTag]: 'Number' },
+				{ [Symbol.toStringTag]: 'Boolean' },
+				{ [Symbol.toStringTag]: 'BigInt' },
+				new Proxy(Object('ab') as object, {}),
+			]) {
+				expect(isBoxedPrimitive(candidate)).toBe(false);
+				expect(unboxPrimitive(candidate)).toBeUndefined();
+				expect(isStructuredCloneBuiltin(candidate)).toBe(false);
+			}
+
+			const { proxy: revoked, revoke } = Proxy.revocable({}, {});
+			revoke();
+			expect(isBoxedPrimitive(revoked)).toBe(false);
+			expect(unboxPrimitive(revoked)).toBeUndefined();
 		});
 	});
 
@@ -124,7 +188,7 @@ describe('transfer framing', () => {
 			expect(unwrap(value)).toBe(value);
 		});
 
-		it('should hand every marker to the decoder, wherever it sits', () => {
+		it('should decode a shared marker once, wherever it sits', () => {
 			const decode = vi.fn(decodeToTag);
 			const marker = { [TRANSFER_TYPE_KEY]: 'DateTime' };
 
@@ -135,11 +199,15 @@ describe('transfer framing', () => {
 
 			expect(result.top).toBe('decoded:DateTime');
 			expect((result.deep as { list: unknown[] }).list[0]).toBe('decoded:DateTime');
-			// The walk records the objects it rebuilds, but not the markers it
-			// decodes. The guest builds a marker for each place a value appears, so
-			// the same marker object twice is a shape the guest never sends.
-			expect(decode).toHaveBeenCalledTimes(2);
-			expect(decode).toHaveBeenCalledWith(marker);
+			expect(decode).toHaveBeenCalledTimes(1);
+		});
+
+		it('should reuse a decoded marker even when its result is undefined', () => {
+			const marker = { [TRANSFER_TYPE_KEY]: 'Empty' };
+			const decode = vi.fn(() => undefined);
+
+			expect(unwrap([marker, marker], decode)).toEqual([undefined, undefined]);
+			expect(decode).toHaveBeenCalledTimes(1);
 		});
 
 		it('should give back what the decoder returns for a type it does not own', () => {
@@ -212,6 +280,17 @@ describe('transfer framing', () => {
 
 			expect(result.date).toBe(date);
 			expect(result.map).toBe(map);
+		});
+
+		it('should keep a __proto__ key as an own key', () => {
+			const body = JSON.parse('{"__proto__":{"a":1}}') as Record<string, unknown>;
+
+			const result = unwrap({ marker: { [TRANSFER_TYPE_KEY]: 'tag' }, body }) as {
+				body: Record<string, unknown>;
+			};
+
+			expect(Object.keys(result.body)).toEqual(['__proto__']);
+			expect(result.body.a).toBeUndefined();
 		});
 	});
 
@@ -296,5 +375,37 @@ describe('the round trip through both walks', () => {
 		const value: TransferSentinel = { [TRANSFER_TYPE_KEY]: 'DateTime' };
 
 		expect(roundTrip(value, decodeToSelf)).toEqual(value);
+	});
+});
+
+describe('__prepareForTransfer', () => {
+	it('prepares a shared object once', () => {
+		const shared = { a: 1 };
+
+		const prepared = __prepareForTransfer(
+			Object.assign(new Error('x'), { left: shared, right: shared }),
+		) as { __props: { left: unknown; right: unknown } };
+
+		expect(prepared.__props.left).toBe(prepared.__props.right);
+	});
+
+	it('does not record the objects of a result without an Error', () => {
+		const shared = { a: 1 };
+
+		const prepared = __prepareForTransfer({ left: shared, right: shared }) as {
+			left: unknown;
+			right: unknown;
+		};
+
+		expect(prepared.left).not.toBe(prepared.right);
+	});
+
+	it('gives undefined for a reference back to an Error the walk is inside', () => {
+		const error = new Error('loop') as Error & { self?: unknown };
+		error.self = error;
+
+		const prepared = __prepareForTransfer(error) as { __props: unknown };
+
+		expect(prepared.__props).toStrictEqual({ self: undefined });
 	});
 });

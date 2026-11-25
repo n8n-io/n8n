@@ -22,7 +22,7 @@ ruleTester.run('no-application-error', NoApplicationErrorRule, {
 		},
 		{
 			code: 'import { ApplicationError } from "@n8n/errors";',
-			filename: '/Users/test/project/packages/workflow/test/application-error.test.ts',
+			filename: '/Users/test/project/packages/core/src/errors/__tests__/error-reporter.test.ts',
 		},
 	],
 	invalid: [

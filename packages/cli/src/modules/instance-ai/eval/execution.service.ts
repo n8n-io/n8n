@@ -8,6 +8,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
+import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -39,13 +40,12 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
-	OperationalError,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	type IWorkflowIssues,
+	isTriggerNode,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -54,9 +54,7 @@ import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { OwnershipService } from '@/services/ownership.service';
 import { executeAgent } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -64,15 +62,18 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { pruneConfigForEval } from '@/modules/agents/evaluation/evaluation-config';
+import { skipTimeBasedWaits } from '../skip-time-based-waits';
 import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { normalizeFormTriggerContent } from './form-trigger-content';
 import { createMcpMockFetch } from './mcp-mock-fetch';
 import { createWebSearchMock } from './web-search-mock';
 import { EvalTimings } from './eval-timings';
 import { snapshotLedgerBody } from './ledger-snapshot';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import { createNodeRunMockHandler } from './node-run-mock';
 import {
 	extractResponsesRequestModel,
 	isOpenAiResponsesUrl,
@@ -91,6 +92,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	identifyNodesForRunMock,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -138,7 +140,7 @@ interface CalledAgentRun {
 export class EvalExecutionService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
 		private readonly workflowRunner: WorkflowRunner,
@@ -238,6 +240,7 @@ export class EvalExecutionService {
 				options.scenarioHints,
 				unpinSet,
 				options.seededDataTableIds,
+				options.scenarioDescription,
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -283,6 +286,7 @@ export class EvalExecutionService {
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
 		seededDataTableIds?: string[],
+		scenarioDescription?: string,
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -302,6 +306,10 @@ export class EvalExecutionService {
 					nodeNames,
 					scenarioHints,
 					defaultStartNodeName: defaultStartNode?.name,
+					triggerNodeNames: workflowEntity.nodes
+						.filter((node) => this.asTriggerNode(node))
+						.map((node) => node.name),
+					scenarioDescription,
 				}),
 		);
 
@@ -539,16 +547,9 @@ export class EvalExecutionService {
 		// Time-based Wait nodes park the execution until a future timestamp
 		// (specificTime) or sleep away the scenario budget (timeInterval), so
 		// downstream nodes never run inside the eval window even when the built
-		// workflow is correct. Zero them — execution order and branch structure
-		// stay observable, and the verifier still sees the builder's original
-		// wait config in the workflow JSON. Webhook/form-resume waits are left
-		// untouched (they model an external event, not the passage of time).
-		for (const node of workflowEntity.nodes) {
-			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
-			const resume = node.parameters?.resume;
-			if (resume === 'webhook' || resume === 'form') continue;
-			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
-		}
+		// workflow is correct. The verifier still sees the builder's original
+		// wait config in the workflow JSON.
+		workflowEntity.nodes = skipTimeBasedWaits(workflowEntity.nodes).nodes;
 
 		const workflow = this.buildWorkflow(workflowEntity);
 		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets
@@ -557,6 +558,9 @@ export class EvalExecutionService {
 			? this.asTriggerNode(workflow.nodes[hints.startNodeName])
 			: undefined;
 		const startNode = hintedStart ?? this.findStartNode(workflow);
+		this.logger.debug(
+			`[EvalMock] Start node: "${startNode?.name}" (Phase 1 named "${hints.startNodeName ?? 'none'}")`,
+		);
 
 		if (!startNode) {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
@@ -570,6 +574,25 @@ export class EvalExecutionService {
 			nodeHints: hints.nodeHints,
 			pinnedOutputs: summarizePinnedOutputs(hints.bypassPinData),
 			signal: mockAbort.signal,
+		});
+
+		const runMockNodeNames = new Set(identifyNodesForRunMock(workflowEntity).map((n) => n.name));
+		const nodeRunMockHandler = createNodeRunMockHandler({
+			nodeNames: runMockNodeNames,
+			scenarioHints,
+			globalContext: hints.globalContext,
+			nodeHints: hints.nodeHints,
+			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
+			signal: mockAbort.signal,
+			onRun: (node, request, response) => {
+				this.mockedEntry(nodeResults, node.name).interceptedRequests.push({
+					url: '(no HTTP: node run mocked)',
+					method: 'RUN',
+					nodeType: node.type,
+					requestBody: request,
+					mockResponse: response,
+				});
+			},
 		});
 
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
@@ -589,7 +612,8 @@ export class EvalExecutionService {
 		// pre-patch state failed runs the harness had already made executable.
 		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		// Run-mocked nodes send no real request, so their filled fields are not config issues, as for pinned nodes.
+		this.checkNodeConfig(workflow, nodeResults, [...pinDataNodeNames, ...runMockNodeNames]);
 
 		// The engine drops a refused execution before the runner can await it, so report the refusal first.
 		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
@@ -667,6 +691,15 @@ export class EvalExecutionService {
 						nodeResults,
 						timings,
 					);
+					additionalData.evalNodeMockHandler = async (context) => {
+						const nodeName = context.getNode().name;
+						if (!runMockNodeNames.has(nodeName)) return undefined;
+						return await timings.time(
+							'node-mock',
+							nodeName,
+							async () => await nodeRunMockHandler(context),
+						);
+					};
 					additionalData.executeAgent = this.createEvalExecuteAgent({
 						mockHandler,
 						nodeResults,
@@ -836,9 +869,8 @@ export class EvalExecutionService {
 	private asTriggerNode(node: INode | undefined): INode | undefined {
 		if (!node || node.disabled) return undefined;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (!nodeType) return undefined;
-		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
-		return isTriggerCapable ? node : undefined;
+		// Not `'webhook' in nodeType`: Slack, Gmail, Wait and Form have one for send-and-wait.
+		return nodeType && isTriggerNode(nodeType.description) ? node : undefined;
 	}
 
 	private findWebhookNode(workflow: Workflow): INode | undefined {
@@ -860,7 +892,7 @@ export class EvalExecutionService {
 		pinDataNodeNames: string[],
 	): void {
 		for (const node of Object.values(workflow.nodes)) {
-			if (node.disabled) continue;
+			if (node.disabled || pinDataNodeNames.includes(node.name)) continue;
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType) continue;
 
@@ -868,7 +900,6 @@ export class EvalExecutionService {
 				nodeType.description.properties,
 				node,
 				nodeType.description,
-				pinDataNodeNames,
 			);
 
 			const parameterIssues = { ...(issues?.parameters ?? {}) };
@@ -956,10 +987,13 @@ export class EvalExecutionService {
 				: {};
 		}
 
-		// Mirror any LLM-embedded binary map as real item-level binary; json stays
-		// untouched so $json.binary.* references keep resolving.
-		const embedded = readEmbeddedBinaryMeta(triggerContent);
-		const item: INodeExecutionData = { json: triggerContent as IDataObject };
+		// The model sometimes writes a Form Trigger's output in the Webhook's shape.
+		const content = normalizeFormTriggerContent(startNode, triggerContent);
+
+		// Mirror any LLM-embedded binary map as real item-level binary; json keeps the
+		// map so $json.binary.* references keep resolving.
+		const embedded = readEmbeddedBinaryMeta(content);
+		const item: INodeExecutionData = { json: content as IDataObject };
 		const binary: IBinaryKeyData = {};
 
 		// The embedded files are what the trigger emits; the requirement only fills in when they name none.
@@ -1178,8 +1212,8 @@ export class EvalExecutionService {
 			globalContext: run.hints.globalContext,
 			logger: this.logger,
 		};
-		const mocks = (async (): Promise<CalledAgentMocks> => ({
-			mcpFetch: createMcpMockFetch({
+		const mocks = (async (): Promise<CalledAgentMocks> => {
+			const mcpFetch = createMcpMockFetch({
 				...mockContext,
 				servers: mcpServers.map(({ name, url, description }) => ({ name, url, description })),
 				knownToolsByServer: await resolveCanonicalMcpCatalogs(
@@ -1196,19 +1230,22 @@ export class EvalExecutionService {
 						requestBody: call.args,
 						mockResponse: call.result,
 					}),
-			}),
-			webSearch: createWebSearchMock({
-				...mockContext,
-				onSearch: (args, result) =>
-					record({
-						url: 'mock://web-search',
-						method: 'POST',
-						nodeType: 'web-search:fallback',
-						requestBody: args,
-						mockResponse: result,
-					}),
-			}),
-		}))();
+			});
+			return {
+				mcpFetch: () => mcpFetch,
+				webSearch: createWebSearchMock({
+					...mockContext,
+					onSearch: (args, result) =>
+						record({
+							url: 'mock://web-search',
+							method: 'POST',
+							nodeType: 'web-search:fallback',
+							requestBody: args,
+							mockResponse: result,
+						}),
+				}),
+			};
+		})();
 		run.mocks.set(key, mocks);
 		return await mocks;
 	}

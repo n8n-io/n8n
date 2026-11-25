@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -15,23 +16,32 @@ import { z } from 'zod';
 import type { ChannelSetupDeps } from './setup-tool.types';
 
 const configureChannelInputSchema = z.object({
-	integrationType: z.string().describe('Chat platform type from agent-context integrations'),
+	integrationType: z.string(),
 });
 
 type ConfigureChannelInput = z.infer<typeof configureChannelInputSchema>;
+
+/** What the model must do after a skipped channel. The tool description stays short. */
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result) || result.configured !== false) return result;
+	return {
+		...result,
+		nextStep: 'The user skipped this channel. Continue without it, and do not ask again.',
+	};
+}
 
 export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 	return new Tool(CONFIGURE_CHANNEL_TOOL_NAME)
 		.legacyNames(...getLegacyBuilderToolNames(CONFIGURE_CHANNEL_TOOL_NAME))
 		.description(
-			'Configure one available chat channel for the target agent. First call ' +
-				'agent-context with type "integrations" and pass a returned `type` as `integrationType`; do not infer ' +
-				'channel names. Shows setup UI in chat where the user creates a new channel credential ' +
-				'(for n8n_chat: confirms the agent description) or skips. The setup UI persists the channel configuration and does not publish the agent, ' +
-				'so use this for channel credentials instead of the credentials tool or config writes. ' +
-				'Returns { configured: boolean } (plus configMutated/agentId refresh metadata when configured); ' +
-				'false means the user skipped, so continue without the channel and do not re-prompt.',
+			'Configure one chat channel for the target agent. Pass a `type` returned by agent-context ' +
+				'type "integrations"; do not infer channel names. A setup card lets the user create the ' +
+				'channel credential (for n8n_chat: confirm the agent description) or skip. The card ' +
+				'saves the channel without publishing the agent, so do not use the credential tools or ' +
+				'config writes for channel credentials. Results that need an action carry `nextStep`: ' +
+				'follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(configureChannelInputSchema)
 		.suspend(channelSuspendPayloadSchema)
 		.resume(channelResumeSchema)

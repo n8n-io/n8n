@@ -2,13 +2,11 @@ import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -24,6 +22,7 @@ import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
+import type { IAgentConfigurationTelemetryProperties } from './agent-telemetry.types';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -66,10 +65,11 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
-	 * Grants baked into the runtime's tool list by `filterToolsForUser`.
+	 * Grants baked into the runtime's tool list and draft integrations at build.
 	 * The sliding TTL can keep an active runtime alive indefinitely, so these
 	 * are re-checked on cache hits (debounced) rather than waiting for
-	 * eviction. Absent when no user-gated tools made it into the runtime.
+	 * eviction. Absent when no user-gated tool or integration made it into the
+	 * runtime.
 	 */
 	userToolAccessSnapshot?: UserToolAccessSnapshot;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
@@ -358,6 +358,9 @@ export class AgentRuntimeCacheService {
 			mcpServerAttributions,
 			userToolAccessSnapshot,
 			budget,
+			toolGuardrails,
+			guardrailModel,
+			guardrailWorkflowContext,
 		} = await reconstruction;
 
 		return {
@@ -366,6 +369,9 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			mcpServerAttributions,
 			...(budget !== undefined ? { budget } : {}),
+			...(toolGuardrails !== undefined ? { toolGuardrails } : {}),
+			...(guardrailModel !== undefined ? { guardrailModel } : {}),
+			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),

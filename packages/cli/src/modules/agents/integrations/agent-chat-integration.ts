@@ -1,5 +1,7 @@
+import type { ChannelHitlDefinition } from './channel-hitl';
 import {
 	AgentIntegrationConfig,
+	type AgentIntegrationAccountResponse,
 	type AgentIntegrationDisconnectWarning,
 	type AgentMessageAuthor,
 	type AgentMessageIntegrationOrigin,
@@ -8,9 +10,11 @@ import {
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Attachment, Thread, Author, Message } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
+import type { Logger } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -21,6 +25,7 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from './integration-tool-definitions';
 import type {
+	ConversationToolName,
 	IntegrationAction,
 	IntegrationActionDefinition,
 	IntegrationActionParams,
@@ -28,6 +33,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationContextQueryParams,
+	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
@@ -48,6 +54,12 @@ export class InboundAttachmentAccessError extends UserError {}
  * Channel identity, without the decrypted credential. Enough for checks that
  * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
  */
+/** A sender identity that the platform guarantees, never a display name. */
+export interface VerifiedSender {
+	userId: string;
+	userName?: string;
+}
+
 export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
@@ -120,6 +132,20 @@ export interface AgentChatIntegrationBuilderGuidance {
 	capabilities: string[];
 	useIntegrationWhen: string[];
 	useNodeToolWhen: string[];
+}
+
+/** One send posts at most this many messages of files, so a runaway call cannot flood the conversation. */
+export const MAX_FILE_MESSAGES_PER_SEND = 3;
+
+export interface FileUploadLimits {
+	/** Maximum number of files in one message. */
+	maxFiles: number;
+	/** Maximum size of one file. */
+	maxFileBytes: number;
+	/** Maximum length of the text that goes with files. Undefined means no limit. */
+	maxCaptionLength?: number;
+	/** Maximum size of an image that is sent as an image. A larger image is sent as a file. */
+	maxImageBytes?: number;
 }
 
 export interface PlatformAgentContext {
@@ -264,11 +290,22 @@ export type SettleActionMessage = (params: SettleActionMessageParams) => Promise
  * The concrete subclasses live under `./platforms/`.
  */
 export abstract class AgentChatIntegration {
+	readonly hitl: ChannelHitlDefinition = { supported: false };
+
 	/** Platform identifier (`'slack'`, `'telegram'`, …). */
 	abstract readonly type: string;
 
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
+
+	/**
+	 * Credential types that this channel entry accepts. Connect and publish
+	 * validation check the credential against them. Override it when the
+	 * channel settings decide the type.
+	 */
+	acceptedCredentialTypes(_integration: AgentIntegrationConfig): string[] {
+		return this.credentialTypes;
+	}
 
 	// ---------------------------------------------------------------------------
 	// FE display metadata — shown in the trigger-picker and integration cards.
@@ -315,6 +352,25 @@ export abstract class AgentChatIntegration {
 	/** Optional additional guidance appended to the generated action tool description. */
 	readonly actionToolGuidance?: string[];
 
+	/**
+	 * Upload limits of the platform for files that an agent sends with a
+	 * message. Undefined means that the platform cannot send agent files.
+	 */
+	readonly fileUploadLimits?: FileUploadLimits;
+
+	/**
+	 * Post agent files as typed `attachments` instead of `files`. The type comes
+	 * from the MIME type, so the platform can send an image as a photo.
+	 */
+	readonly sendFilesAsAttachments: boolean = false;
+
+	/**
+	 * Split files into groups that the platform can send in one message. Keep
+	 * the order that the agent gave. Undefined sends all files as one group.
+	 * Groups larger than `fileUploadLimits.maxFiles` are split again.
+	 */
+	groupOutboundFiles?<T extends { mimeType: string; fileSizeBytes: number }>(files: T[]): T[][];
+
 	/** Read-only context queries exposed through the generated integration context tool. */
 	get contextQueries(): IntegrationContextQuery[] {
 		return this.contextToolDefinitions.map((definition) => definition.name);
@@ -323,6 +379,16 @@ export abstract class AgentChatIntegration {
 	/** Side-effecting actions exposed through the generated integration action tool. */
 	get actions(): IntegrationAction[] {
 		return this.actionToolDefinitions.map((definition) => definition.name);
+	}
+
+	/**
+	 * Eager conversation tools use the channel's existing action handlers.
+	 * New channels declare the silence action to opt in.
+	 */
+	get conversationTools(): ConversationToolName[] {
+		const tools: ConversationToolName[] = [];
+		if (this.actions.includes('do_not_respond')) tools.push('do_not_respond');
+		return tools;
 	}
 
 	/**
@@ -369,6 +435,12 @@ export abstract class AgentChatIntegration {
 	 * message that preceded the card.
 	 */
 	readonly singleStreamedRunPerTurn: boolean = false;
+
+	/**
+	 * Most characters of reply text in one platform message. Longer replies
+	 * continue in a new message. `undefined` (default) means no limit.
+	 */
+	readonly maxMessageLength: number | undefined = undefined;
 
 	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
@@ -434,6 +506,15 @@ export abstract class AgentChatIntegration {
 		input: OriginInput,
 		origin: AgentMessageIntegrationOrigin,
 	): Promise<OriginNames | undefined>;
+
+	/**
+	 * Looks up the bot name and workspaces of a credential for display labels.
+	 * The caller caches the result and treats a rejection as "unknown".
+	 * Channels without a mention model leave this undefined.
+	 */
+	describeAccount?(
+		credential: Record<string, unknown>,
+	): Promise<AgentIntegrationAccountResponse | undefined>;
 
 	/**
 	 * Decides who owns the episodic memories of an incoming chat turn. Every
@@ -547,6 +628,17 @@ export abstract class AgentChatIntegration {
 	}
 
 	/**
+	 * Refuses a send to a recipient that the run may not message. Return the
+	 * reason in words the agent can act on, or undefined to allow the send.
+	 */
+	checkActionRecipient?(params: {
+		action: IntegrationAction;
+		input: Record<string, unknown>;
+		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
+	}): string | undefined;
+
+	/**
 	 * Explains a failed send in words the agent can act on, for errors where the
 	 * platform message alone gives the model nothing to do next. Return
 	 * undefined to keep the default error.
@@ -585,7 +677,14 @@ export abstract class AgentChatIntegration {
 	normalizeComponents?(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
-	): SuspendComponent[];
+	): SuspendComponent[] | Promise<SuspendComponent[]>;
+
+	/**
+	 * Optional: handle a button or list tap that is not a resume. Return `true`
+	 * to claim the tap, so the bridge does not try to resume the run. WhatsApp
+	 * uses this for its "More…" list row.
+	 */
+	claimAction?(event: ActionEvent): Promise<boolean>;
 
 	/**
 	 * Optional per-platform thread ID formatting.
@@ -619,9 +718,20 @@ export abstract class AgentChatIntegration {
 	 * Optional per-user authorisation check called on every inbound mention,
 	 * subscribed message, and action before the bridge subscribes / executes.
 	 * Default (no implementation): allow. Telegram uses this to enforce the
-	 * Private-mode allowlist.
+	 * Private-mode allowlist. `sender` is the identity from {@link verifiedSender}.
 	 */
-	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
+	isUserAllowed?(
+		author: Author,
+		settings: AgentIntegrationConfig | undefined,
+		sender?: VerifiedSender,
+	): boolean;
+
+	/**
+	 * Optional: the sender identity read from the raw inbound event, for
+	 * {@link isUserAllowed}. Returns `undefined` when the event has no
+	 * individual user as its sender.
+	 */
+	verifiedSender?(raw: unknown): VerifiedSender | undefined;
 
 	/**
 	 * Optional platform context needed by the bridge before execution. Slack uses
@@ -642,6 +752,12 @@ export abstract class AgentChatIntegration {
 	}): Promise<Attachment[]>;
 
 	/**
+	 * Puts a user ID given to `send_dm` into the form the platform uses for
+	 * inbound messages, so one person always maps to one thread and session.
+	 */
+	normalizeUserId?(userId: string): string;
+
+	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
 	 * Default (no implementation): 'required'.
 	 */
@@ -650,6 +766,15 @@ export abstract class AgentChatIntegration {
 		isNewMention: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
+
+	/**
+	 * For a synthetic message that reports a failed send: the platform ID of
+	 * the message that failed, and the text to give a chat that sent it. The
+	 * bridge sends the report to the session that sent the message.
+	 */
+	getFailedSendReport?(
+		message: Message<unknown>,
+	): { messageId: string; chatNotice: string } | undefined;
 
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;
@@ -747,6 +872,8 @@ export interface PlatformActionParams
 	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
+	/** The files of `input.fileIds`, after the read check. Set only for integrations with `requiresChatInstance === false`. */
+	files?: AgentChatAttachment[];
 }
 
 /**

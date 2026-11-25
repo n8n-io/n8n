@@ -10,7 +10,7 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
-import { createCredentialsTool } from '../../tools/credentials.tool';
+import { createSetupCredentialsTool } from '../../tools/credentials.tool';
 import type { BrowserUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -21,7 +21,7 @@ const browserCapableOptions: { browserUseState: BrowserUseState } = {
 describe('getSystemPrompt — browser discoverability', () => {
 	describe('credentials tool → Browser Use credential setup skill', () => {
 		it('routes needsBrowserSetup=true credential responses to the Browser Use skill', () => {
-			const tool = createCredentialsTool({} as never);
+			const tool = createSetupCredentialsTool({} as never);
 
 			expect(tool.description).toContain('needsBrowserSetup=true');
 			expect(tool.description).toContain('credential-setup-with-browser-use');
@@ -29,7 +29,7 @@ describe('getSystemPrompt — browser discoverability', () => {
 		});
 
 		it('routes browser credential setup through Browser Use tools', () => {
-			const tool = createCredentialsTool({} as never);
+			const tool = createSetupCredentialsTool({} as never);
 
 			expect(tool.description).toMatch(/use Browser Use `browser_\*` tools directly/);
 		});
@@ -122,7 +122,7 @@ describe('getSystemPrompt — browser discoverability', () => {
 		it('does not offer n8n docs as a search_tools discovery example', () => {
 			const prompt = getSystemPrompt(toolSearchOptions);
 
-			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).toContain('## Tool Catalog');
 			expect(prompt).not.toMatch(/search "n8n docs"/i);
 		});
 

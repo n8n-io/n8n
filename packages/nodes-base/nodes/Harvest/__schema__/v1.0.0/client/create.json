@@ -1,0 +1,29 @@
+{
+	"properties": {
+		"address": {
+			"type": ["null", "string"]
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_active": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"statement_key": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

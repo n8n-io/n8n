@@ -27,7 +27,7 @@ import {
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
-import { useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 export interface WorkflowFailuresReport {
@@ -52,6 +52,9 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'initial-node-id-consumed': [];
 	'workflow-failures': [report: WorkflowFailuresReport];
+	/** A later run of the workflow succeeded, so an earlier failure is stale. */
+	'workflow-succeeded': [workflowId: string];
+	'workflow-loaded': [workflowId: string];
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
@@ -117,12 +120,14 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 	workflowId: () => props.workflowId,
 	executionResult: () => props.executionResult,
 	reportWorkflowFailures,
+	reportWorkflowSuccess: (workflowId) => emit('workflow-succeeded', workflowId),
 	paneElement: () => paneElement.value,
 });
 
 let pendingInitialNodeId = props.initialNodeId;
 
 function handleWorkflowLoaded(workflowId: string) {
+	emit('workflow-loaded', workflowId);
 	restoreExecutionResult();
 
 	const nodeId = pendingInitialNodeId;
@@ -142,7 +147,7 @@ function handleWorkflowLoaded(workflowId: string) {
 // drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
 // signals below only fire around tool calls that name a workflowId — leaving
 // the canvas editable through workspace file edits and failed builds.
-const thread = useThread();
+const thread = useArtifactThread();
 const isAgentWorking = useIsAgentWorking();
 const settingsStore = useInstanceAiSettingsStore();
 
@@ -154,13 +159,9 @@ const handoff = thread.consumePendingHandoff(props.workflowId);
 const initialWorkflow = handoff?.workflow;
 const initialExecution = handoff?.execution;
 
-const isAgentEditingThisWorkflow = computed(() => {
-	for (const message of thread.messages) {
-		if (!message.agentTree) continue;
-		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
-	}
-	return false;
-});
+const isAgentEditingThisWorkflow = computed(() =>
+	isAgentEditingWorkflow(thread.artifactTurns, props.workflowId),
+);
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
 // standalone AI helpers (`false`), forces the canvas read-only while the agent

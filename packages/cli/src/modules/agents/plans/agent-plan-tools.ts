@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { planLeaves } from './agent-plan-work-state';
+import { planLeaves } from './agent-plan-state';
 import type { OperationContext } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -9,12 +9,14 @@ import type { AgentPlanService, AgentPlanSnapshot } from '../agent-plan.service'
 import { AgentPlanWriteConflictError } from '../repositories/agent-plan.repository';
 import {
 	AGENT_PLAN_FORMAT_VERSION,
+	AGENT_PLAN_TOOL_NAMES,
 	AgentPlanValidationError,
 	agentPlanDocumentSchema,
 	agentPlanGroupSchema,
 	agentPlanTaskSchema,
 	type AgentPlanDocument,
 	type AgentPlanItem,
+	type AgentPlanTask,
 } from './agent-plan.schema';
 import { isFinal } from './agent-plan.validation';
 
@@ -28,12 +30,14 @@ const itemId = z.union([
 const itemFields = { id: itemId, dependsOn: z.array(itemId) };
 
 const taskInput = agentPlanTaskSchema
-	.omit({ startedAt: true, endedAt: true })
+	.omit({ startedAt: true, endedAt: true, jobId: true })
 	.extend({ ...itemFields, fallbackFor: itemId.optional() });
 
-const groupInput = agentPlanGroupSchema
-	.omit({ startedAt: true, endedAt: true })
-	.extend({ ...itemFields, tasks: z.array(taskInput) });
+const groupInput = agentPlanGroupSchema.omit({ startedAt: true, endedAt: true }).extend({
+	...itemFields,
+	status: agentPlanGroupSchema.shape.status.default('pending'),
+	tasks: z.array(taskInput),
+});
 
 const documentInput = agentPlanDocumentSchema.extend({
 	items: z.array(z.discriminatedUnion('kind', [taskInput, groupInput])),
@@ -70,8 +74,15 @@ const writeInput = z
 
 type AgentPlanDocumentInput = z.infer<typeof documentInput>;
 
-function withoutTiming<Item extends AgentPlanItem>(item: Item) {
+function withoutManagedFields<Item extends AgentPlanItem>(item: Item) {
 	const { startedAt, endedAt, ...visible } = item;
+
+	if ('jobId' in visible) {
+		const { jobId, ...definition } = visible;
+
+		return definition;
+	}
+
 	return visible;
 }
 
@@ -87,32 +98,37 @@ function mergeDocumentUpdate(
 	);
 
 	const removed = new Set(removeItemIds);
+
 	if (removed.size !== removeItemIds.length) {
 		throw new AgentPlanValidationError('Removal IDs must be unique.');
 	}
 
 	for (const id of removeItemIds) {
 		const item = existing.get(id);
+
 		if (!item) throw new AgentPlanValidationError(`Unknown removal ID: ${id}`);
+
 		if (item.kind === 'group') {
 			for (const task of item.tasks) removed.add(task.id);
 		}
 	}
 
 	const updated = new Set<string>();
+
 	const mergeItems = (
 		items: AgentPlanItem[],
 		changes: Array<z.infer<typeof itemUpdate>>,
 	): unknown[] => {
 		const merged = new Map<string, unknown>();
+
 		for (const item of items) {
 			if (removed.has(item.id)) continue;
 
 			merged.set(
 				item.id,
 				item.kind === 'group'
-					? { ...withoutTiming(item), tasks: mergeItems(item.tasks, []) }
-					: withoutTiming(item),
+					? { ...withoutManagedFields(item), tasks: mergeItems(item.tasks, []) }
+					: withoutManagedFields(item),
 			);
 		}
 
@@ -120,6 +136,7 @@ function mergeDocumentUpdate(
 			if (updated.has(change.id)) {
 				throw new AgentPlanValidationError(`Duplicate update ID: ${change.id}`);
 			}
+
 			updated.add(change.id);
 
 			if (removed.has(change.id)) {
@@ -127,14 +144,24 @@ function mergeDocumentUpdate(
 			}
 
 			const current = items.find((item) => item.id === change.id);
+
 			if (!current && !change.id.startsWith('new:')) {
 				throw new AgentPlanValidationError(`Unknown item ID at this level: ${change.id}`);
 			}
 
+			if (current?.kind === 'group' && change.status !== undefined) {
+				throw new AgentPlanValidationError(
+					'Group statuses come from their tasks. Omit the group status.',
+				);
+			}
+
 			const { tasks, ...fields } = change;
-			const item = { ...(current ? withoutTiming(current) : {}), ...fields };
+			const item = { ...(current ? withoutManagedFields(current) : {}), ...fields };
+
 			if (item.resultSummary === null) delete item.resultSummary;
+
 			if (item.fallbackFor === null) delete item.fallbackFor;
+
 			merged.set(
 				change.id,
 				tasks !== undefined || item.kind === 'group'
@@ -196,8 +223,11 @@ function prepareDocument(
 
 	const resolveId = (id: string): string => {
 		if (!id.startsWith('new:')) return id;
+
 		const resolved = aliases.get(id);
+
 		if (!resolved) throw new AgentPlanValidationError(`Unknown temporary ID: ${id}`);
+
 		return resolved;
 	};
 
@@ -209,9 +239,16 @@ function prepareDocument(
 		endedAt: existing.get(item.id)?.endedAt ?? null,
 	});
 
+	const restoreJob = (id: string) => {
+		const item = existing.get(id);
+
+		return item?.kind === 'task' && item.jobId ? { jobId: item.jobId } : {};
+	};
+
 	const restoreTask = (task: z.infer<typeof taskInput>) => ({
 		...restoreItem(task),
 		kind: task.kind,
+		...restoreJob(task.id),
 		...(task.fallbackFor !== undefined ? { fallbackFor: resolveId(task.fallbackFor) } : {}),
 	});
 
@@ -223,6 +260,12 @@ function prepareDocument(
 				: restoreTask(item),
 		),
 	};
+}
+
+function presentTask(task: AgentPlanTask) {
+	const { startedAt, endedAt, ...visible } = task;
+
+	return visible;
 }
 
 export function presentPlan(plan: AgentPlanSnapshot | null) {
@@ -247,6 +290,12 @@ export function presentPlan(plan: AgentPlanSnapshot | null) {
 
 	return {
 		planId: plan.id,
+		lastActivityAt:
+			leaves
+				.flatMap((item) => [item.startedAt, item.endedAt])
+				.filter((time): time is string => time !== null)
+				.sort()
+				.at(-1) ?? null,
 		revision: plan.revision,
 		closed: plan.closedAt !== null,
 		startedAt,
@@ -256,8 +305,8 @@ export function presentPlan(plan: AgentPlanSnapshot | null) {
 			...plan.data,
 			items: plan.data.items.map((item) =>
 				item.kind === 'group'
-					? { ...withoutTiming(item), tasks: item.tasks.map(withoutTiming) }
-					: withoutTiming(item),
+					? { ...withoutManagedFields(item), tasks: item.tasks.map(presentTask) }
+					: presentTask(item),
 			),
 		},
 		readiness: plan.readiness,
@@ -309,10 +358,8 @@ function scopedTool<Schema extends z.ZodType>(
 export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 	return [
 		scopedTool(
-			'create_plan',
-			'Create the active plan for this conversation. Use unique new: names for new tasks and groups. ' +
-				'Use these names in dependency references. Set every task and group status to "pending", including work you will start immediately. ' +
-				'After creation succeeds, use update_plan with the returned permanent IDs and revision to start ready work.',
+			AGENT_PLAN_TOOL_NAMES.create,
+			'Create the active plan for this conversation. Use unique new: IDs for new tasks, groups, and dependencies. Set every task status to "pending" and omit group statuses. After creation, use the returned permanent IDs and revision with update_plan for parent-run work or pass planTask when delegating ready work.',
 			z.object({ document: documentInput }).strict(),
 			async ({ document }, threadId, ctx) =>
 				await service.createActivePlan(
@@ -326,94 +373,52 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 				),
 		)
 			.systemInstruction(
-				'Use planning for potentially long-running work, work with multiple steps, or work with complex dependencies. ' +
-					'For this work, create or update the plan before research, other task tool calls, or sub-agent delegation. ' +
-					'Discovery followed by a shortlist and parallel research requires a plan. A chat message describing the steps is not a plan. ' +
-					'If the user asks for quick work, keep the plan compact rather than skipping it. ' +
-					'Always save new tasks and groups with status "pending", in both create_plan and update_plan. ' +
-					'Do not create an item as "in_progress" or "done", even when work starts immediately or already finished. ' +
-					'After the write succeeds, use the returned permanent IDs and revision in a separate update_plan call to change statuses. ' +
-					'Only start or complete work after its prerequisites are Done. ' +
-					'If later tasks depend on research results, start with the known tasks and extend the plan after research. ' +
-					'Do not invent placeholder tasks for work whose scope or targets are not yet known. ' +
-					'Represent that stage as a Pending group with an empty tasks list and dependencies on the prerequisite work. ' +
-					'For example, add "Research finalists" without tasks named "Finalist 1", "Finalist 2", or "Finalist 3". ' +
-					'After accepting the shortlist results, add concrete tasks to that group before starting the research. ' +
-					'Do not add final communication-only tasks, such as "Presented findings to user", to the plan. ' +
-					'Include such a task only when it requires a sub-agent or a tool call beyond plan maintenance. ' +
-					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
-					'For update_plan, send only fields that must change. Do not resend the full plan, unchanged items, or unchanged descriptions and dependencies. ' +
-					'For a task status change, send document.items with only the task id, status, and any changed title or resultSummary. ' +
-					'For a child task, include its group id and put the child update in tasks. Omitted fields and items stay unchanged. ' +
-					'If an update is rejected, correct it and retry before reporting progress. Read the plan again if the revision changed. ' +
-					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
-					'Do not use foreground delegation for plan work. ' +
-					'This rule overrides the default foreground-delegation guidance for plan work. ' +
-					'If background mode is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
-					'Keep task and group statuses current. Accept results before marking work Done. ' +
-					'This includes work you complete in your own reply, such as a comparison or recommendation. Mark that task Done before giving the final answer. ' +
-					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
-					'Wait for the plan update to succeed before announcing the change. ' +
-					'Use presentation.label for a short, factual activity label in the plan card. ' +
-					'Name the current activity in a few words, such as "Checking vendor pricing", not a list of completed tasks. ' +
-					'Use presentation.detail for one brief progress note, limitation, or change of approach, not a results report. ' +
-					'Keep task and group titles short. Each title must explain the work without its description. ' +
-					'Avoid repeated words or phrases across task and group titles at the same nesting level when clarity permits. ' +
-					'Put shared context in the parent title instead of repeating it in every child title. ' +
-					'Keep each title distinct and clear. Do not replace repeated words with synonyms just for variety. ' +
-					'Update titles of pending or in-progress tasks to reflect the current activity. The card shows titles, not task descriptions. ' +
-					'For an in-progress task, use a simple action verb with a short note in parentheses, such as "Research pricing (3 vendors)". ' +
-					'When marking a task Done, use a past-tense title, such as "Researched pricing". ' +
-					'Save the completed title in the same update as the Done status. Final tasks cannot change. ' +
-					'Put constraints in descriptions and findings in resultSummary. ' +
-					'Keep this text current through update_plan. Presentation text does not set task or group statuses. ' +
-					'Before closing a plan, save a final presentation.detail summary of completed and unfinished work. ' +
-					'Underlying runs do not set plan statuses.',
+				'Use planning for multi-step, long-running, or dependency-heavy work (such as discovery, shortlisting, and parallel research). ' +
+					'Create or update the plan before research, task tool calls, or sub-agent delegation; a chat message is not a plan. ' +
+					'For quick work, keep the plan compact rather than skipping it. ' +
+					'Always save new tasks with status "pending" and omit group statuses in create_plan and update_plan; never create items as "in_progress" or "done". ' +
+					'Start or complete work only after prerequisites are "done". ' +
+					'Never set a task to "paused"; paused tasks resume only via background_jobs(action: "resume") on an explicit user request. ' +
+					'Update statuses only for tasks you perform yourself, including synthesis or comparison before your final reply. ' +
+					'Delegated tasks (with jobId) take their status from their background job, and groups derive status from children; never set group or delegated task statuses. ' +
+					'Wait for plan writes to succeed before announcing progress; on rejection, fix and retry. Call read_plan if the current plan or revision is not in context, after delegation (which advances the revision), or after a revision conflict. ' +
+					'For update_plan, send only changed fields (id plus any changed status, title, description, dependsOn, fallbackFor, or resultSummary); nest child updates under their group id. ' +
+					'Do not invent placeholder tasks for unknown scope (such as "Finalist 1/2/3"); use an empty pending group with dependencies and add concrete tasks once scope is known. ' +
+					'Omit communication-only final tasks (such as "Present findings") unless they require a sub-agent or non-plan tool call. ' +
+					'For plan sub-agent work, always call delegate_subagent with mode: "background" and planTask: { planId, planTaskId } (leaf task id), one job per task; never use foreground delegation for plan work (overrides default foreground guidance; if background mode is unavailable, explain the limitation). ' +
+					'Card display: set presentation.label to a short factual current-activity label (not a completed-task list) and presentation.detail to one brief note, limitation, or approach change; save a final presentation.detail summary before close_plan. ' +
+					'Keep titles short, clear, and non-repetitive (put shared context in parent titles; cards show titles, not descriptions—put constraints in description and findings in resultSummary). ' +
+					'Use action verbs for active titles (e.g. "Research pricing (3 vendors)") and past tense when done (e.g. "Researched pricing"). ' +
+					'Titles and resultSummary remain editable after completion; create a new task if a background result needs more work.',
 			)
 			.build(),
 		scopedTool(
-			'read_plan',
+			AGENT_PLAN_TOOL_NAMES.read,
 			'Read the active plan and its current revision for this conversation. Returns null if there is no active plan.',
 			z.object({}).strict(),
 			async (_input, threadId, ctx) => await service.findActivePlan(threadId, ctx),
 		).build(),
 		scopedTool(
-			'update_plan',
-			'Update only the supplied fields at the expected revision. Omitted fields and items stay unchanged. ' +
-				'Send only changed fields. Merge document.items and group tasks by id. Existing items keep their order; new items append. ' +
-				'Use removeItemIds to remove items explicitly; an empty items or tasks list removes nothing. ' +
-				'For new items, supply all required fields and use new: names for their IDs and references. Omit timestamps. ' +
-				'Set presentation, presentation.detail, resultSummary, or fallbackFor to null to clear it. ' +
-				'A supplied dependsOn list replaces the saved list. Use [] to clear it. ' +
-				'Dependencies connect siblings only. Prerequisites must be done before work starts or completes. ' +
-				'New tasks and groups must have status "pending". Change their statuses in a separate update after this write succeeds. ' +
-				'Final items cannot change. In-progress tasks cannot change description or dependencies. Only pending items can be removed. ' +
-				'fallbackFor references a failed or cancelled sibling task. Read the saved result for redirected dependencies.',
+			AGENT_PLAN_TOOL_NAMES.update,
+			'Apply a partial update at expectedRevision. Send only changed fields; omitted fields and items stay unchanged. ' +
+				'Merge items and group tasks by id; append new items with full fields and new: IDs (status "pending", omit group statuses and timestamps). ' +
+				'Use removeItemIds to remove pending items. Set presentation, presentation.detail, resultSummary, or fallbackFor to null to clear; dependsOn replaces the saved list ([] clears). ' +
+				'Dependencies connect siblings only; fallbackFor references a failed or cancelled sibling.',
 			writeInput.extend({
 				document: documentUpdate,
 				removeItemIds: z.array(z.string().uuid().toLowerCase()).optional(),
 			}),
 			async ({ document, removeItemIds, ...input }, threadId, ctx) => {
-				const current = await service.findPlan(threadId, input.planId, ctx);
-				if (!current || current.closedAt !== null || current.revision !== input.expectedRevision) {
-					throw new AgentPlanWriteConflictError();
-				}
-				return await service.replacePlan(
-					{
-						...input,
-						threadId,
-						formatVersion: AGENT_PLAN_FORMAT_VERSION,
-						data: prepareDocument(
-							mergeDocumentUpdate(current.data, document, removeItemIds ?? []),
-							current.data,
-						),
-					},
+				return await service.updatePlan(
+					{ ...input, threadId, formatVersion: AGENT_PLAN_FORMAT_VERSION },
+					(current) =>
+						prepareDocument(mergeDocumentUpdate(current, document, removeItemIds ?? []), current),
 					ctx,
 				);
 			},
 		).build(),
 		scopedTool(
-			'close_plan',
+			AGENT_PLAN_TOOL_NAMES.close,
 			'Close the active plan at the expected revision. Preserve its document and release the active-plan slot. ' +
 				'This does not cancel work or imply success.',
 			writeInput,

@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /** The work outlived the wait. It is still running, only nobody waits for it anymore. */
 export class TimeoutError extends OperationalError {}

@@ -7,6 +7,8 @@ const input = {
 	scope: 'all',
 	workflowIds: [],
 	reviewerIds: ['c56a4180-65aa-42ec-a945-5fd21dec0538'],
+	includeAllProjectMembers: false,
+	includeSubWorkflows: false,
 };
 
 it.each([undefined, false, true])('omits enabled=%s from configuration edits', (enabled) => {
@@ -22,8 +24,36 @@ it('defaults new configurations to paused and preserves explicit enablement', ()
 });
 
 it.each([SaveSelfHealingConfigurationDto, UpdateSelfHealingConfigurationDto])(
-	'requires a reviewer when saving a configuration',
+	'defaults omitted selections to individual reviewers only',
 	(dto) => {
-		expect(dto.safeParse({ ...input, reviewerIds: [] }).success).toBe(false);
+		expect(
+			dto.parse({ scope: 'all', reviewerIds: ['c56a4180-65aa-42ec-a945-5fd21dec0538'] }),
+		).toMatchObject({
+			workflowIds: [],
+			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
+		});
+		expect(dto.parse({ scope: 'all', includeAllProjectMembers: true })).toMatchObject({
+			reviewerIds: [],
+			includeAllProjectMembers: true,
+		});
+	},
+);
+
+it.each([SaveSelfHealingConfigurationDto, UpdateSelfHealingConfigurationDto])(
+	'rejects invalid reviewer selections',
+	(dto) => {
+		expect(dto.safeParse({ ...input, reviewerIds: ['not-a-user'] }).success).toBe(false);
+		expect(dto.safeParse({ ...input, includeAllProjectMembers: 'yes' }).success).toBe(false);
+	},
+);
+
+it.each([SaveSelfHealingConfigurationDto, UpdateSelfHealingConfigurationDto])(
+	'accepts only a boolean sub-workflow inclusion',
+	(dto) => {
+		expect(dto.parse({ ...input, includeSubWorkflows: true })).toMatchObject({
+			includeSubWorkflows: true,
+		});
+		expect(dto.safeParse({ ...input, includeSubWorkflows: 'yes' }).success).toBe(false);
 	},
 );

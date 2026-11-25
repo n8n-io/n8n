@@ -5,7 +5,11 @@ import {
 	N8nAvatar,
 	N8nButton,
 	N8nDataTableServer,
+	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIconButton,
+	N8nLoading,
+	N8nPreviewBadge,
 	N8nSwitch,
 	N8nText,
 	N8nTimeAgo,
@@ -14,14 +18,22 @@ import {
 } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	SELF_HEALING_CONFIGURATION_VIEW,
+	type SelfHealingLocation,
+} from '@n8n/frontend-constants/self-healing';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
+import ProjectMembersIcon from './ProjectMembersIcon.vue';
 
-const props = defineProps<{ projectId: string }>();
+const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealingLocation }>(), {
+	variant: 'projectSettings',
+});
+const isPersonalTab = computed(() => props.variant === 'personalTab');
 const store = useSelfHealingStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -44,12 +56,16 @@ const headers = computed<Array<TableHeader<SelfHealingConfigurationDto>>>(() => 
 		width: 240,
 		disableSort: true,
 	},
-	{
-		title: i18n.baseText('selfHealing.config.peopleToNotify'),
-		key: 'reviewerIds',
-		width: 200,
-		disableSort: true,
-	},
+	...(isPersonalTab.value
+		? []
+		: [
+				{
+					title: i18n.baseText('selfHealing.config.peopleToNotify'),
+					key: 'reviewerIds' as const,
+					width: 200,
+					disableSort: true,
+				},
+			]),
 	{
 		title: i18n.baseText('selfHealing.config.lastActivity'),
 		key: 'lastActivity',
@@ -72,11 +88,42 @@ const reviewersById = computed(
 	() =>
 		new Map(store.options[props.projectId]?.reviewers.map((reviewer) => [reviewer.id, reviewer])),
 );
+const project = computed(() => store.options[props.projectId]?.project);
+const projectMembersLabel = computed(() =>
+	i18n.baseText('selfHealing.config.projectMembers', {
+		interpolate: { project: project.value?.name ?? '' },
+	}),
+);
+
+const workflowNamesById = computed(
+	() =>
+		new Map(
+			store.options[props.projectId]?.workflows.map((workflow) => [workflow.id, workflow.name]),
+		),
+);
+
+// Selected-workflow configurations take precedence, so an all-scope one covers only the rest.
+const hasSelectedWorkflowConfiguration = computed(() =>
+	configurations.value.some(
+		({ scope, workflowIds }) => scope === 'selected' && workflowIds.length > 0,
+	),
+);
 
 function scopeLabel(configuration: SelfHealingConfigurationDto) {
 	if (configuration.scope === 'all') {
-		return i18n.baseText('selfHealing.config.all');
+		return i18n.baseText(
+			hasSelectedWorkflowConfiguration.value
+				? 'selfHealing.config.allOther'
+				: 'selfHealing.config.all',
+		);
 	}
+
+	const [onlyWorkflowId] = configuration.workflowIds;
+	const onlyWorkflowName =
+		configuration.workflowIds.length === 1
+			? workflowNamesById.value.get(onlyWorkflowId)
+			: undefined;
+	if (onlyWorkflowName) return onlyWorkflowName;
 
 	return i18n.baseText('selfHealing.config.selectedCount', {
 		adjustToNumber: configuration.workflowIds.length,
@@ -106,7 +153,9 @@ watch(() => props.projectId, load, { immediate: true });
 
 function edit(id: number | 'new') {
 	void router.push({
-		name: SELF_HEALING_CONFIGURATION_VIEW,
+		name: isPersonalTab.value
+			? PERSONAL_SELF_HEALING_CONFIGURATION_VIEW
+			: SELF_HEALING_CONFIGURATION_VIEW,
 		params: { projectId: props.projectId, configurationId: String(id) },
 	});
 }
@@ -166,14 +215,39 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 </script>
 
 <template>
-	<fieldset id="self-healing" ref="sectionRef" data-test-id="project-self-healing">
-		<h3>
+	<component
+		:is="isPersonalTab ? 'div' : 'fieldset'"
+		id="self-healing"
+		ref="sectionRef"
+		:class="{ [$style.personalTab]: isPersonalTab }"
+		data-test-id="project-self-healing"
+	>
+		<!-- The personal tab shows the Preview badge on the tab itself. -->
+		<h3 v-if="!isPersonalTab" :class="$style.heading">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
+			<N8nPreviewBadge size="xsmall" data-test-id="self-healing-preview-badge" />
+			<N8nEnterpriseReadinessBadge
+				size="xsmall"
+				data-test-id="self-healing-enterprise-readiness-badge"
+			/>
 		</h3>
-		<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+		<slot v-if="isPersonalTab && loading" name="loading" />
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>
+		<N8nLoading
+			v-else-if="loading && !configurations.length"
+			:class="$style.loadingLine"
+			data-test-id="self-healing-config-loading"
+		/>
+		<N8nEmptyState
+			v-else-if="!configurations.length && isPersonalTab"
+			:icon="{ type: 'icon', value: 'life-buoy' }"
+			:heading="i18n.baseText('selfHealing.config.emptyHeading')"
+			:description="i18n.baseText('selfHealing.config.emptyDescription')"
+			:button-text="i18n.baseText('selfHealing.config.create')"
+			@click:button="edit('new')"
+		/>
 		<N8nText
 			v-else-if="!configurations.length"
 			size="small"
@@ -183,6 +257,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 		>
 		<div v-else :class="$style.table">
 			<N8nDataTableServer
+				:loading="loading"
 				:items-per-page="configurations.length"
 				:headers="headers"
 				:items="configurations"
@@ -190,12 +265,31 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 				:page-sizes="[configurations.length + 1]"
 			>
 				<template #[`item.scope`]="{ item }">
-					<N8nText size="medium" color="text-dark" data-test-id="self-healing-configuration-row">{{
-						scopeLabel(item)
-					}}</N8nText>
+					<N8nText
+						size="medium"
+						color="text-dark"
+						:class="$style.scope"
+						:title="scopeLabel(item)"
+						data-test-id="self-healing-configuration-row"
+						>{{ scopeLabel(item) }}</N8nText
+					>
 				</template>
 				<template #[`item.reviewerIds`]="{ item }">
 					<div :class="$style.people">
+						<div
+							v-if="item.includeAllProjectMembers"
+							:class="$style.person"
+							data-test-id="self-healing-project-members"
+						>
+							<ProjectMembersIcon :icon="project?.icon" size="xsmall" />
+							<N8nText
+								size="medium"
+								color="text-dark"
+								:class="$style.personName"
+								:title="projectMembersLabel"
+								>{{ projectMembersLabel }}</N8nText
+							>
+						</div>
 						<div v-for="id in item.reviewerIds" :key="id" :class="$style.person">
 							<N8nAvatar
 								:first-name="reviewersById.get(id)?.firstName"
@@ -240,7 +334,8 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 						@action="onAction(item, $event)"
 					>
 						<N8nIconButton
-							icon="ellipsis"
+							icon="ellipsis-12"
+							icon-size="small"
 							variant="ghost"
 							size="small"
 							:disabled="isUpdating"
@@ -251,6 +346,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			</N8nDataTableServer>
 		</div>
 		<N8nButton
+			v-if="!isPersonalTab"
 			variant="outline"
 			size="large"
 			icon="plus"
@@ -259,10 +355,21 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			@click="edit('new')"
 			>{{ i18n.baseText('selfHealing.config.create') }}</N8nButton
 		>
-	</fieldset>
+	</component>
 </template>
 
 <style module lang="scss">
+.personalTab {
+	min-width: 0;
+}
+
+.heading {
+	display: flex;
+	/* The label has a bottom margin, so the badges align with its text. */
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+}
+
 .table {
 	margin-bottom: var(--spacing--sm);
 
@@ -285,7 +392,9 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 	min-width: 0;
 }
 
+.scope,
 .personName {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -294,5 +403,15 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 .empty {
 	display: block;
 	margin-bottom: var(--spacing--sm);
+}
+
+.loadingLine {
+	max-width: 50%;
+	margin-bottom: var(--spacing--sm);
+
+	:global(.el-skeleton__p) {
+		display: block;
+		margin-top: 0;
+	}
 }
 </style>

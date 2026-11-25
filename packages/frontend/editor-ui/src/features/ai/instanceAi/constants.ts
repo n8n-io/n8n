@@ -2,9 +2,13 @@ import { INSTANCE_AI_THREAD_SOURCES, type InstanceAiThreadSource } from '@n8n/ap
 
 export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
+/** The session timeline of an Assistant agent thread. */
+export const INSTANCE_AI_THREAD_SESSION_VIEW = 'InstanceAiThreadSession';
 export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
+export const INSTANCE_AI_APP_ID_QUERY = 'appId';
+export const INSTANCE_AI_PENDING_APP_ID_QUERY = 'pendingAppId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 
@@ -32,7 +36,11 @@ export const INSTANCE_AI_PENDING_AGENT_METADATA_KEY = 'instanceAiPendingAgentTar
 /** Every agent the model has addressed in this conversation. Mirrors `REGISTRY_METADATA_KEY` in `agent-target-binding.ts` (backend-only). */
 export const INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY = 'instanceAiAgentBuilderTargets';
 export const NEW_CONVERSATION_TITLE = 'New conversation';
-export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+export {
+	AI_GATEWAY_MANAGED_TAG,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
+} from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
 
 export const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
@@ -47,6 +55,7 @@ export function isInstanceAiThreadSource(value: unknown): value is InstanceAiThr
 const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 ]);

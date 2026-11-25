@@ -17,6 +17,7 @@ import {
 	isExecutable,
 	displayParameter,
 	getActiveCredentialTypes,
+	getRequestedCredentialTypes,
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
@@ -28,6 +29,7 @@ import {
 	isHitlToolType,
 	getNodeOutputs,
 	nodeIssuesToString,
+	mergeIssues,
 	findDisplayedProperty,
 	isTriggerNodeType,
 	getCredentialActivationParameters,
@@ -4476,7 +4478,7 @@ describe('NodeHelpers', () => {
 			expect(nodeIssuesToString({})).toEqual([]);
 		});
 
-		it('flattens every issue type in order (execution, parameters, credentials, input, typeUnknown)', () => {
+		it('flattens every issue type in order and leaves out execution', () => {
 			const issues: INodeIssues = {
 				execution: true,
 				parameters: {
@@ -4497,7 +4499,6 @@ describe('NodeHelpers', () => {
 			};
 
 			expect(nodeIssuesToString(issues, node)).toEqual([
-				'Execution Error.',
 				'Parameter "URL" is required.',
 				'Parameter "URL" must be a string.',
 				'Parameter "Method" is required.',
@@ -4509,6 +4510,16 @@ describe('NodeHelpers', () => {
 
 		it('falls back to a generic typeUnknown message when no node is passed', () => {
 			expect(nodeIssuesToString({ typeUnknown: true })).toEqual(['Node Type is not known.']);
+		});
+	});
+
+	describe('mergeIssues', () => {
+		it('does not copy an execution issue', () => {
+			const destination: INodeIssues = {};
+
+			mergeIssues(destination, { execution: true });
+
+			expect(destination.execution).toBeUndefined();
 		});
 	});
 
@@ -5508,6 +5519,62 @@ describe('NodeHelpers', () => {
 					true,
 				);
 			});
+		});
+	});
+
+	describe('getRequestedCredentialTypes', () => {
+		const makeNode = (node: Partial<INode> = {}): INode => ({
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.httpRequest',
+			position: [1, 1],
+			parameters: {},
+			...node,
+		});
+
+		const description: INodeTypeDescription = {
+			name: 'n8n-nodes-base.httpRequest',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+		};
+
+		it('should return the credentials map keys, a named type, and the extended type in order', () => {
+			const node = makeNode({
+				credentials: { slackApi: { id: '1', name: 'Slack' } },
+				parameters: { authentication: 'predefinedCredentialType', nodeCredentialType: 'githubApi' },
+				extendsCredential: 'virusTotalApi',
+			});
+
+			expect(getRequestedCredentialTypes(node, () => description)).toEqual([
+				'slackApi',
+				'githubApi',
+				'virusTotalApi',
+			]);
+		});
+
+		it('should skip a named type it cannot resolve without a description', () => {
+			const node = makeNode({ parameters: { nodeCredentialType: 'githubApi' } });
+
+			expect(getRequestedCredentialTypes(node, () => null)).toEqual([]);
+		});
+
+		it('should not read the description when no parameter names a type', () => {
+			const getDescription = vi.fn(() => description);
+
+			expect(
+				getRequestedCredentialTypes(
+					makeNode({ extendsCredential: 'virusTotalApi' }),
+					getDescription,
+				),
+			).toEqual(['virusTotalApi']);
+			expect(getDescription).not.toHaveBeenCalled();
 		});
 	});
 

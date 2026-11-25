@@ -378,6 +378,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
+		schemaPath: 'trigger/ChatTrigger/ChatTrigger',
 		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
@@ -1036,6 +1037,12 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
+		// The GET `setup` route only serves the hosted chat page. Other modes have no handler for it.
+		if (ctx.getWebhookName() === 'setup' && nodeMode !== 'hostedChat') {
+			res.status(404).end();
+			return { noWebhookResponse: true };
+		}
+
 		// Only the editor's session-scoped canvas test route may execute a non-public chat
 		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();
@@ -1067,10 +1074,6 @@ export class ChatTrigger extends Node {
 		const loadPreviousSession = options.loadPreviousSession;
 		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
 
-		const enableStreaming = availableInChat
-			? !options.responseMode || options.responseMode === 'streaming'
-			: options.responseMode === 'streaming';
-
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
@@ -1080,6 +1083,12 @@ export class ChatTrigger extends Node {
 		if (req.contentType !== 'multipart/form-data') {
 			applyPageQuery(bodyData, pageQuery);
 		}
+
+		const enableStreaming =
+			bodyData.action !== 'loadPreviousSession' &&
+			(availableInChat
+				? !options.responseMode || options.responseMode === 'streaming'
+				: options.responseMode === 'streaming');
 
 		const authentication = ctx.getNodeParameter('authentication', 'none');
 		let authedUser: IUser | undefined;

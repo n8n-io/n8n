@@ -51,15 +51,13 @@ import {
 	getExecutableNodeNames,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
-	OperationalError,
 	SEND_AND_WAIT_OPERATION,
 	tryToParseUrl,
-	UnexpectedError,
-	UserError,
 	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
@@ -72,8 +70,16 @@ import {
 	InternalServerError,
 	NotFoundError,
 	UnsupportedMediaTypeError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
 } from '@n8n/errors';
-import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	isExecutionIdV2,
+	type ExecutionIdV2,
+} from '@/executions/execution-id';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { parseBody } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -244,7 +250,7 @@ async function prepareMcpQueueExecution(
 		firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 	if (!isMcpListToolsRelay(mcpListToolsRelayValue)) return false;
 
-	const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+	const { Publisher } = await import('@n8n/backend-services');
 	const publisher = Container.get(Publisher);
 	await publisher.publishMcpRelay({
 		sessionId: mcpListToolsRelayValue.sessionId,
@@ -334,12 +340,33 @@ const getChatResponseMode = (
 	return undefined;
 };
 
+export function shouldUseLastNodeForChatHistory(
+	nodeType: string,
+	body: unknown,
+	responseMode: WebhookResponseMode,
+): boolean {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		isRecord(body) &&
+		body.action === 'loadPreviousSession' &&
+		(responseMode === 'lastNode' || responseMode === 'streaming' || responseMode === 'hostedChat')
+	);
+}
+
 /** Returns whether the node is an enabled Form node or form-resuming Wait node. */
 function isEnabledFormPageNode(node: INode): boolean {
 	if (node.disabled) return false;
 	if (node.type === FORM_NODE_TYPE) return true;
 
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
+}
+
+/** Whether submitting this Form Trigger opens another form page or a Form Ending. */
+function formTriggerHasMorePages(workflowStartNode: INode, workflow: Workflow): boolean {
+	return (
+		workflowStartNode.type === FORM_TRIGGER_NODE_TYPE &&
+		autoDetectResponseMode(workflowStartNode, workflow, 'POST') === 'formPage'
+	);
 }
 
 export function autoDetectResponseMode(
@@ -849,8 +876,7 @@ async function prepareWebhookAdditionalData({
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
-		if (!user) return undefined;
-		return toWebhookUser(user);
+		return user?.toIUser();
 	};
 
 	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
@@ -1027,6 +1053,8 @@ export async function executeWebhook(
 		storedAt?: ExecutionStorageLocation;
 		/** Called before WorkflowRunner.run for an existing execution. */
 		onResume?: () => void;
+		/** For an engine v2 execution: the wait that the resume ends on the data plane. */
+		engineResume?: EngineV2ResumeRequest;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1038,6 +1066,7 @@ export async function executeWebhook(
 	);
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for existing webhook expressions.
 		$executionId: executionId,
 	};
 
@@ -1070,7 +1099,7 @@ export async function executeWebhook(
 	});
 
 	const {
-		responseMode,
+		responseMode: configuredResponseMode,
 		responseCode,
 		responseData,
 		checkAllMainOutputs,
@@ -1078,6 +1107,7 @@ export async function executeWebhook(
 		responseContentType,
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
+	let responseMode = configuredResponseMode;
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1090,7 +1120,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	/** The id of the v2 run, created before the webhook node runs. */
+	/** The id of the v2 run, set before the webhook node runs. */
 	let engineV2ExecutionId: ExecutionIdV2 | undefined;
 	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
 	let engineV2Payload: INodeExecutionData[][] | undefined;
@@ -1105,10 +1135,23 @@ export async function executeWebhook(
 		// run that will not start.
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
-			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			engineV2Webhooks.assertSupported({
+				workflowStartNode,
+				responseMode,
+				executionId,
+				formHasMorePages: formTriggerHasMorePages(workflowStartNode, workflow),
+			});
+			// A workflow that runs on engine v2 in this mode never starts on v1, so a
+			// resume here names a v2 execution. Anything else is a bug.
+			if (executionId !== undefined && !isExecutionIdV2(executionId)) {
+				throw new UnexpectedError('An engine v2 resume needs a v2 execution id', {
+					extra: { executionId },
+				});
+			}
 			// Created before the node runs, so a file the node stores is written under
-			// the path of its run from the start, and no rename is needed later.
-			engineV2ExecutionId = createExecutionIdV2();
+			// the path of its run from the start, and no rename is needed later. A
+			// resume reuses the id of the waiting execution.
+			engineV2ExecutionId = executionId ?? createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
@@ -1127,6 +1170,14 @@ export async function executeWebhook(
 			executionMode,
 			additionalKeys,
 		);
+
+		// The widget loads history from one JSON response.
+		const useLastNodeForChatHistory = shouldUseLastNodeForChatHistory(
+			workflowStartNode.type,
+			req.body,
+			responseMode,
+		);
+		if (useLastNodeForChatHistory) responseMode = 'lastNode';
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
@@ -1240,6 +1291,8 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
+			// A queue worker can finish before this handler registers the response mode.
+			forceFullExecutionData: useLastNodeForChatHistory,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
@@ -1323,19 +1376,8 @@ export async function executeWebhook(
 			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
-		// Extract W3C trace context from webhook headers for OTEL propagation.
-		const traceparent = req.headers.traceparent;
-		if (
-			typeof traceparent === 'string' &&
-			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
-		) {
-			const tracestate = req.headers.tracestate;
-			runData.tracingContext = {
-				traceparent,
-				tracestate:
-					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
-			};
-		}
+		const tracingContext = extractTracingContext(req.headers, additionalData.otel);
+		if (tracingContext) runData.tracingContext = tracingContext;
 
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
@@ -1350,7 +1392,12 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						engineResume: options?.engineResume,
+					}
 				: undefined,
 			responsePromise,
 		);
@@ -1359,8 +1406,9 @@ export async function executeWebhook(
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 *
-		 * A v2 run has no control-plane execution to record it against, and the
-		 * `engine-v2` module refuses queue mode, so there is nothing to track.
+		 * A v2 run has no control-plane execution to record it against, and its
+		 * response comes back over the execution channel, not from a queue job,
+		 * so there is nothing to track.
 		 */
 		if (!routesToEngineV2) {
 			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
@@ -1633,8 +1681,8 @@ export async function executeWebhook(
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
-		// The run never reached the dispatcher, so the files the webhook node stored
-		// belong to no execution and the control plane deletes them.
+		// The run never reached the dispatcher, so no run uses the files that the
+		// webhook node stored.
 		if (engineV2Payload !== undefined) {
 			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
 		}
@@ -1833,4 +1881,26 @@ function toUnansweredRunResponse(
 				responseCode: 504,
 			};
 	}
+}
+
+export function extractTracingContext(
+	headers: IncomingHttpHeaders,
+	otel: IWorkflowExecuteAdditionalData['otel'],
+): IWorkflowExecutionDataProcess['tracingContext'] {
+	const tracingContext: NonNullable<IWorkflowExecutionDataProcess['tracingContext']> = {};
+
+	const { traceparent, tracestate } = headers;
+	if (
+		typeof traceparent === 'string' &&
+		/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+	) {
+		tracingContext.traceparent = traceparent;
+		tracingContext.tracestate =
+			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
+	}
+
+	const baggage = otel?.extractInboundBaggage(headers.baggage);
+	if (baggage) tracingContext.baggage = baggage;
+
+	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }

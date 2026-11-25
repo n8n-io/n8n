@@ -138,9 +138,13 @@ onMounted(async () => {
 
 					<N8nTooltip
 						v-if="isReady"
+						as-child
 						:content="i18n.baseText('templateSetup.continue.button.fillRemaining')"
 						:disabled="setupTemplateStore.numFilledCredentials > 0"
 					>
+						<template #content>{{
+							i18n.baseText('templateSetup.continue.button.fillRemaining')
+						}}</template>
 						<N8nButton
 							size="large"
 							:label="i18n.baseText('templateSetup.continue.button')"
@@ -148,6 +152,9 @@ onMounted(async () => {
 								setupTemplateStore.isSaving || setupTemplateStore.numFilledCredentials === 0
 							"
 							data-test-id="continue-button"
+							:focusable-when-disabled="
+								setupTemplateStore.numFilledCredentials === 0 && !setupTemplateStore.isSaving
+							"
 							@click="setupTemplateStore.createWorkflow({ router })"
 						/>
 					</N8nTooltip>

@@ -13,10 +13,10 @@ import { PublicFormPage } from '../../../pages/PublicFormPage';
  */
 test.describe(
 	'Waiting Endpoint Security',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test.describe('webhook-waiting signature validation', () => {
-			test('should reject unsigned and tampered requests, accept valid signature', async ({
+			test('should reject unsigned and tampered requests, accept valid signature @engine:v2', async ({
 				api,
 			}) => {
 				const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
@@ -30,6 +30,7 @@ test.describe(
 
 				const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting');
 				expect(execution).toBeDefined();
+				await api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 
 				const unsignedResponse = await api.webhooks.trigger(`/webhook-waiting/${execution.id}`, {
 					maxNotFoundRetries: 0,
@@ -57,7 +58,8 @@ test.describe(
 				const urlObj = new URL(resumeUrl);
 				const signedPath = `${urlObj.pathname}${urlObj.search}`;
 
-				const signedResponse = await api.webhooks.trigger(signedPath, {
+				// The token binds no query here, so an extra parameter reaches the node decoded.
+				const signedResponse = await api.webhooks.trigger(`${signedPath}&note=a%20b`, {
 					maxNotFoundRetries: 0,
 				});
 				expect(signedResponse.ok()).toBe(true);
@@ -68,6 +70,9 @@ test.describe(
 					10000,
 				);
 				expect(completedExecution.status).toBe('success');
+				const { data } = await api.workflows.getExecution(completedExecution.id);
+				const wait = flatted.parse(data).resultData.runData.Wait[0].data.main[0][0];
+				expect(wait.json.query.note).toBe('a b');
 			});
 		});
 

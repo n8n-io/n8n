@@ -6,22 +6,29 @@ import {
 	getSuccessorNodeIds,
 	type GraphNode,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
+import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { StepRecord, StepStore } from './step-store';
+import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
+import {
+	collectSubExecutionResult,
+	resumeAwaitingParent,
+	terminalNodeIds,
+} from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -42,15 +49,31 @@ export class StepSettledHandler {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly cancelExecution: CancelExecutionService,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
-		const [step, execution] = await Promise.all([
+		const [stepLoad, executionLoad] = await Promise.allSettled([
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
+		// Test the execution first: its deletion also deletes the step row.
+		if (executionLoad.status === 'rejected') {
+			if (isMissingExecution(executionLoad.reason, event.executionId)) {
+				if (stepLoad.status === 'rejected') {
+					if (stepLoad.reason instanceof StepNotFoundError) return;
+					throw stepLoad.reason;
+				}
+				// A step of another execution means a wrong message, which must still fail.
+				if (stepLoad.value.executionId === event.executionId) return;
+			}
+			throw executionLoad.reason;
+		}
+		if (stepLoad.status === 'rejected') throw stepLoad.reason;
+		const step = stepLoad.value;
+		const execution = executionLoad.value;
 		const node = validateStepContext(step, execution);
 
 		// v1 parity: an error that escapes a node ends the whole execution, not
@@ -92,17 +115,33 @@ export class StepSettledHandler {
 	): Promise<void> {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
+		await this.stepStore.cancelPendingSteps(execution.id);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
+					status: 'failed',
+					error: await this.failureOf(execution, step),
+				});
+			}
+			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
+	}
 
-		await this.stepStore.cancelPendingSteps(execution.id);
+	/** The error to report for a failed execution. */
+	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
+		if (step.status === 'failed' && step.error) return step.error;
+		// If a different step failed, find it. Note: it's possible multiple steps
+		// may have failed - we choose any for now.
+		const failed = (await this.stepStore.loadFailedSteps(execution.id)).find((row) => row.error);
+		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -213,13 +252,33 @@ export class StepSettledHandler {
 			failed ? 'failed' : 'completed',
 		);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent(
+					{ executionStore, stepStore, stepQueue },
+					execution,
+					failed
+						? { status: 'failed', error: await this.failureOf(execution, step) }
+						: {
+								status: 'completed',
+								result: collectSubExecutionResult(
+									execution.graph,
+									await this.stepStore.loadStepsByNodeIds(
+										execution.id,
+										terminalNodeIds(execution.graph),
+									),
+								),
+							},
+				);
+			}
+			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 

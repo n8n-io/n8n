@@ -55,6 +55,7 @@ export type ResolvedPromotionConfig =
  */
 export type PromotionOperationInput = Readonly<{
 	environmentId: string;
+	environmentName: string;
 	scope: PromotionEnvironmentScope;
 	providerId: string;
 	providerType: PromotionProviderType;
@@ -72,10 +73,14 @@ export type PromotionOperationInput = Readonly<{
  * repository path, so the listing and the contents never describe two commits.
  */
 export type BranchPackage = Readonly<{
+	/** The environment of the read. A caller that names the environment uses this one. */
+	input: PromotionOperationInput;
 	environmentId: string;
 	branchName: string;
 	commitSha: string | null;
 	files: PackageFile[];
+	/** Whether the branch holds a package manifest. It can list other projects when `files` is empty. */
+	hasManifest: boolean;
 	readFiles: (paths: readonly string[]) => Promise<Map<string, string>>;
 }>;
 
@@ -96,6 +101,16 @@ export type PackageCommit = Readonly<{
 export type PromotionCacheDescriptor = {
 	schemaVersion: 1;
 	environmentId: string;
+	providerId: string;
 	remoteUrl: string;
 	checkoutBranchName: string;
 };
+
+/**
+ * Why n8n closed a promotion review. The review can never merge from n8n: its environment
+ * is gone, targets another repository, or no longer uses the host of the review.
+ */
+export type PromotionReviewCloseReason =
+	| 'environment_deleted'
+	| 'environment_target_changed'
+	| 'environment_host_changed';

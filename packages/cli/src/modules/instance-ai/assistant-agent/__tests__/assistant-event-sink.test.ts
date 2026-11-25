@@ -1,0 +1,157 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'vitest-mock-extended';
+
+import { AssistantEventSink } from '../assistant-event-sink';
+
+describe('AssistantEventSink', () => {
+	function createSink() {
+		const emitHostEvent = vi.fn();
+		const emitTransientHostEvent = vi.fn();
+		const logger = mock<Logger>();
+		return {
+			sink: new AssistantEventSink({ emitHostEvent, emitTransientHostEvent }, logger),
+			emitHostEvent,
+			emitTransientHostEvent,
+			logger,
+		};
+	}
+
+	it('sends a setup-items event as a host event keyed by its workflow', () => {
+		const { sink, emitHostEvent } = createSink();
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { workflowId: 'wf-1', items: [] },
+		} as unknown as InstanceAiEvent;
+
+		sink.publish('thread-1', event);
+
+		expect(emitHostEvent).toHaveBeenCalledWith(
+			'setup-items',
+			{ workflowId: 'wf-1', items: [] },
+			{ key: 'workflow:wf-1' },
+		);
+	});
+
+	it('keeps an auto-approval as a host event keyed by its tool call', () => {
+		const { sink, emitHostEvent } = createSink();
+		const payload = {
+			toolCallId: 'call-1',
+			message: 'Publish "Lead router"',
+			reason: 'The user asked to publish it.',
+			decidedBy: 'judge' as const,
+		};
+
+		sink.publish('thread-1', {
+			type: 'auto-approval',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload,
+		});
+
+		expect(emitHostEvent).toHaveBeenCalledWith('auto-approval', payload, {
+			key: 'tool-call:call-1',
+		});
+	});
+
+	it('sends a workflow draft as a transient event, so history does not keep it', () => {
+		const { sink, emitHostEvent, emitTransientHostEvent } = createSink();
+		const payload = { filePath: 'src/a.workflow.ts', revision: 1, workflow: { nodes: [] } };
+
+		sink.publish('thread-1', {
+			type: 'workflow-draft',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload,
+		} as unknown as InstanceAiEvent);
+
+		expect(emitTransientHostEvent).toHaveBeenCalledWith('workflow-draft', payload);
+		expect(emitHostEvent).not.toHaveBeenCalled();
+	});
+
+	it('sends the issues of a workflow draft as a transient event', () => {
+		const { sink, emitTransientHostEvent } = createSink();
+		const payload = { filePath: 'src/a.workflow.ts', revision: 1, issues: [] };
+
+		sink.publish('thread-1', {
+			type: 'workflow-draft-issues',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload,
+		} as unknown as InstanceAiEvent);
+
+		expect(emitTransientHostEvent).toHaveBeenCalledWith('workflow-draft-issues', payload);
+	});
+
+	it('logs and continues when the chat refuses a transient event', () => {
+		const { sink, emitTransientHostEvent, logger } = createSink();
+		emitTransientHostEvent.mockImplementation(() => {
+			throw new Error('too large');
+		});
+
+		expect(() =>
+			sink.publish('thread-1', {
+				type: 'workflow-draft',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { filePath: 'src/a.workflow.ts', revision: 1, workflow: { nodes: [] } },
+			} as unknown as InstanceAiEvent),
+		).not.toThrow();
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('logs and continues when the payload cannot be converted to JSON', () => {
+		const { sink, emitTransientHostEvent, logger } = createSink();
+		const payload = {
+			get workflow(): never {
+				throw new Error('unreadable');
+			},
+		};
+
+		expect(() =>
+			sink.publish('thread-1', {
+				type: 'workflow-draft',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload,
+			} as unknown as InstanceAiEvent),
+		).not.toThrow();
+		expect(emitTransientHostEvent).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('drops an event that has no reader on the Agents runtime', () => {
+		const { sink, emitHostEvent } = createSink();
+
+		sink.publish('thread-1', {
+			type: 'text-delta',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { text: 'hi' },
+		} as unknown as InstanceAiEvent);
+
+		expect(emitHostEvent).not.toHaveBeenCalled();
+	});
+
+	it('logs and continues when the chat refuses the event', () => {
+		const { sink, emitHostEvent, logger } = createSink();
+		emitHostEvent.mockImplementation(() => {
+			throw new Error('too large');
+		});
+
+		expect(() =>
+			sink.publish('thread-1', {
+				type: 'tasks-update',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { tasks: { tasks: [] } },
+			} as unknown as InstanceAiEvent),
+		).not.toThrow();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to send an Assistant event to the chat',
+			expect.objectContaining({ type: 'tasks-update', error: 'too large' }),
+		);
+	});
+});

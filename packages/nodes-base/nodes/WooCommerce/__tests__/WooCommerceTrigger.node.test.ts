@@ -1,5 +1,7 @@
 import { createHmac } from 'crypto';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { WooCommerceTrigger } from '../WooCommerceTrigger.node';
@@ -138,7 +140,7 @@ describe('WooCommerceTrigger Node', () => {
 			expect(woocommerceApiRequestMock).toHaveBeenCalledTimes(1);
 			expect(woocommerceApiRequestMock).toHaveBeenCalledWith(
 				'GET',
-				'/webhooks',
+				requestPath`/webhooks`,
 				{},
 				{ status: 'active', per_page: 100 },
 			);
@@ -160,7 +162,7 @@ describe('WooCommerceTrigger Node', () => {
 			expect(woocommerceApiRequestMock).toHaveBeenNthCalledWith(
 				2,
 				'DELETE',
-				'/webhooks/99',
+				requestPath`/webhooks/99`,
 				{},
 				{ force: true },
 			);
@@ -199,6 +201,48 @@ describe('WooCommerceTrigger Node', () => {
 			expect(result).toBe(false);
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(woocommerceApiRequestMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('create and delete methods', () => {
+		let webhookData: IDataObject;
+		const mockThis = mock<IHookFunctions>();
+
+		beforeEach(() => {
+			webhookData = { webhookId: 99, secret: 'stored-secret' };
+			mockThis.getCredentials.mockResolvedValue({ consumerKey: 'ck', consumerSecret: 'cs' });
+			mockThis.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/test');
+			mockThis.getWorkflowStaticData.mockReturnValue(webhookData);
+			mockThis.getNodeParameter.mockReturnValue('order.created');
+
+			woocommerceApiRequestMock.mockReset();
+		});
+
+		it('posts the webhook to the webhooks endpoint', async () => {
+			woocommerceApiRequestMock.mockResolvedValueOnce({ id: 100 });
+
+			await new WooCommerceTrigger().webhookMethods.default.create.call(mockThis);
+
+			expect(woocommerceApiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/webhooks`,
+				expect.objectContaining({ topic: 'order.created' }),
+			);
+			expect(webhookData.webhookId).toBe(100);
+		});
+
+		it('deletes the stored webhook', async () => {
+			woocommerceApiRequestMock.mockResolvedValueOnce({});
+
+			const result = await new WooCommerceTrigger().webhookMethods.default.delete.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(woocommerceApiRequestMock).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/webhooks/99`,
+				{},
+				{ force: true },
+			);
 		});
 	});
 });

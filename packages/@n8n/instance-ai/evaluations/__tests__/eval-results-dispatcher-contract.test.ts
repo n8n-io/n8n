@@ -52,7 +52,7 @@ const agentArtifact = {
 	agentId: 'agent-1',
 	config: {
 		name: 'Digest agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Use sk-abc123DEF456ghi789jkl012 to call the provider.',
 		credentials: { slack: { id: 'credential-1' } },
 		futureDisplayMode: { density: 'compact' },
@@ -155,6 +155,7 @@ interface DispatcherView {
 			reason: string;
 			incomplete?: boolean;
 			attribution?: string;
+			observed?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
@@ -216,7 +217,7 @@ describe('eval-results.json — dispatcher contract', () => {
 			agentId: 'agent-1',
 			config: {
 				name: 'Digest agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Use [REDACTED] to call the provider.',
 				credentials: '[REDACTED]',
 				futureDisplayMode: { density: 'compact' },
@@ -342,7 +343,7 @@ describe('eval-results.json — dispatcher contract', () => {
 			agentId: `agent-${index}`,
 			config: {
 				name: `Large agent ${index}`,
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: '界'.repeat(60_000),
 			},
 			skills: {},
@@ -357,7 +358,7 @@ describe('eval-results.json — dispatcher contract', () => {
 							agentId: 'agent-3',
 							config: {
 								name: 'Small agent',
-								model: 'anthropic/claude-sonnet-4-5',
+								model: 'anthropic/claude-sonnet-5-5',
 								instructions: 'Keep the digest concise.',
 							},
 							skills: {},
@@ -516,6 +517,7 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 					expectation,
 					pass: true,
 					reason: 'Route agent from build-agent call. Judge: It builds an Agent.',
+					observed: 'agent',
 				},
 			],
 			[
@@ -524,6 +526,7 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 					pass: false,
 					reason: 'Route workflow from build-workflow call.',
 					attribution: 'builder_issue',
+					observed: 'workflow',
 				},
 			],
 			[
