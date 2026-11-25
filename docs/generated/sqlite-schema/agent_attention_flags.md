@@ -66,6 +66,7 @@ erDiagram
   varchar_32_ taskId
   TEXT taskStop
   varchar_36_ taskVersionId FK
+  boolean testChat
   varchar_255_ title
   INTEGER totalCompletionTokens
   REAL totalCost
