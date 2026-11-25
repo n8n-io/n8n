@@ -54,11 +54,16 @@ defineSlots<{
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/breakpoints';
-
 .message {
 	display: block;
 	width: 100%;
+	/**
+	 * The text size follows the width of the message, not of the window, because side
+	 * panels change the chat width. The fixed font size keeps the `ch` units of the
+	 * query below the same in every host.
+	 */
+	container-type: inline-size;
+	font-size: var(--font-size--md);
 }
 
 .userBubble,
@@ -67,8 +72,8 @@ defineSlots<{
 	font-size: var(--n8n-markdown--font-size--base);
 }
 
-/** Use larger text only on large desktop screens. */
-@include breakpoints.breakpoint('xl-only') {
+/** Use larger text when a line has room for about 55 characters. */
+@container (min-width: 55ch) {
 	.userBubble,
 	.assistantContent {
 		--n8n-markdown--font-size--base: var(--font-size--md);
