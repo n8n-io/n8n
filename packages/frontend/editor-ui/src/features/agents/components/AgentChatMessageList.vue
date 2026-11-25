@@ -26,6 +26,7 @@ import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	appendHostEventSources,
 	findHostEventRenderer,
+	findToolFooterRenderer,
 	findToolResultRenderer,
 	getHostEventItems,
 	type AgentsChatHostEventItems,
@@ -92,6 +93,8 @@ const props = defineProps<{
 	loadingOlderMessages?: boolean;
 	/** The last older page failed to load. */
 	loadOlderMessagesFailed?: boolean;
+	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+	thinkingLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -108,12 +111,25 @@ const emit = defineEmits<{
 	'retry-load-older': [];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	/** Temporary status at the end of the transcript. */
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/**
+	 * The `references` of a user message, for example mentioned workflows. They
+	 * show before the files of the message, in the same group.
+	 */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
+
+function showsReferences(message: ChatMessage): boolean {
+	return (
+		message.role === CHAT_MESSAGE_ROLE.USER &&
+		!!message.references?.length &&
+		!!slots['user-message-references']
+	);
+}
 
 const i18n = useI18n();
 const canSendToAssistant = computed(() =>
@@ -286,7 +302,7 @@ const tailSummaryId = computed(() => {
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
-	/** Finished calls that a host extension renders in place of a step. */
+	/** Finished calls that a host extension renders after the steps: in place of a step, or as a step footer. */
 	hostResults: Array<{ toolCall: ToolCall; renderer: AgentsChatToolResultRenderer }>;
 }
 
@@ -310,8 +326,14 @@ const toolCallsByGroupId = computed(() => {
 		for (const toolCall of toolCalls) {
 			const renderer =
 				extensions.length > 0 ? findToolResultRenderer(toolCall, extensions) : undefined;
-			if (renderer) split.hostResults.push({ toolCall, renderer });
-			else split.steps.push(toolCall);
+			if (renderer) {
+				split.hostResults.push({ toolCall, renderer });
+				continue;
+			}
+			split.steps.push(toolCall);
+			const footer =
+				extensions.length > 0 ? findToolFooterRenderer(toolCall, extensions) : undefined;
+			if (footer) split.hostResults.push({ toolCall, renderer: footer });
 		}
 		byGroupId.set(group.id, split);
 	}
@@ -768,6 +790,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<template #after-actions>
 						<AiThinkingBlock
+							:idle-label="props.thinkingLabel"
 							v-if="group.thinkingSegments.length"
 							:segments="group.thinkingSegments"
 							:active="group.active || group.awaitingInput"
@@ -826,11 +849,21 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 				]"
 			>
 				<AgentChatMessageAttachments
-					v-if="group.message.attachments?.length && projectId && agentId"
-					:attachments="group.message.attachments"
+					v-if="
+						(group.message.attachments?.length || showsReferences(group.message)) &&
+						projectId &&
+						agentId
+					"
+					:attachments="group.message.attachments ?? []"
 					:project-id="projectId"
 					:agent-id="agentId"
-				/>
+				>
+					<slot
+						v-if="showsReferences(group.message)"
+						name="user-message-references"
+						:message="group.message"
+					/>
+				</AgentChatMessageAttachments>
 				<N8nText
 					v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 					size="xsmall"
@@ -1006,6 +1039,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						</N8nCallout>
 
 						<AiThinkingBlock
+							:idle-label="props.thinkingLabel"
 							v-if="group.thinkingSegments.length"
 							:segments="group.thinkingSegments"
 							:active="isThinkingActive(group.message)"

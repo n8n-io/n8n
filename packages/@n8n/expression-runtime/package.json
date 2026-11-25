@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -47,7 +47,7 @@
     "luxon": "catalog:",
     "md5": "2.3.0",
     "quickjs-emscripten-core": "0.32.0",
-    "title-case": "3.0.3",
+    "title-case": "catalog:",
     "transliteration": "2.3.5",
     "zod": "catalog:"
   },

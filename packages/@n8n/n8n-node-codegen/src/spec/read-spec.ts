@@ -81,7 +81,11 @@ const envelopeSchema = z.object({
 });
 
 function readTags(envelope: unknown): SpecTag[] {
-	const { tags } = parse(envelopeSchema, envelope, 'the tags of the spec');
+	const { tags } = parse({
+		schema: envelopeSchema,
+		value: envelope,
+		subject: 'the tags of the spec',
+	});
 
 	const parentTags = new Map<string, SpecGroup>();
 	for (const tag of tags) {
@@ -156,6 +160,7 @@ function readParameters(operation: Operation, options: SpecOptions) {
 			continue;
 		}
 		if (name === options.cursorParameter) continue;
+		if (paginated && name === options.offsetParameter) continue;
 		const { schema } = parameter;
 		parameters.push({
 			name,
@@ -191,7 +196,11 @@ interface SpecDocuments {
 export function readSpec(documents: SpecDocuments, options: SpecOptions): Spec {
 	const tags = readTags(documents.envelope);
 	const tagsByName = new Map(tags.map((tag) => [tag.name, tag]));
-	const routes = parse(routesSchema, documents.routes, 'the paths of the spec');
+	const routes = parse({
+		schema: routesSchema,
+		value: documents.routes,
+		subject: 'the paths of the spec',
+	});
 
 	const operations = new Map<string, SpecOperation>();
 	for (const [apiPath, item] of Object.entries(routes.paths)) {
@@ -200,7 +209,7 @@ export function readSpec(documents: SpecDocuments, options: SpecOptions): Spec {
 			const subject = `${key.toUpperCase()} ${apiPath}`;
 			if (!method) throw new Error(`Cannot read ${subject}: the generator does not know "${key}".`);
 
-			const operation = parse(operationSchema, value, subject);
+			const operation = parse({ schema: operationSchema, value, subject });
 			const { operationId } = operation;
 			const tag = tagsByName.get(operation.tags[0]);
 			if (!tag) {

@@ -31,7 +31,13 @@ function createFactory(fields: FactoryFields): AssistantTurnEnvironmentFactory {
 }
 
 function createSetupFactory() {
-	const createContext = vi.fn((): InstanceAiContext => mock<InstanceAiContext>({}));
+	// A plain object, so the test can see which optional hooks the factory sets.
+	const createContext = vi.fn(
+		(): InstanceAiContext => ({
+			...mock<InstanceAiContext>({}),
+			credentialService: mock<InstanceAiContext['credentialService']>(),
+		}),
+	);
 	const fields = {
 		logger: { warn: vi.fn(), debug: vi.fn() },
 		instanceAiConfig: {},
@@ -44,6 +50,7 @@ function createSetupFactory() {
 			resolveExperimentGates: vi.fn(async () => ({
 				configEvalsEnabled: false,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: false,
 				setupPanelEnabled: false,
 				setupPanelVariant: 'control',
@@ -52,6 +59,8 @@ function createSetupFactory() {
 				approvalModesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
+				preferencesNoteVariant: undefined as string | undefined,
+				skillSourcesEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
@@ -286,6 +295,29 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			},
 		);
 
+		it('creates no workflow draft publisher when the draft preview gate is off', async () => {
+			const { factory } = createSetupFactory();
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(context.workflowDraftPublisher).toBeUndefined();
+		});
+
+		it('creates a workflow draft publisher when the draft preview gate is on', async () => {
+			const { factory, fields } = createSetupFactory();
+			const gates = await fields.adapterService.resolveExperimentGates();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...gates,
+				draftWorkflowPreviewEnabled: true,
+			});
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(context.workflowDraftPublisher).toEqual(
+				expect.objectContaining({ publish: expect.any(Function) }),
+			);
+		});
+
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
 
@@ -376,6 +408,36 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		});
+
+		it.each(['control', 'variant'])(
+			'passes the preferences note variant %s to the turn',
+			async (variant) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.resolveExperimentGates.mockResolvedValue({
+					...(await fields.adapterService.resolveExperimentGates()),
+					preferencesNoteVariant: variant,
+				});
+
+				const environment = await factory.create(params, createRuntime());
+
+				expect(environment.preferencesNoteVariant).toBe(variant);
+			},
+		);
+
+		it('passes the skill sources gate of the turn to the tool context', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				skillSourcesEnabled: true,
+			});
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ skillSourcesEnabled: true }),
+			);
 		});
 
 		it('keeps the MCP settings of a user who picked Manual', async () => {

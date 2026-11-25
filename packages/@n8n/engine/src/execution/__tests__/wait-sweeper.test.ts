@@ -314,6 +314,16 @@ describe('WaitSweeper', () => {
 			expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
 		});
 
+		it('does not sweep when a step suspends before the sweeper has started', async () => {
+			const stepStore = storeDueAt(new Date(Date.now() + 200));
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.noteSuspended();
+			await vi.advanceTimersByTimeAsync(SWEEP_MS);
+
+			expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
+		});
+
 		it('sweeps immediately when a deadline has already passed', async () => {
 			// A restart must not add an interval to every overdue wait.
 			const stepStore = storeDueAt(new Date(Date.now() - 60_000));

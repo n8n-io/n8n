@@ -454,6 +454,51 @@ describe('EngineV2ExecutionReader', () => {
 			});
 		});
 
+		it('should note the parent execution on the trigger task of a sub-execution', async () => {
+			const parentId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					steps: [step()],
+					parent: { executionId: parentId, stepId: 'step-call', awaited: true },
+					parentWorkflowId: 'wf-parent',
+					subExecutions: [],
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
+				parentExecution: { executionId: parentId, workflowId: 'wf-parent' },
+			});
+		});
+
+		it('should note the sub-executions on the steps that started them', async () => {
+			const subId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfc';
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					steps: [step()],
+					parentWorkflowId: null,
+					subExecutions: [{ executionId: subId, workflowId: 'wf-sub', stepId: 'step-1' }],
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
+				subExecution: { executionId: subId, workflowId: 'wf-sub' },
+				subExecutionsCount: 1,
+			});
+		});
+
+		it('should read the execution once, with its links', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+
+			await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
+			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
+		});
+
 		it('should report empty run data when the snapshot carries no steps', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 
@@ -565,6 +610,47 @@ describe('EngineV2ExecutionReader', () => {
 				// workflow repository to reach for.
 				expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('findOne with an access check', () => {
+		it('asks the check about the workflow of the execution, then maps the snapshot', async () => {
+			const canRead = vi.fn().mockResolvedValue(true);
+
+			const result = await reader.findOne(EXECUTION_ID, canRead);
+
+			expect(canRead).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: true });
+			expect(result?.id).toBe(EXECUTION_ID);
+			expect(result?.data.resultData.runData).toEqual({});
+		});
+
+		it('returns undefined when the check refuses the workflow', async () => {
+			const canRead = vi.fn().mockResolvedValue(false);
+
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			await expect(
+				reader.findOne(EXECUTION_ID, canRead, { includeData: false }),
+			).resolves.toBeUndefined();
+		});
+
+		it('does not run the check when the data plane holds no such execution', async () => {
+			dataPlane.getExecution.mockResolvedValue(undefined);
+			const canRead = vi.fn().mockResolvedValue(true);
+
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			expect(canRead).not.toHaveBeenCalled();
+		});
+
+		it('reads the status without the steps', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));
+
+			const result = await reader.findOne(EXECUTION_ID, async () => true, {
+				includeData: false,
+			});
+
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
+			expect(result?.status).toBe('running');
 		});
 	});
 });

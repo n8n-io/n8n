@@ -82,10 +82,18 @@ const renderDialog = async ({
 	documentStore.setVersionData(versionData);
 	const reviewStatusStore = useWorkflowReviewStatusStore(pinia);
 	if (seedOpenReview) {
-		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 1, data: [reviewData] });
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+			count: 1,
+			data: [reviewData],
+			reviewRequiredBy: null,
+		});
 		await reviewStatusStore.fetchStatus('workflow-1');
 	} else {
-		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+			count: 0,
+			data: [],
+			reviewRequiredBy: null,
+		});
 	}
 	const fetchStatusSpy = vi.spyOn(reviewStatusStore, 'fetchStatus');
 
@@ -547,6 +555,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 			count: 1,
 			data: [{ ...openReview, id: 'review-2' }],
+			reviewRequiredBy: null,
 		});
 		await userEvent.click(getByTestId('workflow-update-review-submit-button'));
 		await waitFor(() => expect(mockShowError).toHaveBeenCalledOnce());

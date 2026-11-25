@@ -45,6 +45,10 @@ properties:
           type: string
         content:
           type: string
+        isBinary:
+          type: boolean
+          enum:
+            - true
       required:
         - path
         - content

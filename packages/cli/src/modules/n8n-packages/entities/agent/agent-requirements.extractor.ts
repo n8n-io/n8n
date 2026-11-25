@@ -40,6 +40,9 @@ export class AgentRequirementsExtractor {
 				return tool.workflowId;
 			}),
 		);
+		for (const interaction of config?.hitlConfigurations ?? []) {
+			if (interaction.method === 'workflow') workflowIds.add(interaction.workflowId);
+		}
 		for (const node of nodes) {
 			const id = getStaticSubworkflowId(node);
 			if (id) workflowIds.add(id);

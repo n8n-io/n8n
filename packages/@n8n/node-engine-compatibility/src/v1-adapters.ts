@@ -395,10 +395,12 @@ export function toV1ExecuteContext({
 	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	itemsByConnection = withPairedItemLineage(itemsByConnection);
-	const firstInput = itemsByConnection[0] ?? [];
-	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
+	// As v1 does for execution order v1: the first input with items supplies the
+	// connection data, and an empty input stays empty for the node to read.
+	const inputWithItems = itemsByConnection.find((items) => items.length > 0);
+	const connectionInputData = inputWithItems ?? [{ json: {} }];
 	const inputData: ITaskDataConnections = {
-		main: [connectionInputData, ...itemsByConnection.slice(1)],
+		main: inputWithItems ? itemsByConnection : [connectionInputData, ...itemsByConnection.slice(1)],
 	};
 
 	const runExecutionData = createRunExecutionData({

@@ -376,6 +376,8 @@ export class SkillListPublicDto extends Z.class({
 export class SkillPublicDto extends Z.class({
 	...skillListPublicItemShape,
 	instructions: z.string(),
-	references: z.array(z.object({ path: z.string(), content: z.string() })),
+	references: z.array(
+		z.object({ path: z.string(), content: z.string(), isBinary: z.literal(true).optional() }),
+	),
 	skillHash: z.string(),
 }) {}

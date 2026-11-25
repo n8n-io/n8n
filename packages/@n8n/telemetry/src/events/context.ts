@@ -121,6 +121,12 @@ const preferenceExampleId = z
 		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
 	);
 
+const emptyPreferencesNoteVariant = z
+	.enum(['control', 'variant'])
+	.describe(
+		'Variant of the 147_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
+	);
+
 const recommendedSkillsVariant = z
 	.enum(['variant'])
 	.describe(
@@ -282,6 +288,18 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			project_scoped: z
 				.boolean()
 				.describe('Whether the call named one project instead of reading every visible project'),
+		}),
+	},
+
+	ASSISTANT_PREFERENCES_NOTE_EXPOSED: {
+		name: 'Assistant preferences note exposed',
+		description:
+			'An n8n Assistant turn of a user with no saved preferences reached the point where experiment 147 adds a note about preferences. Fires in both arms, at most 3 times for each user and at most once in 24 hours. Only `variant` adds the note, which tells the assistant to mention after the task that the user can save a preference. Use it as the exposure of the experiment.',
+		properties: z.object({
+			user_id: userId,
+			thread_id: z.string().describe('The n8n Assistant thread of the turn'),
+			variant: emptyPreferencesNoteVariant,
+			'$feature/147_assistant_empty_preferences_note': emptyPreferencesNoteVariant,
 		}),
 	},
 
@@ -541,6 +559,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
 		properties: z.object({
 			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
 			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
@@ -556,9 +575,10 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_IMPORTED_SKILLS_FROM_SOURCE: {
 		name: 'User imported skills from source',
 		description:
-			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content.',
+			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content. Rows before CONTEXT-481 counted every file outside `references/*.md` in `skipped_files` and `skipped_script_files`. Later rows count only a file with a path that n8n cannot store, a file over the size limit of one file, and a file over the limits of one skill, so both numbers fall to almost 0. Do not compare them across that change.',
 		properties: z.object({
 			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
 			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
@@ -578,7 +598,11 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
 				),
-			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
+			skipped_files: z
+				.number()
+				.describe(
+					'Files of the imported skills that the import left out. See the event description for the change of meaning with CONTEXT-481',
+				),
 			skipped_file_extensions: z
 				.record(z.string(), z.number())
 				.describe(
@@ -596,7 +620,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
 		name: 'Skill source check flagged skill',
 		description:
-			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. A check that finds a new skill in a connected source fires it once for each new content of that skill. Counts rule codes only, never names, files or content.',
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. A check that finds a new skill in a connected source fires it once for each new content of that skill. Counts rule codes only, never names, files or content. Rows before CONTEXT-481 reported a script as `file_skipped`, because the import left it out. Later rows report a kept script as `script_file`, and at `update` only when the script is new or changed. `binary_file` and `file_over_skill_limit` start with that change.',
 		properties: z.object({
 			user_id: z
 				.string()
@@ -629,7 +653,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	SKILL_SOURCE_UPDATE_FOUND: {
 		name: 'Skill source update found',
 		description:
-			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog. With CONTEXT-481 the import keeps the files outside `references/*.md`. A skill that was synced before that change, and that has such files in its source, counts one update at its first check after the upgrade, although the source did not change.',
 		properties: z.object({
 			provider: skillSourceProvider,
 			trigger: z

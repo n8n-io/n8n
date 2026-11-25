@@ -1,4 +1,4 @@
-import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
 import type { PublicApiContext } from '@n8n/rest-api-client';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';

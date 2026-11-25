@@ -4142,6 +4142,44 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.project-approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.project-approval-required.disabled'],
+		])(
+			'should log the project approval requirement set to %s as `%s`',
+			(requiredByProject, eventName) => {
+				eventService.emit('project-workflow-review-settings-updated', {
+					user: reviewer,
+					projectId: 'project-1',
+					requiredByProject,
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName,
+					payload: { ...redactedReviewer, projectId: 'project-1' },
+				});
+			},
+		);
+
+		it('should log `workflow-review.closed-by-user` with the closer and the reviewed version', () => {
+			eventService.emit('workflow-review-closed-by-user', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.closed-by-user',
+				payload: {
+					...redactedReviewer,
+					workflowId: 'wf-1',
+					versionId: 'ver-1',
+					workflowReviewRequestId: 'review-1',
+				},
+			});
+		});
 	});
 
 	describe('redaction enforcement events', () => {

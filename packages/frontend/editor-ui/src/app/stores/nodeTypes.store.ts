@@ -7,7 +7,7 @@ import type {
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/app/constants';
-import { getNodeGatingModule } from '@n8n/constants';
+import { getNodeGatingModule, HUMAN_REVIEW_MODULE, isHumanReviewNodeType } from '@n8n/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
@@ -107,6 +107,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	// True for a module-gated node type whose module is off. Admins can also turn agents off in settings.
 	function isNodeTypeModuleDisabled(nodeTypeName: string): boolean {
+		if (isHumanReviewNodeType(nodeTypeName))
+			return !settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE);
 		const moduleName = getNodeGatingModule(nodeTypeName);
 		if (!moduleName) return false;
 		if (moduleName === AGENTS_MODULE_NAME) return !settingsStore.isAgentsEnabled;

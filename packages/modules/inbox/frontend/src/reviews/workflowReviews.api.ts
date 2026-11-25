@@ -4,6 +4,7 @@ import type {
 	ListWorkflowReviewActivityResponse,
 	WorkflowReviewActivityEntry,
 	WorkflowReviewRequestDetail,
+	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -20,6 +21,17 @@ export async function decideWorkflowReviewRequest(
 		'POST',
 		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/decision`,
 		{ ...payload },
+	);
+}
+
+export async function closeWorkflowReviewRequest(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+): Promise<WorkflowReviewRequestSummary> {
+	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
+		context,
+		'POST',
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/close`,
 	);
 }
 

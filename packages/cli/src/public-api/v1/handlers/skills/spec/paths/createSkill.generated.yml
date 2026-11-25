@@ -38,13 +38,15 @@ requestBody:
                   maxLength: 512
                 content:
                   type: string
-                  minLength: 1
-                  maxLength: 65536
+                isBinary:
+                  type: boolean
+                  enum:
+                    - true
               required:
                 - path
                 - content
               additionalProperties: false
-            maxItems: 20
+            maxItems: 500
           scope:
             type: string
             enum:
