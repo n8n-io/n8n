@@ -8,6 +8,7 @@ properties:
       - project
       - folder
       - workflow
+      - skill
       - credential
       - dataTable
       - variable
@@ -18,6 +19,9 @@ properties:
     type: string
   previousName:
     type: string
+  followingAgentCount:
+    type: integer
+    minimum: 0
   previousId:
     type: string
   parentKey:

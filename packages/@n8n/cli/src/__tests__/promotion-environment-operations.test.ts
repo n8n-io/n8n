@@ -425,7 +425,7 @@ describe('promotion-environment promote-selection command', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('sends the project id and workflow ids, and names the branch it pushed to', async () => {
+	it('sends the project id and Skill ids, and names the branch it pushed to', async () => {
 		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
 		const internals = command as unknown as OperationInternals & {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
@@ -434,7 +434,7 @@ describe('promotion-environment promote-selection command', () => {
 		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
-			flags: { workflow: ['wf-1', 'wf-2'] },
+			flags: { skill: ['skill-1', 'skill-2'] },
 		});
 		vi.spyOn(internals, 'getClient').mockReturnValue({
 			promoteProjectSelection,
@@ -443,10 +443,10 @@ describe('promotion-environment promote-selection command', () => {
 
 		await command.run();
 
-		// `-w` values travel as the `workflowIds` array, with no message flag set.
+		// Skill selection does not require workflows or folders.
 		expect(promoteProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1', 'wf-2'] },
+			{ skillIds: ['skill-1', 'skill-2'] },
 			undefined,
 			undefined,
 		);
@@ -621,23 +621,24 @@ describe('promotion-environment apply-selection command', () => {
 		);
 	});
 
-	it('exits 4 with a Continue command that resends the same workflow and folder ids', async () => {
+	it('exits 4 with a Continue command that resends the same workflow, folder, and Skill ids', async () => {
 		const { run, applyProjectSelection, logToStderr, exit } = runApplySelection(BLOCKED_RESULT, {
 			format: 'table',
 			workflow: ['wf-1', 'wf-2'],
 			folder: ['f-1'],
+			skill: ['skill-1'],
 		});
 
 		await run();
 
 		expect(applyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'] },
+			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'], skillIds: ['skill-1'] },
 			undefined,
 			undefined,
 		);
 		expect(logToStderr.mock.calls[0][0]).toContain(
-			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --folder f-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --folder f-1 --skill skill-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
@@ -648,7 +649,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('continues with the reviewed source and the same workflow ids', async () => {
+	it('continues with the reviewed source and the selected Skill ids', async () => {
 		const command = new PromotionEnvironmentApplySelectionContinue([], {} as Config);
 		const continueApplyProjectSelection = vi.fn().mockResolvedValue(SOURCE_CHANGED_RESULT);
 		const internals = command as unknown as ApplyInternals & {
@@ -656,7 +657,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 		};
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
-			flags: { format: 'table', workflow: ['wf-1'], ...PINNED_FLAGS },
+			flags: { format: 'table', skill: ['skill-1'], ...PINNED_FLAGS },
 		});
 		vi.spyOn(internals, 'getClient').mockReturnValue({
 			continueApplyProjectSelection,
@@ -670,7 +671,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1'] },
+			{ skillIds: ['skill-1'] },
 			EXPECTED_SOURCE,
 			undefined,
 			undefined,

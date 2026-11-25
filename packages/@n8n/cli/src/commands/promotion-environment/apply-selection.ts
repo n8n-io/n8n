@@ -14,7 +14,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplySelection extends PromotionApplyCommand {
 	static override description =
-		"Apply a chosen set of a project's workflow and folder changes from its Apply branch. The project's name, icon, description and telemetry tags always come from the branch, so a call without --workflow and --folder applies only the project. Selected IDs on the branch are imported, and a selected workflow that this project owns but the branch does not hold is removed. Unselected content stays unchanged. A selected workflow moves within the project to match the branch, together with the folders that hold it, and those folders take the name on the branch. A selected workflow, or a folder that the branch holds in this project, that the branch and this instance hold in different projects is refused before any write. Pass the three --expected-environment-id, --expected-branch and --expected-commit-sha flags to apply only the reviewed commit, and --expected-preview-revision to apply only when this instance still matches the reviewed preview. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings must be set up first; nothing is imported in either case. Uses the project's Apply environment, otherwise the instance Apply environment.";
+		"Apply a chosen set of a project's workflow, folder, and Skill changes from its Apply branch. The project's name, icon, description and telemetry tags always come from the branch, so a call without --workflow, --folder and --skill applies only the project. Selected IDs on the branch are imported, and a selected workflow that this project owns but the branch does not hold is removed. Unselected content stays unchanged. A selected workflow moves within the project to match the branch, together with the folders that hold it, and those folders take the name on the branch. A selected workflow, or a folder that the branch holds in this project, that the branch and this instance hold in different projects is refused before any write. Pass the three --expected-environment-id, --expected-branch and --expected-commit-sha flags to apply only the reviewed commit, and --expected-preview-revision to apply only when this instance still matches the reviewed preview. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings must be set up first; nothing is imported in either case. Uses the project's Apply environment, otherwise the instance Apply environment.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-selection proj-abc -w wf-1 -w wf-2',
@@ -32,6 +32,10 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 			description: 'Workflow ID to apply (repeat for more than one)',
 			multiple: true,
 		}),
+		skill: Flags.string({
+			description: 'Skill ID to include (repeat for more than one)',
+			multiple: true,
+		}),
 		folder: Flags.string({
 			description: 'Folder ID to apply (repeat for more than one)',
 			multiple: true,
@@ -42,7 +46,11 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentApplySelection);
-		const selection = { workflowIds: flags.workflow, folderIds: flags.folder };
+		const selection = {
+			workflowIds: flags.workflow,
+			folderIds: flags.folder,
+			skillIds: flags.skill,
+		};
 		await this.execute(async () => {
 			const result = await this.getClient(flags).applyProjectSelection(
 				args.projectId,

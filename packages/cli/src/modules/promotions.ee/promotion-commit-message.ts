@@ -18,11 +18,13 @@ function listSection(title: string, refs: NamedRef[]): string | undefined {
 export function buildInstancePromotionCommitMessage({
 	projectCount,
 	workflowCount,
+	skillCount = 0,
 }: {
 	projectCount: number;
 	workflowCount: number;
+	skillCount?: number;
 }): string {
-	return `Promote instance: ${plural(projectCount, 'project')}, ${plural(workflowCount, 'workflow')}`;
+	return `Promote instance: ${plural(projectCount, 'project')}, ${plural(workflowCount, 'workflow')}${skillCount ? `, ${plural(skillCount, 'Skill')}` : ''}`;
 }
 
 /**
@@ -36,6 +38,8 @@ export function buildSelectionPromotionCommitMessage({
 	removed,
 	folders = [],
 	credentials = [],
+	skills = [],
+	removedSkills = [],
 }: {
 	projectName: string;
 	added: NamedRef[];
@@ -43,9 +47,13 @@ export function buildSelectionPromotionCommitMessage({
 	removed: NamedRef[];
 	folders?: NamedRef[];
 	credentials?: NamedRef[];
+	skills?: NamedRef[];
+	removedSkills?: NamedRef[];
 }): string {
 	const workflowCount = added.length + updated.length + removed.length;
+	const skillCount = skills.length + removedSkills.length;
 	const counts = [
+		...(skillCount > 0 ? [plural(skillCount, 'Skill')] : []),
 		...(workflowCount > 0 ? [plural(workflowCount, 'workflow')] : []),
 		...(folders.length > 0 ? [plural(folders.length, 'folder')] : []),
 		...(credentials.length > 0 ? [plural(credentials.length, 'credential')] : []),
@@ -60,6 +68,8 @@ export function buildSelectionPromotionCommitMessage({
 		listSection('Removed', removed),
 		listSection('Folders', folders),
 		listSection('Credentials', credentials),
+		listSection('Skills', skills),
+		listSection('Removed Skills', removedSkills),
 	];
 	return [title, ...sections].filter(Boolean).join('\n\n');
 }

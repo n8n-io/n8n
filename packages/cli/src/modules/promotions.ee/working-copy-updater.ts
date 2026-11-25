@@ -24,6 +24,8 @@ const selectivePushOptionsSchema = z.object({
 	folderIds: z.array(z.string().min(1)),
 	/** Credentials of the project to write although no selected workflow uses them. */
 	credentialIds: z.array(z.string().min(1)).optional(),
+	skillIds: z.array(z.string().min(1)).optional(),
+	deletedSkillIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -98,6 +100,13 @@ export class WorkingCopyUpdater {
 			throw new BadRequestError('folderIds contains duplicates');
 		}
 		const credentialIds = selection.credentialIds ?? [];
+		for (const ids of [selection.skillIds ?? [], selection.deletedSkillIds ?? []]) {
+			if (new Set(ids).size !== ids.length)
+				throw new BadRequestError('Skill IDs contain duplicates.');
+		}
+		if (selection.skillIds?.some((id) => selection.deletedSkillIds?.includes(id))) {
+			throw new BadRequestError('A Skill cannot be selected and deleted in the same push.');
+		}
 		if (new Set(credentialIds).size !== credentialIds.length) {
 			throw new BadRequestError('credentialIds contains duplicates');
 		}
@@ -118,12 +127,17 @@ export class WorkingCopyUpdater {
 		const selectedIds = new Set(selection.workflowIds);
 		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
 		const stagedCredentialIds = new Set((staging.credentials ?? []).map(({ id }) => id));
+		const stagedSkillIds = new Set((staging.skills ?? []).map(({ id }) => id));
 		const missing = [
+			...(selection.skillIds ?? []).filter((id) => !stagedSkillIds.has(id)),
 			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
 			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
 			...(selection.credentialIds ?? []).filter((id) => !stagedCredentialIds.has(id)),
 		];
-		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
+		const extra = [
+			...[...stagedIds].filter((id) => !selectedIds.has(id)),
+			...[...stagedSkillIds].filter((id) => !selection.skillIds?.includes(id)),
+		];
 		if (missing.length === 0 && extra.length === 0) return;
 
 		const parts: string[] = [];
@@ -298,6 +312,7 @@ export class WorkingCopyUpdater {
 			const branch = await this.scanBranch(exportFolder);
 			this.assertDeletionsOnBranch(branch.state, selection);
 			this.assertNoCrossProjectMoves(branch.state, selection);
+			this.assertSkillSelection(branch.state, selection);
 			return branch;
 		} catch (error) {
 			if (error instanceof BadRequestError) throw error;
@@ -305,6 +320,20 @@ export class WorkingCopyUpdater {
 			throw new InternalServerError(
 				'Failed to apply the selection to the branch. Check the server logs for details.',
 			);
+		}
+	}
+
+	private assertSkillSelection(branch: BranchLayout, selection: SelectivePushOptions): void {
+		const entries = new Map(branch.skills?.map((entry) => [entry.id, entry]));
+		for (const id of selection.deletedSkillIds ?? []) {
+			if (!entries.has(id)) throw new BadRequestError('A deleted Skill is not on the branch.');
+		}
+		for (const id of [...(selection.skillIds ?? []), ...(selection.deletedSkillIds ?? [])]) {
+			const entry = entries.get(id);
+			if (!entry || entry.target.startsWith('skills/')) continue;
+			if (projectHolding(branch.projects, entry.target)?.id !== selection.projectId) {
+				throw new BadRequestError('A selected Skill belongs to another project on the branch.');
+			}
 		}
 	}
 
@@ -416,6 +445,9 @@ export class WorkingCopyUpdater {
 			this.assertNoCrossProjectContainerMoves(existing, selection.projectId, moves);
 			const remaining: BranchLayout = {
 				...existing,
+				skills: (existing.skills ?? []).filter(
+					({ id }) => !selection.deletedSkillIds?.includes(id),
+				),
 				workflows: (existing.workflows ?? []).filter(
 					(workflow) => !selection.deletedWorkflowIds.includes(workflow.id),
 				),
@@ -433,6 +465,26 @@ export class WorkingCopyUpdater {
 			workFolder = await fs.mkdtemp(path.join(tempBase, `.${path.basename(exportFolder)}-`));
 
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
+
+			for (const entry of existing.skills ?? []) {
+				const replacement = staging.skills?.find(({ id }) => id === entry.id);
+				if (
+					!selection.deletedSkillIds?.includes(entry.id) &&
+					(!replacement || replacement.target === entry.target)
+				)
+					continue;
+				if (
+					replacement &&
+					projectHolding(existing.projects, entry.target)?.id !==
+						projectHolding(staging.projects, replacement.target)?.id
+				) {
+					throw new BadRequestError('Promotion cannot move a Skill between scopes.');
+				}
+				await fs.rm(
+					await this.assertRemovableLeafTarget(workFolder, entry.target, remaining, staging),
+					{ recursive: true, force: true },
+				);
+			}
 
 			for (const target of staleWorkflowTargets(
 				existing,
@@ -465,7 +517,14 @@ export class WorkingCopyUpdater {
 			await this.overlayDirectory(stagingFolder, workFolder, outOfScopeInStaging);
 			await writeImportManifest({
 				exportFolder: workFolder,
-				staging,
+				staging: selection.deletedSkillIds?.length
+					? {
+							...staging,
+							packageFormatVersion: '2',
+							skills: staging.skills ?? [],
+							selectedSkillIds: staging.selectedSkillIds ?? [],
+						}
+					: staging,
 				sourceId: this.instanceSettings.instanceId,
 				selectedWorkflowIds: selection.workflowIds,
 				containerMoves: moves,
@@ -533,21 +592,17 @@ export class WorkingCopyUpdater {
 	): Promise<string> {
 		const resolved = await this.resolveLeafTarget(exportFolder, target, 'Manifest');
 
-		const writtenIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
-		for (const entry of [
-			...(remaining.workflows ?? []),
-			...(remaining.agents ?? []),
-			...(remaining.skills ?? []),
-		]) {
-			if (isUnder(entry.target, target)) {
-				throw new BadRequestError(
-					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
-				);
-			}
-			if (entry.target === target && !writtenIds.has(entry.id)) {
-				throw new BadRequestError(
-					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
-				);
+		for (const collection of ['workflows', 'agents', 'skills'] as const) {
+			const writtenIds = new Set(staging[collection]?.map((entry) => entry.id));
+			for (const entry of remaining[collection] ?? []) {
+				if (
+					isUnder(entry.target, target) ||
+					(entry.target === target && !writtenIds.has(entry.id))
+				) {
+					throw new BadRequestError(
+						`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+					);
+				}
 			}
 		}
 
@@ -582,7 +637,7 @@ export class WorkingCopyUpdater {
 		staging: PackageManifest,
 		otherProjectTargets: string[],
 	): {
-		renamedInScope: Array<{ collection: DependencyCollection; target: string }>;
+		renamedInScope: { collection: DependencyCollection; target: string }[];
 		outOfScopeInStaging: Set<string>;
 	} {
 		const stagingTargets = new Map<string, string>();
@@ -592,7 +647,7 @@ export class WorkingCopyUpdater {
 			}
 		}
 
-		const renamedInScope: Array<{ collection: DependencyCollection; target: string }> = [];
+		const renamedInScope: { collection: DependencyCollection; target: string }[] = [];
 		const outOfScopeInStaging = new Set<string>();
 
 		for (const dependency of dependencies) {
@@ -668,7 +723,7 @@ export class WorkingCopyUpdater {
 
 		const stash = await fs.mkdtemp(path.join(path.dirname(workFolder), '.relocate-'));
 		try {
-			const parked: Array<{ holding: string; dest: string; move: ContainerMove }> = [];
+			const parked: { holding: string; dest: string; move: ContainerMove }[] = [];
 			for (const [index, move] of moves.entries()) {
 				const holding = path.join(stash, String(index));
 				await fs.rename(sources[index], holding);

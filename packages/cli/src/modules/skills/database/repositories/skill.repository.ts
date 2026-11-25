@@ -10,7 +10,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, type EntityManager } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
@@ -649,6 +649,15 @@ export class SkillRepository {
 		const rows = await this.table.find({
 			select: ['id'],
 			where: { projectId: In(projectIds) },
+			order: { id: 'ASC' },
+		});
+		return rows.map(({ id }) => id);
+	}
+
+	async findInstanceIds(): Promise<string[]> {
+		const rows = await this.table.find({
+			select: ['id'],
+			where: { projectId: IsNull() },
 			order: { id: 'ASC' },
 		});
 		return rows.map(({ id }) => id);

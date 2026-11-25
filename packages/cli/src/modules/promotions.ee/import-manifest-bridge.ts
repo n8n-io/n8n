@@ -112,12 +112,26 @@ export async function writeImportManifest(options: {
 	const remainingWorkflowIds = new Set((collections.workflows ?? []).map((entry) => entry.id));
 	const selectedSet = new Set(selected);
 	const variables = await collectVariables(exportFolder, leftover, staging, containerMoves);
+	const standaloneSkills =
+		leftover?.packageFormatVersion === '2' || staging.packageFormatVersion === '2';
+	const remainingSkillIds = new Set(collections.skills?.map(({ id }) => id));
 
 	const written = {
-		packageFormatVersion: '1',
+		packageFormatVersion: standaloneSkills ? '2' : '1',
 		sourceN8nVersion: getN8nVersion(),
 		sourceId,
 		...collections,
+		...(standaloneSkills
+			? {
+					skills: collections.skills ?? [],
+					selectedSkillIds: [
+						...new Set([
+							...(leftover?.selectedSkillIds ?? []),
+							...(staging.selectedSkillIds ?? []),
+						]),
+					].filter((id) => remainingSkillIds.has(id)),
+				}
+			: {}),
 		...(variables.length > 0 ? { variables } : {}),
 		...requirementsBlock(leftover, staging, remainingWorkflowIds, selectedSet),
 	} satisfies PackageManifest;

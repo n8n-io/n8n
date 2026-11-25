@@ -19,6 +19,7 @@ import {
 import { serializedDataTableSchema } from '../packages/data-table.schema';
 import { serializedFolderSchema } from '../packages/folder.schema';
 import { serializedProjectSchema } from '../packages/project.schema';
+import { serializedSkillSchema } from '../packages/skill.schema';
 import { serializedTagSchema } from '../packages/tag.schema';
 import { serializedVariableSchema } from '../packages/variable.schema';
 import { serializedWorkflowSchema } from '../packages/workflow.schema';
@@ -27,6 +28,7 @@ export const promotionResourceTypeSchema = z.enum([
 	'project',
 	'folder',
 	'workflow',
+	'skill',
 	'credential',
 	'dataTable',
 	'variable',
@@ -60,6 +62,7 @@ export const promotionResourceSchema = z
 		id: z.string(),
 		name: z.string(),
 		previousName: z.string().optional(),
+		followingAgentCount: z.number().int().nonnegative().optional(),
 		/** Only for tags on Apply: the local tag with this name that Apply moves to the branch id. */
 		previousId: z.string().optional(),
 		/** The project or folder that holds the resource. `null` for instance-wide resources. */
@@ -215,6 +218,7 @@ export const promotionResourceDetailSchema = z
 		resourceDetailSchema('project', serializedProjectSchema),
 		resourceDetailSchema('folder', serializedFolderSchema),
 		resourceDetailSchema('workflow', serializedWorkflowSchema),
+		resourceDetailSchema('skill', serializedSkillSchema),
 		resourceDetailSchema(
 			'credential',
 			serializedCredentialSchema.extend({

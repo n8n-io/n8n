@@ -8,6 +8,7 @@ import {
 	type CreatePromotionProviderDto,
 	type UpdatePromotionEnvironmentDto,
 	type UpdatePromotionProviderDto,
+	type PromotionInstanceApplyPreviewDto,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -17,6 +18,7 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
+import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
@@ -179,12 +181,82 @@ describe('Promotion operation context', () => {
 	it.each(routes)('$route passes the operation context of the request', async (route) => {
 		await callRoute(route, ctx);
 
-		expect(route.ctxPassed()).toBe(ctx);
+		expect(route.ctxPassed()).toEqual(
+			route.route.toLowerCase().includes('apply') ? { ...ctx, skillApiKeyScopes: [] } : ctx,
+		);
+		expect(route.ctxPassed()?.security).toBe(ctx.security);
 	});
 
 	it.each(routes)('$route passes no operation context when the request has none', async (route) => {
 		await callRoute(route, undefined);
 
-		expect(route.ctxPassed()).toBeUndefined();
+		expect(route.ctxPassed()).toEqual(
+			route.route.toLowerCase().includes('apply') ? { skillApiKeyScopes: [] } : undefined,
+		);
+	});
+
+	it.each(routes.filter(({ route }) => route.toLowerCase().includes('apply')))(
+		'$route passes Skill API-key scopes to the service',
+		async (route) => {
+			await route.call(
+				Object.assign(mock<PublicApiRequest>(), {
+					ctx,
+					tokenGrant: { apiKeyScopes: ['promotions:apply', 'skill:update'] },
+				}),
+			);
+			expect(route.ctxPassed()).toEqual({
+				...ctx,
+				skillApiKeyScopes: ['promotions:apply', 'skill:update'],
+			});
+		},
+	);
+});
+
+describe('Promotion Skill content access', () => {
+	const moduleRegistry = mock<ModuleRegistry>();
+	const changes = mockInstance(PromotionChangeService);
+	const controller = new PromotionsPublicController(moduleRegistry);
+	const response = mock<Response>();
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(true);
+	});
+
+	it('checks Skill read scope when only a project-deletion conflict refers to Skills', async () => {
+		changes.getInstanceApplyPreview.mockResolvedValue(
+			mock<PromotionInstanceApplyPreviewDto>({
+				resources: [],
+				check: {
+					conflicts: [
+						{
+							kind: 'skill',
+							code: 'skill-conflict',
+							id: 's1',
+							reason: 'Move or delete this Skill first.',
+						},
+					],
+				},
+			}),
+		);
+		const request = mock<AuthenticatedRequest>({
+			tokenGrant: { apiKeyScopes: ['promotions:apply'] },
+		});
+		await expect(controller.getInstanceApplyChanges(request, response, 'env-1')).rejects.toThrow(
+			'skill:read',
+		);
+	});
+
+	it('checks Skill read scope before loading content', async () => {
+		const request = mock<AuthenticatedRequest>({
+			tokenGrant: { apiKeyScopes: ['promotions:apply'] },
+		});
+		await expect(
+			controller.getInstanceApplyChangeDetails(request, response, 'env-1', {
+				keys: ['skill:skill-1'],
+				commitSha: 'a'.repeat(40),
+			}),
+		).rejects.toThrow('skill:read');
+		expect(changes.getInstanceApplyDetails).not.toHaveBeenCalled();
 	});
 });

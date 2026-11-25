@@ -44,11 +44,29 @@ export function hasUnreadableSide(detail: PromotionResourceDetail): boolean {
 	);
 }
 
-const FIELD_IDS = ['name', 'description', 'icon', 'location', 'type', 'data', 'value'] as const;
+const FIELD_IDS = [
+	'name',
+	'description',
+	'icon',
+	'location',
+	'type',
+	'data',
+	'value',
+	'scope',
+	'instructions',
+	'frontmatter',
+	'file',
+] as const;
 
 export type FieldId = (typeof FIELD_IDS)[number];
 
-export type FieldChange = { field: FieldId; before?: string; after?: string };
+export type FieldChange = {
+	field: FieldId;
+	before?: string;
+	after?: string;
+	label?: string;
+	binary?: boolean;
+};
 
 export type FieldContext = {
 	direction: PromotionDirection;
@@ -63,6 +81,17 @@ function fieldsOf(
 	side: DetailSide,
 ): Partial<Record<FieldId, string>> {
 	switch (detail.type) {
+		case 'skill': {
+			const content = detail[side];
+			if (!content) return {};
+			return {
+				name: content.skill.name,
+				description: content.skill.description,
+				scope: content.scope,
+				instructions: content.skill.instructions,
+				frontmatter: JSON.stringify(content.frontmatter, null, 2),
+			};
+		}
 		case 'project': {
 			const project = detail[side];
 			if (!project) return {};
@@ -121,11 +150,31 @@ export function describeFieldChanges(
 	const before = { ...fieldsOf(detail, 'before'), ...locationOf(context, 'before') };
 	const after = { ...fieldsOf(detail, 'after'), ...locationOf(context, 'after') };
 
-	return FIELD_IDS.filter((field) => before[field] !== after[field]).map((field) => ({
-		field,
-		before: before[field],
-		after: after[field],
-	}));
+	const changes: FieldChange[] = FIELD_IDS.filter((field) => before[field] !== after[field]).map(
+		(field) => ({
+			field,
+			before: before[field],
+			after: after[field],
+		}),
+	);
+	if (detail.type === 'skill') {
+		const oldFiles = new Map(detail.before?.skill.references?.map((file) => [file.path, file]));
+		const newFiles = new Map(detail.after?.skill.references?.map((file) => [file.path, file]));
+		for (const path of [...new Set([...oldFiles.keys(), ...newFiles.keys()])].sort()) {
+			const oldFile = oldFiles.get(path);
+			const newFile = newFiles.get(path);
+			if (oldFile?.content === newFile?.content && oldFile?.isBinary === newFile?.isBinary)
+				continue;
+			changes.push({
+				field: 'file',
+				label: path,
+				before: oldFile?.content,
+				after: newFile?.content,
+				binary: oldFile?.isBinary || newFile?.isBinary,
+			});
+		}
+	}
+	return changes;
 }
 
 /** The rename and move of a workflow. The workflow diff shows the rest. */

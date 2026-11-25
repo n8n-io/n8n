@@ -183,6 +183,14 @@ const tagNote = computed(() => {
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
+					<N8nCallout v-if="resource.type === 'skill'" theme="info" slim>
+						{{ i18n.baseText('promotions.preview.skill.snapshot') }}
+						<span v-if="resource.followingAgentCount !== undefined">{{
+							i18n.baseText('promotions.preview.skill.following', {
+								interpolate: { count: resource.followingAgentCount },
+							})
+						}}</span>
+					</N8nCallout>
 					<!-- A workflow diff shows these states in its own area. -->
 					<template v-if="!hasDiff">
 						<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>

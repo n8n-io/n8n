@@ -16,6 +16,7 @@ import {
  */
 export const promoteRequestSchema = z.object({
 	workflowIds: promotionSelectedIdsSchema('workflowIds'),
+	skillIds: promotionSelectedIdsSchema('skillIds'),
 	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
 		description:
 			'Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.',

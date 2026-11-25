@@ -619,7 +619,12 @@ export class PromotionsPublicController {
 		promotionEnvironmentId: string,
 		@Body input: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
-		return await (await this.promotionsService()).promote(promotionEnvironmentId, req.user, input);
+		return await (await this.promotionsService()).promote(
+			promotionEnvironmentId,
+			req.user,
+			input,
+			req.tokenGrant?.apiKeyScopes ?? [],
+		);
 	}
 
 	@Post('/environments/:promotionEnvironmentId/apply')
@@ -629,7 +634,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Apply a package to the instance')
 	@ApiDescription(
 		BETA_NOTE +
-			'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Optionally send expectedPreviewRevision with the `revision` of the reviewed preview; status `preview-changed` means this instance changed since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires an Apply environment with instance scope. The importer checks user write permissions; granular API-key write scopes are not passed to it. Another operation on the same environment returns 423.',
+			'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Optionally send expectedPreviewRevision with the `revision` of the reviewed preview; status `preview-changed` means this instance changed since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires an Apply environment with instance scope. The importer checks user write permissions. Skill writes also require the skill:create, skill:update, or skill:delete API-key scope for each planned change. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -651,7 +656,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
-			req.ctx,
+			{ ...req.ctx, skillApiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [] },
 		);
 	}
 
@@ -662,7 +667,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Continue Apply after binding setup')
 	@ApiDescription(
 		BETA_NOTE +
-			'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Send expectedPreviewRevision to confirm only what the reviewed preview showed. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided. Another operation on the same environment returns 423.',
+			'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Send expectedPreviewRevision to confirm only what the reviewed preview showed. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same instance environment and permissions as Apply. The importer checks user write permissions. Skill writes also require the skill:create, skill:update, or skill:delete API-key scope for each planned change. No server session or exactly-once guarantee is provided. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -683,7 +688,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
-			req.ctx,
+			{ ...req.ctx, skillApiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [] },
 		);
 	}
 
@@ -696,7 +701,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Preview the Apply of the whole instance')
 	@ApiDescription(
 		BETA_NOTE +
-			'Shows what applying the branch tip of an instance Apply environment changes on this instance, for every project of the package. `resources` and `dependencies` have the same shape as the project change preview. Resources are not selectable: Apply applies the whole package. A team project that the package does not hold is listed as `deleted`, with the folders, workflows, credentials, data tables and variables that it owns. Workflows and folders that a kept project no longer holds are listed as `deleted` too. `check` lists what blocks the Apply. A `project-deletion` conflict needs `confirmDestructiveChanges` on Continue. Send `revision` as expectedPreviewRevision and `commitSha` in expectedSource to apply only what this preview shows. Requires an Apply environment with instance scope.',
+			'Shows what applying the branch tip of an instance Apply environment changes on this instance, for every project of the package. `resources` and `dependencies` have the same shape as the project change preview. Resources are not selectable: Apply applies the whole package. A preview with Skills also requires skill:read. A team project that the package does not hold is listed as `deleted`, with the folders, workflows, credentials, data tables and variables that it owns. Workflows and folders that a kept project no longer holds are listed as `deleted` too. `check` lists what blocks the Apply. A `project-deletion` conflict needs `confirmDestructiveChanges` on Continue. Send `revision` as expectedPreviewRevision and `commitSha` in expectedSource to apply only what this preview shows. Requires an Apply environment with instance scope.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionInstanceApplyPreviewDto)
@@ -710,10 +715,16 @@ export class PromotionsPublicController {
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<PromotionInstanceApplyPreviewDto> {
-		return await (await this.changeService()).getInstanceApplyPreview(
+		const preview = await (await this.changeService()).getInstanceApplyPreview(
 			req.user,
 			promotionEnvironmentId,
 		);
+		this.assertSkillReadScope(
+			req,
+			preview.resources.some(({ type }) => type === 'skill') ||
+				(preview.check?.conflicts.some(({ kind }) => kind === 'skill') ?? false),
+		);
+		return preview;
 	}
 
 	@Post('/environments/:promotionEnvironmentId/changes/details')
@@ -724,7 +735,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Read the content of resources in the whole-instance Apply preview')
 	@ApiDescription(
 		BETA_NOTE +
-			'Returns the content before and after the change for up to 50 resources of the whole-instance Apply preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. A data table that a deleted project owns but no workflow uses has its current content as `before`. `missingKeys` lists requested resources that neither side holds anymore, and such credentials and variables, which have no content to show. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the user has the variable:list scope.',
+			'Returns the content before and after the change for up to 50 resources of the whole-instance Apply preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. A data table that a deleted project owns but no workflow uses has its current content as `before`. `missingKeys` lists requested resources that neither side holds anymore, and such credentials and variables, which have no content to show. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the user has the variable:list scope. Skill content also requires skill:read.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionResourceDetailsDto)
@@ -739,6 +750,10 @@ export class PromotionsPublicController {
 		promotionEnvironmentId: string,
 		@Body input: PromotionResourceDetailsRequestDto,
 	): Promise<PromotionResourceDetailsDto> {
+		this.assertSkillReadScope(
+			req,
+			input.keys.some((key) => key.startsWith('skill:')),
+		);
 		return await (await this.changeService()).getInstanceApplyDetails(
 			req.user,
 			promotionEnvironmentId,
@@ -752,7 +767,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Preview the changes of a project in one direction')
 	@ApiDescription(
 		BETA_NOTE +
-			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from.',
+			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, Skills, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select resources where `selectable` is true by `workflowIds`, `folderIds`, and `skillIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from. A preview with Skills also requires skill:read.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionPreviewDto)
@@ -768,7 +783,17 @@ export class PromotionsPublicController {
 		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<PromotionPreviewDto> {
 		const parsedDirection = this.parseDirectionWithKeyScope(req, direction);
-		return await (await this.changeService()).getPreview(req.user, projectId, parsedDirection);
+		const preview = await (await this.changeService()).getPreview(
+			req.user,
+			projectId,
+			parsedDirection,
+		);
+		this.assertSkillReadScope(
+			req,
+			preview.resources.some(({ type }) => type === 'skill') ||
+				(preview.check?.conflicts.some(({ kind }) => kind === 'skill') ?? false),
+		);
+		return preview;
 	}
 
 	@Post('/projects/:projectId/changes/:direction/details')
@@ -778,7 +803,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Read the content of changed resources')
 	@ApiDescription(
 		BETA_NOTE +
-			'Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the role of the user has the variable:list scope. The key needs the same scope as the preview for that direction.',
+			'Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the role of the user has the variable:list scope. The key needs the same scope as the preview for that direction. Skill content also requires skill:read.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionResourceDetailsDto)
@@ -795,6 +820,10 @@ export class PromotionsPublicController {
 		@Body input: PromotionResourceDetailsRequestDto,
 	): Promise<PromotionResourceDetailsDto> {
 		const parsedDirection = this.parseDirectionWithKeyScope(req, direction);
+		this.assertSkillReadScope(
+			req,
+			input.keys.some((key) => key.startsWith('skill:')),
+		);
 		return await (await this.changeService()).getDetails(
 			req.user,
 			projectId,
@@ -831,6 +860,7 @@ export class PromotionsPublicController {
 			projectId,
 			req.user,
 			input,
+			req.tokenGrant?.apiKeyScopes ?? [],
 		);
 	}
 
@@ -864,7 +894,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
-			req.ctx,
+			{ ...req.ctx, skillApiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [] },
 		);
 	}
 
@@ -896,7 +926,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
-			req.ctx,
+			{ ...req.ctx, skillApiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [] },
 		);
 	}
 
@@ -908,6 +938,12 @@ export class PromotionsPublicController {
 			throw new ForbiddenError(`The ${direction} direction requires the ${requiredScope} scope`);
 		}
 		return direction;
+	}
+
+	private assertSkillReadScope(req: AuthenticatedRequest, hasSkills: boolean): void {
+		if (hasSkills && !req.tokenGrant?.apiKeyScopes?.includes('skill:read')) {
+			throw new ForbiddenError('Reading Skills requires the skill:read scope.');
+		}
 	}
 
 	// -- Module access -------------------------------------------------------

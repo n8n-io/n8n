@@ -126,6 +126,22 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
+			skill_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('Skills exported. Absent when unavailable'),
+			selected_skill_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('Skills explicitly selected in a project Promote'),
+			requested_resource_types: z
+				.array(z.enum(['workflow', 'folder', 'credential', 'skill']))
+				.optional()
+				.describe('Resource types in a project selection. No resource identifiers'),
 			workflow_count: z
 				.number()
 				.optional()
@@ -182,6 +198,22 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
+			skills_changed: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('Skills created, updated or deleted by Apply. Absent when unknown'),
+			selected_skill_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('Skills explicitly selected in a project Apply'),
+			requested_resource_types: z
+				.array(z.enum(['workflow', 'folder', 'credential', 'skill']))
+				.optional()
+				.describe('Resource types in a project selection. No resource identifiers'),
 			workflows_changed: z
 				.number()
 				.optional()

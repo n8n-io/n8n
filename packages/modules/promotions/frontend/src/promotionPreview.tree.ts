@@ -10,7 +10,14 @@ import type { ResourceKey } from './promotionPreview.selection';
  * workflows use them.
  */
 
-export type PreviewTreeGroup = 'credential' | 'dataTable' | 'variable' | 'tag' | 'subWorkflow';
+export type PreviewTreeGroup =
+	| 'credential'
+	| 'dataTable'
+	| 'variable'
+	| 'tag'
+	| 'subWorkflow'
+	| 'skill'
+	| 'instanceSkill';
 
 export type PreviewTreeItem = {
 	/** The resource key, or a section or group id. */
@@ -29,6 +36,8 @@ export type PreviewTreeItem = {
  * credentials, variables, data tables. Tags come last.
  */
 const GROUP_ORDER: readonly PreviewTreeGroup[] = [
+	'skill',
+	'instanceSkill',
 	'subWorkflow',
 	'credential',
 	'variable',
@@ -40,6 +49,7 @@ const RESOURCE_ICONS: Record<PromotionResourceType, IconName> = {
 	project: 'layers',
 	folder: 'folder',
 	workflow: 'workflow',
+	skill: 'book-open',
 	credential: 'key-round',
 	dataTable: 'table',
 	variable: 'variable',
@@ -62,6 +72,8 @@ function hasCard(resource: PromotionResource): boolean {
 /** The dependency group of a resource, or `null` when it belongs to the project hierarchy. */
 function groupOf(resource: PromotionResource): PreviewTreeGroup | null {
 	switch (resource.type) {
+		case 'skill':
+			return resource.parentKey === null ? 'instanceSkill' : 'skill';
 		case 'project':
 		case 'folder':
 			return null;

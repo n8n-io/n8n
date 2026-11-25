@@ -1,4 +1,8 @@
-import type { PromotionReviewRemoteError, PromotionReviewState } from '@n8n/api-types';
+import {
+	skillImportCountsSchema,
+	type PromotionReviewRemoteError,
+	type PromotionReviewState,
+} from '@n8n/api-types';
 import {
 	LockedError,
 	ResponseError,
@@ -6,6 +10,9 @@ import {
 	TooManyRequestsError,
 	UserError,
 } from '@n8n/errors';
+import { z } from 'zod';
+
+import { SkillImportFailedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 
 import {
 	PromotionLockLostError,
@@ -41,7 +48,7 @@ export function classifyPromotionFailure(error: unknown): PromotionFailureKind {
 
 export type ObservedOperation<T> =
 	| { ok: true; result: T; durationMs: number }
-	| { ok: false; failureKind: PromotionFailureKind; durationMs: number };
+	| { ok: false; failureKind: PromotionFailureKind; durationMs: number; skillsChanged?: number };
 
 /**
  * Runs an operation, reports how it ended, and returns or rethrows its original outcome.
@@ -63,8 +70,20 @@ export async function observePromotion<T>(
 	try {
 		result = await run();
 	} catch (error) {
+		const partial =
+			error instanceof SkillImportFailedError
+				? z.object({ skills: skillImportCountsSchema }).safeParse(error.meta.counts)
+				: undefined;
 		safeReport({
 			ok: false,
+			...(partial?.success
+				? {
+						skillsChanged:
+							partial.data.skills.created +
+							partial.data.skills.updated +
+							partial.data.skills.deleted,
+					}
+				: {}),
 			failureKind: classifyPromotionFailure(error),
 			durationMs: Date.now() - startedAt,
 		});

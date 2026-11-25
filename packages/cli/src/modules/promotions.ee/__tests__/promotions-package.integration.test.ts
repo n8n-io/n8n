@@ -1,3 +1,17 @@
+import { SkillService, SkillsGate, SkillAccessService } from '@/modules/skills';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
+import {
+	createSkill,
+	createSkillVersion,
+	deleteAllSkills,
+	deleteSkill,
+	findLatestSkillVersion,
+	findSkill,
+} from '@/modules/skills/testing';
+import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import {
 	AgentJsonConfigSchema,
 	applyPackageResultSchema,
@@ -6,7 +20,7 @@ import {
 	type PromotionProviderType,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -86,7 +100,6 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { Publisher } from '@n8n/backend-services';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -127,7 +140,7 @@ import {
 } from './utils/git-remote-fixture';
 import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
 
-beforeAll(async () => await testModules.loadModules(['agents']));
+beforeAll(async () => await testModules.loadModules(['skills', 'agents']));
 const testServer = setupTestServer({
 	reuseServer: true,
 	endpointGroups: ['publicApi'],
@@ -226,6 +239,8 @@ beforeEach(async () => {
 		instanceSettings,
 	);
 	service = new PromotionsService(
+		Container.get(SkillService),
+		Container.get(PromotionSkillSelectionService),
 		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
 		new PromotionProvidersService(
 			providerRepository,
@@ -456,9 +471,9 @@ async function readBranchEntities(
 		| 'projects'
 		| 'credentials'
 		| 'agents']['fileName'],
-): Promise<Array<{ id: string; name: string; target: string }>> {
+): Promise<{ id: string; name: string; target: string }[]> {
 	const exportRoot = path.join(inspectionDir, 'n8n');
-	const found: Array<{ id: string; name: string; target: string }> = [];
+	const found: { id: string; name: string; target: string }[] = [];
 	const walk = async (dir: string): Promise<void> => {
 		const entries = await readdir(dir, { withFileTypes: true });
 		for (const entry of entries) {
@@ -529,6 +544,7 @@ async function loadApplyPreview(projectId: string) {
 
 function changeService() {
 	return new PromotionChangeService(
+		Container.get(PromotionSkillSelectionService),
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
@@ -657,7 +673,7 @@ async function changeBranchCredentials(
 	await walk(path.join(remote.workingDir, 'n8n'));
 	// The manifest lists each credential name too, and the reader checks that both agree.
 	const manifestPath = path.join(remote.workingDir, 'n8n', 'manifest.json');
-	const manifest = jsonParse<{ credentials?: Array<{ id: string; name: string }> }>(
+	const manifest = jsonParse<{ credentials?: { id: string; name: string }[] }>(
 		await readFile(manifestPath, 'utf-8'),
 	);
 	for (const entry of manifest.credentials ?? []) {
@@ -1228,7 +1244,7 @@ describe('Promote and Apply', () => {
 		);
 		// A bad merge can drop a manifest entry and leave the project folder.
 		const manifestPath = path.join(exportDir, 'manifest.json');
-		const manifest = jsonParse<{ projects: Array<{ id: string }> }>(
+		const manifest = jsonParse<{ projects: { id: string }[] }>(
 			await readFile(manifestPath, 'utf-8'),
 		);
 		manifest.projects = manifest.projects.filter(({ id }) => id !== unlisted.id);
@@ -4523,5 +4539,264 @@ describe('Promotion base branch listing', () => {
 		await remote.git.raw(['push', 'origin', '--delete', 'production']);
 		await createFixtureGit(remote.bareDir).raw(['update-ref', '-d', 'refs/heads/main']);
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
+	});
+});
+
+describe('standalone Skill promotions', () => {
+	beforeEach(() => {
+		registerSkillUsage();
+		vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(true);
+	});
+
+	afterEach(async () => {
+		Container.get(InstanceWriteAccessService).setReadOnly(false);
+		await deleteAllSkills();
+		vi.restoreAllMocks();
+	});
+
+	it('roundtrips project and instance Skills through Git into a protected instance', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Skills project', owner);
+		const content = {
+			name: 'Project guide',
+			instructions: 'Read references/guide.md.',
+			frontmatter: { license: 'MIT' },
+			files: [
+				{ path: 'references/guide.md', content: '# Guide' },
+				{ path: 'assets/logo.png', content: 'cGl4ZWw=', isBinary: true as const },
+			],
+		};
+		const projectSkill = await createSkill({ projectId: project.id, content });
+		const instanceSkill = await createSkill({ content: { name: 'Instance guide' } });
+		const promotePreview = await changeService().getPreview(owner, project.id, 'promote');
+		expect(promotePreview.resources.filter(({ type }) => type === 'skill')).toHaveLength(2);
+		const details = await changeService().getDetails(owner, project.id, 'promote', {
+			commitSha: promotePreview.commitSha,
+			keys: [`skill:${projectSkill.id}`],
+		});
+		expect(details.details[0]).toMatchObject({
+			type: 'skill',
+			after: { id: projectSkill.id, scope: 'project', frontmatter: content.frontmatter },
+		});
+		const promoted = await service.promoteProjectSelection(project.id, owner, {
+			skillIds: [projectSkill.id, instanceSkill.id],
+			expectedPreviewRevision: promotePreview.revision,
+		});
+		if (promoted.status !== 'promoted') throw new Error('Expected the selection to be promoted.');
+		expect(promoted.counts.skills).toBe(2);
+		await deleteAllSkills();
+		Container.get(InstanceWriteAccessService).setReadOnly(true);
+		const preview = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		expect(preview.resources.filter(({ type }) => type === 'skill')).toHaveLength(2);
+		const result = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: preview.revision,
+		});
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: { skills: { created: 2, updated: 0, deleted: 0 } },
+		});
+		expect(await findSkill(projectSkill.id)).toMatchObject({ projectId: project.id });
+		expect(await findSkill(instanceSkill.id)).toMatchObject({ projectId: null });
+		expect(
+			(await Container.get(SkillService).findLatest([projectSkill.id])).get(projectSkill.id),
+		).toMatchObject({
+			frontmatter: content.frontmatter,
+			skill: {
+				name: content.name,
+				instructions: content.instructions,
+				references: expect.arrayContaining(content.files),
+			},
+		});
+		const saved = await findLatestSkillVersion(projectSkill.id);
+		const repeated = await service.apply(environments.apply.id, owner, {});
+		expect(repeated).toMatchObject({
+			status: 'applied',
+			counts: { skills: { unchanged: 2, created: 0, updated: 0 } },
+		});
+		expect((await findLatestSkillVersion(projectSkill.id))?.id).toBe(saved?.id);
+		expect(() => Container.get(SkillService).assertWritable()).toThrow('protected instance');
+	});
+
+	it('applies only selected Skills and rejects stale previews and insufficient API-key scopes', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Skills project', owner);
+		const first = await createSkill({
+			projectId: project.id,
+			content: { name: 'First', instructions: 'Source instructions.' },
+		});
+		const second = await createSkill({ content: { name: 'Second' } });
+		await service.promote(environments.promote.id, owner, {});
+		await createSkillVersion(first.id, { name: 'First', instructions: 'Local instructions.' });
+		const untouched = await createSkillVersion(second.id, {
+			name: 'Second',
+			instructions: 'Keep this local version.',
+		});
+		const preview = await loadApplyPreview(project.id);
+		await expect(
+			service.applyProjectSelection(project.id, owner, { skillIds: [first.id] }, 'other', {
+				skillApiKeyScopes: ['promotions:apply'],
+			}),
+		).rejects.toThrow('Forbidden');
+		expect((await findLatestSkillVersion(first.id))?.instructions).toBe('Local instructions.');
+		await createSkillVersion(first.id, { name: 'First', instructions: 'Changed after review.' });
+		const stale = await service.applyProjectSelection(project.id, owner, {
+			skillIds: [first.id],
+			expectedPreviewRevision: preview.revision,
+		});
+		expect(stale.status).toBe('preview-changed');
+		const result = await service.applyProjectSelection(
+			project.id,
+			owner,
+			{ skillIds: [first.id] },
+			'other',
+			{ skillApiKeyScopes: ['promotions:apply', 'skill:update'] },
+		);
+		expect(result).toMatchObject({ status: 'applied', counts: { skills: { updated: 1 } } });
+		expect((await findLatestSkillVersion(first.id))?.instructions).toBe('Source instructions.');
+		expect((await findLatestSkillVersion(second.id))?.id).toBe(untouched.versionId);
+		await deleteSkill(first.id);
+		await service.promoteProjectSelection(project.id, owner, { skillIds: [first.id] });
+		await createSkill({ id: first.id, projectId: project.id, content: { name: 'First' } });
+		const removal = await loadApplyPreview(project.id);
+		expect(removal.resources).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ key: `skill:${first.id}`, change: 'deleted', selectable: true }),
+			]),
+		);
+		await expect(
+			service.applyProjectSelection(
+				project.id,
+				owner,
+				{
+					skillIds: [first.id],
+					expectedPreviewRevision: removal.revision,
+				},
+				'other',
+				{ skillApiKeyScopes: ['promotions:apply', 'skill:delete'] },
+			),
+		).resolves.toMatchObject({
+			status: 'applied',
+			counts: { skills: { deleted: 1 } },
+		});
+		expect(await findSkill(first.id)).toBeNull();
+		expect((await findLatestSkillVersion(second.id))?.id).toBe(untouched.versionId);
+	});
+
+	it.each(['identity', 'name', 'source', 'permission', 'unavailable'] as const)(
+		'shows %s conflicts before writing Skills',
+		async (kind) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			const project = await createTeamProject('Skills project', owner);
+			const skill = await createSkill({ projectId: project.id, content: { name: 'Guide' } });
+			await service.promote(environments.promote.id, owner, {});
+			await createSkillVersion(skill.id, { name: 'Guide', instructions: 'Local content' });
+			if (kind === 'identity' || kind === 'name') {
+				await deleteSkill(skill.id);
+				await createSkill({
+					...(kind === 'identity' ? { id: skill.id } : { projectId: project.id }),
+					content: { name: 'Guide', instructions: 'Local content' },
+				});
+			}
+			if (kind === 'source')
+				vi.spyOn(Container.get(SkillService), 'isSourceManaged').mockResolvedValue(true);
+			if (kind === 'permission')
+				vi.spyOn(Container.get(SkillAccessService), 'canAccess').mockImplementation(
+					async (_user, _target, operation) => operation === 'read',
+				);
+			if (kind === 'unavailable')
+				vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
+			const preview = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+			expect(preview.check.conflicts).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ kind: 'skill', id: skill.id, code: 'skill-conflict' }),
+				]),
+			);
+			const apply = vi.spyOn(Container.get(N8nPackagesService), 'applyPackagePlan');
+			await expect(service.apply(environments.apply.id, owner, {})).resolves.toMatchObject({
+				status: 'blocked',
+			});
+			expect(apply).not.toHaveBeenCalled();
+		},
+	);
+
+	it('shows following consumers, preserves published pins, and blocks their removal', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Skills project', owner);
+		const skill = await createSkill({
+			projectId: project.id,
+			content: { name: 'Guide', instructions: 'Source content' },
+		});
+		await service.promote(environments.promote.id, owner, {});
+		await createSkillVersion(skill.id, { name: 'Guide', instructions: 'Pinned local content' });
+		const agent = await createAgent({
+			projectId: project.id,
+			schema: storedAgentConfig({
+				name: 'Consumer',
+				model: 'openai/gpt-4.1-mini',
+				instructions: 'Use the guide.',
+			}),
+		});
+		const refs = Container.get(AgentSkillRefsService);
+		await refs.replaceDraftRefs(agent, [{ type: 'skill', id: skill.id }], {});
+		const version = await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				versionId: 'published-consumer',
+				agentId: agent.id,
+				savedBy: 'Test',
+				schema: agent.schema,
+				tools: null,
+			},
+			{},
+		);
+		await refs.pinVersion(version.versionId, await refs.versionSnapshot(agent, {}), {});
+		const preview = await loadApplyPreview(project.id);
+		expect(preview.resources).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ key: `skill:${skill.id}`, followingAgentCount: 1 }),
+			]),
+		);
+		vi.spyOn(Container.get(SkillService), 'refreshFollowingAgents').mockResolvedValue();
+		await service.applyProjectSelection(project.id, owner, { skillIds: [skill.id] });
+		expect((await refs.readDraft(agent, {})).skills[skill.id].instructions).toBe('Source content');
+		expect((await refs.readVersion(version, {})).skills[skill.id].instructions).toBe(
+			'Pinned local content',
+		);
+
+		// Promote an empty collection while the destination keeps its consumer.
+		const live = Container.get(SkillService).findIdsInProjects.bind(Container.get(SkillService));
+		vi.spyOn(Container.get(SkillService), 'findIdsInProjects').mockResolvedValue([]);
+		await service.promote(environments.promote.id, owner, {});
+		vi.spyOn(Container.get(SkillService), 'findIdsInProjects').mockImplementation(live);
+		const removal = await loadApplyPreview(project.id);
+		expect(removal.check?.conflicts).toEqual(
+			expect.arrayContaining([expect.objectContaining({ kind: 'skill', id: skill.id })]),
+		);
+		await expect(
+			service.applyProjectSelection(project.id, owner, { skillIds: [skill.id] }),
+		).resolves.toMatchObject({ status: 'blocked' });
+		expect(await findSkill(skill.id)).not.toBeNull();
+	});
+
+	it('keeps Skills when a project deletion would bypass explicit Skill removal', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.promote(environments.promote.id, owner, {});
+		const project = await createTeamProject('Local project', owner);
+		const skill = await createSkill({ projectId: project.id });
+		const preview = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		expect(preview.check.conflicts).toEqual(
+			expect.arrayContaining([expect.objectContaining({ kind: 'skill', id: skill.id })]),
+		);
+		await expect(
+			service.continueApply(environments.apply.id, owner, {
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				confirmDestructiveChanges: true,
+			}),
+		).resolves.toMatchObject({ status: 'blocked' });
+		expect(await findSkill(skill.id)).not.toBeNull();
 	});
 });

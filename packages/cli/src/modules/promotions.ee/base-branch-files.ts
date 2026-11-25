@@ -8,12 +8,13 @@ const BASE_BRANCH_ENTITIES = {
 	projects: { ...PACKAGE_ENTITY_LAYOUT.projects, type: 'project', includeRoot: true },
 	folders: { ...PACKAGE_ENTITY_LAYOUT.folders, type: 'folder', includeRoot: false },
 	workflows: { ...PACKAGE_ENTITY_LAYOUT.workflows, type: 'workflow', includeRoot: false },
+	skills: { ...PACKAGE_ENTITY_LAYOUT.skills, type: 'skill', includeRoot: true },
 	credentials: { ...PACKAGE_ENTITY_LAYOUT.credentials, type: 'credential', includeRoot: true },
 	dataTables: { ...PACKAGE_ENTITY_LAYOUT.dataTables, type: 'dataTable', includeRoot: true },
 	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
 } as const satisfies Record<
-	Exclude<ManifestEntityCollection, 'agents' | 'skills'>,
+	Exclude<ManifestEntityCollection, 'agents'>,
 	{ type: string; includeRoot: boolean }
 >;
 
@@ -54,7 +55,7 @@ export function parseBaseBranchFiles(
 }
 
 export function parsePackageFiles(
-	packageFiles: Array<{ path: string; blobSha: string }>,
+	packageFiles: { path: string; blobSha: string }[],
 	{ exportRoot, projectIds }: { exportRoot: string; projectIds: readonly string[] },
 ): PackageFile[] {
 	const { projects, folders } = BASE_BRANCH_ENTITIES;

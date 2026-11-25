@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
+import { skillImportCountsSchema } from '../packages/skill-import.schema';
 import {
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
@@ -38,6 +39,7 @@ const count = () => z.number().int().nonnegative();
 
 /** What ended up in the exported package, after folders and auto-inclusion. */
 export const promotePackageCountsSchema = z.object({
+	skills: count().optional(),
 	workflows: count(),
 	folders: count(),
 	credentials: count(),
@@ -83,6 +85,7 @@ export type PromoteSelectionResultDto = z.infer<typeof promoteSelectionResultSch
 
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
+	skills: skillImportCountsSchema.optional(),
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
 	folders: z.object({
 		created: count(),
@@ -181,6 +184,7 @@ export class ContinueApplyPackageDto extends Z.class(
  * without workflows and folders applies only the project.
  */
 const applySelectionShape = {
+	skillIds: promotionSelectedIdsSchema('skillIds'),
 	workflowIds: promotionSelectedIdsSchema('workflowIds'),
 	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
 		description:

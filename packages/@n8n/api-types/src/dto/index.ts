@@ -14,6 +14,7 @@ export type {
 	SkillImportCounts,
 	SkillImportIssue,
 } from './packages/skill-import.schema';
+export { skillImportCountsSchema } from './packages/skill-import.schema';
 
 export {
 	AiBuilderChatRequestDto,
@@ -934,3 +935,8 @@ export {
 } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
+export {
+	serializedSkillSchema,
+	skillIdSchema,
+	type SerializedSkill,
+} from './packages/skill.schema';

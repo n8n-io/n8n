@@ -164,3 +164,53 @@ describe('promotion preview content', () => {
 		expect(added.addedColumns.map((column) => column.name)).toEqual(['amount', 'reason']);
 	});
 });
+
+it('describes Skill instructions, frontmatter, text files and binary file changes', () => {
+	const before = {
+		id: 'skill_one',
+		scope: 'project' as const,
+		frontmatter: { license: 'MIT' },
+		skill: {
+			name: 'Guide',
+			description: 'Guide',
+			instructions: 'Old instructions.',
+			references: [
+				{ path: 'references/guide.md', content: 'Old text' },
+				{ path: 'assets/icon.png', content: 'YQ==', isBinary: true as const },
+			],
+		},
+	};
+	const after = {
+		...before,
+		frontmatter: { license: 'Apache-2.0' },
+		skill: {
+			...before.skill,
+			instructions: 'New instructions.',
+			references: [
+				{ path: 'references/guide.md', content: 'New text' },
+				{ path: 'assets/icon.png', content: 'Yg==', isBinary: true as const },
+			],
+		},
+	};
+	const changes = describeFieldChanges(
+		{ key: 'skill:skill_one', type: 'skill', before, after, revision: { before: 'b', after: 'a' } },
+		context({ resource: resource({ key: 'skill:skill_one', name: 'Guide', change: 'modified' }) }),
+	);
+	expect(changes).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				field: 'instructions',
+				before: 'Old instructions.',
+				after: 'New instructions.',
+			}),
+			expect.objectContaining({ field: 'frontmatter' }),
+			expect.objectContaining({
+				field: 'file',
+				label: 'references/guide.md',
+				before: 'Old text',
+				after: 'New text',
+			}),
+			expect.objectContaining({ field: 'file', label: 'assets/icon.png', binary: true }),
+		]),
+	);
+});

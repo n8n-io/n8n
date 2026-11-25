@@ -103,6 +103,8 @@ describe.each([
 
 	it('accepts a selection without workflows, and an empty one that applies only the project', () => {
 		expect(dto.safeParse({ folderIds: ['folder1'], expectedSource }).success).toBe(true);
+		expect(dto.safeParse({ skillIds: ['skill_with-hyphens'], expectedSource }).success).toBe(true);
+		expect(dto.safeParse({ skillIds: ['skill1', 'skill1'], expectedSource }).success).toBe(false);
 		expect(dto.safeParse({ expectedSource }).success).toBe(true);
 	});
 

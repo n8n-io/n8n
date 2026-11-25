@@ -2904,7 +2904,7 @@ export class TelemetryEventRelay extends EventRelay {
 	 */
 	private extractIdentityExtractorHooks(
 		node: INode,
-	): Array<{ hookName: string; isAllowedToFail?: boolean; [key: string]: unknown }> {
+	): { hookName: string; isAllowedToFail?: boolean; [key: string]: unknown }[] {
 		const hookParamsResult = toExecutionContextEstablishmentHookParameter(node.parameters);
 		if (!hookParamsResult || hookParamsResult.error || !hookParamsResult.data) {
 			return [];
@@ -3239,6 +3239,8 @@ export class TelemetryEventRelay extends EventRelay {
 		environmentId,
 		scope,
 		projectId,
+		selectedSkillCount,
+		requestedResourceTypes,
 		outcome,
 		failureKind,
 		durationMs,
@@ -3252,9 +3254,12 @@ export class TelemetryEventRelay extends EventRelay {
 			environment_id: environmentId,
 			scope,
 			project_id: projectId,
+			selected_skill_count: selectedSkillCount,
+			requested_resource_types: requestedResourceTypes,
 			outcome,
 			failure_kind: failureKind,
 			duration_ms: durationMs,
+			skill_count: counts?.skills,
 			workflow_count: counts?.workflows,
 			folder_count: counts?.folders,
 			credential_count: counts?.credentials,
@@ -3272,10 +3277,13 @@ export class TelemetryEventRelay extends EventRelay {
 		environmentId,
 		scope,
 		projectId,
+		selectedSkillCount,
+		requestedResourceTypes,
 		outcome,
 		failureKind,
 		durationMs,
 		workflowsChanged,
+		skillsChanged,
 		workflowsFailedToPublish,
 		foldersChanged,
 		projectsChanged,
@@ -3285,9 +3293,12 @@ export class TelemetryEventRelay extends EventRelay {
 			environment_id: environmentId,
 			scope,
 			project_id: projectId,
+			selected_skill_count: selectedSkillCount,
+			requested_resource_types: requestedResourceTypes,
 			outcome,
 			failure_kind: failureKind,
 			duration_ms: durationMs,
+			skills_changed: skillsChanged,
 			workflows_changed: workflowsChanged,
 			workflows_failed_to_publish: workflowsFailedToPublish,
 			folders_changed: foldersChanged,

@@ -34,6 +34,7 @@ import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
@@ -150,6 +151,12 @@ function toVersionSummary(
  */
 @Service()
 export class SkillService {
+	private readonly promotionWrite = new AsyncLocalStorage<boolean>();
+
+	/** The caller must authorize Apply. Skill permissions and version checks still apply. */
+	async runPromotion<T>(run: () => Promise<T>): Promise<T> {
+		return await this.promotionWrite.run(true, run);
+	}
 	constructor(
 		private readonly logger: Logger,
 		private readonly skillRepository: SkillRepository,
@@ -169,7 +176,7 @@ export class SkillService {
 	) {}
 
 	assertWritable(): void {
-		if (this.instanceWriteAccess.isReadOnly()) {
+		if (this.instanceWriteAccess.isReadOnly() && !this.promotionWrite.getStore()) {
 			throw new ForbiddenError('Cannot modify Skills on a protected instance.');
 		}
 	}
@@ -177,6 +184,10 @@ export class SkillService {
 	/** Callers must check access to each returned Skill before reading its content. */
 	async findIdsInProjects(projectIds: string[]): Promise<string[]> {
 		return await this.skillRepository.findIdsInProjects(projectIds);
+	}
+
+	async findInstanceIds(): Promise<string[]> {
+		return await this.skillRepository.findInstanceIds();
 	}
 
 	async isSourceManaged(skillId: string, ctx: OperationContext = {}): Promise<boolean> {

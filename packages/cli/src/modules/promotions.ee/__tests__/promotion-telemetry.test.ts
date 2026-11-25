@@ -10,6 +10,7 @@ import {
 } from '@n8n/errors';
 
 import { PromotionConflictError } from '../database/promotion-conflict.error';
+import { SkillImportFailedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 import {
 	PromotionLockLostError,
 	PromotionLockUnavailableError,
@@ -40,6 +41,30 @@ describe('classifyPromotionFailure', () => {
 });
 
 describe('observePromotion', () => {
+	it('reports saved Skill counts once without including content or error text', async () => {
+		const error = new SkillImportFailedError(new Error('private failure'), [
+			{
+				sourceSkillId: 'private-id',
+				localId: 'private-id',
+				name: 'private name',
+				projectId: null,
+				status: 'updated',
+				followingAgentCount: 1,
+			},
+		]);
+		const report = vi.fn();
+		await expect(
+			observePromotion(async () => {
+				throw error;
+			}, report),
+		).rejects.toBe(error);
+		expect(report).toHaveBeenCalledExactlyOnceWith({
+			ok: false,
+			failureKind: 'unexpected',
+			skillsChanged: 1,
+			durationMs: expect.any(Number),
+		});
+	});
 	it('reports the result and returns it', async () => {
 		const report = vi.fn();
 

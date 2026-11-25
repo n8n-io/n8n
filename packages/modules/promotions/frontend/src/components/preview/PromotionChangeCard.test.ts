@@ -31,6 +31,35 @@ const readOnly = (checked: boolean) => ({ checked, indeterminate: false, disable
 
 const cases: Case[] = [
 	{
+		name: 'Skill snapshots, consumer impact, and a binary file notice',
+		direction: 'apply',
+		resource: resource({ key: 'skill:s1', name: 'Guide', change: 'added', followingAgentCount: 2 }),
+		detail: {
+			key: 'skill:s1',
+			type: 'skill',
+			before: null,
+			revision,
+			after: {
+				id: 's1',
+				scope: 'instance',
+				frontmatter: null,
+				skill: {
+					name: 'Guide',
+					description: '',
+					instructions: 'Read the guide.',
+					references: [{ path: 'assets/logo.png', content: 'cHJpdmF0ZQ==', isBinary: true }],
+				},
+			},
+		},
+		shows: [
+			'Source connections and pinned versions stay unchanged.',
+			'Following agent drafts affected: 2.',
+			'assets/logo.png',
+			'Binary file added',
+		],
+		hides: ['cHJpdmF0ZQ=='],
+	},
+	{
 		name: 'a credential on Promote with the note that values are not promoted',
 		direction: 'promote',
 		resource: resource({

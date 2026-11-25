@@ -18,6 +18,7 @@ import {
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
+import { SkillService } from '@/modules/skills';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
@@ -44,6 +45,7 @@ import {
 } from '@/modules/n8n-packages/n8n-packages.types';
 
 import { plannedChanges, toPreviewCheck, withoutTagIds, withoutTags } from './apply-preview';
+import { PromotionSkillSelectionService } from './promotion-skill-selection.service';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -89,8 +91,8 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
-		// No `apiKeyScopes`: an Apply key needs only `promotions:apply`, and the role of the user
-		// checks each write. The content comes from the configured branch, not from the caller.
+		// Promotions checks Skill key scopes against the final plan. Other resources keep
+		// the existing promotions:apply contract and the user's write permissions.
 	};
 }
 
@@ -137,6 +139,8 @@ export function instanceApplyRequest(
 @Service()
 export class ApplyPreviewService {
 	constructor(
+		private readonly skills: SkillService,
+		private readonly skillSelection: PromotionSkillSelectionService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly variableExtractor: VariableRequirementsExtractor,
@@ -170,15 +174,22 @@ export class ApplyPreviewService {
 			await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]),
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
+		Object.assign(
+			selection,
+			await this.skillSelection.forApply(await reader.readManifest(), [projectId]),
+		);
 		// The import needs the project on the branch. Without it, the preview still shows what the
 		// branch lacks, and the check stops Apply.
 		const onBranch = inventory.projects.some(({ id }) => id === projectId);
 		const plan = onBranch
-			? await this.packagesService.planPackageSelection(
-					applySelectionRequest(user, false),
-					reader,
-					selection,
-					'check',
+			? await this.skills.runPromotion(
+					async () =>
+						await this.packagesService.planPackageSelection(
+							applySelectionRequest(user, false),
+							reader,
+							selection,
+							'check',
+						),
 				)
 			: null;
 
@@ -213,12 +224,21 @@ export class ApplyPreviewService {
 		const [moves, deletedProjects, instance] = await Promise.all([
 			this.findCrossProjectMoves(inventory),
 			this.deletionsOf(inventory, teamProjectIds),
-			exportInstancePackage(this.packagesService, user, teamProjectIds),
+			exportInstancePackage(this.packagesService, user, teamProjectIds, {
+				includeSkills: this.skillSelection.enabled,
+			}),
 		]);
-		const plan = await this.packagesService.planPackage(
-			instanceApplyRequest(user, false),
-			reader,
-			'check',
+		const { selectedSkillIds: skillIds, deletedSkillIds } = await this.skillSelection.forApply(
+			await reader.readManifest(),
+			inventory.projects.map(({ id }) => id),
+		);
+		const plan = await this.skills.runPromotion(
+			async () =>
+				await this.packagesService.planPackage(
+					{ ...instanceApplyRequest(user, false), skillIds, deletedSkillIds },
+					reader,
+					'check',
+				),
 		);
 		const planCheck = this.check(plan, inventory, undefined, moves);
 		const check = { ...planCheck, conflicts: [...planCheck.conflicts, ...deletedProjects] };
@@ -267,13 +287,17 @@ export class ApplyPreviewService {
 		if (deletedIds.length === 0) return [];
 
 		const projects = await this.projectRepository.findTeamProjectInfoByIds(deletedIds);
-		return projects
+		const projectConflicts: PromotionBindingConflict[] = projects
 			.sort((a, b) => compare(a.name, b.name) || compare(a.id, b.id))
 			.map(({ id, name }) => ({
 				kind: 'project',
 				code: 'project-deletion',
 				project: { id, name },
 			}));
+		return [
+			...projectConflicts,
+			...(await this.skillSelection.projectDeletionConflicts(deletedIds)),
+		];
 	}
 
 	private async readPackage(files: ReadonlyMap<string, Buffer>) {
@@ -389,7 +413,6 @@ export class ApplyPreviewService {
 	}
 }
 
-/** The workflows and folders that the plan removes from the projects that Apply keeps. */
 /** Compares this instance with the package files at the branch commit, by the rules of the operation. */
 function compareWithBranch({
 	operation,
@@ -429,10 +452,13 @@ function compareWithBranch({
 }
 
 function plannedRemovals(plan: PackageImportPlan): string[] {
-	return plan.scopes.flatMap(({ plan: scope }) => [
-		...scope.removalPlan.removals.map(({ id }) => resourceKey('workflow', id)),
-		...scope.folderRemovalPlan.removals.map(({ id }) => resourceKey('folder', id)),
-	]);
+	return [
+		...(plan.skillPlan?.removals ?? []).map(({ id }) => resourceKey('skill', id)),
+		...plan.scopes.flatMap(({ plan: scope }) => [
+			...scope.removalPlan.removals.map(({ id }) => resourceKey('workflow', id)),
+			...scope.folderRemovalPlan.removals.map(({ id }) => resourceKey('folder', id)),
+		]),
+	];
 }
 
 /** The deleted projects, and the folders and workflows inside them. */

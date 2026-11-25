@@ -202,3 +202,35 @@ describe('promotion operation', () => {
 		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
 	});
 });
+
+it('sends a Skill-only selection and keeps its conflict separate from workflows', () => {
+	const skill = resource({
+		key: 'skill:skill_one',
+		name: 'Guide',
+		selectable: true,
+		change: 'modified',
+	});
+	const graph = buildSelectionGraph({ resources: [skill], dependencies: [] }, 'apply');
+	expect(toOperationRequest(graph, new Set([skill.key]))).toEqual({
+		workflowIds: [],
+		folderIds: [],
+		credentialIds: [],
+		skillIds: ['skill_one'],
+	});
+	const blockers = listBlockers(
+		check({
+			conflicts: [
+				{
+					kind: 'skill',
+					code: 'skill-conflict',
+					id: 'skill_one',
+					reason: 'A consumer uses this Skill.',
+				},
+			],
+		}),
+		['workflow:w1', skill.key],
+	);
+	expect(blockers).toEqual([
+		{ kind: 'conflict', resourceKey: skill.key, workflowKeys: [skill.key] },
+	]);
+});

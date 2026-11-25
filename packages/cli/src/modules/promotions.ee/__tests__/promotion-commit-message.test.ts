@@ -40,6 +40,21 @@ describe('buildSelectionPromotionCommitMessage', () => {
 		);
 	});
 
+	it('names selected and removed Skills without workflows', () => {
+		expect(
+			buildSelectionPromotionCommitMessage({
+				projectName,
+				added: [],
+				updated: [],
+				removed: [],
+				skills: [{ id: 's1', name: 'Guide' }],
+				removedSkills: [{ id: 's2', name: 'Old guide' }],
+			}),
+		).toBe(
+			'Promote 2 Skills from "Marketing Ops"\n\nSkills:\n- Guide (s1)\n\nRemoved Skills:\n- Old guide (s2)',
+		);
+	});
+
 	it('names the project when only the project is promoted', () => {
 		expect(
 			buildSelectionPromotionCommitMessage({ projectName, added: [], updated: [], removed: [] }),

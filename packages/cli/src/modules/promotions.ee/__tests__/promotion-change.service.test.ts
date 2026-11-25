@@ -1,3 +1,5 @@
+import { SkillService, SkillAccessService, SkillsGate } from '@/modules/skills';
+import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -18,7 +20,7 @@ vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
 }));
 vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
 
-const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
+const ids = (entries: { id: string }[] | undefined) => entries?.map(({ id }) => id).sort();
 
 // The global entry comes last on purpose: a name-keyed map would keep it for every project.
 const manifest: PackageManifest = {
@@ -147,6 +149,11 @@ describe('buildPreview', () => {
 
 describe('PromotionChangeService preview permission', () => {
 	const service = new PromotionChangeService(
+		new PromotionSkillSelectionService(
+			mock<SkillsGate>({ isEnabled: false }),
+			mock<SkillService>(),
+			mock<SkillAccessService>(),
+		),
 		mock(),
 		mock(),
 		mock(),
