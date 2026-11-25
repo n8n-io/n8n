@@ -4,7 +4,11 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
+<<<<<<< HEAD
 import { ExecutionRepository } from '@n8n/db';
+=======
+import { ExecutionsConfig } from '@n8n/config';
+>>>>>>> 3b3939d0 (fix: Apply execution data size limit in MCP get_workflow_execution (#45097))
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -54,6 +58,7 @@ const getExecution = async (user: User, includeData: boolean) =>
 		Container.get(WorkflowFinderService),
 		mock<Telemetry>(),
 		Container.get(ExecutionRedactionServiceProxy),
+		Container.get(ExecutionsConfig).maxDisplaySize,
 	).handler(
 		{
 			workflowId: workflow.id,

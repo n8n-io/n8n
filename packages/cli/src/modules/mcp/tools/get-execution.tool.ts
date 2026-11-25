@@ -60,6 +60,12 @@ const outputSchema = {
 		.unknown()
 		.optional()
 		.describe('Execution result data (only present when includeData is true)'),
+	dataTooLargeToDisplay: z
+		.boolean()
+		.optional()
+		.describe(
+			'True when the execution data is larger than the display size limit of the instance. The data is then not loaded and `data` is null',
+		),
 	error: z.string().optional().describe('Error message if the request failed'),
 } satisfies z.ZodRawShape;
 
@@ -69,6 +75,8 @@ export const createGetExecutionTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+	/** `EXECUTIONS_DATA_MAX_DISPLAY_SIZE`: larger execution data is not loaded. `0` disables the limit. */
+	maxDataSizeBytes: number,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',
 	config: {
@@ -115,6 +123,7 @@ export const createGetExecutionTool = (
 					[workflowId],
 				);
 
+<<<<<<< HEAD
 				if (fullExecution) {
 					// Redacts in place, modifying fullExecution internally
 					await executionRedactionServiceProxy.processExecution(fullExecution, { user });
@@ -125,6 +134,14 @@ export const createGetExecutionTool = (
 			} else {
 				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
 			}
+=======
+			// The id shape decides the store, so an engine v2 id resolves too.
+			const execution = await executionService.findOneAcrossEngines(executionId, [workflowId], {
+				includeData: withData,
+				includeAnnotation: false,
+				...(withData && { maxDataSizeBytes }),
+			});
+>>>>>>> 3b3939d0 (fix: Apply execution data size limit in MCP get_workflow_execution (#45097))
 
 			if (!execution) {
 				throw new WorkflowAccessError(
@@ -133,6 +150,24 @@ export const createGetExecutionTool = (
 				);
 			}
 
+<<<<<<< HEAD
+=======
+			// `undefined` omits `data` from the output; `null` reports it as empty.
+			let executionData: IRunExecutionData | null | undefined;
+			// The loader skips data above `maxDataSizeBytes` and returns empty run data.
+			const dataTooLargeToDisplay =
+				'dataTooLargeToDisplay' in execution && execution.dataTooLargeToDisplay === true;
+			if (withData) {
+				if ('data' in execution && !dataTooLargeToDisplay) {
+					// Redacts in place, modifying execution internally
+					await executionRedactionServiceProxy.processExecution(execution, { user });
+					executionData = execution.data;
+				} else {
+					executionData = null;
+				}
+			}
+
+>>>>>>> 3b3939d0 (fix: Apply execution data size limit in MCP get_workflow_execution (#45097))
 			const executionMeta = {
 				id: execution.id,
 				workflowId: execution.workflowId,
@@ -157,7 +192,11 @@ export const createGetExecutionTool = (
 
 			const output =
 				filteredData !== undefined
-					? { execution: executionMeta, data: filteredData }
+					? {
+							execution: executionMeta,
+							data: filteredData,
+							...(dataTooLargeToDisplay && { dataTooLargeToDisplay }),
+						}
 					: { execution: executionMeta };
 
 			telemetryPayload.results = {
