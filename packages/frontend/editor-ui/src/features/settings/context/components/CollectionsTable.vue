@@ -176,9 +176,12 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.collection">
-					<N8nText size="medium" color="text-dark" data-test-id="collection-name">
-						{{ item.name }}
-					</N8nText>
+					<!-- A button, so that keyboard users can open the collection too. -->
+					<button type="button" :class="$style.open" @click.stop="emit('open', item)">
+						<N8nText size="medium" color="text-dark" data-test-id="collection-name">
+							{{ item.name }}
+						</N8nText>
+					</button>
 					<N8nText
 						size="small"
 						color="text-light"
@@ -254,6 +257,16 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 	gap: var(--spacing--5xs);
 	padding-block: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.open {
+	align-self: flex-start;
+	max-width: 100%;
+	padding: 0;
+	border: none;
+	background: none;
+	text-align: start;
+	cursor: pointer;
 }
 
 // Line clamping needs the text element itself, not a wrapper.

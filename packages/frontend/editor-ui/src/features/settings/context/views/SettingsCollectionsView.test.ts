@@ -275,6 +275,7 @@ describe('SettingsCollectionsView', () => {
 		const modal = getByTestId('collection-modal-stub');
 		expect(modal).toHaveAttribute('data-open', 'true');
 		expect(modal).toHaveAttribute('data-collection', 'c1');
+		expect(push).not.toHaveBeenCalled();
 	});
 
 	it('reloads the list after an edit', async () => {
@@ -305,6 +306,7 @@ describe('SettingsCollectionsView', () => {
 		await pickRowAction(getByTestId, 'delete');
 
 		expect(getByTestId('collection-delete-dialog-stub')).toHaveAttribute('data-collection', 'c1');
+		expect(push).not.toHaveBeenCalled();
 	});
 
 	it('closes the delete dialog and reloads the list after a delete', async () => {

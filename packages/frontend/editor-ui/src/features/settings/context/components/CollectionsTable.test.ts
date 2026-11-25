@@ -294,5 +294,15 @@ describe('CollectionsTable', () => {
 
 			expect(emitted('open')).toEqual([[readOnly]]);
 		});
+
+		it('opens a collection from the keyboard', async () => {
+			const first = collection();
+			const { getByRole, emitted } = render([first]);
+
+			getByRole('button', { name: 'Customer support' }).focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(emitted('open')).toEqual([[first]]);
+		});
 	});
 });
