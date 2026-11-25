@@ -111,7 +111,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
 				{ userId },
 			)
-			.andWhere('execution.parentExecutionId IS NULL')
+			.andWhere('execution.parentExecutionId IS NULL AND thread.parentThreadId IS NULL')
 			.orderBy('execution.createdAt', 'DESC')
 			.addOrderBy('execution.id', 'DESC')
 			.skip(offset)
