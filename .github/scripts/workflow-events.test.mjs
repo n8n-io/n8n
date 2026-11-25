@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { parse } from 'yaml';
+import { GATED_CHECK_NAMES } from './quality/preserve-skipped-checks.mjs';
 
 const workflowFile = (name) =>
 	parse(readFileSync(new URL(`../workflows/${name}`, import.meta.url), 'utf8'));
@@ -189,6 +190,49 @@ describe('PR quality event routing', () => {
 			assert.equal(run.status, result === 'success' ? 0 : 1, run.stderr);
 			assert.match(`${run.stdout}${run.stderr}`, /check-do-not-merge:/);
 		}
+	});
+
+	it('preserves failed skipped checks on unrelated label events', () => {
+		const preserve = summary.steps.find((step) => step.name === 'Preserve failed skipped checks');
+		assert.equal(preserve.uses, './.github/actions/run-workflow-script');
+		assert.equal(preserve.with.script, '.github/scripts/quality/preserve-skipped-checks.mjs');
+		assert.equal(summary.permissions.checks, 'read');
+		assert.deepEqual(
+			GATED_CHECK_NAMES,
+			['changes', ...checks].map((jobId) => workflow.jobs[jobId].name),
+		);
+
+		const unrelatedLabel = prContext('labeled', 'cla-signed');
+		assert.equal(
+			evaluate(preserve.if, unrelatedLabel, {
+				'pr-policy': { outputs: { 'skip-ci': 'false' } },
+				changes: { result: 'skipped' },
+			}),
+			true,
+		);
+		assert.equal(
+			evaluate(preserve.if, prContext('synchronize'), {
+				'pr-policy': { outputs: { 'skip-ci': 'false' } },
+				changes: { result: 'success' },
+			}),
+			false,
+		);
+		assert.equal(
+			evaluate(preserve.if, unrelatedLabel, {
+				'pr-policy': { outputs: { 'skip-ci': 'true' } },
+				changes: { result: 'skipped' },
+			}),
+			false,
+		);
+		const mergeGroup = prContext();
+		mergeGroup.event_name = 'merge_group';
+		assert.equal(
+			evaluate(preserve.if, mergeGroup, {
+				'pr-policy': { outputs: { 'skip-ci': 'false' } },
+				changes: { result: 'skipped' },
+			}),
+			false,
+		);
 	});
 
 	it('skips checks and passes the summary for automated release PRs', () => {

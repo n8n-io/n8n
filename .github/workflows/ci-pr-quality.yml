@@ -199,19 +199,30 @@ jobs:
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
     steps:
       - name: Checkout CI filter
         if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: .github/actions/ci-filter
-          sparse-checkout-cone-mode: false
+          sparse-checkout: .github
       - name: Validate required checks
         if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: ./.github/actions/ci-filter
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+      - name: Preserve failed skipped checks
+        if: >-
+          needs.pr-policy.outputs.skip-ci != 'true' &&
+          github.event_name == 'pull_request' &&
+          needs.changes.result == 'skipped'
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/quality/preserve-skipped-checks.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Pass automated release PR
         if: needs.pr-policy.outputs.skip-ci == 'true'
         run: echo 'CI is not required for automated release PRs.'
