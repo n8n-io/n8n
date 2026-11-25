@@ -124,8 +124,10 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 					'Client id from the share page, e.g. "claude-ai" or "cursor". "any" is the URL at the top of the page, "other" the steps for any other client',
 				),
 			method: z
-				.enum(['deep_link', 'copy_command', 'copy_url', 'copy_config'])
-				.describe('What the person did: open a link, or copy a command, the URL, or a config'),
+				.enum(['deep_link', 'copy_command', 'copy_sign_in_command', 'copy_url', 'copy_config'])
+				.describe(
+					'What the person did: open a link, or copy an install command, a sign-in command, the URL, or a config',
+				),
 		}),
 	},
 	USER_DELETED_CUSTOM_MCP_SERVER: {

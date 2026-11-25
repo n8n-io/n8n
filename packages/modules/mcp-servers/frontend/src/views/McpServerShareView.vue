@@ -255,7 +255,12 @@ function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod
 							<N8nText size="small" color="text-light">
 								{{ i18n.baseText('mcpServers.share.command.signIn.codex') }}
 							</N8nText>
-							<N8nCopyInput :value="client.authCommand" :label="client.name" size="medium" />
+							<N8nCopyInput
+								:value="client.authCommand"
+								:label="client.name"
+								size="medium"
+								@copy="trackClient(client.id, 'copy_sign_in_command')"
+							/>
 						</template>
 						<N8nText v-else-if="client.id === 'claude-code'" size="small" color="text-light">
 							{{ i18n.baseText('mcpServers.share.command.signIn.claudeCode') }}
