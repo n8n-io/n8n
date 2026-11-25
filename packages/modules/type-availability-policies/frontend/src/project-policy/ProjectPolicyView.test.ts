@@ -27,15 +27,9 @@ vi.mock('../type-availability-policies.api', () => ({ fetchProjectPolicies }));
 
 const renderView = createComponentRenderer(ProjectPolicyView);
 
-function renderWithScopes(
-	scopes: Array<'nodeTypePolicy:manage' | 'credentialTypePolicy:manage'>,
-	projectPolicies = 'true',
-) {
+function renderWithScopes(scopes: Array<'nodeTypePolicy:manage' | 'credentialTypePolicy:manage'>) {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
-	useSettingsStore().settings.envFeatureFlags = {
-		N8N_ENV_FEAT_NODE_AND_CREDENTIAL_PROJECT_POLICIES: projectPolicies,
-	};
 	useRBACStore().setGlobalScopes(scopes);
 	return renderView({ pinia });
 }
@@ -68,13 +62,6 @@ describe('ProjectPolicyView', () => {
 		await fireEvent.click(getByText('Node and credential policies'));
 
 		expect(push).toHaveBeenCalledWith({ name: POLICIES_LANDING_VIEW });
-	});
-
-	it('sends a direct link back to the landing page when project policies are off', () => {
-		renderWithScopes(['nodeTypePolicy:manage', 'credentialTypePolicy:manage'], 'false');
-
-		expect(replace).toHaveBeenCalledWith({ name: POLICIES_LANDING_VIEW });
-		expect(fetchProjectPolicies).not.toHaveBeenCalled();
 	});
 
 	it.each(['nodeTypePolicy:manage', 'credentialTypePolicy:manage'] as const)(

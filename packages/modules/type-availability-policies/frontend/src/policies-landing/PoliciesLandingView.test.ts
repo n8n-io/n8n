@@ -88,12 +88,9 @@ const renderView = createComponentRenderer(PoliciesLandingView, {
 
 const renderDefault = () => renderView({ pinia: createTestingPinia() });
 
-function renderForAdmin({ projectPolicies = 'true' }: { projectPolicies?: string } = {}) {
+function renderForAdmin() {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
-	useSettingsStore().settings.envFeatureFlags = {
-		N8N_ENV_FEAT_NODE_AND_CREDENTIAL_PROJECT_POLICIES: projectPolicies,
-	};
 	useRBACStore().setGlobalScopes(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']);
 	return renderView({ pinia });
 }
@@ -377,27 +374,11 @@ describe('PoliciesLandingView', () => {
 			expect(queryByTestId('policies-landing-projects-section')).not.toBeInTheDocument();
 		});
 
-		it.each(['false', ''])(
-			'shows no Projects section and reads no list when the flag is %j',
-			async (projectPolicies) => {
-				const { getByTestId, queryByTestId } = renderForAdmin({ projectPolicies });
-
-				await flushPromises();
-
-				expect(getByTestId('policies-landing-instance-row')).toBeInTheDocument();
-				expect(api.fetchProjectPolicies).not.toHaveBeenCalled();
-				expect(queryByTestId('policies-landing-projects-section')).not.toBeInTheDocument();
-			},
-		);
-
 		it.each(['nodeTypePolicy:manage', 'credentialTypePolicy:manage'] as const)(
 			'does not read the project list for a user with only %s',
 			(scope) => {
 				const pinia = createTestingPinia({ stubActions: false });
 				useSettingsStore().isModuleActive = vi.fn(() => true);
-				useSettingsStore().settings.envFeatureFlags = {
-					N8N_ENV_FEAT_NODE_AND_CREDENTIAL_PROJECT_POLICIES: 'true',
-				};
 				useRBACStore().setGlobalScopes([scope]);
 
 				renderView({ pinia });

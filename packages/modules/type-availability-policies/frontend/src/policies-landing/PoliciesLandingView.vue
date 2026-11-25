@@ -20,7 +20,6 @@ import ProjectPoliciesSection from './ProjectPoliciesSection.vue';
 import { useInstancePolicyCounts } from './useInstancePolicyCounts';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import { useProjectPolicies } from '../composables/useProjectPolicies';
-import { useProjectPoliciesFlag } from '../composables/useProjectPoliciesFlag';
 import {
 	INSTANCE_POLICY_DOCS_URL,
 	INSTANCE_POLICY_VIEW,
@@ -33,7 +32,6 @@ const documentTitle = useDocumentTitle();
 const { entryRouteName } = usePolicyAdminAccess();
 const { counts, load: loadCounts } = useInstancePolicyCounts();
 const { projects, load: loadProjects } = useProjectPolicies();
-const { isEnabled: projectPoliciesEnabled } = useProjectPoliciesFlag();
 
 const countsText = computed(() => {
 	const loaded = counts.value;
@@ -66,7 +64,7 @@ onMounted(() => {
 	}
 	documentTitle.set(i18n.baseText('typeAvailabilityPolicies.landing.title'));
 	void loadCounts();
-	if (projectPoliciesEnabled.value) void loadProjects();
+	void loadProjects();
 });
 </script>
 
@@ -125,11 +123,7 @@ onMounted(() => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
-		<ProjectPoliciesSection
-			v-if="projectPoliciesEnabled && projects"
-			:projects="projects"
-			@reload="loadProjects"
-		/>
+		<ProjectPoliciesSection v-if="projects" :projects="projects" @reload="loadProjects" />
 	</N8nSettingsLayout>
 </template>
 

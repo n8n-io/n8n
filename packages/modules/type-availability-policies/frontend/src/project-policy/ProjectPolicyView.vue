@@ -7,7 +7,6 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import { useProjectPolicies } from '../composables/useProjectPolicies';
-import { useProjectPoliciesFlag } from '../composables/useProjectPoliciesFlag';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const i18n = useI18n();
@@ -16,7 +15,6 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { entryRouteName } = usePolicyAdminAccess();
 const { projects, load } = useProjectPolicies();
-const { isEnabled: projectPoliciesEnabled } = useProjectPoliciesFlag();
 
 const project = computed(() =>
 	projects.value?.find((candidate) => candidate.projectId === route.params.teamProjectId),
@@ -42,10 +40,6 @@ onMounted(() => {
 	// The route opens for either policy scope. A project policy covers both kinds.
 	if (entryRouteName.value !== POLICIES_LANDING_VIEW) {
 		void router.replace({ name: entryRouteName.value });
-		return;
-	}
-	if (!projectPoliciesEnabled.value) {
-		void router.replace({ name: POLICIES_LANDING_VIEW });
 		return;
 	}
 	void load();

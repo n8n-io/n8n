@@ -8,11 +8,7 @@ The descriptor `id` must match the backend module id
 `/rest/module-settings` are keyed by that string, and a mismatch fails silently.
 
 The module is license-gated on `feat:typeAvailabilityPolicies` and is not a default module. Enable it
-in a dev instance with `N8N_ENABLED_MODULES=type-availability-policies`. The project policy parts
-(the Projects section and the project policy page) also need
-`N8N_ENV_FEAT_NODE_AND_CREDENTIAL_PROJECT_POLICIES=true` on the server. The module reads it in
-`useProjectPoliciesFlag` from the flags that `/rest/settings` sends, because a module cannot import
-`useEnvFeatureFlag`.
+in a dev instance with `N8N_ENABLED_MODULES=type-availability-policies`.
 
 `useTypeAvailabilityPoliciesStore` answers whether a project may use a node type or a credential
 type. The store is passive: it does not watch the route, because the projects store lives in the
