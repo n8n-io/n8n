@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp-guard/plan-hydrator.ts
+  s_f4d26adb514784::t_941b5f9a447c6d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4e628e220e3945ace169a477a7d91d2fba9c54f",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

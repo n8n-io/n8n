@@ -1,0 +1,37 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c3fb44d7ad272c::t_0835762e4b1a07 10012,10015
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  s_c3fb44d7ad272c::t_2c31b411a203bf 1-2,43,52,93,96,144,155-159,165-169,197,205,219-225
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_c3fb44d7ad272c::t_65211b2d056deb 699,827-832,868,1088-1097
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c3fb44d7ad272c::t_482e4bb05fc318 2325-2332,2423-2437
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_c3fb44d7ad272c::t_6fb90e8676d907 64-65,513
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionIcon.vue
+  s_c3fb44d7ad272c::t_0999b623af4635 1-47
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  s_c3fb44d7ad272c::t_fc0292991cba5b 2-9,11-12,18-24,43,46-47,49-51,53-54,57-64,106,110-115,127,131-136,138-146,148-157,159-170,172-188,190-267,269-271,276,280,284-286,289-290,293,295,301-303,315-317,323,327,331,334-340,342-344,346-347,351-352,356-357,362-363,365,368-371,376-377,379,384-386,388,399
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentRunHeldActionsModal.vue
+  s_c3fb44d7ad272c::t_6536e6ee3d57a5 2,7-8,55,60-62,70,72-75,107-115,120,122,128-129,131-134,138,145,151-153,157,159-160
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentTestRunEmptyState.vue
+  s_c3fb44d7ad272c::t_64a1e32d4017e6 50-73,90-92,95-104,109-121,125,129-131,137,149-150,154,156-162,169,173,181-182,184,190-193,199-208
+packages/frontend/editor-ui/src/features/agents/components/chatMode/heldActions.ts
+  s_c3fb44d7ad272c::t_c8ab2c35e49f0b 14-48,81-89,97,106,185-187,196,201-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8051c5cb2ad0c4dbd2867af71a986e36430debbc",
+  "prompts": {},
+  "sessions": {
+    "s_c3fb44d7ad272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd5-b561-70c9-800f-e58948d8542a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

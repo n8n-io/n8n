@@ -1,0 +1,22 @@
+packages/@n8n/cli/src/__tests__/promotion-environment-promote-check.test.ts
+  s_4a494bfdece475::t_20b98e08689664 146,151-153
+packages/@n8n/cli/src/__tests__/promotion-confirm-missing-dependencies.test.ts
+  s_4a494bfdece475::t_20b98e08689664 115-116,119,497-498,521,524,538-599
+  s_4a494bfdece475::t_0ae8c450cc24bd 600
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41bf79e20d42ea361a9bd587b2dce95b265a9fa0",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

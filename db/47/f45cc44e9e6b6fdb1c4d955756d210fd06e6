@@ -1,0 +1,120 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_4b663869bd1748::t_b644453bed9ec6 10,143,235-262,271,306-309,311-313,315-332
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilder.readonly.test.ts
+  s_ce7e5bf9640e6d::t_a0329419333e5d 19-24
+  s_4b663869bd1748::t_5495caff346bfe 18,25,195,203-210,212-214
+  s_4b663869bd1748::t_19d5d5ad2ae352 215-218,220-239,241-254,256-261,263-265
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersList.vue
+  s_fe60a863afa902::t_edbd43dceda77a 216
+  s_f89f4e9241716c::t_1ea52cae6612fe 1,117-119,261-263,387
+  s_f89f4e9241716c::t_b84b2b71d2b397 120,237-260
+  s_fe60a863afa902::t_3a2722aff7bef6 125,127-128,130,296-307,370
+  s_f89f4e9241716c::t_ab084454baabcb 2-3,5-6,8-12,14-54,71-116,131,133,187,232,264,266,274,277-279,284-294,308-328,333,337-353,355-369,371-386
+  s_ac55e4fd5bd611::t_d63535bc1af779 122,233
+  s_fe60a863afa902::t_55f6c3d6f6113d 7,13,134,188,217-218,220-229
+  s_f89f4e9241716c::t_8d82cc66c2ee2d 121,123-124,126,129,132,186,231,234-236
+  s_fe60a863afa902::t_4465243b11fb84 135-162,164-185
+  s_fe60a863afa902::t_54666b5f9ff803 163,189-215,219,230
+  s_f89f4e9241716c::t_779aee8bb7bf2c 280
+  s_ac55e4fd5bd611::t_c1ee6bf0971aab 265,354
+  s_f89f4e9241716c::t_cfb2c3911d0040 267-273,276,332
+  s_f89f4e9241716c::t_6a7d033ac6c721 4,329-331,334-336
+  s_fe60a863afa902::t_2967c8d669acc3 55-70
+  s_f89f4e9241716c::t_867c00ec17fe99 275
+  s_f89f4e9241716c::t_332aac9b208d77 281-283
+  s_ce7e5bf9640e6d::t_958b53a0fdbf0f 295
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersList.test.ts
+  s_ce7e5bf9640e6d::t_2ad9a1687f1576 1-25,47-88,90-186,190,192-194,198-276
+  s_ce7e5bf9640e6d::t_86c93ef542c55c 26-46
+  s_ce7e5bf9640e6d::t_f0d9e538cb3968 89
+  s_ce7e5bf9640e6d::t_70332cdbce551b 187-189,191,195-197
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersList.types.ts
+  s_f89f4e9241716c::t_c89952ccc96acf 1-13
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTriggerRedesignFlag.ts
+  s_4b663869bd1748::t_ebaac4a1610b55 1-14
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_f89f4e9241716c::t_e95d07b701f876 2,6,46-57,59-61,64
+  s_f89f4e9241716c::t_0f8829ce61910d 58
+packages/frontend/editor-ui/src/features/agents/__tests__/scheduleBuilder.test.ts
+  s_ce7e5bf9640e6d::t_a79f0bac181c42 3-10,68-105
+  s_ce7e5bf9640e6d::t_835969f8a9ae52 106
+packages/frontend/editor-ui/src/features/agents/utils/scheduleBuilder.ts
+  s_f89f4e9241716c::t_abae0a9c9b5f8c 161
+  s_f89f4e9241716c::t_3f89ac3cdc05ab 138-160,162-177
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_f89f4e9241716c::t_cdc23283ecfdc7 12,39-40,207,367-388,390,436
+  s_4b663869bd1748::t_c8137500a731ea 30,88,394,396
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_ce7e5bf9640e6d::t_5314217801ced8 560
+  s_4b663869bd1748::t_9a3cef8e2bc3e0 123,203,205-208,214,530-533,554-555,558-559
+  s_ce7e5bf9640e6d::t_d55ee263921a6b 535
+  s_ce7e5bf9640e6d::t_4fe27170207cd9 124-129,184-189,534,536,538-542
+  s_ce7e5bf9640e6d::t_24972dea036acd 190
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTasks.ts
+  s_f89f4e9241716c::t_58a0c48a4ecc8b 174-178
+  s_f89f4e9241716c::t_61290a775f5fc2 1-4,14-36,39-146,149-155,157-173,179-192
+  s_f89f4e9241716c::t_9458d43003df3e 37-38,156
+  s_ce7e5bf9640e6d::t_c2b11d5e39d99e 5-13
+  s_329dff755c3fc0::t_91fcd1f6754480 147-148
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_4b663869bd1748::t_63b4ff357ff575 256-258,260
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f89f4e9241716c::t_492bd12993f2c6 11028-11032,11034-11036
+  s_f89f4e9241716c::t_76d6024552ab6d 11033
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db47f45cc44e9e6b6fdb1c4d955756d210fd06e6",
+  "prompts": {},
+  "sessions": {
+    "s_329dff755c3fc0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a211e4-03bd-741b-864f-97444719010f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_4b663869bd1748": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e9c2-ff4b-7204-b296-0a896a85647a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ac55e4fd5bd611": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e9e3-92c6-74a0-bc0a-0618a22c30c6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ce7e5bf9640e6d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e9f5-75c4-74a0-bc0a-061a87176a92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f89f4e9241716c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e9cd-1085-74a0-bc0a-061433113e9d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fe60a863afa902": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e9d8-c1e1-74a0-bc0a-0616f8b42ba0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
