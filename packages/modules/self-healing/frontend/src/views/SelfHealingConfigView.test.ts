@@ -112,6 +112,18 @@ it.each([
 	},
 );
 
+// ProjectSelfHealingSection.test.ts covers each notice state.
+it('shows the Assistant notice above the configuration form', async () => {
+	const settingsStore = useSettingsStore();
+	settingsStore.moduleSettings = {
+		'instance-ai': { enabled: false, setupCompleted: true },
+	} as typeof settingsStore.moduleSettings;
+
+	const view = await renderView('new');
+	await view.findByRole('button', { name: 'Create configuration' });
+	expect(view.getByTestId('self-healing-assistant-notice')).toBeInTheDocument();
+});
+
 it('creates an enabled configuration with the creator as reviewer', async () => {
 	const store = useSelfHealingStore();
 	const save = vi.spyOn(store, 'save').mockResolvedValue({

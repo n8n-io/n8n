@@ -615,9 +615,17 @@ describe('ProjectHeader', () => {
 			delete route.params.projectId;
 		});
 
-		function setProject(type: Project['type'], enabled: boolean) {
+		function setProject(
+			type: Project['type'],
+			enabled: boolean,
+			assistant: { enabled?: boolean; setupCompleted?: boolean } = {},
+		) {
 			settingsStore.moduleSettings = {
-				'instance-ai': { workflowSuggestionsEnabled: enabled },
+				'instance-ai': {
+					workflowSuggestionsEnabled: enabled,
+					enabled: assistant.enabled ?? true,
+					setupCompleted: assistant.setupCompleted ?? true,
+				},
 			} as typeof settingsStore.moduleSettings;
 			projectsStore.currentProject = {
 				id: 'project',
@@ -660,6 +668,23 @@ describe('ProjectHeader', () => {
 
 			expect(getByRole('button', { name: 'Add configuration' })).toBeDisabled();
 		});
+
+		it.each([
+			{ enabled: false, setupCompleted: true },
+			{ enabled: true, setupCompleted: false },
+		])(
+			'keeps the tab on the personal project when Assistant enabled=$enabled and setupCompleted=$setupCompleted',
+			(assistant) => {
+				setProject(ProjectTypes.Personal, true, assistant);
+
+				renderComponent();
+
+				expect(projectTabsSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ 'additional-tabs': [selfHealingTab] }),
+					null,
+				);
+			},
+		);
 
 		it.each([
 			{ type: ProjectTypes.Personal, enabled: false },

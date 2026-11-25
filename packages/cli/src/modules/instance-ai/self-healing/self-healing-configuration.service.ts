@@ -28,6 +28,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { afterCommit, runInTransaction } from '../after-commit';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
@@ -41,6 +42,10 @@ type ConfigurationChange = InferTelemetryProps<
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
+const ASSISTANT_DISABLED =
+	"The n8n Assistant is disabled, so self-healing can't run. Ask an instance owner or admin to turn it on.";
+const ASSISTANT_SETUP_INCOMPLETE =
+	"The n8n Assistant isn't set up, so self-healing can't run. Ask an instance owner or admin to finish the setup.";
 
 @Service()
 export class SelfHealingConfigurationService {
@@ -60,20 +65,34 @@ export class SelfHealingConfigurationService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly postHogClient: PostHogClient,
 		private readonly license: License,
+		private readonly instanceAiSettings: InstanceAiSettingsService,
 	) {}
 
 	/** Tells whether new self-healing work can start now. */
 	async isEnabled(): Promise<boolean> {
 		if (!this.globalConfig.instanceAi.workflowSuggestionsEnabled) return false;
-		if (this.globalConfig.deployment.type !== 'cloud') {
-			// Self-healing is not available on self-hosted Enterprise yet.
-			// Other self-hosted instances have no PostHog flag and use the env setting only.
-			return !this.license.isEnterprisePlan();
-		}
+		const isCloud = this.globalConfig.deployment.type === 'cloud';
+		// Self-healing is not available on self-hosted Enterprise yet.
+		if (!isCloud && this.license.isEnterprisePlan()) return false;
+		if (await this.assistantUnavailableReason()) return false;
+		// Self-hosted instances have no PostHog flag and use the env setting only.
+		if (!isCloud) return true;
 
-		// Every Cloud plan requires both the env setting and the PostHog instance flag.
+		// Every Cloud plan also requires the PostHog instance flag.
 		// No answer from PostHog means off.
 		return (await this.postHogClient.getFeatureFlagForInstance(SELF_HEALING_FLAG)) === true;
+	}
+
+	/** Self-healing runs through the n8n Assistant, so the Assistant must be on and set up. */
+	private async assistantUnavailableReason(): Promise<string | null> {
+		if (!this.instanceAiSettings.isInstanceAiEnabled()) return ASSISTANT_DISABLED;
+		if (!(await this.instanceAiSettings.isSetupCompleted())) return ASSISTANT_SETUP_INCOMPLETE;
+		return null;
+	}
+
+	private async requireAssistantReady(): Promise<void> {
+		const reason = await this.assistantUnavailableReason();
+		if (reason) throw new BadRequestError(reason);
 	}
 
 	private trackChange(
@@ -173,6 +192,9 @@ export class SelfHealingConfigurationService {
 		input: SaveSelfHealingConfigurationDto | UpdateSelfHealingConfigurationDto,
 		id?: number,
 	) {
+		if (id === undefined) {
+			await this.requireAssistantReady();
+		}
 		await this.validateSelections(projectId, input);
 
 		let canEnable = false;
@@ -216,6 +238,7 @@ export class SelfHealingConfigurationService {
 	async setEnabled(user: User, projectId: string, id: number, enabled: boolean) {
 		let canEnable = false;
 		if (enabled) {
+			await this.requireAssistantReady();
 			canEnable = await this.canEnable(user, projectId);
 		}
 

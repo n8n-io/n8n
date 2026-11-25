@@ -33,6 +33,7 @@ import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
 import ProjectMembersIcon from '../components/ProjectMembersIcon.vue';
+import SelfHealingAssistantNotice from '../components/SelfHealingAssistantNotice.vue';
 import SubWorkflowPill from '../components/SubWorkflowPill.vue';
 import { useSubWorkflowScope, type SubWorkflowCoverage } from '../composables/useSubWorkflowScope';
 import { useSelfHealingStore } from '../self-healing.store';
@@ -401,6 +402,7 @@ onBeforeRouteUpdate(async (to, from) => {
 					>
 				</template>
 			</N8nSettingsPageHeader>
+			<SelfHealingAssistantNotice />
 			<div v-if="loading" data-test-id="self-healing-config-loading">
 				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
 					<N8nSettingsRowGroup>

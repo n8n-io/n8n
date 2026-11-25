@@ -147,6 +147,12 @@ export class SelfHealingResultService {
 		return await this.results.countForInbox(access);
 	}
 
+	/** Saved results stay open for review even when self-healing is off or its check fails. */
+	async isInboxAvailable(): Promise<boolean> {
+		if (await this.results.hasAnyResults()) return true;
+		return await this.configurationService.isEnabled();
+	}
+
 	async complete({
 		investigationId,
 		baseline,

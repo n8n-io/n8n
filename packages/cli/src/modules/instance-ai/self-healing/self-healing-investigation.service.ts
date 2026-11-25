@@ -94,9 +94,8 @@ export class SelfHealingInvestigationService {
 		if (!this.config.workflowSuggestionsEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
 		}
-		// The instance flag is off. Investigations that are in progress continue.
-		if (!(await this.configurationService.isEnabled())) return null;
-
+		// Look up the configuration first: the availability check can read the
+		// Assistant setup under a lock, and most failures have no configuration.
 		const configuration = await this.configurations.findForWorkflow(
 			input.projectId,
 			input.workflowId,
@@ -105,12 +104,15 @@ export class SelfHealingInvestigationService {
 			// Report the failure only when the project uses self-healing.
 			if (
 				this.instanceSettings.isLeader &&
-				(await this.configurations.hasConfiguration(input.projectId))
+				(await this.configurations.hasConfiguration(input.projectId)) &&
+				(await this.configurationService.isEnabled())
 			) {
 				this.trackEvaluated(input, 'not_watched');
 			}
 			return null;
 		}
+		// The instance flag is off. Investigations that are in progress continue.
+		if (!(await this.configurationService.isEnabled())) return null;
 		const skip = (reason: SkipReason) => {
 			this.trackEvaluated(input, reason, configuration);
 			return null;

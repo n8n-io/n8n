@@ -171,12 +171,23 @@ describe('SelfHealingInvestigationService', () => {
 
 	it('does not admit an investigation when the instance flag is off', async () => {
 		configurationService.isEnabled.mockResolvedValue(false);
+		configurations.hasConfiguration.mockResolvedValue(true);
 
 		expect(await service.start(input)).toBeNull();
-		expect(configurations.findForWorkflow).not.toHaveBeenCalled();
+		configurations.findForWorkflow.mockResolvedValue(null);
+		expect(await service.start(input)).toBeNull();
+
 		expect(investigations.createInvestigation).not.toHaveBeenCalled();
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('skips the availability check when the project has no configuration', async () => {
+		configurations.findForWorkflow.mockResolvedValue(null);
+		configurations.hasConfiguration.mockResolvedValue(false);
+
+		expect(await service.start(input)).toBeNull();
+		expect(configurationService.isEnabled).not.toHaveBeenCalled();
 	});
 
 	it('uses server references and saves the result directly', async () => {

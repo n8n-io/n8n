@@ -129,7 +129,7 @@ describe('InstanceAiModule.init', () => {
 		const sources = mockInstance(InboxSourceRegistry);
 		const mutationHooks = mockInstance(WorkflowMutationHooksProxy);
 		const configurations = mockInstance(SelfHealingConfigurationService);
-		mockInstance(SelfHealingResultService);
+		const results = mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
 		const settings = mockInstance(InstanceAiSettingsService);
@@ -150,6 +150,7 @@ describe('InstanceAiModule.init', () => {
 			config,
 			mutationHooks,
 			configurations,
+			results,
 			sources,
 			sweeper,
 			investigations,
@@ -190,7 +191,7 @@ describe('InstanceAiModule.init', () => {
 	});
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config, sources, investigations, mutationHooks, configurations } = setup();
+		const { config, sources, investigations, mutationHooks, configurations, results } = setup();
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
@@ -216,6 +217,9 @@ describe('InstanceAiModule.init', () => {
 		expect(sources.register).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'self_healing_result' }),
 		);
+		results.isInboxAvailable.mockResolvedValue(false);
+		await expect(sources.register.mock.calls[0][0].isEnabled()).resolves.toBe(false);
+		expect(results.isInboxAvailable).toHaveBeenCalledOnce();
 	});
 
 	it.each(['worker', 'webhook'] as const)(

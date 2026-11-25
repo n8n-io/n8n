@@ -3,6 +3,7 @@ import {
 	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
 	SELF_HEALING_CONFIGURATION_VIEW,
 } from '@n8n/frontend-constants/self-healing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -65,6 +66,35 @@ it('shows the Preview and enterprise readiness badges next to the heading', asyn
 	const { view } = await renderSection();
 	expect(view.getByTestId('self-healing-preview-badge')).toBeInTheDocument();
 	expect(view.getByTestId('self-healing-enterprise-readiness-badge')).toBeInTheDocument();
+});
+
+it.each([
+	{
+		assistant: { enabled: true, setupCompleted: true },
+		expected: null,
+	},
+	{
+		assistant: { enabled: false, setupCompleted: true },
+		expected:
+			"The n8n Assistant is disabled, so self-healing can't run. Ask an instance owner or admin to turn it on.",
+	},
+	{
+		assistant: { enabled: true, setupCompleted: false },
+		expected:
+			"The n8n Assistant isn't set up, so self-healing can't run. Ask an instance owner or admin to finish the setup.",
+	},
+])('shows the Assistant notice for $assistant', async ({ assistant, expected }) => {
+	const settingsStore = useSettingsStore();
+	settingsStore.moduleSettings = {
+		'instance-ai': assistant,
+	} as typeof settingsStore.moduleSettings;
+
+	const { view } = await renderSection();
+	if (expected === null) {
+		expect(view.queryByTestId('self-healing-assistant-notice')).not.toBeInTheDocument();
+	} else {
+		expect(view.getByTestId('self-healing-assistant-notice')).toHaveTextContent(expected);
+	}
 });
 
 it('keeps the active switch unchanged when saving fails and allows another attempt', async () => {

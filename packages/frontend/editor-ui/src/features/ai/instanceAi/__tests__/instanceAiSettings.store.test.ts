@@ -346,6 +346,9 @@ describe('useInstanceAiSettingsStore', () => {
 			setModuleSettings(settingsStore, { enabled: false });
 			mockUpdateSettings.mockResolvedValue(response);
 			settingsStore.getModuleSettings = vi.fn().mockRejectedValue(new Error('refresh failed'));
+			settingsStore.refreshInboxSettings = vi
+				.fn()
+				.mockRejectedValue(new Error('settings refresh failed'));
 		});
 
 		it('keeps a settings save successful when the module refresh fails', async () => {
@@ -356,6 +359,7 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.settings).toEqual(response);
 			expect(store.draft).toEqual({});
 			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+			expect(settingsStore.refreshInboxSettings).toHaveBeenCalledOnce();
 		});
 
 		it('keeps an enablement save successful when the module refresh fails', async () => {
@@ -363,7 +367,20 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.settings).toEqual(response);
 			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+			expect(settingsStore.refreshInboxSettings).toHaveBeenCalledOnce();
 		});
+
+		it.each(['cloudManaged', 'proxyEnabled'] as const)(
+			'keeps setup complete on %s instances when module settings cannot refresh',
+			async (managedFlag) => {
+				setModuleSettings(settingsStore, { [managedFlag]: true, setupCompleted: true });
+				settingsStore.refreshInboxSettings = vi.fn().mockResolvedValue(undefined);
+				store.setField('mcpAccessEnabled', true);
+
+				await expect(store.save()).resolves.toBe(true);
+				expect(settingsStore.moduleSettings['instance-ai']?.setupCompleted).toBe(true);
+			},
+		);
 
 		it('keeps the Assistant agent setting when it applies saved settings', async () => {
 			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
@@ -485,7 +502,7 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	describe('syncInstanceAiFlagIntoGlobalModuleSettings', () => {
+	describe('module settings after a save', () => {
 		it('preserves module flags when syncing admin settings', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: false,
@@ -509,8 +526,8 @@ describe('useInstanceAiSettingsStore', () => {
 
 			mockUpdateSettings.mockResolvedValue(adminResponse);
 			settingsStore.getModuleSettings = vi.fn().mockResolvedValue(undefined);
+			settingsStore.refreshInboxSettings = vi.fn().mockResolvedValue(undefined);
 
-			// persistEnabled triggers syncInstanceAiFlagIntoGlobalModuleSettings
 			await store.persistEnabled(true);
 
 			const ms = settingsStore.moduleSettings['instance-ai'];

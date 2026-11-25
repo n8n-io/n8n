@@ -29,6 +29,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
 import ProjectMembersIcon from './ProjectMembersIcon.vue';
+import SelfHealingAssistantNotice from './SelfHealingAssistantNotice.vue';
 
 const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealingLocation }>(), {
 	variant: 'projectSettings',
@@ -231,6 +232,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 				data-test-id="self-healing-enterprise-readiness-badge"
 			/>
 		</h3>
+		<SelfHealingAssistantNotice :class="$style.notice" />
 		<slot v-if="isPersonalTab && loading" name="loading" />
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
@@ -368,6 +370,10 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 	/* The label has a bottom margin, so the badges align with its text. */
 	align-items: baseline;
 	gap: var(--spacing--2xs);
+}
+
+.notice {
+	margin-bottom: var(--spacing--sm);
 }
 
 .table {

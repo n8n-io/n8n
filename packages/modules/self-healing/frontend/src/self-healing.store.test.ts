@@ -3,7 +3,10 @@ import type { SelfHealingConfigurationDto, SelfHealingConfigurationOptions } fro
 import * as api from './self-healing.api';
 import { useSelfHealingStore } from './self-healing.store';
 
+const settingsStore = vi.hoisted(() => ({ refreshInboxSettings: vi.fn() }));
+
 vi.mock('./self-healing.api');
+vi.mock('@n8n/stores/settings.store', () => ({ useSettingsStore: () => settingsStore }));
 
 const configuration: SelfHealingConfigurationDto = {
 	id: 1,
@@ -55,6 +58,16 @@ it('removes a configuration from the list after the server removes it', async ()
 	store.configurations.project = [configuration];
 	vi.mocked(api.removeConfiguration).mockResolvedValue();
 	await store.remove('project', 1);
+	expect(store.configurations.project).toEqual([]);
+	expect(settingsStore.refreshInboxSettings).toHaveBeenCalledOnce();
+});
+
+it('keeps a completed removal when the Inbox refresh fails', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [configuration];
+	vi.mocked(api.removeConfiguration).mockResolvedValue();
+	settingsStore.refreshInboxSettings.mockRejectedValueOnce(new Error('Offline'));
+	await expect(store.remove('project', 1)).resolves.toBeUndefined();
 	expect(store.configurations.project).toEqual([]);
 });
 

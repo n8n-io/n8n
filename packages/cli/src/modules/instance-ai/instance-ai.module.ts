@@ -79,7 +79,7 @@ export class InstanceAiModule implements ModuleInterface {
 			const results = Container.get(SelfHealingResultService);
 			Container.get(InboxSourceRegistry).register({
 				type: 'self_healing_result',
-				isEnabled: async () => Container.get(InstanceAiConfig).workflowSuggestionsEnabled,
+				isEnabled: async () => await results.isInboxAvailable(),
 				list: async (user, query) => await results.listForInbox(user, query),
 				count: async (user) => await results.countForInbox(user),
 			});

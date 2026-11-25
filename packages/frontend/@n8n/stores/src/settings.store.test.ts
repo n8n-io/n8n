@@ -529,6 +529,17 @@ describe('settings.store', () => {
 		});
 	});
 
+	it('refreshes Inbox availability without starting another session', async () => {
+		const settingsStore = useSettingsStore();
+		const inbox = { enabled: true, availableTypes: ['self_healing_result'], failedTypes: [] };
+		getSettings.mockResolvedValueOnce({ ...mockSettings, telemetry: { enabled: true }, inbox });
+
+		await settingsStore.refreshInboxSettings();
+
+		expect(settingsStore.settings.inbox).toEqual(inbox);
+		expect(sessionStarted).not.toHaveBeenCalled();
+	});
+
 	describe('getSettings', () => {
 		describe('telemetry', () => {
 			it('should fetch settings and call sessionStarted if telemetry is enabled', async () => {
