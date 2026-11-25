@@ -3,6 +3,7 @@ import type {
 	NodeTypeAvailabilityScope,
 	ProjectPolicyEffectiveCounts,
 	ProjectPolicyKindSummary,
+	ProjectTypeAccessResponse,
 } from '@n8n/api-types';
 import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
@@ -879,6 +880,47 @@ export class TypeAvailabilityPolicyService {
 				}),
 				effective.rules,
 			),
+		};
+	}
+
+	/**
+	 * What the instance and project policies decide together for each type in one project, and
+	 * which scope decides it, evaluated against one read of each scope so that the versions match
+	 * the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 *
+	 * `listTypes` picks the rows from the instance policy alone, as `summarizeProjectPolicies`
+	 * does, so the rows match the counts on the project list.
+	 */
+	async getProjectAccess(
+		kind: string,
+		projectId: string,
+		typeNames: readonly string[],
+		listTypes: ListTypes = (types) => types,
+	): Promise<ProjectTypeAccessResponse> {
+		const [instance, project] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.getEffectivePolicy(kind, projectId),
+		]);
+
+		const listed = listTypes(
+			this.verdictComposer(kind, typeNames)(instance, unconfiguredScope(kind, null)),
+			instance.rules,
+		);
+		const verdicts = this.verdictComposer(
+			kind,
+			listed.map((verdict) => verdict.name),
+		)(instance, project);
+
+		return {
+			instanceVersion: instance.version,
+			projectVersion: project.version,
+			types: verdicts.map(({ name, action, scope, matchedRuleId, optInAvailable }) => ({
+				name,
+				access: action,
+				scope,
+				matchedRuleId,
+				optInAvailable,
+			})),
 		};
 	}
 

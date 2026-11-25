@@ -301,8 +301,8 @@ write between them can return newer rules under the older `version`. A write tha
 `version` back then fails with a conflict, so no change is lost.
 
 The credential route lists the type names of `available-credential-types`. The node route lists
-the type names of `available-types`, and it is the only place that decides which node types the
-admin page lists. It leaves out two kinds of type:
+the type names of `available-types`, and it decides which node types the admin pages list. It
+leaves out two kinds of type:
 
 - A generated tool variant that the same rule, or the default action, decides as its base type.
   Such a variant has the access of its base. When a different rule decides the variant, for
@@ -311,6 +311,21 @@ admin page lists. It leaves out two kinds of type:
 - A hidden node type, unless an instance `name` rule decides it, for the same reason. The `hidden`
   flag comes from the static `types/nodes.json`, because a main process releases the node
   descriptions from memory after startup. The route fails when it cannot read that file.
+
+### The access of each type in one project
+
+`GET /projects/:projectId/node-type-policies/project/access` and
+`GET /projects/:projectId/credential-type-policies/project/access` return, for every listed type,
+the composed verdict (`allow` or `deny`), the scope that decides it, the matched rule and
+`optInAvailable`. They also return `instanceVersion` and `projectVersion`. The project policy page
+uses them for its "Set by" column, and sends `projectVersion` back with a write.
+
+- The routes read both scopes through `getEffectivePolicy`, not the snapshot, for the reason given
+  for the instance access route.
+- The rows are the types that the instance access route lists, as for the counts below. A project
+  rule on a hidden type, or on a tool variant that follows its base, adds no row.
+- A user with the global scope passes the project check for any id, so the routes return 404 for a
+  project id that does not exist. Other users get 403 from the project check first.
 
 ### The policy state of each team project
 
@@ -449,11 +464,11 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `type-availability-policy-snapshot.ts`            | Holds every scope in memory for decisions, and keeps it fresh                   |
 | `effective-policy.ts`                             | The composed policy of one scope, and its allow-all default                     |
 | `type-availability-policy-instance.controller.ts` | Instance scope, documents, attachments and access of each type, `node-types`    |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope and access of each type, for project admins, `node-types` |
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents, attachments and access of each type, `credential-types` |
-| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope and access of each type, for project admins, `credential-types` |
 | `project-policies.controller.ts`                  | The policy state of every team project, for both kinds                          |
-| `listed-node-types.ts`                            | The node types the instance policy page lists, for the access route and counts  |
+| `listed-node-types.ts`                            | The node types the policy pages list, for the access routes and counts          |
 | `hidden-node-types.ts`                            | The hidden node types, read from the static node types file                     |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |
