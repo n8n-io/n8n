@@ -5,9 +5,13 @@ ARG N8N_VERSION=snapshot
 # `docker buildx bake`, not plain `docker build`.
 ARG BUILDER_IMAGE
 ARG RUNTIME_IMAGE
+ARG ENABLE_POINTER_COMPRESSION=false
+
+# Clean source of our compiled Node binaries before build tools are installed.
+FROM ${BUILDER_IMAGE} AS node-source
 
 # The runtime base has no compiler, so this stage supplies one.
-FROM ${BUILDER_IMAGE} AS toolchain
+FROM node-source AS toolchain
 RUN apk add --no-cache python3 make g++
 ENV NODE_GYP=/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
 
@@ -49,6 +53,21 @@ RUN BUILD_LIBRDKAFKA=0 node "$NODE_GYP" rebuild --release
 # when you change its pin in docker/docker-bake.hcl.
 FROM ${RUNTIME_IMAGE}
 
+# Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
+# Keeping this above release metadata ARGs/ENV and `COPY ./compiled` decouples
+# OS base refreshes from Node source compiles while keeping release and app-only
+# builds cached on these layers. Specific V8 patches are verified by
+# check-v8-patches.js when BUILDER_IMAGE is built; verify the binary path,
+# runtime ABI, `-n8n.N` V8 suffix, and pointer-compression flag here so a future
+# inputs PR updating check-v8-patches.js does not fail against the pinned image.
+RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
+COPY --from=node-source /usr/local/bin /usr/local/bin
+COPY --from=node-source /usr/local/lib /usr/local/lib
+ARG ENABLE_POINTER_COMPRESSION
+RUN node --version \
+    && node -e 'const want = process.env.ENABLE_POINTER_COMPRESSION === "true", got = Boolean(process.config.variables.v8_enable_pointer_compression); if (process.execPath !== "/usr/local/bin/node") throw new Error("expected /usr/local/bin/node, got " + process.execPath); if (!/-n8n\.\d+$/.test(process.versions.v8)) throw new Error("V8 " + process.versions.v8 + " has no n8n patch suffix"); if (want !== got) throw new Error("pointer compression is " + (got ? "on" : "off") + ", expected " + (want ? "on" : "off"));' \
+    && ln -sf /usr/local/bin/node /usr/bin/node
+
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
@@ -74,7 +93,7 @@ COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
 # a patch hash. The shell must expand this destination.
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/Release/confluent-kafka-javascript.node /tmp/
 
-# The base image keeps node in /usr/bin and has no /usr/local/bin.
+# Symlink n8n into /usr/local/bin where cloud launch configs expect it.
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
     for coder in msl mvg pcd svg url; do \

@@ -1,4 +1,10 @@
-import type { PolicedWorkflow, PolicyDecision, PolicyViolation } from '@n8n/decorators';
+import type {
+	EnforcementPoint,
+	ExecutionAdmissionContext,
+	PolicedWorkflow,
+	PolicyDecision,
+	PolicyViolation,
+} from '@n8n/decorators';
 import { workflowContentSubject } from '@n8n/decorators';
 import { UnexpectedError } from '@n8n/errors';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -21,114 +27,130 @@ const violation: PolicyViolation = {
 
 const cleared: PolicyDecision = { violations: [] };
 
+const admissionContext: ExecutionAdmissionContext = {
+	artifact: { kind: 'workflow', id: 'wf-1', name: 'My workflow' },
+	projectId: 'proj-1',
+	mode: 'webhook',
+	source: null,
+	engine: 'v1',
+};
+
 /** One call per point, so a new point can't be left out of the no-op guarantee. */
-const enforceCalls = (service: PolicyEnforcementService) => ({
-	workflowSave: async () =>
-		await service.enforceWorkflowSave(
-			{
+const enforceCalls = (service: PolicyEnforcementService) =>
+	({
+		workflowSave: async () =>
+			await service.enforceWorkflowSave(
+				{
+					workflow: savedWorkflow,
+					storedWorkflow: null,
+					projectId: 'proj-1',
+				},
+				{ kind: 'system', reason: 'execution' },
+			),
+		workflowPublish: async () =>
+			await service.enforceWorkflowPublish(
+				{ workflow: savedWorkflow, projectId: 'proj-1' },
+				{ kind: 'system', reason: 'execution' },
+			),
+		executionAdmission: async () =>
+			await service.enforceExecutionAdmission(admissionContext, {
+				kind: 'system',
+				reason: 'execution',
+			}),
+		workflowStart: async () =>
+			await service.enforceWorkflowStart(
+				{ workflow: savedWorkflow, projectId: 'proj-1' },
+				{ kind: 'system', reason: 'execution' },
+			),
+		workflowTransfer: async () =>
+			await service.enforceWorkflowTransfer(
+				{
+					workflow: savedWorkflow,
+					targetProjectId: 'proj-2',
+				},
+				{ kind: 'system', reason: 'execution' },
+			),
+		credentialSave: async () =>
+			await service.enforceCredentialSave(
+				{
+					credential: { id: null, type: 'slackApi' },
+					storedCredential: null,
+					projectId: 'proj-1',
+				},
+				{ kind: 'system', reason: 'execution' },
+			),
+		credentialTransfer: async () =>
+			await service.enforceCredentialTransfer(
+				{
+					credential: { id: 'cred-1', type: 'slackApi' },
+					targetProjectId: 'proj-2',
+				},
+				{ kind: 'system', reason: 'execution' },
+			),
+		credentialDecrypt: async () =>
+			await service.enforceCredentialDecrypt(
+				{
+					credentialType: 'slackApi',
+					credentialId: 'cred-1',
+					consumer: null,
+					projectId: 'proj-1',
+				},
+				{ kind: 'system', reason: 'execution' },
+			),
+		contentImport: async () =>
+			await service.enforceContentImport(
+				{
+					workflow: savedWorkflow,
+					projectId: 'proj-1',
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'execution' },
+			),
+	}) satisfies Record<EnforcementPoint, () => Promise<unknown>>;
+
+const evaluateCalls = (service: PolicyEnforcementService) =>
+	({
+		workflowSave: async () =>
+			await service.evaluateWorkflowSave({
 				workflow: savedWorkflow,
 				storedWorkflow: null,
 				projectId: 'proj-1',
-			},
-			{ kind: 'system', reason: 'execution' },
-		),
-	workflowPublish: async () =>
-		await service.enforceWorkflowPublish(
-			{ workflow: savedWorkflow, projectId: 'proj-1' },
-			{ kind: 'system', reason: 'execution' },
-		),
-	workflowStart: async () =>
-		await service.enforceWorkflowStart(
-			{ workflow: savedWorkflow, projectId: 'proj-1' },
-			{ kind: 'system', reason: 'execution' },
-		),
-	workflowTransfer: async () =>
-		await service.enforceWorkflowTransfer(
-			{
+			}),
+		workflowPublish: async () =>
+			await service.evaluateWorkflowPublish({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		executionAdmission: async () => await service.evaluateExecutionAdmission(admissionContext),
+		workflowStart: async () =>
+			await service.evaluateWorkflowStart({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		workflowTransfer: async () =>
+			await service.evaluateWorkflowTransfer({
 				workflow: savedWorkflow,
 				targetProjectId: 'proj-2',
-			},
-			{ kind: 'system', reason: 'execution' },
-		),
-	credentialSave: async () =>
-		await service.enforceCredentialSave(
-			{
+			}),
+		credentialSave: async () =>
+			await service.evaluateCredentialSave({
 				credential: { id: null, type: 'slackApi' },
 				storedCredential: null,
 				projectId: 'proj-1',
-			},
-			{ kind: 'system', reason: 'execution' },
-		),
-	credentialTransfer: async () =>
-		await service.enforceCredentialTransfer(
-			{
+			}),
+		credentialTransfer: async () =>
+			await service.evaluateCredentialTransfer({
 				credential: { id: 'cred-1', type: 'slackApi' },
 				targetProjectId: 'proj-2',
-			},
-			{ kind: 'system', reason: 'execution' },
-		),
-	credentialDecrypt: async () =>
-		await service.enforceCredentialDecrypt(
-			{
+			}),
+		credentialDecrypt: async () =>
+			await service.evaluateCredentialDecrypt({
 				credentialType: 'slackApi',
 				credentialId: 'cred-1',
 				consumer: null,
 				projectId: 'proj-1',
-			},
-			{ kind: 'system', reason: 'execution' },
-		),
-	contentImport: async () =>
-		await service.enforceContentImport(
-			{
+			}),
+		contentImport: async () =>
+			await service.evaluateContentImport({
 				workflow: savedWorkflow,
 				projectId: 'proj-1',
 				transport: 'cli',
-			},
-			{ kind: 'system', reason: 'execution' },
-		),
-});
-
-const evaluateCalls = (service: PolicyEnforcementService) => ({
-	workflowSave: async () =>
-		await service.evaluateWorkflowSave({
-			workflow: savedWorkflow,
-			storedWorkflow: null,
-			projectId: 'proj-1',
-		}),
-	workflowPublish: async () =>
-		await service.evaluateWorkflowPublish({ workflow: savedWorkflow, projectId: 'proj-1' }),
-	workflowStart: async () =>
-		await service.evaluateWorkflowStart({ workflow: savedWorkflow, projectId: 'proj-1' }),
-	workflowTransfer: async () =>
-		await service.evaluateWorkflowTransfer({
-			workflow: savedWorkflow,
-			targetProjectId: 'proj-2',
-		}),
-	credentialSave: async () =>
-		await service.evaluateCredentialSave({
-			credential: { id: null, type: 'slackApi' },
-			storedCredential: null,
-			projectId: 'proj-1',
-		}),
-	credentialTransfer: async () =>
-		await service.evaluateCredentialTransfer({
-			credential: { id: 'cred-1', type: 'slackApi' },
-			targetProjectId: 'proj-2',
-		}),
-	credentialDecrypt: async () =>
-		await service.evaluateCredentialDecrypt({
-			credentialType: 'slackApi',
-			credentialId: 'cred-1',
-			consumer: null,
-			projectId: 'proj-1',
-		}),
-	contentImport: async () =>
-		await service.evaluateContentImport({
-			workflow: savedWorkflow,
-			projectId: 'proj-1',
-			transport: 'cli',
-		}),
-});
+			}),
+	}) satisfies Record<EnforcementPoint, () => Promise<unknown>>;
 
 describe('PolicyEnforcementService', () => {
 	describe('with no implementation registered', () => {
@@ -230,6 +252,18 @@ describe('PolicyEnforcementService', () => {
 			expect(backend.enforce).toHaveBeenCalledWith('workflowSave', context, actor);
 			expect(token.decision).toBe(decision);
 			expect(token.policyVersions).toEqual([{ scope: 'instance', version: 7 }]);
+		});
+
+		it('hands the admission context to the implementation as the same object', async () => {
+			backend.enforce.mockResolvedValue(cleared);
+
+			await service.enforceExecutionAdmission(admissionContext, {
+				kind: 'system',
+				reason: 'execution',
+			});
+
+			expect(backend.enforce.mock.calls[0][0]).toBe('executionAdmission');
+			expect(backend.enforce.mock.calls[0][1]).toBe(admissionContext);
 		});
 
 		it('returns the advisory decision as-is, violations and all', async () => {
@@ -437,6 +471,28 @@ describe('PolicyEnforcementService', () => {
 					projectId: 'proj-1',
 				},
 				{ kind: 'user', user: { id: 'user-1' } },
+			);
+
+			expect(token.subject).toEqual({ type: 'agent', id: 'agent-1' });
+		});
+
+		it('binds an execution admission for a workflow to its id', async () => {
+			const token = await service.enforceExecutionAdmission(admissionContext, {
+				kind: 'system',
+				reason: 'execution',
+			});
+
+			expect(token.subject).toEqual({ type: 'workflow', id: 'wf-1' });
+		});
+
+		it('binds an execution admission for an agent to its id as an agent subject', async () => {
+			const token = await service.enforceExecutionAdmission(
+				{
+					...admissionContext,
+					artifact: { kind: 'agent', id: 'agent-1', name: 'Support agent' },
+					mode: 'agent',
+				},
+				{ kind: 'system', reason: 'execution' },
 			);
 
 			expect(token.subject).toEqual({ type: 'agent', id: 'agent-1' });

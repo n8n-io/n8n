@@ -2,7 +2,7 @@ name: 'CI: Check Unpublished Packages'
 
 on:
   schedule:
-    - cron: '15 */2 * * 1-2'
+    - cron: '15 */2 * * 1'
   workflow_dispatch:
 
 permissions:
