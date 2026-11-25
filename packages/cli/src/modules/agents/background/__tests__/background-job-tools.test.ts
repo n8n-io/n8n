@@ -736,6 +736,7 @@ describe('background_jobs resume', () => {
 			status: 'ready',
 			jobs: [],
 			workflowsToRestart,
+			note: expect.stringContaining('Cancelled workflows are not restarted'),
 		});
 		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
 	});

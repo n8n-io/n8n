@@ -20,6 +20,7 @@ const row = (
 	access,
 	matchedRuleId: null,
 	editable,
+	checking: false,
 	icon: { type: 'icon', name: 'key-round' },
 	usage,
 });
@@ -41,7 +42,12 @@ const renderTable = createComponentRenderer(InstancePolicyTable);
 const setup = (rows = ROWS) =>
 	renderTable({
 		pinia: createTestingPinia(),
-		props: { rows, loading: false, searchPlaceholder: 'Search credentials' },
+		props: {
+			rows,
+			loading: false,
+			searchPlaceholder: 'Search credentials',
+			noMatchText: 'No credentials match your search or filter',
+		},
 	});
 
 const accessTrigger = (getByTestId: (id: string) => HTMLElement, name: string) =>
@@ -242,7 +248,7 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
 
-		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('change')).toEqual([['airtableApi', 'deny', 'Airtable API']]);
 	});
 
 	it('emits open for a click on a row, but not for a click on its Access menu', async () => {
@@ -338,7 +344,7 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
 
-		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('change')).toEqual([['airtableApi', 'deny', 'Airtable API']]);
 		expect(emitted('open')).toBeUndefined();
 	});
 
@@ -432,5 +438,75 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(getByTestId('instance-policy-access-slackApi'));
 
 		expect(emitted('open')).toEqual([['slackApi']]);
+	});
+
+	describe('no match', () => {
+		const noMatch = (queryByTestId: (id: string) => HTMLElement | null) =>
+			queryByTestId('instance-policy-no-match');
+
+		it('does not show the message when rows match', () => {
+			const { queryByTestId } = setup();
+
+			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
+		});
+
+		it('shows the message when the search matches no row', async () => {
+			const { getByPlaceholderText, getByTestId } = setup();
+
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'zzz');
+
+			expect(getByTestId('instance-policy-no-match')).toHaveTextContent(
+				'No credentials match your search or filter',
+			);
+		});
+
+		it('shows the message when an access change takes the last row out of the filter', async () => {
+			const { getByRole, getByTestId, rerender } = setup();
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+
+			await rerender({ rows: ROWS.map((typeRow) => ({ ...typeRow, access: 'allow' })) });
+
+			expect(getByTestId('instance-policy-no-match')).toBeInTheDocument();
+		});
+
+		it('does not show the message during the first load', async () => {
+			const { getByPlaceholderText, queryByTestId, rerender } = setup([]);
+			await rerender({ loading: true });
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'zzz');
+
+			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
+		});
+
+		it('keeps the message, with no skeleton rows, while the access reloads after a save', async () => {
+			const { getByPlaceholderText, getByTestId, rerender } = setup();
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'zzz');
+
+			await rerender({ loading: true });
+
+			expect(getByTestId('instance-policy-no-match')).toBeInTheDocument();
+			expect(getByTestId('instance-policy-table').querySelector('.el-skeleton')).toBeNull();
+		});
+
+		it('clears the search and the filter, and puts the focus on the search box', async () => {
+			const { getByPlaceholderText, getByRole, getByTestId, queryByTestId } = setup();
+			const searchBox = getByPlaceholderText('Search credentials');
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await fireEvent.update(searchBox, 'Notion');
+
+			getByRole('button', { name: 'Clear search and filter' }).focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
+			expect(searchBox).toHaveValue('');
+			expect(getByRole('combobox', { name: 'Filter by access' })).toHaveTextContent('All (3)');
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Airtable API',
+				'Bitly API',
+				'Notion API',
+			]);
+			expect(searchBox).toHaveFocus();
+		});
 	});
 });

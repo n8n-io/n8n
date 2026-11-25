@@ -25,3 +25,9 @@ export interface EmptyStateIconCards {
 	/** Defaults to `true`; set to `false` for a static trio showing the first two side icons. */
 	animated?: boolean;
 }
+
+/**
+ * The size of `N8nEmptyState`. `default` fills a page section. `small` fits inside a table or a
+ * list, for example a "no rows match" message with a button that clears the search and filters.
+ */
+export type EmptyStateSize = 'default' | 'small';

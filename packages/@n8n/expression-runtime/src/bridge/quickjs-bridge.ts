@@ -29,6 +29,7 @@ import {
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
+	unboxPrimitive,
 } from '../runtime/transfer';
 import { HostDataResolver } from './host-data-resolver';
 import { errorOriginOf, tagErrorOrigin } from '../evaluator/error-classification';
@@ -187,12 +188,12 @@ function readGuestString(
 // ============================================================================
 // Sentinel helpers
 //
-// QuickJS's vm.dump() loses Date / NaN / Map / Set / Error type identity
-// (Date → ISO string, NaN → null, Map/Set/Error → empty plain object). Inside
-// the QuickJS context we wrap those values as sentinel objects
-// ({ __isDate: true, __isoString: ... } etc.) before they cross the boundary,
-// then unwrap them on the host side. The isolated-vm bridge does NOT need this
-// — structured clone preserves type identity natively.
+// QuickJS's vm.dump() loses Date / NaN / boxed primitive / Map / Set / Error
+// type identity (Date → ISO string, NaN → null, boxed primitives / Map / Set /
+// Error → plain objects). Inside the QuickJS context we wrap those values as
+// sentinel objects ({ __isDate: true, __isoString: ... } etc.) before they cross
+// the boundary, then unwrap them on the host side. The isolated-vm bridge does
+// NOT need this — structured clone preserves type identity natively.
 // ============================================================================
 
 function isDateSentinel(value: unknown): value is { __isDate: true; __isoString: string } {
@@ -220,6 +221,64 @@ function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
 		(value as Record<string, unknown>).__isUndefined === true &&
 		Object.keys(value).length === 1
 	);
+}
+
+type BoxedPrimitiveSentinel =
+	| { __isBoxedPrimitive: 'string'; __value: string }
+	| { __isBoxedPrimitive: 'number'; __value: number | string }
+	| { __isBoxedPrimitive: 'boolean'; __value: boolean }
+	| { __isBoxedPrimitive: 'bigint'; __value: string };
+
+function isBoxedPrimitiveSentinel(value: unknown): value is BoxedPrimitiveSentinel {
+	if (typeof value !== 'object' || value === null) return false;
+	const kind: unknown = Reflect.get(value, '__isBoxedPrimitive');
+	const inner: unknown = Reflect.get(value, '__value');
+	switch (kind) {
+		case 'string':
+		case 'bigint':
+			return typeof inner === 'string';
+		case 'number':
+			return typeof inner === 'number' || typeof inner === 'string';
+		case 'boolean':
+			return typeof inner === 'boolean';
+		default:
+			return false;
+	}
+}
+
+const toBoxedObject: (value: string | number | boolean | bigint) => unknown = Object;
+
+function encodeBoxedNumber(value: number): number | string {
+	if (Object.is(value, -0)) return '-0';
+	return Number.isFinite(value) ? value : String(value);
+}
+
+function wrapBoxedPrimitive(value: object): BoxedPrimitiveSentinel | undefined {
+	const primitive = unboxPrimitive(value);
+	if (primitive === undefined) return undefined;
+	switch (typeof primitive) {
+		case 'string':
+			return { __isBoxedPrimitive: 'string', __value: primitive };
+		case 'number':
+			return { __isBoxedPrimitive: 'number', __value: encodeBoxedNumber(primitive) };
+		case 'boolean':
+			return { __isBoxedPrimitive: 'boolean', __value: primitive };
+		case 'bigint':
+			return { __isBoxedPrimitive: 'bigint', __value: primitive.toString() };
+	}
+}
+
+function rebuildBoxedPrimitive(sentinel: BoxedPrimitiveSentinel): unknown {
+	switch (sentinel.__isBoxedPrimitive) {
+		case 'string':
+			return toBoxedObject(sentinel.__value);
+		case 'number':
+			return toBoxedObject(Number(sentinel.__value));
+		case 'boolean':
+			return toBoxedObject(sentinel.__value);
+		case 'bigint':
+			return toBoxedObject(BigInt(sentinel.__value));
+	}
 }
 
 /** The name of a thrown value: the `name` of an Error, else its `typeof`. */
@@ -336,9 +395,9 @@ function unescapeTransferValue(
 }
 
 /**
- * Recursively reconstruct Date objects, NaN values, Map, Set, Error, and
- * repeated or self-referencing objects from sentinels produced by the
- * QuickJS-side __prepareForTransfer wrapper.
+ * Recursively reconstruct Date objects, NaN values, boxed primitives, Map, Set,
+ * Error, and repeated or self-referencing objects from sentinels produced by
+ * the QuickJS-side __prepareForTransfer wrapper.
  */
 function unwrapSentinels(value: unknown): unknown {
 	if (value === null || typeof value !== 'object') return value;
@@ -377,6 +436,8 @@ function unwrapValue(value: unknown, refs: Map<number, unknown>, defId?: number)
 	if (isDateSentinel(value)) return registerRef(refs, defId, new Date(value.__isoString));
 	if (isNaNSentinel(value)) return NaN;
 	if (isUndefinedSentinel(value)) return undefined;
+	if (isBoxedPrimitiveSentinel(value))
+		return registerRef(refs, defId, rebuildBoxedPrimitive(value));
 	if (isErrorValueSentinel(value)) {
 		const ErrorCtor =
 			(
@@ -430,6 +491,7 @@ const TRANSFER_MARKER_KEYS = new Set([
 	'__isDate',
 	'__isNaN',
 	'__isUndefined',
+	'__isBoxedPrimitive',
 	'__isErrorValue',
 	'__isMap',
 	'__isSet',
@@ -503,7 +565,11 @@ function hasPlainGuestCycle(
 
 	if (
 		!isEscapedObject(node) &&
-		(isDateSentinel(node) || isNaNSentinel(node) || isMapSentinel(node) || isSetSentinel(node))
+		(isDateSentinel(node) ||
+			isNaNSentinel(node) ||
+			isBoxedPrimitiveSentinel(node) ||
+			isMapSentinel(node) ||
+			isSetSentinel(node))
 	) {
 		return false;
 	}
@@ -537,13 +603,13 @@ function hasPlainGuestCycle(
 
 /**
  * Recursively wrap host values that JSON.stringify would flatten (Date, NaN,
- * Map, Set) or reject (self-referencing Map or Set graphs) into the same
- * sentinel format the guest transfer wrapper uses, escaping user objects whose
- * keys collide with the markers. Returns undefined when the graph has a plain
- * object or array cycle outside a Map or Set, because the guest transfer walk
- * has no cycle guard for those values outside an Error. The guest rebuilds real
- * instances via __unwrapFromHost (see injectTransferWrapper), so host-callback
- * results match what isolated-vm's structured clone delivers.
+ * boxed primitives, Map, Set) or reject (self-referencing Map or Set graphs)
+ * into the same sentinel format the guest transfer wrapper uses, escaping user
+ * objects whose keys collide with the markers. Returns undefined when the graph
+ * has a plain object or array cycle outside a Map or Set, because the guest
+ * transfer walk has no cycle guard for those values outside an Error. The guest
+ * rebuilds real instances via __unwrapFromHost (see injectTransferWrapper), so
+ * host-callback results match what isolated-vm's structured clone delivers.
  */
 function wrapSpecialValuesForGuest(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
@@ -593,14 +659,19 @@ function wrapValueForGuest(value: unknown, state: GuestWrapState): unknown {
 	} else if (Array.isArray(value)) {
 		out = wrapArrayForGuest(value, state);
 	} else {
-		const record = value as Record<string, unknown>;
-		const result: Record<string, unknown> = {};
-		let collides = false;
-		for (const key of Object.keys(record)) {
-			if (TRANSFER_MARKER_KEYS.has(key)) collides = true;
-			defineOwnValue(result, key, wrapValueForGuest(record[key], state));
+		const boxed = wrapBoxedPrimitive(value);
+		if (boxed !== undefined) {
+			out = boxed;
+		} else {
+			const record = value as Record<string, unknown>;
+			const result: Record<string, unknown> = {};
+			let collides = false;
+			for (const key of Object.keys(record)) {
+				if (TRANSFER_MARKER_KEYS.has(key)) collides = true;
+				defineOwnValue(result, key, wrapValueForGuest(record[key], state));
+			}
+			out = collides ? { __isEscaped: true, __value: result } : result;
 		}
-		out = collides ? { __isEscaped: true, __value: result } : result;
 	}
 	entry.out = out;
 	return out;
@@ -1267,10 +1338,10 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	/**
 	 * Wrap __prepareForTransfer so values that don't survive vm.dump()
-	 * (Date, NaN, Map, Set, Error) are converted to sentinel objects.
-	 * The host post-processes vm.dump() output to reconstruct real instances
-	 * via unwrapSentinels(). Also injects __unwrapFromHost, the guest-side
-	 * reverse: it rebuilds instances from the sentinels the host's
+	 * (Date, NaN, boxed primitives, Map, Set, Error) are converted to sentinel
+	 * objects. The host post-processes vm.dump() output to reconstruct real
+	 * instances via unwrapSentinels(). Also injects __unwrapFromHost, the
+	 * guest-side reverse: it rebuilds instances from the sentinels the host's
 	 * wrapSpecialValuesForGuest() emits for callback results.
 	 */
 	private injectTransferWrapper(): void {
@@ -1281,16 +1352,35 @@ export class QuickJsBridge implements RuntimeBridge {
 	// An expression can replace a built-in, so keep the ones from context setup.
 	var parseJSON = JSON.parse;
 	var defineProperty = Object.defineProperty;
+	var getPrototypeOf = Object.getPrototypeOf;
+	var objectPrototype = Object.prototype;
+	var isPrototypeOf = objectPrototype.isPrototypeOf;
+	var objectToString = objectPrototype.toString;
 	var objectKeys = Object.keys;
+	var sameValue = Object.is;
+	var reflectApply = Reflect.apply;
 	var isArray = Array.isArray;
+	var isFiniteNumber = Number.isFinite;
 	var numberIsNaN = Number.isNaN;
-	var toStr = String;
+	var BoxedObject = Object;
+	var BoxedString = String;
+	var BoxedNumber = Number;
+	var BoxedBigInt = typeof BigInt === 'function' ? BigInt : undefined;
 	var NativeDate = Date;
 	var NativeError = Error;
 	var NativeMap = Map;
 	var NativePromise = Promise;
 	var NativeSet = Set;
 	var NativeTypeError = TypeError;
+	var stringPrototype = String.prototype;
+	var stringValueOf = stringPrototype.valueOf;
+	var numberPrototype = Number.prototype;
+	var numberValueOf = numberPrototype.valueOf;
+	var booleanPrototype = Boolean.prototype;
+	var booleanValueOf = booleanPrototype.valueOf;
+	var bigIntPrototype = BoxedBigInt ? BoxedBigInt.prototype : undefined;
+	var bigIntValueOf = bigIntPrototype ? bigIntPrototype.valueOf : undefined;
+	var bigIntToString = bigIntPrototype ? bigIntPrototype.toString : undefined;
 	var dateGetTime = Date.prototype.getTime;
 	var dateToISOString = Date.prototype.toISOString;
 	var mapGet = Map.prototype.get;
@@ -1303,6 +1393,68 @@ export class QuickJsBridge implements RuntimeBridge {
 	function defineOwnValue(target, key, value) {
 		defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
 	}
+	function tryUnbox(fn, target) {
+		try {
+			return { ok: true, value: reflectApply(fn, target, []) };
+		} catch (_e) {
+			return { ok: false };
+		}
+	}
+	function hasPrototype(proto, target) {
+		try {
+			return reflectApply(isPrototypeOf, proto, [target]);
+		} catch (_e) {
+			return false;
+		}
+	}
+	function encodeBoxedNumber(value) {
+		if (sameValue(value, -0)) return '-0';
+		return isFiniteNumber(value) ? value : BoxedString(value);
+	}
+	var boxedSpecs = [
+		{ kind: 'string', proto: stringPrototype, tag: '[object String]', unbox: stringValueOf, encode: function(v) { return v; } },
+		{ kind: 'number', proto: numberPrototype, tag: '[object Number]', unbox: numberValueOf, encode: encodeBoxedNumber },
+		{ kind: 'boolean', proto: booleanPrototype, tag: '[object Boolean]', unbox: booleanValueOf, encode: function(v) { return v; } },
+	];
+	if (bigIntPrototype && bigIntValueOf && bigIntToString) {
+		boxedSpecs.push({
+			kind: 'bigint',
+			proto: bigIntPrototype,
+			tag: '[object BigInt]',
+			unbox: bigIntValueOf,
+			encode: function(v) { return reflectApply(bigIntToString, v, []); },
+		});
+	}
+	function wrapBoxedPrimitive(v) {
+		var proto;
+		try {
+			proto = getPrototypeOf(v);
+		} catch (_e) {
+			return null;
+		}
+		if (proto === objectPrototype || proto === null) return null;
+		for (var i = 0; i < boxedSpecs.length; i++) {
+			var spec = boxedSpecs[i];
+			if (proto === spec.proto) {
+				var unboxed = tryUnbox(spec.unbox, v);
+				if (unboxed.ok) return { __isBoxedPrimitive: spec.kind, __value: spec.encode(unboxed.value) };
+			}
+		}
+		var tag = '';
+		try {
+			tag = reflectApply(objectToString, v, []);
+		} catch (_e) {
+			tag = '';
+		}
+		for (var j = 0; j < boxedSpecs.length; j++) {
+			var fallback = boxedSpecs[j];
+			if (tag === fallback.tag || hasPrototype(fallback.proto, v)) {
+				var unboxed2 = tryUnbox(fallback.unbox, v);
+				if (unboxed2.ok) return { __isBoxedPrimitive: fallback.kind, __value: fallback.encode(unboxed2.value) };
+			}
+		}
+		return null;
+	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
 		var errorToSentinel;
@@ -1312,15 +1464,15 @@ export class QuickJsBridge implements RuntimeBridge {
 				errorToSentinel = new NativeMap();
 				sentinelToError = new NativeMap();
 			}
-			if (!mapHas.call(errorToSentinel, error)) {
-				mapSet.call(errorToSentinel, error, sentinel);
+			if (!reflectApply(mapHas, errorToSentinel, [error])) {
+				reflectApply(mapSet, errorToSentinel, [error, sentinel]);
 			}
-			mapSet.call(sentinelToError, sentinel, error);
+			reflectApply(mapSet, sentinelToError, [sentinel, error]);
 		}
 		var prepared = original(value, recordError);
 		if (prepared === null || prepared === undefined) return prepared;
 		if (typeof prepared === 'function') {
-			throw new NativeTypeError(toStr(prepared) + ' could not be cloned');
+			throw new NativeTypeError(BoxedString(prepared) + ' could not be cloned');
 		}
 		if (numberIsNaN(prepared)) return { __isNaN: true };
 		if (typeof prepared !== 'object') return prepared;
@@ -1341,16 +1493,16 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 
 		function wrapPreparedError(originalError, marker) {
-			var existing = mapGet.call(seen, originalError);
-			if (existing === undefined) existing = mapGet.call(seen, marker);
+			var existing = reflectApply(mapGet, seen, [originalError]);
+			if (existing === undefined) existing = reflectApply(mapGet, seen, [marker]);
 			if (existing !== undefined) {
-				mapSet.call(seen, originalError, existing);
-				mapSet.call(seen, marker, existing);
+				reflectApply(mapSet, seen, [originalError, existing]);
+				reflectApply(mapSet, seen, [marker, existing]);
 				return makeRef(existing);
 			}
 			var entry = { id: -1, out: null };
-			mapSet.call(seen, originalError, entry);
-			mapSet.call(seen, marker, entry);
+			reflectApply(mapSet, seen, [originalError, entry]);
+			reflectApply(mapSet, seen, [marker, entry]);
 			var out = wrapErrorMarker(marker);
 			entry.out = out;
 			return out;
@@ -1364,7 +1516,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			// Functions and Promises must not leave the sandbox as results.
 			// isolated-vm's structured clone rejects them; match its error.
 			if (typeof v === 'function') {
-				throw new NativeTypeError(toStr(v) + ' could not be cloned');
+				throw new NativeTypeError(BoxedString(v) + ' could not be cloned');
 			}
 			if (numberIsNaN(v)) {
 				return { __isNaN: true };
@@ -1373,42 +1525,56 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (v instanceof NativePromise) {
 				throw new NativeTypeError('#<Promise> could not be cloned');
 			}
-			var existing = mapGet.call(seen, v);
+			var existing = reflectApply(mapGet, seen, [v]);
 			if (existing !== undefined) return makeRef(existing);
 
 			// original() turns an Error into a marker while a Map or Set keeps the raw
 			// Error. Bind both to one seen entry so cycles through a collection keep one
 			// Error instance on the host.
 			if (errorToSentinel !== undefined) {
-				var preparedError = mapGet.call(errorToSentinel, v);
+				var preparedError = reflectApply(mapGet, errorToSentinel, [v]);
 				if (preparedError !== undefined) {
 					return wrapPreparedError(v, preparedError);
 				}
 				if (!inCollection) {
-					var originalError = mapGet.call(sentinelToError, v);
+					var originalError = reflectApply(mapGet, sentinelToError, [v]);
 					if (originalError !== undefined) {
 						return wrapPreparedError(originalError, v);
 					}
 				}
 			}
 
-			// Outside a collection, an escaped wrapper carries the same object as its payload.
-			// Reuse an earlier entry for that payload, or bind both to one entry so cycles
-			// through the payload resolve to the wrapper.
-			if (
-				!inCollection &&
-				v['${TRANSFER_ESCAPED_KEY}'] === true &&
-				typeof v['${TRANSFER_TYPE_KEY}'] !== 'string'
-			) {
-				return wrapEscapedTransfer(v, inCollection);
+			// Outside a collection, an escaped wrapper from __prepareForTransfer is a
+			// plain object carrying the same object as its payload. Reuse an earlier
+			// entry for that payload, or bind both to one entry so cycles through the
+			// payload resolve to the wrapper.
+			if (!inCollection) {
+				var isPlainProto = false;
+				try {
+					isPlainProto = getPrototypeOf(v) === objectPrototype;
+				} catch (_e) {
+					isPlainProto = false;
+				}
+				if (
+					isPlainProto &&
+					v['${TRANSFER_ESCAPED_KEY}'] === true &&
+					typeof v['${TRANSFER_TYPE_KEY}'] !== 'string'
+				) {
+					return wrapEscapedTransfer(v, inCollection);
+				}
 			}
 
 			var entry = { id: -1, out: null };
-			mapSet.call(seen, v, entry);
+			reflectApply(mapSet, seen, [v, entry]);
 			var out;
 			if (v instanceof NativeDate) {
 				// Invalid Dates have no ISO string; '' rebuilds an Invalid Date on the host.
-				out = { __isDate: true, __isoString: numberIsNaN(dateGetTime.call(v)) ? '' : dateToISOString.call(v) };
+				out = {
+					__isDate: true,
+					__isoString: numberIsNaN(reflectApply(dateGetTime, v, []))
+						? ''
+						: reflectApply(dateToISOString, v, []),
+				};
 			} else if (v instanceof NativeError) {
 				var errExtra = {};
 				var errKeys = objectKeys(v);
@@ -1420,27 +1586,32 @@ export class QuickJsBridge implements RuntimeBridge {
 				out = { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
 			} else if (v instanceof NativeMap) {
 				var entries = [];
-				mapForEach.call(v, function(val, key) {
+				reflectApply(mapForEach, v, [function(val, key) {
 					entries[entries.length] = [wrapChild(key, true), wrapChild(val, true)];
-				});
+				}]);
 				out = { __isMap: true, __entries: entries };
 			} else if (v instanceof NativeSet) {
 				var values = [];
-				setForEach.call(v, function(val) {
+				reflectApply(setForEach, v, [function(val) {
 					values[values.length] = wrapChild(val, true);
-				});
+				}]);
 				out = { __isSet: true, __values: values };
 			} else if (isArray(v)) {
 				out = wrapArray(v, inCollection);
-			} else if (!inCollection && v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
-				// The values inside an Error marker still need the wrapping above.
-				out = wrapErrorMarker(v);
-			} else if (!inCollection && typeof v['${TRANSFER_TYPE_KEY}'] === 'string') {
-				// Outside a collection, transfer markers come from __prepareForTransfer above,
-				// so pass them to the host as they are.
-				out = v;
 			} else {
-				out = wrapOwnKeys(v, inCollection);
+				var boxed = wrapBoxedPrimitive(v);
+				if (boxed !== null) {
+					out = boxed;
+				} else if (!inCollection && v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
+					// The values inside an Error marker still need the wrapping above.
+					out = wrapErrorMarker(v);
+				} else if (!inCollection && typeof v['${TRANSFER_TYPE_KEY}'] === 'string') {
+					// Outside a collection, transfer markers come from __prepareForTransfer above,
+					// so pass them to the host as they are.
+					out = v;
+				} else {
+					out = wrapOwnKeys(v, inCollection);
+				}
 			}
 			entry.out = out;
 			return out;
@@ -1450,16 +1621,16 @@ export class QuickJsBridge implements RuntimeBridge {
 			var payload = v.__value;
 			var payloadIsObject = payload !== null && typeof payload === 'object';
 			if (payloadIsObject) {
-				var existingPayload = mapGet.call(seen, payload);
+				var existingPayload = reflectApply(mapGet, seen, [payload]);
 				if (existingPayload !== undefined) {
-					mapSet.call(seen, v, existingPayload);
+					reflectApply(mapSet, seen, [v, existingPayload]);
 					return makeRef(existingPayload);
 				}
 			}
 			var entry = { id: -1, out: null };
-			mapSet.call(seen, v, entry);
+			reflectApply(mapSet, seen, [v, entry]);
 			if (payloadIsObject) {
-				mapSet.call(seen, payload, entry);
+				reflectApply(mapSet, seen, [payload, entry]);
 			}
 			var wrapper;
 			if (v['${TRANSFER_OPAQUE_KEY}'] === true) {
@@ -1514,8 +1685,8 @@ export class QuickJsBridge implements RuntimeBridge {
 				var key = keys[i];
 				if (
 					key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
-					key === '__isErrorValue' || key === '__isMap' || key === '__isSet' ||
-					key === '__isEscaped' || key === '__isRef' || key === '__isRefDef'
+					key === '__isBoxedPrimitive' || key === '__isErrorValue' || key === '__isMap' ||
+					key === '__isSet' || key === '__isEscaped' || key === '__isRef' || key === '__isRefDef'
 				) {
 					collides = true;
 				}
@@ -1545,7 +1716,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		for (var ri = 0; ri < repeated.length; ri++) {
 			var rep = repeated[ri];
 			if (rep.out !== null && typeof rep.out === 'object') {
-				mapSet.call(defIds, rep.out, rep.id);
+				reflectApply(mapSet, defIds, [rep.out, rep.id]);
 			}
 		}
 		return attachDefs(root, defIds);
@@ -1569,7 +1740,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				if (nextChild !== child) defineOwnValue(node, key, nextChild);
 			}
 		}
-		var id = mapGet.call(defIds, node);
+		var id = reflectApply(mapGet, defIds, [node]);
 		if (id !== undefined) {
 			return { __isRefDef: true, __id: id, __value: node };
 		}
@@ -1584,7 +1755,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		return unwrapFromHost(parsed, new NativeMap());
 	};
 	function registerHostRef(refs, defId, target) {
-		if (defId !== undefined) mapSet.call(refs, defId, target);
+		if (defId !== undefined) reflectApply(mapSet, refs, [defId, target]);
 		return target;
 	}
 	function unwrapFromHost(v, refs, defId) {
@@ -1593,21 +1764,25 @@ export class QuickJsBridge implements RuntimeBridge {
 			return registerHostRef(refs, defId, unwrapFromHost(v.__value, refs, v.__id));
 		}
 		if (v.__isRef === true && typeof v.__id === 'number') {
-			return registerHostRef(refs, defId, mapGet.call(refs, v.__id));
+			return registerHostRef(refs, defId, reflectApply(mapGet, refs, [v.__id]));
 		}
 		if (v.__isDate === true) return registerHostRef(refs, defId, new NativeDate(v.__isoString));
 		if (v.__isNaN === true) return NaN;
+		if (v.__isBoxedPrimitive === 'string') return registerHostRef(refs, defId, BoxedObject(v.__value));
+		if (v.__isBoxedPrimitive === 'number') return registerHostRef(refs, defId, BoxedObject(BoxedNumber(v.__value)));
+		if (v.__isBoxedPrimitive === 'boolean') return registerHostRef(refs, defId, BoxedObject(v.__value));
+		if (v.__isBoxedPrimitive === 'bigint' && BoxedBigInt) return registerHostRef(refs, defId, BoxedObject(BoxedBigInt(v.__value)));
 		if (v.__isMap === true) {
 			var m = registerHostRef(refs, defId, new NativeMap());
 			for (var i = 0; i < v.__entries.length; i++) {
-				mapSet.call(m, unwrapFromHost(v.__entries[i][0], refs), unwrapFromHost(v.__entries[i][1], refs));
+				reflectApply(mapSet, m, [unwrapFromHost(v.__entries[i][0], refs), unwrapFromHost(v.__entries[i][1], refs)]);
 			}
 			return m;
 		}
 		if (v.__isSet === true) {
 			var s = registerHostRef(refs, defId, new NativeSet());
 			for (var j = 0; j < v.__values.length; j++) {
-				setAdd.call(s, unwrapFromHost(v.__values[j], refs));
+				reflectApply(setAdd, s, [unwrapFromHost(v.__values[j], refs)]);
 			}
 			return s;
 		}

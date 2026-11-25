@@ -261,6 +261,8 @@ function makeService(sandboxEnabled = false) {
 	const integrationMessageContextService = Object.assign(contextService, {
 		getLatest: vi.spyOn(contextService, 'getLatest'),
 		setLatest: vi.spyOn(contextService, 'setLatest').mockResolvedValue(undefined),
+		getEpisodicScope: vi.spyOn(contextService, 'getEpisodicScope').mockResolvedValue(undefined),
+		setEpisodicScope: vi.spyOn(contextService, 'setEpisodicScope').mockResolvedValue(undefined),
 	});
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
@@ -3035,6 +3037,59 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			expect(hostMetadata).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
 		});
+
+		it('persists the channel episodic scope on admitted turns and reuses it on integration wakes', async () => {
+			const { service, runtimeCacheService, integrationMessageContextService } = makeService();
+			const scope = { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] };
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			integrationMessageContextService.getLatest.mockResolvedValue({
+				...selectedContext,
+				replyTarget: { type: 'thread' as const, threadId: 'slack:channel-1:1' },
+			});
+			integrationMessageContextService.getEpisodicScope.mockResolvedValue(scope);
+
+			await collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'integration:slack:U1' },
+					messageContext: selectedContext,
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+					episodicScope: scope,
+				}),
+			);
+
+			expect(integrationMessageContextService.setEpisodicScope).toHaveBeenCalledWith(
+				'thread-1',
+				'integration:slack:U1',
+				scope,
+			);
+
+			await service.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: '<background-jobs-settled>[]</background-jobs-settled>',
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:U1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+				abortSignal: new AbortController().signal,
+			});
+
+			expect(integrationMessageContextService.getEpisodicScope).toHaveBeenCalledWith(
+				'thread-1',
+				'integration:slack:U1',
+			);
+			expect(runtime.agent.stream.mock.calls[1][1]?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata(scope),
+			);
+		});
 	});
 
 	it.each(['new', 'existing'] as const)(
@@ -3561,11 +3616,19 @@ describe('AgentExecutionOrchestratorService', () => {
 			abortSignal,
 		});
 
+		expect(executionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			usePublishedVersion: false,
+			previewChat: true,
 			user,
 			sandboxPrincipalHash: userPrincipalHash,
 		});
@@ -3603,6 +3666,50 @@ describe('AgentExecutionOrchestratorService', () => {
 		// Draft wakes skip the quota hook and do not trigger another wake.
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
+	});
+
+	it('keeps previewChat unset on a wake for a non-preview draft thread', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		executionService.canUseDraftThread.mockImplementation(
+			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
+		);
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await service.executeForWake({
+			backgroundJobSignal,
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>[]</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			identity: { type: 'draft', user, principalHash: userPrincipalHash },
+			abortSignal: new AbortController().signal,
+		});
+
+		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
+			1,
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
+			2,
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: false, sessionMode: 'existing' },
+		);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			usePublishedVersion: false,
+			user,
+			sandboxPrincipalHash: userPrincipalHash,
+		});
 	});
 
 	it.each(['draft', 'published'] as const)(

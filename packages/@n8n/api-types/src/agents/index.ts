@@ -22,6 +22,7 @@ export type * from './teams';
 export type * from './whatsapp';
 export * from './agent-task.schema';
 export * from './dto';
+export * from './attention-flags';
 export * from './model-id';
 export * from './model-providers';
 export * from './provider-capabilities';

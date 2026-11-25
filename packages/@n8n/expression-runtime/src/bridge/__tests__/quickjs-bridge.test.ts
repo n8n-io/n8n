@@ -407,6 +407,10 @@ describe('QuickJsBridge workflow data', () => {
 
 	it.each([
 		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
+		{
+			label: 'a boxed primitive marker key',
+			$json: { a: { __isBoxedPrimitive: 'string', __value: 'text' }, b: 1 },
+		},
 		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
 		{ label: 'a __proto__ key', $json: JSON.parse('{"__proto__": {"a": 1}, "b": 2}') as object },
 		{ label: 'a marker key as text', $json: { text: '__isDate', b: 1 } },

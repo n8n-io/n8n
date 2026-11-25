@@ -190,7 +190,7 @@ describe('ExecutionStartHandler', () => {
 		]);
 	});
 
-	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {
+	it('is a no-op when the execution cannot be claimed', async () => {
 		const executionStore = makeExecutionStore({
 			transitionStatus: vi.fn().mockResolvedValue(false),
 		});

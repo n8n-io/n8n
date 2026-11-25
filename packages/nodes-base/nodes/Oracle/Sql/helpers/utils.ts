@@ -13,6 +13,11 @@ import { UserError } from '@n8n/errors';
 import oracledb from 'oracledb';
 
 import { routeBinaryProperties } from '@utils/binary';
+import {
+	assertCursorColumnNotNull,
+	assertCursorColumnType,
+	assertUniqueCursorColumn,
+} from '@utils/sql-keyset-paging';
 import { generatePairedItemData, wrapData } from '@utils/utilities';
 
 import type {
@@ -177,7 +182,7 @@ function getExecuteManyOptions(
 	return execOptions;
 }
 
-function addBindParam(
+export function addBindParam(
 	colInfo: ColumnDefinition,
 	value: any,
 	bindParameters: oracledb.BindParameter[],
@@ -301,6 +306,8 @@ SELECT
   atc.COLUMN_NAME,
   atc.DATA_TYPE,
   atc.DATA_LENGTH,
+  atc.DATA_PRECISION,
+  atc.DATA_SCALE,
   atc.CHAR_LENGTH,
   atc.DEFAULT_LENGTH,
   atc.NULLABLE,
@@ -338,6 +345,8 @@ SELECT
   atc.COLUMN_NAME,
   atc.DATA_TYPE,
   atc.DATA_LENGTH,
+  atc.DATA_PRECISION,
+  atc.DATA_SCALE,
   atc.CHAR_LENGTH,
   atc.DEFAULT_LENGTH,
   atc.NULLABLE,
@@ -372,12 +381,179 @@ ORDER BY atc.COLUMN_NAME`;
 			dataType: row.DATA_TYPE,
 			isNullable: row.NULLABLE === 'Y',
 			maxSize: row.DATA_LENGTH,
+			precision: row.DATA_PRECISION,
+			scale: row.DATA_SCALE,
 		}));
 	} finally {
 		if (conn) {
 			await conn.close();
 		}
 	}
+}
+
+// Reads the catalog, not constraint_types from getColumnMetaData: that field is aggregated per column
+// and marks every member of a composite constraint as unique.
+// A primary key or unique constraint can use a non-unique index, so the constraints are read too.
+export async function getUniqueKeyColumns(
+	pool: oracledb.Pool,
+	schema: string,
+	table: string,
+): Promise<string[]> {
+	const conn = await pool.getConnection();
+	try {
+		const result = await conn.execute<{ COLUMN_NAME: string }>(
+			`SELECT MIN(aic.column_name) AS column_name
+			 FROM all_indexes ai
+			 JOIN all_ind_columns aic ON aic.index_owner = ai.owner AND aic.index_name = ai.index_name
+			 WHERE ai.table_owner = :schema_name AND ai.table_name = :table_name
+			   AND ai.uniqueness = 'UNIQUE' AND ai.index_type IN ('NORMAL', 'NORMAL/REV', 'IOT - TOP')
+			 GROUP BY ai.owner, ai.index_name HAVING COUNT(*) = 1
+			 UNION
+			 SELECT MIN(acc.column_name)
+			 FROM all_constraints ac
+			 JOIN all_cons_columns acc ON acc.owner = ac.owner AND acc.constraint_name = ac.constraint_name
+			 WHERE ac.owner = :schema_name AND ac.table_name = :table_name
+			   AND ac.constraint_type IN ('P', 'U') AND ac.status = 'ENABLED' AND ac.validated = 'VALIDATED'
+			 GROUP BY ac.owner, ac.constraint_name HAVING COUNT(*) = 1`,
+			{ schema_name: schema, table_name: table },
+			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+		);
+		return (result.rows ?? []).map((row) => row.COLUMN_NAME);
+	} finally {
+		await conn.close();
+	}
+}
+
+/**
+ * Throws if a query pages by a text column and the session of `connection` does not sort in binary order.
+ * ORDER BY follows NLS_SORT, but a comparison and a unique index can use binary order.
+ * Sessions of one pool can differ, so the check runs on the connection that runs the queries.
+ */
+async function assertBinarySort(
+	node: INode,
+	connection: oracledb.Connection,
+	queries: QueryWithValues[],
+) {
+	const itemIndex = queries.findIndex((query) => query.startAfterTextColumn);
+	if (itemIndex === -1) return;
+	const result = await connection.execute<{ NLS_SORT: string }>(
+		"SELECT SYS_CONTEXT('USERENV', 'NLS_SORT') AS nls_sort FROM dual",
+		[],
+		{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+	);
+	const sessionSort = result.rows?.[0]?.NLS_SORT ?? 'BINARY';
+	if (sessionSort !== 'BINARY') {
+		throw new NodeOperationError(
+			node,
+			`Start After cannot use the text column "${queries[itemIndex].startAfterTextColumn}" in this database session`,
+			{
+				itemIndex,
+				description: `The session sorts text with NLS_SORT = ${sessionSort}. Start After needs binary order, or a page can skip rows. Use a NUMBER column, or connect with a session where NLS_SORT is BINARY.`,
+			},
+		);
+	}
+}
+
+// n8n outputs the other types as objects, or with less precision
+const START_AFTER_TYPE = /^(NUMBER|N?VARCHAR2|N?CHAR)$/;
+
+/**
+ * Throws if Start After cannot page by the column without skipped or repeated rows.
+ * `uniqueColumns` comes from getUniqueKeyColumns. The query runner checks the sort order of a text column.
+ * `numbersAsString` is the Output Numbers As String option.
+ */
+export function checkStartAfterColumn(
+	node: INode,
+	itemIndex: number,
+	table: string,
+	column: string,
+	columnInfo: ColumnDefinition | undefined,
+	uniqueColumns: string[],
+	numbersAsString: boolean,
+) {
+	if (!columnInfo) {
+		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
+			itemIndex,
+		});
+	}
+	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
+	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
+	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
+
+	// A number in the output keeps about 15 digits, so a longer value with a fraction comes out rounded.
+	// A NUMBER with a scale and no precision holds up to 38 digits.
+	const { type, precision, scale } = columnInfo;
+	if (!numbersAsString && type === 'NUMBER' && (scale ?? 0) > 0 && (precision ?? 38) > 15) {
+		throw new NodeOperationError(
+			node,
+			`Start After cannot keep the values of column "${column}" exact`,
+			{
+				itemIndex,
+				description:
+					'n8n rounds a number with a fraction and more than 15 digits in the output, so the next page can repeat or skip rows. In Options, turn on Output Numbers As String.',
+			},
+		);
+	}
+}
+
+// JavaScript writes a number below 0.000001 with an exponent, for example 1e-7.
+// The digits move as text, so the value is not rounded.
+function expandSmallNumber(text: string): string {
+	const match = /^(-?)(\d)(?:\.(\d+))?e-(\d{1,3})$/i.exec(text);
+	if (!match) return text;
+	const [, sign, digit, fraction = '', exponent] = match;
+	return `${sign}.${'0'.repeat(Number(exponent) - 1)}${digit}${fraction}`;
+}
+
+/**
+ * Adds the binds of the Start After value and returns the SQL that reads it.
+ * A NUMBER value stays text, so Oracle reads all its digits. The format made from
+ * the value keeps the conversion independent of the session NLS_NUMERIC_CHARACTERS.
+ * `numbersAsString` is the Output Numbers As String option.
+ */
+export function addStartAfterBind(
+	node: INode,
+	itemIndex: number,
+	colInfo: ColumnDefinition,
+	value: string,
+	bindParameters: oracledb.BindParameter[],
+	numbersAsString: boolean,
+): string {
+	const index = bindParameters.length;
+	if (colInfo.type !== 'NUMBER') {
+		addBindParam(colInfo, value, bindParameters);
+		return `:${index}`;
+	}
+
+	const text = expandSmallNumber(value.trim());
+	// Other number text would need a number bind, which rounds
+	if (!/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
+		throw new NodeOperationError(node, 'The Start After value must be a plain number', {
+			itemIndex,
+			description: 'Use digits with an optional minus sign and decimal point, for example 1234.5.',
+		});
+	}
+	// A number in the output keeps about 15 digits of a NUMBER that has a fraction
+	const digits = text.replace(/[-.]/g, '').replace(/^0+/, '');
+	if (!numbersAsString && text.includes('.') && digits.length > 15) {
+		throw new NodeOperationError(node, 'The Start After value has too many digits to be exact', {
+			itemIndex,
+			description:
+				'n8n rounds a number with a fraction and more than 15 digits in the output, so the next page can skip rows. In Options, turn on Output Numbers As String.',
+		});
+	}
+	// A NUMBER with no scale holds any fraction, so the output can round the value to fewer digits
+	if (!numbersAsString && text.includes('.') && typeof colInfo.scale !== 'number') {
+		throw new NodeOperationError(node, 'The Start After value has a fraction that can be rounded', {
+			itemIndex,
+			description:
+				'The column has no fixed number of decimals, so n8n can round a number with a fraction in the output and the next page can repeat rows. In Options, turn on Output Numbers As String.',
+		});
+	}
+
+	const format = text.replace('-', '').replace(/\d/g, '9').replace('.', 'D');
+	bindParameters.push({ type: oracledb.STRING, val: text }, { type: oracledb.STRING, val: format });
+	return `TO_NUMBER(:${index}, :${index + 1}, 'NLS_NUMERIC_CHARACTERS=''.,''')`;
 }
 
 export function prepareErrorItem(
@@ -669,6 +845,7 @@ export function configureQueryRunner(
 				return createErrorItems(error, items);
 			}
 			try {
+				await assertBinarySort(node, connection, queries);
 				for (let i = 0; i < queries.length; i++) {
 					try {
 						const { query, values, outputColumns } = queries[i];
@@ -732,6 +909,7 @@ export function configureQueryRunner(
 				return createErrorItems(error, items);
 			}
 			try {
+				await assertBinarySort(node, connection, queries);
 				for (let i = 0; i < queries.length; i++) {
 					try {
 						const { query, values, outputColumns } = queries[i];
@@ -815,11 +993,13 @@ export const configureTableSchemaUpdater = (
 
 export function getColumnMap(tableSchema: ColumnInfo[]) {
 	const columnMetaDataObject = tableSchema.reduce<ColumnMap>(
-		(acc, { columnName, dataType, isNullable, maxSize }) => {
+		(acc, { columnName, dataType, isNullable, maxSize, precision, scale }) => {
 			acc[columnName] = {
 				type: dataType.toUpperCase(),
 				nullable: isNullable,
 				maxSize,
+				precision,
+				scale,
 			};
 			return acc;
 		},
