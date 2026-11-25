@@ -333,8 +333,9 @@ export class SimulationSession {
 			const signal = options.abortSignal instanceof AbortSignal ? options.abortSignal : undefined;
 			const reply = await this.ask(request, node.type, signal);
 			if (reply.outcome !== 'served') throw new UnexpectedError(`Unexpected reply for ${toolName}`);
+			// `null`, not `undefined`: core returns only the body, and an undefined body sends the real request.
 			return {
-				body: NULL_BODY_STATUSES.has(reply.status) ? undefined : reply.body,
+				body: NULL_BODY_STATUSES.has(reply.status) ? null : reply.body,
 				headers: reply.headers ?? {},
 				statusCode: reply.status,
 			};

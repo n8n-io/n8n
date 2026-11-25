@@ -79,10 +79,7 @@ interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
-	endpoints_by_client: {
-		editor_ui: Record<string, number>;
-		n8n_node: Record<string, number>;
-	};
+	endpoints_by_client: Record<Exclude<PublicApiClient, 'other'>, Record<string, number>>;
 	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
@@ -367,10 +364,10 @@ export class Telemetry implements TelemetryTracker {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
-			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
+			endpoints_by_client: { editor_ui: {}, n8n_node: {}, n8n_cli: {} },
 			routes: [],
 			user_agents: {},
-			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;

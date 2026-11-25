@@ -1,4 +1,4 @@
-import { Time } from '@n8n/constants';
+import { Time, HUMAN_REVIEW_MODULE } from '@n8n/constants';
 import z from 'zod';
 
 import { CommaSeparatedStringArray } from '../custom-types';
@@ -10,7 +10,7 @@ import { nonnegativeIntSchema } from '../schemas';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = [] as const;
+export const AGENTS_MODULE_NAMES = [HUMAN_REVIEW_MODULE] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -41,7 +41,10 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_PLAN_TOOLS_ENABLED')
 	planToolsEnabled: boolean = false;
 
-	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
+	/**
+	 * Time in seconds to retain Agent checkpoints. Pending human review requests
+	 * keep their checkpoints until the Agent consumes the result or the request is cancelled.
+	 */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
@@ -71,12 +74,16 @@ export class AgentsConfig {
 	tracingRecordOutputs: boolean = true;
 
 	/**
-	 * Comma-separated list of agent sub-feature modules to enable. Each entry
-	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
+	 * Comma-separated list of optional Agent features to enable. Set `human-review`
+	 * to route tool approvals through workflows or connected channels. An empty list
+	 * keeps these features off, and n8n rejects unknown feature names at startup.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	get humanReviewEnabled(): boolean {
+		return this.modules.includes(HUMAN_REVIEW_MODULE);
+	}
 
 	/**
 	 * Enable durable background jobs for agents: spawning sub-agents that outlive
