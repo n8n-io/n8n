@@ -3442,6 +3442,9 @@ describe('AgentsBuilderToolsService', () => {
 				code: 'max_iterations',
 				sessionId: 'session-1',
 				executionId: 'execution-1',
+				// The calls before the cap were simulated, so the note must still be there.
+				simulated: true,
+				simulationNote: expect.stringContaining('simulated test run'),
 			});
 			// The guidance is the fix: without it the builder retries the same test.
 			const { message } = result as { message: string };

@@ -181,9 +181,48 @@ function isTableRowTool(toolName: string): boolean {
 	return /(?:row|sheet|table|airtable|record)/.test(toolName.toLowerCase());
 }
 
+const READ_VERBS = new Set(['get', 'list', 'search', 'find', 'read', 'fetch', 'lookup', 'query']);
+const WRITE_VERBS = new Set([
+	'send',
+	'post',
+	'create',
+	'add',
+	'append',
+	'insert',
+	'update',
+	'upsert',
+	'reply',
+	'write',
+	'draft',
+	'schedule',
+]);
+
+/** True when the tool name says the call only reads, for example `slack_search_messages`. */
+function isReadOnlyToolName(toolName: string): boolean {
+	const words = toolName
+		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+		.toLowerCase()
+		.split(/[^a-z0-9]+/);
+	return words.some((word) => READ_VERBS.has(word)) && !words.some((word) => WRITE_VERBS.has(word));
+}
+
+function genericPreview(
+	toolName: string,
+	record: Record<string, unknown>,
+): AssistantTestRunPreview {
+	return {
+		kind: 'generic',
+		toolName,
+		...(Object.keys(record).length > 0 ? { input: record } : {}),
+	};
+}
+
 /**
  * Extracts a structured preview of what a simulated tool call would have done.
  * Never call this for blocked calls.
+ *
+ * A tool name such as `Gmail` matches reads and writes. An action preview needs the content
+ * of the action in the input, so a read or search call gets the generic preview.
  */
 export function buildWouldHaveHappenedPreview(
 	toolName: string,
@@ -191,12 +230,15 @@ export function buildWouldHaveHappenedPreview(
 ): AssistantTestRunPreview {
 	const record = isRecord(input) ? input : {};
 
+	if (isReadOnlyToolName(toolName)) return genericPreview(toolName, record);
+
 	if (isEmailTool(toolName, record)) {
 		const to = readStringList(record, ['to', 'sendTo', 'toEmail', 'recipients', 'recipient']);
 		const cc = readStringList(record, ['cc', 'ccList']);
 		const bcc = readStringList(record, ['bcc', 'bccList']);
 		const subject = readString(record, ['subject']);
 		const body = readString(record, ['body', 'message', 'text', 'html', 'content']);
+		if (!to && !subject && !body) return genericPreview(toolName, record);
 		return {
 			kind: 'email',
 			toolName,
@@ -212,6 +254,7 @@ export function buildWouldHaveHappenedPreview(
 		const channel = readString(record, ['channel', 'channelId', 'channelName', 'room', 'chatId']);
 		const recipient = readString(record, ['recipient', 'user', 'userId', 'dmUser']);
 		const text = readString(record, ['text', 'message', 'content', 'body']);
+		if (!text) return genericPreview(toolName, record);
 		return {
 			kind: 'chatMessage',
 			toolName,
@@ -234,6 +277,9 @@ export function buildWouldHaveHappenedPreview(
 		const description = readNullableString(record, ['description', 'body']);
 		const assignee = readNullableString(record, ['assignee', 'assigneeId']);
 		const labels = readNullableStringList(record, ['labels', 'labelIds']);
+		if (typeof title !== 'string' && typeof description !== 'string') {
+			return genericPreview(toolName, record);
+		}
 		return {
 			kind: 'issue',
 			toolName,
@@ -252,6 +298,7 @@ export function buildWouldHaveHappenedPreview(
 		const location = readString(record, ['location']);
 		const attendees = readStringList(record, ['attendees']);
 		const description = readString(record, ['description']);
+		if (!title && !attendees && !description) return genericPreview(toolName, record);
 		return {
 			kind: 'calendarEvent',
 			toolName,
@@ -286,11 +333,7 @@ export function buildWouldHaveHappenedPreview(
 		};
 	}
 
-	return {
-		kind: 'generic',
-		toolName,
-		...(Object.keys(record).length > 0 ? { input: record } : {}),
-	};
+	return genericPreview(toolName, record);
 }
 
 function formatSimulatedToolCall(call: SimulatedToolCall): AssistantTestRunToolCall {
@@ -304,9 +347,13 @@ function formatSimulatedToolCall(call: SimulatedToolCall): AssistantTestRunToolC
 	};
 
 	if (call.route === 'simulated' || call.route === 'simulated_made_up') {
+		// Evidence without a write means that the backend saw a read, so no action preview.
+		const readOnly = call.evidence !== undefined && !call.evidence.includes('world_write');
 		return {
 			...base,
-			preview: buildWouldHaveHappenedPreview(call.toolName, call.input),
+			preview: readOnly
+				? genericPreview(call.toolName, isRecord(call.input) ? call.input : {})
+				: buildWouldHaveHappenedPreview(call.toolName, call.input),
 		};
 	}
 

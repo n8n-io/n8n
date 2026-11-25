@@ -87,6 +87,45 @@ describe('assistant-test-run-result', () => {
 			});
 		});
 
+		it.each([
+			['Gmail', { query: 'from:alice' }],
+			['Gmail', { messageId: 'm-1' }],
+			['Slack', { channelId: 'C123' }],
+			['Linear', { issueId: 'TRUST-1' }],
+			['Google_Calendar', { start: '2026-11-20', end: '2026-11-21' }],
+		])(
+			'gives a read call of the multi-operation tool %s the generic preview',
+			(toolName, input) => {
+				expect(buildWouldHaveHappenedPreview(toolName, input)).toEqual({
+					kind: 'generic',
+					toolName,
+					input,
+				});
+			},
+		);
+
+		it.each([
+			['slack_search_messages', { channel: '#ops', text: 'deploy' }],
+			['gmail_list_messages', { subject: 'Invoice', to: 'me@example.com' }],
+			['getSheetRows', { sheetName: 'Leads', filter: 'Status = New' }],
+			['linear_find_issue', { title: 'Fix preview' }],
+		])('gives the read tool %s the generic preview', (toolName, input) => {
+			expect(buildWouldHaveHappenedPreview(toolName, input)).toEqual({
+				kind: 'generic',
+				toolName,
+				input,
+			});
+		});
+
+		it('keeps the action preview when a tool name has a read verb and a write verb', () => {
+			expect(
+				buildWouldHaveHappenedPreview('gmail_reply_to_search_result', {
+					to: 'alice@example.com',
+					body: 'Thanks',
+				}),
+			).toMatchObject({ kind: 'email', to: ['alice@example.com'], body: 'Thanks' });
+		});
+
 		it('falls back to generic preview for unrecognized tools', () => {
 			const preview = buildWouldHaveHappenedPreview('custom_crm_sync', {
 				accountId: 'acc-42',
@@ -172,6 +211,24 @@ describe('assistant-test-run-result', () => {
 				],
 				localToolCalls: [{ toolCallId: 'tc-local', toolName: 'load_skill' }],
 			});
+		});
+
+		it('gives a call that the backend reports as a read the generic preview', () => {
+			const input = { channel: '#ops', text: 'deploy' };
+			const formatted = formatAssistantTestRunSimulation({
+				toolCalls: [
+					{
+						toolCallId: 'tc-read',
+						toolName: 'Slack',
+						route: 'simulated',
+						reason: 'served_from_world',
+						evidence: ['world_read'],
+						input,
+					},
+				],
+			});
+
+			expect(formatted.toolCalls[0].preview).toEqual({ kind: 'generic', toolName: 'Slack', input });
 		});
 
 		it('returns an empty toolCalls list when simulation metadata is absent', () => {

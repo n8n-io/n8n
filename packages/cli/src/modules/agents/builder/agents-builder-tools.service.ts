@@ -2042,6 +2042,8 @@ export class AgentsBuilderToolsService {
 				...(result.simulation
 					? { simulation: formatAssistantTestRunSimulation(result.simulation) }
 					: {}),
+				// The calls before the cap were simulated too, so the builder must not report them as real.
+				simulationNote: SIMULATED_TEST_RUN_NOTE,
 				...note,
 			};
 		}
