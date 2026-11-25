@@ -251,6 +251,38 @@ describe('Type Validation', () => {
 		);
 	});
 
+	it.each(['object', 'array'] as const)(
+		'should treat a blank string as no value for %s with blankStringAsNull',
+		(type) => {
+			expect(validateFieldType('field', '', type, { blankStringAsNull: true })).toEqual({
+				valid: true,
+			});
+			expect(validateFieldType('field', ' \n ', type, { blankStringAsNull: true })).toEqual({
+				valid: true,
+			});
+			expect(validateFieldType('field', '', type).valid).toBe(false);
+		},
+	);
+
+	it.each([
+		['object', "'field' expects an object but we got '1'"],
+		['array', "'field' expects an array but we got '1'"],
+		['number', "'field' expects a number but we got 'a'"],
+	] as const)('should use the right article in the %s error message', (type, message) => {
+		const value = type === 'number' ? 'a' : '1';
+		expect(validateFieldType('field', value, type)).toEqual({
+			valid: false,
+			errorMessage: message,
+		});
+	});
+
+	it('should keep a blank string for string with blankStringAsNull', () => {
+		expect(validateFieldType('field', '', 'string', { blankStringAsNull: true })).toEqual({
+			valid: true,
+			newValue: '',
+		});
+	});
+
 	it('should validate options properly', () => {
 		expect(
 			validateFieldType('options', 'oranges', 'options', {

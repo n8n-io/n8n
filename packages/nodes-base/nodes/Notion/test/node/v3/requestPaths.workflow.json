@@ -138,7 +138,9 @@
 				},
 				"title": "Weekly sync",
 				"simple": false,
-				"options": {}
+				"options": {},
+				"contentType": "json",
+				"blocksJson": "[{\"object\":\"block\",\"type\":\"paragraph\",\"paragraph\":{\"rich_text\":[]}}]"
 			},
 			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000006",
 			"name": "Create Database Page",
@@ -187,9 +189,10 @@
 				},
 				"returnAll": false,
 				"limit": 2,
-				"filterType": "none",
+				"filterType": "json",
 				"simple": false,
-				"options": {}
+				"options": {},
+				"filterJson": "={{ { \"property\": \"Name\", \"rich_text\": { \"contains\": \"sync\" } } }}"
 			},
 			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000008",
 			"name": "Get Database Pages",

@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { requestPath, jsonParse, NodeApiError } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { loadOptions } from './methods';
 import { versionDescription } from './VersionDescription';
@@ -28,7 +28,6 @@ import {
 	prepareNotionError,
 	simplifyBlocksOutput,
 	simplifyObjects,
-	validateJSON,
 } from '../shared/GenericFunctions';
 import { listSearch } from '../shared/methods';
 
@@ -466,18 +465,8 @@ export class NotionV2 implements INodeType {
 								});
 							}
 						} else if (filterType === 'json') {
-							const filterJson = this.getNodeParameter('filterJson', i) as string;
-							if (validateJSON(filterJson) !== undefined) {
-								body.filter = jsonParse(filterJson);
-							} else {
-								throw new NodeApiError(
-									this.getNode(),
-									{
-										message: 'Filters (JSON) must be a valid json',
-									},
-									{ itemIndex: i },
-								);
-							}
+							body.filter =
+								(this.getNodeParameter('filterJson', i) as IDataObject | undefined) ?? {};
 						}
 
 						if (!Object.keys(body.filter as IDataObject).length) {

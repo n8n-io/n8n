@@ -7837,6 +7837,37 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual({});
 			});
 
+			it.each(['object', 'array'] as const)(
+				'returns no issues for a blank JSON field with validateType %s',
+				(validateType) => {
+					const jsonProperties: INodeProperties = {
+						displayName: 'JSON',
+						name: 'json',
+						type: 'json',
+						default: '',
+						validateType,
+					};
+
+					const result = getParameterIssues(jsonProperties, { json: '' }, '', testNode, null);
+
+					expect(result).toEqual({});
+				},
+			);
+
+			it('names the parameter by its display name in the issue', () => {
+				const result = getParameterIssues(
+					{ ...numberProperties, name: 'internalLimit' },
+					{ internalLimit: 'not-a-number' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.internalLimit).toEqual([
+					"'Limit' expects a number but we got 'not-a-number'",
+				]);
+			});
+
 			it('skips validateType for expression values (starting with "=")', () => {
 				const result = getParameterIssues(
 					numberProperties,

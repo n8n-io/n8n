@@ -247,6 +247,94 @@ describe('validateValueAgainstSchema', () => {
 		expect(typeof result).toEqual('number');
 	});
 
+	describe('when a JSON parameter is blank', () => {
+		const nodeType = {
+			description: {
+				properties: [
+					{
+						displayName: 'Filter',
+						name: 'filterJson',
+						type: 'json',
+						default: '',
+						validateType: 'object',
+					},
+					{
+						displayName: 'Filters',
+						name: 'filters',
+						type: 'fixedCollection',
+						default: {},
+						options: [
+							{
+								name: 'conditions',
+								displayName: 'Conditions',
+								values: [
+									{
+										displayName: 'Blocks',
+										name: 'blocksJson',
+										type: 'json',
+										default: '',
+										validateType: 'array',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		} as unknown as INodeType;
+		const node = { parameters: {}, name: 'Node', type: 'test', typeVersion: 1 } as INode;
+
+		test('returns undefined for a top-level parameter', () => {
+			expect(validateValueAgainstSchema(node, nodeType, ' ', 'filterJson', 0, 0)).toBeUndefined();
+		});
+
+		test('returns undefined for a collection entry', () => {
+			expect(
+				validateValueAgainstSchema(
+					node,
+					nodeType,
+					[{ blocksJson: '' }],
+					'filters.conditions',
+					0,
+					0,
+				),
+			).toEqual([{ blocksJson: undefined }]);
+		});
+
+		test('names the parameter by its display name when the value is invalid', () => {
+			expect(() => validateValueAgainstSchema(node, nodeType, '{a:', 'filterJson', 0, 0)).toThrow(
+				expect.objectContaining({
+					message: "Invalid input for 'Filter' [item 0]",
+					description: "'Filter' expects an object but we got '{a:'",
+				}),
+			);
+		});
+
+		test('names a collection field by its display name when the value is invalid', () => {
+			expect(() =>
+				validateValueAgainstSchema(
+					node,
+					nodeType,
+					[{ blocksJson: '{}' }],
+					'filters.conditions',
+					0,
+					0,
+				),
+			).toThrow(
+				expect.objectContaining({ description: "'Blocks' expects an array but we got '{}'" }),
+			);
+		});
+
+		test('parses a JSON string and keeps an object', () => {
+			expect(validateValueAgainstSchema(node, nodeType, '{"a":1}', 'filterJson', 0, 0)).toEqual({
+				a: 1,
+			});
+			expect(validateValueAgainstSchema(node, nodeType, { a: 1 }, 'filterJson', 0, 0)).toEqual({
+				a: 1,
+			});
+		});
+	});
+
 	describe('when validating a resource mapper value', () => {
 		describe('when attemptToConvertTypes === true', () => {
 			const nodeType = {

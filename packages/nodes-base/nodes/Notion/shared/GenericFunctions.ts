@@ -1082,6 +1082,7 @@ export function getSearchFilters(resource: string) {
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
+			validateType: 'object',
 			displayOptions: {
 				show: {
 					resource: [resource],
@@ -1095,16 +1096,6 @@ export function getSearchFilters(resource: string) {
 			default: '',
 		},
 	];
-}
-
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
 }
 
 /**

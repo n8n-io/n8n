@@ -13,13 +13,11 @@ import {
 	getPageCreateContent,
 	getPageId,
 	handleOperationError,
-	jsonParse,
 	mapProperties,
 	mapSorting,
 	normalizePropertyValues,
 	simplifyObjects,
 	type SortData,
-	validateJSON,
 } from '../../helpers/utils';
 import {
 	getDataSourceProperties,
@@ -444,6 +442,7 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		typeOptions: { rows: 8 },
 		default: '',
+		validateType: 'array',
 		displayOptions: {
 			show: { resource: ['databasePage'], operation: ['create'], contentType: ['json'] },
 		},
@@ -616,13 +615,7 @@ export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[
 				const conditions = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 				body.filter = mapDataSourceFilters(conditions, matchType, this.getTimezone());
 			} else if (filterType === 'json') {
-				const filterJson = this.getNodeParameter('filterJson', i) as string;
-				if (validateJSON(filterJson) === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Filters (JSON) must be valid JSON', {
-						itemIndex: i,
-					});
-				}
-				body.filter = jsonParse(filterJson);
+				body.filter = this.getNodeParameter('filterJson', i) as IDataObject | undefined;
 			}
 			if (!Object.keys((body.filter as IDataObject | undefined) ?? {}).length) {
 				delete body.filter;

@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { blockUrlExtractionRegexp, databasePageUrlExtractionRegexp } from '../../shared/constants';
 import {
@@ -17,7 +17,6 @@ import {
 	prepareNotionError,
 	simplifyBlocksOutput,
 	simplifyObjects,
-	validateJSON,
 	type SortData,
 } from '../../shared/GenericFunctions';
 import { isDataObject } from '../transport';
@@ -30,8 +29,6 @@ export {
 	prepareNotionError,
 	simplifyBlocksOutput,
 	simplifyObjects,
-	validateJSON,
-	jsonParse,
 };
 export type { SortData };
 
@@ -234,14 +231,6 @@ export function formatBlocks(blockValues: IDataObject[]) {
 	return results;
 }
 
-export function parseJsonParameter(this: IExecuteFunctions, value: string, itemIndex: number) {
-	try {
-		return JSON.parse(value) as unknown;
-	} catch {
-		throw new NodeOperationError(this.getNode(), 'JSON value must be valid JSON', { itemIndex });
-	}
-}
-
 function getUrlSearchParam(value: string, parameterName: string) {
 	try {
 		return new URL(value).searchParams.get(parameterName) ?? '';
@@ -307,18 +296,17 @@ export function extractBlockId(this: IExecuteFunctions, itemIndex: number) {
 }
 
 export function getJsonBlocks(this: IExecuteFunctions, itemIndex: number) {
-	const blocksJson = this.getNodeParameter('blocksJson', itemIndex, '') as string;
-	if (!blocksJson) return [];
+	const blocks = this.getNodeParameter('blocksJson', itemIndex, []);
+	if (blocks === undefined) return [];
 
-	const parsed = parseJsonParameter.call(this, blocksJson, itemIndex);
-	if (!Array.isArray(parsed)) {
+	if (!Array.isArray(blocks)) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Blocks (JSON) must be an array of Notion block objects',
 			{ itemIndex },
 		);
 	}
-	return parsed.filter(isDataObject);
+	return blocks.filter(isDataObject);
 }
 
 export function getPageCreateContent(this: IExecuteFunctions, itemIndex: number) {

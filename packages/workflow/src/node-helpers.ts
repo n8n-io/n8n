@@ -1512,12 +1512,12 @@ const validateParameter = (
 	value: GenericValue,
 	type: FieldType,
 ): string | undefined => {
-	const nodeName = nodeProperties.name;
 	const options = type === 'options' ? nodeProperties.options : undefined;
 
 	if (!value?.toString().startsWith('=')) {
-		const validationResult = validateFieldType(nodeName, value, type, {
+		const validationResult = validateFieldType(nodeProperties.displayName, value, type, {
 			valueOptions: options as INodePropertyOptions[],
+			blankStringAsNull: true,
 		});
 
 		if (!validationResult.valid && validationResult.errorMessage) {

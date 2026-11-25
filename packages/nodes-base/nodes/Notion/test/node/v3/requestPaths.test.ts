@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import isEqual from 'lodash/isEqual';
 import nock from 'nock';
 
 describe('Test NotionV3, request paths', () => {
@@ -46,14 +47,25 @@ describe('Test NotionV3, request paths', () => {
 			id: '248fb9cb-4cf0-804c-8663-d8ecdd5e6913',
 			properties: { Name: { id: 'title', type: 'title' } },
 		});
-		mock.post('/pages').reply(200, { object: 'page', id: '15bfb9cb-4cf0-81c7-aab4-c5855b8cb611' });
+		mock
+			.post('/pages', (body: { children?: unknown }) =>
+				isEqual(body.children, [
+					{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } },
+				]),
+			)
+			.reply(200, { object: 'page', id: '15bfb9cb-4cf0-81c7-aab4-c5855b8cb611' });
 		mock
 			.get('/pages/15bfb9cb4cf081c7aab4c5855b8cb612')
 			.reply(200, { object: 'page', id: '15bfb9cb-4cf0-81c7-aab4-c5855b8cb612' });
-		mock.post('/data_sources/248fb9cb-4cf0-804c-8663-d8ecdd5e6914/query').reply(200, {
-			results: [{ object: 'page', id: '15bfb9cb-4cf0-81c7-aab4-c5855b8cb613' }],
-			has_more: false,
-		});
+		mock
+			.post('/data_sources/248fb9cb-4cf0-804c-8663-d8ecdd5e6914/query', {
+				filter: { property: 'Name', rich_text: { contains: 'sync' } },
+				page_size: 2,
+			})
+			.reply(200, {
+				results: [{ object: 'page', id: '15bfb9cb-4cf0-81c7-aab4-c5855b8cb613' }],
+				has_more: false,
+			});
 		mock
 			.patch('/pages/15bfb9cb4cf081c7aab4c5855b8cb614')
 			.reply(200, { object: 'page', id: '15bfb9cb-4cf0-81c7-aab4-c5855b8cb614' });
