@@ -3,6 +3,7 @@ import {
 	KNOWLEDGE_COLLECTION_DESCRIPTION_MAX_LENGTH,
 	KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH,
 	type KnowledgeCollectionDto,
+	type UpdateKnowledgeCollectionDto,
 } from '@n8n/api-types';
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -31,10 +32,11 @@ import { useCollectionsStore } from '@/features/settings/context/collections.sto
 
 /**
  * Owned by the collections page: `open`, `saved` after every save, and `created` once the server
- * saved the collection of the current opening.
+ * saved the collection of the current opening. With a `collection`, the dialog edits it.
  */
 const props = defineProps<{
 	open: boolean;
+	collection?: KnowledgeCollectionDto | null;
 }>();
 
 const emit = defineEmits<{
@@ -59,7 +61,7 @@ const submitted = ref(false);
 const serverNameError = ref('');
 const saving = ref(false);
 
-/** A create reports back only while its opening is current, so it never closes a newer dialog. */
+/** A save reports back only while its opening is current, so it never closes a newer dialog. */
 let openToken = 0;
 
 const nameRules: Array<Rule | RuleGroup> = [
@@ -120,7 +122,41 @@ watch(
 	{ immediate: true },
 );
 
-const isValid = computed(() => nameValid.value && descriptionValid.value && form.projectId !== '');
+const isEdit = computed(() => Boolean(props.collection));
+
+// A change cannot move a collection, so only a create needs a project.
+const isValid = computed(
+	() => nameValid.value && descriptionValid.value && (isEdit.value || form.projectId !== ''),
+);
+
+const trimmedName = computed(() => form.name.trim());
+const trimmedDescription = computed(() => form.description.trim());
+
+/** The fields that differ from the saved collection, so a save sends only those. */
+function changesTo(current: KnowledgeCollectionDto): UpdateKnowledgeCollectionDto {
+	const changes: UpdateKnowledgeCollectionDto = {};
+	if (trimmedName.value !== current.name) {
+		changes.name = trimmedName.value;
+	}
+
+	if (trimmedDescription.value !== current.description) {
+		changes.description = trimmedDescription.value;
+	}
+
+	return changes;
+}
+
+const hasChanges = computed(() => {
+	const current = props.collection;
+	if (!current) {
+		return false;
+	}
+
+	return Object.keys(changesTo(current)).length > 0;
+});
+
+// An edit with nothing new has nothing to save, so Save stays disabled.
+const canSubmit = computed(() => !isEdit.value || hasChanges.value);
 
 function isNameTakenError(error: unknown): boolean {
 	return error instanceof ResponseError && error.httpStatusCode === 409;
@@ -135,8 +171,8 @@ watch(
 );
 
 function resetForm() {
-	form.name = '';
-	form.description = '';
+	form.name = props.collection?.name ?? '';
+	form.description = props.collection?.description ?? '';
 	form.projectId = projectOptions.value[0]?.id ?? '';
 	submitted.value = false;
 	serverNameError.value = '';
@@ -146,29 +182,57 @@ function closeModal() {
 	emit('update:open', false);
 }
 
+async function saveCollection(
+	editing: KnowledgeCollectionDto | null,
+): Promise<KnowledgeCollectionDto> {
+	if (editing) {
+		return await collectionsStore.updateCollection(
+			editing.homeProject.id,
+			editing.id,
+			changesTo(editing),
+		);
+	}
+
+	return await collectionsStore.createCollection(form.projectId, {
+		name: trimmedName.value,
+		description: trimmedDescription.value,
+	});
+}
+
 async function handleSubmit() {
+	// Enter in the name field submits too, so a disabled Save does not guard this alone.
+	if (!canSubmit.value) {
+		return;
+	}
+
 	submitted.value = true;
 	if (!isValid.value || saving.value) {
 		return;
 	}
 
 	const token = openToken;
-	const payload = { name: form.name.trim(), description: form.description.trim() };
+	// The page can pass another collection while the save runs, so the save keeps this one.
+	const editing = props.collection ?? null;
 
 	saving.value = true;
 	try {
-		const collection = await collectionsStore.createCollection(form.projectId, payload);
+		const collection = await saveCollection(editing);
 		// The page reloads its list on every save, also on one from an earlier opening.
 		emit('saved', collection);
 		if (token === openToken) {
-			emit('created', collection);
+			if (editing) {
+				closeModal();
+			} else {
+				emit('created', collection);
+			}
 		}
 
 		// Every save shows the toast, also one from an earlier opening that no longer reports back.
+		const successKey = editing
+			? 'settings.context.collections.edit.success'
+			: 'settings.context.collections.create.success';
 		showMessage({
-			title: i18n.baseText('settings.context.collections.create.success', {
-				interpolate: { name: collection.name },
-			}),
+			title: i18n.baseText(successKey, { interpolate: { name: collection.name } }),
 			type: 'success',
 		});
 	} catch (error) {
@@ -178,7 +242,10 @@ async function handleSubmit() {
 			return;
 		}
 
-		showError(error, i18n.baseText('settings.context.collections.error.create'));
+		const errorKey = editing
+			? 'settings.context.collections.error.update'
+			: 'settings.context.collections.error.create';
+		showError(error, i18n.baseText(errorKey));
 	} finally {
 		saving.value = false;
 	}
@@ -193,7 +260,10 @@ watch(
 
 		openToken += 1;
 		resetForm();
-		void projectsStore.getMyProjects();
+		// Only a create shows the project select.
+		if (!isEdit.value) {
+			void projectsStore.getMyProjects();
+		}
 	},
 	{ immediate: true },
 );
@@ -202,7 +272,13 @@ watch(
 <template>
 	<N8nDialog
 		:open="open"
-		:header="i18n.baseText('settings.context.collections.modal.title')"
+		:header="
+			i18n.baseText(
+				isEdit
+					? 'settings.context.collections.modal.edit.title'
+					: 'settings.context.collections.modal.title',
+			)
+		"
 		:disable-outside-pointer-events="true"
 		data-test-id="collection-modal"
 		@update:open="emit('update:open', $event)"
@@ -268,7 +344,7 @@ watch(
 				</div>
 			</div>
 
-			<div>
+			<div v-if="!isEdit">
 				<N8nInputLabel
 					:label="i18n.baseText('settings.context.collections.modal.project.label')"
 					color="text-dark"
@@ -309,7 +385,14 @@ watch(
 			/>
 			<N8nButton
 				:loading="saving"
-				:label="i18n.baseText('settings.context.collections.modal.submit')"
+				:disabled="!canSubmit"
+				:label="
+					i18n.baseText(
+						isEdit
+							? 'settings.context.collections.modal.edit.submit'
+							: 'settings.context.collections.modal.submit',
+					)
+				"
 				data-test-id="collection-modal-submit"
 				@click="handleSubmit"
 			/>

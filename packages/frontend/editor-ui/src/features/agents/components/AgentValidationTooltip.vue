@@ -144,6 +144,7 @@ const PUBLISH_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 
 const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 	agent: 'agents.chat.misconfigured.missing.agent' as BaseTextKey,
+	humanReview: 'agents.hitl.title',
 	channel: 'agents.builder.triggers.title' as BaseTextKey,
 	tool: 'agents.chat.misconfigured.missing.tools' as BaseTextKey,
 	mcpServer: 'agents.chat.misconfigured.missing.mcpServers' as BaseTextKey,
