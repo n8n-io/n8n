@@ -4,7 +4,7 @@ ARG LAUNCHER_VERSION=1.4.3
 ARG TARGETPLATFORM
 
 ARG BUILDER_IMAGE=n8nio/node-patched:24.22.3-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72-dev@sha256:d44a16584e09816f819b55e57ee7c2ad1d44923df4486e2f1de6f39f277c53d8
-ARG RUNTIME_IMAGE=n8nio/node-patched:24.22.3-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72@sha256:12a55d6c29f16cf68b744095af1a7848a53b3466d84b84b09f498fa09caead5c
+ARG RUNTIME_IMAGE=n8nio/base:24.22.1-c4188d049e9d3b3e9ed6337439fa1cb134979925@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2
 
 # ==============================================================================
 # STAGE 1: System Dependencies & Base Setup
@@ -50,7 +50,10 @@ RUN set -e; \
 # avoids npm rebuild's double-build behavior (built-in node-gyp + install-script
 # node-gyp) which races on dep-file state. Build tooling stays in this throwaway
 # stage so the runtime image ships no compilers.
-FROM ${BUILDER_IMAGE} AS native-builder
+# Clean source of our compiled Node binaries before build tools are installed.
+FROM ${BUILDER_IMAGE} AS node-source
+
+FROM node-source AS native-builder
 
 COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
 
@@ -63,6 +66,18 @@ RUN apk add --no-cache python3 make g++ openssl && \
 # STAGE 5: Final Runtime Image
 # ==============================================================================
 FROM system-deps AS runtime
+
+# Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
+# Keeping this above release metadata ARGs/ENV and `COPY --from=app-artifact-processor`
+# decouples OS base refreshes from Node source compiles while keeping release and
+# app-only builds cached on these layers. V8 patches are already checked by
+# check-v8-patches.js when BUILDER_IMAGE is built on master.
+RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
+COPY --from=node-source /usr/local/bin /usr/local/bin
+COPY --from=node-source /usr/local/lib /usr/local/lib
+RUN node --version \
+    && node -e "if (process.execPath !== '/usr/local/bin/node') throw new Error('expected /usr/local/bin/node, got ' + process.execPath); if (process.config.variables.v8_enable_pointer_compression) throw new Error('pointer compression is on, expected off');" \
+    && ln -sf /usr/local/bin/node /usr/bin/node
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
