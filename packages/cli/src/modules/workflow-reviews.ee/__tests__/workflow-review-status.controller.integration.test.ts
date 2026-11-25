@@ -3,6 +3,7 @@ import {
 	createWorkflow,
 	linkUserToProject,
 	mockInstance,
+	shareWorkflowWithUsers,
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { Person, Project, User } from '@n8n/db';
@@ -77,7 +78,7 @@ describe('GET /workflow-review-requests', () => {
 			take: 1,
 		}).expect(200);
 
-		expect(response.body.data).toEqual({ count: 0, data: [] });
+		expect(response.body.data).toEqual({ count: 0, data: [], reviewRequiredBy: null });
 	});
 
 	test('returns the open review as a minimal summary', async () => {
@@ -300,7 +301,7 @@ describe('GET /workflow-review-requests', () => {
 			state: 'open',
 			take: 1,
 		}).expect(200);
-		expect(openResponse.body.data).toEqual({ count: 0, data: [] });
+		expect(openResponse.body.data).toEqual({ count: 0, data: [], reviewRequiredBy: null });
 
 		const allResponse = await listRequests(ownerAgent, { workflowId: workflow.id }).expect(200);
 		expect(allResponse.body.data.count).toBe(1);
@@ -320,7 +321,7 @@ describe('GET /workflow-review-requests', () => {
 
 		const response = await listRequests(ownerAgent, { workflowId: workflow.id }).expect(200);
 
-		expect(response.body.data).toEqual({ count: 0, data: [] });
+		expect(response.body.data).toEqual({ count: 0, data: [], reviewRequiredBy: null });
 	});
 
 	test('hides a workflow the caller cannot access', async () => {
@@ -373,5 +374,49 @@ describe('GET /workflow-review-requests', () => {
 		await listRequests(ownerAgent, { workflowId: 'wf-1' }).expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
+	});
+});
+
+describe('the level that requires a review for a workflow', () => {
+	const setInstanceApprovalRequired = async (alwaysRequired: boolean) =>
+		await policyService.update({ alwaysRequired });
+	const setProjectApprovalRequired = async (requiredByProject: boolean) =>
+		await ownerAgent
+			.patch(`/projects/${teamProject.id}/workflow-review-settings`)
+			.send({ requiredByProject })
+			.expect(200);
+	const reviewRequiredBy = async (agent: SuperAgentTest, workflowId: string) =>
+		(await listRequests(agent, { workflowId }).expect(200)).body.data.reviewRequiredBy;
+
+	test.each([
+		['no level', { instance: false, project: false }, null],
+		['the instance', { instance: true, project: false }, 'instance'],
+		['the project', { instance: false, project: true }, 'project'],
+	])('reports which level requires a review: %s', async (_case, levels, expected) => {
+		const { workflow } = await createReviewableWorkflow(teamProject);
+		await setInstanceApprovalRequired(levels.instance);
+		await setProjectApprovalRequired(levels.project);
+
+		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe(expected);
+	});
+
+	test('applies the project setting again when the instance stops requiring approval', async () => {
+		const { workflow } = await createReviewableWorkflow(teamProject);
+		await setProjectApprovalRequired(true);
+		await setInstanceApprovalRequired(true);
+		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('instance');
+
+		await setInstanceApprovalRequired(false);
+
+		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('project');
+	});
+
+	test('reports the project level to a user who can read the workflow but not its project', async () => {
+		const { workflow } = await createReviewableWorkflow(teamProject);
+		const sharee = await createMember();
+		await shareWorkflowWithUsers(workflow, [sharee]);
+		await setProjectApprovalRequired(true);
+
+		expect(await reviewRequiredBy(testServer.authAgentFor(sharee), workflow.id)).toBe('project');
 	});
 });
