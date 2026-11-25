@@ -1,12 +1,16 @@
 // ---------------------------------------------------------------------------
-// Cases for the approval judge eval: one `<id>.json` file per case in a cases
-// directory. The cases come from production traces, so they live outside this
-// repository. A case is a pending action that Auto mode reviews: the
-// conversation before the approval card, the action as the card shows it, and
-// the decision that the case expects.
+// Cases for the approval judge eval: one `<id>.json` file per case, in the
+// main eval case format that LangTracer exports. The file name is the case id.
+// The cases come from production traces, so they live outside this repository.
 //
-// `critical: true` marks a case where approving would cause harm the user did
-// not ask for. A critical case always expects `ask`.
+// A case is a pending action that Auto mode reviews: the conversation before
+// the approval card, and the action as the card shows it (`pendingApproval`).
+// Only this eval reads `pendingApproval`, so the main case schema does not
+// have the key.
+//
+// The labels are tags: `approval-judge`, and one `expects:<decision>` with
+// `approve` or `ask`. A `critical` tag marks a case where approving would cause
+// harm the user did not ask for. A critical case always expects `ask`.
 // ---------------------------------------------------------------------------
 
 import {
@@ -26,74 +30,126 @@ import { z } from 'zod';
 import type { ApprovalJudgeInput } from '../../src/approval-review/approval-judge';
 import type { PendingApproval } from '../../src/approval-review/pending-approval';
 import { convertFormerDataTableCall } from '../../src/tools/data-tables/change-data-tables.legacy';
+import { EvalTestCaseSchema } from '../harness/schema';
+import { normalizeExportedCase } from '../langtracer/normalize';
 import { getJsonFiles } from '../utils/get-json-files';
 
-const mcpHintsSchema = z
-	.object({
-		readOnlyHint: z.boolean(),
-		destructiveHint: z.boolean(),
-		idempotentHint: z.boolean(),
-		openWorldHint: z.boolean(),
-	})
-	.partial();
+export const APPROVAL_JUDGE_TAG = 'approval-judge';
+const EXPECTS_TAG_PREFIX = 'expects:';
+const CRITICAL_TAG = 'critical';
 
-export const approvalJudgeCaseSchema = z
-	.object({
-		id: z.string().regex(/^[a-z0-9-]+$/, 'use a kebab-case id'),
-		description: z.string().min(1),
-		source: z.discriminatedUnion('kind', [
-			z.object({
-				kind: z.literal('trace'),
-				ref: z.string().min(1),
-				userDecision: z.enum(['approved', 'denied', 'abandoned', 'unknown']),
-			}),
-			z.object({ kind: z.literal('synthetic'), basedOn: z.string().nullable() }),
-		]),
-		conversation: z
-			.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().min(1) }))
-			.min(1),
-		action: z.object({
-			toolName: z.string().min(1),
-			args: z.unknown(),
-			message: z.string().min(1),
-			severity: instanceAiConfirmationSeveritySchema,
-			resourceName: z.string().optional(),
-			approvalDetails: instanceAiApprovalDetailsSchema.optional(),
-			mcp: z
-				.object({ serverName: z.string().optional(), annotations: mcpHintsSchema.optional() })
+export type ApprovalDecision = 'approve' | 'ask';
+
+/** An action that waits for approval, as the approval card shows it. */
+const pendingApprovalSchema = z.object({
+	toolName: z.string().min(1),
+	args: z.unknown(),
+	message: z.string().min(1),
+	severity: instanceAiConfirmationSeveritySchema,
+	resourceName: z.string().optional(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	mcp: z
+		.object({
+			serverName: z.string().optional(),
+			annotations: z
+				.object({
+					readOnlyHint: z.boolean(),
+					destructiveHint: z.boolean(),
+					idempotentHint: z.boolean(),
+					openWorldHint: z.boolean(),
+				})
+				.partial()
 				.optional(),
-		}),
-		expected: z.enum(['approve', 'ask']),
-		critical: z.boolean().default(false),
-		rationale: z.string().min(1),
-		tags: z.array(z.string()).default([]),
+		})
+		.optional(),
+});
+
+const labelsSchema = z
+	.object({
+		expected: z
+			.array(z.enum(['approve', 'ask']))
+			.length(1, 'needs exactly one expects:<decision> tag')
+			.transform((decisions) => decisions[0]),
+		critical: z.boolean(),
 	})
-	.refine((testCase) => !testCase.critical || testCase.expected === 'ask', {
+	.refine((labels) => !labels.critical || labels.expected === 'ask', {
 		message: 'a critical case must expect ask',
 		path: ['expected'],
 	});
 
-export type ApprovalJudgeCase = z.infer<typeof approvalJudgeCaseSchema>;
+export interface ApprovalJudgeCase {
+	id: string;
+	conversation: Array<{ role: 'user' | 'assistant'; text: string }>;
+	action: z.infer<typeof pendingApprovalSchema>;
+	expected: ApprovalDecision;
+	critical: boolean;
+	/** The descriptive tags, without the labels. Reports group cases by them. */
+	tags: string[];
+}
+
+/** The expectation of a case, in the text that LangTracer stores for it. */
+export function expectationText(expected: ApprovalDecision): string {
+	return `Decision: ${expected}`;
+}
+
+function formatIssues(error: z.ZodError): string {
+	return error.issues
+		.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+		.join('; ');
+}
+
+function isLabelTag(tag: string): boolean {
+	return tag === APPROVAL_JUDGE_TAG || tag === CRITICAL_TAG || tag.startsWith(EXPECTS_TAG_PREFIX);
+}
+
+function parseCaseFile(file: string): ApprovalJudgeCase {
+	const name = basename(file);
+	let raw: unknown;
+	try {
+		raw = JSON.parse(readFileSync(file, 'utf8'));
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		throw new Error(`Invalid approval judge case ${name}: ${reason}`);
+	}
+	// Strips export-only keys (id, name, suiteId, ...), as the LangTracer pull does.
+	const parsed = EvalTestCaseSchema.safeParse(normalizeExportedCase(raw));
+	if (!parsed.success) {
+		throw new Error(`Invalid approval judge case ${name}: ${formatIssues(parsed.error)}`);
+	}
+	const { tags, conversation } = parsed.data;
+	if (!tags.includes(APPROVAL_JUDGE_TAG)) {
+		throw new Error(`Invalid approval judge case ${name}: has no "${APPROVAL_JUDGE_TAG}" tag`);
+	}
+	const pendingApproval = pendingApprovalSchema.safeParse(
+		isRecord(raw) ? raw.pendingApproval : undefined,
+	);
+	if (!conversation || !pendingApproval.success) {
+		const reason = pendingApproval.success ? '' : `: ${formatIssues(pendingApproval.error)}`;
+		throw new Error(
+			`Invalid approval judge case ${name}: needs a conversation and a pendingApproval${reason}`,
+		);
+	}
+	const labels = labelsSchema.safeParse({
+		expected: tags
+			.filter((tag) => tag.startsWith(EXPECTS_TAG_PREFIX))
+			.map((tag) => tag.slice(EXPECTS_TAG_PREFIX.length)),
+		critical: tags.includes(CRITICAL_TAG),
+	});
+	if (!labels.success) {
+		throw new Error(`Invalid approval judge case ${name}: ${formatIssues(labels.error)}`);
+	}
+	return {
+		id: basename(file, '.json'),
+		conversation: conversation.map(({ role, text }) => ({ role, text })),
+		action: pendingApproval.data,
+		...labels.data,
+		tags: tags.filter((tag) => !isLabelTag(tag)),
+	};
+}
 
 /** Loads and validates every case. Throws on an invalid file, naming it. */
 export function loadApprovalJudgeCases(dir: string, filter?: string): ApprovalJudgeCase[] {
-	return getJsonFiles(dir, filter).map((file) => {
-		let raw: unknown;
-		try {
-			raw = JSON.parse(readFileSync(file, 'utf8'));
-		} catch (error) {
-			const reason = error instanceof Error ? error.message : String(error);
-			throw new Error(`Invalid approval judge case ${basename(file)}: ${reason}`);
-		}
-		const parsed = approvalJudgeCaseSchema.safeParse(raw);
-		if (!parsed.success) {
-			throw new Error(`Invalid approval judge case ${basename(file)}: ${parsed.error.message}`);
-		}
-		if (`${parsed.data.id}.json` !== basename(file)) {
-			throw new Error(`Approval judge case ${basename(file)} must be named ${parsed.data.id}.json`);
-		}
-		return parsed.data;
-	});
+	return getJsonFiles(dir, filter).map(parseCaseFile);
 }
 
 /**

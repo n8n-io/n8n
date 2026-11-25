@@ -7,7 +7,7 @@ import type { ArtifactTab } from './useCanvasPreview';
 
 // `name` is the name the server had when the details loaded.
 export type ArtifactTabSummary =
-	| { type: 'workflow'; name: string; updatedAt: string; published: boolean }
+	| { type: 'workflow'; name: string; updatedAt: string; published: boolean; isArchived: boolean }
 	| { type: 'data-table'; name: string; updatedAt: string; columnCount: number };
 
 /** `null` means the artifact was checked but has no details, e.g. it is deleted. */
@@ -17,7 +17,7 @@ type SummarizedType = ArtifactTabSummary['type'];
 
 // The workflow list endpoint accepts at most 50 ids for each request.
 const MAX_IDS_PER_REQUEST = 50;
-const WORKFLOW_SUMMARY_FIELDS = ['id', 'name', 'updatedAt', 'activeVersionId'];
+const WORKFLOW_SUMMARY_FIELDS = ['id', 'name', 'updatedAt', 'activeVersionId', 'isArchived'];
 
 /** Tells if the hover card of a tab shows loaded details. */
 export function hasTabSummary(tab: ArtifactTab): tab is ArtifactTab & { type: SummarizedType } {
@@ -51,6 +51,7 @@ export function useArtifactTabSummaries(tabs: () => ArtifactTab[]) {
 					name: workflow.name,
 					updatedAt: String(workflow.updatedAt),
 					published: !!workflow.activeVersionId,
+					isArchived: !!workflow.isArchived,
 				},
 			]),
 		);

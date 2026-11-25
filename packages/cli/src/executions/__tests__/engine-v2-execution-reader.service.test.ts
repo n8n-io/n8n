@@ -454,6 +454,51 @@ describe('EngineV2ExecutionReader', () => {
 			});
 		});
 
+		it('should note the parent execution on the trigger task of a sub-execution', async () => {
+			const parentId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					steps: [step()],
+					parent: { executionId: parentId, stepId: 'step-call', awaited: true },
+					parentWorkflowId: 'wf-parent',
+					subExecutions: [],
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
+				parentExecution: { executionId: parentId, workflowId: 'wf-parent' },
+			});
+		});
+
+		it('should note the sub-executions on the steps that started them', async () => {
+			const subId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfc';
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					steps: [step()],
+					parentWorkflowId: null,
+					subExecutions: [{ executionId: subId, workflowId: 'wf-sub', stepId: 'step-1' }],
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
+				subExecution: { executionId: subId, workflowId: 'wf-sub' },
+				subExecutionsCount: 1,
+			});
+		});
+
+		it('should read the execution once, with its links', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+
+			await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
+			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
+		});
+
 		it('should report empty run data when the snapshot carries no steps', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 

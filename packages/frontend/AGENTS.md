@@ -3,6 +3,28 @@
 Rules for frontend work in `packages/frontend` and `packages/modules/*/frontend`.
 Read the root `AGENTS.md` first. This file does not repeat its rules.
 
+## Commands
+
+- Run one test from the package folder: `pnpm test <file> --maxWorkers=1`.
+- Start the editor with hot reload from the repository root: `pnpm dev:fe:editor`.
+  "Local development" in the root `AGENTS.md` tells how to start the backend.
+- Start Storybook: `pnpm dev` in `@n8n/design-system`.
+- Do not run a full frontend typecheck. CI runs it.
+- Format and lint the files that you changed. See [Checks](#checks).
+
+## Skills and review rules
+
+Skills are in `.agents/skills/<name>`. Load a skill when the task matches:
+
+- `ui-design`: you build, change or style UI in `editor-ui`, `@n8n/design-system` or a module frontend.
+- `content-design`: you write or change UI text.
+- `experiments`: you add, change or remove an experiment or a PostHog feature flag in `editor-ui`.
+- `agent-design-language`: you change the Agent Builder UI.
+- `telemetry`: you add or change a telemetry event.
+
+`.agents/review-rules/frontend/*.md` lists the problems that code review flags.
+Read these files before you hand back the work.
+
 ## Where code goes
 
 - `editor-ui/src/app` is the shell. It holds the router, the app-wide stores, components and composables.
@@ -37,8 +59,16 @@ If an existing component is almost correct, extend it. Do not make a copy.
 The lint rule `@n8n/design-system/no-direct-component-imports` stops most direct `element-plus` and `reka-ui` imports.
 Its message names the design-system component to use, or tells you to add one to `@n8n/design-system`.
 
+## Vue and Pinia
+
+- Write components with `<script setup lang="ts">`.
+- Write Pinia stores as setup stores: `defineStore(<id>, () => { ... })`.
+- `.agents/review-rules/frontend/vue-correctness.md` lists the Vue errors that no check finds.
+
 ## Design system
 
+- To select a CSS token, use the narrowest token layer that fits.
+  `.agents/review-rules/frontend/design-system.md` lists the layers. `ui-design` tells how to find a token.
 - Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
   Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
 - When rendering `el-plus` popovers/dropdowns/selects inside `N8nDialog`, prefer to keep them in the dialog stacking context with `:teleported="false"` unless they intentionally need to escape.
@@ -95,5 +125,6 @@ The lint configs load from `dist`. In a new checkout, build them first, from the
 Some folders have their own `AGENTS.md`. Read it before you change a file in that folder:
 
 - `packages/frontend/@n8n/design-system/AGENTS.md`
+- `packages/modules/AGENTS.md`
 - `packages/frontend/editor-ui/src/features/agents/AGENTS.md`
 - `packages/frontend/editor-ui/src/app/stores/workflowDocument/AGENTS.md`

@@ -364,7 +364,8 @@ export class ImportService {
 				source: 'import',
 			});
 		} catch (e) {
-			this.logger.error(`Failed to activate workflow ${workflowId}`, { error: ensureError(e) });
+			const error = ensureError(e);
+			this.logger.error(`Failed to activate workflow ${workflowId}: ${error.message}`, { error });
 		}
 	}
 
