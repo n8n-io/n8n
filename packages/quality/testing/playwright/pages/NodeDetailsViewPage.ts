@@ -611,17 +611,26 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async changeInputRunSelector(value: string) {
-		const selector = this.inputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.changeRunSelector(this.inputPanel, value);
 		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
-		const selector = this.outputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.changeRunSelector(this.outputPanel, value);
 		await this.expectOutputRunSelectorValue(value);
+	}
+
+	private async changeRunSelector(panel: RunDataPanel, value: string) {
+		const input = panel.getRunSelectorInput();
+		await input.click();
+		await expect(input).toHaveAttribute('aria-expanded', 'true');
+		await expect(input).toHaveAttribute('aria-controls', /.+/);
+		const listboxId = await input.getAttribute('aria-controls');
+		// Both panels have the same labels. A closing dropdown can still be visible.
+		await this.page
+			.locator(`[id="${listboxId}"]`)
+			.getByRole('option', { name: value, includeHidden: true })
+			.click();
 	}
 
 	// Run-selector updates can land asynchronously (notably cross-panel via
