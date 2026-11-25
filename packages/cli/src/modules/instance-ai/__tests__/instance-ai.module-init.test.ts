@@ -465,9 +465,9 @@ describe('InstanceAiModule.init', () => {
 	it('registers the LLM mock simulation backend only when the agents module starts', async () => {
 		setup();
 		const { SimulationBackendRegistry } = await import(
-			'@/modules/agents/simulation/simulation-backend-registry'
+			'@/modules/agents/simulation/simulation-backend-registry.js'
 		);
-		const { LlmMockSimulationBackend } = await import('../eval/llm-mock-simulation-backend');
+		const { LlmMockSimulationBackend } = await import('../eval/llm-mock-simulation-backend.js');
 		const registry = mockInstance(SimulationBackendRegistry);
 		const backend = mockInstance(LlmMockSimulationBackend);
 		const modules = mockInstance(ModuleRegistry);
