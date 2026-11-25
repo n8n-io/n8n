@@ -25,7 +25,6 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
