@@ -427,7 +427,7 @@ describe('InstancePolicyTable', () => {
 		it('keeps the focus on a row that moves when the table is sorted by access', async () => {
 			const rows = [...ROWS, row('zoomApi', 'Zoom API')];
 			const { getByTestId, getByRole, rerender } = setup(rows);
-			await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+			await userEvent.click(getByRole('button', { name: 'Access' }));
 			getByTestId('instance-policy-open-airtableApi').focus();
 
 			await rerender({
