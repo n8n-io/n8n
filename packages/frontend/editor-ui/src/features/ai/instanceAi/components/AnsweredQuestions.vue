@@ -6,7 +6,6 @@
  * after the user submits answers via the questions wizard.
  * Styled to match the AI builder's UserAnswersMessage.
  */
-import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getAskedQuestions } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
@@ -57,13 +56,11 @@ function getAnswers(): DisplayAnswer[] {
 	<div :class="$style.wrapper">
 		<div :class="$style.userBubble" data-test-id="instance-ai-answered-questions">
 			<div v-for="(item, idx) in getAnswers()" :key="idx" :class="$style.answerItem">
-				<N8nText :bold="true" size="large" :class="$style.question">
-					{{ item.question }}
-				</N8nText>
-				<N8nText v-if="item.skipped" :class="$style.skipped" size="large">{{
+				<span :class="$style.question">{{ item.question }}</span>
+				<span v-if="item.skipped" :class="$style.skipped">{{
 					i18n.baseText('aiAssistant.builder.planMode.answers.skipped')
-				}}</N8nText>
-				<N8nText v-else size="large">{{ item.answer }}</N8nText>
+				}}</span>
+				<span v-else>{{ item.answer }}</span>
 			</div>
 		</div>
 	</div>
@@ -77,6 +74,10 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .userBubble {
+	// The same text size as the other chat bubbles, which follows the width of the message.
+	font-size: var(--n8n-markdown--font-size--base, var(--font-size--sm));
+	line-height: var(--line-height--xl);
+	color: var(--assistant--color--text--user-bubble, var(--text-color));
 	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
 	border-radius: var(--radius--xl);
@@ -96,6 +97,7 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .question {
+	font-weight: var(--font-weight--bold);
 	line-height: var(--line-height--md);
 }
 
