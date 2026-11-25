@@ -1,0 +1,35 @@
+.github/workflows/util-probe-npm-oidc-exchange.yml
+  s_761b295ca82ccf::t_458a1ac427111d 46
+.github/actions/setup-nodejs/action.yml
+  s_761b295ca82ccf::t_458a1ac427111d 10,12
+.github/workflows/test-unit-reusable.yml
+  s_761b295ca82ccf::t_458a1ac427111d 15
+.github/workflows/test-linting-reusable.yml
+  s_761b295ca82ccf::t_458a1ac427111d 15
+.github/scripts/docker/bake-inputs-changed.test.mjs
+  s_761b295ca82ccf::t_13c2458a24e15f 26-27,50-51
+.github/scripts/docker/node-source-manifests.test.mjs
+  s_761b295ca82ccf::t_13c2458a24e15f 28,108,145-146
+.github/workflows/ci-master.yml
+  s_761b295ca82ccf::t_458a1ac427111d 43,48
+.github/workflows/test-workflow-scripts-reusable.yml
+  s_761b295ca82ccf::t_458a1ac427111d 15
+.github/WORKFLOWS.md
+  s_761b295ca82ccf::t_458a1ac427111d 696,781
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9fd156aeb21874c8bc80fc410d2c6cf6341ddfd3",
+  "prompts": {},
+  "sessions": {
+    "s_761b295ca82ccf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04bee6f9-c333-4211-a640-d73f22a76f53",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
