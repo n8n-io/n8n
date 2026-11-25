@@ -3,8 +3,10 @@ import { Container } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
+import { HttpSimulator, isGenericHttpNode } from './http-simulator';
 import type { HydrationModel } from './hydration-llm';
 import type { CapturedRequest } from './network';
+import { canonicalHost, isTokenExchange, vendorForRequest } from './vendor-knowledge';
 
 const ABSOLUTE_URL = /^[a-z][a-z0-9+.-]*:\/\//i;
 
@@ -52,6 +54,11 @@ function toBody(options: IHttpRequestOptions, headers: Record<string, string>): 
 	headers['content-type'] ??= 'application/json';
 	return Buffer.from(JSON.stringify(body));
 }
+
+// The guard knows a request when a vendor serves its host and path, or when it is a token exchange.
+const hasVendor = (req: CapturedRequest): boolean =>
+	isTokenExchange(req) ||
+	vendorForRequest(canonicalHost(req.url.hostname), req.url.pathname) !== undefined;
 
 /** The request of a node, as the guard reads it. */
 export function toCapturedRequest(options: IHttpRequestOptions): CapturedRequest {
@@ -113,10 +120,16 @@ export interface NodeRequestGuardScope {
  * they send a request: the reads and writes go to the guard, a token exchange goes on to the network.
  */
 export function createNodeRequestGuard(scope: NodeRequestGuardScope): EvalLlmMockHandler {
-	return async (options) => {
+	return async (options, node) => {
+		const req = toCapturedRequest(options);
+		// A host with no vendor gets a simulated answer when the HTTP Request node calls it. Another node,
+		// or a host with a vendor, goes to the guard.
+		if (isGenericHttpNode(node) && !hasVendor(req)) {
+			return await Container.get(HttpSimulator).respond(options, node, scope);
+		}
 		// Load the guard only when a node tool makes a call. Most chats never do.
 		const { HttpGuardService } = await import('./http-guard.service.js');
-		const res = await Container.get(HttpGuardService).handle(toCapturedRequest(options), scope);
+		const res = await Container.get(HttpGuardService).handle(req, scope);
 		return res === undefined
 			? undefined
 			: await toMockResponse(res, options.encoding, options.returnFullResponse);

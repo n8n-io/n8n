@@ -160,3 +160,22 @@ export function redactSecretSearchParams(endpoint: string): string {
 		.join('&');
 	return `${endpoint.slice(0, queryStart)}?${query}`;
 }
+
+/**
+ * Redact the secrets of the parameters of a node. Besides the key rules of `redactSecretKeys`, it
+ * hides the value of a `{ name, value }` pair whose name is a secret, such as a header or a query
+ * parameter of the HTTP Request node.
+ */
+export function redactNodeParameters(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map((item) => redactNodeParameters(item));
+	if (typeof value !== 'object' || value === null) return value;
+
+	const record = value as Record<string, unknown>;
+	const pairIsSecret = typeof record.name === 'string' && isSecretKey(record.name);
+	const result: Record<string, unknown> = {};
+	for (const [key, val] of Object.entries(record)) {
+		if (isSecretKey(key) || (pairIsSecret && key === 'value')) result[key] = REDACTED;
+		else result[key] = redactNodeParameters(val);
+	}
+	return result;
+}

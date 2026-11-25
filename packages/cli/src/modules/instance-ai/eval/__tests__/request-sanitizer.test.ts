@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 
 import {
 	isSecretKey,
+	redactNodeParameters,
 	redactSecretKeys,
 	redactSecretValuePatterns,
 	truncateForLlm,
@@ -379,5 +380,24 @@ describe('truncateForLlm', () => {
 		const result = truncateForLlm(overByOne);
 		expect(result.endsWith('... [truncated]')).toBe(true);
 		expect(mockWarn).toHaveBeenCalled();
+	});
+});
+
+describe('redactNodeParameters', () => {
+	it('hides the value of a name and value pair with a secret name, and keeps the other pairs', () => {
+		const result = redactNodeParameters({
+			headerParameters: {
+				parameters: [
+					{ name: 'X-Api-Key', value: 'secret-1' },
+					{ name: 'Accept', value: 'application/json' },
+				],
+			},
+			authToken: 'secret-2',
+			url: 'https://a.test/x',
+		});
+
+		expect(JSON.stringify(result)).not.toContain('secret-');
+		expect(JSON.stringify(result)).toContain('application/json');
+		expect(JSON.stringify(result)).toContain('https://a.test/x');
 	});
 });

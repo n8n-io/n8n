@@ -8,6 +8,7 @@
  * CLI test suite.
  */
 
+import type { FetchFn, ModelConfig } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -22,7 +23,7 @@ import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
-import { extractNodeConfig } from './node-config';
+import { extractNodeConfig, extractRedactedNodeConfig } from './node-config';
 import {
 	applyProviderShapeNormalizers,
 	findProviderShapeViolation,
@@ -30,7 +31,12 @@ import {
 	type ProviderRequestInfo,
 } from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
-import { redactSecretKeys, redactSecretSearchParams, truncateForLlm } from './request-sanitizer';
+import {
+	redactSecretKeys,
+	redactSecretSearchParams,
+	redactSecretValuePatterns,
+	truncateForLlm,
+} from './request-sanitizer';
 
 // Re-export: existing consumers/tests import buildDateAnchors from this module.
 export { buildDateAnchors } from './date-anchors';
@@ -149,7 +155,13 @@ const LLM_CALL_TIMEOUT_MS = 120_000;
 // timing out at 180s (3/10 attempts) in run 28699672651.
 const LLM_CALL_RETRY_TIMEOUT_MS = 300_000;
 
-interface MockHandlerOptions {
+/** The model that writes the mock responses. Without it, the eval settings of the environment choose one. */
+export interface MockModel {
+	resolve(): Promise<ModelConfig>;
+	fetch?: FetchFn;
+}
+
+export interface MockHandlerOptions {
 	/** Steers the LLM toward specific behavior (errors, edge cases). */
 	scenarioHints?: string;
 	/** Workflow-level data context from Phase 1 (generateMockHints). */
@@ -159,6 +171,10 @@ interface MockHandlerOptions {
 	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
 	pinnedOutputs?: string;
 	maxRetries?: number;
+	/** A model chosen by the host, for example the model of an agent test chat. */
+	model?: MockModel;
+	/** Remove secrets from the URL, the node parameters and the whole prompt. Set it when the data is not synthetic. */
+	redactSecrets?: boolean;
 	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
 	signal?: AbortSignal;
 }
@@ -362,7 +378,10 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 		// recorded intercepted request and no stack to debug from.
 		try {
 			if (!nodeConfigCache.has(node.name)) {
-				nodeConfigCache.set(node.name, extractNodeConfig(node));
+				nodeConfigCache.set(
+					node.name,
+					options?.redactSecrets ? extractRedactedNodeConfig(node) : extractNodeConfig(node),
+				);
 			}
 
 			const hostname = requestOptions.url ? extractHostname(requestOptions.url) : undefined;
@@ -391,6 +410,8 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				priorWrites: formatWriteLedger(writeLedger, hostname),
 				nodeConfig: nodeConfigCache.get(node.name) ?? '',
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
+				model: options?.model,
+				redactSecrets: options?.redactSecrets,
 			});
 
 			if (cacheKey) {
@@ -512,6 +533,8 @@ interface MockResponseContext {
 	priorWrites?: string;
 	nodeConfig: string;
 	maxRetries: number;
+	model?: MockModel;
+	redactSecrets?: boolean;
 }
 
 async function generateMockResponse(
@@ -546,7 +569,9 @@ async function generateMockResponse(
 		'## Request',
 		`Service: ${serviceName}`,
 		`Node: "${node.name}" (${node.type})`,
-		(request.method ?? 'GET') + ' ' + endpoint,
+		(request.method ?? 'GET') +
+			' ' +
+			(context.redactSecrets ? redactSecretSearchParams(endpoint) : endpoint),
 		'Generate the response for this EXACT endpoint and method.',
 	];
 
@@ -621,7 +646,9 @@ async function generateMockResponse(
 	// need to be the freshest context before generation.
 	sections.push('', '## Date anchors', dateAnchors);
 
-	const userPrompt = sections.join('\n');
+	// The last guard. It catches a secret that has no key name, such as a token inside a value.
+	const joined = sections.join('\n');
+	const userPrompt = context.redactSecrets ? redactSecretValuePatterns(joined) : joined;
 
 	const safeUrl = extractEndpoint(request.url);
 	let lastError = '';
@@ -642,6 +669,7 @@ async function generateMockResponse(
 				},
 				attempt === 0 ? LLM_CALL_TIMEOUT_MS : LLM_CALL_RETRY_TIMEOUT_MS,
 				dateConstraints,
+				context.model,
 			);
 			applyEndpointNormalizers(request, spec);
 			applyProviderShapeNormalizers(
@@ -1006,13 +1034,17 @@ async function callLlm(
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 	timeoutMs: number,
 	dateConstraints: DateFilterConstraint[] = [],
+	model?: MockModel,
 ): Promise<{ spec: MockResponseSpec; softOnly: boolean }> {
 	const capture: SubmitCapture = {};
+	const resolvedModel = await model?.resolve();
 
 	// Cached prefix = tools + instructions; keep MOCK_SYSTEM_PROMPT static, per-request data in the user prompt.
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 		cache: true,
+		...(resolvedModel && { resolvedModel }),
+		...(model?.fetch && { modelFetch: model.fetch }),
 	})
 		.tool(
 			createQuirksLookupTool(
