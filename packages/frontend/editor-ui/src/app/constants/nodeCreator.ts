@@ -73,4 +73,4 @@ export const SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY = 'config_suggest_servic
 export const RECOMMENDED_NODES: string[] = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 export const BETA_NODES: string[] = ['@n8n/n8n-nodes-langchain.microsoftAgent365Trigger'];
 
-export const NEW_TOOL_CATEGORIES: string[] = [AI_CATEGORY_MCP_NODES];
+export const NEW_TOOL_CATEGORIES: string[] = [];

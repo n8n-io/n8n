@@ -625,6 +625,24 @@ describe('NodesMode', () => {
 			expectItemWithoutNewBadge('MCP servers');
 		});
 
+		it('does not show a "New" badge on MCP server nodes in Tools search', async () => {
+			useViewStacks().pushViewStack({
+				title: AI_CATEGORY_TOOLS,
+				mode: 'nodes',
+				rootView: AI_OTHERS_NODE_CREATOR_VIEW,
+				connectionType: NodeConnectionTypes.AiTool,
+				hasSearch: true,
+				search: 'MCP',
+				items: [mcpClientToolElement(), mcpRegistryServerElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expectItemWithoutNewBadge('Acme MCP');
+			expectItemWithoutNewBadge('MCP Client Tool');
+		});
+
 		it('does not show a "New" badge on MCP server nodes in global search', async () => {
 			useViewStacks().pushViewStack({
 				title: 'What happens next?',
