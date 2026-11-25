@@ -66,6 +66,9 @@ async function onCreate() {
 }
 
 function onCancel() {
+	// The create request cannot be cancelled. A close while it runs would
+	// later close a create-folder dialog the user opens next.
+	if (isSubmitting.value) return;
 	uiStore.closeModal(props.modalName);
 }
 
@@ -79,6 +82,9 @@ function onDialogOpenUpdate(open: boolean) {
 		:open="modalOpen"
 		size="medium"
 		:header="title"
+		:close-on-escape="!isSubmitting"
+		:close-on-overlay-click="!isSubmitting"
+		:show-close-button="!isSubmitting"
 		data-test-id="create-folder-modal"
 		@update:open="onDialogOpenUpdate"
 	>
@@ -95,6 +101,7 @@ function onDialogOpenUpdate(open: boolean) {
 					:validation-rules="[{ name: 'VALID_FOLDER_NAME' }]"
 					data-test-id="create-folder-name-input"
 					@blur="onNameBlur"
+					@enter="onCreate"
 					@validate="isNameValid = $event"
 				/>
 			</form>
@@ -104,6 +111,7 @@ function onDialogOpenUpdate(open: boolean) {
 				type="button"
 				variant="outline"
 				:label="i18n.baseText('generic.cancel')"
+				:disabled="isSubmitting"
 				data-test-id="create-folder-cancel"
 				@click="onCancel"
 			/>
