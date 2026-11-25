@@ -1,0 +1,14 @@
+packages/frontend/@n8n/design-system/AGENTS.md
+  h_f8b427917eda26 17,142,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef46ce72c8e5233bce912b6ba22f3118f49c3974",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

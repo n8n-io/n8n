@@ -1,0 +1,59 @@
+packages/@n8n/agents/src/__tests__/workspace/sandbox/create-workspace.test.ts
+  s_9147ff954b587c::t_2fb7f6e936d844 13-45
+pnpm-lock.yaml
+  ai_agent 344-346,1302-1303,13288-13290,32136
+packages/@n8n/config/src/configs/__tests__/agents.config.test.ts
+  s_9147ff954b587c::t_48406ce6172218 21-38
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_9147ff954b587c::t_09caeb7b600d57 90-94,148,163,176-185,211-219,299,303-312,416,441
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_9147ff954b587c::t_2fb7f6e936d844 251,262,275
+packages/cli/src/modules/agents/__tests__/knowledge-sandbox-provider.adapter.test.ts
+  s_9147ff954b587c::t_731a6ba8f9b628 88,122
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_9147ff954b587c::t_7161741de6fffa 67-68
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-filesystem.test.ts
+  s_9147ff954b587c::t_731a6ba8f9b628 134
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_9147ff954b587c::t_731a6ba8f9b628 115-122,128-143
+  s_9147ff954b587c::t_a6971dc4f92ce9 123-127
+packages/@n8n/config/test/config.test.ts
+  s_9147ff954b587c::t_a6971dc4f92ce9 790
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_9147ff954b587c::t_7161741de6fffa 40,65
+packages/@n8n/config/src/configs/agents.config.ts
+  s_9147ff954b587c::t_09caeb7b600d57 102
+  s_9147ff954b587c::t_7161741de6fffa 98-101,103-104
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_9147ff954b587c::t_48406ce6172218 115-139
+  s_9147ff954b587c::t_9c1041d0e46926 146,154,188,204,236,376
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_9147ff954b587c::t_e0f27f8e57db2f 78-79,95-96,99,103-111
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_9147ff954b587c::t_48406ce6172218 135-142,147-191
+  s_9147ff954b587c::t_680bfb92b26982 143-146
+  s_9147ff954b587c::t_9c1041d0e46926 43-47,100,414-415,418-419
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_9147ff954b587c::t_e0f27f8e57db2f 84-85
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_9147ff954b587c::t_7161741de6fffa 6,22,203
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_9147ff954b587c::t_5dcd5375c56907 70
+  s_9147ff954b587c::t_e0f27f8e57db2f 18,28,66-69,71-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b8fbbb9c10444e1dc8e707e36b77b01c0e6b0e5",
+  "prompts": {},
+  "sessions": {
+    "s_9147ff954b587c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ef44-ed79-7943-9ff8-dbff522b729a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

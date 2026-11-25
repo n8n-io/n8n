@@ -1,0 +1,27 @@
+packages/workflow/test/ExpressionExtensions/string-extensions.test.ts
+  s_5da602dd997b45::t_15f072549dbc1d 441-443
+  s_5da602dd997b45::t_82356838791e01 450
+  s_5da602dd997b45::t_16ea85d8911ebe 445-448
+  s_5da602dd997b45::t_09c7cbe8d9272c 427-431,439-440,444
+  s_5da602dd997b45::t_e439ef5723b521 432-438,449,451-454
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  s_5da602dd997b45::t_82356838791e01 438-439
+  s_5da602dd997b45::t_074b9d2da7ba58 12,96,435,441
+  s_5da602dd997b45::t_a7c71891ba1419 1,7,436-437,445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "544782057eddfd16262f823c18ad183f10fb716d",
+  "prompts": {},
+  "sessions": {
+    "s_5da602dd997b45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5c5be00-3f6c-4460-9fd6-bc776375ffce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

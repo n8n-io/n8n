@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersList.vue
+  s_1ecbc39a0d6bae::t_533762391c576b 5,47,95-104,195
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1ecbc39a0d6bae::t_1d7e1144dd6ecb 11037
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e9534bf1937e243eb63bae0e108b94ff733425d",
+  "prompts": {},
+  "sessions": {
+    "s_1ecbc39a0d6bae": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ef72-1aa2-775e-b63e-75681967d71c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/cli/src/modules/mcp-guard/__tests__/gym-admin.test.ts
+  s_f4d26adb514784::t_8c20187b431096 1-103
+packages/cli/src/modules/mcp-guard/__tests__/mcp-upstream.test.ts
+  s_f4d26adb514784::t_4c68aae9d49c48 1-51
+packages/cli/src/modules/mcp-guard/__tests__/once-by-key.test.ts
+  s_f4d26adb514784::t_a8b8df4b0d70f7 1-58
+packages/cli/src/modules/mcp-guard/__tests__/plan-template.test.ts
+  s_f4d26adb514784::t_639ebf40a6c4ff 1-113
+packages/cli/src/modules/mcp-guard/__tests__/router.test.ts
+  s_f4d26adb514784::t_cca7e8ee2e0a61 1-145
+packages/cli/src/modules/mcp-guard/__tests__/seeded-entities.test.ts
+  s_f4d26adb514784::t_c34d857ddb1997 124-171
+packages/cli/src/modules/mcp-guard/gym-admin.ts
+  s_f4d26adb514784::t_847c729ec18a03 1-2,4,9-13,21-24,47
+packages/cli/src/modules/mcp-guard/mcp-upstream.ts
+  s_f4d26adb514784::t_8a0336cad981d6 47-51,70
+packages/cli/src/modules/mcp-guard/plan-template.ts
+  s_f4d26adb514784::t_2b08aca0f45f10 18-21,56-58,83,117-118
+packages/cli/src/modules/mcp-guard/router.ts
+  s_f4d26adb514784::t_3f02eedf29e477 54-57,64-66,80-82,100-108,113-115
+packages/cli/src/modules/mcp-guard/seeded-entities.ts
+  s_f4d26adb514784::t_02e2c5b97730bc 1,34-37,85,119-122,138-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14c0ec7f2a0771b3d9ca879e230cb789cf9cdc07",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
