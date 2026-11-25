@@ -399,7 +399,7 @@ describe('McpServerView', () => {
 			api.getMcpServer.mockResolvedValue({ ...server, project });
 			await renderPage();
 
-			await openMenuItem('Copy URL');
+			await openMenuItem('Copy server URL');
 
 			await waitFor(() =>
 				expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-servers\/sales-tools$/)),
