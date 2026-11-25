@@ -69,8 +69,12 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 				type: 'node',
 				name: 'Slack',
 				description: 'Post messages to channels',
-				nodeType: 'n8n-nodes-base.slack',
-			} as AgentJsonConfig['tools'][number],
+				node: {
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
 		],
 		...overrides,
 	};
@@ -145,14 +149,18 @@ describe('AgentTestScenariosService', () => {
 						type: 'node',
 						name: 'Disabled Slack',
 						description: 'Should not appear',
-						nodeType: 'n8n-nodes-base.slack',
+						node: {
+							nodeType: 'n8n-nodes-base.slack',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+						},
 						enabled: false,
-					} as AgentJsonConfig['tools'][number],
+					},
 					{
 						type: 'workflow',
 						workflow: 'Escalate VIP Ticket',
 						description: 'Escalate urgent tickets',
-					} as AgentJsonConfig['tools'][number],
+					},
 				],
 			}),
 		);
