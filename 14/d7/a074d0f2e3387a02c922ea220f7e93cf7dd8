@@ -1,0 +1,28 @@
+packages/cli/src/modules/promotions.ee/package-references.ts
+  s_4a494bfdece475::t_72c9aa36e158f2 22,79
+  s_4a494bfdece475::t_395ecb5822f548 18-21
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_f261afbb75af3e 3791-3848
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_6e6371042f1eb5 1-5,7,140,149-151
+  s_4a494bfdece475::t_cbd261ca00206c 476-587
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_4a494bfdece475::t_72c9aa36e158f2 485-491,494,498-499,549,620
+  s_4a494bfdece475::t_395ecb5822f548 615,627,643
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14d7a074d0f2e3387a02c922ea220f7e93cf7dd8",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
