@@ -6,6 +6,7 @@ import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { projectIconSchema } from '../../schemas/project.schema';
 import {
 	dataTableUnresolvedKindSchema,
+	preferenceConflictKindSchema,
 	tagUnresolvedKindSchema,
 } from '../packages/import-blocking-issue.schema';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
@@ -248,6 +249,7 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		kind: z.literal('preference'),
 		code: z.literal('preference-conflict'),
 		id: z.string().optional(),
+		reason: preferenceConflictKindSchema,
 		message: z.string(),
 	}),
 	/** Stops every workflow of the project. */

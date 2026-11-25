@@ -1147,20 +1147,21 @@ export class PromotionsService {
 		if (tip.status === 'source-changed') return tip;
 		const { identity, files } = tip;
 
-		const previewChanged = await this.previewChanged(
-			identity,
-			expectedPreviewRevision,
-			async () =>
-				await this.applyPreviewService.build({
-					user: actor,
-					projectId,
-					files,
-					instance: await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
+		const instance =
+			expectedPreviewRevision !== undefined
+				? await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
 						preferenceOptions: await this.preferenceSelection.exportOptions(actor, [projectId]),
-					}),
-				}),
-		);
-		if (previewChanged) return previewChanged;
+					})
+				: undefined;
+		if (instance) {
+			const preview = await this.applyPreviewService.build({
+				user: actor,
+				projectId,
+				files,
+				instance,
+			});
+			if (preview.revision !== expectedPreviewRevision) return this.changedPreview(identity);
+		}
 
 		const reader = new GitCommitPackageReader(files);
 		const inventory = await this.inventoryReader.read(reader);
@@ -1171,10 +1172,7 @@ export class PromotionsService {
 			requested,
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
-		if (requested.preferenceIds.length) {
-			const instance = await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
-				preferenceOptions: await this.preferenceSelection.exportOptions(actor, [projectId]),
-			});
+		if (requested.preferenceIds.length && instance) {
 			Object.assign(
 				selection,
 				selectPromotionPreferences(
@@ -1195,6 +1193,13 @@ export class PromotionsService {
 			selection,
 			'enforce',
 		);
+		if (
+			plan.preferences &&
+			instance &&
+			!this.preferenceSelection.matchesSnapshot(plan.preferences, instance)
+		) {
+			return this.changedPreview(identity);
+		}
 		// A folder the package holds under this project but this instance holds elsewhere blocks
 		// every selection, so the user moves it back first.
 		const requestedWorkflowIds = new Set(requested.workflowIds);
@@ -1271,24 +1276,26 @@ export class PromotionsService {
 		if (tip.status === 'source-changed') return tip;
 		const { identity, files } = tip;
 
-		// The preview always plans without the confirmation, so a confirmed Continue still matches.
-		const previewChanged = await this.previewChanged(
-			identity,
-			expectedPreviewRevision,
-			async () => await this.applyPreviewService.buildInstance({ user: actor, files }),
-		);
-		if (previewChanged) return previewChanged;
-
 		const reader = new GitCommitPackageReader(files);
+		const manifest = await reader.readManifest();
+		const instance =
+			expectedPreviewRevision !== undefined || manifest.preferences !== undefined
+				? await this.applyPreviewService.exportInstance(actor)
+				: undefined;
+		// Continue compares the same unconfirmed preview, even when it confirms destructive changes.
+		if (expectedPreviewRevision !== undefined && instance) {
+			const preview = await this.applyPreviewService.buildInstance({
+				user: actor,
+				files,
+				instance,
+			});
+			if (preview.revision !== expectedPreviewRevision) return this.changedPreview(identity);
+		}
+
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
-		const manifest = await reader.readManifest();
 		let deletedPreferenceIds: string[] | undefined;
-		if (manifest.preferences !== undefined) {
-			const projectIds = await this.projectRepository.findTeamProjectIds();
-			const instance = await exportInstancePackage(this.n8nPackagesService, actor, projectIds, {
-				preferenceOptions: await this.preferenceSelection.exportOptions(actor, projectIds, true),
-			});
+		if (manifest.preferences !== undefined && instance) {
 			deletedPreferenceIds = selectPromotionPreferences(
 				manifest,
 				instance.manifest,
@@ -1311,6 +1318,13 @@ export class PromotionsService {
 			reader,
 			'enforce',
 		);
+		if (
+			plan.preferences &&
+			instance &&
+			!this.preferenceSelection.matchesSnapshot(plan.preferences, instance)
+		) {
+			return this.changedPreview(identity);
+		}
 		const check = blockingCheck(
 			this.applyPreviewService.check(plan, inventory, undefined, moves),
 			await this.applyPreviewService.projectDeletions(inventory),
@@ -1410,14 +1424,7 @@ export class PromotionsService {
 		return { status: 'current', identity, files };
 	}
 
-	/** Builds the preview again when the caller reviewed one. The Apply stops when it differs. */
-	private async previewChanged(
-		identity: ApplyHead['identity'],
-		expectedRevision: string | undefined,
-		buildPreview: () => Promise<{ revision: string }>,
-	): Promise<PreviewChangedResult | null> {
-		if (expectedRevision === undefined) return null;
-		if ((await buildPreview()).revision === expectedRevision) return null;
+	private changedPreview(identity: ApplyHead['identity']): PreviewChangedResult {
 		this.logger.info('Apply stopped because the preview changed', {
 			status: 'preview-changed',
 			...identity,

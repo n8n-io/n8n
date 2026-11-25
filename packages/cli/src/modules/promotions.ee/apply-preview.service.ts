@@ -95,8 +95,8 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
-		// No `apiKeyScopes`: an Apply key needs only `promotions:apply`, and the role of the user
-		// checks each write. The content comes from the configured branch, not from the caller.
+		// Existing resources use the user's write permissions. Preference API-key grants travel
+		// separately in `preferenceApiKeyScopes`.
 	};
 }
 
@@ -215,18 +215,18 @@ export class ApplyPreviewService {
 	async buildInstance({
 		user,
 		files,
+		instance: suppliedInstance,
 	}: {
 		user: User;
 		files: ReadonlyMap<string, Buffer>;
+		instance?: InstancePackage;
 	}): Promise<ApplyPreview> {
 		const { reader, inventory } = await this.readPackage(files);
-		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
-		const [moves, deletedProjects, instance] = await Promise.all([
+		const instance = suppliedInstance ?? (await this.exportInstance(user));
+		const teamProjectIds = instance.manifest.projects?.map(({ id }) => id) ?? [];
+		const [moves, deletedProjects] = await Promise.all([
 			this.findCrossProjectMoves(inventory),
 			this.deletionsOf(inventory, teamProjectIds),
-			exportInstancePackage(this.packagesService, user, teamProjectIds, {
-				preferenceOptions: await this.preferenceSelection.exportOptions(user, teamProjectIds, true),
-			}),
 		]);
 		const plan = await this.packagesService.planPackage(
 			{
@@ -269,6 +269,13 @@ export class ApplyPreviewService {
 		// Apply applies the whole package, so nothing can be selected.
 		for (const resource of resources) resource.selectable = false;
 		return await this.finish(resources, dependencies, check);
+	}
+
+	async exportInstance(user: User): Promise<InstancePackage> {
+		const projectIds = await this.projectRepository.findTeamProjectIds();
+		return await exportInstancePackage(this.packagesService, user, projectIds, {
+			preferenceOptions: await this.preferenceSelection.exportOptions(user, projectIds, true),
+		});
 	}
 
 	/** A whole-instance Apply deletes the team projects that the package does not hold. */

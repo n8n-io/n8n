@@ -4540,6 +4540,131 @@ describe('Preference promotions through Git', () => {
 		return Container.get(AiPreferenceService);
 	}
 
+	it('applies a workflow selection when Preferences are unavailable', async () => {
+		const preferences = preferencesEnabled();
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Orders', owner);
+		const workflow = await createWorkflow(
+			{ name: 'Incoming workflow', nodes: [], connections: {} },
+			project,
+		);
+		const preference = await preferences.create(
+			owner,
+			{
+				scope: 'project',
+				projectId: project.id,
+				content: 'Use UTC.',
+			},
+			'ui',
+		);
+		await service.promote(environments.promote.id, owner, {});
+		await preferences.update(owner, preference.id, { content: 'Local wording.' });
+		vi.spyOn(Container.get(AiPreferenceSettingsService), 'isEnabled', 'get').mockReturnValue(false);
+		const preview = await loadApplyPreview(project.id);
+		expect(preview.check.conflicts).toContainEqual(
+			expect.objectContaining({
+				code: 'preference-conflict',
+				reason: 'unavailable',
+			}),
+		);
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflow.id],
+			expectedSource: { ...preview.source, commitSha: preview.commitSha },
+			expectedPreviewRevision: preview.revision,
+		});
+		expect(result).toMatchObject({ status: 'applied' });
+		expect((await preferences.getById(owner, preference.id)).content).toBe('Local wording.');
+	});
+
+	it('keeps a Preference created after the whole-instance preview check', async () => {
+		const preferences = preferencesEnabled();
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await createTeamProject('Orders', owner);
+		await preferences.create(owner, { scope: 'instance', content: 'Use UTC.' }, 'ui');
+		await service.promote(environments.promote.id, owner, {});
+		const preview = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		const previews = Container.get(ApplyPreviewService);
+		const build = previews.buildInstance.bind(previews);
+		let addedId: string | undefined;
+		vi.spyOn(previews, 'buildInstance').mockImplementationOnce(async (input) => {
+			const reviewed = await build(input);
+			const added = await preferences.create(
+				owner,
+				{ scope: 'instance', content: 'Keep this later instruction.' },
+				'ui',
+			);
+			addedId = added.id;
+			return reviewed;
+		});
+
+		expect(
+			await service.apply(environments.apply.id, owner, {
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
+			}),
+		).toMatchObject({ status: 'applied', counts: { preferences: { removed: 0 } } });
+		expect(addedId).toBeDefined();
+		expect((await preferences.getById(owner, addedId!)).content).toBe(
+			'Keep this later instruction.',
+		);
+	});
+
+	it.each(['project', 'instance'] as const)(
+		'rejects a Preference edit in %s scope between preview validation and import planning',
+		async (scope) => {
+			const preferences = preferencesEnabled();
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			const project = await createTeamProject('Orders', owner);
+			const saved = await preferences.create(
+				owner,
+				{
+					scope,
+					...(scope === 'project' ? { projectId: project.id } : {}),
+					content: 'Use UTC.',
+				},
+				'ui',
+			);
+			await service.promote(environments.promote.id, owner, {});
+			await preferences.update(owner, saved.id, { content: 'Reviewed destination wording.' });
+			const previews = Container.get(ApplyPreviewService);
+			const preview =
+				scope === 'project'
+					? await loadApplyPreview(project.id)
+					: await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+			if (scope === 'project') {
+				const build = previews.build.bind(previews);
+				vi.spyOn(previews, 'build').mockImplementationOnce(async (input) => {
+					const reviewed = await build(input);
+					await preferences.update(owner, saved.id, { content: 'Keep this later edit.' });
+					return reviewed;
+				});
+			} else {
+				const build = previews.buildInstance.bind(previews);
+				vi.spyOn(previews, 'buildInstance').mockImplementationOnce(async (input) => {
+					const reviewed = await build(input);
+					await preferences.update(owner, saved.id, { content: 'Keep this later edit.' });
+					return reviewed;
+				});
+			}
+			const request = {
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
+			};
+			const result =
+				scope === 'project'
+					? await service.applyProjectSelection(project.id, owner, {
+							...request,
+							preferenceIds: [saved.id],
+						})
+					: await service.apply(environments.apply.id, owner, request);
+			expect(result).toMatchObject({ status: 'preview-changed' });
+			expect((await preferences.getById(owner, saved.id)).content).toBe('Keep this later edit.');
+		},
+	);
+
 	it('promotes selected project Preferences and imports them into a protected destination', async () => {
 		const preferences = preferencesEnabled();
 		const remote = await createRemote();

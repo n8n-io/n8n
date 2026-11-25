@@ -300,6 +300,7 @@ function describeIssue(
 				kind: 'preference',
 				code: 'preference-conflict',
 				id: issue.preferenceId,
+				reason: issue.kind,
 				message: issue.message,
 			};
 		case 'project-conflict': {

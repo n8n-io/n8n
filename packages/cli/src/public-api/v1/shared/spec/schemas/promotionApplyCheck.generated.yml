@@ -1206,11 +1206,19 @@ properties:
                 - preference-conflict
             id:
               type: string
+            reason:
+              type: string
+              enum:
+                - conflict
+                - forbidden
+                - invalid
+                - unavailable
             message:
               type: string
           required:
             - kind
             - code
+            - reason
             - message
         - type: object
           properties:

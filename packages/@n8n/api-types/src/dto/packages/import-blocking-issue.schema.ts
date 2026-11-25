@@ -419,11 +419,18 @@ const credentialPolicyViolationIssueSchema = z
 	})
 	.openapi(credentialPolicyViolationIssueOpenApi);
 
+export const preferenceConflictKindSchema = z.enum([
+	'conflict',
+	'forbidden',
+	'invalid',
+	'unavailable',
+]);
+
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		z.object({
 			type: z.literal('preference-conflict'),
-			kind: z.enum(['conflict', 'forbidden', 'invalid', 'unavailable']),
+			kind: preferenceConflictKindSchema,
 			preferenceId: z.string().optional(),
 			message: z.string(),
 		}),

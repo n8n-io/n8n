@@ -3,9 +3,15 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
+import type { PreferenceImportPlan } from '@/modules/n8n-packages/entities/preference/preference.importer';
+import { PreferenceSerializer } from '@/modules/n8n-packages/entities/preference/preference.serializer';
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
+import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import type { ExportPackageRequest } from '@/modules/n8n-packages/n8n-packages.types';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+
+import type { InstancePackage } from './instance-package';
 
 /** Keep availability and shared scope selection consistent across previews and writes. */
 @Service()
@@ -13,7 +19,26 @@ export class PromotionPreferenceService {
 	constructor(
 		private readonly preferences: AiPreferenceService,
 		private readonly settings: AiPreferenceSettingsService,
+		private readonly serializer: PreferenceSerializer,
 	) {}
+
+	/** Reject a plan that starts from Preference content the user did not review. */
+	matchesSnapshot(plan: PreferenceImportPlan, instance: InstancePackage): boolean {
+		const files = new Map(
+			instance.files
+				.filter(({ type }) => type === 'preference')
+				.map((file) => [file.entityId, file]),
+		);
+		return plan.changes.items.every(({ id, previous }) => {
+			const file = files.get(id);
+			if (!previous) return !file;
+			if (previous.userId || previous.project?.type === 'personal') return false;
+			return (
+				file?.projectId === previous.projectId &&
+				file.blobSha === gitBlobSha(formatEntityFile(this.serializer.serialize(previous)))
+			);
+		});
+	}
 
 	async exportOptions(
 		user: User,

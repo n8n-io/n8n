@@ -155,7 +155,9 @@ export function listBlockers(
 				workflowKeys: conflict.workflows.map(({ id }) => workflowKey(id)),
 			});
 		} else if (conflict.kind === 'preference') {
-			const keys = conflict.id ? [`preference:${conflict.id}`] : listedKeys;
+			const keys = conflict.id
+				? [`preference:${conflict.id}`]
+				: listedKeys.filter((key) => key.startsWith('preference:'));
 			blockers.push({
 				kind: 'conflict',
 				resourceKey: conflict.id ? `preference:${conflict.id}` : null,

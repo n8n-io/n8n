@@ -1032,6 +1032,59 @@ describe('PromotionPreviewView', () => {
 		expect(row).not.toHaveTextContent('Move it on this instance');
 	});
 
+	it('applies workflows when an unavailable Preference is left unselected', async () => {
+		const preview = previewWithCheck(
+			check({
+				conflicts: [
+					{
+						kind: 'preference',
+						code: 'preference-conflict',
+						reason: 'unavailable',
+						message: 'Backend diagnostic that must not appear in the UI',
+					},
+				],
+			}),
+		);
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: [
+				...preview.resources,
+				resource({
+					key: 'preference:p1',
+					id: 'p1',
+					type: 'preference',
+					name: 'Preference',
+					parentKey: 'project:p1',
+					change: 'added',
+					selectable: true,
+				}),
+			],
+		});
+		vi.mocked(api.applyProjectSelection).mockResolvedValue(applied);
+		const { getByTestId, getAllByTestId, getByRole, queryByText } = await renderApply();
+		expect(treeRow(getAllByTestId, 'preference:p1').getByRole('checkbox')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		expect(getByTestId('promotion-preview-blockers-table')).toHaveTextContent(
+			'Preferences are unavailable on this instance. Ask an instance admin to enable them, or apply other changes without selecting preferences.',
+		);
+		expect(
+			queryByText('Backend diagnostic that must not appear in the UI'),
+		).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		expect(api.applyProjectSelection).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			expect.objectContaining({
+				workflowIds: ['w1', 'w2', 'w3', 'w4'],
+				expectedPreviewRevision: REVISION,
+			}),
+		);
+		expect(vi.mocked(api.applyProjectSelection).mock.calls[0][2]).not.toHaveProperty(
+			'preferenceIds',
+		);
+	});
+
 	it('should explain why Apply cannot write a data table or a tag', async () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(
 			previewWithCheck(

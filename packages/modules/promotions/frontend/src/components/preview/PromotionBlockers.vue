@@ -109,7 +109,7 @@ const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 			icon: resourceIcon('preference'),
 			type: 'preference',
 			name: conflict.id ?? i18n.baseText('promotions.preview.blockers.type.preference'),
-			detail: conflict.message,
+			detail: i18n.baseText(`promotions.bindings.conflicts.preference-conflict.${conflict.reason}`),
 			usedBy: [],
 		};
 	}

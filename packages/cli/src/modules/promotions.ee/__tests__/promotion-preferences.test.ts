@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { createManifestEntry, entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import { PreferenceSerializer } from '@/modules/n8n-packages/entities/preference/preference.serializer';
 import type { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { parsePackageFiles } from '../base-branch-files';
@@ -144,6 +145,7 @@ describe('Preference selection for Promotions', () => {
 		const service = new PromotionPreferenceService(
 			preferences,
 			mock<AiPreferenceSettingsService>({ isEnabled: true }),
+			new PreferenceSerializer(),
 		);
 		expect(await service.exportOptions(mock<User>(), [], true)).toEqual({ preferenceIds: [] });
 	});
@@ -172,6 +174,7 @@ describe('Preference selection for Promotions', () => {
 		const service = new PromotionPreferenceService(
 			preferences,
 			mock<AiPreferenceSettingsService>({ isEnabled: false }),
+			new PreferenceSerializer(),
 		);
 		expect(await service.exportOptions(mock<User>(), [project.id], true)).toEqual({});
 		expect(preferences.list).not.toHaveBeenCalled();

@@ -62,6 +62,7 @@ it('blocks the conflicting Preference without blocking other selections', () => 
 				kind: 'preference',
 				code: 'preference-conflict',
 				id: 'p1',
+				reason: 'invalid',
 				message: 'The destination scope is full.',
 			},
 		],
