@@ -3,14 +3,16 @@ name: telegram
 hosts: api.telegram.org
 path_prefixes: /bot*, /file/bot*
 passthrough_hosts:
+strict_reads: true
 read_paths:
 - ^/bot[^/]+/(getMe|getChat|getChatAdministrators|getChatMember|getChatMemberCount|getFile)$
+- ^/file/bot[^/]+/.+$
 ---
 Service: Telegram Bot API (api.telegram.org/bot<token>/<method>).
 
 Secret in the path: the real URL holds the bot token. Code removes it before you see anything. You see the path "/botguard-redacted/<method>". Never write a token. Code sets the real token for a real read, and the token of the gym tenant for the gym.
 
-Calls are HTTP requests. The args are {method, path, query, body}. Almost every call is a POST with a JSON body, also the reads. The tool name tells the kind: "read_..." for the methods getMe, getChat, getChatAdministrators, getChatMember, getChatMemberCount and getFile, and "write_..." for every other method. getUpdates is a write: it takes updates away from the server when it has an offset, so it never reaches the real service. A file download (GET /file/bot<token>/<path>) is a read.
+Calls are HTTP requests. The args are {method, path, query, body}. Almost every call is a POST with a JSON body, also the reads. The tool name tells the kind: "read_..." for the methods getMe, getChat, getChatAdministrators, getChatMember, getChatMemberCount and getFile, and "write_..." for every other method. getUpdates is a write: it takes updates away from the server when it has an offset, so it never reaches the real service. A file download (GET /file/bot<token>/<path>) is a read. Only the listed methods are reads, also in the GET form (Telegram runs any method from a GET). So a GET of getUpdates or sendMessage is a write.
 
 Real result shapes: every answer is {"ok": true, "result": ...}. getChat has result {id, type, title, username, first_name, last_name, description}. The type is "private", "group", "supergroup" or "channel". getChatMember has result {status, user: {id, is_bot, first_name, username}}. getChatAdministrators has a list of those. getChatMemberCount has a number. getFile has {file_id, file_path}.
 A chat id can be a short number, a negative number, or "@username". Code does not check its length.

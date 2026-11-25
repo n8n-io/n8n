@@ -12,6 +12,7 @@ import { sendToNetwork } from '../network';
 import { loadVendorKnowledge, vendorForRequest } from '../vendor-knowledge';
 import { isReadShaped } from '../request-classifier';
 import { toToolCall } from '../http-tool-caller';
+import { withIdMap } from '../http-router';
 
 vi.mock('../network', () => ({
 	sendToNetwork: vi.fn(async () => new Response('{"ok":true,"result":{}}')),
@@ -123,9 +124,27 @@ describe('Telegram routing: reads and writes', () => {
 		}
 	});
 
+	it('treats a GET of a write method as a write, because Telegram runs any method from a GET', () => {
+		const strict = telegram.strictReads;
+		for (const method of [...writeMethods, 'sendMessage', 'deleteMessage']) {
+			const req = call('GET', `/bot${TOKEN}/${method}`);
+			expect(isReadShaped(req, telegram.readPaths, [], strict)).toBe(false);
+		}
+		for (const method of readMethods) {
+			const req = call('GET', `/bot${TOKEN}/${method}`);
+			expect(isReadShaped(req, telegram.readPaths, [], strict)).toBe(true);
+		}
+		expect(telegram.strictReads).toBe(true);
+	});
+
 	it('treats the file download as a read, because it is a GET', () => {
 		expect(
-			isReadShaped(call('GET', `/file/bot${TOKEN}/photos/file_1.jpg`), telegram.readPaths),
+			isReadShaped(
+				call('GET', `/file/bot${TOKEN}/photos/file_1.jpg`),
+				telegram.readPaths,
+				[],
+				telegram.strictReads,
+			),
 		).toBe(true);
 	});
 
@@ -341,6 +360,19 @@ describe('a bot token never leaves the guard', () => {
 		expect(logs.join('\n')).not.toContain(TOKEN);
 	});
 
+	it('sends a GET of getUpdates or a chat-less write only to the gym, never to the real service', async () => {
+		const run = await setup();
+
+		await run.router.handle(call('GET', `/bot${TOKEN}/getUpdates?offset=5`));
+		await run.router.handle(call('GET', `/bot${TOKEN}/setMyCommands?commands=[]`));
+
+		expect(sendToNetwork).not.toHaveBeenCalled();
+		expect(gymRequests.map((r) => r.url.split('?')[0])).toEqual([
+			`/bot${TENANT_TOKEN}/getUpdates`,
+			`/bot${TENANT_TOKEN}/setMyCommands`,
+		]);
+	});
+
 	it('reads a file with the real token and keeps the token out of the gym path', async () => {
 		const run = await setup();
 
@@ -464,5 +496,47 @@ describe('Telegram id map', () => {
 		const answer = { result: { message_id: 100000002 } };
 
 		expect(idMap.fromGym(answer, refs)).toEqual(answer);
+	});
+});
+
+describe('the gym caller of the hydrator', () => {
+	const refs = { 'person:8761991977': 'user:100000002' };
+
+	it('maps a real chat id in the args to the id of the gym, and the answer back to the real id', async () => {
+		const seen: Array<Record<string, unknown>> = [];
+		const gym = {
+			listTools: async () => [],
+			callTool: async (_name: string, args: Record<string, unknown>) => {
+				seen.push(args);
+				return {
+					content: [{ type: 'text' as const, text: '{"ok":true,"result":{"id":100000002}}' }],
+				};
+			},
+		};
+		const mapped = withIdMap(gym, TELEGRAM_PROFILE.idMap!, async () => refs);
+
+		const res = await mapped.callTool('read_getChat', {
+			method: 'POST',
+			path: '/botguard-redacted/getChat',
+			body: { chat_id: 8761991977 },
+		});
+
+		expect(seen[0].body).toEqual({ chat_id: 100000002 });
+		expect(JSON.stringify(res)).toContain('8761991977');
+	});
+
+	it('still asks the gym when the refs cannot be read', async () => {
+		const callTool = vi.fn(async () => ({ content: [] }));
+		const mapped = withIdMap(
+			{ listTools: async () => [], callTool },
+			TELEGRAM_PROFILE.idMap!,
+			async () => {
+				throw new Error('down');
+			},
+		);
+
+		await mapped.callTool('read_getChat', { method: 'POST', path: '/x', body: { chat_id: 5 } });
+
+		expect(callTool).toHaveBeenCalledTimes(1);
 	});
 });

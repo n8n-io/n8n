@@ -32,8 +32,11 @@ export function isReadShaped(
 	req: Pick<CapturedRequest, 'method' | 'url' | 'body'>,
 	readPaths: readonly RegExp[] = [],
 	graphqlPaths: readonly RegExp[] = [],
+	strictReads = false,
 ): boolean {
 	const method = req.method.toUpperCase();
+	// An API such as Telegram runs a write from a GET as well, so only a listed path is a read.
+	if (strictReads) return readPaths.some((path) => path.test(req.url.pathname));
 	if (method === 'GET' || method === 'HEAD') return true;
 	if (method !== 'POST') return false;
 	// A body that looks like a query proves nothing on a REST path, so only a vendor GraphQL path counts.

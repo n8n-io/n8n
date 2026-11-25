@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-import type { HttpVendorProfile } from './http-profiles';
+import type { HttpIdMap, HttpVendorProfile } from './http-profiles';
 import { looksLikeId, NO_BODY_STATUS, toToolCall, type HttpToolArgs } from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
@@ -83,7 +83,12 @@ export class HttpGuardRouter {
 		if (req.headers.authorization) context.authorization = req.headers.authorization;
 		if (secret !== undefined) context.pathSecret = secret;
 		return await runWithRequestContext(context, async () => {
-			const readShaped = isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);
+			const readShaped = isReadShaped(
+				req,
+				vendor.readPaths,
+				vendor.graphqlPaths,
+				vendor.strictReads,
+			);
 			const { name, args } = toToolCall(req, readShaped);
 			return readShaped ? await this.read(name, args) : await this.write(name, args);
 		});
@@ -168,6 +173,28 @@ export class HttpGuardRouter {
 			return refusal(502, 'mcp-guard: the gym could not be reached');
 		}
 	}
+}
+
+/**
+ * A gym caller that maps ids both ways, like `callGym` does. The hydrator replays a real call on the
+ * gym to check the plan. Without the map, a real chat id is unknown to the gym and the check fails.
+ */
+export function withIdMap(
+	gym: McpCaller,
+	idMap: HttpIdMap,
+	refs: () => Promise<Record<string, string>>,
+): McpCaller {
+	return {
+		listTools: async () => await gym.listTools(),
+		callTool: async (name, args) => {
+			const known = await refs().catch(() => ({}));
+			const sent = idMap.toGym(
+				{ ...args, method: String(args.method ?? 'GET'), path: String(args.path ?? '') },
+				known,
+			);
+			return withRealIds(await gym.callTool(name, sent), (json) => idMap.fromGym(json, known));
+		},
+	};
 }
 
 // The text of the result, with its JSON changed by `change`. A text that is no JSON stays as it is.
