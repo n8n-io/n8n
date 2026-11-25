@@ -153,6 +153,7 @@ describe('JobProcessor', () => {
 			executionsConfig,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const result = await jobProcessor.processJob(mock<Job>());
@@ -175,6 +176,7 @@ describe('JobProcessor', () => {
 			mock(),
 			mock(),
 			executionsConfig,
+			mock(),
 			mock(),
 			mock(),
 		);
@@ -207,6 +209,7 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
+			mock(),
 			mock(),
 			mock(),
 		);
@@ -242,6 +245,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -291,6 +295,7 @@ describe('JobProcessor', () => {
 			executionsConfig,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const job = mock<Job>({ id: 'job-1' });
@@ -311,6 +316,7 @@ describe('JobProcessor', () => {
 				mock(),
 				createManualExecutionServiceMock(),
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -375,6 +381,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({
@@ -422,6 +429,7 @@ describe('JobProcessor', () => {
 				mock(),
 				createManualExecutionServiceMock(),
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -752,6 +760,7 @@ describe('JobProcessor', () => {
 			executionsConfig,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const job = mock<Job>();
@@ -799,6 +808,7 @@ describe('JobProcessor', () => {
 				mock(),
 				createManualExecutionServiceMock(run),
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -849,6 +859,7 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
+			mock(),
 			mock(),
 			mock(),
 		);
@@ -903,6 +914,7 @@ describe('JobProcessor', () => {
 			executionsConfig,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const executionId = 'execution-id';
@@ -943,6 +955,7 @@ describe('JobProcessor', () => {
 			executionsConfig,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		await jobProcessor.processJob(
@@ -978,6 +991,7 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
+			mock(),
 			mock(),
 			mock(),
 		);
@@ -1035,6 +1049,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await jobProcessor.processJob(mock<Job>());
@@ -1082,6 +1097,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
+				mock(),
 				mock(),
 			);
 
@@ -1143,6 +1159,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1193,6 +1210,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
+				mock(),
 				mock(),
 			);
 
@@ -1255,6 +1273,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				mock(), // eventService
+				mock(),
 				mock(),
 			);
 
@@ -1344,6 +1363,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(), // eventService
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1418,6 +1438,7 @@ describe('JobProcessor', () => {
 				mcpInstanceSettings,
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -1523,6 +1544,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1618,6 +1640,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				relay,
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1695,6 +1718,7 @@ describe('JobProcessor', () => {
 					createManualExecutionServiceMock(),
 					executionsConfig,
 					mock(), // eventService
+					mock(),
 					mock(),
 				);
 
@@ -1832,6 +1856,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -1921,6 +1946,7 @@ describe('JobProcessor', () => {
 					mock<InstanceSettings>({ hostId: 'worker-host-123' }),
 					createManualExecutionServiceMock(),
 					executionsConfig,
+					mock(),
 					mock(),
 					mock(),
 				);
@@ -2094,6 +2120,7 @@ describe('JobProcessor', () => {
 					executionsConfig,
 					mock(), // eventService
 					mock(), // webhookResponseRelay
+					mock(), // subExecutionTracker
 				);
 
 				const job = mock<Job>();
@@ -2250,6 +2277,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2345,6 +2373,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2433,6 +2462,7 @@ describe('JobProcessor', () => {
 				mcpInstanceSettings,
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -2535,6 +2565,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2619,6 +2650,7 @@ describe('JobProcessor', () => {
 				mcpInstanceSettings,
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -2713,6 +2745,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2790,6 +2823,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>();
@@ -2829,6 +2863,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 			const run = mock<IRun>({
 				status: 'waiting',
@@ -2857,6 +2892,7 @@ describe('JobProcessor', () => {
 				mock(),
 				mock(),
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -2906,6 +2942,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				eventService,
+				mock(),
 				mock(),
 			);
 
@@ -2964,6 +3001,7 @@ describe('JobProcessor', () => {
 				mock(),
 				mock(),
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -3037,6 +3075,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				eventService,
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3104,6 +3143,7 @@ describe('JobProcessor', () => {
 				longExecutionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3160,6 +3200,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3208,6 +3249,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -3277,6 +3319,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				eventService,
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3330,6 +3373,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -3388,6 +3432,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				eventService,
+				mock(),
 				mock(),
 			);
 
@@ -3451,6 +3496,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				eventService,
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3501,6 +3547,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -3555,6 +3602,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				eventService,
+				mock(),
 				mock(),
 			);
 
@@ -3617,6 +3665,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				eventService,
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3672,6 +3721,7 @@ describe('JobProcessor', () => {
 				manualExecutionService,
 				executionsConfig,
 				eventService,
+				mock(),
 				mock(),
 			);
 
@@ -3738,6 +3788,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
@@ -3787,6 +3838,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -3854,6 +3906,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -3930,6 +3983,7 @@ describe('JobProcessor', () => {
 				executionsConfig,
 				mock(),
 				relay,
+				mock(),
 			);
 
 			const job = mock<Job>({
@@ -4102,6 +4156,7 @@ describe('JobProcessor', () => {
 				mock(),
 				createManualExecutionServiceMock(),
 				executionsConfig,
+				mock(),
 				mock(),
 				mock(),
 			);

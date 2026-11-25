@@ -35,6 +35,12 @@ export type JobData = {
 	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
 	encryptedRunnerIdentity?: string;
 
+	/**
+	 * Sub-executions that run inside this job on the worker. They have no job of their own, so
+	 * queue recovery reads them here. The worker writes this field, never main.
+	 */
+	subExecutionIds?: string[];
+
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */
 	isMcpExecution?: boolean;

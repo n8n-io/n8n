@@ -1448,6 +1448,18 @@ describe('ScalingService', () => {
 
 			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		});
+
+		it('should not mark sub-executions of a live job as crashed', async () => {
+			await scalingService.setupQueue();
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123', '456', '789']);
+			queue.getJobs.mockResolvedValue([
+				mock<Job>({ data: { executionId: '123', subExecutionIds: ['456'] } }),
+			]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['789'], 'queue-recovery');
+		});
 	});
 
 	describe('MCP response handling', () => {

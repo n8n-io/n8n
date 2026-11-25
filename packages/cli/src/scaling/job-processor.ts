@@ -60,6 +60,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { SubExecutionTracker } from './sub-execution-tracker';
 import { WebhookResponseRelay } from './webhook-response-relay';
 
 function isInvokableTool(value: unknown): value is Pick<Tool, 'invoke'> {
@@ -122,16 +123,19 @@ export class JobProcessor {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
 		private readonly webhookResponseRelay: WebhookResponseRelay,
+		private readonly subExecutionTracker: SubExecutionTracker,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
 		this.trackedJobs.set(String(job.id), job.data.executionId);
+		this.subExecutionTracker.startJob(job);
 		try {
 			return await this.runJob(job);
 		} finally {
 			this.trackedJobs.delete(String(job.id));
+			this.subExecutionTracker.endJob(job);
 		}
 	}
 

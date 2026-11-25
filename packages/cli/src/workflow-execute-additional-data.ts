@@ -86,6 +86,7 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
+import { SubExecutionTracker } from '@/scaling/sub-execution-tracker';
 import { findSubworkflowStart } from '@/utils';
 import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -399,6 +400,9 @@ export async function executeWorkflow(
 	// must be evaluated against the triggering user, not the parent's project.
 	const isInlineSubworkflow = workflowInfo.code !== undefined && workflowInfo.id === undefined;
 
+	const subExecutionTracker = Container.get(SubExecutionTracker);
+	subExecutionTracker.addSubExecution(executionId, options.parentExecution?.executionId);
+
 	const executionPromise = startExecution(
 		additionalData,
 		options,
@@ -406,7 +410,7 @@ export async function executeWorkflow(
 		runData,
 		workflowData,
 		isInlineSubworkflow,
-	);
+	).finally(() => subExecutionTracker.removeSubExecution(executionId));
 
 	if (options.doNotWaitToFinish) {
 		// Nothing awaits a detached sub-workflow. `startExecution` stores its failure, or logs

@@ -913,7 +913,9 @@ export class ScalingService {
 		}
 
 		const runningJobs = await this.findJobsByStatus(['active', 'waiting']);
-		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
+		const queuedIds = new Set(
+			runningJobs.flatMap((job) => [job.data.executionId, ...subExecutionIdsOf(job)]),
+		);
 
 		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
 		if (danglingIds.length === 0) {
@@ -944,4 +946,10 @@ export class ScalingService {
 	}
 
 	// #endregion
+}
+
+/** A job from a worker that predates the field carries no sub-execution ids. */
+function subExecutionIdsOf(job: Job): string[] {
+	const ids = job.data.subExecutionIds;
+	return Array.isArray(ids) ? ids : [];
 }
