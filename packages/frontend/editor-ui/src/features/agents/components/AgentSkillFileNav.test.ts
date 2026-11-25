@@ -19,6 +19,14 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => ({ searchWorkflows }),
 }));
 
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/base/workflow/${params.workflowId}`,
+		}),
+	}),
+}));
+
 const PickerStub = defineComponent({
 	name: 'SkillWorkflowMentionPicker',
 	props: ['mode', 'projectId', 'projectName', 'mentionedWorkflowIds'],
@@ -87,6 +95,11 @@ describe('AgentSkillFileNav', () => {
 			"To use this workflow in agents, add the 'When Executed by Another Workflow' trigger. To use this workflow in a published agent, publish the workflow.",
 		);
 		expect(byTestId(archiveRow, 'agent-skill-workflow-notes')).toBeNull();
+		expect(
+			byTestId(weeklyRow, 'agent-skill-workflow-notes')?.closest(
+				'[data-testid="agent-skill-workflow-link"]',
+			),
+		).toBeNull();
 	});
 
 	it('adds the MCP notes for a skill available to MCP and the access note for an instance skill', async () => {
@@ -158,6 +171,22 @@ describe('AgentSkillFileNav', () => {
 		const rows = container.querySelectorAll('[data-testid="agent-skill-workflow-item"]');
 		expect([...rows].map((row) => row.textContent?.trim())).toEqual(['Weekly report', 'Archive']);
 		expect(byTestId(container, 'picker-stub')).toHaveAttribute('data-ids', 'wf1,wf2');
+	});
+
+	it('links each listed workflow to its page in a new tab', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' },
+		});
+
+		const links = container.querySelectorAll('[data-testid="agent-skill-workflow-link"]');
+		expect([...links].map((link) => link.getAttribute('href'))).toEqual([
+			'/base/workflow/wf1',
+			'/base/workflow/wf2',
+		]);
+		expect(links[0]).toHaveAttribute('target', '_blank');
+		expect(links[0]).toHaveAttribute('rel', 'noopener');
+		expect(links[0]).toHaveTextContent('Weekly report');
 	});
 
 	it('shows an empty state when the skill mentions no workflow', () => {

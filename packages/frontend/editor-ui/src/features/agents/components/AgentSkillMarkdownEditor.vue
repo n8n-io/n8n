@@ -7,7 +7,9 @@ import {
 	type N8nMarkdownEditorProps,
 } from '@n8n/design-system';
 import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
+import { useRouter } from 'vue-router';
 
+import { VIEWS } from '@/app/constants';
 import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { isMentionTrigger } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
@@ -33,6 +35,7 @@ const props = withDefaults(
 );
 
 const posthog = usePostHog();
+const router = useRouter();
 const mentionsEnabled = computed(() =>
 	posthog.isVariantEnabled(
 		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
@@ -87,6 +90,21 @@ const editorProps: EditorProps = {
 		if (!mention) return false;
 		view.dispatch(view.state.tr.delete(mention.from, mention.to));
 		return true;
+	},
+	handleDOMEvents: {
+		click(_view, event) {
+			if (!mentionsEnabled.value || !(event.target instanceof Element)) return false;
+			const href = event.target.closest('a')?.getAttribute('href');
+			if (!href?.startsWith(WORKFLOW_MENTION_URL_PREFIX)) return false;
+			event.preventDefault();
+			const workflowId = href.slice(WORKFLOW_MENTION_URL_PREFIX.length).split('?')[0];
+			const { href: workflowUrl } = router.resolve({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId },
+			});
+			window.open(workflowUrl, '_blank');
+			return true;
+		},
 	},
 };
 

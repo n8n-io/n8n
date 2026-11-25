@@ -37,6 +37,7 @@ const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	incompatible_nodes: 'agents.publish.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger: 'agents.publish.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.publish.issue.tool.workflow.notPublished' as BaseTextKey,
+	not_in_project: 'agents.publish.issue.tool.workflow.notInProject' as BaseTextKey,
 	azure_classic_endpoint:
 		'agents.publish.issue.agent.credential.azureClassicEndpoint' as BaseTextKey,
 	restricted_by_inline_tool: 'agents.publish.issue.restrictedByInlineTool' as BaseTextKey,
