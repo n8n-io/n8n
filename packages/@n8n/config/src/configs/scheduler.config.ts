@@ -293,7 +293,7 @@ export class SchedulerConfig {
 	 * compacting insights data, or renewing the license) are scheduled by the
 	 * durable scheduler instead of n8n's in-process timers. Requires
 	 * {@link enabled} to also be on. Set to false to keep them on in-process
-	 * timers.
+	 * timers. This variable will be removed in a future version.
 	 *
 	 * In a multi-instance setup that upgrades from a version before 2.45.0 with a
 	 * rolling deploy, the older instances still run these jobs on their own timers,
