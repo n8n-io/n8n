@@ -42,10 +42,11 @@ export interface FakeConsumer {
 	};
 }
 
-/** The admin client `assertTopicExists` uses to verify the topic. */
+/** The admin client `assertTopicExists` and `testKafkaConnection` use. */
 export interface FakeAdmin {
 	connect: Mock;
 	fetchTopicMetadata: Mock;
+	listTopics: Mock;
 	disconnect: Mock;
 }
 
@@ -94,6 +95,19 @@ export function failNextTopicMetadata(error: Error): void {
 	});
 }
 
+let nextListTopicsError: Error | undefined;
+let nextListTopics: string[] | undefined;
+
+/** Makes the next admin's `listTopics()` resolve with `topics`. */
+export function setNextListTopics(topics: string[]): void {
+	nextListTopics = topics;
+}
+
+/** Makes the next admin's `listTopics()` reject with `error`. */
+export function failNextListTopics(error: Error): void {
+	nextListTopicsError = error;
+}
+
 /** Makes the next admin's `disconnect()` reject with `error`. */
 export function failNextAdminDisconnect(error: Error): void {
 	nextDisconnectError = error;
@@ -118,12 +132,20 @@ export function invalidTopicNameError(): Error & { code: number } {
 function createFakeAdmin(): FakeAdmin {
 	const disconnectError = nextDisconnectError;
 	nextDisconnectError = undefined;
+	const listTopicsError = nextListTopicsError;
+	nextListTopicsError = undefined;
+	const listTopicsResult = nextListTopics ?? ['test-topic'];
+	nextListTopics = undefined;
 
 	const admin: FakeAdmin = {
 		connect: vi.fn(async () => {}),
 		fetchTopicMetadata: vi.fn(async () => {
 			const outcome = metadataOutcomeQueue.shift();
 			return outcome ? await outcome() : [{ name: 'test-topic', partitions: [{ partitionId: 0 }] }];
+		}),
+		listTopics: vi.fn(async () => {
+			if (listTopicsError) throw listTopicsError;
+			return listTopicsResult;
 		}),
 		disconnect: vi.fn(async () => {
 			if (disconnectError) throw disconnectError;
@@ -262,4 +284,6 @@ export function resetConfluentKafkaRecordings(): void {
 	nextAssignment = joinedAssignment;
 	metadataOutcomeQueue.length = 0;
 	nextDisconnectError = undefined;
+	nextListTopicsError = undefined;
+	nextListTopics = undefined;
 }
