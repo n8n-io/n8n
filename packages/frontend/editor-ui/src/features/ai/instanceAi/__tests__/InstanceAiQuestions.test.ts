@@ -103,6 +103,18 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
+	it('submits the clicked option when the card unmounts before it advances', async () => {
+		vi.useFakeTimers();
+		const { emitted, getByText, unmount } = render([singleQuestion]);
+
+		await fireEvent.click(getByText('Production'));
+		unmount();
+
+		expect(emitted().submit).toEqual([
+			[[expect.objectContaining({ questionId: 'q-single', selectedOptions: ['Production'] })]],
+		]);
+	});
+
 	it('submits the clicked option on the final single-select question', async () => {
 		vi.useFakeTimers();
 		const { emitted, getByText } = render([singleQuestion]);

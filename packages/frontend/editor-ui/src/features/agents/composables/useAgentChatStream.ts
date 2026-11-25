@@ -1893,7 +1893,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * the resume fails, falling back to the previous card state if history is unavailable.
 	 */
 	async function resume(payload: ResumePayload, onAccepted?: () => void): Promise<'sent' | 'busy'> {
-		if (isStreaming.value || isCancelling.value) return 'busy';
+		// A card shows when its tool suspends, a moment before the server ends the
+		// response of that turn. An answer in that moment waits for the response to end.
+		const controller = abortController.value;
+		const endedTurn =
+			controller && streams.get(controller)?.terminalEventReceived
+				? streamSettlements.get(controller)
+				: undefined;
+		if ((isStreaming.value && !endedTurn) || isCancelling.value) return 'busy';
 
 		const isCancellation = 'cancelled' in payload;
 		const text = isCancellation ? payload.text.trim() : '';
@@ -1963,6 +1970,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				status: 'success',
 				createdAt: Date.now(),
 			});
+		}
+
+		if (endedTurn) {
+			const target = targetKey();
+			await endedTurn;
+			if (disposed || target !== targetKey()) return 'busy';
 		}
 
 		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/resume`;

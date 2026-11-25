@@ -8,7 +8,7 @@
  *
  * Adapted from PlanQuestionsMessage.vue for the instance AI confirmation flow.
  */
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import type { InstanceAiQuestion } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -174,16 +174,26 @@ function onSingleSelect(option: string) {
 	answer.skipped = false;
 }
 
+let advanceTimer: ReturnType<typeof setTimeout> | undefined;
+
 function onSingleSelectAndAdvance(option: string) {
 	onSingleSelect(option);
 	const idx = filteredOptions.value.indexOf(option);
 	selectedIndex.value = idx >= 0 ? idx : null;
 
-	setTimeout(() => {
+	advanceTimer = setTimeout(() => {
+		advanceTimer = undefined;
 		selectedIndex.value = null;
 		goToNextInternal();
 	}, 250);
 }
+
+// The chat can replace the card during the delay. Advance at once then, so the answer is sent.
+onBeforeUnmount(() => {
+	if (!advanceTimer) return;
+	clearTimeout(advanceTimer);
+	goToNextInternal();
+});
 
 function onMultiToggle(option: string, checked: boolean) {
 	const answer = currentAnswer.value;
