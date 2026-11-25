@@ -31,7 +31,7 @@ async function failTraceOnError<T>(
 ): Promise<T> {
 	try {
 		return await run();
-	} catch (error) {
+	} catch (error: unknown) {
 		await trace?.failed(error);
 		throw error;
 	}

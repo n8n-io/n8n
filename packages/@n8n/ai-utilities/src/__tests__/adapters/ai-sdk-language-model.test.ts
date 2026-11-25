@@ -2,6 +2,7 @@ import type { LanguageModelV4CallOptions, LanguageModelV4StreamPart } from '@ai-
 import { UserError } from '@n8n/errors';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ChatModel, ChatModelConfig } from 'src/types/chat-model';
 import type { Message } from 'src/types/message';
@@ -33,6 +34,7 @@ function createFakeChatModel(
 		chunks?: StreamChunk[];
 		structuredOutput?: boolean;
 		onStreamClose?: () => void;
+		generate?: ChatModel['generate'];
 		stream?: ChatModel['stream'];
 	} = {},
 ): FakeChatModel {
@@ -45,10 +47,12 @@ function createFakeChatModel(
 			provider: 'fake',
 			modelId: 'fake-model',
 			calls,
-			async generate(messages, config) {
-				calls.push({ messages, config, tools, structuredOutputSchema });
-				return options.result ?? { message: { role: 'assistant', content: [] } };
-			},
+			generate:
+				options.generate ??
+				async function (messages, config) {
+					calls.push({ messages, config, tools, structuredOutputSchema });
+					return options.result ?? { message: { role: 'assistant', content: [] } };
+				},
 			stream:
 				options.stream ??
 				async function* (messages, config) {
@@ -87,17 +91,11 @@ function createNodeContext() {
 		position: [0, 0],
 		parameters: {},
 	};
-	return {
-		getNode: vi.fn().mockReturnValue(node),
-		addInputData: vi.fn().mockReturnValue({ index: 0 }),
-		addOutputData: vi.fn(),
-		getNextRunIndex: vi.fn().mockReturnValue(0),
-		logAiEvent: vi.fn(),
-		logger: { debug: vi.fn() },
-	} as unknown as ISupplyDataFunctions & {
-		addInputData: ReturnType<typeof vi.fn>;
-		addOutputData: ReturnType<typeof vi.fn>;
-	};
+	const ctx = mock<ISupplyDataFunctions>({ logger: mock() });
+	ctx.getNode.mockReturnValue(node);
+	ctx.addInputData.mockReturnValue({ index: 0 });
+	ctx.getNextRunIndex.mockReturnValue(0);
+	return ctx;
 }
 
 async function readAll(stream: ReadableStream<LanguageModelV4StreamPart>) {
@@ -1535,16 +1533,22 @@ describe('AiSdkLanguageModelAdapter', () => {
 				],
 				undefined,
 			);
-			expect(ctx.addOutputData.mock.calls[0][2]).toEqual([
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
 				[
-					{
-						json: {
-							response: { generations: [[{ text: 'Hello' }]] },
-							tokenUsage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+					[
+						{
+							json: {
+								response: { generations: [[{ text: 'Hello' }]] },
+								tokenUsage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+							},
 						},
-					},
+					],
 				],
-			]);
+				expect.anything(),
+				undefined,
+			);
 		});
 
 		it('writes the streamed text and the usage of the finish as output of the node', async () => {
@@ -1569,25 +1573,32 @@ describe('AiSdkLanguageModelAdapter', () => {
 			await readAll(stream);
 
 			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
-			expect(ctx.addOutputData.mock.calls[0][2]).toEqual([
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
 				[
-					{
-						json: {
-							response: { generations: [[{ text: 'Hello' }]] },
-							tokenUsage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+					[
+						{
+							json: {
+								response: { generations: [[{ text: 'Hello' }]] },
+								tokenUsage: { promptTokens: 3, completionTokens: 5, totalTokens: 8 },
+							},
 						},
-					},
+					],
 				],
-			]);
+				expect.anything(),
+				undefined,
+			);
 		});
 
 		it('writes a failed generate call as an error of the node and rethrows it', async () => {
 			const ctx = createNodeContext();
 			const error = new Error('quota exceeded');
-			const model = createFakeChatModel();
-			model.generate = async () => {
-				throw error;
-			};
+			const model = createFakeChatModel({
+				generate: async () => {
+					throw error;
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model, ctx);
 
 			await expect(adapter.doGenerate(callOptions())).rejects.toThrow(error);
@@ -1600,11 +1611,12 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 		it('writes a thrown stream error as an error of the node', async () => {
 			const ctx = createNodeContext();
-			const model = createFakeChatModel();
-			model.stream = async function* () {
-				yield { type: 'text-delta', delta: 'Hel' };
-				throw new Error('network');
-			};
+			const model = createFakeChatModel({
+				async *stream() {
+					yield { type: 'text-delta', delta: 'Hel' };
+					throw new Error('network');
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model, ctx);
 
 			const { stream } = await adapter.doStream(callOptions());
@@ -1646,9 +1658,11 @@ describe('AiSdkLanguageModelAdapter', () => {
 				}),
 			);
 
-			expect(ctx.addInputData.mock.calls[0][1][0][0].json.messages).toEqual([
-				'Tool: sunny\nTool: rainy',
-			]);
+			expect(ctx.addInputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				[[{ json: expect.objectContaining({ messages: ['Tool: sunny\nTool: rainy'] }) }]],
+				undefined,
+			);
 		});
 
 		it('writes a stream with an error chunk as an error of the node', async () => {
@@ -1701,10 +1715,11 @@ describe('AiSdkLanguageModelAdapter', () => {
 		it('writes a stream that fails to open as an error of the node and rethrows it', async () => {
 			const ctx = createNodeContext();
 			const error = new Error('invalid config');
-			const model = createFakeChatModel();
-			model.stream = () => {
-				throw error;
-			};
+			const model = createFakeChatModel({
+				stream: () => {
+					throw error;
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model, ctx);
 
 			await expect(adapter.doStream(callOptions())).rejects.toThrow(error);
