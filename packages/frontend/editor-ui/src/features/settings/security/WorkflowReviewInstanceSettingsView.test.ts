@@ -168,6 +168,22 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 		expect(showToast).not.toHaveBeenCalled();
 	});
 
+	it('keeps the rows and reports the error when the reload after a save fails', async () => {
+		renderView();
+		await approvalSelect('Alpha');
+		getWorkflowReviewInstanceSettings.mockRejectedValue(new Error('network down'));
+		updateWorkflowReviewInstanceSettings.mockResolvedValue({ requiredByInstance: false });
+
+		await userEvent.click(await approvalSelect('Alpha'));
+		await userEvent.click(await screen.findByRole('option', { name: 'Not required' }));
+
+		await waitFor(() => expect(showError).toHaveBeenCalled());
+		expect(await approvalSelect('Alpha')).toHaveTextContent('Not required');
+		expect(
+			screen.queryByTestId('workflow-review-instance-settings-load-error'),
+		).not.toBeInTheDocument();
+	});
+
 	it('keeps a saved option when an older list request returns after the save', async () => {
 		vi.useFakeTimers({ shouldAdvanceTime: true });
 		onTestFinished(() => {

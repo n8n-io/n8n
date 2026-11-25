@@ -47,6 +47,7 @@ const count = ref(0);
 const managedByEnv = ref(false);
 const loading = ref(true);
 const loadFailed = ref(false);
+const hasLoaded = ref(false);
 const savingIds = ref<ReadonlySet<string>>(new Set());
 
 const search = ref('');
@@ -110,8 +111,18 @@ async function load() {
 		managedByEnv.value = result.managedByEnv;
 		loadedFiltered.value = term !== '' || filters.value.approval !== '';
 		loadFailed.value = false;
-	} catch {
-		if (isLatest()) loadFailed.value = true;
+		hasLoaded.value = true;
+	} catch (error) {
+		if (!isLatest()) return;
+		// Once rows are on the page, a failed reload keeps them and only reports the error.
+		if (hasLoaded.value) {
+			showError(
+				error,
+				i18n.baseText('settings.security.workflowReviews.instanceSettings.loadError'),
+			);
+		} else {
+			loadFailed.value = true;
+		}
 	} finally {
 		if (isLatest()) loading.value = false;
 	}
