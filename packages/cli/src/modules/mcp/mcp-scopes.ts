@@ -216,7 +216,7 @@ export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
 	'expand_instance_activity',
 ]);
 
-/** Tools that require the shared instance activity gate. */
+/** Instance context tools. MCP registers them while `instanceContextEnabled` is on. */
 export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_context',
 	'get_instance_activity',
