@@ -1,10 +1,20 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThan, MoreThan, Not, type EntityManager } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	LessThan,
+	MoreThan,
+	Not,
+	Raw,
+	type EntityManager,
+} from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from '@n8n/errors';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 
 type ExpiredCheckpoints = {
 	affected: number;
@@ -35,10 +45,17 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		updatedAfter: Date,
 		ctx: OperationContext = {},
 	): Promise<AgentCheckpoint[]> {
-		return await this.managerFor(ctx).find(AgentCheckpoint, {
-			where: { agentId, threadId, expired: false, updatedAt: MoreThan(updatedAfter) },
-			order: { updatedAt: 'DESC' },
-		});
+		const retained = this.retainedApprovalCheckpoints().select('retained.runId');
+		return await this.managerFor(ctx)
+			.createQueryBuilder(AgentCheckpoint, 'checkpoint')
+			.where({ agentId, threadId, expired: false })
+			.andWhere(
+				`(checkpoint.updatedAt > :updatedAfter OR checkpoint.runId IN (${retained.getQuery()}))`,
+				{ updatedAfter },
+			)
+			.setParameters(retained.getParameters())
+			.orderBy('checkpoint.updatedAt', 'DESC')
+			.getMany();
 	}
 
 	async saveCheckpoint(checkpoint: AgentCheckpoint, ctx: OperationContext): Promise<void> {
@@ -62,10 +79,16 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		agentId: string,
 		suspendedState: string,
 		runningState: string,
-		updatedAfter: Date,
+		updatedAfter?: Date,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ runId, agentId, expired: false, state: suspendedState, updatedAt: MoreThan(updatedAfter) },
+			{
+				runId,
+				agentId,
+				expired: false,
+				state: suspendedState,
+				...(updatedAfter && { updatedAt: MoreThan(updatedAfter) }),
+			},
 			{ state: runningState },
 		);
 
@@ -111,22 +134,40 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 			{ runId, agentId },
 			{ expired: true, state: null },
 		);
+		await this.managerFor(ctx).update(
+			AgentBackgroundJob,
+			{
+				parentRunId: runId,
+				parentAgentId: agentId,
+				kind: 'approval',
+				status: In(['completed', 'failed', 'cancelled']),
+				notifiedAt: IsNull(),
+			},
+			{ notifiedAt: new Date() },
+		);
 	}
 
 	/**
 	 * Expires checkpoints that still hold state and were last updated before
-	 * `olderThan`. Returns the thread ids of the rows this update changed.
+	 * `olderThan`. Returns affected threads without a retained approval request.
 	 * A save that refreshes a checkpoint first keeps that row. Its thread id is
 	 * not returned.
 	 */
 	async expireStale(olderThan: Date): Promise<ExpiredCheckpoints> {
-		// Postgres returns the changed rows from the UPDATE. The sqlite driver
-		// does not. Read those rows and update them in one write transaction.
-		// BEGIN IMMEDIATE stops a save from landing between the two statements.
-		if (this.manager.connection.options.type === 'postgres') {
-			return await this.expireStaleOnPostgres(olderThan);
-		}
-		return await this.expireStaleOnSqlite(olderThan);
+		// Postgres returns changed rows. SQLite reads and updates them in one write transaction.
+		const expired =
+			this.manager.connection.options.type === 'postgres'
+				? await this.expireStaleOnPostgres(olderThan)
+				: await this.expireStaleOnSqlite(olderThan);
+		if (expired.threadIds.length === 0) return expired;
+		const retained = await this.retainedApprovalCheckpoints()
+			.select('retained.threadId', 'threadId')
+			.distinct(true)
+			.andWhere('retained.threadId IN (:...threadIds)', { threadIds: expired.threadIds })
+			.getRawMany<{ threadId: string }>();
+		const retainedThreads = new Set(retained.map(({ threadId }) => threadId));
+		// An older checkpoint can expire while another request still retains the same thread.
+		return { ...expired, threadIds: expired.threadIds.filter((id) => !retainedThreads.has(id)) };
 	}
 
 	private async expireStaleOnPostgres(olderThan: Date): Promise<ExpiredCheckpoints> {
@@ -146,9 +187,17 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 
 	private async expireStaleOnSqlite(olderThan: Date): Promise<ExpiredCheckpoints> {
 		return await this.manager.transaction(async (manager) => {
+			const retained = this.retainedApprovalCheckpoints().select('retained.runId');
 			const rows = await manager.find(AgentCheckpoint, {
 				select: { runId: true, threadId: true },
-				where: { updatedAt: LessThan(olderThan), state: Not(IsNull()) },
+				where: {
+					updatedAt: LessThan(olderThan),
+					state: Not(IsNull()),
+					runId: Raw(
+						(alias) => `${alias} NOT IN (${retained.getQuery()})`,
+						retained.getParameters(),
+					),
+				},
 			});
 			const result = await this.staleExpiration(manager, olderThan).execute();
 			return {
@@ -159,12 +208,31 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 	}
 
 	private staleExpiration(manager: EntityManager, olderThan: Date) {
+		const retained = this.retainedApprovalCheckpoints().select('retained.runId');
 		return manager
 			.createQueryBuilder()
 			.update(AgentCheckpoint)
 			.set({ expired: true, state: null })
 			.where('updatedAt < :olderThan', { olderThan })
-			.andWhere('state IS NOT NULL');
+			.andWhere('state IS NOT NULL')
+			.andWhere(`"runId" NOT IN (${retained.getQuery()})`, retained.getParameters());
+	}
+
+	private retainedApprovalCheckpoints() {
+		return this.createQueryBuilder('retained')
+			.innerJoin(
+				AgentBackgroundJob,
+				'job',
+				'job.parentAgentId = retained.agentId AND job.parentRunId = retained.runId',
+			)
+			.where('job.kind = :approvalKind', { approvalKind: 'approval' })
+			.andWhere('job.notifiedAt IS NULL');
+	}
+
+	async isRetainedForApproval(runId: string): Promise<boolean> {
+		return await this.retainedApprovalCheckpoints()
+			.andWhere('retained.runId = :runId', { runId })
+			.getExists();
 	}
 }
 

@@ -1627,6 +1627,8 @@ export interface IPollFunctions
 	 * runs out, return what it has, and leave the rest to the next poll.
 	 */
 	getPollBudgetMs(): number;
+	/** Marks this poll as fetching in bounded batches, so it keeps its cursor when its run is refused. */
+	declareBoundedPoll?(): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -4069,6 +4071,8 @@ export interface ExecuteWorkflowOptions {
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
 	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+	/** Aborts when the calling execution is cancelled, so an awaited sub-workflow stops with it. */
+	abortSignal?: AbortSignal;
 }
 
 export type AiEvent =

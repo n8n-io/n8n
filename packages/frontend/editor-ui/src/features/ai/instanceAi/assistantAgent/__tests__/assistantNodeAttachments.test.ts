@@ -22,7 +22,7 @@ describe('assistantNodeAttachments', () => {
 			const staged = toNodesComposerAttachment(attachment, []);
 
 			expect(staged).toEqual({
-				chip: { id: 'nodes:wf-1', label: expect.any(String), icon: 'layers' },
+				chip: { id: 'nodes:wf-1', label: expect.any(String), icon: 'layers', hostRendered: true },
 				clientContextPatch: { attachments: [attachment] },
 			});
 			expect(readNodesAttachment(staged)).toEqual(attachment);

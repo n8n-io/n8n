@@ -12,10 +12,10 @@ import type { HostDataResolver } from './host-data-resolver';
 // ============================================================================
 // Host-side functions shared by the expression bridges.
 //
-// Both IsolatedVmBridge and QuickJsBridge expose the same three host
-// callbacks to the guest — getValueAtPath, getArrayElement, callHost — plus
-// the error-sentinel helpers and bundle loader around them. The logic is
-// engine-agnostic: each bridge wraps these functions in its own
+// Both IsolatedVmBridge and QuickJsBridge expose the same four host
+// callbacks to the guest — getValueAtPath, getArrayElement, callHost,
+// readBatch — plus the error-sentinel helpers and bundle loader around them.
+// The logic is engine-agnostic: each bridge wraps these functions in its own
 // callback mechanism (ivm.Callback / vm.newFunction) and marshals the
 // plain, JSON-shaped return values across its own boundary.
 // ============================================================================
@@ -111,7 +111,7 @@ export function getArrayElement(
 }
 
 /** Describe objects and arrays without reading their contents. */
-function toHostMetadata(value: unknown): unknown {
+export function toHostMetadata(value: unknown): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
 	if (typeof value === 'function') {
 		return undefined;
