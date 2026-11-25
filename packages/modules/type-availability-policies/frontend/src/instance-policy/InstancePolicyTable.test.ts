@@ -627,6 +627,8 @@ describe('InstancePolicyTable', () => {
 			await fireEvent.click(getByTestId('pagination-next'));
 			await userEvent.click(rowCheckbox(getByRole, 'Type 25'));
 			await fireEvent.update(getByPlaceholderText('Search credentials'), 'Type 25');
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Allowed (1)'));
 
 			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
 			expect(rowCheckbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');

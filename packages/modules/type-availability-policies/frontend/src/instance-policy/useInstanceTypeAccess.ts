@@ -86,7 +86,10 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 		const byName = new Map(types.value.map((type) => [type.name, type]));
 		const toChange = selected.filter(({ name }) => {
 			const type = byName.get(name);
-			return type?.editable === true && type.access !== access;
+			if (type?.editable !== true) return false;
+			// A save that still runs can fail, so its access does not count as the current access.
+			const change = pending.get(name);
+			return type.access !== access || (change !== undefined && change.savedVersion === undefined);
 		});
 		if (toChange.length === 0) return 'unchanged';
 

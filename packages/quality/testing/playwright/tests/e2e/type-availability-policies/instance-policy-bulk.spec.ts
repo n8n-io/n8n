@@ -52,8 +52,10 @@ test.describe(
 			await expect(page.getRestrictReview()).toBeHidden();
 
 			await n8n.page.reload();
-			await page.search('n8n-nodes-base.');
+			// Each search shows one row. A wider search lists the rows on several pages.
+			await page.search(NO_OP.type);
 			await expect(page.getRowAccess(NO_OP.name)).toContainText('Allowed');
+			await page.search(SET.type);
 			await expect(page.getRowAccess(SET.name)).toContainText('Allowed');
 		});
 
@@ -113,8 +115,10 @@ test.describe(
 			await expect(page.getSelectionBar()).toBeHidden();
 
 			await n8n.page.reload();
-			await page.search('n8n-nodes-base.');
+			// Each search shows one row. A wider search lists the rows on several pages.
+			await page.search(NO_OP.type);
 			await expect(page.getRowAccess(NO_OP.name)).toContainText('Restricted');
+			await page.search(SET.type);
 			await expect(page.getRowAccess(SET.name)).toContainText('Restricted');
 		});
 

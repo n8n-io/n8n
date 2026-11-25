@@ -382,5 +382,42 @@ describe('useInstanceTypeAccess', () => {
 			expect(await changeAccessMany(selected, 'allow')).toBe('changed');
 			expect(types.value.map((type) => type.access)).toEqual(['deny', 'deny', 'allow']);
 		});
+
+		it('shows the server values again and changes no type when the save fails', async () => {
+			await setup();
+			mocks.setInstanceTypeAccess.mockRejectedValue(
+				new ResponseError('Internal error', { httpStatusCode: 500 }),
+			);
+			const { types, changeAccessMany } = useInstanceTypeAccess('node');
+
+			expect(await changeAccessMany(selected, 'allow')).toBe('failed');
+			expect(types.value.map((type) => type.access)).toEqual(['deny', 'deny', 'allow']);
+		});
+
+		it('sends a type whose own save still runs, because that save can fail', async () => {
+			await setup();
+			let failSingle: (error: unknown) => void = () => {};
+			mocks.setInstanceTypeAccess.mockImplementationOnce(
+				async () =>
+					await new Promise((_, reject) => {
+						failSingle = reject;
+					}),
+			);
+			const { types, changeAccess, changeAccessMany } = useInstanceTypeAccess('node');
+
+			// Slack shows Allowed while its own save runs.
+			const single = changeAccess(SLACK, 'allow', 'Slack');
+			await vi.waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1));
+			const bulk = changeAccessMany(selected, 'allow');
+			failSingle(new ResponseError('Internal error', { httpStatusCode: 500 }));
+			await single;
+
+			expect(await bulk).toBe('saved');
+			expect(mocks.setInstanceTypeAccess.mock.calls[1][2].changes).toEqual([
+				{ type: SLACK, access: 'allow' },
+				{ type: NOTION, access: 'allow' },
+			]);
+			expect(types.value.map((type) => type.access)).toEqual(['allow', 'allow', 'allow']);
+		});
 	});
 });

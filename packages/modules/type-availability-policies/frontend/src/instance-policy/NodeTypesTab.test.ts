@@ -261,7 +261,15 @@ describe('NodeTypesTab', () => {
 			const { getByRole, getByTestId } = await setup();
 			await selectBoth(getByRole);
 			mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
-			mocks.fetchInstanceAccess.mockResolvedValue(access(2));
+			// Another admin restricted Slack, so the row shows the access that the tab read again.
+			mocks.fetchInstanceAccess.mockResolvedValue(
+				access(2, [
+					{ name: SLACK, access: 'deny', matchedRuleId: 'other-admin' },
+					{ name: SLACK_TRIGGER, access: 'allow', matchedRuleId: null },
+					{ name: NOT_LOADED, access: 'deny', matchedRuleId: 'rule-1' },
+				]),
+			);
+			const accessReads = mocks.fetchInstanceAccess.mock.calls.length;
 
 			await userEvent.click(getByTestId('policy-bulk-restrict'));
 			await waitFor(() => expect(useRestrictReviewStore().bulkRequest).not.toBeNull());
@@ -272,7 +280,8 @@ describe('NodeTypesTab', () => {
 					expect.objectContaining({ type: 'warning' }),
 				),
 			);
-			expect(accessCell(getByTestId)).toHaveTextContent('Allowed');
+			expect(mocks.fetchInstanceAccess.mock.calls.length).toBeGreaterThan(accessReads);
+			await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
 			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
 		});
 	});

@@ -294,7 +294,8 @@ describe('RestrictReviewDialog', () => {
 			await waitFor(() => expect(screen.getByText('Restrict 5 nodes?')).toBeInTheDocument());
 			expect(
 				screen.getByText(
-					"Users won't be able to add or use these nodes. 2 of the 5 selected items are currently used:",
+					// Slack has its own line, but its usage is not known, so it does not count as in use.
+					"Users won't be able to add or use these nodes. 1 of the 5 selected items is currently used:",
 				),
 			).toBeInTheDocument();
 			expect(
@@ -302,6 +303,19 @@ describe('RestrictReviewDialog', () => {
 			).toBeInTheDocument();
 			expect(
 				screen.getByText('Slack: the usage could not be loaded, so it may be in use'),
+			).toBeInTheDocument();
+		});
+
+		it('counts each type in use', async () => {
+			openBulk({
+				...bulk,
+				items: bulk.items.map((item) => ({ ...item, usage: notion.usage })),
+			});
+
+			expect(
+				await screen.findByText(
+					"Users won't be able to add or use these nodes. 2 of the 5 selected items are currently used:",
+				),
 			).toBeInTheDocument();
 		});
 

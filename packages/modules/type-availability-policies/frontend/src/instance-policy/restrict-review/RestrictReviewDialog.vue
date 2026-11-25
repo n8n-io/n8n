@@ -65,6 +65,8 @@ const activeText = (usage: TypeUsage) =>
 const content = computed(() => {
 	const bulk = review.bulkRequest;
 	if (bulk) {
+		// A type whose counts did not load gets its own line, but it does not count as in use.
+		const used = bulk.items.filter(({ usage }) => usage !== null).length;
 		return {
 			bulk: true,
 			title: i18n.baseText(BULK_KEY[bulk.kind].title, {
@@ -72,7 +74,8 @@ const content = computed(() => {
 				interpolate: { count: String(bulk.total) },
 			}),
 			description: i18n.baseText(BULK_KEY[bulk.kind].description, {
-				interpolate: { affected: String(bulk.items.length), total: String(bulk.total) },
+				adjustToNumber: used,
+				interpolate: { affected: String(used), total: String(bulk.total) },
 			}),
 			// Each type on its own line: a sum would count a workflow that uses several of them twice.
 			lines: bulk.items.map(({ label, usage }) =>
