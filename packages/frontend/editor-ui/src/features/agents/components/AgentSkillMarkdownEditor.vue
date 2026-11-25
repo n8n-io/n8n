@@ -91,20 +91,18 @@ const editorProps: EditorProps = {
 		view.dispatch(view.state.tr.delete(mention.from, mention.to));
 		return true;
 	},
-	handleDOMEvents: {
-		click(_view, event) {
-			if (!mentionsEnabled.value || !(event.target instanceof Element)) return false;
-			const href = event.target.closest('a')?.getAttribute('href');
-			if (!href?.startsWith(WORKFLOW_MENTION_URL_PREFIX)) return false;
-			event.preventDefault();
-			const workflowId = href.slice(WORKFLOW_MENTION_URL_PREFIX.length).split('?')[0];
-			const { href: workflowUrl } = router.resolve({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId },
-			});
-			window.open(workflowUrl, '_blank');
-			return true;
-		},
+	handleClick(_view, _position, event) {
+		if (!mentionsEnabled.value || !(event.target instanceof Element)) return false;
+		const href = event.target.closest('a')?.getAttribute('href');
+		if (!href?.startsWith(WORKFLOW_MENTION_URL_PREFIX)) return false;
+		event.preventDefault();
+		const workflowId = href.slice(WORKFLOW_MENTION_URL_PREFIX.length).split('?')[0];
+		const { href: workflowUrl } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId },
+		});
+		window.open(workflowUrl, '_blank');
+		return true;
 	},
 };
 
