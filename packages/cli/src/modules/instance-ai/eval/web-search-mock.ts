@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { OperationalError } from '@n8n/errors';
 
 import { buildDateAnchors } from './date-anchors';
 import { generateJson } from './mock-utils';
@@ -18,11 +19,20 @@ export interface WebSearchMockArgs {
 	excludeDomains?: string[];
 }
 
+/** The note of a result the mock failed to generate. */
+export const WEB_SEARCH_MOCK_FAILURE_NOTE =
+	'Mock web-search generation failed — treat a scenario failure here as a framework issue, not agent behaviour.';
+
 /** Mirrors `WebSearchResponse` from @n8n/ai-utilities — what the real tool returns. */
 export interface WebSearchMockResult {
 	query: string;
 	results: Array<{ title: string; url: string; snippet: string; publishedDate?: string }>;
 	note?: string;
+}
+
+export interface WebSearchMockCallOptions {
+	/** Aborted when the run stops. The mock then cancels its model call. */
+	signal?: AbortSignal;
 }
 
 export interface WebSearchMockOptions {
@@ -74,12 +84,16 @@ function validateSearchResults(parsed: unknown): WebSearchMockResult['results'] 
 
 export function createWebSearchMock(
 	options: WebSearchMockOptions,
-): (args: WebSearchMockArgs) => Promise<WebSearchMockResult> {
+): (
+	args: WebSearchMockArgs,
+	callOptions?: WebSearchMockCallOptions,
+) => Promise<WebSearchMockResult> {
 	const { logger } = options;
 	const cache = new Map<string, Promise<WebSearchMockResult>>();
 	const priorSearches: string[] = [];
 
-	return async (args) => {
+	return async (args, callOptions) => {
+		const signal = callOptions?.signal;
 		const cacheKey = JSON.stringify(args);
 		let cached = cache.get(cacheKey);
 		if (!cached) {
@@ -112,13 +126,19 @@ export function createWebSearchMock(
 					sections.join('\n'),
 					validateSearchResults,
 					logger,
+					signal,
 				);
+				// A stopped search is not a failed generation. Do not keep it for a later call.
+				if (!results && signal?.aborted) {
+					cache.delete(cacheKey);
+					throw new OperationalError('The web search was stopped.');
+				}
 				if (!results) {
 					logger.warn(`[EvalWebSearchMock] generation failed for query "${args.query}"`);
 					return {
 						query: args.query,
 						results: [],
-						note: 'Mock web-search generation failed — treat a scenario failure here as a framework issue, not agent behaviour.',
+						note: WEB_SEARCH_MOCK_FAILURE_NOTE,
 					};
 				}
 				// Enforce domain filters on the generated URLs like the real
