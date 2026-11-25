@@ -71,16 +71,21 @@ describe('Agent attention flags', () => {
 
 	it('reverts and reapplies the attention flag schema', async () => {
 		const dataSource = Container.get(DataSource);
-		const migration = [...sqliteMigrations, ...postgresMigrations].find(
-			(candidate) => candidate.name === 'CreateAgentAttentionFlags1795546358454',
-		);
-		if (!migration) throw new Error('Attention flag migration not found');
-		// Template databases skip startup migration wrapping in this worker.
-		wrapMigration(migration);
-		expect(dataSource.migrations.at(-1)?.constructor.name).toBe(migration.name);
+		const allMigrations = [...sqliteMigrations, ...postgresMigrations];
+		const names = dataSource.migrations.map((instance) => instance.constructor.name);
+		const index = names.indexOf('CreateAgentAttentionFlags1795546358454');
+		expect(index).toBeGreaterThanOrEqual(0);
+		// Later migrations are undone first, so the attention flag migration is the last undone.
+		const toUndo = names.slice(index);
+		for (const name of toUndo) {
+			const migration = allMigrations.find((candidate) => candidate.name === name);
+			if (!migration) throw new Error(`Migration ${name} not found`);
+			// Template databases skip startup migration wrapping in this worker.
+			wrapMigration(migration);
+		}
 		const runner = dataSource.createQueryRunner();
 		try {
-			await dataSource.undoLastMigration();
+			for (let i = 0; i < toUndo.length; i++) await dataSource.undoLastMigration();
 			expect(
 				await runner.hasTable(dataSource.getMetadata(AgentAttentionFlagEntity).tablePath),
 			).toBe(false);
