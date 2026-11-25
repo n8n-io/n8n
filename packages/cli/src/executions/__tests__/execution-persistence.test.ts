@@ -1,7 +1,14 @@
+import { ExecutionRetentionService } from '@n8n/backend-services';
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { EventService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type ExecutionLedger,
+	CorruptedExecutionDataError,
+	type ExecutionDataJsonStore,
+	type ExecutionDataPayload,
+} from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
@@ -21,11 +28,8 @@ import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import type { DbStore } from '@/executions/execution-data/db-store';
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
-import type { ExecutionDataPayload } from '@/executions/execution-data/types';
 import { UnreadableRunDataError } from '@/executions/execution-data/unreadable-run-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -38,6 +42,8 @@ describe('ExecutionPersistence', () => {
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
 	const eventService = mock<EventService>();
+	const disabledLedger = mock<ExecutionLedger>({ isEnabled: false });
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: true });
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -83,16 +89,23 @@ describe('ExecutionPersistence', () => {
 	const createMockTx = (tx: EntityManager) =>
 		vi.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
+	const txCtx: OperationContext = { trx: mock<Transaction>() };
+
 	const createMockRunInTransaction = (tx: EntityManager) =>
 		vi
 			.fn()
 			.mockImplementation(
-				async <T>(_ctx: OperationContext, cb: (em: EntityManager) => Promise<T>) => await cb(tx),
+				async <T>(
+					_ctx: OperationContext,
+					cb: (em: EntityManager, ctx: OperationContext) => Promise<T>,
+				) => await cb(tx, txCtx),
 			) as unknown as typeof executionRepository.runInTransaction;
 
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
+		ledger = disabledLedger,
+		retention = new ExecutionRetentionService(),
 	) =>
 		new ExecutionPersistence(
 			executionRepository,
@@ -102,9 +115,61 @@ describe('ExecutionPersistence', () => {
 			mock<StorageConfig>({ modeTag }),
 			executionsConfig,
 			mock<DatabaseConfig>({ type: dbType }),
+			retention,
 			errorReporter,
 			eventService,
+			ledger,
 		);
+
+	it('keeps retained execution payloads when deletion is requested', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['123']);
+		const service = createPersistenceService('fs', 'postgresdb', disabledLedger, retention);
+		await expect(
+			service.hardDelete({ executionId: '123', workflowId: 'workflow', storedAt: 'fs' }),
+		).rejects.toThrow('required by pending work');
+		expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+		expect(jsonStore.delete).not.toHaveBeenCalled();
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('checks retention for every target before the first batch of a criteria delete', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['exec-2']);
+		const service = createPersistenceService('db', 'postgresdb', disabledLedger, retention);
+		const { hardDeletionBatchSize } = executionRepository;
+		Object.assign(executionRepository, { hardDeletionBatchSize: 1 });
+		onTestFinished(() => {
+			Object.assign(executionRepository, { hardDeletionBatchSize });
+		});
+		executionRepository.findExecutionsToDelete.mockResolvedValue([
+			{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' },
+			{ workflowId: 'wf-1', executionId: 'exec-2', storedAt: 'db' },
+		]);
+
+		await expect(
+			service.hardDeleteBy({
+				filters: {},
+				accessibleWorkflowIds: ['wf-1'],
+				deleteConditions: { ids: ['exec-1', 'exec-2'] },
+			}),
+		).rejects.toThrow('required by pending work');
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('checks retention for the workflow before the first batch of a workflow delete', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['exec-2']);
+		const service = createPersistenceService('db', 'postgresdb', disabledLedger, retention);
+		executionRepository.hasWorkflowExecutionAmong.mockResolvedValue(true);
+
+		await expect(service.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+			'required by pending work',
+		);
+		expect(executionRepository.hasWorkflowExecutionAmong).toHaveBeenCalledWith('wf-1', ['exec-2']);
+		expect(executionRepository.findForDeletionByWorkflowId).not.toHaveBeenCalled();
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
 
 	describe('create', () => {
 		const createPayload: CreateExecutionPayload = {
@@ -532,6 +597,83 @@ describe('ExecutionPersistence', () => {
 
 				expect(mockTx.findOne).not.toHaveBeenCalled();
 				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('execution ledger', () => {
+			const persistence = createPersistenceService('db', 'postgresdb', executionLedger);
+			let mockTx: ReturnType<typeof createMockTransaction>;
+
+			beforeEach(() => {
+				mockTx = createMockTransaction();
+				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
+			});
+
+			it('passes the new row to the ledger in its transaction', async () => {
+				const stoppedAt = new Date('2026-11-10T10:00:00Z');
+
+				await persistence.create(
+					{ ...createPayload, status: 'error', stoppedAt },
+					{},
+					{ source: 'instance_ai', skipLedger: true },
+				);
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					{
+						started: {
+							executionId: 'exec-1',
+							workflowId: 'workflow-123',
+							workflowName: 'Test Workflow',
+							mode: 'manual',
+							source: 'instance_ai',
+							occurredAt: expect.any(Date),
+						},
+						status: 'error',
+						startedAt: undefined,
+						stoppedAt,
+						isCopy: true,
+						reclaimedTombstone: null,
+					},
+					txCtx,
+				);
+			});
+
+			it.each([
+				['the owner project of the caller', 'project-1', 'project-1'],
+				['no project for an empty id', '', undefined],
+			])('passes %s to the ledger', async (_case, projectId, expected) => {
+				await persistence.create(createPayload, {}, { projectId });
+
+				const [facts] = executionLedger.recordCreated.mock.calls[0];
+				expect(facts.started.projectId).toBe(expected);
+			});
+
+			it('passes the reclaimed tombstone to the ledger', async () => {
+				mockTx.findOne.mockResolvedValue({
+					id: 'exec-old',
+					workflowId: 'workflow-123',
+					storedAt: 'db',
+					mode: 'trigger',
+				} as unknown as ExecutionEntity);
+
+				await persistence.create({ ...createPayload, deduplicationKey: 'wf-1:node-1:1' });
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						reclaimedTombstone: expect.objectContaining({
+							executionId: 'exec-old',
+							workflowId: 'workflow-123',
+							mode: 'trigger',
+						}),
+					}),
+					txCtx,
+				);
+			});
+
+			it('does not call the ledger when the module is off', async () => {
+				await createPersistenceService('db').create(createPayload);
+
+				expect(disabledLedger.recordCreated).not.toHaveBeenCalled();
 			});
 		});
 	});

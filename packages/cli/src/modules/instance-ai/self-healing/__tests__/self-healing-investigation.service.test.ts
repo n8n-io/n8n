@@ -19,7 +19,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { DurableEventLog } from '../../event-bus/durable-event-log';
 import type { InterruptedRunSweeper } from '../../event-bus/interrupted-run-sweeper';
@@ -66,7 +66,7 @@ describe('SelfHealingInvestigationService', () => {
 		enabledById: user.id,
 		includeSubWorkflows: false,
 	});
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	const { SELF_HEALING_EVALUATED_FAILURE, SELF_HEALING_FINISHED_INVESTIGATION } =
 		TELEMETRY_EVENT.SELF_HEALING;
@@ -97,6 +97,7 @@ describe('SelfHealingInvestigationService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
+		configurationService.isEnabled.mockResolvedValue(true);
 		configuration.includeSubWorkflows = false;
 		configurations.findForWorkflow.mockResolvedValue(configuration);
 		configurations.findForUpdate.mockResolvedValue(configuration);
@@ -166,6 +167,16 @@ describe('SelfHealingInvestigationService', () => {
 		await expect(service.start(input)).rejects.toThrow('Self-healing investigations are disabled.');
 		expect(investigations.createInvestigation).not.toHaveBeenCalled();
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('does not admit an investigation when the instance flag is off', async () => {
+		configurationService.isEnabled.mockResolvedValue(false);
+
+		expect(await service.start(input)).toBeNull();
+		expect(configurations.findForWorkflow).not.toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('uses server references and saves the result directly', async () => {

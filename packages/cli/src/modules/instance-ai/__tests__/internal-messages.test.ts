@@ -1,3 +1,4 @@
+import { wrapUntrustedData } from '@n8n/agents';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
 import {
@@ -7,6 +8,7 @@ import {
 	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
+	buildRunStoppedMessage,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
@@ -117,6 +119,27 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
+	it('strips <cloud-browser-task-completed> block', () => {
+		const stored =
+			'<cloud-browser-task-completed>\ntask-1 ended with a summary\n</cloud-browser-task-completed>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('hides the whole cloud browser follow-up message', () => {
+		const stored = [
+			'<cloud-browser-task-completed>',
+			'Virtual browser tasks that ended. This is an automated report, not a message from the user.',
+			'<task taskId="task_1" outcome="succeeded">',
+			'Title: Find the price',
+			wrapUntrustedData('$20 a month', 'cloud-browser'),
+			'</task>',
+			'</cloud-browser-task-completed>',
+			'',
+			AUTO_FOLLOW_UP_MESSAGE,
+		].join('\n');
+		expect(cleanStoredUserMessage(stored)).toBeNull();
+	});
+
 	it('strips <workflow-verification-follow-up> block', () => {
 		const stored =
 			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
@@ -192,6 +215,10 @@ describe('cleanStoredUserMessage', () => {
 
 	it('returns null for auto-follow-up message', () => {
 		expect(cleanStoredUserMessage(AUTO_FOLLOW_UP_MESSAGE)).toBeNull();
+	});
+
+	it('returns null for the run-stopped message', () => {
+		expect(cleanStoredUserMessage(buildRunStoppedMessage())).toBeNull();
 	});
 
 	it('returns null for auto-follow-up after stripping task block', () => {
@@ -913,6 +940,47 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).toContain('currently viewing its execution `exec-9`');
 	});
 
+	it('names the execution that a workflow tab shows', () => {
+		const block = buildThreadArtifactsBlock({
+			artifacts: [
+				{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' },
+				{ type: 'workflow', id: 'wf-2', name: 'Report' },
+			],
+			activeId: 'wf-1',
+		});
+
+		expect(block).toContain(
+			'  - Workflow "Digest" (id: `wf-1`) [current], currently viewing its execution `exec-7`',
+		);
+		expect(block).toContain('  - Workflow "Report" (id: `wf-2`)\n');
+	});
+
+	it('names the execution of the tab next to the nodes that the user selected in it', () => {
+		const block = buildThreadArtifactsBlock(
+			{
+				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' }],
+				activeId: 'wf-1',
+			},
+			[{ type: 'nodes', workflowId: 'wf-1', sets: [{ nodes: [{ id: 'n1', name: 'Linear' }] }] }],
+		);
+
+		expect(block).toContain('currently viewing its execution `exec-7`');
+		expect(block).toContain('  - Selected nodes in workflow `wf-1`:\n    - Node "Linear".');
+	});
+
+	it('prefers the handed-off execution to the execution of the tab', () => {
+		const block = buildThreadArtifactsBlock(
+			{
+				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' }],
+				activeId: 'wf-1',
+			},
+			[{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-9' }],
+		);
+
+		expect(block).toContain('currently viewing its execution `exec-9`');
+		expect(block).not.toContain('exec-7`');
+	});
+
 	it('ignores an activeId that is not in the list', () => {
 		const block = buildThreadArtifactsBlock({
 			artifacts: [{ type: 'agent', id: 'agent-1', name: 'Triage', projectId: 'proj-1' }],
@@ -1162,6 +1230,15 @@ describe('buildThreadContextBlock', () => {
 	});
 });
 
+describe('buildRunStoppedMessage', () => {
+	it('wraps the stop notice in a run-stopped block after the auto follow-up text', () => {
+		const message = buildRunStoppedMessage();
+
+		expect(message.startsWith(AUTO_FOLLOW_UP_MESSAGE)).toBe(true);
+		expect(message).toMatch(/<run-stopped>\n.*stopped your previous reply.*\n<\/run-stopped>$/);
+	});
+});
+
 describe('buildAppTargetsBlock', () => {
 	it('renders nothing when the thread has no apps', () => {
 		expect(buildAppTargetsBlock([], false)).toBe('');
@@ -1179,10 +1256,10 @@ describe('buildAppTargetsBlock', () => {
 		).toBe(
 			[
 				'<app-targets>',
-				'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the `apps` tool.',
+				'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the app tools, for example `open_app`.',
 				'- App Dashboard (appId: `app-1`)',
 				'- App Admin ignore this (appId: `app-2`)',
-				'- A new app that the user opened. It has no row yet. Create it with the `apps` tool action `create`.',
+				'- A new app that the user opened. It has no row yet. Create it with `create_app`.',
 				'</app-targets>',
 			].join('\n'),
 		);

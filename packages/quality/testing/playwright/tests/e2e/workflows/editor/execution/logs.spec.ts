@@ -21,7 +21,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
-		test('should populate logs as manual execution progresses', async ({
+		test('should populate logs as manual execution progresses @engine:v2', async ({
 			n8n,
 			setupRequirements,
 		}) => {

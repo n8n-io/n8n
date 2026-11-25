@@ -1,5 +1,17 @@
 import { parseFlatted } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionLedger,
+	ExecutionRetentionService,
+	CorruptedExecutionDataError,
+	ExecutionDataJsonStore,
+	isExecutionDataPayload,
+	type BlobStorageLocation,
+	type BundleWorkflowSnapshot,
+	type ExecutionDataPayload,
+	type ExecutionRef,
+	toWorkflowSnapshot,
+} from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -20,7 +32,13 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IRunExecutionData,
+	IRunExecutionDataAll,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 import {
 	createEmptyRunExecutionData,
 	isTerminalExecutionStatus,
@@ -29,23 +47,24 @@ import {
 } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
-import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
-import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import {
-	isExecutionDataPayload,
-	type BlobStorageLocation,
-	type BundleWorkflowSnapshot,
-	type ExecutionDataPayload,
-	type ExecutionRef,
-	toWorkflowSnapshot,
-} from './execution-data/types';
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
+
+type ReclaimedTombstone = DeletionTarget & { mode: WorkflowExecuteMode };
+
+export type CreateExecutionOptions = {
+	/** Who started the run. The execution row does not store it, so the ledger gets it here. */
+	source?: WorkflowExecutionSource;
+	/** The owner project of the workflow. The ledger looks it up when this is unset or empty. */
+	projectId?: string;
+	/** For rows that copy a run from elsewhere: that run is not a run of this instance. */
+	skipLedger?: true;
+};
 
 type InFlightExecutionOutcome = Pick<IExecutionResponse, 'status' | 'finished' | 'stoppedAt'>;
 
@@ -100,8 +119,10 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly retention: ExecutionRetentionService,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly executionLedger: ExecutionLedger,
 	) {}
 
 	/**
@@ -112,7 +133,11 @@ export class ExecutionPersistence {
 	 * With a `ctx` carrying a transaction, this row commits together with everything
 	 * else in it; with none, it gets a transaction of its own.
 	 */
-	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
+	async create(
+		payload: CreateExecutionPayload,
+		ctx: OperationContext = {},
+		options: CreateExecutionOptions = {},
+	): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { id } = workflowData;
 		const workflowSnapshot = toWorkflowSnapshot(workflowData);
@@ -120,12 +145,12 @@ export class ExecutionPersistence {
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
-		let reclaimedTombstone: DeletionTarget | null = null;
+		let reclaimedTombstone: ReclaimedTombstone | null = null;
 		const failedCreate: {
 			blobTarget: (ExecutionRef & { storedAt: BlobStorageLocation }) | null;
 		} = { blobTarget: null };
 		try {
-			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
+			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx, c) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
@@ -146,6 +171,28 @@ export class ExecutionPersistence {
 					{ id: executionId },
 					{ jsonSizeBytes, binaryDataSizeBytes },
 				);
+
+				if (this.executionLedger.isEnabled) {
+					await this.executionLedger.recordCreated(
+						{
+							started: {
+								executionId,
+								workflowId: executionEntity.workflowId,
+								workflowName: workflowData.name,
+								mode: executionEntity.mode,
+								source: options.source,
+								projectId: options.projectId || undefined,
+								occurredAt: executionEntity.createdAt,
+							},
+							status: executionEntity.status,
+							startedAt: executionEntity.startedAt,
+							stoppedAt: executionEntity.stoppedAt,
+							isCopy: options.skipLedger,
+							reclaimedTombstone,
+						},
+						c,
+					);
+				}
 
 				return executionId;
 			});
@@ -203,7 +250,7 @@ export class ExecutionPersistence {
 	private async reclaimTombstone(
 		tx: EntityManager,
 		deduplicationKey: string | null | undefined,
-	): Promise<DeletionTarget | null> {
+	): Promise<ReclaimedTombstone | null> {
 		if (!deduplicationKey) return null;
 
 		// Load the tombstone before deleting it so its out-of-band blob can be cleared
@@ -211,7 +258,7 @@ export class ExecutionPersistence {
 		// most one row carries this key.
 		const tombstone = await tx.findOne(ExecutionEntity, {
 			where: { deduplicationKey, status: 'new' },
-			select: ['id', 'workflowId', 'storedAt'],
+			select: ['id', 'workflowId', 'storedAt', 'mode'],
 		});
 		if (!tombstone) return null;
 
@@ -226,6 +273,7 @@ export class ExecutionPersistence {
 			workflowId: tombstone.workflowId,
 			executionId: tombstone.id,
 			storedAt: tombstone.storedAt,
+			mode: tombstone.mode,
 		};
 	}
 
@@ -764,6 +812,8 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
+		await this.retention.assertCanDelete(targets.map((target) => target.executionId));
+
 		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),
@@ -792,6 +842,9 @@ export class ExecutionPersistence {
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
+		// Check every target before the first batch commits, so a retained execution
+		// does not stop the deletion part way through.
+		await this.retention.assertCanDelete(refs.map((ref) => ref.executionId));
 
 		// Batches keep each row delete under the SQLite expression-depth limit.
 		// Each batch deletes binaries, then the payload, then the rows.
@@ -811,6 +864,12 @@ export class ExecutionPersistence {
 	 * instead of looping forever.
 	 */
 	async hardDeleteByWorkflowId(workflowId: string) {
+		// Check before the first batch commits. Each batch checks again for work that
+		// starts during the deletion.
+		await this.retention.assertNoneRetained(
+			async (retainedIds) =>
+				await this.executionRepository.hasWorkflowExecutionAmong(workflowId, retainedIds),
+		);
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
@@ -1106,6 +1165,7 @@ export class ExecutionPersistence {
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (conditions?.requireWaitTill) where.waitTill = conditions.requireWaitTill;
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
 		if (conditions?.requireStatuses) where.status = In([...conditions.requireStatuses]);
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses

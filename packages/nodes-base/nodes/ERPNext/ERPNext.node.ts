@@ -15,6 +15,47 @@ import { erpNextApiRequest, erpNextApiRequestAllItems, toPathValue } from './Gen
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
+const loadDocFields = async (
+	context: ILoadOptionsFunctions,
+	docType: string,
+): Promise<Array<{ name: string; value: string }>> => {
+	// https://github.com/frappe/frappe/blob/develop/frappe/desk/form/load.py
+	const response = await erpNextApiRequest.call(
+		context,
+		'GET',
+		requestPath`/api/method/frappe.desk.form.load.getdoctype`,
+		{},
+		{ doctype: docType },
+	);
+
+	if (!response || typeof response !== 'object' || !Array.isArray(response.docs)) {
+		return [];
+	}
+
+	const docFields = response.docs.flatMap((doc: unknown) => {
+		if (!doc || typeof doc !== 'object' || !('fields' in doc) || !Array.isArray(doc.fields)) {
+			return [];
+		}
+
+		return doc.fields.flatMap((field: unknown) => {
+			if (
+				!field ||
+				typeof field !== 'object' ||
+				!('label' in field) ||
+				typeof field.label !== 'string' ||
+				!('fieldname' in field) ||
+				typeof field.fieldname !== 'string'
+			) {
+				return [];
+			}
+
+			return [{ name: field.label, value: field.fieldname }];
+		});
+	});
+
+	return docFields;
+};
+
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ERPNext',
@@ -77,18 +118,7 @@ export class ERPNext implements INodeType {
 					this.getNode().typeVersion,
 					this.getCurrentNodeParameter('docType') as string,
 				);
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					requestPath`/api/resource/DocType/${docType}`,
-					{},
-				);
-
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = await loadDocFields(this, docType);
 
 				docFields.unshift({ name: '*', value: '*' });
 
@@ -99,20 +129,7 @@ export class ERPNext implements INodeType {
 					this.getNode().typeVersion,
 					this.getCurrentNodeParameter('docType') as string,
 				);
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					requestPath`/api/resource/DocType/${docType}`,
-					{},
-				);
-
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
-
-				return processNames(docFields);
+				return processNames(await loadDocFields(this, docType));
 			},
 		},
 	};

@@ -69,7 +69,9 @@ Direct execution is sufficient when ALL of these hold:
 - A usable credential already exists (`list_credentials`); the
   action takes resolved `{ id, name }` references. If credentials must be
   created first, route that through the credentials setup as usual.
-- The run fits the 60s cap and the input volume is modest.
+- The run fits in 10 minutes and the input volume is modest. The default
+  timeout is 30s. For a slow operation, such as a large upload, set
+  `timeoutMs` up to 600000.
 
 The run executes in the current conversation's project, so credentials shared
 with that project are usable. If it fails because a credential is not

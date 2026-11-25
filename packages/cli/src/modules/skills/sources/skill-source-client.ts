@@ -63,10 +63,14 @@ export type FetchedSkill = {
 	/** Opaque. Equal revisions mean equal content. The core compares content hashes, not these. */
 	revision: string;
 	fidelity: SkillSourceFidelityWarning[];
-	/** Paths of the remote files that the content leaves out, such as scripts. */
+	/** Paths of the remote files that the content leaves out. */
 	skippedFiles: string[];
 	/** The files in `skippedFiles` that n8n left out because it cannot store them. */
 	unstorableFiles?: string[];
+	/** The skipped files that exceed the source's per-file download limit. */
+	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 };
 
 /**
@@ -142,7 +146,17 @@ export abstract class SkillSourceClient {
 	abstract location(ref: RemoteSkillRef): string;
 
 	/** A page in the source that a user can open, for the source or for one skill. */
-	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string;
+	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef, revision?: string): string;
+
+	/** A link to the stored revision, without a remote request. */
+	revisionUrl?(locator: SkillSourceLocator, revision: string): string;
+
+	/** Optional details of the stored revision. Failure must not prevent review or accept. */
+	describeRevision?(
+		locator: SkillSourceLocator,
+		revision: string,
+		auth?: SkillSourceAuth,
+	): Promise<{ message: string | null; author: string | null; date: string | null }>;
 
 	/**
 	 * A cheap check for a change, with one request: an opaque cursor, such as the commit at the
@@ -155,11 +169,13 @@ export abstract class SkillSourceClient {
 	 * One page of the skills in the source. Call again with `next` until it is undefined.
 	 * `truncated` is true when the source has more skills than the client lists. `revision`,
 	 * when the client has one, is the revision of the whole source that the page lists.
+	 * When supported, the `revision` argument pins discovery to the probe result.
 	 */
 	abstract discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
 		cursor?: string,
+		revision?: string,
 	): Promise<{
 		items: RemoteSkillRef[];
 		next?: string;

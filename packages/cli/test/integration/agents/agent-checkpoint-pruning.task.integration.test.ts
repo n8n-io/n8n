@@ -11,11 +11,12 @@ import { sleep } from '@n8n/utils/sleep';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentCheckpointPruningTask } from '@/modules/agents/agent-checkpoint-pruning.task';
 import { AgentCheckpoint } from '@/modules/agents/entities/agent-checkpoint.entity';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -76,7 +77,7 @@ describe('AgentCheckpointPruningTask', () => {
 	beforeEach(async () => {
 		logger.info.mockClear();
 		const project = await createTeamProject();
-		const agent = agentRepository.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId: project.id,
@@ -86,8 +87,8 @@ describe('AgentCheckpointPruningTask', () => {
 			skills: {},
 			versionId: 'version-1',
 			activeVersionId: null,
-		} as Partial<Agent>);
-		agentId = (await agentRepository.save(agent)).id;
+		});
+		agentId = agent.id;
 	});
 
 	afterEach(async () => {
@@ -97,6 +98,60 @@ describe('AgentCheckpointPruningTask', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	it('retains an approval checkpoint without expiry until its result is consumed', async () => {
+		const jobs = Container.get(AgentBackgroundJobRepository);
+		await checkpointRepository.insert({
+			runId: 'approval-run',
+			agentId,
+			threadId: 'approval-thread',
+			state: suspendedJson,
+			expired: false,
+			createdAt: stale,
+			updatedAt: stale,
+		});
+		await jobs.insert({
+			id: uuid(),
+			kind: 'approval',
+			parentRunId: 'approval-run',
+			status: 'completed',
+			parentAgentId: agentId,
+			parentThreadId: 'approval-thread',
+			parentResourceId: 'resource',
+			parentPrincipalHash: 'principal',
+			title: 'Approval',
+			childExecutionId: 'approval-execution',
+			result: '{"approved":true}',
+		});
+		expect(await checkpointRepository.isRetainedForApproval('approval-run')).toBe(true);
+		expect(await storage.load('approval-run', agentId)).toMatchObject({ status: 'suspended' });
+		expect(await storage.getStatus('approval-run', agentId)).toMatchObject({ status: 'active' });
+		await checkpointRepository.insert({
+			runId: 'other-run',
+			agentId,
+			threadId: 'approval-thread',
+			state: suspendedJson,
+			expired: false,
+			createdAt: stale,
+			updatedAt: stale,
+		});
+		expect(await checkpointRepository.expireStale(new Date())).toEqual({
+			affected: 1,
+			threadIds: [],
+		});
+		expect(await checkpointRepository.findByRunId('approval-run')).toMatchObject({
+			expired: false,
+		});
+		expect(await checkpointRepository.findByRunId('other-run')).toMatchObject(PRUNED);
+		expect(await jobs.findWakeableUnconsumed('approval-thread')).toEqual([]);
+		expect(await jobs.findThreadsWithUnconsumedMail()).not.toContain('approval-thread');
+		await jobs.consumeApprovalJob('approval-execution');
+		expect(await checkpointRepository.expireStale(new Date())).toEqual({
+			affected: 1,
+			threadIds: ['approval-thread'],
+		});
+		expect(await checkpointRepository.findByRunId('approval-run')).toMatchObject(PRUNED);
 	});
 
 	async function insertCheckpoints(

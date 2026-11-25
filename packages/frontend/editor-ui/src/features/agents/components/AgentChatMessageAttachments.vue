@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, reactive } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { N8nAttachment, N8nAttachmentGroup, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
-import { formatBytes } from '@n8n/utils/number/bytes';
 import { getChatAttachmentUrl } from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 
@@ -16,18 +15,20 @@ const props = defineProps<{
 	threadId?: string;
 }>();
 
+defineSlots<{
+	/** Items before the files, in the same group. */
+	default?: () => unknown;
+}>();
+
 const rootStore = useRootStore();
 const i18n = useI18n();
-// Preview fallback: used when no panel provided a builder (e.g. a standalone render).
+/** Use the API URL when no panel provides a URL builder. */
 const attachmentUrlBuilder = inject(AGENT_ATTACHMENT_URL_KEY, null);
 
-// Thumbnails whose bytes are gone from the server (e.g. pruned binary data):
-// their <img> requests 404, and the browser's broken-image glyph is replaced
-// with an explanatory chip.
+/** Show an unavailable status for files whose server preview failed. */
 const unavailableKeys = reactive(new Set<string>());
 
-// Memoized per File so recomputations reuse the same URL instead of leaking a
-// fresh blob URL on every re-render.
+/** Reuse each local preview URL until the component unmounts. */
 const objectUrlsByFile = new Map<File, string>();
 
 function objectUrlFor(file: File): string {
@@ -90,82 +91,48 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.attachments" data-testid="agent-chat-message-attachments">
+	<N8nAttachmentGroup :class="$style.attachments" data-testid="agent-chat-message-attachments">
+		<slot />
 		<template v-for="item in items" :key="item.key">
 			<span
 				v-if="unavailableKeys.has(item.key)"
 				:class="[$style.fileChip, $style.unavailable]"
 				:title="item.attachment.fileName"
+				:aria-label="`${item.attachment.fileName}, ${i18n.baseText('agents.chat.attachments.unavailable')}`"
+				role="img"
 				data-testid="agent-chat-attachment-unavailable"
 			>
-				<N8nIcon icon="triangle-alert" size="small" />
+				<N8nIcon icon="triangle-alert" size="small" aria-hidden="true" />
 				<span :class="$style.fileName">{{ item.attachment.fileName }}</span>
 				<span :class="$style.fileSize">
 					{{ i18n.baseText('agents.chat.attachments.unavailable') }}
 				</span>
 			</span>
-			<a
-				v-else-if="item.imageSrc"
-				:href="item.href"
-				target="_blank"
-				rel="noopener noreferrer"
-				:class="[$style.thumbnailLink, { [$style.notClickable]: !item.href }]"
-				:title="item.attachment.fileName"
-				@click="!item.href && $event.preventDefault()"
-			>
-				<img
-					:src="item.imageSrc"
-					:alt="item.attachment.fileName"
-					:class="$style.thumbnail"
-					@error="item.href && unavailableKeys.add(item.key)"
-				/>
-			</a>
-			<component
-				:is="item.href ? 'a' : 'span'"
+			<N8nAttachment
 				v-else
+				:file-name="item.attachment.fileName"
+				:mime-type="item.attachment.mimeType"
+				:size-bytes="item.attachment.sizeBytes"
+				:src="item.imageSrc"
 				:href="item.href"
-				:download="item.href ? item.attachment.fileName : undefined"
-				:class="$style.fileChip"
-				:title="item.attachment.fileName"
-			>
-				<N8nIcon icon="paperclip" size="small" />
-				<span :class="$style.fileName">{{ item.attachment.fileName }}</span>
-				<span v-if="item.attachment.sizeBytes !== undefined" :class="$style.fileSize">
-					{{ formatBytes(item.attachment.sizeBytes) }}
-				</span>
-			</component>
+				:download="!isImage(item.attachment) ? item.attachment.fileName : undefined"
+				:is-removable="false"
+				@error="item.href && unavailableKeys.add(item.key)"
+			/>
 		</template>
-	</div>
+	</N8nAttachmentGroup>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .attachments {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
-	margin-bottom: var(--spacing--4xs);
 	justify-content: inherit;
-}
 
-.thumbnailLink {
-	display: block;
-	width: 120px;
-	height: 90px;
-	border-radius: var(--radius--lg);
-	overflow: hidden;
-	border: var(--border);
-	flex-shrink: 0;
-}
-
-.notClickable {
-	cursor: default;
-}
-
-.thumbnail {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	display: block;
+	// The slot can render nothing, and a message can have no files.
+	&:empty {
+		display: none;
+	}
 }
 
 .fileChip {
@@ -179,7 +146,6 @@ onBeforeUnmount(() => {
 	background: var(--color--foreground--tint-2);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	text-decoration: none;
 }
 
 .fileName {
@@ -197,5 +163,9 @@ onBeforeUnmount(() => {
 .unavailable {
 	color: var(--color--text--tint-1);
 	cursor: default;
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
 }
 </style>

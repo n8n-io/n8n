@@ -29,6 +29,15 @@ export interface AgentsChatInteractionRenderer {
  * component in place of the default tool step. An extension that only renders
  * results needs no card fields.
  *
+ * An extension can also render only the output of a finished tool call
+ * (`matchToolOutput` and `toolOutputComponent`). The chat keeps the default
+ * tool step, and shows the host component in place of the default output
+ * section when the step opens.
+ *
+ * An extension can also render a footer for a finished tool call
+ * (`matchToolFooter` and `toolFooterComponent`). The chat keeps the default
+ * tool step, and shows the host component after the tool steps of the message.
+ *
  * An extension can also render host events (`matchHostEvent`,
  * `hostEventComponent` and `hostEventPlacement`). The placement sets where the
  * assistant message shows the event. See `AgentsChatHostEventPlacement`.
@@ -63,6 +72,25 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	 * the resume data until the tool result arrives.
 	 */
 	resultComponent?: Component;
+	/**
+	 * True when the host renders the output of this tool call inside the default
+	 * tool step. The chat asks only for calls that finished with an output,
+	 * without an error or a cancel.
+	 */
+	matchToolOutput?(toolCall: ToolCall): boolean;
+	/**
+	 * Renders a matched tool output, with its label. It gets the finished call as
+	 * the `toolCall` prop and the label as the `label` prop. Use `ToolDataSection`
+	 * or `ToolDataViews` so the label row looks like the default one.
+	 */
+	toolOutputComponent?: Component;
+	/**
+	 * True when the host renders a footer for this tool call. The chat asks only
+	 * for finished calls that it shows as default tool steps.
+	 */
+	matchToolFooter?(toolCall: ToolCall): boolean;
+	/** Renders a matched tool footer. It gets the finished call as the `toolCall` prop. */
+	toolFooterComponent?: Component;
 	/** True when this extension handles the host event. Usually a check on `event.name`. */
 	matchHostEvent?(event: AgentsChatHostEvent): boolean;
 	/**
@@ -72,6 +100,8 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	hostEventComponent?: Component;
 	/** Where the assistant message shows a matched host event. The default is `start`. */
 	hostEventPlacement?: AgentsChatHostEventPlacement;
+	/** The call that a matched host event belongs to. The `tool-call` placement uses it. */
+	hostEventToolCallId?(event: AgentsChatHostEvent): string | undefined;
 }
 
 /** Where an assistant message shows a host event. See `HOST_EVENT_PLACEMENT`. */
@@ -96,9 +126,19 @@ export interface AgentsChatHostEventItems {
 	end: AgentsChatHostEventItem[];
 	/** `thinking` events, when the message has a thinking block. */
 	thinking: AgentsChatHostEventItem[];
+	/** `tool-call` events, by the call whose step shows them. */
+	toolCalls: ReadonlyMap<string, AgentsChatHostEventItem[]>;
 }
 
-/** A host component that renders the result of one finished tool call. */
+/** The host component of a host event, and where the assistant message shows it. */
+export interface AgentsChatHostEventRenderer {
+	component: Component;
+	placement: AgentsChatHostEventPlacement;
+	/** The call of a `tool-call` event, when the extension names one. */
+	toolCallId?: string;
+}
+
+/** A host component that renders the result or the footer of one finished tool call. */
 export interface AgentsChatToolResultRenderer {
 	key: string;
 	component: Component;
@@ -147,18 +187,57 @@ export function findToolResultRenderer(
 }
 
 /**
+ * The host component that renders the output of `toolCall` inside its default
+ * tool step, or `undefined` when the step shows the default output block.
+ * Calls that run, wait for the user, fail, were canceled or have no output yet
+ * always use the default output block.
+ */
+export function findToolOutputRenderer(
+	toolCall: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[],
+): Component | undefined {
+	if (!isFinishedToolCall(toolCall)) return undefined;
+	return extensions.find(
+		(extension) => extension.toolOutputComponent && extension.matchToolOutput?.(toolCall),
+	)?.toolOutputComponent;
+}
+
+/**
+ * The first host extension that renders a footer for `toolCall`, or
+ * `undefined` when the call has no footer. Calls that run, wait for the user,
+ * fail, were canceled or have no output yet never have a footer.
+ */
+export function findToolFooterRenderer(
+	toolCall: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[],
+): AgentsChatToolResultRenderer | undefined {
+	if (!isFinishedToolCall(toolCall)) return undefined;
+	const extension = extensions.find(
+		(ext) => ext.toolFooterComponent && ext.matchToolFooter?.(toolCall),
+	);
+	if (!extension?.toolFooterComponent) return undefined;
+	return { key: extension.key, component: extension.toolFooterComponent };
+}
+
+/**
  * The first host extension that renders `event`, or `undefined` when no
  * extension renders it. The chat shows nothing for an unhandled event.
  */
 export function findHostEventRenderer(
 	event: AgentsChatHostEvent,
 	extensions: readonly AgentsChatInteractionExtension[],
-): { component: Component; placement: AgentsChatHostEventPlacement } | undefined {
+): AgentsChatHostEventRenderer | undefined {
 	const extension = extensions.find((ext) => ext.hostEventComponent && ext.matchHostEvent?.(event));
 	if (!extension?.hostEventComponent) return undefined;
+	const placement = extension.hostEventPlacement ?? HOST_EVENT_PLACEMENT.START;
+	const toolCallId =
+		placement === HOST_EVENT_PLACEMENT.TOOL_CALL
+			? extension.hostEventToolCallId?.(event)
+			: undefined;
 	return {
 		component: extension.hostEventComponent,
-		placement: extension.hostEventPlacement ?? HOST_EVENT_PLACEMENT.START,
+		placement,
+		...(toolCallId ? { toolCallId } : {}),
 	};
 }
 
@@ -203,31 +282,48 @@ export function appendHostEventSources(
  * Sorts host events into the slots of an assistant message, in arrival order.
  * `transient` events are kept only when `options.showTransient` is true.
  * `thinking` events go to `start` when the message has no thinking block, so
- * they still show. Unhandled events are dropped.
+ * they still show. `tool-call` events go to `start` when their call is not in
+ * `options.stepToolCallIds`, the calls that the message shows as steps.
+ * Unhandled events are dropped.
  */
 export function getHostEventItems(
 	sources: readonly AgentsChatHostEventSource[],
 	extensions: readonly AgentsChatInteractionExtension[],
-	options: { showTransient: boolean; hasThinkingBlock: boolean },
+	options: {
+		showTransient: boolean;
+		hasThinkingBlock: boolean;
+		stepToolCallIds?: ReadonlySet<string>;
+	},
 ): AgentsChatHostEventItems {
-	const items: Record<AgentsChatHostEventPlacement, AgentsChatHostEventItem[]> = {
-		start: [],
-		end: [],
-		transient: [],
-		thinking: [],
-	};
+	const items: Record<
+		Exclude<AgentsChatHostEventPlacement, typeof HOST_EVENT_PLACEMENT.TOOL_CALL>,
+		AgentsChatHostEventItem[]
+	> = { start: [], end: [], transient: [], thinking: [] };
+	const toolCalls = new Map<string, AgentsChatHostEventItem[]>();
 	for (const source of sources) {
 		const renderer = findHostEventRenderer(source.event, extensions);
 		if (!renderer) continue;
-		const placement =
-			renderer.placement === HOST_EVENT_PLACEMENT.THINKING && !options.hasThinkingBlock
-				? HOST_EVENT_PLACEMENT.START
-				: renderer.placement;
-		items[placement].push({ ...source, ...renderer, placement });
+		const { component, toolCallId } = renderer;
+		let placement = renderer.placement;
+		if (toolCallId !== undefined && options.stepToolCallIds?.has(toolCallId)) {
+			toolCalls.set(toolCallId, [
+				...(toolCalls.get(toolCallId) ?? []),
+				{ ...source, component, placement },
+			]);
+			continue;
+		}
+		if (
+			placement === HOST_EVENT_PLACEMENT.TOOL_CALL ||
+			(placement === HOST_EVENT_PLACEMENT.THINKING && !options.hasThinkingBlock)
+		) {
+			placement = HOST_EVENT_PLACEMENT.START;
+		}
+		items[placement].push({ ...source, component, placement });
 	}
 	return {
 		start: items.start,
 		end: options.showTransient ? [...items.end, ...items.transient] : items.end,
 		thinking: items.thinking,
+		toolCalls,
 	};
 }

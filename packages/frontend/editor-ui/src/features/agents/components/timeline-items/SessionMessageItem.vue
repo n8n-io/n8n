@@ -9,6 +9,7 @@ import { N8nButton, N8nIcon, N8nText, N8nMarkdown, N8nTooltip } from '@n8n/desig
 import type { TimelineItem } from '../../session-timeline.types';
 import AgentPersonalisationIcon from '../AgentPersonalisationIcon.vue';
 import AgentChatMessageAttachments from '../AgentChatMessageAttachments.vue';
+import SessionTurnUsage from './SessionTurnUsage.vue';
 
 interface MessageItem {
 	item: TimelineItem;
@@ -64,7 +65,10 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 				<AgentPersonalisationIcon v-else :personalisation="props.personalisation" :size="20" />
 				<N8nText step="sm" bold>{{ props.senderName }}</N8nText>
 			</div>
-			<N8nText step="xs" color="text-light" :class="$style.time" bold>{{ time }}</N8nText>
+			<div :class="$style.panelHeaderMeta">
+				<SessionTurnUsage v-if="props.item.turnUsage" :usage="props.item.turnUsage" />
+				<N8nText step="xs" color="text-light" :class="$style.time" bold>{{ time }}</N8nText>
+			</div>
 		</div>
 		<CollapsibleRoot
 			v-model:open="expanded"
@@ -124,6 +128,11 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 	padding: var(--spacing--sm);
 	border-bottom: var(--border);
 	border-color: var(--border-color--subtle);
+}
+.panelHeaderMeta {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 .panelHeaderIdentity {
 	display: flex;

@@ -1,14 +1,13 @@
 import { AgentEvent } from '@n8n/agents';
 import type { AgentEventData, MemoryTaskUsageReport } from '@n8n/agents';
-import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	createInstanceAgent,
 	McpClientManager,
-	tokenUsageToBuilderUsageItems,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	type InstanceAiContext,
@@ -18,13 +17,10 @@ import {
 	type InstanceAiTraceContext,
 	type OrchestrationContext,
 } from '@n8n/instance-ai';
-import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
 
 import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 
 import { canAccessAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
@@ -70,12 +66,9 @@ export interface AssistantAgentParams {
 export class AssistantAgentFactory {
 	private _mcpClientManager?: McpClientManager;
 
-	private readonly logger: Logger;
-
 	private readonly instanceAiConfig: InstanceAiConfig;
 
 	constructor(
-		logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
@@ -84,11 +77,10 @@ export class AssistantAgentFactory {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly errorReporter: ErrorReporter,
-		private readonly telemetry: Telemetry,
-		private readonly push: Push,
+		private readonly telemetry: TelemetryProxy,
+		private readonly push: PushProxy,
 		private readonly modelService: InstanceAiModelService,
 	) {
-		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
@@ -330,24 +322,12 @@ export class AssistantAgentFactory {
 				// finish-chunk usage, so they are claimed here per report. Best-effort:
 				// a billing failure must never block observation persistence.
 				onTaskUsage: async (report: MemoryTaskUsageReport) => {
-					try {
-						const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
-						if (items.length === 0) return;
-						await this.creditService.claimRunUsage(
-							user,
-							threadId,
-							`${runId}:memory:${report.task}:${report.reportId}`,
-							items,
-							'completed',
-						);
-					} catch (error) {
-						this.logger.warn('Failed to claim observational-memory usage', {
-							threadId,
-							runId,
-							task: report.task,
-							error: getErrorMessage(error),
-						});
-					}
+					await this.creditService.claimSideCallUsage(
+						user,
+						threadId,
+						`${runId}:memory:${report.task}:${report.reportId}`,
+						report,
+					);
 				},
 			},
 		};

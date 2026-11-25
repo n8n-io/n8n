@@ -1,5 +1,5 @@
 import { SKILL_SYNC_FLAG, type SkillSourceDeleteBlock } from '@n8n/api-types';
-import { PostHogClient } from '@n8n/backend-services';
+import { PostHogClient, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -16,7 +16,6 @@ import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { Telemetry } from '@/telemetry';
 
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -31,6 +30,7 @@ import {
 } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
+import { createAgent } from '@test-integration/db/agents';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -43,11 +43,12 @@ beforeAll(async () => {
 describe('Delete a skill source', () => {
 	const server = setupTestServer({ endpointGroups: ['ai'] });
 	const postHog = mockInstance(PostHogClient);
-	const telemetry = mockInstance(Telemetry);
+	const telemetry = mockInstance(TelemetryProxy);
 	let ownerUser: User;
 	let owner: SuperAgentTest;
 	let editor: SuperAgentTest;
 	let updater: SuperAgentTest;
+	let deleter: SuperAgentTest;
 	let viewer: SuperAgentTest;
 	let outsider: SuperAgentTest;
 	let team: Project;
@@ -60,9 +61,11 @@ describe('Delete a skill source', () => {
 		owner = server.authAgentFor(ownerUser);
 		const editorUser = await createMember();
 		const updaterUser = await createMember();
+		const deleterUser = await createMember();
 		const viewerUser = await createMember();
 		editor = server.authAgentFor(editorUser);
 		updater = server.authAgentFor(updaterUser);
+		deleter = server.authAgentFor(deleterUser);
 		viewer = server.authAgentFor(viewerUser);
 		outsider = server.authAgentFor(await createMember());
 		team = await createTeamProject('Marketing');
@@ -74,6 +77,11 @@ describe('Delete a skill source', () => {
 			{ roleType: 'project' },
 		);
 		await linkUserToProject(updaterUser, team, role.slug);
+		const deleteRole = await createCustomRoleWithScopeSlugs(
+			['projectSkill:list', 'projectSkill:read', 'projectSkill:delete'],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(deleterUser, team, deleteRole.slug);
 	});
 
 	beforeEach(() => {
@@ -124,16 +132,14 @@ describe('Delete a skill source', () => {
 	) {
 		const agents = Container.get(AgentRepository);
 		const versionId = randomUUID();
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				integrations: [],
-				tools: {},
-				versionId,
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			versionId,
+		});
 		const refs = Container.get(AgentSkillRepository);
 		if (published) {
 			await db().save(AgentHistory, { versionId, agentId: agent.id, author: 'Test' });
@@ -196,9 +202,115 @@ describe('Delete a skill source', () => {
 			expect(await sources().findById(unrelatedSource)).not.toBeNull();
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
-				{ user_id: expect.any(String), provider: 'github', status: 'success' },
+				{ user_id: expect.any(String), provider: 'github', skills_kept: false, status: 'success' },
 			);
 			await agent.delete(`/skill-sources/${sourceId}`).expect(404);
+		},
+	);
+
+	it.each([false, true])(
+		'keeps skills, versions, files, and agent references with published=%s',
+		async (published) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			const agent = await agentUsing('Research agent', team.id, [first, second], published);
+			if (!agent.versionId) throw new Error('Expected an agent version');
+			const refs = Container.get(AgentSkillRepository);
+			const before = await readSkillTables();
+			const dependencies = await refs.findDependencies([agent.id]);
+			const pins = await refs.findPins(agent.versionId);
+
+			await editor.delete(`/skill-sources/${sourceId}`).query({ keepSkills: true }).expect(200);
+
+			expect(await readSkillTables()).toEqual(before);
+			expect(await sources().findById(sourceId)).toBeNull();
+			expect(await sources().findLinksBySource(sourceId)).toEqual([]);
+			expect(await refs.findDependencies([agent.id])).toEqual(dependencies);
+			expect(await refs.findPins(agent.versionId)).toEqual(pins);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
+				{ user_id: expect.any(String), provider: 'github', skills_kept: true, status: 'success' },
+			);
+			for (const { id } of [first, second]) {
+				const detail = await editor.get(`/skills/${id}`).expect(200);
+				expect(detail.body.data).toMatchObject({ canEdit: true, sourceId: null, syncedFrom: null });
+				await editor
+					.patch(`/skills/${id}`)
+					.send({
+						baseSkillHash: detail.body.data.skillHash,
+						description: 'Local edit.',
+					})
+					.expect(200);
+			}
+			await editor.post(`/skill-sources/${sourceId}/check`).expect(404);
+		},
+	);
+
+	it('deletes the last linked skill and its source together when requested', async () => {
+		const { sourceId, first, second } = await sourceWithSkills();
+		await editor.delete(`/skills/${second.id}`).expect(200);
+
+		await editor.delete(`/skill-sources/${sourceId}`).query({ onlySkillId: first.id }).expect(200);
+
+		expect(await sources().findById(sourceId)).toBeNull();
+		expect(await findSkill(first.id)).toBeNull();
+		expect(await findLatestSkillVersion(first.id)).toBeNull();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL,
+			expect.objectContaining({ skill_id: first.id, source: 'ui' }),
+		);
+	});
+
+	it('keeps the source when deleting the last linked skill without the option', async () => {
+		const { sourceId, first, second } = await sourceWithSkills();
+		await editor.delete(`/skills/${first.id}`).expect(200);
+		await editor.delete(`/skills/${second.id}`).expect(200);
+		expect(await sources().findById(sourceId)).not.toBeNull();
+	});
+
+	it.each(['viewer', 'updater', 'outsider'] as const)(
+		'checks source access for last-skill removal by %s',
+		async (role) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			await editor.delete(`/skills/${second.id}`).expect(200);
+			const before = await snapshot();
+			await { viewer, updater, outsider }[role]
+				.delete(`/skill-sources/${sourceId}`)
+				.query({ onlySkillId: first.id })
+				.expect(role === 'outsider' ? 404 : 403);
+			expect(await snapshot()).toEqual(before);
+		},
+	);
+
+	// `other`: the source has one linked skill, but it is not the selected one.
+	it.each(['multiple', 'unlinked', 'other', 'used'] as const)(
+		'refuses last-skill removal when the selection is %s and changes nothing',
+		async (state) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			if (state === 'unlinked' || state === 'used') {
+				await editor.delete(`/skills/${second.id}`).expect(200);
+			}
+			if (state === 'unlinked' || state === 'other') {
+				await editor.post(`/skill-sources/skills/${first.id}/stop-syncing`).expect(200);
+			}
+			if (state === 'used') await agentUsing('Research agent', team.id, [first], false);
+			const before = await snapshot();
+
+			await editor
+				.delete(`/skill-sources/${sourceId}`)
+				.query({ onlySkillId: first.id })
+				.expect(state === 'used' ? 409 : 400);
+
+			expect(await snapshot()).toEqual(before);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
+				{
+					user_id: expect.any(String),
+					provider: 'github',
+					skills_kept: false,
+					status: 'failure',
+					reason: state === 'used' ? 'skills_in_use' : 'stale',
+				},
+			);
 		},
 	);
 
@@ -226,7 +338,13 @@ describe('Delete a skill source', () => {
 			expect(await snapshot()).toEqual(before);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
-				{ user_id: ownerUser.id, provider: 'github', status: 'failure', reason: 'skills_in_use' },
+				{
+					user_id: ownerUser.id,
+					provider: 'github',
+					skills_kept: false,
+					status: 'failure',
+					reason: 'skills_in_use',
+				},
 			);
 		},
 	);
@@ -275,23 +393,65 @@ describe('Delete a skill source', () => {
 		expect(await snapshot()).toEqual(before);
 	});
 
-	it.each(['viewer', 'updater', 'outsider', 'globalMember'] as const)(
-		'enforces delete scope for %s',
-		async (role) => {
-			const { sourceId } = await sourceWithSkills(role === 'globalMember' ? null : team.id);
-			const agent = { viewer, updater, outsider, globalMember: editor }[role];
-			const before = await snapshot();
-			const list = await agent.get('/skill-sources').expect(200);
-			if (role !== 'outsider')
-				expect(list.body.data).toEqual([
-					expect.objectContaining({ id: sourceId, canDelete: false }),
-				]);
+	it.each(
+		(['viewer', 'updater', 'outsider', 'globalMember'] as const).flatMap((role) =>
+			[false, true].map((keepSkills) => ({ role, keepSkills })),
+		),
+	)('enforces delete scope for $role with keepSkills=$keepSkills', async ({ role, keepSkills }) => {
+		const { sourceId } = await sourceWithSkills(role === 'globalMember' ? null : team.id);
+		const agent = { viewer, updater, outsider, globalMember: editor }[role];
+		const before = await snapshot();
+		const list = await agent.get('/skill-sources').expect(200);
+		if (role !== 'outsider')
+			expect(list.body.data).toEqual([expect.objectContaining({ id: sourceId, canDelete: false })]);
 
-			await agent.delete(`/skill-sources/${sourceId}`).expect(role === 'outsider' ? 404 : 403);
+		await agent
+			.delete(`/skill-sources/${sourceId}`)
+			.query({ keepSkills })
+			.expect(role === 'outsider' ? 404 : 403);
 
-			expect(await snapshot()).toEqual(before);
+		expect(await snapshot()).toEqual(before);
+	});
+
+	it.each([false, true])(
+		'lets a role with delete and no update remove a source with keepSkills=%s',
+		async (keepSkills) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			const before = await readSkillTables();
+
+			// Stop syncing for one skill is an edit of the source, which this role cannot do.
+			await deleter.post(`/skill-sources/skills/${first.id}/stop-syncing`).expect(403);
+			await deleter.delete(`/skill-sources/${sourceId}`).query({ keepSkills }).expect(200);
+
+			expect(await sources().findById(sourceId)).toBeNull();
+			expect(await sources().findLinksBySource(sourceId)).toEqual([]);
+			if (keepSkills) {
+				expect(await readSkillTables()).toEqual(before);
+			} else {
+				expect(await findSkill(first.id)).toBeNull();
+				expect(await findSkill(second.id)).toBeNull();
+			}
 		},
 	);
+
+	it('applies the last-skill check before it keeps the skills', async () => {
+		const { sourceId, first, second } = await sourceWithSkills();
+		const before = await snapshot();
+
+		await editor
+			.delete(`/skill-sources/${sourceId}`)
+			.query({ keepSkills: true, onlySkillId: first.id })
+			.expect(400);
+		expect(await snapshot()).toEqual(before);
+
+		await editor.delete(`/skills/${second.id}`).expect(200);
+		await editor
+			.delete(`/skill-sources/${sourceId}`)
+			.query({ keepSkills: true, onlySkillId: first.id })
+			.expect(200);
+		expect(await sources().findById(sourceId)).toBeNull();
+		expect(await findSkill(first.id)).not.toBeNull();
+	});
 
 	it.each([randomUUID(), 'not-a-uuid'])('answers 404 for unknown source %s', async (id) => {
 		await owner.delete(`/skill-sources/${id}`).expect(404);
@@ -320,13 +480,16 @@ describe('Delete a skill source', () => {
 		expect(await readSkillTables()).toEqual(before);
 	});
 
-	it('rolls back the skills and links if the source delete fails', async () => {
-		const { sourceId } = await sourceWithSkills();
-		const before = await snapshot();
-		vi.spyOn(sources(), 'deleteSource').mockRejectedValueOnce(new Error('Write failed'));
+	it.each([false, true])(
+		'rolls back removal if the write fails with keepSkills=%s',
+		async (keepSkills) => {
+			const { sourceId } = await sourceWithSkills();
+			const before = await snapshot();
+			vi.spyOn(sources(), 'deleteSource').mockRejectedValueOnce(new Error('Write failed'));
 
-		await owner.delete(`/skill-sources/${sourceId}`).expect(500);
+			await owner.delete(`/skill-sources/${sourceId}`).query({ keepSkills }).expect(500);
 
-		expect(await snapshot()).toEqual(before);
-	});
+			expect(await snapshot()).toEqual(before);
+		},
+	);
 });

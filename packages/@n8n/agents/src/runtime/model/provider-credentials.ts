@@ -9,7 +9,7 @@ const apiKeyCreds = z.object({
 
 /**
  * Per-provider Zod schemas for credential validation.
- * Keys are the provider prefixes used in model IDs (e.g. 'anthropic' in 'anthropic/claude-sonnet-4-5').
+ * Keys are the provider prefixes used in model IDs (e.g. 'anthropic' in 'anthropic/claude-sonnet-5-5').
  */
 export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	openai: apiKeyCreds.extend({

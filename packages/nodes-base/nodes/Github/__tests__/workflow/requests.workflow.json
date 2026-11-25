@@ -1193,7 +1193,10 @@
 					"value": "main",
 					"mode": "name"
 				},
-				"inputs": "{}"
+				"inputs": "{\"environment\":\"staging\"}",
+				"options": {
+					"returnRunDetails": true
+				}
 			},
 			"type": "n8n-nodes-base.github",
 			"typeVersion": 1.1,
@@ -1653,7 +1656,11 @@
 		],
 		"Workflow Dispatch": [
 			{
-				"json": {}
+				"json": {
+					"workflow_run_id": 123,
+					"run_url": "https://api.github.com/repos/acme-corp/billing-service/actions/runs/123",
+					"html_url": "https://github.com/acme-corp/billing-service/actions/runs/123"
+				}
 			}
 		],
 		"Workflow Enable": [

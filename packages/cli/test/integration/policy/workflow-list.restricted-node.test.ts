@@ -5,12 +5,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import {
-	WorkflowDependencies,
-	WorkflowDependencyRepository,
-	WorkflowRepository,
-	type User,
-} from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -22,6 +17,7 @@ import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { reloadPolicySnapshot } from './shared/policy-snapshot';
+import { indexVersion } from './shared/workflow-index';
 
 const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 const SLACK = 'n8n-nodes-base.slack';
@@ -51,25 +47,6 @@ const denySlack = {
 	defaultAction: 'allow',
 	version: 0,
 };
-
-async function indexVersion(
-	workflow: { id: string; versionCounter: number },
-	publishedVersionId: string | null,
-	nodeTypes: string[],
-) {
-	const dependencies = new WorkflowDependencies(
-		workflow.id,
-		workflow.versionCounter + 1,
-		publishedVersionId,
-	);
-	for (const nodeType of nodeTypes) {
-		dependencies.add({ dependencyType: 'nodeType', dependencyKey: nodeType, dependencyInfo: null });
-	}
-	await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
-		workflow.id,
-		dependencies,
-	);
-}
 
 async function listRestricted({
 	projectId,
@@ -123,7 +100,7 @@ describe('GET /workflows with the restricted node filter', () => {
 		await createWorkflow({ nodes: [node(MANUAL_TRIGGER)] }, owner);
 
 		const publishedWithSlack = await createActiveWorkflow({ nodes: [node(MANUAL_TRIGGER)] }, owner);
-		await indexVersion(publishedWithSlack, publishedWithSlack.activeVersionId, [
+		await indexVersion(publishedWithSlack, publishedWithSlack.activeVersionId, 'nodeType', [
 			MANUAL_TRIGGER,
 			SLACK,
 		]);
@@ -132,7 +109,9 @@ describe('GET /workflows with the restricted node filter', () => {
 			{ nodes: [node(MANUAL_TRIGGER), node(SLACK)] },
 			owner,
 		);
-		await indexVersion(draftOnlySlack, draftOnlySlack.activeVersionId, [MANUAL_TRIGGER]);
+		await indexVersion(draftOnlySlack, draftOnlySlack.activeVersionId, 'nodeType', [
+			MANUAL_TRIGGER,
+		]);
 
 		await ownerAgent.put('/node-type-policies/instance').send(denySlack).expect(200);
 
@@ -299,11 +278,14 @@ describe('RestrictedWorkflowRepository', () => {
 				unrestrictedHttp,
 			].map(({ id }) => id),
 			{
-				workflowIdsIn: Container.get(RestrictedWorkflowRepository).restrictedWorkflowIdsQuery({
-					shared: [HTTP_REQUEST],
-					byProjects,
-					nodeTypesInUse,
-				}),
+				workflowIdsIn: Container.get(RestrictedWorkflowRepository).restrictedWorkflowIdsQuery(
+					{
+						shared: [HTTP_REQUEST],
+						byProjects,
+						nodeTypesInUse,
+					},
+					{},
+				),
 			},
 		);
 

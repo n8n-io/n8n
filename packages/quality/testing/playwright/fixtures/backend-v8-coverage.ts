@@ -12,7 +12,7 @@ import {
 } from '../coverage-options';
 
 type BackendCoverageTestFixtures = { backendCoverage: undefined; mainUrls: string[] };
-type BackendCoverageWorkerFixtures = { n8nUrl: string };
+type BackendCoverageWorkerFixtures = { backendUrl: string };
 
 let warnedMultiMain = false;
 let warnedHookError = false;
@@ -54,10 +54,10 @@ export const backendV8CoverageFixtures: Fixtures<
 	//   - the main path between `/coverage/start` (setup) and `/coverage/take`
 	//     (teardown that writes the raw V8 file).
 	backendCoverage: [
-		async ({ n8nUrl, mainUrls }, use, testInfo) => {
-			// Target the main directly via n8nUrl (always set for a container run);
+		async ({ backendUrl, mainUrls }, use, testInfo) => {
+			// Target the main directly via backendUrl (always set for a container run);
 			// mainUrls is only populated for multi-main and is used here just to warn.
-			if (!COVERAGE_ENABLED || !n8nUrl) {
+			if (!COVERAGE_ENABLED || !backendUrl) {
 				await use(undefined);
 				return;
 			}
@@ -70,13 +70,13 @@ export const backendV8CoverageFixtures: Fixtures<
 			}
 
 			try {
-				const { body } = await postHook(n8nUrl, '/rest/e2e/coverage/start');
+				const { body } = await postHook(backendUrl, '/rest/e2e/coverage/start');
 				// The first start on an n8n process returns the code that ran at boot.
 				const boot = (body as { data?: { boot?: unknown[] } })?.data?.boot;
 				if (Array.isArray(boot) && boot.length) {
 					mkdirSync(BACKEND_BOOT_DIR, { recursive: true });
 					writeFileSync(
-						join(BACKEND_BOOT_DIR, `raw-${slugify(n8nUrl)}-${Date.now()}.json`),
+						join(BACKEND_BOOT_DIR, `raw-${slugify(backendUrl)}-${Date.now()}.json`),
 						JSON.stringify({ result: boot }),
 					);
 				}
@@ -88,7 +88,7 @@ export const backendV8CoverageFixtures: Fixtures<
 			await use(undefined);
 
 			try {
-				const { status, body } = await postHook(n8nUrl, '/rest/e2e/coverage/take');
+				const { status, body } = await postHook(backendUrl, '/rest/e2e/coverage/take');
 				// n8n wraps controller returns in { data: ... } (response-helper.ts).
 				const result = (body as { data?: { result?: unknown[] } })?.data?.result ?? [];
 				if (Array.isArray(result) && result.length) {
@@ -125,11 +125,7 @@ export const backendV8CoverageFixtures: Fixtures<
  * which fails `take` with "socket hang up".
  */
 async function postHook(baseURL: string, path: string) {
-	const ctx = await request.newContext({ baseURL });
-	try {
-		const res = await ctx.post(path);
-		return { status: res.status(), body: (await res.json()) as unknown };
-	} finally {
-		await ctx.dispose();
-	}
+	await using ctx = await request.newContext({ baseURL });
+	const res = await ctx.post(path);
+	return { status: res.status(), body: (await res.json()) as unknown };
 }

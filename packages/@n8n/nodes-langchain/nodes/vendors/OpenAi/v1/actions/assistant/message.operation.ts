@@ -14,6 +14,7 @@ import { NodeConnectionTypes, NodeOperationError, updateDisplayOptions } from 'n
 import { BaseError, OperationalError } from '@n8n/errors';
 import { OpenAI as OpenAIClient } from 'openai';
 
+import { createRunCancellation } from '@utils/agent-execution/createRunCancellation';
 import { promptTypeOptionsDeprecated } from '@utils/descriptions';
 import {
 	getConnectedTools,
@@ -259,9 +260,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			? (this.getNodeParameter('threadId', i) as string)
 			: undefined;
 
+	const runCancellation = createRunCancellation(this.getExecutionCancelSignal());
 	const chainValues: IDataObject = {
 		content: input,
-		signal: this.getExecutionCancelSignal(),
+		signal: runCancellation.signal,
 		timeout: options.timeout ?? 10000,
 	};
 	let thread: OpenAIClient.Beta.Threads.Thread;
@@ -291,7 +293,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let filteredResponse: IDataObject = {};
 	try {
-		const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+		const response = await runCancellation.abortOnFailure(
+			agentExecutor
+				.withConfig(getTracingConfig(this))
+				.invoke(chainValues, { signal: runCancellation.signal }),
+		);
 		if (memory) {
 			await memory.saveContext({ input }, { output: response.output });
 

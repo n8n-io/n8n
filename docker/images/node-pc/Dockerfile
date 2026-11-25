@@ -1,15 +1,16 @@
 # check=skip=InvalidDefaultArgInFrom
 # Node.js compiled from source, with the V8 patches in ./patches applied.
 #
-# Two images build from this file:
+# Three images build from this file:
 #   node-pc         - Node 26 with V8 pointer compression, for the n8n `-pc`
 #                     image variant. No official pointer-compressed Node
 #                     binaries exist (nodejs.org publishes none, and Docker Hub
 #                     node images are stock).
 #   node-patched-24 - stock-configured Node 24 for the 1.x image, so that the
 #                     1.x line also runs a Node whose V8 we control.
+#   node-patched-26 - stock-configured Node 26 for the release images.
 #
-# Both follow the source-build path of the official docker-node Alpine recipe.
+# All follow the source-build path of the official docker-node Alpine recipe.
 # The build applies the V8 patches in ./patches: upstream V8 fixes that Node
 # has not backported to the release line yet. The patch count becomes the
 # -n8n.N suffix of the V8 version, and check-v8-patches.js proves that the
@@ -22,7 +23,7 @@
 #                       stage, which must compile native addons against this
 #                       Node's headers
 #
-# The node-pc and node-patched-24 targets in docker/docker-bake.hcl set these.
+# The node-pc and node-patched-* targets in docker/docker-bake.hcl set these.
 # Do not use plain `docker build`.
 ARG NODE_VERSION
 ARG ALPINE_IMAGE

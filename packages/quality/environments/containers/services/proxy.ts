@@ -100,7 +100,7 @@ export interface ProxyServerRequest {
 export interface ProxyServerResponse {
 	statusCode: number;
 	headers?: Record<string, string[]>;
-	body?: string;
+	body?: HttpResponse['body'];
 	delay?: {
 		timeUnit: 'MICROSECONDS' | 'MILLISECONDS' | 'SECONDS' | 'MINUTES';
 		value: number;
@@ -353,6 +353,10 @@ export class ProxyServer {
 				body: JSON.stringify(responseBody),
 			},
 		});
+	}
+
+	async getMockedEndpoint(path: string): Promise<Response> {
+		return await fetch(`${this.url}${path}`);
 	}
 
 	async wasRequestMade(request: RequestDefinition, numberOfRequests = 1): Promise<boolean> {

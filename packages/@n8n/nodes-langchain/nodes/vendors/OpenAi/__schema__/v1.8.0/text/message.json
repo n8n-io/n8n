@@ -1,0 +1,29 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"finish_reason": {
+			"type": "string"
+		},
+		"index": {
+			"type": "number"
+		},
+		"logprobs": {},
+		"message": {
+			"properties": {
+				"annotations": {
+					"items": {},
+					"type": "array"
+				},
+				"content": {
+					"type": ["object", "string"]
+				},
+				"refusal": {},
+				"role": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

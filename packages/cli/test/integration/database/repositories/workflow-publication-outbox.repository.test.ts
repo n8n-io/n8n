@@ -40,6 +40,69 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(claimedAgain).toBeNull();
 	});
 
+	it('reads the latest publication outcome instead of an older completed request', async () => {
+		await repository.enqueue('wf-1', 'v-1', 'publish');
+		const first = await repository.claimNextPendingRecord();
+		assert(first);
+		await repository.markCompleted(first.id);
+		await repository.enqueue('wf-1', 'v-2', 'publish');
+		await repository.enqueue('wf-2', 'other-version', 'publish');
+
+		expect(await repository.findLatestByWorkflowId('wf-1')).toMatchObject({
+			publishedVersionId: 'v-2',
+			status: 'pending',
+		});
+		const second = await repository.claimNextPendingRecord();
+		assert(second);
+		await repository.markFailed(second.id, 'Invalid interval');
+		expect(await repository.findLatestByWorkflowId('wf-1')).toMatchObject({
+			publishedVersionId: 'v-2',
+			status: 'failed',
+			errorMessage: 'Invalid interval',
+		});
+		expect(await repository.findLatestByWorkflowId('unknown')).toBeNull();
+		expect(await repository.findLatestByWorkflowIds(['wf-1', 'unknown'])).toMatchObject([
+			{ workflowId: 'wf-1', publishedVersionId: 'v-2', status: 'failed' },
+		]);
+		expect(await repository.findLatestByWorkflowIds(['wf-1', 'wf-2'])).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					publishedVersionId: 'v-2',
+					status: 'failed',
+				}),
+				expect.objectContaining({
+					workflowId: 'wf-2',
+					publishedVersionId: 'other-version',
+					status: 'pending',
+				}),
+			]),
+		);
+		expect(await repository.findLatestByWorkflowIds([])).toEqual([]);
+	});
+
+	it.each(['completed', 'failed', 'partial_success'] as const)(
+		'moves the %s outcome timestamp past the claimed request timestamp',
+		async (status) => {
+			await repository.enqueue('wf-1', 'v-1', 'publish');
+			const record = await repository.claimNextPendingRecord();
+			assert(record);
+			const claimed = await repository.findOneBy({ id: record.id });
+			assert(claimed);
+			// The timestamps have millisecond precision. The wait makes a missing bump visible.
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			if (status === 'completed') await repository.markCompleted(record.id);
+			else if (status === 'failed') await repository.markFailed(record.id, 'Activation failed');
+			else await repository.markPartialSuccess(record.id, 'Some triggers failed');
+
+			const outcome = await repository.findLatestByWorkflowId('wf-1');
+			assert(outcome);
+			expect(outcome.status).toBe(status);
+			expect(outcome.updatedAt.getTime()).toBeGreaterThan(claimed.updatedAt.getTime());
+		},
+	);
+
 	it('clears retry suppression when a user explicitly enqueues a publication', async () => {
 		const workflow = await createWorkflow();
 		await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
@@ -47,6 +110,22 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		await repository.enqueue(workflow.id, workflow.versionId, 'publish');
 
 		expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
+	});
+
+	it('finds no due retry while the in-flight records fill the limit', async () => {
+		for (const workflow of [await createActiveWorkflow(), await createActiveWorkflow()]) {
+			await retryStateRepository.scheduleRetry(workflow.id, workflow.versionId);
+		}
+		await retryStateRepository
+			.createQueryBuilder()
+			.update()
+			.set({ updatedAt: new Date('2000-01-01T00:00:00.000Z') })
+			.execute();
+		for (const workflow of [await createActiveWorkflow(), await createActiveWorkflow()]) {
+			await repository.enqueue(workflow.id, workflow.versionId, 'publish');
+		}
+
+		expect(await repository.findRetryDueWorkflowIds(2)).toEqual([]);
 	});
 
 	it('supersedes an existing pending record when re-enqueued for the same workflow', async () => {
@@ -81,6 +160,16 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const claimed = await repository.claimNextPendingRecord();
 			expect(claimed?.workflowId).toBe(workflow.id);
 			expect(claimed?.reason).toBe('publish');
+		});
+
+		it('keeps the transfer reason of a pending record when a user publish lands on it', async () => {
+			const workflow = await createActiveWorkflow();
+			await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+			await repository.enqueue(workflow.id, 'v-new', 'publish');
+
+			const claimed = await repository.claimNextPendingRecord();
+			expect(claimed).toMatchObject({ reason: 'transfer', publishedVersionId: 'v-new' });
 		});
 
 		it('keeps a pending record untouched when the reconciler re-enqueues over it', async () => {
@@ -125,6 +214,9 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		await repository.runInTransaction({}, async (trx, ctx) => {
 			await repository.enqueue('wf-1', 'v-1', 'publish', trx);
 			expect(await repository.findInFlightByWorkflowId('wf-1', ctx)).toMatchObject({
+				publishedVersionId: 'v-1',
+			});
+			expect(await repository.findLatestByWorkflowId('wf-1', ctx)).toMatchObject({
 				publishedVersionId: 'v-1',
 			});
 		});
@@ -568,6 +660,42 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending).toHaveLength(1);
 			expect(pending[0].publishedVersionId).toBe('v-concurrent');
 		});
+
+		const PENDING_REASONS_A_TRANSFER_REPLACES = ['publish', 'reconcile'] as const;
+		const PENDING_REASONS_A_TRANSFER_KEEPS = ['startup', 'leadership-takeover'] as const;
+
+		const pendingOf = async (workflowId: string) =>
+			(await repository.find({ where: { workflowId, status: 'pending' } })).map(
+				({ reason, publishedVersionId }) => ({ reason, publishedVersionId }),
+			);
+
+		it.each(PENDING_REASONS_A_TRANSFER_REPLACES)(
+			'turns a pending %s record into a transfer and keeps its version',
+			async (reason) => {
+				const workflow = await createActiveWorkflow();
+				await repository.enqueue(workflow.id, 'v-concurrent', reason);
+
+				await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+				expect(await pendingOf(workflow.id)).toEqual([
+					{ reason: 'transfer', publishedVersionId: 'v-concurrent' },
+				]);
+			},
+		);
+
+		it.each(PENDING_REASONS_A_TRANSFER_KEEPS)(
+			'keeps a pending %s record unchanged on a transfer',
+			async (reason) => {
+				const workflow = await createActiveWorkflow();
+				await repository.enqueue(workflow.id, 'v-concurrent', reason);
+
+				await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+				expect(await pendingOf(workflow.id)).toEqual([
+					{ reason, publishedVersionId: 'v-concurrent' },
+				]);
+			},
+		);
 
 		it('is a no-op for an empty list', async () => {
 			await createActiveWorkflow();

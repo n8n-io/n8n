@@ -459,6 +459,7 @@ describe('empty state kind', () => {
 	] as const)('uses review copy when a review source is available: %j', async (types, kind) => {
 		setAvailableTypes([...types]);
 		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+			enabled: true,
 			isReviewer: false,
 			setupProjectId: 'personal',
 		});
@@ -470,10 +471,12 @@ describe('empty state kind', () => {
 	});
 
 	it.each([
-		[{ isReviewer: false, setupProjectId: 'personal' }, 'selfHealingSetup'],
-		[{ isReviewer: true, setupProjectId: 'personal' }, 'selfHealing'],
-		[{ isReviewer: false, setupProjectId: null }, 'selfHealing'],
-	] as const)('uses self-healing copy for status %j', async (status, kind) => {
+		[{ enabled: true, isReviewer: false, setupProjectId: 'personal' }, 'selfHealingSetup'],
+		[{ enabled: true, isReviewer: true, setupProjectId: 'personal' }, 'selfHealing'],
+		[{ enabled: true, isReviewer: false, setupProjectId: null }, 'selfHealing'],
+		[{ enabled: false, isReviewer: false, setupProjectId: null }, 'reviews'],
+		[{ enabled: false, isReviewer: true, setupProjectId: null }, 'reviews'],
+	] as const)('picks the empty state for status %j', async (status, kind) => {
 		setAvailableTypes(['self_healing_result']);
 		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue(status);
 		const store = useInboxStore();
@@ -510,6 +513,7 @@ describe('empty state kind', () => {
 	it('shows the setup prompt on the Open tab only', async () => {
 		setAvailableTypes(['self_healing_result']);
 		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+			enabled: true,
 			isReviewer: false,
 			setupProjectId: 'personal',
 		});
@@ -533,7 +537,8 @@ describe('empty state kind', () => {
 			await vi.waitFor(() => expect(store.isEmpty).toBe(true));
 
 			expect(store.emptyKindPending).toBe(true);
-			if (outcome === 'succeeds') status.resolve({ isReviewer: false, setupProjectId: 'personal' });
+			if (outcome === 'succeeds')
+				status.resolve({ enabled: true, isReviewer: false, setupProjectId: 'personal' });
 			else status.reject(new Error('offline'));
 			await refresh;
 			expect(store.emptyKindPending).toBe(false);

@@ -52,3 +52,11 @@ export interface WorkQueue<TMessage> {
 	 */
 	stop(): Promise<void>;
 }
+
+/** The two queues the engine runs on. */
+export interface EngineWorkQueues {
+	/** Feeds the orchestration worker. */
+	orchestration: WorkQueue<OrchestrationMessage>;
+	/** Feeds the step worker. */
+	step: WorkQueue<StepMessage>;
+}

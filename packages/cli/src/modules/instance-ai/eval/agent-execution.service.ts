@@ -365,7 +365,7 @@ export class EvalAgentExecutionService {
 
 		return {
 			modelFetch: recorder.fetch,
-			mcpFetch,
+			mcpFetch: () => mcpFetch,
 			onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
 				recordSettledMcpCall(serverName, toolName, modelToolName);
 			},
