@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/utils/routePreload.test.ts
+  s_1f5dca88dc4356::t_cb8aa12134af11 1-93,103-121
+  s_1f5dca88dc4356::t_ccef1816080348 94-102
+packages/frontend/editor-ui/src/app/plugins/vitePreloadError.test.ts
+  s_1f5dca88dc4356::t_7fed0e7d881395 2-5,7,13-17,39,92-150
+packages/frontend/editor-ui/src/app/router.preload.test.ts
+  s_1f5dca88dc4356::t_09a8e7c9adfb20 62-66
+  s_1f5dca88dc4356::t_cbb22332ef2e26 1-18,20-29,34,36-40,42-44,46-61,67-145,150-175,180-201,203-216,220-221
+  s_1f5dca88dc4356::t_b6d5dd1fe01cf1 19,146-149,176-179
+  s_1f5dca88dc4356::t_f3659b4059952b 30-33,35,41,45,202,217-219
+packages/frontend/editor-ui/src/app/utils/routePreload.ts
+  s_1f5dca88dc4356::t_fd9f31ef261aae 1-20,26-46
+  s_1f5dca88dc4356::t_ccef1816080348 21-25
+packages/frontend/editor-ui/src/app/plugins/vitePreloadError.ts
+  s_1f5dca88dc4356::t_8dd92623f4111c 2,7-18,25-37
+packages/frontend/editor-ui/src/app/router.ts
+  s_1f5dca88dc4356::t_983c532f4ff092 8-14,27-32,1243-1254,1256-1260,1285,1313,1320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3843bd9bed6ef526efe0fb147297c550ca1adab4",
+  "prompts": {},
+  "sessions": {
+    "s_1f5dca88dc4356": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d273f3d5-aa6d-419f-a97a-505800cdd177",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

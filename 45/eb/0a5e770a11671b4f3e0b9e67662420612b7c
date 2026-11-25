@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/docs/tools.md
+  s_c370d2f16ebe1f::t_e45ef22502cae1 1083
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_c370d2f16ebe1f::t_6fdfca95b23510 1065,1078
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_c370d2f16ebe1f::t_35c7ae70a77566 77,107-115
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_c370d2f16ebe1f::t_b62d768faca877 212,215
+packages/cli/src/node-execution/execute-node.service.ts
+  s_c370d2f16ebe1f::t_606758b8588f9b 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45eb0a5e770a11671b4f3e0b9e67662420612b7c",
+  "prompts": {},
+  "sessions": {
+    "s_c370d2f16ebe1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72ea96bc-d405-4ddb-90a5-89855d53356f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

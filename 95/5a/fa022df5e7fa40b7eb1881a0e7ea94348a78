@@ -1,0 +1,11 @@
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  ai_agent 40-42,340,551-552,558
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  ai_agent 9-10,27,29,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "955afa022df5e7fa40b7eb1881a0e7ea94348a78",
+  "prompts": {}
+}

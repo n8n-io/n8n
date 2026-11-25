@@ -1,0 +1,47 @@
+packages/@n8n/instance-ai/src/tools/update-page.tool.ts
+  s_f27bda1bd0c713::t_45f6b1b2aef999 1-73
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.coverage.test.ts
+  ai_agent 28
+packages/@n8n/instance-ai/src/tools/__tests__/create-page.tool.test.ts
+  ai_agent 16
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  ai_agent 205-207
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 3656-3666
+packages/@n8n/instance-ai/src/tools/__tests__/get-page.tool.test.ts
+  ai_agent 22
+packages/@n8n/instance-ai/docs/tools.md
+  ai_agent 104,1422-1438
+packages/@n8n/instance-ai/src/tools/index.ts
+  ai_agent 64-66,274-277
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 9470
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 9666-9705
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  ai_agent 167-168
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.pages.test.ts
+  ai_agent 16,25
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  ai_agent 80,169-171
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 1351-1355,1828
+packages/@n8n/instance-ai/src/tools/__tests__/update-page.tool.test.ts
+  s_f27bda1bd0c713::t_ed9b466e78d758 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9032f22da6d973ded8a39e0568350d72a66483fb",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

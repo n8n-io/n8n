@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeZoom.test.ts
+  s_f27bda1bd0c713::t_42631d3f93f0f4 1-74
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_f27bda1bd0c713::t_42631d3f93f0f4 121,1970-1980,1986,1998
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_f27bda1bd0c713::t_42631d3f93f0f4 280-281
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeZoom.ts
+  s_f27bda1bd0c713::t_42631d3f93f0f4 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd45b2f0881b4dc45914d005595da071bb1940df",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

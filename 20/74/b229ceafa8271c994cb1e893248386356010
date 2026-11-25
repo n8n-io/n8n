@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/nodes/tools/ToolSkill/ToolSkill.node.ts
+  s_126e90b504d18d::t_8dff75ee1fdb28 245,247-253
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_126e90b504d18d::t_b12d9695f04568 409-410
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_126e90b504d18d::t_b12d9695f04568 1421-1424
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_126e90b504d18d::t_650c6ee4f0dc1a 204-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2074b229ceafa8271c994cb1e893248386356010",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

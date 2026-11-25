@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4ea71e2ba1183f::t_4dd511600b8a63 4004
+packages/frontend/editor-ui/src/features/sensitive-data-map/demo/sensitive-data-map-demo.leaky.json
+  s_4ea71e2ba1183f::t_379cd48c462a9c 1-129
+packages/frontend/editor-ui/src/features/sensitive-data-map/demo/sensitive-data-map-demo.fixed.json
+  s_4ea71e2ba1183f::t_d07c2bc07c2f0c 1-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "057265f5b67f0500194b8dd9314bbb93c3b9f261",
+  "prompts": {},
+  "sessions": {
+    "s_4ea71e2ba1183f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79c66528-1553-4a0f-a9b2-b8474eca94f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/database/repositories/ai-preference.repository.test.ts
+  s_1b3760c92ccdfb::t_c9c943bc28d559 9,240,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1888bd90ab92f6a4c9db4f7c0897d67289bdaa94",
+  "prompts": {},
+  "sessions": {
+    "s_1b3760c92ccdfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20df9-cb98-7aa1-a82b-883694996695",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

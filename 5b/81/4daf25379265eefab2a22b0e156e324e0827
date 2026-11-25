@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_25b198f53ff0a0::t_e5ced082e744f4 40-41,197-223
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_25b198f53ff0a0::t_7c25d67fe0c3bf 38-40
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_25b198f53ff0a0::t_a2afb7b1439881 259-262
+packages/cli/src/modules/agents/builder/skills/human-review.skill.ts
+  s_25b198f53ff0a0::t_5497075d6ae38e 1-113
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_25b198f53ff0a0::t_d42659f9526fda 6,30
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_25b198f53ff0a0::t_f8e6ad63eb6166 120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b814daf25379265eefab2a22b0e156e324e0827",
+  "prompts": {},
+  "sessions": {
+    "s_25b198f53ff0a0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20e82-3dc0-7be2-ab86-edfdcfd6911f",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

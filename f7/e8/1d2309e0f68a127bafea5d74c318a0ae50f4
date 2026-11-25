@@ -1,0 +1,186 @@
+packages/modules/promotions/frontend/src/promotionPreview.tree.ts
+  ai_agent 13-19
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_d5bc51776c6f6d::t_7c40197e5651d6 22,159
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_d5bc51776c6f6d::t_2f66bba38f5e24 720
+packages/cli/src/modules/n8n-packages/entities/preference/preference.importer.ts
+  s_d5bc51776c6f6d::t_74f2b3c849decb 168
+  ai_agent 130-135,144-149
+  s_d5bc51776c6f6d::t_6b900812dffd80 116
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_d5bc51776c6f6d::t_0f94a9d8190ea5 17,32-35,54-58
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 8,50-52
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  ai_agent 87-89
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 188-190
+  s_d5bc51776c6f6d::t_0603ce3d66eb05 41
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 15,17
+  s_d5bc51776c6f6d::t_7c40197e5651d6 58
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 8
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_d5bc51776c6f6d::t_2f66bba38f5e24 114
+  s_d5bc51776c6f6d::t_5636b3576f04d7 149,155
+  s_d5bc51776c6f6d::t_0f94a9d8190ea5 60-61,83
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_d5bc51776c6f6d::t_7c40197e5651d6 2907
+  s_d5bc51776c6f6d::t_06d4749cab414f 3242-3243,3257-3258,3268,3280-3281,3286,3296-3297,3302
+packages/cli/src/public-api/v1/controllers/__tests__/promotions.public.controller.test.ts
+  s_d5bc51776c6f6d::t_45bfcfbe871af7 22,28-29,193-196,200-241
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  ai_agent 35-38,49-53
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  ai_agent 57,63
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  ai_agent 159-163
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChangeDetails.generated.yml
+  ai_agent 8
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_d5bc51776c6f6d::t_3d197538aa21d2 137-142,146-151
+  s_d5bc51776c6f6d::t_7c40197e5651d6 304
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  ai_agent 1-4,180-183,227-229,232-238
+  s_d5bc51776c6f6d::t_f0026c5f90308c 154
+  s_d5bc51776c6f6d::t_5b3d35412b4400 263,421,427,438,443,471
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 82-83
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_d5bc51776c6f6d::t_829a5f0b21cd5d 53,58,68
+packages/modules/promotions/frontend/src/promotionPreview.content.ts
+  ai_agent 47-56
+packages/modules/promotions/frontend/src/promotionPreview.preferences.test.ts
+  s_d5bc51776c6f6d::t_36f53540769e93 52-53
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_d5bc51776c6f6d::t_7c40197e5651d6 92-95,128-131,301-302,340-343,629,639,715
+  s_d5bc51776c6f6d::t_5b3d35412b4400 27-28,39,96-97,126-127,132,171,227,243,319,337-339,344-351,473-479,584
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  ai_agent 28-31,48-52
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 8,27-33
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_d5bc51776c6f6d::t_74f2b3c849decb 616,648,678,682,686-688,715,720,724-726,757,761-763,791,797,801-803,866,899
+  s_d5bc51776c6f6d::t_0f94a9d8190ea5 567-568,583-586,596,629,663-664,683-685,699-700,721-723,735-736,752-756,758-760,773-774,798-800,815-816,831-834,846-847,879-880
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 18-20
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  ai_agent 1202-1214
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_d5bc51776c6f6d::t_45bfcfbe871af7 6171,6174-6175,6193-6195,6222,6238,6251
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d5bc51776c6f6d::t_6e9fda695aa5ce 72
+  s_d5bc51776c6f6d::t_fc6996b9e73e89 36-71,73-76
+packages/modules/promotions/frontend/src/components/preview/PromotionFieldChanges.vue
+  s_d5bc51776c6f6d::t_6e9fda695aa5ce 34
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  ai_agent 15
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d5bc51776c6f6d::t_5636b3576f04d7 11601-11604
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preferences.test.ts
+  s_d5bc51776c6f6d::t_9aa1321fe46f9f 1-2,5-17,19-21,23-26,28-30,32-46,49-56,59-63,65-66,68-72,74-78,81-85,87-93,96-103,105-107,109-114,117-120,122-124,126-127,129-135,137-139,170-173,175-199,201-203,210-215,217-223,225-226,228-229,231-233
+  s_d5bc51776c6f6d::t_4251df9a413860 3-4,204-207,209
+  s_d5bc51776c6f6d::t_04f5a220f2e4fa 140-145,147-157,160-165,168-169
+packages/@n8n/cli/src/client.ts
+  s_d5bc51776c6f6d::t_5636b3576f04d7 138
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_d5bc51776c6f6d::t_f0026c5f90308c 1,39,82
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_d5bc51776c6f6d::t_74f2b3c849decb 117-119
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_d5bc51776c6f6d::t_5b3d35412b4400 35,122,126-128,149,187,207-208
+  s_d5bc51776c6f6d::t_3d197538aa21d2 7-11,123-125
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  ai_agent 954-1023
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
+  ai_agent 8
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_d5bc51776c6f6d::t_0f94a9d8190ea5 231-240,242-249,251-253,255-256
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 8,26-32,79-81
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 25-44
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_d5bc51776c6f6d::t_04f5a220f2e4fa 406
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 756
+  s_d5bc51776c6f6d::t_74f2b3c849decb 757
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_d5bc51776c6f6d::t_74f2b3c849decb 424-425
+  s_d5bc51776c6f6d::t_6b900812dffd80 422-423
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_d5bc51776c6f6d::t_7c40197e5651d6 1898,2724
+  s_d5bc51776c6f6d::t_06d4749cab414f 2390
+  s_d5bc51776c6f6d::t_59d4340f064f86 4
+  s_d5bc51776c6f6d::t_3d197538aa21d2 3207-3208
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_d5bc51776c6f6d::t_6b900812dffd80 426,460,468,481,503,511,516,521,536,549,579-587,595
+  ai_agent 527-532,588-593
+packages/cli/src/modules/promotions.ee/promotion-preference.service.ts
+  s_d5bc51776c6f6d::t_afcc4a903b3add 1-3,5-21,23-24,26-37,39-51,59,61-77,88
+  s_d5bc51776c6f6d::t_5636b3576f04d7 52-53,57-58,60
+  s_d5bc51776c6f6d::t_04f5a220f2e4fa 38,54-56,81-87
+  s_d5bc51776c6f6d::t_74f2b3c849decb 4,22,25,78-80
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 8,26-32
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  ai_agent 8
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  ai_agent 213-223,498-503
+  s_d5bc51776c6f6d::t_5b3d35412b4400 36,209
+  s_d5bc51776c6f6d::t_f0026c5f90308c 210-212,224
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 77,88,170-173,306-310,355
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d5bc51776c6f6d::t_0603ce3d66eb05 14,304-306,308-310,312,314,543,676,697-698,700-701,721,723-725,727-728,748,1142-1143,1174-1183,1186-1187,1285-1293,1303,1998,2003-2005,2007
+  s_d5bc51776c6f6d::t_f0026c5f90308c 177,1158,1160
+  s_d5bc51776c6f6d::t_74f2b3c849decb 9-11,13,246,265,298-301,303,671,699,895,905,960,970,981,991,1084,1090,1122,1139,1189-1191,1193,1236,1260,1263,1305-1308,1310,2000,2002
+  s_d5bc51776c6f6d::t_59d4340f064f86 1-2,7-8
+  s_d5bc51776c6f6d::t_04f5a220f2e4fa 307
+  s_d5bc51776c6f6d::t_06d4749cab414f 689-690,720,785-791,793,804-805,815-817,819-821,823,832-833,1101-1103,1105,1967,2038,2045,2048-2050,2147-2151,2153-2159
+  s_d5bc51776c6f6d::t_3d197538aa21d2 729-735,1298-1301
+  s_d5bc51776c6f6d::t_7c40197e5651d6 3-6,1927,2078-2080
+  s_d5bc51776c6f6d::t_6e9fda695aa5ce 1141,1296-1297
+packages/cli/src/events/maps/relay.event-map.ts
+  s_d5bc51776c6f6d::t_06d4749cab414f 1765,1772,1793,1800
+  s_d5bc51776c6f6d::t_7c40197e5651d6 823,1189,1196,1700,1732,1766,1794
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_d5bc51776c6f6d::t_6b900812dffd80 23,35
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 239
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_d5bc51776c6f6d::t_5b3d35412b4400 10
+packages/@n8n/telemetry/src/events/promotions.ts
+  ai_agent 129-146,203-222
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_d5bc51776c6f6d::t_5b3d35412b4400 248
+  ai_agent 111-113,172,237,252-256
+  s_d5bc51776c6f6d::t_f0026c5f90308c 1,77
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 17,441-442
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d5bc51776c6f6d::t_113cce8ba486ec 4720-4727,4729-4732,4734-4741,4743-4752,4754-4755
+  s_d5bc51776c6f6d::t_59d4340f064f86 2-3,18-19
+  s_d5bc51776c6f6d::t_4251df9a413860 1,20-21,193,263,269,4536-4564,4566-4568,4570-4576,4578-4582,4585-4588,4590-4593,4595-4600,4602-4605,4607-4610,4612-4614,4616-4630,4632-4635,4637,4639,4641-4646,4649-4652,4654-4656,4659-4681,4683-4689,4691,4693,4695,4697-4703,4705-4706,4708-4710,4712-4714,4716-4718
+  s_d5bc51776c6f6d::t_7c40197e5651d6 4-17,466,468,547,668,1239
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 8
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_d5bc51776c6f6d::t_22ab5b15d51ab9 60-62
+  s_d5bc51776c6f6d::t_7c40197e5651d6 54-59,299-304,539
+  s_d5bc51776c6f6d::t_59d4340f064f86 416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f7e81d2309e0f68a127bafea5d74c318a0ae50f4",
+  "prompts": {},
+  "sessions": {
+    "s_d5bc51776c6f6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d41-65de-7b62-b2c0-d680d829e1e5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

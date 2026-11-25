@@ -1,0 +1,41 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_4a494bfdece475::t_744d3d1602fdf8 549-551,572-574,631-633,635-637,711,715-763,820-821,835-837,883-885,896,898-901,903-905,908-912,954-956,970-1011,1057-1058,1098,1100-1102,1149-1150,1175-1176
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_4a494bfdece475::t_fb0b090179ed9b 217-219,255-258,263,265-267,289-292,375-400,432,438-441
+packages/@n8n/cli/src/__tests__/promotion-confirm-missing-dependencies.test.ts
+  s_4a494bfdece475::t_0cfd27347e3dd3 72-79,130-143,417,436-439,442,445-446,453-488,541,554-678,685,775,795
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_4a494bfdece475::t_3a1e5f602b1e33 147-151,172,375-379,381,383,397,400,408-457,678,744-833,891,926
+packages/@n8n/cli/src/__tests__/promotion-missing-dependencies.test.ts
+  s_3c463a4b4147a8::t_16bddf5d966339 8,166-187,456-476,486-561
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3c463a4b4147a8::t_32cb0cbf0c1c25 5,17-25,38,66,82,90,94-96,114-129,133,139,142-146,148-155,161-173,177-180,184,187,193-194,196,198,201-202,206-228,246-247,257
+packages/@n8n/cli/src/commands/promotion-environment/missing-dependencies.ts
+  s_4a494bfdece475::t_8307534bb6af67 34-58,112,115,131-132,142,144,155-159,161-162,208,213-215,217-220,243-245,249-250,252,260,262,264
+packages/@n8n/cli/src/commands/promotion-environment/promote-command.ts
+  s_3c463a4b4147a8::t_0181707978350c 3,26-29,32-41,45-47,49,60,62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a06d0f9fa0a25f17101b35e40d6adf91f30a2a12",
+  "prompts": {},
+  "sessions": {
+    "s_3c463a4b4147a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86121cb9-37d8-4c50-8dd5-a1674afa2bca",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

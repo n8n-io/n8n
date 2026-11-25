@@ -1,0 +1,20 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 999-1005,1010-1013,1020-1021,1023-1024,1027-1029,1033-1034,1039-1059
+.github/scripts/workflow-validation.test.mjs
+  h_52a137d26d774c 143-235
+.github/workflows/ci-owners-required-reviews.yml
+  h_52a137d26d774c 23-46,48
+.github/workflows/ci-owners-review-recommendations.yml
+  h_52a137d26d774c 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f967a9add5f8dffdbea1915058a431474933f012",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/permissions/src/roles/promotion-project-access.ee.ts
+  s_4006eb47313af5::t_9ed199dd5c0d92 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8edf0af1dd03c9dd76a212dbfa810ecb0ed4b72d",
+  "prompts": {},
+  "sessions": {
+    "s_4006eb47313af5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4b87b7b-bf41-4a79-9b64-c8a13ed7b5dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

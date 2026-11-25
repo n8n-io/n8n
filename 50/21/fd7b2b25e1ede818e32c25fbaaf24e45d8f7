@@ -1,0 +1,49 @@
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_3dd47ea0104342::t_bbbf465210f287 434,754
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_3dd47ea0104342::t_0747b1e6b602f4 8-15,21,49
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_3dd47ea0104342::t_85d5841b3b3ddb 10-14
+  s_3dd47ea0104342::t_0747b1e6b602f4 339-342,348-351
+  s_3dd47ea0104342::t_181385628663dd 352-353
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_3dd47ea0104342::t_fb0867f8fd1cd9 71-76
+  s_3dd47ea0104342::t_1f65782c478950 70
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_3dd47ea0104342::t_fb0867f8fd1cd9 24-25
+packages/@n8n/db/src/migrations/common/1794947163394-AddIsPlaceholderToCredentials.ts
+  s_3dd47ea0104342::t_fb0867f8fd1cd9 1-21
+packages/cli/src/commands/import/credentials.ts
+  s_3dd47ea0104342::t_264b4cf5a14697 550
+packages/cli/src/credentials/credentials.service.ts
+  s_3dd47ea0104342::t_8472996c1bdd8f 238,722
+  s_3dd47ea0104342::t_bbbf465210f287 2196-2197,2217
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_3dd47ea0104342::t_bbbf465210f287 82-83,98
+packages/frontend/editor-ui/src/Interface.ts
+  s_3dd47ea0104342::t_bbbf465210f287 367
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_3dd47ea0104342::t_bbbf465210f287 24-25,64
+packages/@n8n/api-types/src/schemas/credential-response.schema.ts
+  s_3dd47ea0104342::t_bbbf465210f287 14-15
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/deleteCredential.generated.yml
+  s_3dd47ea0104342::t_2f814d04a9aec2 39-40
+packages/cli/src/public-api/v1/shared/spec/schemas/credentialPublicDto.generated.yml
+  s_3dd47ea0104342::t_ce817b597c81a5 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5021fd7b2b25e1ede818e32c25fbaaf24e45d8f7",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

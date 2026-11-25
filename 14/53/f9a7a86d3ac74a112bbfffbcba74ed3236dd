@@ -1,0 +1,43 @@
+packages/modules/inbox/frontend/src/promotions/PromotionOwnerRequestDetail.vue
+  s_3dd47ea0104342::t_47840c644e97e7 1-465
+packages/modules/inbox/frontend/src/promotions/promotionOwnerRequests.api.ts
+  s_3dd47ea0104342::t_085152e64bd329 1-13
+packages/modules/inbox/frontend/src/promotions/promotionOwnerRequest.utils.ts
+  s_3dd47ea0104342::t_fd3f03b9487ce6 1-23
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a18917ee43e665::t_a1d050750b3826 122-158,11012-11014
+packages/modules/inbox/frontend/src/components/InboxListItem.vue
+  s_a18917ee43e665::t_e2289c1a121cef 15,18,64,115-119,152,154,172-182,273-278
+packages/modules/inbox/frontend/src/inbox.constants.ts
+  s_a18917ee43e665::t_4c23b6c9a843b4 6,14-15
+packages/modules/inbox/frontend/src/inbox.module.ts
+  s_a18917ee43e665::t_4d64db57074868 59-63
+packages/modules/inbox/frontend/src/inbox.routes.ts
+  s_a18917ee43e665::t_816ecf510adf73 6,24-25,38-41,67-73
+packages/modules/inbox/frontend/src/views/InboxView.vue
+  s_a18917ee43e665::t_4876ae08120f48 18,62-64,267-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1453f9a7a86d3ac74a112bbfffbcba74ed3236dd",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a18917ee43e665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afc6e4fc30a89dc1e",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

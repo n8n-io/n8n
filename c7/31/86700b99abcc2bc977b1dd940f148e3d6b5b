@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_5d7834813eed3a::t_a2e1c696e9cbde 1224-1225
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d7834813eed3a::t_8b504944681dba 9088-9089,9092
+packages/frontend/editor-ui/src/features/ai/instanceAi/fixWithAi.ts
+  s_5d7834813eed3a::t_842a0c20b5157e 17-21,24,29,33,38,43,45
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/fixWithAi.test.ts
+  s_5d7834813eed3a::t_ec896d04de251c 54-70
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_5d7834813eed3a::t_d49332c9f65f27 2764,2776
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c73186700b99abcc2bc977b1dd940f148e3d6b5b",
+  "prompts": {},
+  "sessions": {
+    "s_5d7834813eed3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62f663e-f534-4582-8dd5-6cc581318eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

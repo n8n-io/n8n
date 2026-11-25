@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/axios-utils.ts
+  s_aac4ff4fc8f273::t_817e834d98c8ab 250
+  s_aac4ff4fc8f273::t_84f4973d640bb9 27
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/request-helper-functions.test.ts
+  s_aac4ff4fc8f273::t_2f8486b9b96e44 229,231-232,236-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df66c8571448e1e26b70dcc7b8d54838db30dea2",
+  "prompts": {},
+  "sessions": {
+    "s_aac4ff4fc8f273": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e573bc21-cad1-4b0c-a38b-d00bab4f66fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

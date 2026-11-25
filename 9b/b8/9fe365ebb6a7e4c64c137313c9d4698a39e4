@@ -1,0 +1,53 @@
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy.check.test.ts
+  s_6bdcca0a27f363::t_e06c8615e11c6d 45,51,53-54,65,67,77,117-165,187
+packages/cli/src/modules/agent-tool-policies/tool-policy.check.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 9,13-15,26-31,33,38,42-44
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_6bdcca0a27f363::t_fe6647b769dcc1 302-306
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_6bdcca0a27f363::t_1ff869cee4d39f 133,194-200,206-208
+packages/cli/src/modules/agent-tool-policies/tool-policy-chain.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 17,29-30
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_6bdcca0a27f363::t_fe6647b769dcc1 362-380,382
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-enforcement.test.ts
+  s_6bdcca0a27f363::t_fe6647b769dcc1 12,68-77
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-chain.test.ts
+  s_6bdcca0a27f363::t_e06c8615e11c6d 11,23-25,80-81
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 864,866-870
+packages/@n8n/decorators/src/policy-check/policy-check.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 210-211,218-223,231-232
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_6bdcca0a27f363::t_fe6647b769dcc1 308,375-379,395-399,424-428
+  s_6bdcca0a27f363::t_1ff869cee4d39f 309-312
+packages/cli/src/modules/agents/agent-policy.service.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 3-8,18,61,127-128,130-140,144-145,158,160-161,164-168,182-194
+  s_6bdcca0a27f363::t_dc8de3043df71a 195
+packages/cli/src/modules/policy-infrastructure/__tests__/policy-decision.service.test.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 542,544
+packages/cli/src/modules/agents/__tests__/agent-policy.service.test.ts
+  s_6bdcca0a27f363::t_fe6647b769dcc1 16-17,59,63-64,68-79,212,242,395,411
+  s_6bdcca0a27f363::t_1ff869cee4d39f 428
+  s_6bdcca0a27f363::t_5c1b4b30d70d44 293,320-389
+packages/cli/src/modules/agent-tool-policies/__tests__/tool-policy-engine.test.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 105,107
+packages/cli/src/policy/__tests__/policy-enforcement.service.test.ts
+  s_6bdcca0a27f363::t_9f4e8b37e83f40 385,387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bb89fe365ebb6a7e4c64c137313c9d4698a39e4",
+  "prompts": {},
+  "sessions": {
+    "s_6bdcca0a27f363": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565eb793-19a9-4a9e-85f2-146865e3826b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

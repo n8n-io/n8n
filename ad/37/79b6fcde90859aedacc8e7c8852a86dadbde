@@ -1,0 +1,77 @@
+packages/cli/src/workflow-runner.ts
+  s_00e1c6fab015d9::t_6fa6ef11e70964 61,733-734,736-737,739-741,743
+packages/cli/src/modules/n8n-packages/io/read-package-manifest.ts
+  s_00e1c6fab015d9::t_caa3b42f70c510 1-17
+packages/cli/src/task-runners/task-managers/task-requester.ts
+  s_00e1c6fab015d9::t_2966ece921ef20 31,199
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_00e1c6fab015d9::t_25d3d0f6eff862 100,102-106,1077-1081,1194,1381-1382,1384-1385,1563-1564,1566
+packages/cli/src/credentials/credential-operations.ts
+  s_00e1c6fab015d9::t_b0db5f4c0aac0a 357
+packages/cli/src/testing.ts
+  s_00e1c6fab015d9::t_2966ece921ef20 4
+  s_00e1c6fab015d9::t_19d4ebbd6ffb8e 10-15
+  s_00e1c6fab015d9::t_d9865c5995fe0c 1-3
+  s_00e1c6fab015d9::t_261ad64aed3e3a 26-27
+  s_00e1c6fab015d9::t_6fa6ef11e70964 16-23
+  s_00e1c6fab015d9::t_1d0546806e08d1 5-9
+  s_00e1c6fab015d9::t_d3f79bcd2f85fa 24-25
+packages/cli/src/webhooks/webhook-response-lifecycle.ts
+  s_00e1c6fab015d9::t_fc48e7029d6b82 1,91
+  s_00e1c6fab015d9::t_2dab8ab951c187 9-15,17-23,41,51-53,57-58,63-90,92-98,101,104
+  s_00e1c6fab015d9::t_25d3d0f6eff862 2-8,24-40,42-50,54-56,59-60,62,99-100,102-103
+packages/cli/src/webhooks/webhook-last-node-response-extractor.ts
+  s_00e1c6fab015d9::t_1ee77549258883 5,32
+packages/cli/src/workflow-execute-additional-data.ts
+  s_00e1c6fab015d9::t_22e7f515256177 20,68-75
+packages/cli/src/executions/start-prepared-workflow.ts
+  s_00e1c6fab015d9::t_d9865c5995fe0c 1-15,19-32
+  s_00e1c6fab015d9::t_27dc94db86e33e 16,18
+packages/cli/src/executions/sub-workflow-context.ts
+  s_00e1c6fab015d9::t_7733fd12744643 1-13
+packages/cli/src/executions/__tests__/start-prepared-workflow.test.ts
+  s_00e1c6fab015d9::t_8f00f5752906ec 63,75-80,82
+  s_00e1c6fab015d9::t_1d0546806e08d1 84-85
+  s_00e1c6fab015d9::t_7a02ef56581174 1-42,44-48,52-54,56-62,64-74,81,83,86-97,99-101
+  s_00e1c6fab015d9::t_b9a98e3f8af3b2 49-51
+packages/cli/src/webhooks/__tests__/webhook-response-lifecycle.test.ts
+  s_00e1c6fab015d9::t_e7a526a845d6b7 1-7,9-38,40-49
+packages/cli/src/node-types.ts
+  s_00e1c6fab015d9::t_0b0725b289bc4d 16-17
+packages/cli/src/node-execution-method.ts
+  s_00e1c6fab015d9::t_0b0725b289bc4d 1-13
+packages/cli/src/webhooks/webhook-response-headers.ts
+  s_00e1c6fab015d9::t_fc48e7029d6b82 87-90
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_00e1c6fab015d9::t_caa3b42f70c510 621
+packages/cli/src/modules/n8n-packages/entities/variable/variable-references.ts
+  s_00e1c6fab015d9::t_0b0725b289bc4d 1-31
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_00e1c6fab015d9::t_caa3b42f70c510 24,46,70
+packages/cli/src/credentials/__tests__/credential-operations.test.ts
+  s_00e1c6fab015d9::t_3eb836e1e842f2 1-96,98-120
+packages/cli/src/task-runners/task-managers/task-result.ts
+  s_00e1c6fab015d9::t_2966ece921ef20 1-2,4,7,9-12
+  s_00e1c6fab015d9::t_9919ce7fd18a45 3,5-6
+packages/cli/src/executions/sub-workflow-output.ts
+  s_00e1c6fab015d9::t_7733fd12744643 1-23,27-39
+  s_00e1c6fab015d9::t_22e7f515256177 24-26
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-reader.ts
+  s_00e1c6fab015d9::t_caa3b42f70c510 22-23,25-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad3779b6fcde90859aedacc8e7c8852a86dadbde",
+  "prompts": {},
+  "sessions": {
+    "s_00e1c6fab015d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ea15-64c5-7b73-bc9a-9995d7b91a6c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

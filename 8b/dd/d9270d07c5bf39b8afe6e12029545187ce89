@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentVersionMetadataModal.vue
+  s_0cdcde79e91f6b::t_cbe0f605cd4881 123,152-162
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionMetadataModal.test.ts
+  s_0cdcde79e91f6b::t_cbe0f605cd4881 112-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bddd9270d07c5bf39b8afe6e12029545187ce89",
+  "prompts": {},
+  "sessions": {
+    "s_0cdcde79e91f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9d1c4b-1278-45dc-bfd3-efc3f67067de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

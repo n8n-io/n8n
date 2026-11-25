@@ -1,0 +1,16 @@
+.github/workflows/ci-owners-required-reviews.yml
+  h_52a137d26d774c 4,26,34-36
+.github/workflows/ci-owners-review-recommendations.yml
+  h_52a137d26d774c 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1a08af931b6a2261630f2b2301702c4e0df67b1",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

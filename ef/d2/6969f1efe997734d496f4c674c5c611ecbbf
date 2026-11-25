@@ -1,0 +1,19 @@
+.claude/plugins/n8n/commands/changes-review.md
+  s_1b23ff0ffed5c7::t_baa6a0a299b4ec 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "efd26969f1efe997734d496f4c674c5c611ecbbf",
+  "prompts": {},
+  "sessions": {
+    "s_1b23ff0ffed5c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8b24fe4-ba8e-48d4-a938-9406abc68194",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

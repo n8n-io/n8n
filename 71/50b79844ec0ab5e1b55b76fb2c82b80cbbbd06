@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_adee977eab8a65::t_fd1826092eca85 296-298
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_adee977eab8a65::t_1d406b0b18fe48 6
+packages/cli/src/modules/agents/integrations/__tests__/conversation-tools.test.ts
+  s_adee977eab8a65::t_b5378ba1c07f7b 10-13
+  s_adee977eab8a65::t_a5c47893977c13 6-8,254-275
+  s_adee977eab8a65::t_27305b44cce723 276-277
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_adee977eab8a65::t_1d406b0b18fe48 6
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_adee977eab8a65::t_bf51b9ac190ff2 1620
+  s_adee977eab8a65::t_b5378ba1c07f7b 1621-1623
+  s_adee977eab8a65::t_fd1826092eca85 1600,1602,1624
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_adee977eab8a65::t_1d406b0b18fe48 6,26
+packages/cli/src/modules/agents/integrations/__tests__/integration-tool-descriptions.test.ts
+  s_adee977eab8a65::t_b5378ba1c07f7b 1-4,18-20
+  s_adee977eab8a65::t_fd1826092eca85 5-17,21-28
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat/n8n-chat-integration.ts
+  s_adee977eab8a65::t_fd1826092eca85 126
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_adee977eab8a65::t_da8665228027fb 140-142
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_adee977eab8a65::t_1d406b0b18fe48 6,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7150b79844ec0ab5e1b55b76fb2c82b80cbbbd06",
+  "prompts": {},
+  "sessions": {
+    "s_adee977eab8a65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5e8-1bc3-73e2-8649-1f304c4b7793",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

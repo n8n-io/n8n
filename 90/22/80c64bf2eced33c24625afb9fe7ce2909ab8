@@ -1,0 +1,28 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_bc361d9d6c0744::t_2cca732883125b 1751,1754-1755,1757,1761,1765
+  s_bc361d9d6c0744::t_7db1daa6b2cd4c 1728
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_bc361d9d6c0744::t_03f40e417d448c 41-42
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_bc361d9d6c0744::t_3849cd9752a4b1 647,652-669
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_bc361d9d6c0744::t_768b4d0a96e152 1565,1576,1663,1868,1871-1872,1877,1884,1889,1893,1898
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_bc361d9d6c0744::t_18d15107aed7d9 248-251,738,742-743
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "902280c64bf2eced33c24625afb9fe7ce2909ab8",
+  "prompts": {},
+  "sessions": {
+    "s_bc361d9d6c0744": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6480b4a0-d3d2-4d24-a9bd-2dc7e311dd31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

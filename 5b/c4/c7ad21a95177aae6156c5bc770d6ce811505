@@ -1,0 +1,72 @@
+packages/cli/src/__tests__/internal-api-client.test.ts
+  s_1f81abe09807b5::t_0bd335de842158 1-24
+packages/cli/src/controller.registry.ts
+  s_1f81abe09807b5::t_ccef95e616a728 281
+  s_1f81abe09807b5::t_8976aabd9d428d 240,276
+  s_1f81abe09807b5::t_4ca35bd069f11d 28,277-280
+  s_1f81abe09807b5::t_c1ed547f1f3006 27
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1f81abe09807b5::t_3b1ab0f6c68d63 64
+  s_1f81abe09807b5::t_3234a46f3ff740 572
+packages/cli/src/telemetry/index.ts
+  s_1f81abe09807b5::t_93465586b67d9f 95,98,107
+  s_1f81abe09807b5::t_70b1845f2e1116 311-312,317-325,327-329
+  s_1f81abe09807b5::t_b675ea2167fdab 678
+  s_1f81abe09807b5::t_58e86842375c95 466-471
+  s_1f81abe09807b5::t_77335d79242f9e 117
+  s_1f81abe09807b5::t_90e61b75691fec 141-142
+  s_1f81abe09807b5::t_c9f6250c0079e6 62,72,79,84,89-90,139,292-293,307,422,427,674-675
+  s_1f81abe09807b5::t_d3572e8fad6b65 28
+  s_1f81abe09807b5::t_8976aabd9d428d 108,314-315,464,478
+packages/cli/src/__tests__/controller.registry.test.ts
+  s_1f81abe09807b5::t_52aa76ebaaf724 554
+  s_1f81abe09807b5::t_5b831da8f592c1 579-589
+  s_1f81abe09807b5::t_d76fcfe7ffa053 35
+  s_1f81abe09807b5::t_fb701f69bd99e4 550
+packages/cli/src/internal-api-client.ts
+  s_1f81abe09807b5::t_66cf5fd408dca4 1-11
+packages/@n8n/telemetry/src/events/internal-api.ts
+  s_1f81abe09807b5::t_5063db63856e46 38
+  s_1f81abe09807b5::t_459be704662cfc 22
+  s_1f81abe09807b5::t_5c93e03d6539d9 33
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1f81abe09807b5::t_c9f6250c0079e6 1125
+  s_1f81abe09807b5::t_8976aabd9d428d 1167-1168
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1f81abe09807b5::t_c9f6250c0079e6 2014
+  s_1f81abe09807b5::t_38b9ef32b5867e 2027,2034
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1f81abe09807b5::t_573605059d59f2 772
+  s_1f81abe09807b5::t_3befa9446ccaf9 792
+  s_1f81abe09807b5::t_4bb7f5e5f917e5 1465
+  s_1f81abe09807b5::t_47bc87f1cebdbb 1433-1443
+  s_1f81abe09807b5::t_ef50bb3378a9fc 1430
+  s_1f81abe09807b5::t_52aa76ebaaf724 1431
+  s_1f81abe09807b5::t_3ea6d82725c2f9 809,812,819,830-832
+  s_1f81abe09807b5::t_c9f6250c0079e6 552,560,569,578,587,599,607,615,623,632,640,647,656,665,707,715,723,731,754,762,1335,1358,1369,1388,1523,1540
+  s_1f81abe09807b5::t_ecb355c19e4fdb 845
+  s_1f81abe09807b5::t_0d7cb35e371b6a 785
+  s_1f81abe09807b5::t_9d251243eefbb8 790-791
+  s_1f81abe09807b5::t_84fd6b84860f2a 1492
+packages/@n8n/telemetry/src/__tests__/internal-api-usage.test.ts
+  s_1f81abe09807b5::t_5c93e03d6539d9 9-10,41-42
+  s_1f81abe09807b5::t_da662cf3c93625 12,35,47-48
+packages/cli/src/telemetry/__tests__/telemetry-shutdown.test.ts
+  s_1f81abe09807b5::t_c9f6250c0079e6 71,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bc4c7ad21a95177aae6156c5bc770d6ce811505",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

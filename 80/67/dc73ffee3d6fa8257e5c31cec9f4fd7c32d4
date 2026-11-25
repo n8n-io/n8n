@@ -1,0 +1,148 @@
+packages/@n8n/engine/oxlint.config.mts
+  h_8fb27e0cdf6d1e 14
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 596-675
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  h_8fb27e0cdf6d1e 12,81-84
+packages/@n8n/engine/src/database/migrations/1794960000000-AddBallotVotesToWorkflowStepExecution.ts
+  h_8fb27e0cdf6d1e 1-24
+packages/@n8n/engine/src/database/migrations/index.ts
+  h_8fb27e0cdf6d1e 4,10
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  h_8fb27e0cdf6d1e 10-11,59,191-199,214,267-291
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  h_8fb27e0cdf6d1e 1,3,69-71,73-80
+packages/@n8n/engine/src/dependencies/index.ts
+  h_8fb27e0cdf6d1e 2
+packages/@n8n/engine/src/execution/__tests__/ballot.test.ts
+  h_8fb27e0cdf6d1e 1-78
+packages/@n8n/engine/src/execution/__tests__/cancel-execution.service.test.ts
+  h_8fb27e0cdf6d1e 58
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  h_8fb27e0cdf6d1e 62
+packages/@n8n/engine/src/execution/__tests__/resume-request.service.test.ts
+  h_8fb27e0cdf6d1e 75,480-683
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 740-741,817
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  h_8fb27e0cdf6d1e 155,1148-1251
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  h_8fb27e0cdf6d1e 115
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  h_8fb27e0cdf6d1e 27
+packages/@n8n/engine/src/execution/ballot.ts
+  h_8fb27e0cdf6d1e 1-90
+packages/@n8n/engine/src/execution/execution.types.ts
+  h_8fb27e0cdf6d1e 156,163-173,184,193-210,249,252-259
+packages/@n8n/engine/src/execution/index.ts
+  h_8fb27e0cdf6d1e 10,12-16,80
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  h_8fb27e0cdf6d1e 6,10-11,73,77-79,88-122,268-341
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  h_8fb27e0cdf6d1e 3,18,27,46,50-52,61,292-312,321,329,340-342,584-588,591-597
+packages/@n8n/engine/src/execution/step-store.ts
+  h_8fb27e0cdf6d1e 2-3,45-46,166-181
+packages/@n8n/engine/src/index.ts
+  h_8fb27e0cdf6d1e 33-34,105,141-144
+packages/@n8n/engine/src/server/api.types.ts
+  h_8fb27e0cdf6d1e 2,133-144
+packages/@n8n/engine/src/server/index.ts
+  h_8fb27e0cdf6d1e 5-6
+packages/@n8n/engine/src/server/routes/resume-requests.ts
+  h_8fb27e0cdf6d1e 14-18,38-44,111-114,122,126-145
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  h_8fb27e0cdf6d1e 23,452-481,483
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  h_8fb27e0cdf6d1e 751-824
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  h_8fb27e0cdf6d1e 101-108
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  h_8fb27e0cdf6d1e 25,35,327-330,332
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  h_8fb27e0cdf6d1e 2-3,9,22,76,98-131,143-145,181
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  h_8fb27e0cdf6d1e 398-410
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  h_8fb27e0cdf6d1e 8-9,208-217,220
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  h_8fb27e0cdf6d1e 3-4,99-107,191-200
+packages/cli/src/webhooks/__tests__/waiting-webhooks.test.ts
+  h_8fb27e0cdf6d1e 2221-2304
+packages/cli/src/webhooks/waiting-webhooks.ts
+  h_8fb27e0cdf6d1e 6,9,78-103,505-509,518-522,568-600
+packages/cli/templates/quorum-approval-response.handlebars
+  h_8fb27e0cdf6d1e 1-74
+packages/cli/test/integration/engine-v2-active-triggers.test.ts
+  h_8fb27e0cdf6d1e 100
+packages/cli/test/integration/engine-v2-lifecycle-events.test.ts
+  h_8fb27e0cdf6d1e 142
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  h_8fb27e0cdf6d1e 88
+packages/cli/test/integration/executions.controller.test.ts
+  h_8fb27e0cdf6d1e 321
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  h_8fb27e0cdf6d1e 5312,5551
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  h_8fb27e0cdf6d1e 1004-1014
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  h_8fb27e0cdf6d1e 32,37,143-150
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8fb27e0cdf6d1e 5836
+packages/frontend/editor-ui/src/app/constants/nodeTypes.ts
+  h_8fb27e0cdf6d1e 1,180-186
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  h_8fb27e0cdf6d1e 6,1880-1894
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  h_8fb27e0cdf6d1e 23,372-375
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.test.ts
+  h_8fb27e0cdf6d1e 10,194-239
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.ts
+  h_8fb27e0cdf6d1e 15-16,285-289
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodesIssues.test.ts
+  h_8fb27e0cdf6d1e 222-256
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodesIssues.ts
+  h_8fb27e0cdf6d1e 28-32,156-159
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  h_8fb27e0cdf6d1e 27-32,215-238
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  h_8fb27e0cdf6d1e 22-28,455-458
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.ts
+  h_8fb27e0cdf6d1e 10,60-63
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.test.ts
+  h_8fb27e0cdf6d1e 10,18-28,62,80-84,129-160
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  h_8fb27e0cdf6d1e 11-12,57,178,180-184
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  h_8fb27e0cdf6d1e 9,50-54,1455-1468
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  h_8fb27e0cdf6d1e 30,56-60,317-325
+packages/nodes-base/nodes/QuorumApproval/QuorumApproval.node.json
+  h_8fb27e0cdf6d1e 1-18
+packages/nodes-base/nodes/QuorumApproval/QuorumApproval.node.ts
+  h_8fb27e0cdf6d1e 1-222
+packages/nodes-base/nodes/QuorumApproval/approvers.ts
+  h_8fb27e0cdf6d1e 1-103
+packages/nodes-base/nodes/QuorumApproval/channels.ts
+  h_8fb27e0cdf6d1e 1-96
+packages/nodes-base/nodes/QuorumApproval/descriptions.ts
+  h_8fb27e0cdf6d1e 1-250
+packages/nodes-base/nodes/QuorumApproval/test/QuorumApproval.node.test.ts
+  h_8fb27e0cdf6d1e 1-215
+packages/nodes-base/package.json
+  h_8fb27e0cdf6d1e 782
+packages/workflow/src/constants.ts
+  h_8fb27e0cdf6d1e 79
+packages/workflow/src/interfaces.ts
+  h_8fb27e0cdf6d1e 1414-1428,1465-1467,1469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8067dc73ffee3d6fa8257e5c31cec9f4fd7c32d4",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

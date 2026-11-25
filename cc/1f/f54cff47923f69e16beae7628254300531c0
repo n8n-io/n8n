@@ -1,0 +1,41 @@
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_66e1332cd16bcd::t_628ade130e6263 57-60
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_66e1332cd16bcd::t_bfb09ad934688b 20
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_66e1332cd16bcd::t_5f4b28b184d499 60-63
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_66e1332cd16bcd::t_2379b9896c0253 119
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_66e1332cd16bcd::t_d6695a3dd3634a 1205,1210,1217
+  s_66e1332cd16bcd::t_df0ca9ffc21f8b 1213
+  s_66e1332cd16bcd::t_5b4fe919223a45 1209
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_66e1332cd16bcd::t_449ae9a4e6df0d 138-139
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_66e1332cd16bcd::t_590bc49044db84 450-451,462,470,474-475,479-480,484
+  s_66e1332cd16bcd::t_f93eb8dbb1da0b 403-409
+  s_66e1332cd16bcd::t_09e36b4047325c 324-325,327-329,332-334,336-340,343-345,347,352,356-358
+packages/@n8n/cli/docs/commands/package.md
+  s_66e1332cd16bcd::t_330b594bd4d56c 98
+  s_66e1332cd16bcd::t_297dfd415f1aaf 127
+  s_66e1332cd16bcd::t_58d952b785d48f 118
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_66e1332cd16bcd::t_262b6492439103 14,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc1ff54cff47923f69e16beae7628254300531c0",
+  "prompts": {},
+  "sessions": {
+    "s_66e1332cd16bcd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c69b7c8c-fabf-495c-bb0f-74a68a7cab8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

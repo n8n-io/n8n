@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_3d42f5aac10616::t_11ff295b08d062 3,8,21,29-32,37,39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6af3ca9ef05d725d550a46388c062acccb24bbd",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

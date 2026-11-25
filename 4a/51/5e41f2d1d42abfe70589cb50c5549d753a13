@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/promotion-settings.service.ts
+  s_287727b48c8850::t_5441e76d2e076d 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a515e41f2d1d42abfe70589cb50c5549d753a13",
+  "prompts": {},
+  "sessions": {
+    "s_287727b48c8850": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "473a9714-15c3-496b-9c5d-1f34daa36075",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
