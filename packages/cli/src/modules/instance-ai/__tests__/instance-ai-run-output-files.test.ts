@@ -74,11 +74,60 @@ describe('storeRunOutputFiles', () => {
 			runOf({ Edit: [{ json: {}, binary: { data: binary('upload') } }, ...outputs] }),
 		);
 
-		const result = await storeRunOutputFiles(execution, storeOutputFile, ['file-upload.png']);
+		const result = await storeRunOutputFiles(execution, storeOutputFile, {
+			inputFileIds: ['file-upload.png'],
+		});
 
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
 		expect(result.files?.map((f) => f.fileId)).not.toContain('file-upload.png');
 		expect(result).not.toHaveProperty('skippedFiles');
+	});
+
+	it('gives an input file that the run passes on after the cap is full its file, and does not skip it', async () => {
+		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+		const onStored = vi.fn();
+		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES + 1 }, (_, i) => ({
+			json: {},
+			binary: { data: binary(`out-${i}`) },
+		}));
+		const upload = binary('upload');
+
+		const result = await storeItemFiles(
+			[...outputs, { json: {}, binary: { data: upload } }],
+			storeOutputFile,
+			'cap',
+			{ inputFileIds: ['file-upload.png'], inputBinaryIds: [upload.id ?? ''], onStored },
+		);
+
+		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
+		expect(onStored).toHaveBeenCalledWith(upload, 'file-upload.png');
+		expect(result.skippedFiles).toEqual({
+			total: 1,
+			files: [{ fileName: 'out-10.png', reason: 'cap' }],
+		});
+		expect(storeOutputFile).toHaveBeenCalledTimes(MAX_RUN_OUTPUT_FILES + 1);
+	});
+
+	it('skips a binary with an input id after the cap is full when storage gives a new file', async () => {
+		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES }, (_, i) => ({
+			json: {},
+			binary: { data: binary(`out-${i}`) },
+		}));
+		const changed = binary('changed');
+
+		const result = await storeItemFiles(
+			[...outputs, { json: {}, binary: { data: changed } }],
+			storeOutputFile,
+			'cap',
+			{ inputFileIds: ['file-upload.png'], inputBinaryIds: [changed.id ?? ''] },
+		);
+
+		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
+		expect(result.skippedFiles).toEqual({
+			total: 1,
+			files: [{ fileName: 'changed.png', reason: 'cap' }],
+		});
 	});
 
 	it('lists the files that were not stored', async () => {

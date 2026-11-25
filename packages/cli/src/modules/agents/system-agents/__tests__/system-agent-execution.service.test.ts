@@ -1213,13 +1213,16 @@ describe('SystemAgentExecutionService', () => {
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 				});
 
-				it('gives no file instead of an error when a lookup fails, because the run already happened', async () => {
+				it('skips the file with a reason instead of an error when a lookup fails, because the run already happened', async () => {
 					const { turn, fileBridge, attachmentService } = await startTurnWithAttachment();
 					attachmentService.findSystemAgentThreadFileByBinary.mockRejectedValue(
 						new Error('database down'),
 					);
 
-					await expect(turn.storeWorkflowFile(binary)).resolves.toBeUndefined();
+					await expect(turn.storeWorkflowFile(binary)).resolves.toEqual({
+						fileName: 'file',
+						reason: 'the file could not be stored',
+					});
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 				});
 

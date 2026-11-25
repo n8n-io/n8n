@@ -2268,6 +2268,25 @@ describe('executeNodeService adapter', () => {
 			expect(result.fileIdOf(png)).toBe('f-1');
 		});
 
+		it('names an input file that the node passes on after the file cap is full', async () => {
+			const { request, storeOutputFile } = await runWithFiles(true, ['f-1']);
+			storeOutputFile.mockImplementation(async (binary: { id: string }) =>
+				binary.id === png.id ? stored : { ...stored, fileId: `new-${binary.id}` },
+			);
+			const outputs = Array.from({ length: 10 }, (_, i) => ({
+				json: {},
+				binary: { data: { ...png, id: `filesystem-v2:out-${i}` } },
+			}));
+
+			const result = await request.storeOutputFiles([
+				...outputs,
+				{ json: {}, binary: { data: png } },
+			]);
+			expect(result.files).toHaveLength(10);
+			expect(result).not.toHaveProperty('skippedFiles');
+			expect(result.fileIdOf(png)).toBe('f-1');
+		});
+
 		it('stores no output files when the privacy setting hides the output', async () => {
 			const { request } = await runWithFiles(false);
 

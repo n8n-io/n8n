@@ -49,6 +49,11 @@ export interface StoreItemFilesOptions {
 	 * list it and it does not count against the cap, as with project agents.
 	 */
 	inputFileIds?: readonly string[];
+	/**
+	 * The binary ids of the inputs of the run. A binary with one of them is looked
+	 * up even when the cap is full, because it gives its input file, not a new file.
+	 */
+	inputBinaryIds?: readonly string[];
 	/** Called with each binary that has a conversation file, including a file passed on. */
 	onStored?: (binary: IBinaryData, fileId: string) => void;
 }
@@ -65,6 +70,7 @@ export async function storeItemFiles(
 	options: StoreItemFilesOptions = {},
 ): Promise<{ files?: InstanceAiConversationFile[]; skippedFiles?: InstanceAiSkippedFiles }> {
 	const inputFileIds = new Set(options.inputFileIds);
+	const inputBinaryIds = new Set(options.inputBinaryIds);
 	const files: InstanceAiConversationFile[] = [];
 	const skippedFiles: InstanceAiSkippedFile[] = [];
 	let skippedTotal = 0;
@@ -73,7 +79,8 @@ export async function storeItemFiles(
 		if (skippedFiles.length < MAX_RUN_SKIPPED_FILES) skippedFiles.push(file);
 	};
 	for (const [key, binary] of uniqueBinaries(items)) {
-		if (files.length >= MAX_RUN_OUTPUT_FILES) {
+		const atCap = files.length >= MAX_RUN_OUTPUT_FILES;
+		if (atCap && !(binary.id && inputBinaryIds.has(binary.id))) {
 			skip({ fileName: binary.fileName ?? key, reason: limitReason });
 			continue;
 		}
@@ -83,8 +90,13 @@ export async function storeItemFiles(
 			skip(stored);
 			continue;
 		}
+		const passedOn = inputFileIds.has(stored.fileId);
+		if (atCap && !passedOn) {
+			skip({ fileName: binary.fileName ?? key, reason: limitReason });
+			continue;
+		}
 		options.onStored?.(binary, stored.fileId);
-		if (!inputFileIds.has(stored.fileId)) files.push(stored);
+		if (!passedOn) files.push(stored);
 	}
 	return {
 		...(files.length > 0 ? { files } : {}),
@@ -100,7 +112,7 @@ export async function storeItemFiles(
 export async function storeRunOutputFiles(
 	execution: IExecutionResponse,
 	storeOutputFile: InstanceAiStoreWorkflowFile,
-	inputFileIds?: readonly string[],
+	inputs: Pick<StoreItemFilesOptions, 'inputFileIds' | 'inputBinaryIds'> = {},
 ): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
 	const runData = execution.data?.resultData?.runData;
 	if (!runData || getExecutionRedaction(execution)) return {};
@@ -109,6 +121,13 @@ export async function storeRunOutputFiles(
 		items,
 		storeOutputFile,
 		`one run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
-		{ inputFileIds },
+		inputs,
 	);
+}
+
+/** The stored binary ids of the items, for `StoreItemFilesOptions.inputBinaryIds`. */
+export function binaryIdsOf(items: Iterable<{ binary?: IBinaryKeyData }>): string[] {
+	const ids: string[] = [];
+	for (const [, binary] of uniqueBinaries(items)) if (binary.id) ids.push(binary.id);
+	return ids;
 }

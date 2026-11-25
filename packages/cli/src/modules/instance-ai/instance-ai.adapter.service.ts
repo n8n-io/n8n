@@ -291,6 +291,7 @@ import {
 } from './instance-ai-run-pin-data';
 import {
 	MAX_RUN_OUTPUT_FILES,
+	binaryIdsOf,
 	countItemFiles,
 	storeItemFiles,
 	storeRunOutputFiles,
@@ -1090,6 +1091,7 @@ export class InstanceAiAdapterService {
 									`one node run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
 									{
 										inputFileIds,
+										inputBinaryIds: binaryIdsOf(request.input ?? []),
 										onStored: (binary, fileId) => fileIds.set(binary.id ?? binary, fileId),
 									},
 								);
@@ -2792,7 +2794,10 @@ export class InstanceAiAdapterService {
 					if (storeOutputFile && outcome.execution && result.status !== 'running') {
 						Object.assign(
 							result,
-							await storeRunOutputFiles(outcome.execution, storeOutputFile, options?.inputFileIds),
+							await storeRunOutputFiles(outcome.execution, storeOutputFile, {
+								inputFileIds: options?.inputFileIds,
+								inputBinaryIds: binaryIdsOf([{ binary: options?.binary }]),
+							}),
 						);
 					}
 					trackBuilderExecutedWorkflow(result.status, telemetryError);

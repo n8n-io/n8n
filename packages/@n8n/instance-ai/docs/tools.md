@@ -1168,8 +1168,8 @@ list an input file that the node passes on unchanged, and such a file does not
 count against the cap. `skippedFiles.files` lists at most 10 files that were
 not stored, and `skippedFiles.total` counts all of them. A failed or redacted
 run, or a run with output items suppressed by the privacy setting, stores no
-files. When storing fails, the run still succeeds without its files, because
-the node already ran. The approval prompt names the input files.
+files. When storing a file fails, `skippedFiles` lists it, and the run still
+succeeds, because the node already ran. The approval prompt names the input files.
 The input `files` entries point to the stored bytes of the conversation files,
 so the deletion does not touch them. The host offers `files` and `storeFiles`
 only when it sets `readBinary` and `storeWorkflowFile` on `storedFiles`.

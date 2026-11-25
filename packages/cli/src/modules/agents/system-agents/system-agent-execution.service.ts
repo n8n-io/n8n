@@ -1118,7 +1118,7 @@ export class SystemAgentExecutionService {
 	/**
 	 * Store a binary that a workflow run returned as a file of the thread. A file
 	 * of the thread that the run passed on unchanged gives that file, without a copy.
-	 * Gives `undefined` when storage fails: the run already happened, so an error
+	 * Gives a skipped file when storage fails: the run already happened, so an error
 	 * here must not fail the tool call and make the model run it again.
 	 */
 	private async storeWorkflowFile(
@@ -1134,7 +1134,7 @@ export class SystemAgentExecutionService {
 				threadId: thread.id,
 				error,
 			});
-			return undefined;
+			return { fileName: binary.fileName ?? 'file', reason: 'the file could not be stored' };
 		}
 	}
 
