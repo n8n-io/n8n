@@ -3680,7 +3680,9 @@ useKeybindings({
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
 					:tasks="
-						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived ? setupTasks : undefined
+						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived
+							? setupTasks
+							: undefined
 					"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
