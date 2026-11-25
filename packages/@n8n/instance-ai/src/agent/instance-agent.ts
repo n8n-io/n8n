@@ -222,6 +222,7 @@ export async function createInstanceAgent(
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			skillManagementEnabled: Boolean(context.skillService),
+			customMcpServersEnabled: Boolean(context.customMcpServerService),
 			// The host only sets `startCloudBrowserTask` when the cloud browser is enabled for the instance.
 			cloudBrowserEnabled: Boolean(orchestrationContext?.startCloudBrowserTask),
 			setupPanelEnabled: isSetupPanelEnabled(context),

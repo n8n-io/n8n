@@ -39,6 +39,8 @@ interface SystemPromptOptions {
 	/** The send_feedback tool is wired; tell the model when to report a problem. */
 	feedbackToolEnabled?: boolean;
 	skillManagementEnabled?: boolean;
+	/** The custom-mcp-servers tool is wired; its writes stay available on a read-only instance. */
+	customMcpServersEnabled?: boolean;
 	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
 	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `setup_workflow` announces instead of opening a card. */
@@ -262,7 +264,11 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
-function getReadOnlySection(branchReadOnly?: boolean, skillManagementEnabled?: boolean): string {
+function getReadOnlySection(
+	branchReadOnly?: boolean,
+	skillManagementEnabled?: boolean,
+	customMcpServersEnabled?: boolean,
+): string {
 	if (!branchReadOnly) return '';
 	return `
 ## Read-Only Instance
@@ -278,7 +284,7 @@ The following operations remain available:
 - Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
-${skillManagementEnabled ? '- Creating, editing, and deleting skills\n' : ''}- Restoring workflow versions
+${skillManagementEnabled ? '- Creating, editing, and deleting skills\n' : ''}${customMcpServersEnabled ? '- Creating, editing, and deleting custom MCP servers and their tools\n' : ''}- Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 
 If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
@@ -336,6 +342,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			preferenceSavingEnabled,
 			feedbackToolEnabled,
 			skillManagementEnabled,
+			customMcpServersEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
 			engineSetup,
@@ -385,7 +392,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 ${getBrowserUsePrompt({ state: browserUseState })}
 ${cloudBrowserEnabled ? getCloudBrowserSection(browserUseState) : ''}
 ${getLicenseLimitationsSection(licenseHints)}
-${getReadOnlySection(branchReadOnly, skillManagementEnabled)}
+${getReadOnlySection(branchReadOnly, skillManagementEnabled, customMcpServersEnabled)}
 ${getLimitedModeSection(parameterValuesHidden)}${getWorkflowEngineSection(engineSetup)}
 
 ## Reply language
