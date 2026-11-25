@@ -46,6 +46,11 @@ export const PROTECTED = new Set([
 	'CODE_OF_CONDUCT.md',
 	'LICENSE.md',
 	'.github/workflows/ci-cla-check.yml',
+	// Starter-side gate, policy and alerting; see .github/WORKFLOWS.md.
+	'.github/workflows/verify-scaffold.yml',
+	'.github/workflows/close-external-prs.yml',
+	'.github/workflows/automerge-scaffold.yml',
+	'.github/workflows/notify-scaffold-failure.yml',
 	MANIFEST_PATH,
 	'package-lock.json',
 ]);

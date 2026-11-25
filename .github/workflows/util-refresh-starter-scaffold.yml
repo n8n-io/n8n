@@ -171,3 +171,28 @@ jobs:
           delete-branch: true
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+  # Failures before a PR exists (a rejected push, a template conflict, a broken
+  # install) have no other visible trace. Failures after the PR exists are
+  # reported by notify-scaffold-failure.yml in n8n-nodes-starter.
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [refresh]
+    if: ${{ always() && needs.refresh.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-developer-platforms' \
+            --text "<${RUN_URL}|n8n-nodes-starter scaffold refresh failed before a PR was opened>"

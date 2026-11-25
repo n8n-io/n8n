@@ -81,6 +81,8 @@ describe('planSync', () => {
 			previousFiles: [
 				'README_TEMPLATE.md',
 				'.github/workflows/ci-cla-check.yml',
+				'.github/workflows/verify-scaffold.yml',
+				'.github/workflows/automerge-scaffold.yml',
 				'.github/scaffold-manifest.json',
 				'package-lock.json',
 				'.git/config',

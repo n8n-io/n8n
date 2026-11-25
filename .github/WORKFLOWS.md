@@ -287,6 +287,18 @@ file a template drops is deleted on the next run while starter-only files
 survive. The run is skipped when `latest` already matches the lockfile; a
 `workflow_dispatch` with `force: true` regenerates anyway.
 
+The starter gates and merges that PR itself. Its `verify-scaffold.yml` re-runs
+`refresh-starter-scaffold.mjs` from this repo against the PR checkout and fails
+when the tree is not clean, so a PR is merged only when its files are the exact
+output of the CLI version in its lockfile. `automerge-scaffold.yml` approves
+the bot PR through the shared `approve-and-set-automerge` workflow and enables
+squash auto-merge, except when the PR changes workflow files, which a human
+merges. `notify-scaffold-failure.yml` posts to `#alerts-developer-platforms`
+when a check fails on the `refresh-scaffold` branch or the PR stays open for
+more than a day. The `notify-on-failure` job in this workflow covers failures
+before a PR exists. Those four starter workflows are in the script's
+`PROTECTED` list and are never touched by a refresh.
+
 ### On Merge Queue Removal
 
 | Event                              | Workflow                               | Effect |
