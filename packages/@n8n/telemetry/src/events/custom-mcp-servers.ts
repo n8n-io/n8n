@@ -111,7 +111,11 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 			'A person used a client button on the share page of a custom MCP server. With "Custom MCP server tool called", it shows the path from the click to the first call.',
 		properties: z.object({
 			server_id: serverId,
-			client: z.string().describe('Client id from the share page, e.g. "claude-ai" or "cursor"'),
+			client: z
+				.string()
+				.describe(
+					'Client id from the share page, e.g. "claude-ai" or "cursor". "any" is the URL at the top of the page, "other" the steps for any other client',
+				),
 			method: z
 				.enum(['deep_link', 'copy_command', 'copy_url', 'copy_config'])
 				.describe('What the person did: open a link, or copy a command, the URL, or a config'),

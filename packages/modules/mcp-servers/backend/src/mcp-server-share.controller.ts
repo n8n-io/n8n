@@ -15,6 +15,8 @@ export class McpServerShareController {
 
 	/** The description and the tools only when the person can connect to the server. */
 	@Get('/:slug')
+	// No scope decorator: any signed-in person can open the page. The service checks
+	// `mcpServer:connect` in the project of the server before it adds the details.
 	async share(req: AuthenticatedRequest<{ slug: string }>) {
 		const share = await this.service.shareFor(req.params.slug, req.user);
 		if (!share) throw new NotFoundError('MCP server not found');

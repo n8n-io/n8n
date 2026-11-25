@@ -65,9 +65,8 @@ export function claudeAddConnectorUrl(name: string, serverUrl: string): string {
  */
 export function getMcpClientCatalog(
 	serverUrl: string,
-	{ serverName = 'n8n' }: McpClientCatalogOptions = {},
+	{ serverName: name = 'n8n' }: McpClientCatalogOptions = {},
 ): McpClientCategoryGroup[] {
-	const name = serverName;
 	const json = (value: unknown) => JSON.stringify(value, null, 2);
 
 	const claudeSnippet = json({ mcpServers: { [name]: { type: 'http', url: serverUrl } } });

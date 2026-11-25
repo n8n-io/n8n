@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 
 import McpServerShareView from './McpServerShareView.vue';
 
@@ -74,7 +74,7 @@ describe('McpServerShareView', () => {
 			expect(api.getMcpServerPublicShare).toHaveBeenCalledWith(expect.anything(), 'sales-tools');
 			expect(api.getMcpServerShare).not.toHaveBeenCalled();
 			expect(screen.getByTestId('mcp-share-name')).toHaveTextContent('Sales tools');
-			expect(screen.getByDisplayValue(SERVER_URL)).toBeInTheDocument();
+			expect(screen.getAllByDisplayValue(SERVER_URL)).toHaveLength(3);
 			expect(screen.getByTestId('mcp-share-who')).toHaveTextContent(
 				'Only members of the Marketing project can connect.',
 			);
@@ -211,6 +211,16 @@ describe('McpServerShareView', () => {
 			expect(
 				screen.getByDisplayValue(`gemini mcp add --transport http sales-tools ${SERVER_URL}`),
 			).toBeInTheDocument();
+		});
+
+		it('gives ChatGPT and the other clients the server URL to copy', async () => {
+			await renderPage();
+
+			for (const id of ['chatgpt', 'other']) {
+				expect(
+					within(screen.getByTestId(`mcp-share-steps-${id}`)).getByDisplayValue(SERVER_URL),
+				).toBeInTheDocument();
+			}
 		});
 
 		it('gives the steps for ChatGPT', async () => {

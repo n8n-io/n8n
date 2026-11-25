@@ -22,7 +22,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { computed, markRaw, onMounted, ref, type Component } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -35,7 +35,9 @@ import OpenAiIcon from '../assets/client-icons/openai.svg?component';
 import VsCodeIcon from '../assets/client-icons/vscode.svg?component';
 import { getMcpServerPublicShare, getMcpServerShare } from '../mcp-servers.api';
 
-type ClientMethod = 'deep_link' | 'copy_command' | 'copy_url' | 'copy_config';
+const CLIENT_CLICKED =
+	TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE;
+type ClientMethod = InferTelemetryProps<typeof CLIENT_CLICKED>['method'];
 
 const ICONS: Partial<Record<McpClientId, Component>> = {
 	'claude-ai': markRaw(ClaudeIcon),
@@ -110,6 +112,18 @@ const commandClients = computed(() =>
 	}),
 );
 
+const failureText = computed(() =>
+	state.value === 'notFound'
+		? {
+				title: i18n.baseText('mcpServers.share.notFound.title'),
+				description: i18n.baseText('mcpServers.share.notFound.description'),
+			}
+		: {
+				title: i18n.baseText('mcpServers.share.error.title'),
+				description: i18n.baseText('mcpServers.share.error.description'),
+			},
+);
+
 const signInHref = computed(
 	() =>
 		router.resolve({
@@ -118,9 +132,10 @@ const signInHref = computed(
 		}).href,
 );
 
-function trackClient(client: McpClientId | 'other', method: ClientMethod) {
+/** `any`: the URL at the top of the page. `other`: the steps for any other client. */
+function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod) {
 	if (!share.value) return;
-	telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE, {
+	telemetry.track(CLIENT_CLICKED, {
 		server_id: share.value.id,
 		client,
 		method,
@@ -137,24 +152,8 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 		<N8nCard v-else-if="state !== 'ready' || !share" :class="$style.card">
 			<div :class="$style.message" data-test-id="mcp-share-not-found">
 				<N8nIcon icon="circle-help" size="xlarge" />
-				<N8nHeading tag="h1" size="large" bold>
-					{{
-						i18n.baseText(
-							state === 'notFound'
-								? 'mcpServers.share.notFound.title'
-								: 'mcpServers.share.error.title',
-						)
-					}}
-				</N8nHeading>
-				<N8nText color="text-light">
-					{{
-						i18n.baseText(
-							state === 'notFound'
-								? 'mcpServers.share.notFound.description'
-								: 'mcpServers.share.error.description',
-						)
-					}}
-				</N8nText>
+				<N8nHeading tag="h1" size="large" bold>{{ failureText.title }}</N8nHeading>
+				<N8nText color="text-light">{{ failureText.description }}</N8nText>
 			</div>
 		</N8nCard>
 
@@ -182,7 +181,7 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 							</template>
 						</I18nT>
 						<template v-else>
-							{{ i18n.baseText('mcpServers.copyUrl.toast.personalProject') }}
+							{{ i18n.baseText('mcpServers.share.who.personalUnnamed') }}
 						</template>
 					</N8nText>
 					<N8nText v-if="share.canConnect && share.description" tag="p">
@@ -194,7 +193,7 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 					:value="share.serverUrl"
 					:label="i18n.baseText('mcpServers.share.serverUrl')"
 					size="medium"
-					@copy="trackClient('other', 'copy_url')"
+					@copy="trackClient('any', 'copy_url')"
 				/>
 
 				<section :class="$style.section">
@@ -224,6 +223,8 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 					</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('mcpServers.share.claude.manual') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('mcpServers.share.claude.plans') }}
 					</N8nText>
 				</section>
@@ -252,12 +253,7 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 							<N8nText size="small" color="text-light">
 								{{ i18n.baseText('mcpServers.share.command.signIn.codex') }}
 							</N8nText>
-							<N8nCopyInput
-								:value="client.authCommand"
-								:label="client.name"
-								size="medium"
-								@copy="trackClient(client.id, 'copy_command')"
-							/>
+							<N8nCopyInput :value="client.authCommand" :label="client.name" size="medium" />
 						</template>
 						<N8nText v-else-if="client.id === 'claude-code'" size="small" color="text-light">
 							{{ i18n.baseText('mcpServers.share.command.signIn.claudeCode') }}
@@ -282,6 +278,12 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 							<N8nText bold>ChatGPT</N8nText>
 						</div>
 						<N8nText size="small">{{ i18n.baseText('mcpServers.share.chatgpt.steps') }}</N8nText>
+						<N8nCopyInput
+							:value="share.serverUrl"
+							:label="i18n.baseText('mcpServers.share.serverUrl')"
+							size="medium"
+							@copy="trackClient('chatgpt', 'copy_url')"
+						/>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('mcpServers.share.chatgpt.plans') }}
 						</N8nText>
@@ -289,6 +291,12 @@ function trackClient(client: McpClientId | 'other', method: ClientMethod) {
 					<div :class="$style.client" data-test-id="mcp-share-steps-other">
 						<N8nText bold>{{ i18n.baseText('mcpServers.share.other.name') }}</N8nText>
 						<N8nText size="small">{{ i18n.baseText('mcpServers.share.other.steps') }}</N8nText>
+						<N8nCopyInput
+							:value="share.serverUrl"
+							:label="i18n.baseText('mcpServers.share.serverUrl')"
+							size="medium"
+							@copy="trackClient('other', 'copy_url')"
+						/>
 					</div>
 				</section>
 

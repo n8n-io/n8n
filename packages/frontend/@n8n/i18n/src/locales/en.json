@@ -2544,6 +2544,7 @@
 	"mcpServers.share.error.description": "Reload the page to try again.",
 	"mcpServers.share.who.team": "Only members of the {project} project can connect.",
 	"mcpServers.share.who.personal": "Only {owner} can connect.",
+	"mcpServers.share.who.personalUnnamed": "Only the owner of this personal project can connect.",
 	"mcpServers.share.serverUrl": "Server URL",
 	"mcpServers.share.signIn": "Sign in to see the tools",
 	"mcpServers.share.tools.title": "Tools",
