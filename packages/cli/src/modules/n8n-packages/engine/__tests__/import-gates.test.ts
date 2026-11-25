@@ -42,6 +42,41 @@ it.each([
 	},
 );
 
+it.each([{}, { credentials: [], workflows: [], agents: [], variables: [] }])(
+	'ignores empty requirements in a Preference-only package: %j',
+	(requirements) => {
+		expect(
+			packageImportScopes({
+				packageFormatVersion: '3',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				preferences: [],
+				requirements,
+			}),
+		).toEqual([]);
+	},
+);
+
+it('keeps workflow:import when a Preference package has requirements', () => {
+	expect(
+		packageImportScopes({
+			packageFormatVersion: '3',
+			sourceN8nVersion: '2.0.0',
+			sourceId: 'source',
+			preferences: [],
+			requirements: {
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						usedBy: [{ kind: 'workflow', id: 'workflow' }],
+					},
+				],
+			},
+		}),
+	).toEqual(['workflow:import']);
+});
+
 it('keeps workflow:import for loose content exported with Preferences', () => {
 	expect(
 		packageImportScopes({

@@ -188,8 +188,14 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	}
 
 	/** No visibility filter. The service authorizes the row before it returns or acts on it. */
-	async findByIdWithRelations(id: string): Promise<AiPreference | null> {
-		return await this.findOne({ where: { id }, relations: RELATIONS });
+	async findByIdWithRelations(
+		id: string,
+		ctx: OperationContext = {},
+	): Promise<AiPreference | null> {
+		return await this.managerFor(ctx).findOne(AiPreference, {
+			where: { id },
+			relations: RELATIONS,
+		});
 	}
 }
 

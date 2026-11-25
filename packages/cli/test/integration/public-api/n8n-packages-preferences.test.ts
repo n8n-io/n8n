@@ -78,7 +78,9 @@ it('imports and explicitly replaces Preferences through multipart fields', async
 		.attach('package', changedArchive, 'preferences.n8np');
 	expect(conflict.statusCode).toBe(409);
 	expect(conflict.body.issues).toEqual(
-		expect.arrayContaining([expect.objectContaining({ type: 'preference-conflict' })]),
+		expect.arrayContaining([
+			expect.objectContaining({ type: 'preference-conflict', kind: 'conflict' }),
+		]),
 	);
 	const replace = await agent
 		.post('/n8n-packages/import')
@@ -99,7 +101,7 @@ it('rejects missing action scopes and insufficient user permissions before write
 	const member = await createMemberWithApiKey({ scopes: ['aiPreference:create'] });
 	for (const [actor, expected] of [
 		[readOnly, 403],
-		[member, 409],
+		[member, 422],
 	] as const) {
 		const buffer = await archive();
 		const result = await server
@@ -126,7 +128,8 @@ it('rejects malformed Preference fields and protected writes', async () => {
 		.post('/n8n-packages/import')
 		.field('conflictPolicy', 'fail')
 		.attach('package', buffer, 'preferences.n8np');
-	expect(result.statusCode, JSON.stringify(result.body)).toBe(409);
+	expect(result.statusCode, JSON.stringify(result.body)).toBe(422);
+	expect(result.body.issues).toEqual([expect.objectContaining({ kind: 'forbidden' })]);
 	const ordinary = await agent
 		.post('/ai-preferences')
 		.send({ scope: 'instance', content: 'Protected' });

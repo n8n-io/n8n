@@ -110,7 +110,7 @@ function preferenceIdArray() {
 			if (value === undefined || !value.trim()) return undefined;
 			return parseIdArray(value, ctx, 'Preference IDs must be a JSON array of UUIDs.');
 		})
-		.pipe(z.array(z.string().uuid()).max(300).optional());
+		.pipe(z.array(z.string().uuid()).optional());
 }
 
 export class ImportPackageRequestDto extends Z.class(

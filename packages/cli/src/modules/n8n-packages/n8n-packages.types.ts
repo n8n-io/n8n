@@ -694,7 +694,12 @@ export type ImportPlanMode = 'enforce' | 'check';
  * The import aborts when any are present.
  */
 export type BlockingIssue =
-	| { type: 'preference-conflict'; preferenceId?: string; message: string }
+	| {
+			type: 'preference-conflict';
+			kind: 'conflict' | 'forbidden' | 'invalid' | 'unavailable';
+			preferenceId?: string;
+			message: string;
+	  }
 	| AgentImportIssue
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)

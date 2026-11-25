@@ -1,4 +1,4 @@
-import { ProjectRelationRepository, User } from '@n8n/db';
+import { ProjectRelationRepository, RoleRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectScopeService } from '../project-scope.service';
@@ -16,7 +16,11 @@ const makeUser = (globalScopes: string[] = []) =>
 describe('ProjectScopeService', () => {
 	const roleService = mock<RoleService>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
-	const service = new ProjectScopeService(roleService, projectRelationRepository);
+	const service = new ProjectScopeService(
+		roleService,
+		projectRelationRepository,
+		mock<RoleRepository>(),
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -108,12 +112,17 @@ describe('ProjectScopeService', () => {
 		const result = await service.getProjectIds(makeUser(), ['agent:update']);
 
 		expect(roleService.rolesWithScope).toHaveBeenCalledOnce();
-		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:update']);
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+			'project',
+			['agent:update'],
+			expect.any(Function),
+		);
 		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
-		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith('user-1', [
-			'project:admin',
-			'project:editor',
-		]);
+		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+			'user-1',
+			['project:admin', 'project:editor'],
+			{},
+		);
 		expect(result).toEqual(['project-1', 'project-2']);
 	});
 
@@ -129,6 +138,7 @@ describe('ProjectScopeService', () => {
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
 				'user-1',
 				['project:admin'],
+				{},
 			);
 			expect(result).toEqual(['project-1']);
 		});

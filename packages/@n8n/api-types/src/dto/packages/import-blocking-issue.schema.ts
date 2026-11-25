@@ -423,6 +423,7 @@ export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		z.object({
 			type: z.literal('preference-conflict'),
+			kind: z.enum(['conflict', 'forbidden', 'invalid', 'unavailable']),
 			preferenceId: z.string().optional(),
 			message: z.string(),
 		}),

@@ -12,7 +12,7 @@ export function toImportBlockedError(
 	if (
 		issues.some(
 			(issue) =>
-				issue.type === 'preference-conflict' ||
+				(issue.type === 'preference-conflict' && issue.kind === 'conflict') ||
 				issue.type === 'agent-conflict' ||
 				issue.type === 'workflow-conflict' ||
 				issue.type === 'workflow-lineage-conflict' ||

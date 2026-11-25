@@ -1,10 +1,11 @@
 import {
 	AiPreferenceService,
+	toSharedPreferenceIssue,
 	type SharedPreferenceChange,
 	type SharedPreferencePlan,
 } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
@@ -84,7 +85,9 @@ export class PreferenceImporter {
 				throw new BadRequestError('Personal Preferences cannot be removed by a package.');
 			const allowedProjects = request.selection
 				? [request.selection.selectedProjectId]
-				: (manifest.projects?.map(({ id }) => id) ?? [request.projectId]);
+				: manifest.projects?.length
+					? manifest.projects.map(({ id }) => id)
+					: [request.projectId];
 			if (row.projectId && !allowedProjects.includes(row.projectId))
 				throw new BadRequestError('The removed Preference belongs to another project.');
 			changes.push({
@@ -97,7 +100,11 @@ export class PreferenceImporter {
 			return {
 				changes: { items: [], issues: [], newProjectIds },
 				issues: [
-					{ type: 'preference-conflict', message: 'Preferences are unavailable on this instance.' },
+					{
+						type: 'preference-conflict',
+						kind: 'unavailable',
+						message: 'Preferences are unavailable on this instance.',
+					},
 				],
 			};
 		}
@@ -119,7 +126,7 @@ export class PreferenceImporter {
 		this.assertAvailable(plan);
 		this.assertApiKeyScopes(request, plan.changes);
 		try {
-			await this.preferences.checkSharedChanges(request.user, plan.changes);
+			await this.preferences.checkSharedChanges(request.user, plan.changes, request.ctx);
 		} catch (error) {
 			throw this.blocked(error);
 		}
@@ -128,7 +135,7 @@ export class PreferenceImporter {
 	async apply(request: ResolvedImportRequest, plan: PreferenceImportPlan) {
 		await this.check(request, plan);
 		try {
-			return await this.preferences.applySharedChanges(request.user, plan.changes);
+			return await this.preferences.applySharedChanges(request.user, plan.changes, request.ctx);
 		} catch (error) {
 			throw this.blocked(error);
 		}
@@ -137,7 +144,11 @@ export class PreferenceImporter {
 	private assertAvailable(plan: PreferenceImportPlan) {
 		if (plan.changes.items.length && !this.settings.isEnabled)
 			throw toImportBlockedError([
-				{ type: 'preference-conflict', message: 'Preferences are unavailable on this instance.' },
+				{
+					type: 'preference-conflict',
+					kind: 'unavailable',
+					message: 'Preferences are unavailable on this instance.',
+				},
 			]);
 	}
 
@@ -150,13 +161,8 @@ export class PreferenceImporter {
 	}
 
 	private blocked(error: unknown) {
-		if (
-			error instanceof BadRequestError ||
-			error instanceof ForbiddenError ||
-			error instanceof ConflictError
-		) {
-			return toImportBlockedError([{ type: 'preference-conflict', message: error.message }]);
-		}
-		return error;
+		return toImportBlockedError([
+			{ type: 'preference-conflict', ...toSharedPreferenceIssue(error) },
+		]);
 	}
 }

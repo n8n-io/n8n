@@ -138,3 +138,13 @@ describe('toImportBlockedError', () => {
 		);
 	});
 });
+
+it.each(['conflict', 'forbidden', 'invalid', 'unavailable'] as const)(
+	'classifies a Preference %s block',
+	(kind) => {
+		const issue: BlockingIssue = { type: 'preference-conflict', kind, message: 'Blocked' };
+		expect(toImportBlockedError([issue])).toBeInstanceOf(
+			kind === 'conflict' ? ConflictError : UnprocessableRequestError,
+		);
+	},
+);

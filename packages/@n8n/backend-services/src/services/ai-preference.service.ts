@@ -22,7 +22,11 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
 import { InstanceWriteAccessService } from './instance-write-access.service';
-import type { SharedPreferenceChange, SharedPreferencePlan } from './ai-preference-changes';
+import {
+	toSharedPreferenceIssue,
+	type SharedPreferenceChange,
+	type SharedPreferencePlan,
+} from './ai-preference-changes';
 
 import { ProjectScopeService } from './project-scope.service';
 import { AiPreferenceScopeFullError } from '../errors/response-errors/ai-preference-scope-full.error';
@@ -45,6 +49,7 @@ class ProjectAccess {
 	constructor(
 		private readonly user: User,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly ctx: OperationContext,
 	) {}
 
 	async allowed(operation: ProjectOperation): Promise<AllowedProjects> {
@@ -62,9 +67,11 @@ class ProjectAccess {
 	}
 
 	private async resolve(operation: ProjectOperation): Promise<AllowedProjects> {
-		const projectIds = await this.projectScopeService.getProjectIds(this.user, [
-			`projectAiPreference:${operation}`,
-		]);
+		const projectIds = await this.projectScopeService.getProjectIds(
+			this.user,
+			[`projectAiPreference:${operation}`],
+			this.ctx,
+		);
 		return projectIds === null ? 'all' : new Set(projectIds);
 	}
 }
@@ -452,30 +459,14 @@ export class AiPreferenceService {
 				await this.authorizeSharedChange(user, item, newProjectIds);
 				plan.items.push(item);
 			} catch (error) {
-				if (
-					!(
-						error instanceof BadRequestError ||
-						error instanceof ForbiddenError ||
-						error instanceof ConflictError
-					)
-				)
-					throw error;
-				plan.issues.push({ preferenceId: change.id, message: error.message });
+				plan.issues.push({ ...toSharedPreferenceIssue(error), preferenceId: change.id });
 			}
 		}
 		if (plan.issues.length === 0) {
 			try {
 				await this.checkSharedChanges(user, plan);
 			} catch (error) {
-				if (
-					!(
-						error instanceof BadRequestError ||
-						error instanceof ForbiddenError ||
-						error instanceof ConflictError
-					)
-				)
-					throw error;
-				plan.issues.push({ message: error.message });
+				plan.issues.push(toSharedPreferenceIssue(error));
 			}
 		}
 		return plan;
@@ -485,20 +476,22 @@ export class AiPreferenceService {
 		user: User,
 		item: SharedPreferencePlan['items'][number],
 		newProjectIds: string[],
+		ctx: OperationContext = {},
 	) {
 		const operation = item.action === 'skip' ? 'read' : item.action;
-		const access = this.projectAccess(user);
+		const access = this.projectAccess(user, ctx);
 		if (item.scope === 'project' && item.projectId && newProjectIds.includes(item.projectId)) {
 			if (!hasGlobalScope(user, 'project:create'))
 				throw new ForbiddenError('You cannot create the destination project.');
 		} else if (operation === 'read') {
-			if (item.previous) await this.requireVisible(user, item.id, access);
+			if (item.previous) await this.requireVisible(user, item.id, access, ctx);
 		} else {
 			const target = await this.resolveTarget(
 				user,
 				{ ...item, content: item.content ?? '' },
 				operation,
 				access,
+				ctx,
 			);
 			if (target.project?.type === 'personal')
 				throw new BadRequestError('Personal project Preferences cannot be imported.');
@@ -510,13 +503,18 @@ export class AiPreferenceService {
 	}
 
 	/** Recheck a preview before any package writes. Apply repeats this check under the same scope locks. */
-	async checkSharedChanges(user: User, plan: SharedPreferencePlan): Promise<void> {
+	async checkSharedChanges(
+		user: User,
+		plan: SharedPreferencePlan,
+		ctx: OperationContext = {},
+	): Promise<void> {
 		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
 		if (plan.items.length === 0) return;
-		for (const item of plan.items) await this.authorizeSharedChange(user, item, plan.newProjectIds);
+		for (const item of plan.items)
+			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx);
 		await this.aiPreferenceRepository.withWriteLock(
 			plan.items.map(changeTarget),
-			{},
+			ctx,
 			async (ctx) => {
 				await this.validateSharedChanges(plan, ctx);
 			},
@@ -524,13 +522,22 @@ export class AiPreferenceService {
 		);
 	}
 
-	async applySharedChanges(user: User, plan: SharedPreferencePlan) {
+	async applySharedChanges(user: User, plan: SharedPreferencePlan, ctx: OperationContext = {}) {
 		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
 		if (plan.items.length === 0) return [];
-		for (const item of plan.items) await this.authorizeSharedChange(user, item, []);
+		for (const item of plan.items) {
+			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx);
+			if (
+				item.projectId &&
+				plan.newProjectIds.includes(item.projectId) &&
+				!(await this.projectRepository.isTeamProjectCreator(item.projectId, user.id, ctx))
+			) {
+				throw new ForbiddenError('The new destination project is not owned by this user.');
+			}
+		}
 		return await this.aiPreferenceRepository.withWriteLock(
 			plan.items.map(changeTarget),
-			{},
+			ctx,
 			async (ctx) => {
 				await this.validateSharedChanges(plan, ctx);
 				// Remove first so the final batch can replace a full scope.
@@ -552,12 +559,11 @@ export class AiPreferenceService {
 					row.content = item.content!;
 					await this.aiPreferenceRepository.savePreference(row, ctx);
 				}
-				return plan.items.map(({ id, scope, projectId, action }) => ({
-					id,
-					scope,
-					projectId,
-					status: action,
-				}));
+				return plan.items.map(({ id, scope, projectId, action }) =>
+					scope === 'project'
+						? { id, scope, projectId: projectId!, status: action }
+						: { id, scope, status: action },
+				);
 			},
 			plan.items.map(({ id }) => id),
 		);
@@ -607,8 +613,8 @@ export class AiPreferenceService {
 		}
 	}
 
-	private projectAccess(user: User): ProjectAccess {
-		return new ProjectAccess(user, this.projectScopeService);
+	private projectAccess(user: User, ctx: OperationContext = {}): ProjectAccess {
+		return new ProjectAccess(user, this.projectScopeService, ctx);
 	}
 
 	private async visibleTo(user: User, access: ProjectAccess) {
@@ -637,8 +643,9 @@ export class AiPreferenceService {
 		user: User,
 		id: string,
 		access: ProjectAccess,
+		ctx: OperationContext = {},
 	): Promise<AiPreference> {
-		const row = await this.aiPreferenceRepository.findByIdWithRelations(id);
+		const row = await this.aiPreferenceRepository.findByIdWithRelations(id, ctx);
 		if (!row || !(await this.canSee(user, row, access))) {
 			throw new NotFoundError(`Preference with id ${id} not found`);
 		}
@@ -710,6 +717,7 @@ export class AiPreferenceService {
 		request: AiPreferenceRequestDto,
 		operation: WriteOperation,
 		access: ProjectAccess,
+		ctx: OperationContext = {},
 	): Promise<PreferenceTarget> {
 		switch (request.scope) {
 			case 'user': {
@@ -740,7 +748,7 @@ export class AiPreferenceService {
 				}
 				// Personal projects pass too: the owner holds every scope on them.
 				const project = (await access.has(request.projectId, operation))
-					? await this.projectRepository.findOneBy({ id: request.projectId })
+					? await this.projectRepository.findForPreferenceTarget(request.projectId, ctx)
 					: null;
 				if (!project) {
 					throw new ForbiddenError('You are not allowed to set preferences for this project');

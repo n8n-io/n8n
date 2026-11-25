@@ -1,19 +1,32 @@
 import { LicenseState } from '@n8n/backend-common';
-import { AiPreferenceService, InstanceWriteAccessService } from '@n8n/backend-services';
+import {
+	AiPreferenceService,
+	InstanceWriteAccessService,
+	ProjectMutationHooksProxy,
+} from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { AiPreferenceRepository, ProjectRepository, type User } from '@n8n/db';
+import {
+	AiPreferenceRepository,
+	ProjectRepository,
+	WorkflowRepository,
+	Person,
+	Role,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { ProjectService } from '@/services/project.service.ee';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
+import { ImportOrchestrator } from '../engine/import-orchestrator';
 import { ProjectPackageImporter } from '../engine/project-package-importer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
@@ -22,6 +35,7 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
 import { importPackageRequest } from './fixtures/import-request';
+import { serializedWorkflow, type PackageWorkflow } from './fixtures/package-fixtures';
 import { streamToBuffer, unpackTar } from './utils/tar-support';
 
 const license = new LicenseMocker();
@@ -67,6 +81,7 @@ async function bundle(
 	items: Array<{ id: string; scope: string; content: string; projectId?: string }>,
 	projectId?: string,
 	includeCollection = true,
+	options: { manifest?: Partial<PackageManifest>; workflow?: PackageWorkflow } = {},
 ) {
 	const writer = new TarPackageWriter();
 	const manifest: PackageManifest = {
@@ -79,15 +94,28 @@ async function bundle(
 		manifest.projects = [
 			{ id: projectId, name: 'Shared project', target: `projects/${projectId}` },
 		];
-		writer.writeFile(
-			`projects/${projectId}/project.json`,
-			JSON.stringify({ id: projectId, name: 'Shared project' }),
-		);
 	}
 	for (const { projectId: itemProjectId, ...item } of items) {
 		const target = `${itemProjectId ? `projects/${itemProjectId}/` : ''}preferences/${item.id}`;
 		manifest.preferences!.push({ id: item.id, name: 'Preference', target });
 		writer.writeFile(`${target}/preference.json`, JSON.stringify(item));
+	}
+	Object.assign(manifest, options.manifest);
+	for (const project of manifest.projects ?? []) {
+		writer.writeFile(
+			`${project.target}/project.json`,
+			JSON.stringify({ id: project.id, name: project.name }),
+		);
+	}
+	if (options.workflow) {
+		const { versionId, publishedVersionId, ...workflow } = options.workflow;
+		const target = `${projectId ? `projects/${projectId}/` : ''}workflows/${workflow.id}`;
+		manifest.workflows = [{ id: workflow.id, name: workflow.name, target }];
+		writer.writeFile(`${target}/workflow.json`, JSON.stringify(workflow));
+		writer.writeFile(
+			`${target}/workflow-metadata.json`,
+			JSON.stringify({ versionId, publishedVersionId }),
+		);
 	}
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	return { manifest, buffer: await streamToBuffer(writer.finalize()) };
@@ -349,7 +377,10 @@ it('preserves destination rows when unavailable or the collection is absent', as
 	enabled = false;
 	await expect(
 		importItems([{ id: randomUUID(), scope: 'instance', content: 'New' }]),
-	).rejects.toThrow('Import blocked');
+	).rejects.toMatchObject({
+		httpStatusCode: 422,
+		meta: { issues: [expect.objectContaining({ kind: 'unavailable' })] },
+	});
 	const { buffer } = await bundle([], undefined, false);
 	await service.importPackage(importPackageRequest({ user: owner, packageBuffer: buffer }));
 	await expect(
@@ -426,3 +457,214 @@ it('serializes concurrent imports that claim one identity in different projects'
 	const winningProject = projects.find((project) => project.id === saved.projectId);
 	expect(saved.content).toBe(winningProject?.name);
 });
+
+it.each([{}, { workflows: [], credentials: [], agents: [] }])(
+	'imports a Preference-only package with empty requirements: %j',
+	async (requirements) => {
+		const { buffer } = await bundle(
+			[{ id: randomUUID(), scope: 'instance', content: 'Shared' }],
+			undefined,
+			true,
+			{ manifest: { requirements } },
+		);
+		const result = await service.importPackage(
+			importPackageRequest({
+				user: owner,
+				packageBuffer: buffer,
+				apiKeyScopes: ['aiPreference:create'],
+			}),
+		);
+		expect(result.counts.preferences?.created).toBe(1);
+	},
+);
+
+it('removes an explicit project Preference from a package with an empty projects list', async () => {
+	const project = await createTeamProject('Destination', owner);
+	const row = await preferences.create(
+		owner,
+		{ scope: 'project', projectId: project.id, content: 'Remove' },
+		'ui',
+	);
+	const { buffer } = await bundle([], undefined, true, { manifest: { projects: [] } });
+	const result = await service.importPackage(
+		importPackageRequest({
+			user: owner,
+			packageBuffer: buffer,
+			projectId: project.id,
+			deletedPreferenceIds: [row.id],
+			apiKeyScopes: ['aiPreference:delete'],
+		}),
+	);
+	expect(result.counts.preferences?.removed).toBe(1);
+	expect(await repository.existsBy({ id: row.id })).toBe(false);
+});
+
+it('requires project Preference access for a Preference-only import', async () => {
+	const project = await createTeamProject('Destination', owner);
+	const id = randomUUID();
+	const items = [{ id, scope: 'project', content: 'Shared' }];
+	await expect(
+		importItems(items, {
+			user: member,
+			projectId: project.id,
+			apiKeyScopes: ['aiPreference:create'],
+		}),
+	).rejects.toMatchObject({ meta: { issues: [expect.objectContaining({ kind: 'forbidden' })] } });
+	expect(await repository.existsBy({ id })).toBe(false);
+	const result = await importItems(items, {
+		projectId: project.id,
+		apiKeyScopes: ['aiPreference:create'],
+	});
+	expect(result.preferences).toEqual([
+		{ id, scope: 'project', projectId: project.id, status: 'create' },
+	]);
+});
+
+it.each([false, true])(
+	'rejects a concurrent Preference edit before content writes in a project package=%s',
+	async (projectPackage) => {
+		const project = await createTeamProject('Shared project', owner);
+		const row = await preferences.create(owner, { scope: 'instance', content: 'Before' }, 'ui');
+		const workflow = serializedWorkflow({ id: randomUUID(), nodes: [] });
+		const { buffer } = await bundle(
+			[{ id: row.id, scope: 'instance', content: 'Imported' }],
+			projectPackage ? project.id : undefined,
+			true,
+			{ workflow },
+		);
+		const orchestrator = Container.get(ImportOrchestrator);
+		const applyContent = vi.spyOn(orchestrator, 'apply');
+		const publish = vi.spyOn(orchestrator, 'publishPackage');
+		const applyPreferences = preferences.applySharedChanges.bind(preferences);
+		const apply = vi
+			.spyOn(preferences, 'applySharedChanges')
+			.mockImplementationOnce(async (user, plan) => {
+				await preferences.update(owner, row.id, { content: 'Concurrent edit' });
+				return await applyPreferences(user, plan);
+			});
+		try {
+			await expect(
+				service.importPackage(
+					importPackageRequest({
+						user: owner,
+						packageBuffer: buffer,
+						...(projectPackage ? {} : { projectId: project.id }),
+						preferenceConflictPolicy: 'replace',
+					}),
+				),
+			).rejects.toThrow('Import blocked');
+			expect(apply).toHaveBeenCalledOnce();
+			expect(applyContent).not.toHaveBeenCalled();
+			expect(publish).not.toHaveBeenCalled();
+			expect(await Container.get(WorkflowRepository).existsBy({ id: workflow.id })).toBe(false);
+			expect(await repository.findOneByOrFail({ id: row.id })).toMatchObject({
+				content: 'Concurrent edit',
+			});
+		} finally {
+			apply.mockRestore();
+			applyContent.mockRestore();
+			publish.mockRestore();
+		}
+	},
+);
+
+it('rolls back new projects when a Preference changes after the initial check', async () => {
+	const row = await preferences.create(owner, { scope: 'instance', content: 'Before' }, 'ui');
+	const projectId = randomUUID();
+	const newPreferenceId = randomUUID();
+	const { buffer } = await bundle(
+		[
+			{ id: row.id, scope: 'instance', content: 'Imported' },
+			{ id: newPreferenceId, scope: 'project', projectId, content: 'Project preference' },
+		],
+		projectId,
+	);
+	const projects = Container.get(ProjectService);
+	const create = projects.createTeamProjectsWithContent.bind(projects);
+	const createSpy = vi
+		.spyOn(projects, 'createTeamProjectsWithContent')
+		.mockImplementationOnce(async (...args) => {
+			await preferences.update(owner, row.id, { content: 'Concurrent edit' });
+			return await create(...args);
+		});
+	const hooks = vi.spyOn(Container.get(ProjectMutationHooksProxy), 'afterTeamProjectCreated');
+	try {
+		await expect(
+			service.importPackage(
+				importPackageRequest({
+					user: owner,
+					packageBuffer: buffer,
+					preferenceConflictPolicy: 'replace',
+				}),
+			),
+		).rejects.toThrow('Import blocked');
+		expect(createSpy).toHaveBeenCalledOnce();
+		expect(await Container.get(ProjectRepository).existsBy({ id: projectId })).toBe(false);
+		expect(await repository.existsBy({ id: newPreferenceId })).toBe(false);
+		expect(await repository.findOneByOrFail({ id: row.id })).toMatchObject({
+			content: 'Concurrent edit',
+		});
+		expect(hooks).not.toHaveBeenCalled();
+	} finally {
+		createSpy.mockRestore();
+		hooks.mockRestore();
+	}
+});
+
+it.each([false, true])(
+	'applies a batch across new and existing projects with global access=%s',
+	async (globalAccess) => {
+		const existing = await createTeamProject('Existing project', owner);
+		const row = await preferences.create(
+			owner,
+			{ scope: 'project', projectId: existing.id, content: 'Before' },
+			'ui',
+		);
+		const kept = await preferences.create(
+			owner,
+			{ scope: 'project', projectId: existing.id, content: 'Keep' },
+			'ui',
+		);
+		const actor = Object.assign(new Person(), owner);
+		actor.role = Object.assign(new Role(), owner.role, {
+			scopes: owner.role.scopes.filter(
+				({ slug }) => globalAccess || !slug.startsWith('projectAiPreference:'),
+			),
+		});
+		const projectId = randomUUID();
+		const newId = randomUUID();
+		const { buffer } = await bundle(
+			[
+				{ id: row.id, scope: 'project', projectId: existing.id, content: 'Updated' },
+				{ id: kept.id, scope: 'project', projectId: existing.id, content: 'Keep' },
+				{ id: newId, scope: 'project', projectId, content: 'Created' },
+			],
+			undefined,
+			true,
+			{
+				manifest: {
+					projects: [
+						{ id: existing.id, name: existing.name, target: `projects/${existing.id}` },
+						{ id: projectId, name: 'New project', target: `projects/${projectId}` },
+					],
+				},
+			},
+		);
+		const result = await service.importPackage(
+			importPackageRequest({
+				user: actor,
+				packageBuffer: buffer,
+				preferenceConflictPolicy: 'replace',
+			}),
+		);
+		expect(result.counts.preferences).toEqual({ created: 1, updated: 1, removed: 0, skipped: 1 });
+		expect(await repository.findOneByOrFail({ id: row.id })).toMatchObject({
+			content: 'Updated',
+			projectId: existing.id,
+		});
+		expect(await repository.findOneByOrFail({ id: newId })).toMatchObject({
+			content: 'Created',
+			projectId,
+		});
+	},
+);

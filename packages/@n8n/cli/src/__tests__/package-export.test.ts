@@ -21,6 +21,7 @@ interface ExportFlags {
 	versionPolicy?: string;
 	credentialExportPolicy?: string;
 	includeArchived?: string;
+	includePreferences?: string;
 }
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
@@ -62,6 +63,19 @@ function stubCommand(
 describe('package export command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it.each([false, true])('omits disabled Preferences with project=%s', async (project) => {
+		const { command, exportPackage } = stubCommand({
+			...(project ? { projectId: ['team'] } : { workflowId: ['workflow'] }),
+			includePreferences: 'false',
+			output: '/tmp/export.n8np',
+		});
+		await command.run();
+		expect(exportPackage).toHaveBeenCalledOnce();
+		expect(exportPackage).toHaveBeenCalledWith(
+			expect.not.objectContaining({ includePreferences: expect.anything() }),
+		);
 	});
 
 	it.each([false, true])('parses shared Preferences with project=%s', async (project) => {

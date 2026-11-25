@@ -170,7 +170,9 @@ export class WorkflowPackageImporter {
 
 		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
 
-		if (preferencePlan) await this.preferenceImporter.check(request, preferencePlan);
+		const preferences = preferencePlan
+			? await this.preferenceImporter.apply(request, preferencePlan)
+			: undefined;
 		const content = await this.importOrchestrator.apply(plan);
 
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
@@ -192,10 +194,6 @@ export class WorkflowPackageImporter {
 				tagRequest,
 			},
 		];
-
-		const preferences = preferencePlan
-			? await this.preferenceImporter.apply(request, preferencePlan)
-			: undefined;
 
 		const result = buildImportResult({
 			preferences,

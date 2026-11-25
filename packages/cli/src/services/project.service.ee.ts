@@ -547,6 +547,42 @@ export class ProjectService {
 		data: CreateProjectDto,
 		overrides: ProjectCreateOverrides = {},
 	): Promise<Project> {
+		const project = await this.persistTeamProject(adminUser, data, overrides, {});
+		await this.notifyTeamProjectCreated(adminUser, project, data.uiContext);
+		return project;
+	}
+
+	/** Commit new projects and their initial content before running project hooks. */
+	async createTeamProjectsWithContent(
+		user: User,
+		creations: Array<{ data: CreateProjectDto; overrides: ProjectCreateOverrides }>,
+		writeContent: (ctx: OperationContext) => Promise<void>,
+		ctx: OperationContext = {},
+	): Promise<Project[]> {
+		const projects = await this.txRunner.run(
+			ctx,
+			async (ctx) => {
+				const created: Project[] = [];
+				for (const { data, overrides } of creations) {
+					created.push(await this.persistTeamProject(user, data, overrides, ctx));
+				}
+				await writeContent(ctx);
+				return created;
+			},
+			{ isolationLevel: 'SERIALIZABLE' },
+		);
+		for (const [index, project] of projects.entries()) {
+			await this.notifyTeamProjectCreated(user, project, creations[index].data.uiContext);
+		}
+		return projects;
+	}
+
+	private async persistTeamProject(
+		adminUser: User,
+		data: CreateProjectDto,
+		overrides: ProjectCreateOverrides,
+		ctx: OperationContext,
+	): Promise<Project> {
 		const limit = this.licenseState.getMaxTeamProjects();
 		let project: Project | null;
 		try {
@@ -560,6 +596,7 @@ export class ProjectService {
 				},
 				adminUser.id,
 				limit,
+				ctx,
 			);
 		} catch (error) {
 			if (error instanceof ProjectIdConflictError) throw new ConflictError(error.message);
@@ -567,15 +604,16 @@ export class ProjectService {
 		}
 		if (!project) throw new TeamProjectOverQuotaError(limit);
 
-		await this.projectMutationHooks.afterTeamProjectCreated(project.id);
-
-		this.eventService.emit('team-project-created', {
-			userId: adminUser.id,
-			role: adminUser.role.slug,
-			uiContext: data.uiContext,
-		});
-
 		return project;
+	}
+
+	private async notifyTeamProjectCreated(user: User, project: Project, uiContext?: string) {
+		await this.projectMutationHooks.afterTeamProjectCreated(project.id);
+		this.eventService.emit('team-project-created', {
+			userId: user.id,
+			role: user.role.slug,
+			uiContext,
+		});
 	}
 
 	async updateProject(

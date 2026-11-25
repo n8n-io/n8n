@@ -326,12 +326,19 @@ export const importResultSchema = z.object({
 	agents: z.array(importedAgentSummarySchema),
 	preferences: z
 		.array(
-			z.object({
-				id: z.string().uuid(),
-				scope: z.enum(['project', 'instance']),
-				projectId: z.string().optional(),
-				status: z.enum(['create', 'update', 'delete', 'skip']),
-			}),
+			z.discriminatedUnion('scope', [
+				z.object({
+					id: z.string().uuid(),
+					scope: z.literal('project'),
+					projectId: z.string().min(1),
+					status: z.enum(['create', 'update', 'delete', 'skip']),
+				}),
+				z.object({
+					id: z.string().uuid(),
+					scope: z.literal('instance'),
+					status: z.enum(['create', 'update', 'delete', 'skip']),
+				}),
+			]),
 		)
 		.optional(),
 	counts: z.object({

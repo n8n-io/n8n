@@ -155,9 +155,7 @@ export default class PackageExport extends BaseCommand {
 						? {
 								projectIds,
 								...(flags.preferenceId?.length ? { preferenceIds: flags.preferenceId } : {}),
-								...(flags.includePreferences !== undefined
-									? { includePreferences: flags.includePreferences === 'true' }
-									: {}),
+								...(flags.includePreferences === 'true' ? { includePreferences: true } : {}),
 								includeVariableValues,
 								includeTags,
 								dependencyPolicy,
@@ -170,9 +168,7 @@ export default class PackageExport extends BaseCommand {
 								workflowIds,
 								folderIds,
 								...(flags.preferenceId?.length ? { preferenceIds: flags.preferenceId } : {}),
-								...(flags.includePreferences !== undefined
-									? { includePreferences: flags.includePreferences === 'true' }
-									: {}),
+								...(flags.includePreferences === 'true' ? { includePreferences: true } : {}),
 								includeVariableValues,
 								includeTags,
 								dependencyPolicy,

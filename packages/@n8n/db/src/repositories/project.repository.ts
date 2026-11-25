@@ -36,10 +36,11 @@ export class ProjectRepository extends BaseRepository<Project> {
 			Partial<Pick<Project, 'id' | 'icon' | 'description' | 'customTelemetryTags'>>,
 		creatorId: string,
 		limit: number,
+		ctx: OperationContext = {},
 	): Promise<Project | null> {
 		// Keep the quota check and both inserts in one serializable transaction.
 		return await this.txRunner.run(
-			{},
+			ctx,
 			async (ctx) => {
 				const manager = this.managerFor(ctx);
 				if (limit !== UNLIMITED_LICENSE_QUOTA) {
@@ -68,6 +69,22 @@ export class ProjectRepository extends BaseRepository<Project> {
 			},
 			{ isolationLevel: 'SERIALIZABLE' },
 		);
+	}
+
+	async findForPreferenceTarget(projectId: string, ctx: OperationContext): Promise<Project | null> {
+		return await this.managerFor(ctx).findOneBy(Project, { id: projectId });
+	}
+
+	async isTeamProjectCreator(
+		projectId: string,
+		userId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(Project, {
+			id: projectId,
+			type: 'team',
+			creatorId: userId,
+		});
 	}
 
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {

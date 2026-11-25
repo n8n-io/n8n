@@ -5,12 +5,20 @@ oneOf:
         type: string
         enum:
           - preference-conflict
+      kind:
+        type: string
+        enum:
+          - conflict
+          - forbidden
+          - invalid
+          - unavailable
       preferenceId:
         type: string
       message:
         type: string
     required:
       - type
+      - kind
       - message
   - type: object
     properties:

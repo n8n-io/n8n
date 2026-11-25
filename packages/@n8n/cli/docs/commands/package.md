@@ -300,7 +300,7 @@ keep project IDs. A loose project Preference uses the destination named by
 n8n-cli package export --preference-id=<uuid> --output=preferences.n8np
 n8n-cli package export --project-id=<id> --include-preferences=true --output=project.n8np
 n8n-cli package import --file=preferences.n8np --project-id=<destination-id>
-n8n-cli package import --file=preferences.n8np --preference-conflict-policy=replace
+n8n-cli package import --file=preferences.n8np --project-id=<destination-id> --preference-conflict-policy=replace
 n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> --selected-preference-ids=<uuid>
 ```
 
@@ -334,7 +334,9 @@ Import checks permissions, ID ownership, duplicate text, content length, and the
 Concurrent imports and ordinary writes use the same scope lock. Imports also
 lock each UUID across destination scopes. Destination
 changes after a preview require a new plan. A rejected Preference plan reports
-`preference-conflict` issues before package writes. Successful results include
+`preference-conflict` issues before package writes. Each issue has a `kind`:
+`conflict`, `forbidden`, `invalid`, or `unavailable`. Only `conflict` issues use
+HTTP 409. Other Preference issue kinds use HTTP 422. Successful results include
 `preferences` and `counts.preferences` with created, updated, removed, and skipped
 counts. The Preference batch commits as one transaction. Other package entities
 retain the package engine's existing apply behavior.

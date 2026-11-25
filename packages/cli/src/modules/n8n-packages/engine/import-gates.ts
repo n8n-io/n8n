@@ -34,7 +34,7 @@ export function isPreferenceOnlyPackage(manifest: PackageManifest): boolean {
 			manifest.tags,
 			manifest.skills,
 		].some((entries) => entries?.length) &&
-		!manifest.requirements
+		!Object.values(manifest.requirements ?? {}).some((entries) => entries?.length)
 	);
 }
 

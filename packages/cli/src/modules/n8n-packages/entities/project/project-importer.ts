@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import type { Project, User } from '@n8n/db';
+import type { OperationContext, Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
@@ -79,8 +79,35 @@ export class ProjectImporter {
 		return { items, conflicts };
 	}
 
-	async apply(user: User, items: ProjectPlanItem[]): Promise<ImportedProjectSummary[]> {
+	async apply(
+		user: User,
+		items: ProjectPlanItem[],
+		writeInitialContent?: (ctx: OperationContext) => Promise<void>,
+		ctx: OperationContext = {},
+	): Promise<ImportedProjectSummary[]> {
 		const summaries: ImportedProjectSummary[] = [];
+		const createdProjects = new Map<string, Project>();
+		if (writeInitialContent) {
+			const creations = items.filter((item) => item.action === 'create');
+			if (creations.length) {
+				const projects = await this.projectService.createTeamProjectsWithContent(
+					user,
+					creations.map((item) => ({
+						data: { name: item.name, icon: item.icon },
+						overrides: {
+							id: item.sourceProjectId,
+							description: item.description ?? null,
+							customTelemetryTags: item.customTelemetryTags,
+						},
+					})),
+					writeInitialContent,
+					ctx,
+				);
+				for (const project of projects) createdProjects.set(project.id, project);
+			} else {
+				await writeInitialContent(ctx);
+			}
+		}
 
 		for (const item of items) {
 			switch (item.action) {
@@ -96,15 +123,17 @@ export class ProjectImporter {
 					break;
 
 				case 'create': {
-					const project = await this.projectService.createTeamProject(
-						user,
-						{ name: item.name, icon: item.icon },
-						{
-							id: item.sourceProjectId,
-							description: item.description ?? null,
-							customTelemetryTags: item.customTelemetryTags,
-						},
-					);
+					const project =
+						createdProjects.get(item.sourceProjectId) ??
+						(await this.projectService.createTeamProject(
+							user,
+							{ name: item.name, icon: item.icon },
+							{
+								id: item.sourceProjectId,
+								description: item.description ?? null,
+								customTelemetryTags: item.customTelemetryTags,
+							},
+						));
 					summaries.push({
 						sourceProjectId: item.sourceProjectId,
 						localId: project.id,

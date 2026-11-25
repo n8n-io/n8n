@@ -30,6 +30,7 @@ import type {
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ImportPlanMode,
+	ImportResult,
 	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
@@ -232,7 +233,18 @@ export class ProjectPackageImporter {
 
 		if (plan.preferences) await this.preferenceImporter.check(request, plan.preferences);
 
-		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
+		let preferences: ImportResult['preferences'];
+		const preferencePlan = plan.preferences;
+		const projectSummaries = await this.projectImporter.apply(
+			request.user,
+			projectPlan.items,
+			preferencePlan
+				? async (ctx) => {
+						preferences = await this.preferenceImporter.apply({ ...request, ctx }, preferencePlan);
+					}
+				: undefined,
+			request.ctx,
+		);
 
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.
@@ -316,10 +328,6 @@ export class ProjectPackageImporter {
 				tagRequest: plan.input.tagRequest,
 			});
 		}
-
-		const preferences = plan.preferences
-			? await this.preferenceImporter.apply(request, plan.preferences)
-			: undefined;
 
 		const result = buildImportResult({
 			preferences,
