@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
 import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
-import { HostCallError, RuntimeRestartingError } from '../../types';
+import { HostCallError, MemoryLimitError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
