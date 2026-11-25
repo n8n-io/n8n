@@ -2,8 +2,8 @@ import { AddMcpServerToolsDto, UpdateMcpServerToolDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
 
-import { CustomMcpServersFlagGate } from './services/custom-mcp-servers-flag-gate';
-import { McpServerToolsService } from './mcp-server-tools.service';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
+import { McpServerToolsService } from '../services/mcp-server-tools.service';
 
 type ToolsRequest = AuthenticatedRequest<{ projectId: string; serverId: string }>;
 type ToolRequest = AuthenticatedRequest<{ projectId: string; serverId: string; toolId: string }>;

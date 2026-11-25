@@ -11,7 +11,7 @@ import {
 	RestController,
 } from '@n8n/decorators';
 
-import { McpServerToolsService } from '../mcp-server-tools.service';
+import { McpServerToolsService } from '../services/mcp-server-tools.service';
 import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
 import { McpServersService } from '../services/mcp-servers.service';
 
