@@ -21,6 +21,7 @@ import {
 	McpServerConnection,
 	McpServersConfig,
 	McpServerTool,
+	OAuthClientNamePort,
 	WorkflowToolPort,
 	type WorkflowToolRunResult,
 } from '@n8n/backend-module-mcp-servers';
@@ -474,6 +475,19 @@ describe('Custom MCP server connections', () => {
 		const { firstUsedAt, lastUsedAt } = await connections().findOneByOrFail(key);
 		expect(lastUsedAt.getTime()).toBeGreaterThan(Date.now() - 10_000);
 		expect(firstUsedAt.getTime()).toBeLessThan(lastUsedAt.getTime() + 1);
+	});
+
+	it('answers the request when the connection write fails', async () => {
+		// The client name lookup runs inside the recorder, on the first use.
+		vi.spyOn(Container.get(OAuthClientNamePort), 'getName').mockRejectedValue(new Error('db down'));
+		const token = await tokenFor(member, resourceUrl(serverSlug));
+
+		await post(serverSlug, token).expect(200);
+		const client = await connect(token);
+		await expect(client.listTools()).resolves.toBeDefined();
+		await client.close();
+
+		expect(await connections().find()).toEqual([]);
 	});
 
 	it('writes no connection row for a refused request', async () => {
