@@ -504,6 +504,7 @@ const APP_TARGET_TOOL_NAMES = new Set<string>([
 	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
 	SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
 	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	SHARED_BUILDER_TOOL_NAMES.DISCARD_APP_CHANGES,
 ]);
 
 /** Whether a turn that the agent still works on created the app or works on it with the app tools. */

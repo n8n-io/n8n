@@ -1697,6 +1697,15 @@ describe('isAppInLiveTurn', () => {
 		expect(utils.isAppInLiveTurn([turn(true, [committing])], 'app-1')).toBe(true);
 	});
 
+	test.each(['open_app', 'bind_app_resource', 'unbind_app_resource', 'discard_app_changes'])(
+		'is true while the live turn works on the app with %s',
+		(toolName) => {
+			expect(
+				utils.isAppInLiveTurn([turn(true, [call(toolName, { appId: 'app-1' })])], 'app-1'),
+			).toBe(true);
+		},
+	);
+
 	test('is false for another app', () => {
 		expect(utils.isAppInLiveTurn([turn(true, [created])], 'app-2')).toBe(false);
 	});
