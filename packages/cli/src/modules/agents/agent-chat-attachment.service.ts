@@ -228,20 +228,13 @@ export class AgentChatAttachmentService {
 		threadId: string,
 		binaryDataId: string,
 		scope: { agentId: string; resourceId: string; sources: readonly string[] },
-	): Promise<AgentToolOutputFile | undefined> {
-		const file = await this.repository.findInSystemThreadByBinaryDataId(
+	): Promise<AgentChatAttachment | null> {
+		return await this.repository.findInSystemThreadByBinaryDataId(
 			threadId,
 			binaryDataId,
 			scope,
 			{},
 		);
-		if (!file) return undefined;
-		return {
-			fileId: file.id,
-			fileName: file.fileName,
-			mimeType: file.mimeType,
-			sizeBytes: file.fileSizeBytes,
-		};
 	}
 
 	/**

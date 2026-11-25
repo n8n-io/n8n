@@ -507,21 +507,12 @@ describe('AgentChatAttachmentService', () => {
 		const scope = { agentId: 'assistant', resourceId: 'user-1', sources: ['system_chat'] };
 
 		it('gives the file of the thread that has the stored bytes', async () => {
-			repository.findInSystemThreadByBinaryDataId.mockResolvedValue({
-				id: 'upload-1',
-				fileName: 'photo.png',
-				mimeType: 'image/png',
-				fileSizeBytes: 3,
-			} as AgentChatAttachment);
+			const file = { id: 'upload-1', fileName: 'photo.png' } as AgentChatAttachment;
+			repository.findInSystemThreadByBinaryDataId.mockResolvedValue(file);
 
 			await expect(
 				service.findSystemAgentThreadFileByBinary('thread-1', 'filesystem-v2:a', scope),
-			).resolves.toEqual({
-				fileId: 'upload-1',
-				fileName: 'photo.png',
-				mimeType: 'image/png',
-				sizeBytes: 3,
-			});
+			).resolves.toBe(file);
 			expect(repository.findInSystemThreadByBinaryDataId).toHaveBeenCalledWith(
 				'thread-1',
 				'filesystem-v2:a',
@@ -535,7 +526,7 @@ describe('AgentChatAttachmentService', () => {
 
 			await expect(
 				service.findSystemAgentThreadFileByBinary('thread-1', 'filesystem-v2:a', scope),
-			).resolves.toBeUndefined();
+			).resolves.toBeNull();
 		});
 	});
 

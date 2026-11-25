@@ -139,7 +139,8 @@ export class AgentChatAttachmentRepository {
 		const { agentId, resourceId, sources } = scope;
 		return await this.table.managerFor(ctx).findOne(AgentChatAttachment, {
 			where: { threadId, binaryDataId, agentId, resourceId, source: In([...sources]) },
-			order: { createdAt: 'DESC' },
+			// Two files can have the same createdAt, so the id makes the result stable.
+			order: { createdAt: 'DESC', id: 'DESC' },
 		});
 	}
 

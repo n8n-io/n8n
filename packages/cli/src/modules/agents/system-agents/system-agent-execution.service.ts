@@ -1102,14 +1102,33 @@ export class SystemAgentExecutionService {
 				return attachmentToBinaryData(attachment);
 			},
 			storeWorkflowFile: async (binary) => {
-				if (binary.id) {
-					// A run that passes a file of this thread on unchanged gives that file, without a copy.
-					const threadFile = await this.attachmentService.findSystemAgentThreadFileByBinary(
-						thread.id,
-						binary.id,
-						systemChatFileScope(thread.agentId, resourceId),
-					);
-					if (threadFile) return threadFile;
+				// A file of this thread proves access to its bytes.
+				const threadFile = binary.id
+					? await this.attachmentService.findSystemAgentThreadFileByBinary(
+							thread.id,
+							binary.id,
+							systemChatFileScope(thread.agentId, resourceId),
+						)
+					: null;
+				if (threadFile) {
+					// Retention can remove the bytes while the attachment row stays.
+					if (!(await this.attachmentService.hasStoredData(threadFile))) {
+						return {
+							fileName: binary.fileName ?? threadFile.fileName,
+							reason: 'the file is no longer stored',
+						};
+					}
+					// A run that passes the file on unchanged gives that file, without a copy. A run
+					// that renames or retypes it gets a new file with the new name and type.
+					if (binary.fileName === threadFile.fileName && binary.mimeType === threadFile.mimeType) {
+						return {
+							fileId: threadFile.id,
+							fileName: threadFile.fileName,
+							mimeType: threadFile.mimeType,
+							sizeBytes: threadFile.fileSizeBytes,
+						};
+					}
+				} else if (binary.id) {
 					// Execution data can name any stored binary, for example in pinned data, so the
 					// id alone does not prove access. Check it as the binary data download route does.
 					if (!(await this.binaryDataAccess.hasReadAccess(user, binary.id))) {

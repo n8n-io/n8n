@@ -232,6 +232,34 @@ describe('AgentChatAttachmentRepository', () => {
 		).toBeNull();
 	});
 
+	it('breaks a createdAt tie by id when it finds a system thread file by its stored bytes', async () => {
+		const createdAt = new Date('2026-01-03T00:00:00.000Z');
+		const ids: string[] = [];
+		for (const fileName of ['a.png', 'b.png', 'c.png']) {
+			const saved = await repository.saveInboundAttachment(
+				{
+					...attachmentParams(),
+					fileName,
+					source: 'system_chat',
+					binaryDataId: 'filesystem-v2:tie',
+				},
+				{},
+			);
+			await table.update(saved.id, { createdAt });
+			ids.push(saved.id);
+		}
+		const scope = { agentId, resourceId: 'resource-1', sources: ['system_chat'] };
+
+		const found = await repository.findInSystemThreadByBinaryDataId(
+			'thread-1',
+			'filesystem-v2:tie',
+			scope,
+			{},
+		);
+
+		expect(found?.id).toBe([...ids].sort().at(-1));
+	});
+
 	it('returns null for a missing row and accepts deletion of a missing ID', async () => {
 		const ctx: OperationContext = {};
 		expect(

@@ -125,7 +125,7 @@ function setup(
 	const fileBridge = mock<AgentFileBridge>();
 	const binaryDataAccess = mock<BinaryDataAccessService>();
 	binaryDataAccess.hasReadAccess.mockResolvedValue(false);
-	attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(undefined);
+	attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(null);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -1129,13 +1129,26 @@ describe('SystemAgentExecutionService', () => {
 					});
 				});
 
+				const threadFile = {
+					id: 'upload-1',
+					fileName: 'a.png',
+					mimeType: 'image/png',
+					fileSizeBytes: 3,
+				} as AgentChatAttachment;
+				const passedOn = { ...binary, fileName: 'a.png' };
+
 				it('gives the file of the thread that a run passed on, without a copy', async () => {
 					const { turn, fileBridge, attachmentService, binaryDataAccess } =
 						await startTurnWithAttachment();
-					const threadFile = { ...stored, fileId: 'upload-1' };
 					attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(threadFile);
+					attachmentService.hasStoredData.mockResolvedValue(true);
 
-					await expect(turn.storeWorkflowFile(binary)).resolves.toBe(threadFile);
+					await expect(turn.storeWorkflowFile(passedOn)).resolves.toEqual({
+						fileId: 'upload-1',
+						fileName: 'a.png',
+						mimeType: 'image/png',
+						sizeBytes: 3,
+					});
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 					expect(attachmentService.findSystemAgentThreadFileByBinary).toHaveBeenCalledWith(
 						'thread-1',
@@ -1147,6 +1160,37 @@ describe('SystemAgentExecutionService', () => {
 						},
 					);
 					expect(binaryDataAccess.hasReadAccess).not.toHaveBeenCalled();
+				});
+
+				it('stores a new file when a run renames or retypes a file of the thread', async () => {
+					const { turn, fileBridge, attachmentService, binaryDataAccess } =
+						await startTurnWithAttachment();
+					attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(threadFile);
+					attachmentService.hasStoredData.mockResolvedValue(true);
+					fileBridge.adoptBinary.mockResolvedValue(stored);
+
+					for (const changed of [
+						{ ...passedOn, fileName: 'b.png' },
+						{ ...passedOn, mimeType: 'image/jpeg' },
+					]) {
+						await expect(turn.storeWorkflowFile(changed)).resolves.toBe(stored);
+						expect(fileBridge.adoptBinary).toHaveBeenLastCalledWith(changed, expect.anything());
+					}
+					// The file of the thread proves access to the bytes.
+					expect(binaryDataAccess.hasReadAccess).not.toHaveBeenCalled();
+				});
+
+				it('skips a file of the thread whose bytes are gone', async () => {
+					const { turn, fileBridge, attachmentService } = await startTurnWithAttachment();
+					attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(threadFile);
+					attachmentService.hasStoredData.mockResolvedValue(false);
+
+					await expect(turn.storeWorkflowFile(passedOn)).resolves.toEqual({
+						fileName: 'a.png',
+						reason: 'the file is no longer stored',
+					});
+					expect(attachmentService.hasStoredData).toHaveBeenCalledWith(threadFile);
+					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 				});
 
 				it('skips a binary that the user cannot read and that is not a file of the thread', async () => {

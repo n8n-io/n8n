@@ -635,7 +635,7 @@ workflow without a trigger node cannot take files, so the run fails before it
 starts. After the run, the files of the last node are stored as conversation
 files with the `tool` source, one time for each binary and at most 10 for each
 run. A file of the conversation that the run passes on unchanged keeps its
-fileId and is not copied. The result lists the files in `files`, so the chat
+fileId and is not copied. A renamed or retyped file becomes a new file. The result lists the files in `files`, so the chat
 shows them. It lists at most 10 files that were not stored in `skippedFiles`,
 and counts the others in `moreSkippedFiles`. A redacted execution stores no
 files. Without the host functions, the input schema has no `files` field.
