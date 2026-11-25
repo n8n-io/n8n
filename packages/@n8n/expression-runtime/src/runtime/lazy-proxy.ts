@@ -4,6 +4,7 @@ import {
 	arrayFrom,
 	defineProperty,
 	getOwnPropertyDescriptor,
+	getPrototypeOf,
 	hasOwn,
 	isArray as isArrayValue,
 	isExtensible,
@@ -11,6 +12,7 @@ import {
 	isPrototypeOf,
 	objectCreate,
 	reflectApply,
+	setPrototypeOf,
 } from './intrinsics';
 import { isArrayIndexKey, isKeyOf } from './utils';
 
@@ -228,12 +230,14 @@ interface ArrayMetadata {
 	__length: number;
 }
 
-/** A boxed primitive with the own field keys it holds on the host. */
+/** A boxed primitive with the own and inherited field keys it holds on the host. */
 export interface BoxedMetadata {
 	__isBoxed: true;
 	__value: object;
 	__keys: string[];
 	__hiddenKeys?: string[];
+	__protoKeys?: string[];
+	__protoHiddenKeys?: string[];
 }
 
 export function isBoxedMetadata(value: unknown): value is BoxedMetadata {
@@ -405,7 +409,7 @@ function defineLazyBoxedField(
 	});
 }
 
-/** Give the boxed primitive that the host sent, with its own fields resolved on access. */
+/** Give the boxed primitive that the host sent, with its own and inherited fields resolved on access. */
 export function createLazyBoxedPrimitive(
 	path: string[],
 	boxed: BoxedMetadata,
@@ -420,6 +424,22 @@ export function createLazyBoxedPrimitive(
 		for (let i = 0; i < hiddenKeys.length; i++) {
 			defineLazyBoxedField(target, path, hiddenKeys[i], false, callbacks);
 		}
+	}
+	const protoKeys = boxed.__protoKeys;
+	const protoHiddenKeys = boxed.__protoHiddenKeys;
+	if (protoKeys !== undefined || protoHiddenKeys !== undefined) {
+		const subProto = objectCreate(getPrototypeOf(target)) as object;
+		if (protoKeys !== undefined) {
+			for (let i = 0; i < protoKeys.length; i++) {
+				defineLazyBoxedField(subProto, path, protoKeys[i], true, callbacks);
+			}
+		}
+		if (protoHiddenKeys !== undefined) {
+			for (let i = 0; i < protoHiddenKeys.length; i++) {
+				defineLazyBoxedField(subProto, path, protoHiddenKeys[i], false, callbacks);
+			}
+		}
+		setPrototypeOf(target, subProto);
 	}
 	return target;
 }

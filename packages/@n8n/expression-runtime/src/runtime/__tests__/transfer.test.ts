@@ -153,6 +153,56 @@ describe('transfer framing', () => {
 			expect(isBoxedPrimitive(revoked)).toBe(false);
 			expect(unboxPrimitive(revoked)).toBeUndefined();
 		});
+
+		it('should not invoke Symbol.toStringTag getters or hang on cyclic getPrototypeOf proxies', () => {
+			let tagCalls = 0;
+			class Custom {
+				value = 1;
+
+				get [Symbol.toStringTag]() {
+					tagCalls++;
+					this.value = 99;
+					return 'Custom';
+				}
+			}
+			class NullChain {
+				get [Symbol.toStringTag]() {
+					tagCalls++;
+					return 'NullChain';
+				}
+			}
+			Object.setPrototypeOf(NullChain.prototype, null);
+			class BoxedSub extends Number {
+				get [Symbol.toStringTag]() {
+					tagCalls++;
+					return 'BoxedSub';
+				}
+			}
+
+			const custom = new Custom();
+			expect(unboxPrimitive(custom)).toBeUndefined();
+			expect(custom.value).toBe(1);
+			expect(unboxPrimitive(new NullChain())).toBeUndefined();
+			expect(unboxPrimitive(new BoxedSub(5))).toBe(5);
+			expect(
+				unboxPrimitive(
+					runInNewContext(
+						'Object.defineProperty(new String("xr"), Symbol.toStringTag, { get() { throw new Error("boom"); } })',
+					) as object,
+				),
+			).toBe('xr');
+			expect(tagCalls).toBe(0);
+
+			const infiniteProto: object = new Proxy(
+				{},
+				{
+					getPrototypeOf() {
+						return infiniteProto;
+					},
+				},
+			);
+			expect(unboxPrimitive(infiniteProto)).toBeUndefined();
+		});
 	});
 
 	describe('the walk', () => {

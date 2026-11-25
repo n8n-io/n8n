@@ -13,15 +13,19 @@ export const {
 	entries: objectEntries,
 	getOwnPropertyDescriptor,
 	getOwnPropertyDescriptors,
-	getPrototypeOf,
 	hasOwn,
 	is: sameValue,
 	isExtensible,
 	keys: objectKeys,
 	prototype: objectPrototype,
+	setPrototypeOf,
 } = Object;
 
-export const { isPrototypeOf, toString: objectToString } = objectPrototype;
+export const getPrototypeOf: (target: object) => object | null = Object.getPrototypeOf;
+
+export const boxPrimitive: (value: string | number | boolean | bigint) => object = Object;
+
+export const { isPrototypeOf } = objectPrototype;
 
 export const stringPrototype: object = String.prototype;
 export const stringValueOf: (this: unknown) => string = String.prototype.valueOf;

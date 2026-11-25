@@ -1,5 +1,6 @@
 import { errorToSentinel } from '../runtime/error-transfer';
-import { HOST_VALUE_TYPE } from '../runtime/transfer-codec';
+import type { BoxedValueSentinel } from '../runtime/transfer-codec';
+import { BOXED_VALUE_TYPE, HOST_VALUE_TYPE } from '../runtime/transfer-codec';
 import type { ObjectWalk } from '../runtime/transfer';
 import {
 	defineOwnValue,
@@ -11,7 +12,9 @@ import {
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 	TRANSFER_VALUE_KEY,
+	unboxPrimitive,
 } from '../runtime/transfer';
+import { boxedFieldsOf, hasBoxedFields } from './boxed-fields';
 
 const MAX_SMALL_INSTANCE_FIELDS = 100;
 
@@ -67,9 +70,48 @@ function isObject(value: unknown): value is object {
 	return typeof value === 'object' && value !== null;
 }
 
+function needsBoxedEncoding(value: object): boolean {
+	if (Array.isArray(value)) return false;
+	const primitive = unboxPrimitive(value);
+	return primitive !== undefined && hasBoxedFields(boxedFieldsOf(value, primitive));
+}
+
+function readBoxedProps(
+	value: object,
+	keys: readonly string[],
+	hiddenKeys: readonly string[],
+): { props: Record<string, unknown>; hidden: string[]; hasAny: boolean } {
+	const props: Record<string, unknown> = {};
+	const hidden: string[] = [];
+	let hasAny = false;
+	const readKey = (key: string, enumerable: boolean) => {
+		try {
+			const fieldValue: unknown = Reflect.get(value, key);
+			if (typeof fieldValue === 'function' || typeof fieldValue === 'symbol') {
+				return;
+			}
+			defineOwnValue(props, key, fieldValue);
+			hasAny = true;
+			if (!enumerable) {
+				hidden.push(key);
+			}
+		} catch {
+			// A throwing getter must not break the surrounding host call result.
+		}
+	};
+	for (const key of keys) readKey(key, true);
+	for (const key of hiddenKeys) readKey(key, false);
+	return { props, hidden, hasAny };
+}
+
 /** The objects the walks go into. Any other object goes across as it is. */
 function isWalked(value: object): boolean {
-	return Array.isArray(value) || isPlainObject(value) || value instanceof Error;
+	return (
+		Array.isArray(value) ||
+		isPlainObject(value) ||
+		value instanceof Error ||
+		needsBoxedEncoding(value)
+	);
 }
 
 const UNCLONABLE_TYPE_TAGS: ReadonlySet<string> = new Set([
@@ -101,6 +143,7 @@ function needsEncoding(value: unknown, seen: Set<object>): boolean {
 			isProxy(value) ||
 			value instanceof Error ||
 			isUnclonableObject(value) ||
+			needsBoxedEncoding(value) ||
 			childNeedsEncoding(value, seen)
 		);
 	}
@@ -166,7 +209,34 @@ class GuestEncoder {
 		if (Array.isArray(value)) {
 			return value.map((item: unknown) => this.encode(item));
 		}
-		return this.encodeRecord(value);
+		if (isPlainObject(value)) {
+			return this.encodeRecord(value);
+		}
+		return this.encodeBoxed(value);
+	}
+
+	private encodeBoxed(value: object): unknown {
+		const primitive = unboxPrimitive(value);
+		if (primitive === undefined) return value;
+		const fields = boxedFieldsOf(value, primitive);
+		const own = readBoxedProps(value, fields.keys, fields.hiddenKeys);
+		const proto = readBoxedProps(value, fields.protoKeys, fields.protoHiddenKeys);
+		if (!own.hasAny && !proto.hasAny) {
+			return value;
+		}
+		const sentinel: BoxedValueSentinel = {
+			[TRANSFER_TYPE_KEY]: BOXED_VALUE_TYPE,
+			[TRANSFER_VALUE_KEY]: value,
+		};
+		if (own.hasAny) {
+			sentinel.__props = this.encodeRecord(own.props);
+			if (own.hidden.length > 0) sentinel.__hiddenKeys = own.hidden;
+		}
+		if (proto.hasAny) {
+			sentinel.__protoProps = this.encodeRecord(proto.props);
+			if (proto.hidden.length > 0) sentinel.__protoHiddenKeys = proto.hidden;
+		}
+		return sentinel;
 	}
 
 	/**

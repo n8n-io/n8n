@@ -770,6 +770,151 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 				expect(evaluator.evaluate('{{ $topBoxed + "!" }}', data, caller)).toBe('top!');
 				expect(evaluator.evaluate('{{ $topBoxed.tag }}', data, caller)).toBe('root');
 			});
+
+			it('should keep own and inherited subclass fields across both lazy reads and host calls', () => {
+				class Box extends Number {
+					get meta() {
+						return 7;
+					}
+				}
+				class TaggedBox extends Number {
+					unit = 'kg';
+
+					get meta() {
+						return 7;
+					}
+				}
+				Object.defineProperty(TaggedBox.prototype, 'kind', {
+					value: 'metric',
+					enumerable: true,
+					configurable: true,
+				});
+
+				const tagged = Object.defineProperty(
+					Object.assign(Object('x\0y') as object, {
+						meta: 1,
+						info: { deep: 'ok' },
+						__n8nType: 'DateTime',
+						__isBoxedPrimitive: 'fake',
+						err: new Error('field boom'),
+					}),
+					'secret',
+					{ value: 9 },
+				);
+				const taggedNegZero = Object.assign(Object(-0) as object, { unit: 'c' });
+				const taggedBigInt = Object.assign(Object(9007199254740993n) as object, { tag: 'big' });
+				const json = {
+					tagged,
+					taggedNegZero,
+					taggedBigInt,
+					box: new Box(5),
+					taggedBox: new TaggedBox(5),
+				};
+				const data = { $json: json, $input: { first: () => ({ json }) } };
+
+				for (const root of ['$json', '$input.first().json']) {
+					expect(evaluator.evaluate(`{{ ${root}.tagged instanceof String }}`, data, caller)).toBe(
+						true,
+					);
+					expect(evaluator.evaluate(`{{ ${root}.tagged + "!" }}`, data, caller)).toBe('x\0y!');
+					expect(evaluator.evaluate(`{{ ${root}.tagged.meta }}`, data, caller)).toBe(1);
+					expect(evaluator.evaluate(`{{ ${root}.tagged.info.deep }}`, data, caller)).toBe('ok');
+					expect(evaluator.evaluate(`{{ ${root}.tagged.__n8nType }}`, data, caller)).toBe(
+						'DateTime',
+					);
+					expect(evaluator.evaluate(`{{ ${root}.tagged.__isBoxedPrimitive }}`, data, caller)).toBe(
+						'fake',
+					);
+					expect(
+						evaluator.evaluate(`{{ ${root}.tagged.err instanceof Error }}`, data, caller),
+					).toBe(true);
+					expect(evaluator.evaluate(`{{ ${root}.tagged.err.message }}`, data, caller)).toBe(
+						'field boom',
+					);
+					expect(evaluator.evaluate(`{{ ${root}.tagged.secret }}`, data, caller)).toBe(9);
+					expect(evaluator.evaluate(`{{ Object.keys(${root}.tagged) }}`, data, caller)).toEqual([
+						'0',
+						'1',
+						'2',
+						'meta',
+						'info',
+						'__n8nType',
+						'__isBoxedPrimitive',
+						'err',
+					]);
+
+					expect(
+						evaluator.evaluate(
+							`{{ Object.is(${root}.taggedNegZero.valueOf(), -0) }}`,
+							data,
+							caller,
+						),
+					).toBe(true);
+					expect(evaluator.evaluate(`{{ ${root}.taggedNegZero.unit }}`, data, caller)).toBe('c');
+					expect(evaluator.evaluate(`{{ ${root}.taggedBigInt.tag }}`, data, caller)).toBe('big');
+					expect(
+						evaluator.evaluate(`{{ ${root}.taggedBigInt instanceof BigInt }}`, data, caller),
+					).toBe(true);
+
+					expect(evaluator.evaluate(`{{ ${root}.box instanceof Number }}`, data, caller)).toBe(
+						true,
+					);
+					expect(evaluator.evaluate(`{{ ${root}.box + 1 }}`, data, caller)).toBe(6);
+					expect(evaluator.evaluate(`{{ ${root}.box.meta }}`, data, caller)).toBe(7);
+					expect(evaluator.evaluate(`{{ 'meta' in ${root}.box }}`, data, caller)).toBe(true);
+					expect(evaluator.evaluate(`{{ Object.keys(${root}.box) }}`, data, caller)).toEqual([]);
+					expect(evaluator.evaluate(`{{ Object.hasOwn(${root}.box, 'meta') }}`, data, caller)).toBe(
+						false,
+					);
+
+					expect(evaluator.evaluate(`{{ ${root}.taggedBox.meta }}`, data, caller)).toBe(7);
+					expect(evaluator.evaluate(`{{ ${root}.taggedBox.unit }}`, data, caller)).toBe('kg');
+					expect(evaluator.evaluate(`{{ ${root}.taggedBox.kind }}`, data, caller)).toBe('metric');
+					expect(evaluator.evaluate(`{{ Object.keys(${root}.taggedBox) }}`, data, caller)).toEqual([
+						'unit',
+					]);
+				}
+			});
+
+			it('should not invoke Symbol.toStringTag getters on host objects or boxed subclasses', () => {
+				let hostTagCalls = 0;
+				class HostClass {
+					value = 1;
+
+					get [Symbol.toStringTag]() {
+						hostTagCalls++;
+						this.value = 99;
+						return 'HostClass';
+					}
+				}
+				class TaggedNumber extends Number {
+					get [Symbol.toStringTag]() {
+						hostTagCalls++;
+						return 'TaggedNumber';
+					}
+
+					get meta() {
+						return 7;
+					}
+				}
+				const hostObj = new HostClass();
+				const data = { $json: { hostObj, box: new TaggedNumber(5) } };
+
+				expect(evaluator.evaluate('{{ $json.hostObj.value }}', data, caller)).toBe(1);
+				expect(evaluator.evaluate('{{ $json.box.meta }}', data, caller)).toBe(7);
+				expect(evaluator.evaluate('{{ $json.box + 1 }}', data, caller)).toBe(6);
+				expect(hostTagCalls).toBe(0);
+				expect(hostObj.value).toBe(1);
+
+				// Guest-created boxed subclass with a side-effecting Symbol.toStringTag getter
+				const guestReturned = evaluator.evaluate(
+					'{{ (() => { class Box extends Number { get [Symbol.toStringTag]() { throw new Error("tag getter ran"); } } return new Box(5); })() }}',
+					{ $json: {} },
+					caller,
+				);
+				expect(guestReturned).toBeInstanceOf(Number);
+				expect((guestReturned as { valueOf(): number }).valueOf()).toBe(5);
+			});
 		});
 	});
 

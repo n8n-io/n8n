@@ -773,6 +773,53 @@ describe('createDeepLazyProxy', () => {
 				1,
 			);
 		});
+
+		it('resolves inherited prototype fields of boxed subclasses lazily', () => {
+			const boxed = Object(5) as object;
+			mocks.getValueAtPath.mockImplementation((path: string[]) => {
+				const key = path[path.length - 1];
+				if (key === 'box') {
+					return {
+						__isBoxed: true,
+						__value: boxed,
+						__keys: ['unit'],
+						__protoKeys: ['kind'],
+						__protoHiddenKeys: ['meta'],
+					};
+				}
+				if (key === 'unit') return 'kg';
+				if (key === 'kind') return 'metric';
+				if (key === 'meta') return 7;
+				return undefined;
+			});
+
+			const p = proxy(['$json']);
+			const value = p.box;
+
+			expect(value instanceof Number).toBe(true);
+			expect(value + 1).toBe(6);
+			expect(Object.keys(value)).toEqual(['unit']);
+			expect(Object.hasOwn(value, 'unit')).toBe(true);
+			expect(Object.hasOwn(value, 'meta')).toBe(false);
+			expect(Object.hasOwn(value, 'kind')).toBe(false);
+			expect('meta' in value).toBe(true);
+			expect('kind' in value).toBe(true);
+			const forInKeys: string[] = [];
+			for (const key in value) forInKeys.push(key);
+			expect(forInKeys).toEqual(['unit', 'kind']);
+			expect(mocks.getValueAtPath).toHaveBeenCalledTimes(1);
+
+			expect(value.meta).toBe(7);
+			expect(value.meta).toBe(7);
+			expect(value.kind).toBe('metric');
+			expect(value.unit).toBe('kg');
+			expect(mocks.getValueAtPath).toHaveBeenCalledTimes(4);
+
+			// Writing an inherited field creates an own property on the wrapper
+			value.meta = 42;
+			expect(Object.hasOwn(value, 'meta')).toBe(true);
+			expect(value.meta).toBe(42);
+		});
 	});
 });
 

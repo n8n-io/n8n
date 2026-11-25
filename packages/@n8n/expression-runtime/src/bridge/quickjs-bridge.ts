@@ -1148,8 +1148,6 @@ export class QuickJsBridge implements RuntimeBridge {
 	var defineProperty = Object.defineProperty;
 	var getPrototypeOf = Object.getPrototypeOf;
 	var objectPrototype = Object.prototype;
-	var isPrototypeOf = objectPrototype.isPrototypeOf;
-	var objectToString = objectPrototype.toString;
 	var objectKeys = Object.keys;
 	var sameValue = Object.is;
 	var reflectApply = Reflect.apply;
@@ -1179,27 +1177,19 @@ export class QuickJsBridge implements RuntimeBridge {
 			return { ok: false };
 		}
 	}
-	function hasPrototype(proto, target) {
-		try {
-			return reflectApply(isPrototypeOf, proto, [target]);
-		} catch (_e) {
-			return false;
-		}
-	}
 	function encodeBoxedNumber(value) {
 		if (sameValue(value, -0)) return '-0';
 		return isFiniteNumber(value) ? value : BoxedString(value);
 	}
 	var boxedSpecs = [
-		{ kind: 'string', proto: stringPrototype, tag: '[object String]', unbox: stringValueOf, encode: function(v) { return v; } },
-		{ kind: 'number', proto: numberPrototype, tag: '[object Number]', unbox: numberValueOf, encode: encodeBoxedNumber },
-		{ kind: 'boolean', proto: booleanPrototype, tag: '[object Boolean]', unbox: booleanValueOf, encode: function(v) { return v; } },
+		{ kind: 'string', proto: stringPrototype, unbox: stringValueOf, encode: function(v) { return v; } },
+		{ kind: 'number', proto: numberPrototype, unbox: numberValueOf, encode: encodeBoxedNumber },
+		{ kind: 'boolean', proto: booleanPrototype, unbox: booleanValueOf, encode: function(v) { return v; } },
 	];
 	if (bigIntPrototype && bigIntValueOf && bigIntToString) {
 		boxedSpecs.push({
 			kind: 'bigint',
 			proto: bigIntPrototype,
-			tag: '[object BigInt]',
 			unbox: bigIntValueOf,
 			encode: function(v) { return reflectApply(bigIntToString, v, []); },
 		});
@@ -1212,25 +1202,26 @@ export class QuickJsBridge implements RuntimeBridge {
 			return null;
 		}
 		if (proto === objectPrototype || proto === null) return null;
-		for (var i = 0; i < boxedSpecs.length; i++) {
-			var spec = boxedSpecs[i];
-			if (proto === spec.proto) {
-				var unboxed = tryUnbox(spec.unbox, v);
-				if (unboxed.ok) return { __isBoxedPrimitive: spec.kind, __value: spec.encode(unboxed.value) };
+		for (var depth = 0; depth < 64 && proto !== null; depth++) {
+			if (proto === objectPrototype) return null;
+			for (var i = 0; i < boxedSpecs.length; i++) {
+				var spec = boxedSpecs[i];
+				if (proto === spec.proto) {
+					var unboxed = tryUnbox(spec.unbox, v);
+					return unboxed.ok ? { __isBoxedPrimitive: spec.kind, __value: spec.encode(unboxed.value) } : null;
+				}
+			}
+			try {
+				proto = getPrototypeOf(proto);
+			} catch (_e) {
+				return null;
 			}
 		}
-		var tag = '';
-		try {
-			tag = reflectApply(objectToString, v, []);
-		} catch (_e) {
-			tag = '';
-		}
+		if (proto !== null) return null;
 		for (var j = 0; j < boxedSpecs.length; j++) {
 			var fallback = boxedSpecs[j];
-			if (tag === fallback.tag || hasPrototype(fallback.proto, v)) {
-				var unboxed2 = tryUnbox(fallback.unbox, v);
-				if (unboxed2.ok) return { __isBoxedPrimitive: fallback.kind, __value: fallback.encode(unboxed2.value) };
-			}
+			var unboxed2 = tryUnbox(fallback.unbox, v);
+			if (unboxed2.ok) return { __isBoxedPrimitive: fallback.kind, __value: fallback.encode(unboxed2.value) };
 		}
 		return null;
 	}

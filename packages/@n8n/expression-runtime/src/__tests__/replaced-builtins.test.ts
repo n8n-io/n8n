@@ -9,15 +9,25 @@ const payload = JSON.parse('{"__proto__":{"flag":1},"kept":2}') as Record<string
 /** Production calls pass the workflow timezone, which makes luxon use the Intl polyfill. */
 const options = { timezone: 'Europe/Paris' };
 
+class BoxedSubclass extends Number {
+	get meta() {
+		return 7;
+	}
+}
+
+const json = {
+	nested: { c: 1 },
+	list: ['a', 'b'],
+	payload,
+	error: Object.assign(new Error('from host'), { code: 400 }),
+	boxed: Object('from host') as object,
+	taggedBoxed: Object.assign(Object('from host') as object, { meta: 1 }),
+	boxedSubclass: new BoxedSubclass(5),
+};
+
 const data = {
-	$json: {
-		nested: { c: 1 },
-		list: ['a', 'b'],
-		payload,
-		error: Object.assign(new Error('from host'), { code: 400 }),
-		boxed: Object('from host') as object,
-		taggedBoxed: Object.assign(Object('from host') as object, { meta: 1 }),
-	},
+	$json: json,
+	$input: { first: () => ({ json }) },
 };
 
 /** Expressions that move values across the runtime boundary, with what each must return. */
@@ -71,7 +81,7 @@ const probes: Array<{ expression: string; check: (result: unknown) => void }> = 
 	},
 	{
 		expression:
-			'{{ [new String("ab"), new Number(-0), new Boolean(true), $json.boxed, $json.taggedBoxed.meta] }}',
+			'{{ [new String("ab"), new Number(-0), new Boolean(true), $json.boxed, $json.taggedBoxed.meta, $json.boxedSubclass.meta, $input.first().json.taggedBoxed.meta, $input.first().json.boxedSubclass.meta] }}',
 		check: (result) => {
 			const values = result as Array<{ valueOf(): unknown }>;
 			expect(values[0]).toBeInstanceOf(String);
@@ -83,18 +93,23 @@ const probes: Array<{ expression: string; check: (result: unknown) => void }> = 
 			expect(values[3]).toBeInstanceOf(String);
 			expect(values[3].valueOf()).toBe('from host');
 			expect(values[4]).toBe(1);
+			expect(values[5]).toBe(7);
+			expect(values[6]).toBe(1);
+			expect(values[7]).toBe(7);
 		},
 	},
 ];
 
 const builtIns = [
 	'Object.assign',
+	'Object.create',
 	'Object.keys',
 	'Object.entries',
 	'Object.hasOwn',
 	'Object.is',
 	'Object.defineProperty',
 	'Object.getPrototypeOf',
+	'Object.setPrototypeOf',
 	'Object.getOwnPropertyDescriptor',
 	'Object.getOwnPropertyDescriptors',
 	'Array.from',

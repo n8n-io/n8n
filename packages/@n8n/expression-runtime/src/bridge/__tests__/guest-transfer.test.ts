@@ -333,4 +333,116 @@ describe('prepareForGuest', () => {
 		expect(result.fake).not.toBeInstanceOf(Error);
 		expect(result.fake).toEqual({ __n8nType: 'Error', __message: 'fake' });
 	});
+
+	it('returns plain boxed primitives untouched without wrapping', () => {
+		const value = { json: { s: Object('ab') as object, n: Object(5) as object } };
+
+		expect(prepareForGuest(value)).toBe(value);
+	});
+
+	it('keeps own and inherited fields of boxed primitives across prepareForGuest', () => {
+		class Box extends Number {
+			unit = 'kg';
+
+			get meta() {
+				return 7;
+			}
+		}
+		Object.defineProperty(Box.prototype, 'kind', {
+			value: 'metric',
+			enumerable: true,
+			configurable: true,
+		});
+
+		const tagged = Object.defineProperty(
+			Object.assign(Object('ab') as object, {
+				meta: 1,
+				info: { deep: 'x' },
+				__n8nType: 'DateTime',
+				err: new Error('nested'),
+				fn: () => 1,
+			}),
+			'secret',
+			{ value: 9 },
+		);
+		const circular = Object('loop') as object & { self?: unknown };
+		circular.self = circular;
+		const withThrowingGetter = Object('ok') as object;
+		Object.defineProperty(withThrowingGetter, 'good', { value: 3, enumerable: true });
+		Object.defineProperty(withThrowingGetter, 'bad', {
+			get() {
+				throw new Error('getter boom');
+			},
+			enumerable: true,
+		});
+		const onlyFn = Object.assign(Object('fn-only') as object, { fn: () => 1 });
+
+		const prepared = prepareForGuest({
+			tagged,
+			box: new Box(5),
+			circular,
+			withThrowingGetter,
+			onlyFn,
+		});
+		const first = decodeHostValue(structuredClone(prepared)) as {
+			tagged: Record<string, unknown> & { valueOf(): string };
+			box: Record<string, unknown> & { valueOf(): number };
+			circular: Record<string, unknown> & { valueOf(): string };
+			withThrowingGetter: Record<string, unknown> & { valueOf(): string };
+			onlyFn: Record<string, unknown> & { valueOf(): string };
+		};
+		const second = decodeHostValue(structuredClone(prepared)) as typeof first;
+
+		expect(first.tagged).toBeInstanceOf(String);
+		expect(first.tagged.valueOf()).toBe('ab');
+		expect(first.tagged.meta).toBe(1);
+		expect(first.tagged.info).toEqual({ deep: 'x' });
+		expect(first.tagged.__n8nType).toBe('DateTime');
+		expect(first.tagged.err).toBeInstanceOf(Error);
+		expect((first.tagged.err as Error).message).toBe('nested');
+		expect(first.tagged.fn).toBeUndefined();
+		expect(first.tagged.secret).toBe(9);
+		expect(Object.keys(first.tagged)).toEqual(['0', '1', 'meta', 'info', '__n8nType', 'err']);
+		expect(Object.hasOwn(first.tagged, 'secret')).toBe(true);
+
+		expect(first.box).toBeInstanceOf(Number);
+		expect(first.box.valueOf()).toBe(5);
+		expect(first.box.unit).toBe('kg');
+		expect(first.box.meta).toBe(7);
+		expect(first.box.kind).toBe('metric');
+		expect(Object.keys(first.box)).toEqual(['unit']);
+		expect(Object.hasOwn(first.box, 'meta')).toBe(false);
+		expect('meta' in first.box).toBe(true);
+
+		expect(first.circular).toBeInstanceOf(String);
+		expect(first.circular.valueOf()).toBe('loop');
+		expect(first.circular.self).toBeUndefined();
+
+		expect(first.withThrowingGetter).toBeInstanceOf(String);
+		expect(first.withThrowingGetter.valueOf()).toBe('ok');
+		expect(first.withThrowingGetter.good).toBe(3);
+
+		expect(first.onlyFn).toBeInstanceOf(String);
+		expect(first.onlyFn.valueOf()).toBe('fn-only');
+		expect(Object.keys(first.onlyFn)).toEqual(['0', '1', '2', '3', '4', '5', '6']);
+
+		// Rebuilding twice yields independent wrappers
+		first.tagged.meta = 999;
+		expect(second.tagged.meta).toBe(1);
+	});
+
+	it('keeps a spoofed top-level BoxedPrimitive marker as plain user data', () => {
+		const spoof = {
+			__n8nType: 'BoxedPrimitive',
+			__value: Object('ab') as object,
+			__props: { meta: 1 },
+		};
+
+		const result = roundTrip(spoof) as Record<string, unknown>;
+
+		expect(result).not.toBeInstanceOf(String);
+		expect(result.__n8nType).toBe('BoxedPrimitive');
+		expect(result.__value).toBeInstanceOf(String);
+		expect(result.__props).toEqual({ meta: 1 });
+	});
 });

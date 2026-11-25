@@ -60,6 +60,30 @@ describe('Expression - boxed primitives (engine parity)', () => {
 		{ value: 9 },
 	);
 
+	class BoxedSubclass extends Number {
+		get meta() {
+			return 7;
+		}
+	}
+	class DecoratedSubclass extends Number {
+		unit = 'kg';
+
+		get meta() {
+			return 7;
+		}
+	}
+	let toStringTagReads = 0;
+	class TaggedHostClass {
+		value = 1;
+
+		get [Symbol.toStringTag]() {
+			toStringTagReads++;
+			this.value = 99;
+			return 'TaggedHostClass';
+		}
+	}
+	const taggedHostClass = new TaggedHostClass();
+
 	const item = {
 		json: {
 			s: Object('ab') as object,
@@ -78,6 +102,9 @@ describe('Expression - boxed primitives (engine parity)', () => {
 			withErrorField,
 			withHidden,
 			withHiddenAndEnum,
+			subclass: new BoxedSubclass(5),
+			decoratedSubclass: new DecoratedSubclass(5),
+			taggedHostClass,
 			err: Object.assign(new Error('boom'), {
 				s: Object('ab') as object,
 				n: Object(5) as object,
@@ -252,8 +279,15 @@ describe('Expression - boxed primitives (engine parity)', () => {
 				expect(valueOf(errStr)).toBe('ab');
 			});
 
-			it.each(['$json', '$input.item.json'])(
-				'keeps the value, the type and the own fields of a wrapper through %s',
+			it.each([
+				'$json',
+				'$input.item.json',
+				"$('Source').item.json",
+				"$('Source').first().json",
+				'$input.first().json',
+				"$items('Source')[0].json",
+			])(
+				'keeps the value, the type, and the own and inherited fields of a wrapper through %s',
 				(root) => {
 					expect(evaluate(`={{ ${root}.tagged.meta }}`, native)).toBe(1);
 					expect(evaluate(`={{ ${root}.tagged.info.deep }}`, native)).toBe('x');
@@ -269,11 +303,40 @@ describe('Expression - boxed primitives (engine parity)', () => {
 					expect(evaluate(`={{ Object.keys(${root}.taggedNumber) }}`, native)).toEqual(['unit']);
 					expect(evaluate(`={{ ${root}.taggedNumber + 1 }}`, native)).toBe(6);
 					expect(evaluate(`={{ ${root}.taggedNumber instanceof Number }}`, native)).toBe(true);
+
+					expect(evaluate(`={{ ${root}.withHidden.meta }}`, native)).toBe(1);
+					expect(evaluate(`={{ ${root}.withHidden + 1 }}`, native)).toBe(6);
+					expect(evaluate(`={{ ${root}.withHidden instanceof Number }}`, native)).toBe(true);
+					expect(evaluate(`={{ Object.keys(${root}.withHidden) }}`, native)).toEqual([]);
+					expect(evaluate(`={{ ${root}.withHiddenAndEnum.secret }}`, native)).toBe(9);
+					expect(evaluate(`={{ ${root}.withHiddenAndEnum.unit }}`, native)).toBe('kg');
+					expect(evaluate(`={{ Object.keys(${root}.withHiddenAndEnum) }}`, native)).toEqual([
+						'0',
+						'1',
+						'unit',
+					]);
+
+					expect(evaluate(`={{ ${root}.withErrorField.ok }}`, native)).toBe(2);
+					expect(evaluate(`={{ ${root}.withErrorField.err instanceof Error }}`, native)).toBe(true);
+					expect(evaluate(`={{ ${root}.withErrorField.err.message }}`, native)).toBe('field boom');
+
+					expect(evaluate(`={{ ${root}.subclass instanceof Number }}`, native)).toBe(true);
+					expect(evaluate(`={{ ${root}.subclass + 1 }}`, native)).toBe(6);
+					expect(evaluate(`={{ ${root}.subclass.meta }}`, native)).toBe(7);
+					expect(evaluate(`={{ 'meta' in ${root}.subclass }}`, native)).toBe(true);
+					expect(evaluate(`={{ Object.keys(${root}.subclass) }}`, native)).toEqual([]);
+					expect(evaluate(`={{ Object.hasOwn(${root}.subclass, 'meta') }}`, native)).toBe(false);
+
+					expect(evaluate(`={{ ${root}.decoratedSubclass.meta }}`, native)).toBe(7);
+					expect(evaluate(`={{ ${root}.decoratedSubclass.unit }}`, native)).toBe('kg');
+					expect(evaluate(`={{ Object.keys(${root}.decoratedSubclass) }}`, native)).toEqual([
+						'unit',
+					]);
 				},
 			);
 
 			it.each(['$json', '$input.item.json'])(
-				'reads circular, getter-backed, and error-bearing own fields lazily through %s',
+				'reads circular, getter-backed, and Symbol.toStringTag-guarded host objects lazily through %s',
 				(root) => {
 					expect(evaluate(`={{ ${root}.circular + "!" }}`, native)).toBe('ab!');
 					expect(evaluate(`={{ ${root}.circular.self + "!" }}`, native)).toBe('ab!');
@@ -293,21 +356,11 @@ describe('Expression - boxed primitives (engine parity)', () => {
 					expect(evaluate(`={{ ${root}.withGetter.lazy }}`, native)).toBe('computed');
 					expect(getterReads).toBe(1);
 
-					expect(evaluate(`={{ ${root}.withErrorField.ok }}`, native)).toBe(2);
-					expect(evaluate(`={{ ${root}.withErrorField.err instanceof Error }}`, native)).toBe(true);
-					expect(evaluate(`={{ ${root}.withErrorField.err.message }}`, native)).toBe('field boom');
-
-					expect(evaluate(`={{ ${root}.withHidden.meta }}`, native)).toBe(1);
-					expect(evaluate(`={{ ${root}.withHidden + 1 }}`, native)).toBe(6);
-					expect(evaluate(`={{ ${root}.withHidden instanceof Number }}`, native)).toBe(true);
-					expect(evaluate(`={{ Object.keys(${root}.withHidden) }}`, native)).toEqual([]);
-					expect(evaluate(`={{ ${root}.withHiddenAndEnum.secret }}`, native)).toBe(9);
-					expect(evaluate(`={{ ${root}.withHiddenAndEnum.unit }}`, native)).toBe('kg');
-					expect(evaluate(`={{ Object.keys(${root}.withHiddenAndEnum) }}`, native)).toEqual([
-						'0',
-						'1',
-						'unit',
-					]);
+					taggedHostClass.value = 1;
+					toStringTagReads = 0;
+					expect(evaluate(`={{ ${root}.taggedHostClass.value }}`, native)).toBe(1);
+					expect(toStringTagReads).toBe(0);
+					expect(taggedHostClass.value).toBe(1);
 				},
 			);
 

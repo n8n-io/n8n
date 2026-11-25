@@ -22,12 +22,10 @@ import {
 	getPrototypeOf,
 	isArray,
 	isArrayBufferView,
-	isPrototypeOf,
 	numberPrototype,
 	numberValueOf,
 	objectKeys,
 	objectPrototype,
-	objectToString,
 	reflectApply,
 	reflectGet,
 	stringPrototype,
@@ -173,25 +171,17 @@ function tryUnbox<T>(value: object, fn: (this: unknown) => T): T | undefined {
 	}
 }
 
-function hasPrototype(proto: object, value: object): boolean {
-	try {
-		const found: boolean = reflectApply(isPrototypeOf, proto, [value]);
-		return found;
-	} catch {
-		return false;
-	}
-}
+const MAX_PROTOTYPE_DEPTH = 64;
 
 const BOXED_PRIMITIVE_SPECS: ReadonlyArray<{
 	proto: object;
-	tag: string;
 	unbox: (this: unknown) => string | number | boolean | bigint;
 }> = [
-	{ proto: stringPrototype, tag: '[object String]', unbox: stringValueOf },
-	{ proto: numberPrototype, tag: '[object Number]', unbox: numberValueOf },
-	{ proto: booleanPrototype, tag: '[object Boolean]', unbox: booleanValueOf },
+	{ proto: stringPrototype, unbox: stringValueOf },
+	{ proto: numberPrototype, unbox: numberValueOf },
+	{ proto: booleanPrototype, unbox: booleanValueOf },
 	...(bigIntPrototype !== undefined && bigIntValueOf !== undefined
-		? [{ proto: bigIntPrototype, tag: '[object BigInt]', unbox: bigIntValueOf }]
+		? [{ proto: bigIntPrototype, unbox: bigIntValueOf }]
 		: []),
 ];
 
@@ -199,9 +189,12 @@ const BOXED_PRIMITIVE_SPECS: ReadonlyArray<{
  * Return the primitive inside a boxed String, Number, Boolean, or BigInt.
  * Return undefined for any other object, including an object that inherits
  * a wrapper prototype without its internal slot.
+ *
+ * Walks the prototype chain without calling `Object.prototype.toString`, so
+ * custom `Symbol.toStringTag` getters never run.
  */
 export function unboxPrimitive(value: object): string | number | boolean | bigint | undefined {
-	let proto: unknown;
+	let proto: object | null;
 	try {
 		proto = getPrototypeOf(value);
 	} catch {
@@ -209,24 +202,26 @@ export function unboxPrimitive(value: object): string | number | boolean | bigin
 	}
 	if (proto === objectPrototype || proto === null) return undefined;
 
-	for (const spec of BOXED_PRIMITIVE_SPECS) {
-		if (proto === spec.proto) {
-			const unboxed = tryUnbox(value, spec.unbox);
-			if (unboxed !== undefined) return unboxed;
+	for (let depth = 0; depth < MAX_PROTOTYPE_DEPTH && proto !== null; depth++) {
+		if (proto === objectPrototype) return undefined;
+		for (const spec of BOXED_PRIMITIVE_SPECS) {
+			if (proto === spec.proto) {
+				return tryUnbox(value, spec.unbox);
+			}
+		}
+		try {
+			proto = getPrototypeOf(proto);
+		} catch {
+			return undefined;
 		}
 	}
 
-	let tag = '';
-	try {
-		tag = reflectApply(objectToString, value, []);
-	} catch {
-		tag = '';
-	}
+	// Reached null without hitting this realm's Object.prototype: probe the
+	// internal slots directly for cross-realm or null-chain wrappers.
+	if (proto !== null) return undefined;
 	for (const spec of BOXED_PRIMITIVE_SPECS) {
-		if (tag === spec.tag || hasPrototype(spec.proto, value)) {
-			const unboxed = tryUnbox(value, spec.unbox);
-			if (unboxed !== undefined) return unboxed;
-		}
+		const unboxed = tryUnbox(value, spec.unbox);
+		if (unboxed !== undefined) return unboxed;
 	}
 	return undefined;
 }

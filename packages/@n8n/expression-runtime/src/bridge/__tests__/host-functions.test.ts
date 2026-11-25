@@ -119,6 +119,80 @@ describe.each([
 		expect(read(fake)).toEqual({ __isObject: true, __keys: [] });
 	});
 
+	it('describes inherited fields of boxed subclasses without invoking getters or Symbol.toStringTag', () => {
+		const readMeta = vi.fn(() => 7);
+		const readTag = vi.fn(() => 'Box');
+		class BaseBox extends Number {
+			get baseMeta() {
+				return 'base';
+			}
+
+			helper() {
+				return 1;
+			}
+		}
+		class Box extends BaseBox {
+			unit = 'kg';
+
+			get meta() {
+				return readMeta();
+			}
+
+			get [Symbol.toStringTag]() {
+				return readTag();
+			}
+		}
+		Object.defineProperty(Box.prototype, 'kind', {
+			value: 'metric',
+			enumerable: true,
+			configurable: true,
+		});
+
+		const value = new Box(5);
+		const result = read(value) as {
+			__isBoxed: boolean;
+			__value: unknown;
+			__keys: string[];
+			__protoKeys?: string[];
+			__protoHiddenKeys?: string[];
+		};
+
+		expect(readMeta).not.toHaveBeenCalled();
+		expect(readTag).not.toHaveBeenCalled();
+		expect(result.__isBoxed).toBe(true);
+		expect(result.__value).toBe(value);
+		expect(result.__keys).toEqual(['unit']);
+		expect(result.__protoKeys).toEqual(['kind']);
+		expect(result.__protoHiddenKeys).toEqual(['meta', 'baseMeta']);
+
+		class EmptyBox extends Number {
+			helper() {
+				return 1;
+			}
+		}
+		const empty = new EmptyBox(5);
+		expect(read(empty)).toBe(empty);
+	});
+
+	it('does not invoke Symbol.toStringTag getters on host class instances', () => {
+		const readTag = vi.fn(function (this: { value: number }) {
+			this.value = 99;
+			return 'Tagged';
+		});
+		class Tagged {
+			value = 1;
+
+			get [Symbol.toStringTag]() {
+				return readTag.call(this);
+			}
+		}
+
+		const instance = new Tagged();
+		expect(read(instance)).toEqual({ __isObject: true, __keys: ['value'] });
+		expect(readTag).not.toHaveBeenCalled();
+		expect(instance.value).toBe(1);
+	});
+
 	it('returns undefined for functions without calling them', () => {
 		const value = vi.fn();
 
