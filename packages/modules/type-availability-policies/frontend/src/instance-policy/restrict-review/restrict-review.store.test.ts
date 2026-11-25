@@ -19,7 +19,17 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const NOTION = 'n8n-nodes-base.notion';
+const SLACK = 'n8n-nodes-base.slack';
 const IN_USE = { uses: 3, workflows: 2, activeWorkflows: 0, projects: 1 };
+
+/** Restricts two types in use, so that the Slack review waits for the Notion one. */
+function restrictNotionThenSlack() {
+	mocks.fetchNodeTypeUsage.mockResolvedValue({ [NOTION]: IN_USE, [SLACK]: IN_USE });
+	const review = useRestrictReviewStore();
+	const notion = review.reviewChange('node', NOTION, 'deny', 'Notion');
+	const slack = review.reviewChange('node', SLACK, 'deny', 'Slack');
+	return { review, notion, slack };
+}
 
 describe('useRestrictReviewStore', () => {
 	beforeEach(() => {
@@ -28,12 +38,27 @@ describe('useRestrictReviewStore', () => {
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 	});
 
-	it('applies at once to restrict a type that no workflow uses', async () => {
+	it('applies with no review to restrict a type that no workflow uses', async () => {
 		await useInstancePolicyStore().loadUsage('credential');
 		const review = useRestrictReviewStore();
 
-		expect(review.reviewChange('credential', 'notionApi', 'deny', 'Notion API')).toBe(true);
+		await expect(
+			review.reviewChange('credential', 'notionApi', 'deny', 'Notion API'),
+		).resolves.toBe(true);
 		expect(review.request).toBeNull();
+	});
+
+	it('reads the usage again before it restricts, so a type that is now in use opens a review', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValueOnce({});
+		await useInstancePolicyStore().loadUsage('node');
+		const review = useRestrictReviewStore();
+
+		const confirmed = review.reviewChange('node', NOTION, 'deny', 'Notion');
+		await vi.waitFor(() => expect(review.request?.usage).toEqual(IN_USE));
+		expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(2);
+
+		review.resolve(false);
+		await expect(confirmed).resolves.toBe(false);
 	});
 
 	it('applies at once to allow a type or open it to projects', async () => {
@@ -45,7 +70,7 @@ describe('useRestrictReviewStore', () => {
 		expect(review.request).toBeNull();
 	});
 
-	it('loads missing counts, then opens a review with the usage of a type in use', async () => {
+	it('loads the counts, then opens a review with the usage of a type in use', async () => {
 		const review = useRestrictReviewStore();
 
 		const confirmed = review.reviewChange('node', NOTION, 'deny', 'Notion');
@@ -64,7 +89,7 @@ describe('useRestrictReviewStore', () => {
 		expect(review.request).toBeNull();
 	});
 
-	it('applies with no review when the missing counts show no usage', async () => {
+	it('applies with no review when the counts show no usage', async () => {
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		const review = useRestrictReviewStore();
 
@@ -96,18 +121,44 @@ describe('useRestrictReviewStore', () => {
 		expect(review.request).toBeNull();
 	});
 
-	it('cancels an open review when another one opens', async () => {
-		await useInstancePolicyStore().loadUsage('node');
-		const review = useRestrictReviewStore();
-
-		const first = review.reviewChange('node', NOTION, 'deny', 'Notion');
+	it('shows a second review only after the admin answers the first one', async () => {
+		const { review, notion, slack } = restrictNotionThenSlack();
+		expect(review.isChecking('node', NOTION)).toBe(true);
 		await vi.waitFor(() => expect(review.request?.label).toBe('Notion'));
-		const second = review.reviewChange('node', NOTION, 'deny', 'Notion again');
+		// The open review no longer checks, and the one that waits for its turn still does.
+		expect(review.isChecking('node', NOTION)).toBe(false);
+		expect(review.isChecking('node', SLACK)).toBe(true);
 
-		await expect(first).resolves.toBe(false);
-		await vi.waitFor(() => expect(review.request?.label).toBe('Notion again'));
 		review.resolve(true);
-		await expect(second).resolves.toBe(true);
+		await expect(notion).resolves.toBe(true);
+		await vi.waitFor(() => expect(review.request?.label).toBe('Slack'));
+		expect(review.isChecking('node', SLACK)).toBe(false);
+
+		review.resolve(false);
+		await expect(slack).resolves.toBe(false);
+		expect(review.request).toBeNull();
+	});
+
+	it('drops a review that waits for its turn when a later change of its type starts', async () => {
+		const { review, notion, slack } = restrictNotionThenSlack();
+		await vi.waitFor(() => expect(review.request?.label).toBe('Notion'));
+		expect(review.reviewChange('node', SLACK, 'allow', 'Slack')).toBe(true);
+
+		review.resolve(true);
+		await expect(notion).resolves.toBe(true);
+		await expect(slack).resolves.toBe(false);
+		expect(review.request).toBeNull();
+	});
+
+	it('drops each waiting review when all reviews are cancelled', async () => {
+		const { review, notion, slack } = restrictNotionThenSlack();
+		await vi.waitFor(() => expect(review.request?.label).toBe('Notion'));
+		review.cancelAll();
+		expect(review.isChecking('node', SLACK)).toBe(false);
+
+		await expect(notion).resolves.toBe(false);
+		await expect(slack).resolves.toBe(false);
+		expect(review.request).toBeNull();
 	});
 
 	it('opens no review that was still loading its counts when all reviews are cancelled', async () => {

@@ -58,7 +58,13 @@ describe('useInstanceTypeAccess', () => {
 		const { types, changeAccess } = useInstanceTypeAccess('node');
 
 		expect(types.value).toEqual([
-			{ name: 'n8n-nodes-base.slack', access: 'allow', matchedRuleId: null, editable: true },
+			{
+				name: 'n8n-nodes-base.slack',
+				access: 'allow',
+				matchedRuleId: null,
+				editable: true,
+				checking: false,
+			},
 		]);
 		expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1);
 
@@ -102,7 +108,7 @@ describe('useInstanceTypeAccess', () => {
 		await waitFor(() => expect(types.value).toHaveLength(1));
 
 		const change = changeAccess('n8n-nodes-base.slack', 'deny', 'Slack');
-		expect(types.value[0].access).toBe('deny');
+		await waitFor(() => expect(types.value[0].access).toBe('deny'));
 		await change;
 
 		// The read after the save still answers with version 1, so the pick must stay.
@@ -127,6 +133,7 @@ describe('useInstanceTypeAccess', () => {
 		// A failed save drops its pick, but only its own, not the one made after it.
 		const first = changeAccess('n8n-nodes-base.slack', 'delegate', 'Slack');
 		const second = changeAccess('n8n-nodes-base.slack', 'deny', 'Slack');
+		await waitFor(() => expect(types.value[0].access).toBe('deny'));
 		firstSave.reject(new ResponseError('boom', { httpStatusCode: 500 }));
 		await first;
 
@@ -212,6 +219,24 @@ describe('useInstanceTypeAccess', () => {
 				'node',
 				expect.objectContaining({ rules: [expect.objectContaining({ action: 'deny' })] }),
 			);
+		});
+
+		it('marks the row as checking while its counts load', async () => {
+			await setup();
+			const counts = createDeferredPromise<Record<string, typeof inUse>>();
+			mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+			const review = useRestrictReviewStore();
+			const { types, changeAccess } = useInstanceTypeAccess('node');
+
+			const change = changeAccess('n8n-nodes-base.slack', 'deny', 'Slack');
+			expect(types.value[0].checking).toBe(true);
+
+			counts.resolve({ 'n8n-nodes-base.slack': inUse });
+			await waitFor(() => expect(review.request).not.toBeNull());
+			expect(types.value[0].checking).toBe(false);
+
+			review.resolve(false);
+			await change;
 		});
 
 		it('never asks before allowing a type', async () => {

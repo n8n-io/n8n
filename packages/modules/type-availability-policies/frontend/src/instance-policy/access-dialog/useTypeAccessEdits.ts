@@ -60,5 +60,12 @@ export function useTypeAccessEdits() {
 		}
 	}
 
-	return { accessOf, isLocked, canManage, usageOf, setAccess };
+	return {
+		accessOf,
+		isLocked,
+		isChecking: restrictReview.isChecking,
+		canManage,
+		usageOf,
+		setAccess,
+	};
 }

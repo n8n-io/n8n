@@ -3097,7 +3097,7 @@
 	"typeAvailabilityPolicies.restrictReview.uses": "{uses} across {workflows}",
 	"typeAvailabilityPolicies.restrictReview.usesCount": "{count} use | {count} uses",
 	"typeAvailabilityPolicies.restrictReview.activeWorkflows": "{count} active workflow | {count} active workflows",
-	"typeAvailabilityPolicies.restrictReview.consequence": "Affected workflows can't be published or executed.",
+	"typeAvailabilityPolicies.restrictReview.consequence": "Affected workflows can't be published. Active workflows stay published, but their runs will fail.",
 	"typeAvailabilityPolicies.restrictReview.confirm": "Restrict",
 	"typeAvailabilityPolicies.usage.none": "Not used in any workflow",
 	"typeAvailabilityPolicies.usage.summary": "Used {uses} across {workflows} · {active} active",

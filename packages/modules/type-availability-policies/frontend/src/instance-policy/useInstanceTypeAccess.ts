@@ -13,6 +13,8 @@ export type InstanceTypeAccessRow = {
 	matchedRuleId: string | null;
 	/** See `isTypeAccessEditable`. */
 	editable: boolean;
+	/** A restriction of the type waits for its usage counts before it applies or asks. */
+	checking: boolean;
 };
 
 type PendingChange = { access: PolicyAction; savedVersion?: number };
@@ -31,6 +33,7 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 			access: pending.get(type.name)?.access ?? type.access,
 			matchedRuleId: type.matchedRuleId,
 			editable: isTypeAccessEditable(type),
+			checking: restrictReview.isChecking(kind, type.name),
 		})),
 	);
 

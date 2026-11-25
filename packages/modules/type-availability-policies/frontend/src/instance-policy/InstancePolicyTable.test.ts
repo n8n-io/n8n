@@ -20,6 +20,7 @@ const row = (
 	access,
 	matchedRuleId: null,
 	editable,
+	checking: false,
 	icon: { type: 'icon', name: 'key-round' },
 	usage,
 });

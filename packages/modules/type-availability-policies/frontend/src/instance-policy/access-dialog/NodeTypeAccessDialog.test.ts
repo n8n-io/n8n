@@ -49,10 +49,10 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 
 // Element Plus selects do not open in jsdom, so the stub shows the value and picks the other one.
 const typeAccessSelectStub = {
-	props: ['modelValue', 'label'],
+	props: ['modelValue', 'label', 'loading'],
 	emits: ['update:modelValue'],
 	template:
-		"<button data-test-id=\"type-access-select\" :data-value=\"modelValue\" @click=\"$emit('update:modelValue', modelValue === 'deny' ? 'allow' : 'deny')\">{{ label }}</button>",
+		'<button data-test-id="type-access-select" :data-value="modelValue" :data-loading="loading" @click="$emit(\'update:modelValue\', modelValue === \'deny\' ? \'allow\' : \'deny\')">{{ label }}</button>',
 };
 
 function nodeType(name: string, displayName: string, credentials: string[] = []) {
@@ -350,7 +350,7 @@ describe('NodeTypeAccessDialog', () => {
 			)[1];
 
 		await fireEvent.click(notionOAuth());
-		expect(notionOAuth()).toHaveAttribute('data-value', 'deny');
+		await waitFor(() => expect(notionOAuth()).toHaveAttribute('data-value', 'deny'));
 		save.reject(new Error('offline'));
 
 		await waitFor(() =>
@@ -423,6 +423,7 @@ describe('NodeTypeAccessDialog', () => {
 			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
 
 		await fireEvent.click(nodeSelect());
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
 		await fireEvent.click(nodeSelect());
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
 
@@ -464,6 +465,22 @@ describe('NodeTypeAccessDialog', () => {
 		await waitFor(() => expect(review.request).toBeNull());
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
 		expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+	});
+
+	it('shows that a restriction waits for the usage counts', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+		const counts = createDeferredPromise<Record<string, unknown>>();
+		mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+		const nodeSelect = () =>
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
+
+		await fireEvent.click(nodeSelect());
+
+		await waitFor(() => expect(nodeSelect()).toHaveAttribute('data-loading', 'true'));
+
+		counts.resolve({});
+		await waitFor(() => expect(nodeSelect()).toHaveAttribute('data-loading', 'false'));
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
 	});
 
 	it('restricts a node type in use when the admin confirms', async () => {

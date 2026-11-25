@@ -1,7 +1,9 @@
+import { N8nDialog } from '@n8n/design-system';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h } from 'vue';
 
 import RestrictReviewDialog from './RestrictReviewDialog.vue';
 import { useRestrictReviewStore, type RestrictReviewRequest } from './restrict-review.store';
@@ -11,6 +13,28 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const renderComponent = createComponentRenderer(RestrictReviewDialog);
+
+async function clickReviewOverlay() {
+	const review = (await screen.findByTestId('restrict-review-dialog')).closest('[role="dialog"]');
+	const overlay = review?.previousElementSibling;
+	if (!overlay) throw new Error('The review overlay was not rendered');
+	await userEvent.click(overlay);
+}
+
+// An access dialog with the review stacked above it, as the page renders them.
+const onAccessDialogOpenChange = vi.fn();
+const renderStacked = createComponentRenderer(
+	defineComponent({
+		setup: () => () => [
+			h(
+				N8nDialog,
+				{ open: true, header: 'Notion', 'onUpdate:open': onAccessDialogOpenChange },
+				() => h('p', { 'data-test-id': 'access-dialog-body' }, 'Access'),
+			),
+			h(RestrictReviewDialog, { stacked: true }),
+		],
+	}),
+);
 
 function open(request: RestrictReviewRequest) {
 	const review = useRestrictReviewStore();
@@ -52,7 +76,9 @@ describe('RestrictReviewDialog', () => {
 		);
 		expect(screen.getByTestId('restrict-review-usage')).toHaveTextContent('0 active workflows');
 		expect(
-			screen.getByText("Affected workflows can't be published or executed."),
+			screen.getByText(
+				"Affected workflows can't be published. Active workflows stay published, but their runs will fail.",
+			),
 		).toBeInTheDocument();
 	});
 
@@ -105,6 +131,46 @@ describe('RestrictReviewDialog', () => {
 
 		expect(resolve).toHaveBeenCalledWith(false);
 		expect(resolve).not.toHaveBeenCalledWith(true);
+	});
+
+	it('cancels with a click outside', async () => {
+		const { resolve } = open(notion);
+
+		await clickReviewOverlay();
+
+		await waitFor(() => expect(resolve).toHaveBeenCalledWith(false));
+	});
+
+	describe('above an access dialog', () => {
+		function openStacked() {
+			const review = useRestrictReviewStore();
+			review.request = notion;
+			const resolve = vi.spyOn(review, 'resolve');
+			renderStacked();
+			return { resolve };
+		}
+
+		it('closes only the review on Escape', async () => {
+			const { resolve } = openStacked();
+			await screen.findByTestId('restrict-review-dialog');
+
+			await userEvent.keyboard('{Escape}');
+
+			await waitFor(() => expect(resolve).toHaveBeenCalledWith(false));
+			expect(screen.queryByTestId('restrict-review-dialog')).not.toBeInTheDocument();
+			expect(onAccessDialogOpenChange).not.toHaveBeenCalled();
+			expect(screen.getByTestId('access-dialog-body')).toBeInTheDocument();
+		});
+
+		it('closes only the review on a click outside', async () => {
+			const { resolve } = openStacked();
+
+			await clickReviewOverlay();
+
+			await waitFor(() => expect(resolve).toHaveBeenCalledWith(false));
+			expect(onAccessDialogOpenChange).not.toHaveBeenCalled();
+			expect(screen.getByTestId('access-dialog-body')).toBeInTheDocument();
+		});
 	});
 
 	it('cancels with Escape', async () => {

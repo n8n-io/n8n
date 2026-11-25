@@ -202,14 +202,19 @@ describe('CredentialTypesTab', () => {
 		const filter = accessFilter(getByRole);
 		await userEvent.click(filter);
 		await userEvent.click(await findPopupItem(OPTION, 'Allowed (1)'));
+		const counts = createDeferredPromise<CredentialTypeUsageResponse>();
+		mocks.fetchCredentialTypeUsage.mockReturnValue(counts.promise);
 
 		await restrictBitly(getByTestId);
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveFocus());
+		counts.resolve({});
 
 		await waitFor(() => expect(filter).toHaveFocus());
 		expect(queryByTestId('instance-policy-open-bitlyApi')).not.toBeInTheDocument();
 	});
 
 	it('keeps the focus in the row when a changed row stays in the table', async () => {
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');

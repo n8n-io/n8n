@@ -114,6 +114,13 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	() => details.value && `${details.value.kind}:${details.value.name}`,
+	(next, previous) => {
+		if (previous && next !== previous) restrictReview.cancelAll();
+	},
+);
+
 // A user who skips the landing page on the way in goes back to Policies.
 const back = computed(() =>
 	entryRouteName.value === POLICIES_LANDING_VIEW

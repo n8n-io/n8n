@@ -442,6 +442,7 @@ describe('CredentialTypeAccessDialog', () => {
 
 		// Restricts the type, then allows it again while the first save runs.
 		await fireEvent.click(credentialSelect());
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
 		await fireEvent.click(credentialSelect());
 		firstSave.resolve({
 			scopeId: null,

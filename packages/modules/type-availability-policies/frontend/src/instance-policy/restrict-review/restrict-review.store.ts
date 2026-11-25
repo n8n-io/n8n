@@ -1,7 +1,8 @@
 import type { PolicyAction, TypeUsage } from '@n8n/api-types';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { runSerially } from '@n8n/utils/run-serially';
 import { defineStore } from 'pinia';
-import { shallowRef } from 'vue';
+import { shallowReactive, shallowRef } from 'vue';
 
 import {
 	RESTRICT_REVIEW_STORE_ID,
@@ -26,7 +27,14 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 
 	const request = shallowRef<RestrictReviewRequest | null>(null);
 	let answer: IDeferredPromise<boolean> | undefined;
-	const latestChange = new Map<string, symbol>();
+	// The latest change of each type. `checking` marks a restriction that waits for its counts or
+	// its turn, so that its control shows it.
+	const latestChange = shallowReactive(new Map<string, { id: symbol; checking: boolean }>());
+	const turns = new Map<string, Promise<unknown>>();
+
+	/** `true` while a restriction of the type waits and its review is not open yet. */
+	const isChecking = (kind: RestrictedTypeKind, name: string) =>
+		latestChange.get(`${kind}:${name}`)?.checking === true;
 
 	function resolve(confirmed: boolean) {
 		const open = answer;
@@ -41,10 +49,10 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 	}
 
 	/**
-	 * Starts a change of the access of a type. Returns `true` at once when the change can apply
-	 * with no review: it does not restrict, or no workflow uses the type. Otherwise returns a
-	 * promise that resolves `true` when the admin confirms the review. A later change of the same
-	 * type, for example to Allowed while the counts load, makes this review resolve `false`.
+	 * Starts a change of the access of a type. Returns `true` at once when the change does not
+	 * restrict. Otherwise reads the usage again and returns a promise that resolves `true` when no
+	 * workflow uses the type or the admin confirms the review. A later change of the same type, for
+	 * example to Allowed while the counts load, makes this review resolve `false`.
 	 */
 	function reviewChange(
 		kind: RestrictedTypeKind,
@@ -52,31 +60,41 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 		access: PolicyAction,
 		label: string,
 	): true | Promise<boolean> {
-		const key = `${kind}:${name}`;
-		const change = Symbol(key);
-		latestChange.set(key, change);
+		const id = Symbol(`${kind}:${name}`);
+		latestChange.set(`${kind}:${name}`, { id, checking: access === 'deny' });
 		if (access !== 'deny') return true;
-		if (instancePolicy.usageOf(kind, name)?.uses === 0) return true;
-		return confirmRestrict(kind, name, label, () => latestChange.get(key) === change);
+		return confirmRestrict(kind, name, label, id);
 	}
 
 	async function confirmRestrict(
 		kind: RestrictedTypeKind,
 		name: string,
 		label: string,
-		isLatest: () => boolean,
+		id: symbol,
 	): Promise<boolean> {
-		await instancePolicy.loadMissingUsage([kind]);
-		if (!isLatest()) return false;
-		const usage = instancePolicy.usageOf(kind, name);
-		if (usage?.uses === 0) return true;
+		const key = `${kind}:${name}`;
+		const isLatest = () => latestChange.get(key)?.id === id;
+		const stopChecking = () => {
+			if (isLatest()) latestChange.set(key, { id, checking: false });
+		};
 
-		resolve(false);
-		request.value = { kind, name, label, usage };
-		answer = createDeferredPromise<boolean>();
-		const confirmed = await answer.promise;
+		// The counts loaded with the page can be old: another tab can add the type to a workflow.
+		await instancePolicy.loadUsage(kind);
+		const usage = instancePolicy.usageOf(kind, name);
+		if (!isLatest() || usage?.uses === 0) {
+			stopChecking();
+			return isLatest();
+		}
+
+		const confirmed = await runSerially(turns, 'review', async () => {
+			stopChecking();
+			if (!isLatest()) return false;
+			request.value = { kind, name, label, usage };
+			answer = createDeferredPromise<boolean>();
+			return await answer.promise;
+		});
 		return confirmed && isLatest();
 	}
 
-	return { request, reviewChange, resolve, cancelAll };
+	return { request, isChecking, reviewChange, resolve, cancelAll };
 });

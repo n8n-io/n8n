@@ -30,7 +30,7 @@ const SECTION_LIMIT = 6;
 const i18n = useI18n();
 const NodeTypeIcon = computed(() => componentRegistry.get('node-type-icon'));
 const CredentialTypeIcon = computed(() => componentRegistry.get('credential-type-icon'));
-const { accessOf, isLocked, canManage, usageOf, setAccess } = useTypeAccessEdits();
+const { accessOf, isLocked, isChecking, canManage, usageOf, setAccess } = useTypeAccessEdits();
 
 const expanded = ref(false);
 
@@ -99,6 +99,7 @@ const visibleItems = computed(() =>
 					:model-value="accessOf(kind, item.name)"
 					:label="item.label"
 					:disabled="isLocked(kind, item.name)"
+					:loading="isChecking(kind, item.name)"
 					@update:model-value="(action) => setAccess(kind, item.name, action, item.label)"
 				/>
 			</li>
