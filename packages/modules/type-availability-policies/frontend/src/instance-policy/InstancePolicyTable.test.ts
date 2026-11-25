@@ -494,7 +494,7 @@ describe('InstancePolicyTable', () => {
 			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
 			await fireEvent.update(searchBox, 'Notion');
 
-			getByTestId('instance-policy-clear-filters').focus();
+			getByRole('button', { name: 'Clear search and filter' }).focus();
 			await userEvent.keyboard('{Enter}');
 
 			expect(noMatch(queryByTestId)).not.toBeInTheDocument();

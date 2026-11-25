@@ -4,6 +4,7 @@ import {
 	N8nButton,
 	N8nDataTableServer,
 	N8nDropdownMenu,
+	N8nEmptyState,
 	N8nIcon,
 	N8nInput,
 	N8nNodeIcon,
@@ -320,15 +321,15 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			@click:row="onRowClick"
 		>
 			<template v-if="noMatch" #cover>
-				<div :class="$style.noMatch" data-test-id="instance-policy-no-match">
-					<N8nText color="text-base">{{ noMatchText }}</N8nText>
-					<N8nButton
-						variant="outline"
-						:label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.clear')"
-						data-test-id="instance-policy-clear-filters"
-						@click="clearSearchAndFilter"
-					/>
-				</div>
+				<N8nEmptyState
+					size="small"
+					:description="noMatchText"
+					:button-text="
+						i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.clear')
+					"
+					data-test-id="instance-policy-no-match"
+					@click:button="clearSearchAndFilter"
+				/>
 			</template>
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
@@ -455,15 +456,6 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.noMatch {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xl) var(--spacing--md);
-	text-align: center;
 }
 
 .footer {
