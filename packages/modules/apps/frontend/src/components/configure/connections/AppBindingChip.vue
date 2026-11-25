@@ -16,10 +16,10 @@ import { useRouter } from 'vue-router';
 import {
 	BINDING_KINDS,
 	PERMISSION_LABELS,
-	WARNING_LABELS,
 	permissionsOf,
 	resourceIdOf,
 	togglePermission,
+	warningLabel,
 	type BindingPermission,
 } from './bindingKinds';
 
@@ -42,6 +42,9 @@ const draftPermissions = ref<BindingPermission[]>([]);
 const draftChanged = ref(false);
 
 const config = computed(() => BINDING_KINDS[props.binding.kind]);
+const warningText = computed(() =>
+	props.warning ? i18n.baseText(warningLabel(props.warning.code, props.binding.kind)) : undefined,
+);
 const permissions = computed(() => permissionsOf(props.binding));
 const missing = computed(() => 'missing' in props.binding);
 const href = computed(() =>
@@ -97,23 +100,25 @@ watch(permissions, (value) => {
 <template>
 	<N8nPopover :open="open" width="260px" align="start" @update:open="onOpen">
 		<template #trigger>
-			<button
-				type="button"
+			<!-- The popover owns the chip's click, so the tooltip sits on the warning icon. -->
+			<N8nButton
+				variant="outline"
+				size="medium"
 				:class="[$style.chip, { [$style.warning]: warning }]"
+				:aria-description="warningText"
 				:data-test-id="`app-binding-${binding.key}`"
 			>
-				<N8nIcon :icon="config.icon" :size="14" :class="$style.icon" />
-				<span>{{ binding.name }}</span>
-				<N8nTooltip v-if="warning" placement="top">
+				<N8nIcon :icon="config.icon" :size="16" :class="$style.icon" />
+				<span :class="$style.name">{{ binding.name }}</span>
+				<N8nTooltip v-if="warningText" :content="warningText" placement="top">
 					<N8nIcon
 						icon="triangle-alert"
 						:size="14"
 						:class="$style.warningIcon"
 						:data-test-id="`app-binding-${binding.key}-warning`"
 					/>
-					<template #content>{{ i18n.baseText(WARNING_LABELS[warning.code]) }}</template>
 				</N8nTooltip>
-			</button>
+			</N8nButton>
 		</template>
 		<template #content>
 			<div :class="$style.content" :data-test-id="`app-binding-${binding.key}-details`">
@@ -158,41 +163,31 @@ watch(permissions, (value) => {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
-
 .chip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--full);
-	background: var(--background--surface);
-	color: var(--text-color);
-	font-family: inherit;
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--md);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring-with-border;
-	}
+	max-width: 100%;
 }
 
-.warning {
-	border-color: var(--color--warning);
+/* Two classes so the warning border wins over the outline variant's own border. */
+.chip.warning {
+	--button--border--shadow: 0 0 0 1px var(--color--warning);
+	--button--border--shadow--hover: 0 0 0 1px var(--color--warning);
+	--button--border--shadow--active: 0 0 0 1px var(--color--warning);
 }
 
 .icon {
+	flex-shrink: 0;
 	color: var(--text-color--subtler);
 }
 
+.name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .warningIcon {
+	flex-shrink: 0;
 	color: var(--color--warning);
 }
 

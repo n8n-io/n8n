@@ -29,6 +29,8 @@ const props = defineProps<{
 	kind: AppBindingKind;
 	projectId: string;
 	boundIds: ReadonlySet<string>;
+	/** The row already has connections, so the add action is an icon-only button. */
+	hasItems: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -128,15 +130,25 @@ onScopeDispose(() => {
 	<N8nPopover :open="open" width="280px" max-height="320px" align="start" @update:open="onOpen">
 		<template #trigger>
 			<span>
-				<N8nTooltip :content="i18n.baseText(config.addLabel)" placement="top">
+				<N8nTooltip v-if="hasItems" :content="i18n.baseText(config.addLabel)" placement="top">
 					<N8nIconButton
 						icon="plus"
 						variant="ghost"
-						size="small"
+						size="medium"
 						:aria-label="i18n.baseText(config.addLabel)"
 						:data-test-id="`app-binding-add-${kind}`"
 					/>
 				</N8nTooltip>
+				<N8nButton
+					v-else
+					icon="plus"
+					variant="ghost"
+					size="medium"
+					:class="$style.emptyAdd"
+					:data-test-id="`app-binding-add-${kind}`"
+				>
+					{{ i18n.baseText(config.addLabel) }}
+				</N8nButton>
 			</span>
 		</template>
 		<template #content>
@@ -206,6 +218,16 @@ onScopeDispose(() => {
 </template>
 
 <style lang="scss" module>
+/* Same as the empty add action of an Agent chip row: muted until hover, aligned with the row text. */
+.emptyAdd {
+	--button--color: var(--text-color--subtler);
+	margin-left: calc(-1 * var(--spacing--xs));
+
+	&:hover {
+		--button--color: var(--text-color);
+	}
+}
+
 .content {
 	display: flex;
 	flex-direction: column;

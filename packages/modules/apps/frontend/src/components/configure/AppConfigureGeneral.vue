@@ -20,8 +20,6 @@ import { computed, ref, watch } from 'vue';
 
 import { updateApp } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
-import type { AppVersions } from '../../composables/useAppVersions';
-import AppConnectionsCard from './connections/AppConnectionsCard.vue';
 
 const FIELDS = [
 	{
@@ -43,7 +41,7 @@ const FIELDS = [
 ] as const;
 type Field = (typeof FIELDS)[number]['id'];
 
-const props = defineProps<{ app: AppResponse; versions: AppVersions }>();
+const props = defineProps<{ app: AppResponse }>();
 
 const emit = defineEmits<{ updated: [app: AppResponse] }>();
 
@@ -172,7 +170,6 @@ watch(
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
-		<AppConnectionsCard :app="app" :versions="versions" @updated="emit('updated', $event)" />
 	</div>
 </template>
 

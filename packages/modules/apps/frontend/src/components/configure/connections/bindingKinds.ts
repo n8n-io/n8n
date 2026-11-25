@@ -64,10 +64,20 @@ export const PERMISSION_LABELS: Record<BindingPermission, BaseTextKey> = {
 	history: 'apps.configure.connections.permission.history',
 };
 
-export const WARNING_LABELS: Record<AppBindingWarning['code'], BaseTextKey> = {
+const WARNING_LABELS: Record<AppBindingWarning['code'], BaseTextKey> = {
 	resource_missing: 'apps.configure.connections.warning.resource_missing',
 	resource_unpublished: 'apps.configure.connections.warning.resource_unpublished',
 };
+
+// Data tables have no published state, so only workflows and agents name their kind.
+const UNPUBLISHED_LABELS: Partial<Record<AppBindingKind, BaseTextKey>> = {
+	workflow: 'apps.configure.connections.warning.resource_unpublished.workflow',
+	agent: 'apps.configure.connections.warning.resource_unpublished.agent',
+};
+
+export function warningLabel(code: AppBindingWarning['code'], kind: AppBindingKind): BaseTextKey {
+	return (code === 'resource_unpublished' && UNPUBLISHED_LABELS[kind]) || WARNING_LABELS[code];
+}
 
 const RESOURCE_ID_FIELD = {
 	workflow: 'workflowId',

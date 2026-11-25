@@ -450,6 +450,8 @@
 	"apps.configure.connections.remove": "Remove",
 	"apps.configure.connections.warning.resource_missing": "This resource is no longer in the project. The app gets an error when it uses it.",
 	"apps.configure.connections.warning.resource_unpublished": "This resource is not published. The app gets an error when it uses it.",
+	"apps.configure.connections.warning.resource_unpublished.workflow": "This workflow hasn't been published yet. Parts of the app that use it will show an error until you publish it.",
+	"apps.configure.connections.warning.resource_unpublished.agent": "This agent hasn't been published yet. Parts of the app that use it will show an error until you publish it.",
 	"apps.configure.connections.loadError": "Could not load the app connections",
 	"apps.configure.connections.saveError": "Could not save the app connections",
 	"apps.configure.connections.listError": "Could not load the project resources",

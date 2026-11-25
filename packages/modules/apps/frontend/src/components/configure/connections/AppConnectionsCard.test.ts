@@ -110,6 +110,43 @@ describe('AppConnectionsCard', () => {
 		expect(queryByTestId('app-binding-weeklyChannelActivity-warning')).not.toBeInTheDocument();
 	});
 
+	it('describes an unpublished workflow on its chip', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId } = renderComponent();
+
+		expect(await findByTestId('app-binding-syncSocialStats')).toHaveAttribute(
+			'aria-description',
+			"This workflow hasn't been published yet. Parts of the app that use it will show an error until you publish it.",
+		);
+	});
+
+	it('labels only the rows that have connections', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-binding-syncSocialStats');
+
+		expect(getByTestId('app-connections-workflow')).toHaveTextContent('Workflows');
+		expect(getByTestId('app-connections-agent')).not.toHaveTextContent('Agents');
+	});
+
+	it('shows an icon-only add action for a row with connections and a labelled one for an empty row', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-binding-syncSocialStats');
+
+		expect(getByTestId('app-binding-add-workflow')).toHaveAttribute('aria-label', 'Add workflow');
+		expect(getByTestId('app-binding-add-workflow')).not.toHaveTextContent('Add workflow');
+		expect(getByTestId('app-binding-add-agent')).toHaveTextContent('Add agent');
+	});
+
+	it('hides an empty row when the user cannot change the connections', async () => {
+		providePermissions([]);
+		const { findByTestId, queryByTestId } = renderComponent();
+		await findByTestId('app-binding-syncSocialStats');
+
+		expect(queryByTestId('app-connections-agent')).not.toBeInTheDocument();
+	});
+
 	it('hides changes until the connections load', async () => {
 		providePermissions(['app:update']);
 		const request = Promise.withResolvers<AppBindingsResponse>();
