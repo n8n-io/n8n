@@ -1227,6 +1227,7 @@ export class AgentExecutionOrchestratorService {
 				threadId: memory.threadId,
 				resourceId: memory.resourceId,
 				user: identity.user,
+				previewChat: true,
 				sessionMode: 'existing',
 			});
 		} else {
@@ -2043,6 +2044,7 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				integrationType,
 				usePublishedVersion: identity.type !== 'draft',
+				...(setup?.runtime.previewChat ? { previewChat: setup.runtime.previewChat } : {}),
 				...(setup?.runtime.attributionUserId
 					? { attributionUserId: setup.runtime.attributionUserId }
 					: {}),

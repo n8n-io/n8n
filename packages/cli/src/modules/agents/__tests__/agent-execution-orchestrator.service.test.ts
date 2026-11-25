@@ -3468,11 +3468,19 @@ describe('AgentExecutionOrchestratorService', () => {
 			abortSignal,
 		});
 
+		expect(executionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			usePublishedVersion: false,
+			previewChat: true,
 			user,
 			sandboxPrincipalHash: userPrincipalHash,
 		});
