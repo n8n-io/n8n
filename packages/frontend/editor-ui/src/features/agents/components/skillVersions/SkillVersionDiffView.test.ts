@@ -22,4 +22,26 @@ describe('SkillVersionDiff', () => {
 		expect(instructions).toHaveTextContent('old line');
 		expect(instructions).toHaveTextContent('new line');
 	});
+
+	it.each([
+		{ content: 'AP8=', isBinary: true, changed: false },
+		{ content: 'AAE=', isBinary: true, changed: true },
+		{ content: 'Readable text.', isBinary: undefined, changed: true },
+	] as const)(
+		'shows a binary file with expected modified state $changed',
+		({ content, isBinary, changed }) => {
+			const path = 'assets/example';
+			const sections = diffSkills(
+				{ ...base, references: [{ path, content: 'AP8=', isBinary: true }] },
+				{ ...base, references: [{ path, content, isBinary }] },
+			);
+			const view = renderDiff({ props: { sections, selectedPath: path } });
+
+			if (changed) expect(view.getByText('Modified file')).toBeVisible();
+			else expect(view.queryByText('Modified file')).not.toBeInTheDocument();
+			expect(view.queryByText('AP8=')).not.toBeInTheDocument();
+			if (isBinary) expect(view.queryByText('AAE=')).not.toBeInTheDocument();
+			else expect(view.getByText('Readable text.')).toBeVisible();
+		},
+	);
 });

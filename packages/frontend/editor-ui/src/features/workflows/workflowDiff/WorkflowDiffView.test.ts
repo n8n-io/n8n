@@ -3,6 +3,7 @@ import { defineComponent, h, ref, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { NodeDiffStatus } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -41,6 +42,16 @@ vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
 // Mock useWorkflowDiff
 vi.mock('@/features/workflows/workflowDiff/useWorkflowDiff', () => ({
 	useWorkflowDiff: vi.fn(),
+}));
+
+const showError = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage: vi.fn() }),
+}));
+
+const whenNodeTypesLoaded = vi.hoisted(() => vi.fn());
+vi.mock('@/app/composables/useNodeTypesLoad', () => ({
+	useNodeTypesLoad: () => ({ whenLoaded: whenNodeTypesLoaded }),
 }));
 
 vi.mock('@/app/plugins/telemetry', () => ({
@@ -124,6 +135,24 @@ describe('WorkflowDiffView', () => {
 		capturedApplyLayoutProps = { top: undefined, bottom: undefined };
 		createTestingPinia();
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
+		whenNodeTypesLoaded.mockResolvedValue(undefined);
+	});
+
+	it('shows an error toast when the node types fail to load', async () => {
+		const error = new Error('node types');
+		whenNodeTypesLoaded.mockRejectedValueOnce(error);
+
+		render(WorkflowDiffView);
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledWith(error, 'workflowDiff.error.loadNodeTypes');
+	});
+
+	it('shows no error toast when the node types load', async () => {
+		render(WorkflowDiffView);
+		await flushPromises();
+
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('names the navigation actions for assistive technology', () => {

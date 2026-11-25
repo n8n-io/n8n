@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention -- keys are wire header names */
-import { ImapSimple, type ImapTransport } from '@n8n/imap';
+import { ImapSimple, type FetchMessageObject, type ImapTransport } from '@n8n/imap';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -11,6 +11,7 @@ import type { Readable } from 'stream';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getNewEmails } from './utils';
+import { toSearchObject, type SearchCriteria } from '../search-criteria';
 import {
 	BOTH_BODIES,
 	bodyOf,
@@ -333,5 +334,243 @@ describe('getNewEmails UID tracking', () => {
 		expect(batches[0]).toHaveLength(20);
 		expect(batches[1]).toEqual([21]);
 		expect(staticData.lastMessageUid).toBe(21);
+	});
+
+	describe('a message that made no item', () => {
+		it('remembers the UID and still moves the watermark past it', async () => {
+			const staticData: IDataObject = {};
+
+			const { batches } = await fetchSimple(
+				[[{ uid: 10 }, { uid: 11, headers: headers('a@b.com') }]],
+				staticData,
+			);
+
+			expect(batches).toEqual([[11]]);
+			expect(staticData).toEqual({ lastMessageUid: 11, pendingMessageUids: [10] });
+		});
+
+		it('has the pending UIDs in the static data when the batch is emitted', async () => {
+			const staticData: IDataObject = {};
+			const seenWhileEmitting: unknown[] = [];
+			const connection = mock<ImapSimple>({
+				search: vi.fn().mockResolvedValueOnce([{ uid: 10 }]),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getWorkflowStaticData.mockReturnValue(staticData);
+
+			await getNewEmails.call(trigger, {
+				imapConnection: connection,
+				searchCriteria: ['UNSEEN'],
+				postProcessAction: 'nothing',
+				onEmailBatch: async () => {
+					seenWhileEmitting.push(staticData.pendingMessageUids);
+				},
+			});
+
+			expect(seenWhileEmitting).toEqual([[10]]);
+		});
+
+		it('searches the pending UIDs with the workflow criteria, but without the window', async () => {
+			const connection = mock<ImapSimple>({ search: vi.fn().mockResolvedValue([]) });
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getWorkflowStaticData.mockReturnValue({
+				lastMessageUid: 20,
+				pendingMessageUids: [10, 15],
+			});
+
+			await getNewEmails.call(trigger, {
+				imapConnection: connection,
+				searchCriteria: ['UNSEEN'],
+				newMailWindow: ['UID', '20:*'],
+				postProcessAction: 'nothing',
+				onEmailBatch: async () => {},
+			});
+
+			expect(connection.search).toHaveBeenNthCalledWith(
+				1,
+				{ seen: false, uid: '10,15' },
+				expect.anything(),
+			);
+		});
+
+		it.each([
+			{ rule: ['UID', '50:*'] satisfies SearchCriteria },
+			{ rule: ['SINCE', '01-Nov-2026'] satisfies SearchCriteria },
+		])('keeps the user rule $rule.0 in every search', async ({ rule }) => {
+			const userCriteria: SearchCriteria[] = ['UNSEEN', rule];
+			const firstPage = Array.from({ length: 20 }, (_, i) => ({
+				uid: i + 21,
+				headers: headers('a@b.com'),
+			}));
+			const connection = mock<ImapSimple>({
+				search: vi
+					.fn()
+					.mockResolvedValueOnce([])
+					.mockResolvedValueOnce(firstPage)
+					.mockResolvedValue([]),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			trigger.getWorkflowStaticData.mockReturnValue({
+				lastMessageUid: 20,
+				pendingMessageUids: [10],
+			});
+
+			await getNewEmails.call(trigger, {
+				imapConnection: connection,
+				searchCriteria: userCriteria,
+				newMailWindow: ['UID', '20:*'],
+				postProcessAction: 'nothing',
+				onEmailBatch: async () => {},
+			});
+
+			expect(connection.search.mock.calls.map(([query]) => query)).toEqual([
+				toSearchObject([...userCriteria, ['UID', '10']]),
+				toSearchObject([...userCriteria, ['UID', '20:*']]),
+				toSearchObject([...userCriteria, ['UID', '40:*']]),
+			]);
+		});
+
+		it('emits a pending message once it makes an item, and forgets it', async () => {
+			const staticData: IDataObject = { lastMessageUid: 20, pendingMessageUids: [10] };
+
+			const { connection, batches } = await fetchSimple(
+				[[{ uid: 10, headers: headers('a@b.com') }], []],
+				staticData,
+				'read',
+			);
+
+			expect(batches).toEqual([[10], []]);
+			expect(connection.addFlags).toHaveBeenCalledExactlyOnceWith([10], ['\\SEEN']);
+			expect(staticData).toEqual({ lastMessageUid: 20, pendingMessageUids: [] });
+		});
+
+		it('keeps a pending UID that still makes no item', async () => {
+			const staticData: IDataObject = { lastMessageUid: 20, pendingMessageUids: [10] };
+
+			const { connection, batches } = await fetchSimple([[{ uid: 10 }], []], staticData, 'read');
+
+			expect(batches).toEqual([[], []]);
+			expect(connection.addFlags).not.toHaveBeenCalled();
+			expect(staticData.pendingMessageUids).toEqual([10]);
+		});
+
+		it('keeps a pending UID that throws, and still emits the rest and fresh mail', async () => {
+			const staticData: IDataObject = { lastMessageUid: 20, pendingMessageUids: [10, 15] };
+			const connection = mock<ImapSimple>({
+				search: vi
+					.fn()
+					.mockResolvedValueOnce([
+						{ uid: 10, headers: headers('a@b.com') },
+						{ uid: 15, headers: headers('b@b.com') },
+					])
+					.mockResolvedValueOnce([{ uid: 21, headers: headers('c@b.com') }]),
+				downloadText: vi.fn(async (message: FetchMessageObject) => {
+					if (message.uid === 10) throw new Error('IMAP FETCH did not complete');
+					return '';
+				}),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			trigger.getWorkflowStaticData.mockReturnValue(staticData);
+
+			const batches: number[][] = [];
+			await getNewEmails.call(trigger, {
+				imapConnection: connection,
+				searchCriteria: ['UNSEEN'],
+				postProcessAction: 'read',
+				onEmailBatch: async (data) => {
+					batches.push(data.map((item) => (item.json.attributes as { uid: number }).uid));
+				},
+			});
+
+			expect(batches).toEqual([[15], [21]]);
+			expect(connection.addFlags).toHaveBeenNthCalledWith(1, [15], ['\\SEEN']);
+			expect(connection.addFlags).toHaveBeenNthCalledWith(2, [21], ['\\SEEN']);
+			expect(staticData).toEqual({ lastMessageUid: 21, pendingMessageUids: [10] });
+			expect(trigger.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('UID 10'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('still throws when a fresh message fails to build', async () => {
+			const connection = mock<ImapSimple>({
+				search: vi.fn().mockResolvedValueOnce([{ uid: 21, headers: headers('a@b.com') }]),
+				downloadText: vi.fn().mockRejectedValue(new Error('IMAP FETCH did not complete')),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			trigger.getWorkflowStaticData.mockReturnValue({ lastMessageUid: 20 });
+
+			await expect(
+				getNewEmails.call(trigger, {
+					imapConnection: connection,
+					searchCriteria: ['UNSEEN'],
+					postProcessAction: 'nothing',
+					onEmailBatch: async () => {},
+				}),
+			).rejects.toThrow('IMAP FETCH did not complete');
+		});
+
+		it('forgets a pending UID that the server no longer returns', async () => {
+			const staticData: IDataObject = { lastMessageUid: 20, pendingMessageUids: [10, 15] };
+
+			await fetchSimple([[{ uid: 15 }], []], staticData);
+
+			expect(staticData.pendingMessageUids).toEqual([15]);
+		});
+
+		it('does not search for pending UIDs when there are none', async () => {
+			const { connection } = await fetchSimple([[{ uid: 21, headers: headers('a@b.com') }]], {
+				lastMessageUid: 20,
+			});
+
+			expect(connection.search).toHaveBeenCalledOnce();
+		});
+
+		it('keeps at most 100 pending UIDs and logs the ones it gives up on', async () => {
+			const staticData: IDataObject = {
+				lastMessageUid: 100,
+				pendingMessageUids: Array.from({ length: 100 }, (_, i) => i + 1),
+			};
+
+			await fetchSimple(
+				[Array.from({ length: 100 }, (_, i) => ({ uid: i + 1 })), [{ uid: 101 }, { uid: 102 }]],
+				staticData,
+			);
+
+			expect(staticData.pendingMessageUids).toEqual(Array.from({ length: 100 }, (_, i) => i + 3));
+			expect(trigger.logger.warn).toHaveBeenCalledWith(expect.stringContaining('UIDs 1,2'));
+		});
+
+		it('moves the search window of the next page past a page of skipped messages', async () => {
+			const staticData: IDataObject = {};
+			const firstPage = Array.from({ length: 20 }, (_, i) => ({ uid: i + 1 }));
+
+			const { connection, batches } = await fetchSimple(
+				[firstPage, [{ uid: 20 }, { uid: 21, headers: headers('a@b.com') }]],
+				staticData,
+			);
+
+			expect(connection.search).toHaveBeenNthCalledWith(
+				2,
+				{ seen: false, uid: '20:*' },
+				expect.anything(),
+				20,
+			);
+			expect(batches).toEqual([[], [21]]);
+			expect(staticData.lastMessageUid).toBe(21);
+			expect(staticData.pendingMessageUids).toEqual(firstPage.map(({ uid }) => uid));
+		});
 	});
 });

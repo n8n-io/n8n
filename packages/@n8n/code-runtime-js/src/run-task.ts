@@ -6,7 +6,7 @@ import type { TaskConsole } from './task-console';
 import { createTaskData, type TaskData } from './task-data';
 import { toUserError } from './task-error';
 
-type TaskOutcome = Result<unknown, CodeTaskUserError | Error>;
+export type TaskOutcome = Result<unknown, CodeTaskUserError | Error>;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
 	(typeof value === 'object' && value !== null) || typeof value === 'function';

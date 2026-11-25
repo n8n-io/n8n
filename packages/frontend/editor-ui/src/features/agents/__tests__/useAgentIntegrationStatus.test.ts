@@ -66,8 +66,28 @@ describe('useAgentIntegrationStatus', () => {
 			await status.fetchStatus(['n8n_chat']);
 
 			expect(status.isConfigured('n8n_chat')).toBe(configured);
+			expect(status.n8nChatPublishedEnabled.value).toBe(true);
 		},
 	);
+
+	it('clears published n8n Chat availability when a refresh reports it disabled', async () => {
+		apiMocks.getIntegrationStatus.mockResolvedValueOnce({
+			integrations: [{ type: 'n8n_chat', status: 'connected' }],
+			n8nChat: { draftEnabled: true, publishedEnabled: true },
+		});
+		apiMocks.getIntegrationStatus.mockResolvedValueOnce({
+			integrations: [{ type: 'n8n_chat', status: 'configured' }],
+			n8nChat: { draftEnabled: true, publishedEnabled: false },
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+
+		await status.fetchStatus(['n8n_chat']);
+		expect(status.n8nChatPublishedEnabled.value).toBe(true);
+
+		await status.fetchStatus(['n8n_chat']);
+		expect(status.n8nChatPublishedEnabled.value).toBe(false);
+		expect(status.isConfigured('n8n_chat')).toBe(true);
+	});
 
 	it('takes each channel from its own status, not the rollup', async () => {
 		apiMocks.getIntegrationStatus.mockResolvedValue({

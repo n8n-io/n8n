@@ -98,7 +98,7 @@ A rule of this kind is written on `/credential-type-policies` and
 `/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
 own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
 
-It implements all eight points:
+It implements every point except `executionAdmission`:
 
 | Point                    | What it reads                                         |
 | ------------------------ | ----------------------------------------------------- |
@@ -301,10 +301,42 @@ write between them can return newer rules under the older `version`. A write tha
 `version` back then fails with a conflict, so no change is lost.
 
 The credential route lists the type names of `available-credential-types`. The node route lists
-the type names of `available-types`, but it leaves out a generated tool variant when the same rule,
-or the default action, decides the variant and its base type. Such a variant has the access of its
-base. When a different rule decides the variant, for example an earlier `name` rule for the
-variant (see the rule order above), the variant keeps its row so that the admin can see that rule.
+the type names of `available-types`, and it is the only place that decides which node types the
+admin page lists. It leaves out two kinds of type:
+
+- A generated tool variant that the same rule, or the default action, decides as its base type.
+  Such a variant has the access of its base. When a different rule decides the variant, for
+  example an earlier `name` rule for the variant (see the rule order above), the variant keeps its
+  row so that the admin can see that rule.
+- A hidden node type, unless an instance `name` rule decides it, for the same reason. The `hidden`
+  flag comes from the static `types/nodes.json`, because a main process releases the node
+  descriptions from memory after startup. The route fails when it cannot read that file.
+
+### The policy state of each team project
+
+`GET /project-policies` returns one entry for each team project, for both kinds. A personal project
+has no entry. The route needs `nodeTypePolicy:manage` and `credentialTypePolicy:manage`, so it
+checks the second scope in the handler.
+
+`hasPolicy` is `true` when the project has a scope row of either kind. `updatedAt` is the later
+`updatedAt` of those rows. Every write moves the scope's version, and so its `updatedAt`. No route
+deletes a project scope row, so a project that resets to allow-all keeps `hasPolicy: true`.
+
+The counts are counts of types, not of rules, over the types the instance policy page lists:
+
+- Credential types: every known credential type.
+- Node types: the types that the node access route lists.
+
+Each project's verdicts are compared with the verdicts of a project that has no policy:
+
+- `effective` counts the composed verdicts. An unsatisfied `delegate` counts as restricted, as
+  enforcement treats it. A project with no scope row gets the totals of a project without a
+  policy.
+- `restricted` counts the types that the instance allows and the project blocks.
+- `optedIn` counts the types that the instance delegates and the project allows.
+
+A project rule on a hidden type, or on a tool variant that follows its base, adds nothing to the
+counts.
 
 ### Usage counts of each credential type
 
@@ -408,7 +440,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
-| `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
+| `credential-type-policy.check.ts`                 | Credential types: every point but `executionAdmission`, incl. `credentialSave` |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
@@ -420,6 +452,9 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents, attachments and access of each type, `credential-types` |
 | `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
+| `project-policies.controller.ts`                  | The policy state of every team project, for both kinds                          |
+| `listed-node-types.ts`                            | The node types the instance policy page lists, for the access route and counts  |
+| `hidden-node-types.ts`                            | The hidden node types, read from the static node types file                     |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |
 | `sub-workflow-policy-check.service.ts`            | Caller policy, draft and published evaluation, and project name disclosure      |
