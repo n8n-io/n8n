@@ -12,6 +12,7 @@ import type { ProjectRole, Scope } from '@n8n/permissions';
 import type { FrontendSettings } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import * as workflowReviewsApi from '@/features/workflow-reviews/workflowReviews.api';
 
 type MockRoute = {
 	params: Record<string, string>;
@@ -38,6 +39,10 @@ vi.mock('./projects.api', () => ({
 }));
 
 vi.mock('@/app/api/workflows.ee', () => ({ moveWorkflowToProject: vi.fn() }));
+vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
+	getProjectWorkflowReviewSettings: vi.fn(),
+	updateProjectWorkflowReviewSettings: vi.fn(),
+}));
 vi.mock('@/features/credentials/credentials.ee.api', () => ({
 	moveCredentialToProject: vi.fn(),
 }));
@@ -417,5 +422,80 @@ describe('useProjectsStore.moveResourceToProject', () => {
 		);
 		expect(workflowsEEApi.moveWorkflowToProject).not.toHaveBeenCalled();
 		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+	});
+});
+
+describe('useProjectsStore workflow review settings', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		mockRoute.params = { projectId: 'p1' };
+	});
+
+	afterEach(() => {
+		mockRoute.params = {};
+	});
+
+	it('loads and saves the workflow review settings of a project', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: false,
+		});
+		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: true,
+		});
+		const store = useProjectsStore();
+
+		await store.fetchProjectWorkflowReviewSettings('p1');
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ requiredByProject: false });
+
+		await store.updateCurrentProjectWorkflowReviewSettings('p1', { requiredByProject: true });
+
+		expect(workflowReviewsApi.updateProjectWorkflowReviewSettings).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			{ requiredByProject: true },
+		);
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ requiredByProject: true });
+	});
+
+	it('clears the previous project value when the fetch for a new project fails', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings)
+			.mockResolvedValueOnce({ requiredByProject: true })
+			.mockRejectedValueOnce(new Error('network down'));
+		const store = useProjectsStore();
+		await store.fetchProjectWorkflowReviewSettings('p1');
+
+		mockRoute.params = { projectId: 'p2' };
+		await expect(store.fetchProjectWorkflowReviewSettings('p2')).rejects.toThrow('network down');
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
+	});
+
+	it('drops a response for a project that is no longer current', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: true,
+		});
+		const store = useProjectsStore();
+		const fetch = store.fetchProjectWorkflowReviewSettings('p1');
+
+		mockRoute.params = { projectId: 'p2' };
+		await fetch;
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
+	});
+
+	it('drops a saved value for a project that is no longer current', async () => {
+		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: true,
+		});
+		const store = useProjectsStore();
+		const save = store.updateCurrentProjectWorkflowReviewSettings('p1', {
+			requiredByProject: true,
+		});
+
+		mockRoute.params = { projectId: 'p2' };
+		await save;
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
 	});
 });

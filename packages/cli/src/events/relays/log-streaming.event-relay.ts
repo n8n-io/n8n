@@ -218,6 +218,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
 			'public-api-rate-limit-updated': (event) => this.publicApiRateLimitUpdated(event),
+			'project-workflow-review-settings-updated': (event) =>
+				this.projectWorkflowReviewSettingsUpdated(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
@@ -1708,6 +1710,20 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #endregion
 
 	// #region Workflow Reviews
+
+	@Redactable()
+	private projectWorkflowReviewSettingsUpdated({
+		user,
+		projectId,
+		requiredByProject,
+	}: RelayEventMap['project-workflow-review-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: requiredByProject
+				? 'n8n.audit.workflow-reviews.project-approval-required.enabled'
+				: 'n8n.audit.workflow-reviews.project-approval-required.disabled',
+			payload: { ...user, projectId },
+		});
+	}
 
 	@Redactable()
 	private workflowReviewRequested({

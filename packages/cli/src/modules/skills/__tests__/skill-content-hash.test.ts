@@ -69,4 +69,12 @@ describe('skillContentHash', () => {
 
 		expect(skillContentHash({ ...content, files })).not.toBe(skillContentHash(content));
 	});
+
+	it('distinguishes text from binary data with the same stored content', () => {
+		const file = { path: 'assets/logo.png', content: 'AP8=' };
+		const text = skillContentHash({ ...content, files: [file] });
+		const binary = skillContentHash({ ...content, files: [{ ...file, isBinary: true }] });
+
+		expect(binary).not.toBe(text);
+	});
 });
