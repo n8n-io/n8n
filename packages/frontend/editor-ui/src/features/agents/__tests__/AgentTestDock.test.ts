@@ -99,6 +99,7 @@ const AgentTestChatPageStub = {
 		'send-to-assistant',
 		'initial-consumed',
 		'usage-updated',
+		'new-session',
 	],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({
@@ -334,6 +335,15 @@ describe('AgentTestDock', () => {
 		expect(wrapper.findComponent({ name: 'N8nActionDropdown' }).exists()).toBe(false);
 		wrapper.getComponent({ name: 'AgentTestMoreMenu' }).vm.$emit('delete-session');
 		expect(wrapper.emitted('delete-session')).toBeUndefined();
+	});
+
+	it('starts a new session for a new test run without the new chat icon event', () => {
+		const wrapper = mountDock();
+
+		wrapper.getComponent({ name: 'AgentTestChatPage' }).vm.$emit('new-session');
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('renders accessible header actions and emits their events', async () => {

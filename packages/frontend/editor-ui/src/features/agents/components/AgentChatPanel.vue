@@ -1788,21 +1788,34 @@ const isResettingTestRun = ref(false);
 async function onNewTestRun() {
 	if (isResettingTestRun.value || isStreaming.value) return;
 	isResettingTestRun.value = true;
+	// The panel can move to another chat while the request runs.
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		sessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.sessionId;
 	try {
-		await resetAgentTestRun(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-			props.continueSessionId,
-		);
-		if (props.continueSessionId) {
+		// A simulated world belongs to a chat session, so a chat without one has no world.
+		if (target.sessionId) {
+			await resetAgentTestRun(
+				rootStore.restApiContext,
+				target.projectId,
+				target.agentId,
+				target.sessionId,
+			);
+			if (!isCurrentTarget()) return;
 			emit('new-test-run');
 		} else {
 			await clearHistory();
+			if (!isCurrentTarget()) return;
 		}
 		void refreshTestRunTools();
 	} catch (error) {
-		toast.showError(error, locale.baseText('agents.chat.clearHistory.error'));
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.testRun.reset.error'));
 	} finally {
 		isResettingTestRun.value = false;
 	}
