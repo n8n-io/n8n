@@ -68,14 +68,20 @@ const setAsideRows = computed(() => {
 	}));
 });
 
-const changedDefaultRows = computed(() =>
-	props.change.changedDefaults.map(({ name, displayName, oldDefault, newDefault }) => ({
+const changedDefaultRows = computed(() => {
+	// A parameter that is a password in either version is masked on both sides.
+	const passwordNames = collectPasswordNames([
+		...oldProperties.value,
+		...props.nodeType.properties,
+	]);
+
+	return props.change.changedDefaults.map(({ name, displayName, oldDefault, newDefault }) => ({
 		name,
 		label: displayName,
-		oldValue: format(oldDefault, [name], oldProperties.value),
-		newValue: format(newDefault, [name], props.nodeType.properties),
-	})),
-);
+		oldValue: format(oldDefault, [name], oldProperties.value, passwordNames),
+		newValue: format(newDefault, [name], props.nodeType.properties, passwordNames),
+	}));
+});
 </script>
 
 <template>
@@ -86,12 +92,12 @@ const changedDefaultRows = computed(() =>
 		data-test-id="node-version-change-banner"
 	>
 		<div :class="$style.content">
-			<div :class="$style.headline">
-				<N8nIcon
-					:icon="hasIssues ? 'triangle-alert' : 'circle-check'"
-					:class="hasIssues ? $style.dangerIcon : $style.successIcon"
-				/>
-				<span>
+			<N8nIcon
+				:icon="hasIssues ? 'triangle-alert' : 'circle-check'"
+				:class="[$style.icon, hasIssues ? $style.dangerIcon : $style.successIcon]"
+			/>
+			<div :class="$style.body">
+				<div>
 					{{
 						i18n.baseText(
 							hasIssues
@@ -100,48 +106,56 @@ const changedDefaultRows = computed(() =>
 							{ interpolate: { version: String(node.typeVersion) } },
 						)
 					}}
-				</span>
+				</div>
+
+				<details
+					v-if="setAsideRows.length > 0"
+					:class="$style.bucket"
+					data-test-id="node-version-change-set-aside"
+				>
+					<summary :class="$style.summary">
+						{{
+							i18n.baseText('nodeSettings.versionChange.setAside.summary', {
+								adjustToNumber: setAsideRows.length,
+								interpolate: { count: setAsideRows.length },
+							})
+						}}
+						<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
+					</summary>
+					<ul :class="$style.rows" role="list">
+						<li v-for="row in setAsideRows" :key="row.name" :class="$style.row">
+							<span>{{ row.label }}</span>
+							<span :class="$style.chip">{{ row.value }}</span>
+						</li>
+					</ul>
+				</details>
+
+				<details
+					v-if="changedDefaultRows.length > 0"
+					:class="$style.bucket"
+					data-test-id="node-version-change-defaults"
+				>
+					<summary :class="$style.summary">
+						{{
+							i18n.baseText('nodeSettings.versionChange.changedDefaults.summary', {
+								adjustToNumber: changedDefaultRows.length,
+								interpolate: { count: changedDefaultRows.length },
+							})
+						}}
+						<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
+					</summary>
+					<ul :class="$style.rows" role="list">
+						<li v-for="row in changedDefaultRows" :key="row.name" :class="$style.row">
+							<span>{{ row.label }}</span>
+							<span :class="$style.chip">{{ row.oldValue }}</span>
+							<span>→</span>
+							<span :class="$style.chip">{{ row.newValue }}</span>
+						</li>
+					</ul>
+				</details>
+
+				<div :class="$style.hint">{{ i18n.baseText('nodeSettings.versionChange.behavior') }}</div>
 			</div>
-
-			<details v-if="setAsideRows.length > 0" data-test-id="node-version-change-set-aside">
-				<summary :class="$style.summary">
-					{{
-						i18n.baseText('nodeSettings.versionChange.setAside.summary', {
-							adjustToNumber: setAsideRows.length,
-							interpolate: { count: setAsideRows.length },
-						})
-					}}
-				</summary>
-				<div>{{ i18n.baseText('nodeSettings.versionChange.setAside.title') }}</div>
-				<ul :class="$style.rows" role="list">
-					<li v-for="row in setAsideRows" :key="row.name" :class="$style.row">
-						<span>{{ row.label }}</span>
-						<span :class="$style.chip">{{ row.value }}</span>
-					</li>
-				</ul>
-			</details>
-
-			<details v-if="changedDefaultRows.length > 0" data-test-id="node-version-change-defaults">
-				<summary :class="$style.summary">
-					{{
-						i18n.baseText('nodeSettings.versionChange.changedDefaults.summary', {
-							adjustToNumber: changedDefaultRows.length,
-							interpolate: { count: changedDefaultRows.length },
-						})
-					}}
-				</summary>
-				<div>{{ i18n.baseText('nodeSettings.versionChange.changedDefaults.title') }}</div>
-				<ul :class="$style.rows" role="list">
-					<li v-for="row in changedDefaultRows" :key="row.name" :class="$style.row">
-						<span>{{ row.label }}</span>
-						<span :class="$style.chip">{{ row.oldValue }}</span>
-						<span>→</span>
-						<span :class="$style.chip">{{ row.newValue }}</span>
-					</li>
-				</ul>
-			</details>
-
-			<div>{{ i18n.baseText('nodeSettings.versionChange.behavior') }}</div>
 		</div>
 	</N8nCallout>
 </template>
@@ -151,20 +165,13 @@ const changedDefaultRows = computed(() =>
 
 .content {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
-.headline {
-	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: var(--spacing--2xs);
 }
 
-.summary {
-	cursor: pointer;
-
-	@include focus.focus-visible-ring;
+.icon {
+	flex: none;
+	margin-top: var(--spacing--5xs);
 }
 
 .dangerIcon {
@@ -175,25 +182,61 @@ const changedDefaultRows = computed(() =>
 	color: var(--callout--icon-color--success);
 }
 
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	line-height: var(--line-height--md);
+}
+
+.summary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	width: fit-content;
+	cursor: pointer;
+	text-decoration: underline;
+	list-style: none;
+
+	&::-webkit-details-marker {
+		display: none;
+	}
+
+	@include focus.focus-visible-ring;
+}
+
+.chevron {
+	.bucket[open] & {
+		transform: rotate(180deg);
+	}
+}
+
+.hint {
+	opacity: 0.8;
+}
+
 .rows {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--3xs);
 	list-style: none;
 }
 
 .row {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: baseline;
-	gap: var(--spacing--4xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .chip {
-	padding: 0 var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs);
 	border: var(--border);
 	border-radius: var(--radius);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
 	overflow-wrap: anywhere;
 }
 </style>

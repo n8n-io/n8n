@@ -90,8 +90,7 @@ const changedDefaults: NodeVersionChange['changedDefaults'] = [
 
 const RED_HEADLINE = 'Updated to version 2. Set the highlighted parameters below.';
 const GREEN_HEADLINE = 'Updated to version 2. All parameters are set.';
-const CLOSING_LINE =
-	'This version can also change how the node behaves. No notes for this version yet.';
+const CLOSING_LINE = 'This version can also change how the node behaves.';
 
 const renderComponent = createComponentRenderer(NodeVersionChangeBanner);
 
@@ -129,7 +128,6 @@ describe('NodeVersionChangeBanner', () => {
 
 		const setAsideBucket = getByTestId('node-version-change-set-aside');
 		expect(setAsideBucket.querySelector('summary')).toHaveTextContent("3 values didn't carry over");
-		expect(setAsideBucket).toHaveTextContent("Didn't carry over. Old values:");
 		// Two rows share the label "Kind", so a nested row shows its full name.
 		expect(rowTexts(setAsideBucket)).toEqual([
 			['Legacy Field', 'abc'],
@@ -139,7 +137,6 @@ describe('NodeVersionChangeBanner', () => {
 
 		const defaultsBucket = getByTestId('node-version-change-defaults');
 		expect(defaultsBucket.querySelector('summary')).toHaveTextContent('2 defaults changed');
-		expect(defaultsBucket).toHaveTextContent('Default changed. Old → new:');
 		// Each option label comes from the description of its own version.
 		expect(rowTexts(defaultsBucket)).toEqual([
 			['Mode', 'Alpha (old)', '→', 'Beta (new)'],
@@ -205,6 +202,18 @@ describe('NodeVersionChangeBanner', () => {
 		expect(bucket.querySelector('summary')).toHaveTextContent("1 value didn't carry over");
 		expect(rowTexts(bucket)).toEqual([['Auth', `{"user":"bob","password":"${MASK}"}`]]);
 		expect(queryByText(/hunter2/)).not.toBeInTheDocument();
+	});
+
+	it('masks the old and new default of a password parameter', () => {
+		const { getByTestId, queryByText } = renderBanner({
+			changedDefaults: [
+				{ name: 'password', displayName: 'Password', oldDefault: 'old-key', newDefault: 'new-key' },
+			],
+		});
+
+		const [row] = rowTexts(getByTestId('node-version-change-defaults'));
+		expect(row.filter((text) => text === MASK)).toHaveLength(2);
+		expect(queryByText(/-key/)).not.toBeInTheDocument();
 	});
 
 	it('masks every value that did not carry over when the old version has no description', () => {
