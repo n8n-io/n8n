@@ -252,9 +252,10 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 
 	it('reports a failed model call', async () => {
 		const { draftUrl } = await setup();
-		draft.mockRejectedValueOnce(new Error('rate limited'));
+		draft.mockRejectedValueOnce(new Error('Invalid API key: sk-ant-api03-abcdefghijklmnopqrstuv'));
 
-		await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(503);
+		const response = await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(503);
+		expect(JSON.stringify(response.body)).not.toContain('sk-ant-');
 	});
 
 	it('refuses an unknown field', async () => {
