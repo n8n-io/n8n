@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { nonDelegatingPolicyActionSchema, policyActionSchema } from './policy-rule.schema';
+import {
+	nonDelegatingPolicyActionSchema,
+	policyActionSchema,
+	rejectDuplicates,
+} from './policy-rule.schema';
 import { Z } from '../../zod-class';
 
 /** `inherit` removes the rules that name the type, so its access comes from the other rules. */
@@ -22,28 +26,8 @@ const nonDelegatingTypeAccessChangeSchema = typeAccessChangeSchema.extend({
 // Optimistic concurrency: callers send the version they last read, so a stale write is rejected.
 const versionSchema = z.number().int().nonnegative();
 
-function rejectDuplicateTypes(
-	changes: ReadonlyArray<{ type: string }>,
-	ctx: z.RefinementCtx,
-): void {
-	const seenTypes = new Set<string>();
-
-	for (const [index, change] of changes.entries()) {
-		if (seenTypes.has(change.type)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Duplicate type: ${change.type}`,
-				path: [index, 'type'],
-			});
-			continue;
-		}
-
-		seenTypes.add(change.type);
-	}
-}
-
 function changeListFor<Change extends z.ZodType<{ type: string }>>(change: Change) {
-	return z.array(change).min(1).max(MAX_CHANGES).superRefine(rejectDuplicateTypes);
+	return z.array(change).min(1).max(MAX_CHANGES).superRefine(rejectDuplicates('type', 'type'));
 }
 
 /** Request body for setting the access of node types or credential types at instance scope. */

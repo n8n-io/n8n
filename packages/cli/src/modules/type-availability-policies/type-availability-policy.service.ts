@@ -122,6 +122,12 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
+function scopeVersionConflict(expectedVersion: number, foundVersion: number): ConflictError {
+	return new ConflictError(
+		`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
+	);
+}
+
 /**
  * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
  * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
@@ -270,9 +276,7 @@ export class TypeAvailabilityPolicyService {
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${currentVersion})`,
-				);
+				throw scopeVersionConflict(expectedVersion, currentVersion);
 			}
 
 			if (!scope) {
@@ -579,9 +583,7 @@ export class TypeAvailabilityPolicyService {
 			}
 
 			if (scope.version !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${scope.version})`,
-				);
+				throw scopeVersionConflict(expectedVersion, scope.version);
 			}
 
 			// Attaching a document to a project scope makes its rules that project's policy, so
@@ -678,9 +680,7 @@ export class TypeAvailabilityPolicyService {
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${currentVersion})`,
-				);
+				throw scopeVersionConflict(expectedVersion, currentVersion);
 			}
 
 			const scopeBefore = scope
@@ -884,9 +884,7 @@ export class TypeAvailabilityPolicyService {
 	) {
 		const effective = await this.getEffectivePolicy(kind, projectId);
 		if (effective.version !== expectedVersion) {
-			throw new ConflictError(
-				`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${effective.version})`,
-			);
+			throw scopeVersionConflict(expectedVersion, effective.version);
 		}
 
 		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
