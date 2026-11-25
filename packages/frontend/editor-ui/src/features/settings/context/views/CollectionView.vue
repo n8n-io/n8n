@@ -116,6 +116,7 @@ const fileMenuItems = computed<ContextMenuNode[]>(() => [
 		id: 'remove',
 		label: i18n.baseText('settings.context.collections.files.remove'),
 		icon: { type: 'icon', value: 'trash-2' },
+		variant: 'destructive',
 	},
 ]);
 
