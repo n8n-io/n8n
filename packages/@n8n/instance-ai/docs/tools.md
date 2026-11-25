@@ -624,7 +624,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 | `triggerNodeName` | string | no | — | Trigger node to use when a workflow has more than one trigger |
 | `files` | Record<string, string> | no | — | Conversation files for the trigger item, by binary property name. Only when the host sets `readBinary` and `storeWorkflowFile` on `storedFiles` |
 
-**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim?, files?, skippedFiles?, moreSkippedFiles? }`
+**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim?, files?, skippedFiles?: { total, files } }`
 
 **Files**: the Assistant on the Agents runtime sets `readBinary` and
 `storeWorkflowFile`, the same as the workflow tools of project Agents. Each
@@ -636,8 +636,8 @@ starts. After the run, the files of the last node are stored as conversation
 files with the `tool` source, one time for each binary and at most 10 for each
 run. A file of the conversation that the run passes on unchanged keeps its
 fileId and is not copied. A renamed or retyped file becomes a new file. The result lists the files in `files`, so the chat
-shows them. It lists at most 10 files that were not stored in `skippedFiles`,
-and counts the others in `moreSkippedFiles`. A redacted execution stores no
+shows them. `skippedFiles.files` lists at most 10 files that were not stored, and
+`skippedFiles.total` counts all of them. A redacted execution stores no
 files. Without the host functions, the input schema has no `files` field.
 
 **Live test evidence**: `workflow_builder_verify_built_workflow` always simulates destructive

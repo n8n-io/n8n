@@ -69,7 +69,7 @@ describe('storeRunOutputFiles', () => {
 		const execution = executionOf(runOf({ Resize: [{ json: {}, binary: { data: binary('a') } }] }));
 
 		await expect(storeRunOutputFiles(execution, storeOutputFile)).resolves.toEqual({
-			skippedFiles: [{ fileName: 'a.png', reason: 'larger than 50 MB' }],
+			skippedFiles: { total: 1, files: [{ fileName: 'a.png', reason: 'larger than 50 MB' }] },
 		});
 	});
 
@@ -84,8 +84,8 @@ describe('storeRunOutputFiles', () => {
 
 		expect(storeOutputFile).toHaveBeenCalledTimes(MAX_RUN_OUTPUT_FILES);
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
-		expect(result.skippedFiles).toHaveLength(2);
-		expect(result).not.toHaveProperty('moreSkippedFiles');
+		expect(result.skippedFiles?.files).toHaveLength(2);
+		expect(result.skippedFiles?.total).toBe(2);
 	});
 
 	it(`lists at most ${MAX_RUN_SKIPPED_FILES} skipped files and counts the others`, async () => {
@@ -99,8 +99,8 @@ describe('storeRunOutputFiles', () => {
 		const result = await storeRunOutputFiles(executionOf(runOf({ Split: items })), storeOutputFile);
 
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
-		expect(result.skippedFiles).toHaveLength(MAX_RUN_SKIPPED_FILES);
-		expect(result.moreSkippedFiles).toBe(5);
+		expect(result.skippedFiles?.files).toHaveLength(MAX_RUN_SKIPPED_FILES);
+		expect(result.skippedFiles?.total).toBe(MAX_RUN_SKIPPED_FILES + 5);
 	});
 
 	it('counts the files that storage rejects against the same list cap', async () => {
@@ -115,8 +115,8 @@ describe('storeRunOutputFiles', () => {
 
 		const result = await storeRunOutputFiles(executionOf(runOf({ Split: items })), storeOutputFile);
 
-		expect(result.skippedFiles).toHaveLength(MAX_RUN_SKIPPED_FILES);
-		expect(result.moreSkippedFiles).toBe(1);
+		expect(result.skippedFiles?.files).toHaveLength(MAX_RUN_SKIPPED_FILES);
+		expect(result.skippedFiles?.total).toBe(MAX_RUN_SKIPPED_FILES + 1);
 	});
 
 	it('stores nothing from a redacted execution', async () => {

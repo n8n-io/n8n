@@ -12,7 +12,7 @@ import { collectResultItems } from '@/workflows/callable/callable-workflow-resul
 /** Most output files that one run stores, so a large batch cannot flood the conversation. */
 export const MAX_RUN_OUTPUT_FILES = 10;
 
-/** Most skipped files that one run lists. The result counts the others in `moreSkippedFiles`. */
+/** Most skipped files that one run lists. `skippedFiles.total` counts all of them. */
 export const MAX_RUN_SKIPPED_FILES = 10;
 
 /**
@@ -23,15 +23,15 @@ export const MAX_RUN_SKIPPED_FILES = 10;
 export async function storeRunOutputFiles(
 	execution: IExecutionResponse,
 	storeOutputFile: InstanceAiStoreWorkflowFile,
-): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles' | 'moreSkippedFiles'>> {
+): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
 	const runData = execution.data?.resultData?.runData;
 	if (!runData || getExecutionRedaction(execution)) return {};
 	const files: NonNullable<ExecutionResult['files']> = [];
 	const skippedFiles: InstanceAiSkippedFile[] = [];
-	let moreSkippedFiles = 0;
+	let skippedTotal = 0;
 	const skip = (file: InstanceAiSkippedFile) => {
+		skippedTotal++;
 		if (skippedFiles.length < MAX_RUN_SKIPPED_FILES) skippedFiles.push(file);
-		else moreSkippedFiles++;
 	};
 	const seen = new Set<IBinaryData | string>();
 	for (const items of Object.values(collectResultItems(runData, false))) {
@@ -57,7 +57,6 @@ export async function storeRunOutputFiles(
 	}
 	return {
 		...(files.length > 0 ? { files } : {}),
-		...(skippedFiles.length > 0 ? { skippedFiles } : {}),
-		...(moreSkippedFiles > 0 ? { moreSkippedFiles } : {}),
+		...(skippedTotal > 0 ? { skippedFiles: { total: skippedTotal, files: skippedFiles } } : {}),
 	};
 }

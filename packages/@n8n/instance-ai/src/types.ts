@@ -234,9 +234,7 @@ export interface ExecutionResult {
 	 */
 	files?: InstanceAiConversationFile[];
 	/** Output files that were not stored, for example because they are too large. The list has a cap. */
-	skippedFiles?: InstanceAiSkippedFile[];
-	/** The number of output files that were not stored and that the capped `skippedFiles` leaves out. */
-	moreSkippedFiles?: number;
+	skippedFiles?: InstanceAiSkippedFiles;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -1841,6 +1839,12 @@ export interface InstanceAiStoredFileReader {
 
 /** A file that n8n did not store as a conversation file, with the reason. */
 export type InstanceAiSkippedFile = AgentToolSkippedFile;
+
+/** The files that n8n did not store. `files` has a cap; `total` counts all of them. */
+export interface InstanceAiSkippedFiles {
+	total: number;
+	files: InstanceAiSkippedFile[];
+}
 
 /**
  * Stores a binary that a workflow run returned as a conversation file. Gives a
