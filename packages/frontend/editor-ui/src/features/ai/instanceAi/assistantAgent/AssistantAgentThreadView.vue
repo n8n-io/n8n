@@ -58,7 +58,11 @@ import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
 import { useDraftWorkflowPreview } from '../composables/useDraftWorkflowPreview';
 import { useToolLabel } from '../toolLabels';
-import { AGENT_TOOL_STEP_LABEL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
+import {
+	AGENT_CHAT_MARKDOWN_HOST_KEY,
+	AGENT_TOOL_STEP_LABEL_KEY,
+} from '@/features/agents/components/agentChatInjectionKeys';
+import { useArtifactLinks } from '@/features/ai/instanceAi/artifactLinks';
 import { isRecord } from '@n8n/utils/is-record';
 import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
@@ -554,6 +558,12 @@ provide('openAppPreview', preview.openAppPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+// Links to the resources of the thread open in the preview, as in the current Assistant.
+provide(AGENT_CHAT_MARKDOWN_HOST_KEY, {
+	resources: () => [...thread.resourceNameIndex.values()],
+	linkableResources: () => [...thread.producedArtifacts.values()],
+	artifactLinks: useArtifactLinks(),
+});
 watch(
 	[requestedAppId, () => preview.tabsLoaded.value],
 	([appId, tabsLoaded]) => {
