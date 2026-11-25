@@ -16,13 +16,13 @@ import { watch } from 'vue';
 import type { SetupContext } from 'vue';
 
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from '../MarkdownEditor.types';
-import { MarkdownWithMinimalEscapes } from '../markdownExtension';
 import {
 	copyMarkdown,
 	getEditorContent,
 	pasteMarkdown,
 	setEditorContent,
 } from '../markdownEditorUtils';
+import { MarkdownWithMinimalEscapes } from '../markdownWithMinimalEscapes';
 
 type EditorProps = NonNullable<N8nMarkdownEditorProps['editorProps']>;
 type EditorAttributes = EditorProps['attributes'];
