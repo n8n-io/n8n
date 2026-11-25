@@ -554,7 +554,9 @@ describe('GlobalConfig', () => {
 			ownerSettleSeconds: 300,
 		},
 		leases: {
-			enabled: false,
+			leaseSeconds: 20,
+			renewSeconds: 5,
+			marginSeconds: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
