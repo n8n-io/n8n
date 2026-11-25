@@ -34,9 +34,9 @@ withDefaults(defineProps<N8nChatTokenProps>(), {
 .token {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
 	max-width: 100%;
-	padding: 0 var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs);
 	vertical-align: baseline;
 	color: var(--tag--color--text);
 	background-color: var(--tag--color--background);
