@@ -1,4 +1,4 @@
-import type { ToolContext } from '@n8n/agents';
+import type { EpisodicScopeDecision, ToolContext } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -26,9 +26,11 @@ const OUTBOUND_METADATA_KEY = 'outboundMessages';
 const MAX_OUTBOUND_MESSAGES = 5;
 const MAX_OUTBOUND_TEXT_LENGTH = 2000;
 const SENT_MESSAGES_METADATA_KEY = 'sentMessages';
+const EPISODIC_SCOPES_METADATA_KEY = 'episodicScopesByResource';
 
 /** Older entries drop out, so the metadata of a busy thread stays small. */
 const MAX_SENT_MESSAGES_PER_THREAD = 50;
+const MAX_EPISODIC_SCOPES_PER_THREAD = 50;
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -90,6 +92,41 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		await this.writeMetadata(threadId, resourceId, {
 			[MESSAGE_CONTEXT_METADATA_KEY]: context,
 		});
+	}
+
+	async setEpisodicScope(
+		threadId: string,
+		resourceId: string,
+		decision: EpisodicScopeDecision,
+	): Promise<void> {
+		const normalized: EpisodicScopeDecision =
+			'disabled' in decision
+				? { disabled: true }
+				: { writeScopeId: decision.writeScopeId, readScopeIds: [...decision.readScopeIds] };
+
+		await this.updateMetadata(threadId, resourceId, (metadata) => {
+			const previous = metadata[EPISODIC_SCOPES_METADATA_KEY];
+			const entries = isRecord(previous) ? Object.entries(previous) : [];
+			const next = Object.fromEntries(
+				[...entries.filter(([key]) => key !== resourceId), [resourceId, normalized]].slice(
+					-MAX_EPISODIC_SCOPES_PER_THREAD,
+				),
+			);
+			return { ...metadata, [EPISODIC_SCOPES_METADATA_KEY]: next };
+		});
+	}
+
+	async getEpisodicScope(
+		threadId: string,
+		resourceId: string,
+	): Promise<EpisodicScopeDecision | undefined> {
+		const thread = await this.threadRepository.findOneBy({ id: threadId });
+		const scopes = this.parseMetadata(thread?.metadata)[EPISODIC_SCOPES_METADATA_KEY];
+		if (!isRecord(scopes) || !(resourceId in scopes)) return undefined;
+
+		const entry = scopes[resourceId];
+		// Fail closed on a malformed entry so memory never widens to a broader scope.
+		return isEpisodicScopeDecision(entry) ? entry : { disabled: true };
 	}
 
 	async bindSession(
@@ -443,4 +480,15 @@ function isSessionBinding(value: unknown): value is SessionBinding {
 
 function isSameBinding(a: SessionBinding | null, b: SessionBinding | null): boolean {
 	return a?.threadId === b?.threadId && a?.resourceId === b?.resourceId;
+}
+
+function isEpisodicScopeDecision(value: unknown): value is EpisodicScopeDecision {
+	if (!isRecord(value)) return false;
+	if (value.disabled === true) return true;
+	return (
+		typeof value.writeScopeId === 'string' &&
+		value.writeScopeId.length > 0 &&
+		Array.isArray(value.readScopeIds) &&
+		value.readScopeIds.every((id) => typeof id === 'string' && id.length > 0)
+	);
 }
