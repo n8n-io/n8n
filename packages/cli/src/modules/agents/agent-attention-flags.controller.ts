@@ -10,7 +10,7 @@ export class AgentAttentionFlagsController {
 	constructor(private readonly attentionFlags: AgentAttentionFlagsService) {}
 
 	@Get('/:agentId/attention-flags')
-	@ProjectScope('agent:read')
+	@ProjectScope('agent:update')
 	async list(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 		_res: Response,

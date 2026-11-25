@@ -25,9 +25,9 @@ describe('Agent attention flags', () => {
 	});
 
 	expectProjectScopedAgentRoutes(AgentAttentionFlagsController);
-	it('uses read scope for listing and update scope for shared dismissal', () => {
+	it('requires update scope to list or dismiss flags', () => {
 		const routes = getRoutesByHandlerName(AgentAttentionFlagsController);
-		expect(routes.get('list')?.accessScope?.scope).toBe('agent:read');
+		expect(routes.get('list')?.accessScope?.scope).toBe('agent:update');
 		expect(routes.get('dismiss')?.accessScope?.scope).toBe('agent:update');
 	});
 
