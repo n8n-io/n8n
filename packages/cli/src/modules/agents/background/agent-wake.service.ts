@@ -1,3 +1,4 @@
+import type { ContextCueEntry } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -114,17 +115,18 @@ export class AgentWakeService {
 	}
 
 	/**
-	 * Return a hint about pending job results for the current memory resource.
-	 * Authors who share a thread see only their own jobs.
-	 * Wake runs already receive these results as input and need no hint.
+	 * Return append-only context cues about pending job results or active stop
+	 * requests for the current memory resource. Authors who share a thread see
+	 * only their own jobs. Wake runs already receive these results as input and
+	 * need no cue.
 	 */
-	async getBackgroundUpdates(threadId: string, resourceId: string): Promise<string | undefined> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
-		if (this.activeWakes.has(threadId)) return undefined;
+	async getBackgroundUpdateCues(threadId: string, resourceId: string): Promise<ContextCueEntry[]> {
+		if (!this.agentsConfig.backgroundTasksEnabled) return [];
+		if (this.activeWakes.has(threadId)) return [];
 
-		const [pending, stoppedHere] = await Promise.all([
+		const [pending, stopIds] = await Promise.all([
 			this.jobRepository.findWakeableUnconsumed(threadId),
-			this.jobRepository.hasRequestedStop(threadId, resourceId),
+			this.jobRepository.findRequestedStopIds(threadId, resourceId),
 		]);
 		const jobs = pending.filter(
 			(job) =>
@@ -133,26 +135,37 @@ export class AgentWakeService {
 				!job.pauseRequestId &&
 				!job.wakeAttemptId,
 		);
-		if (jobs.length === 0 && !stoppedHere) return undefined;
+		if (jobs.length === 0 && stopIds.length === 0) return [];
 
-		// Remove tag characters so titles cannot close the surrounding tag.
-		// Quote titles to distinguish them from instructions.
-		const summaries = jobs
-			.map((job) => {
-				const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
-				return `${JSON.stringify(title)} (${job.status})`;
-			})
-			.join(', ');
-		const updates: string[] = [];
-		if (jobs.length > 0)
-			updates.push(
-				`${jobs.length} background job(s) settled: ${summaries}. Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
-			);
-		if (stoppedHere)
-			updates.push(
-				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
-			);
-		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${updates.join('\n')}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
+		const cues: ContextCueEntry[] = [];
+
+		if (jobs.length > 0) {
+			// Remove tag characters so titles cannot close the surrounding tag.
+			// Quote titles to distinguish them from instructions.
+			const summaries = jobs
+				.map((job) => {
+					const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
+					return `${JSON.stringify(title)} (${job.status})`;
+				})
+				.join(', ');
+			const settledKey = jobs
+				.map((job) => `${job.id}:${job.status}`)
+				.sort()
+				.join(',');
+			cues.push({
+				id: `background-updates:settled:${settledKey}`,
+				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
+			});
+		}
+
+		if (stopIds.length > 0) {
+			cues.push({
+				id: `background-updates:stop:${stopIds.join(',')}`,
+				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
+			});
+		}
+
+		return cues;
 	}
 
 	private scheduleLocal(threadId: string): void {

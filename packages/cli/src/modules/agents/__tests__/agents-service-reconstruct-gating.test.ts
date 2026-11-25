@@ -1101,6 +1101,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		);
 		expect(getInjectedToolNames()).toContain(WRITE_TODOS_TOOL_NAME);
 		for (const name of planToolNames) expect(getInjectedToolNames()).not.toContain(name);
+		expect(builtAgent.contextCueProvider).not.toHaveBeenCalled();
 		expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
 	});
 
@@ -1118,17 +1119,28 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
 			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
 			expect(eagerToolNames.includes('background_jobs')).toBe(backgroundTasksEnabled);
+			expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
 			if (backgroundTasksEnabled) {
 				expect(getInjectedToolNames()).toContain('background_jobs');
-				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
-				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
-				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
+				expect(builtAgent.contextCueProvider).toHaveBeenCalledTimes(1);
+				const provider = builtAgent.contextCueProvider.mock.calls[0][0];
+				const cues = [
+					{ id: 'background-updates:settled:job-1:completed', content: 'Background result' },
+				];
+				wakeService.getBackgroundUpdateCues.mockResolvedValue(cues);
 				expect(
-					await provider({ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } }),
-				).toBe('Background result');
-				expect(wakeService.getBackgroundUpdates).toHaveBeenCalledWith('thread-1', 'resource-1');
+					await provider({
+						messages: [],
+						sentCueIds: new Set(),
+						persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+					}),
+				).toEqual(cues);
+				expect(wakeService.getBackgroundUpdateCues).toHaveBeenCalledWith('thread-1', 'resource-1');
+				expect(
+					await provider({ messages: [], sentCueIds: new Set(), persistence: undefined }),
+				).toEqual([]);
 			} else {
-				expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
+				expect(builtAgent.contextCueProvider).not.toHaveBeenCalled();
 			}
 		},
 	);

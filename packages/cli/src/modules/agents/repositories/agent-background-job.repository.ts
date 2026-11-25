@@ -330,6 +330,21 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		]);
 	}
 
+	async findRequestedStopIds(parentThreadId: string, parentResourceId: string): Promise<string[]> {
+		const scope = { parentThreadId, parentResourceId, pauseRequestId: Not(IsNull()) };
+		const rows = await this.find({
+			select: { pauseRequestId: true },
+			where: [
+				{ ...scope, kind: 'subagent', status: In(['running', 'suspended', 'paused']) },
+				{ ...scope, kind: 'workflow', notifiedAt: IsNull() },
+			],
+		});
+
+		return [
+			...new Set(rows.map((row) => row.pauseRequestId).filter((id): id is string => id !== null)),
+		].sort();
+	}
+
 	async findSettledSubAgentsWithCheckpoints(): Promise<AgentBackgroundJob[]> {
 		// Use EXISTS, not a join with DISTINCT: Postgres cannot compare the json columns.
 		const checkpoint = this.createQueryBuilder()
