@@ -20,6 +20,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 import {
 	callEvalMockHandler,
@@ -245,6 +246,7 @@ export async function requestWithAuthentication(
 				);
 				return surfaceOriginal();
 			}
+			if (response?.body instanceof Readable) response.body.destroy();
 			requestOptions = await additionalData.credentialsHelper.authenticate(
 				credentialsDecrypted,
 				credentialsType,
