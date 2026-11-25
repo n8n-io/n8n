@@ -8,7 +8,6 @@ import { DataSource } from '@n8n/typeorm';
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
-import { ExecutionLimitsController } from '../execution-limits.controller';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
@@ -36,16 +35,22 @@ describe('ExecutionLimitsModule', () => {
 	});
 
 	it('registers the fold step and controller but does not load the limits when unlicensed', async () => {
+		const controllerMetadata = new ControllerRegistryMetadata();
+		Container.set(ControllerRegistryMetadata, controllerMetadata);
 		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
 
+		expect([...controllerMetadata.controllerClasses]).toEqual([]);
+
 		await new ExecutionLimitsModule().init();
 
+		const registeredControllers = [...controllerMetadata.controllerClasses];
 		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
+		expect(registeredControllers).toHaveLength(1);
+		const { ExecutionLimitsController } = await import('../execution-limits.controller.js');
+		expect(registeredControllers).toEqual([ExecutionLimitsController]);
 		expect(
-			Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				ExecutionLimitsController as never,
-			).basePath,
+			controllerMetadata.getControllerMetadata(ExecutionLimitsController as never).basePath,
 		).toBe('/execution-limits');
 		expect(snapshot.start).not.toHaveBeenCalled();
 	});

@@ -239,7 +239,8 @@ type EntityName =
 	| 'AgentExecutionStatisticsDelta'
 	| 'ExecutionLedgerEntity'
 	| 'ExecutionLedgerParkedEntity'
-	| 'ExecutionLimitAudit';
+	| 'ExecutionLimitAudit'
+	| 'ProjectExecutionLimit';
 
 /**
  * Truncate specific DB tables in a test DB.
