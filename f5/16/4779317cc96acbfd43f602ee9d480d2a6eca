@@ -1,0 +1,20 @@
+packages/quality/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_dfe3f914c8bb46::t_14eaacbbc95eaa 614,619,623-631
+  s_dfe3f914c8bb46::t_b7a24b6e9e775d 632-633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5164779317cc96acbfd43f602ee9d480d2a6eca",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

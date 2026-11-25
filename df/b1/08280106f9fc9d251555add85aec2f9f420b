@@ -1,0 +1,72 @@
+packages/@n8n/api-types/src/index.ts
+  s_e3ba92c7ef9d8c::t_26566292bcc288 526,721
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_e3ba92c7ef9d8c::t_ed345a3856b29b 44
+  s_e3ba92c7ef9d8c::t_7a417c993571fc 43
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_e3ba92c7ef9d8c::t_81b3fd1f8508fc 149
+packages/cli/src/modules/instance-ai/instance-context-turn-telemetry.ts
+  s_e3ba92c7ef9d8c::t_9aeb541f873695 7-12
+  s_e3ba92c7ef9d8c::t_26566292bcc288 84
+  s_e3ba92c7ef9d8c::t_3dc00c94241886 85
+packages/@n8n/telemetry/src/__tests__/instance-context-turn.test.ts
+  s_e3ba92c7ef9d8c::t_bf66e9bbea2606 135-152
+  s_e3ba92c7ef9d8c::t_7a417c993571fc 15
+  s_e3ba92c7ef9d8c::t_cafe309572e388 16
+packages/@n8n/instance-ai/src/stream/__tests__/assistant-usage.test.ts
+  s_e3ba92c7ef9d8c::t_3adde7f1179535 33,66-83
+  s_e3ba92c7ef9d8c::t_5175b94a694d68 9-11,14-15,18,22,25,28-32,34-40,42,44,47,50,54,57-63,86-87,90-91
+  s_e3ba92c7ef9d8c::t_b96c81e3a5cec4 1,3-8,12-13,16-17,19-21,23-24,26-27,41,43,45-46,48-49,51-53,55-56,64-65,84-85,88-89,92-93
+  s_e3ba92c7ef9d8c::t_7853876a35cedd 2
+  s_e3ba92c7ef9d8c::t_590ff4ecfdc8fe 94-120
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e3ba92c7ef9d8c::t_26566292bcc288 454-458
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-context-turn-telemetry.test.ts
+  s_e3ba92c7ef9d8c::t_7a417c993571fc 109,123-136
+  s_e3ba92c7ef9d8c::t_05c30098b317c1 110
+  s_e3ba92c7ef9d8c::t_04f898f34f056d 137-142
+  s_e3ba92c7ef9d8c::t_d2b216fe5fa186 143-144
+packages/@n8n/instance-ai/src/stream/__tests__/work-summary-accumulator.test.ts
+  s_e3ba92c7ef9d8c::t_02a55acad3c141 82,96,108-113,133-159
+  s_e3ba92c7ef9d8c::t_4f9c99bbf8ea88 160
+packages/@n8n/instance-ai/src/tools/skills.tool.ts
+  s_e3ba92c7ef9d8c::t_81b3fd1f8508fc 137
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_e3ba92c7ef9d8c::t_2be31f749bcee0 247,249
+  s_e3ba92c7ef9d8c::t_26566292bcc288 5,245-246,248
+  s_e3ba92c7ef9d8c::t_19033f6b59444d 250-254
+packages/@n8n/instance-ai/src/stream/assistant-usage.ts
+  s_e3ba92c7ef9d8c::t_4f60547348e12b 92,198,212-214,216-220
+  s_e3ba92c7ef9d8c::t_760b4249a9aa6f 207-210,215
+  s_e3ba92c7ef9d8c::t_ccdbf7a5af6504 222-238
+  s_e3ba92c7ef9d8c::t_d0745653eae6bb 1,7-10,14-15,22-64,66-79,82-90,93-197,200-204,211
+  s_e3ba92c7ef9d8c::t_ab121c34c1caa5 2-6,16-20
+  s_e3ba92c7ef9d8c::t_6c8afe803b64cf 11
+  s_e3ba92c7ef9d8c::t_a6dfa900e4170a 12-13,21,65,80-81,91,199,205-206,221
+packages/@n8n/agents/src/index.ts
+  s_e3ba92c7ef9d8c::t_64da02d65d6e77 416-417
+packages/@n8n/instance-ai/src/index.ts
+  s_e3ba92c7ef9d8c::t_26566292bcc288 680-681
+  s_e3ba92c7ef9d8c::t_8e4da4ba815d62 28
+  s_e3ba92c7ef9d8c::t_ec2e2f189707bb 682-684
+  s_e3ba92c7ef9d8c::t_77a65608cc1085 219-221
+packages/@n8n/instance-ai/src/stream/work-summary-accumulator.ts
+  s_e3ba92c7ef9d8c::t_1ed2b8aa1d11b5 2,17-20,36-40,95-100
+  s_e3ba92c7ef9d8c::t_b5c148d908da20 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfb108280106f9fc9d251555add85aec2f9f420b",
+  "prompts": {},
+  "sessions": {
+    "s_e3ba92c7ef9d8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cdab638-9118-47a5-9f25-130f139d8827",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
