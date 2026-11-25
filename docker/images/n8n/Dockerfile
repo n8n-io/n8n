@@ -56,16 +56,16 @@ FROM ${RUNTIME_IMAGE}
 # Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
 # Keeping this above release metadata ARGs/ENV and `COPY ./compiled` decouples
 # OS base refreshes from Node source compiles while keeping release and app-only
-# builds cached on these layers. V8 patches are already checked by
-# check-v8-patches.js when BUILDER_IMAGE is built; verify only the binary path,
-# runtime ABI, and pointer-compression flag here so a future inputs PR that
-# updates check-v8-patches.js does not fail against the previously pinned image.
+# builds cached on these layers. Specific V8 patches are verified by
+# check-v8-patches.js when BUILDER_IMAGE is built; verify the binary path,
+# runtime ABI, `-n8n.N` V8 suffix, and pointer-compression flag here so a future
+# inputs PR updating check-v8-patches.js does not fail against the pinned image.
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=node-source /usr/local/bin /usr/local/bin
 COPY --from=node-source /usr/local/lib /usr/local/lib
 ARG ENABLE_POINTER_COMPRESSION
 RUN node --version \
-    && node -e "const want = process.env.ENABLE_POINTER_COMPRESSION === 'true', got = Boolean(process.config.variables.v8_enable_pointer_compression); if (process.execPath !== '/usr/local/bin/node') throw new Error('expected /usr/local/bin/node, got ' + process.execPath); if (want !== got) throw new Error('pointer compression is ' + (got ? 'on' : 'off') + ', expected ' + (want ? 'on' : 'off'));" \
+    && node -e 'const want = process.env.ENABLE_POINTER_COMPRESSION === "true", got = Boolean(process.config.variables.v8_enable_pointer_compression); if (process.execPath !== "/usr/local/bin/node") throw new Error("expected /usr/local/bin/node, got " + process.execPath); if (!/-n8n\.\d+$/.test(process.versions.v8)) throw new Error("V8 " + process.versions.v8 + " has no n8n patch suffix"); if (want !== got) throw new Error("pointer compression is " + (got ? "on" : "off") + ", expected " + (want ? "on" : "off"));' \
     && ln -sf /usr/local/bin/node /usr/bin/node
 
 ARG N8N_VERSION

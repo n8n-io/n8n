@@ -77,7 +77,8 @@ RUN case "$ENABLE_POINTER_COMPRESSION" in true|false) ;; *) echo "ENABLE_POINTER
     && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
     && gpgconf --kill all \
-    && rm -rf "$GNUPGHOME" \
+    # dirmngr exits asynchronously and can unlink S.dirmngr mid-rm on BusyBox.
+    && { rm -rf "$GNUPGHOME" || { sleep 1 && rm -rf "$GNUPGHOME"; }; } \
     && grep " node-v$NODE_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && tar -xf "node-v$NODE_VERSION.tar.xz" \
     && cd "node-v$NODE_VERSION" \
