@@ -13,6 +13,7 @@ import {
 	getAgentBudgetSpend,
 	getAgentChatQueue,
 	getAgentTaskCancellation,
+	getIntegrationAccount,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -83,6 +84,21 @@ describe('useAgentApi', () => {
 				'POST',
 				'/projects/project-1/agents/v2/agent-1/test-run/reset',
 				{ sessionId: 'session-1' },
+			);
+		});
+	});
+
+	describe('getIntegrationAccount', () => {
+		it('requests the account of the integration type with GET', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ botName: 'bot' });
+
+			await expect(
+				getIntegrationAccount(restApiContext, 'project-1', 'agent-1', 'slack/x'),
+			).resolves.toEqual({ botName: 'bot' });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/integrations/slack%2Fx/account',
 			);
 		});
 	});
