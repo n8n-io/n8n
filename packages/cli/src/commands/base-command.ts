@@ -9,7 +9,7 @@ import {
 	ModulesConfig,
 } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
-import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
+import { NodeTypesProxy, PostHogClient, ExecutionDataJsonStore } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -42,7 +42,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
@@ -168,6 +167,7 @@ export abstract class BaseCommand<F = never> {
 			try {
 				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
 					canSeed: this.seedsInstanceIdentity,
+					keepDerivedInstanceId: await this.keepsDerivedInstanceId(),
 				});
 			} catch (error) {
 				if (this.seedsInstanceIdentity) throw error;
@@ -309,6 +309,24 @@ export abstract class BaseCommand<F = never> {
 		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
 		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
 		await Container.get(SystemTaskRunner).init();
+	}
+
+	/**
+	 * Whether a new `instance.id` must be the encryption-key-derived one: one-off
+	 * commands never seed, and a license certificate is bound to the derived ID.
+	 */
+	protected async keepsDerivedInstanceId(): Promise<boolean> {
+		if (!this.seedsInstanceIdentity) return true;
+		try {
+			return Boolean(await Container.get(License).loadCertStr());
+		} catch (error) {
+			// A wrong "no" would cost the install its license, so treat an unreadable cert as present.
+			this.logger.warn(
+				'Could not check for a license certificate, so a new instance ID will be the derived one',
+				{ error: ensureError(error) },
+			);
+			return true;
+		}
 	}
 
 	/**
@@ -572,6 +590,15 @@ export abstract class BaseCommand<F = never> {
 	 */
 	async initPolicyEnforcement() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
+	}
+
+	/**
+	 * Registers the workflow review rules, so a one-off command that publishes is refused what the
+	 * server refuses. Call after `initLicense()`: the module is license-gated. Call it once per
+	 * process: a second init of the module throws.
+	 */
+	async initWorkflowReviews() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['workflow-reviews']);
 	}
 
 	/** One-off commands that run workflows init only the modules they need. */

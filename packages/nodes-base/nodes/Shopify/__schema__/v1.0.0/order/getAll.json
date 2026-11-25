@@ -126,6 +126,9 @@
                             "properties": {
                                 "name": {
                                     "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
                                 }
                             }
                         }
@@ -238,5 +241,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

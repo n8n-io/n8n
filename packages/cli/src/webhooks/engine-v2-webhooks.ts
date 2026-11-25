@@ -12,8 +12,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	classifyTriggerIdentity,
 	createRunExecutionData,
-	FORM_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -26,13 +24,10 @@ import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/web
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
- * path does not: a seeded execution stack, MCP relay fields, or multi-page
- * forms.
+ * path does not: a seeded execution stack or MCP relay fields.
  */
 const UNSUPPORTED_TRIGGERS = new Set<string>([
 	CHAT_TRIGGER_NODE_TYPE,
-	FORM_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 ]);
@@ -55,6 +50,8 @@ export type EngineV2WebhookRequest = {
 	responseMode: WebhookResponseMode;
 	/** Set when the request resumes an execution that waits on this webhook. */
 	executionId: string | undefined;
+	/** Whether submitting the form opens another form page or a Form Ending. */
+	formHasMorePages: boolean;
 };
 
 /**
@@ -91,7 +88,12 @@ export class EngineV2Webhooks {
 	 *
 	 * Ordered so the user hears the most fundamental reason first.
 	 */
-	assertSupported({ workflowStartNode, responseMode, executionId }: EngineV2WebhookRequest): void {
+	assertSupported({
+		workflowStartNode,
+		responseMode,
+		executionId,
+		formHasMorePages,
+	}: EngineV2WebhookRequest): void {
 		// Checked first: `EngineV2WebhookResponseRegistry.waitForResponse` assumes the module
 		// registered its channel, and throws an internal error otherwise. Only a check
 		// that precedes that call can turn "module off" into a 400 instead of a 500.
@@ -123,6 +125,12 @@ export class EngineV2Webhooks {
 			throw new UserError(
 				`Engine v2 cannot run the "${workflowStartNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
+		}
+
+		// Refused on the GET too: only the submit gets the 'formPage' mode, so a
+		// later refusal would come after the person filled in the form.
+		if (formHasMorePages) {
+			throw new UserError('Engine v2 cannot run a form that has more pages or a Form Ending yet.');
 		}
 
 		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {

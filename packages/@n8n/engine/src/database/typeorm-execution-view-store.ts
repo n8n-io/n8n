@@ -8,14 +8,10 @@ import type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
-	StepView,
 	ExecutionListFilter,
 	ExecutionListQuery,
 	ExecutionListItemView,
 } from '../execution/execution-view-store';
-
-/** The execution row, with its steps aggregated into one column. */
-type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
 
 const hostMode = (alias: string) => `${alias}.caller_context->>'hostMode'`;
 
@@ -104,6 +100,9 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 				parentExecutionId: query.parentExecutionId,
 			});
 		}
+		if (query.hasParent !== undefined) {
+			qb.andWhere(`${alias}.parent_execution_id IS ${query.hasParent ? 'NOT NULL' : 'NULL'}`);
+		}
 		if (query.createdAfter)
 			qb.andWhere(`${alias}.created_at >= :createdAfter`, { createdAfter: query.createdAfter });
 		if (query.createdBefore)
@@ -118,7 +117,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	}
 
 	async loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView> {
-		const row: ExecutionWithStepsRow | undefined = await this.withSteps(
+		const row: ExecutionWithStepsView | undefined = await this.withSteps(
 			this.selectExecution(id),
 		).getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
@@ -142,7 +141,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.orderBy('newest.created_at', 'DESC')
 			.addOrderBy('newest.id', 'DESC')
 			.limit(1);
-		const row: ExecutionWithStepsRow | undefined = await this.withSteps(
+		const row: ExecutionWithStepsView | undefined = await this.withSteps(
 			qb.where(`execution.id = ${newest.getQuery()}`),
 		).getRawOne();
 		return row;
@@ -179,13 +178,38 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	 * `workflow` are large enough that a long loop would ship them thousands of
 	 * times. Grouping by the primary key is what lets the execution columns
 	 * survive the aggregate.
+	 *
+	 * The parent's workflow and the sub-executions come along, so a reader can
+	 * link to them without a second read.
 	 */
 	private withSteps(
 		qb: SelectQueryBuilder<WorkflowExecution>,
 	): SelectQueryBuilder<WorkflowExecution> {
-		return qb
-			.addSelect(
-				`COALESCE(
+		const executions = this.executions.metadata.tableName;
+
+		return (
+			qb
+				.addSelect('parent_execution.workflow_id', 'parentWorkflowId')
+				.addSelect(
+					`COALESCE(
+					(
+						SELECT json_agg(
+							json_build_object(
+								'executionId', sub.id,
+								'workflowId', sub.workflow_id,
+								'stepId', sub.parent_step_id
+							)
+							ORDER BY sub.created_at ASC, sub.id ASC
+						)
+						FROM ${executions} sub
+						WHERE sub.parent_execution_id = execution.id
+					),
+					'[]'
+				)`,
+					'subExecutions',
+				)
+				.addSelect(
+					`COALESCE(
 					json_agg(
 						json_build_object(
 							'id', step.id,
@@ -193,6 +217,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 							'iteration', step.iteration,
 							'status', step.status,
 							'outputs', step.outputs,
+							'outputSources', step.output_sources,
 							'error', step.error,
 							'createdAt', step.created_at,
 							'updatedAt', step.updated_at
@@ -201,9 +226,17 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 					) FILTER (WHERE step.id IS NOT NULL),
 					'[]'
 				)`,
-				'steps',
-			)
-			.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
-			.groupBy('execution.id');
+					'steps',
+				)
+				.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
+				.leftJoin(
+					executions,
+					'parent_execution',
+					'parent_execution.id = execution.parent_execution_id',
+				)
+				// The parent's primary key, so its workflow survives the aggregate too.
+				.groupBy('execution.id')
+				.addGroupBy('parent_execution.id')
+		);
 	}
 }

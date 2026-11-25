@@ -28,6 +28,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Excel (SharePoint)',
 		name: 'microsoftExcelSharePoint',
+		schemaPath: 'Microsoft/ExcelSharePoint',
 		icon: 'file:excelSharePoint.svg',
 		group: ['transform'],
 		version: 1,

@@ -946,3 +946,66 @@ describe('compileWorkflowSource > host SDK validators', () => {
 		expect(warnings).toEqual([]);
 	});
 });
+
+describe('compileWorkflowSource > target engine', () => {
+	const retryWorkflow = (settings?: WorkflowJSON['settings']): WorkflowJSON => ({
+		name: 'Retry workflow',
+		nodes: [
+			{
+				id: 'start',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'fetch',
+				name: 'Fetch',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [200, 0],
+				parameters: { url: 'https://example.test' },
+				retryOnFail: true,
+			},
+		],
+		connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+		...(settings ? { settings } : {}),
+	});
+
+	const compile = async (workflow: WorkflowJSON, engine?: 'v1' | 'v2') => {
+		const sdk = await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk');
+		vi.mocked(validateWorkflow).mockImplementationOnce(sdk.validateWorkflow);
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/retry.workflow.json',
+			JSON.stringify(workflow),
+			undefined,
+			engine ? { engine } : undefined,
+		);
+		if (!result.success) throw new Error('Expected the compile to succeed');
+		return partitionWarnings(result.warnings).blocking.map((warning) => warning.code);
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('blocks a v2 build with a feature that engine v2 cannot run', async () => {
+		expect(await compile(retryWorkflow(), 'v2')).toContain('ENGINE_V2_RETRY_ON_FAIL');
+	});
+
+	it('does not check engine v2 support when the engine is v1', async () => {
+		expect(await compile(retryWorkflow(), 'v1')).not.toContain('ENGINE_V2_RETRY_ON_FAIL');
+	});
+
+	it('does not check engine v2 support when no engine is given', async () => {
+		expect(await compile(retryWorkflow())).not.toContain('ENGINE_V2_RETRY_ON_FAIL');
+	});
+
+	it('lets the engineType of the code win over the given engine', async () => {
+		expect(await compile(retryWorkflow({ engineType: 'v1' }), 'v2')).not.toContain(
+			'ENGINE_V2_RETRY_ON_FAIL',
+		);
+	});
+});

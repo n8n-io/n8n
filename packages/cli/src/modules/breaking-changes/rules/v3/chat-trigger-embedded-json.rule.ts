@@ -42,9 +42,14 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Update your embedded chat to support the JSON message format',
+				action: 'Update a pinned @n8n/chat widget',
 				description:
-					"If you embed the @n8n/chat widget with a pinned version, update it to a version that supports the JSON WebSocket format. If you use a custom chat client, make sure it parses JSON frames. Embeds using the unpinned CDN script update automatically and need no action. No change in the workflow clears this finding: when your embed is ready, set the finding to Won't fix.",
+					"If you embed the @n8n/chat widget with a pinned version, update it to the latest version. Embeds using the unpinned CDN script update automatically. No change in the workflow clears this finding: when your embed is ready, set the finding to Won't fix.",
+			},
+			{
+				action: 'Update a custom chat client',
+				description:
+					'If you use a custom chat client, make sure it parses JSON frames and answers each {"type":"heartbeat"} frame with {"type":"heartbeat-ack"}. Without this answer, n8n cancels the chat execution after 60 seconds.',
 			},
 		];
 	}

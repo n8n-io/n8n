@@ -99,7 +99,7 @@ describe('execution ledger started rows', () => {
 		expect(await claimAllLedgerRows()).toEqual([]);
 	});
 
-	it('writes no row and keeps the run when the workflow has no owner project', async () => {
+	it('writes rows with no project when the workflow has no owner project', async () => {
 		const unowned = await createWorkflow({ name: 'Unowned' });
 
 		const executionId = await persistence.create(
@@ -107,7 +107,10 @@ describe('execution ledger started rows', () => {
 		);
 
 		expect(await executionExists(executionId)).toBe(true);
-		expect(await claimAllLedgerRows()).toEqual([]);
+		expect(await claimAllLedgerRows()).toMatchObject([
+			{ executionId, event: 'started', entityId: unowned.id, projectId: null },
+			{ executionId, event: 'ended', outcome: 'blocked', projectId: null },
+		]);
 	});
 
 	it('writes a blocked ended row for a run created finished', async () => {

@@ -60,7 +60,7 @@ Expected response:
 In a second terminal:
 
 ```bash
-export N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+export N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-5-5
 export N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 
 export N8N_INSTANCE_AI_SANDBOX_ENABLED=true

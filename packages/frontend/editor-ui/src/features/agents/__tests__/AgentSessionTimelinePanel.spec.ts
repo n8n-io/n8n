@@ -3,11 +3,12 @@ import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AgentBackgroundJobDto, AgentChatResumeDto, PushMessage } from '@n8n/api-types';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
-import { reactive, ref } from 'vue';
+import { defineComponent, inject, reactive, ref } from 'vue';
 import { createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
+import { AGENT_ATTACHMENT_URL_KEY } from '../components/agentChatInjectionKeys';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
 import type { FilterOption } from '../session-timeline.types';
 
@@ -44,7 +45,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ pushRef: 'session-xyz' }),
+	useRootStore: () => ({ pushRef: 'session-xyz', restApiContext: { baseUrl: '/rest' } }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -221,7 +222,11 @@ enableAutoUnmount(afterEach);
 
 function mountPanel(
 	props: Partial<InstanceType<typeof AgentSessionTimelinePanel>['$props']> = {},
-	options: { attachTo?: HTMLElement; renderTimelineTable?: boolean } = {},
+	options: {
+		attachTo?: HTMLElement;
+		renderTimelineTable?: boolean;
+		stubs?: Record<string, unknown>;
+	} = {},
 ) {
 	return mount(AgentSessionTimelinePanel, {
 		...(options.attachTo ? { attachTo: options.attachTo } : {}),
@@ -231,6 +236,7 @@ function mountPanel(
 			stubs: {
 				...stubs,
 				...(options.renderTimelineTable ? { SessionTimelineTable: false } : {}),
+				...options.stubs,
 			},
 		},
 	});
@@ -308,8 +314,35 @@ describe('AgentSessionTimelinePanel', () => {
 		mountPanel();
 		await flushPromises();
 
-		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1');
+		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1', undefined);
 		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('loads the thread detail of a system agent through its channel', async () => {
+		mountPanel({ agentId: 'assistant', channel: 'system' });
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'assistant', 't1', 'system');
+	});
+
+	it.each([
+		[undefined, '/rest/projects/p1/agents/v2/a1/chat/attachments/f-1?threadId=t1'],
+		['system' as const, '/rest/agents/system/a1/chat/attachments/f-1?threadId=t1'],
+	])('builds attachment URLs for the %s channel', async (channel, url) => {
+		const wrapper = mountPanel(
+			{ channel },
+			{
+				stubs: {
+					SessionTimelineTable: defineComponent({
+						setup: () => ({ build: inject(AGENT_ATTACHMENT_URL_KEY) }),
+						template: '<a data-test-id="attachment-url" :href="build?.(\'f-1\')" />',
+					}),
+				},
+			},
+		);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="attachment-url"]').attributes('href')).toBe(url);
 	});
 
 	it.each(['SessionTimelineChart', 'SessionTimelineTable'])(
@@ -387,7 +420,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await wrapper.setProps({ threadId: 't2' });
 		await flushPromises();
 
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 	});
 
 	it('surfaces a toast when the detail fails to load', async () => {
@@ -570,7 +603,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledTimes(3);
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([nextDetail]);
 	});
 
@@ -665,6 +698,18 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(table.props('approval')).toBeUndefined();
 	});
 
+	it('shows no approval card for a chat turn, which takes its approval in the chat', async () => {
+		const detail = awaitingDetail();
+		getThreadDetail.mockResolvedValue({
+			...detail,
+			executions: detail.executions.map((execution) => ({ ...execution, source: 'chat' })),
+		});
+		const table = await openAwaitingApproval(mountPanel());
+
+		expect(table.props('approvalItem')).toBeNull();
+		expect(table.props('approval')).toBeUndefined();
+	});
+
 	it('re-enables the card when the approval request fails', async () => {
 		getThreadDetail.mockResolvedValue(awaitingDetail());
 		resumeTaskApproval.mockRejectedValue(new Error('nope'));
@@ -723,7 +768,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledTimes(callsBeforeSettle);
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 	});
 
 	describe('budget notice', () => {

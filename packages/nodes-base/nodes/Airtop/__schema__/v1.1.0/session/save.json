@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"profileName": {
+			"type": "string"
+		},
+		"sessionId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

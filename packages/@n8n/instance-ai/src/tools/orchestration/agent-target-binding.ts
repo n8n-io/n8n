@@ -322,26 +322,26 @@ export function withBoundAgentTarget(
 }
 
 /**
- * The thread metadata that binds an agent the editor attached to the message,
- * the same binding the editor writes before it opens a thread on the current
- * runtime. A pending agent gets the pending marker, so a build reuses its id.
- * When the editor saved the pending agent, the marker becomes the binding.
- * Returns `undefined` when the thread already targets an agent.
+ * The thread metadata that binds an agent subject, the same binding the editor
+ * writes before it opens a thread on the current runtime. A pending agent gets
+ * the pending marker, so a build reuses its id. When the editor saved the
+ * pending agent, the marker becomes the binding. Returns `undefined` when the
+ * thread already targets an agent.
  */
-export function withAttachedAgentTarget(
+export function withAgentSubject(
 	metadata: Record<string, unknown>,
-	attached: { id: string; projectId: string; name?: string; pending?: true },
+	subject: { id: string; projectId: string; name?: string; pending?: true },
 ): Record<string, unknown> | undefined {
 	if (parseTarget(metadata[METADATA_KEY])) return undefined;
-	const { id: agentId, projectId, name } = attached;
+	const { id: agentId, projectId, name } = subject;
 	const pending = pendingAgentTargetSchema.safeParse(metadata[PENDING_AGENT_METADATA_KEY]);
 	if (
 		pending.success &&
-		(attached.pending || pending.data.agentId !== agentId || pending.data.projectId !== projectId)
+		(subject.pending || pending.data.agentId !== agentId || pending.data.projectId !== projectId)
 	) {
 		return undefined;
 	}
-	if (attached.pending) {
+	if (subject.pending) {
 		return { ...metadata, [PENDING_AGENT_METADATA_KEY]: { projectId, agentId } };
 	}
 	return withBoundAgentTarget(metadata, { agentId, projectId, ...(name ? { name } : {}) });
@@ -374,6 +374,12 @@ export function threadAuthorizesAgentAdoption(
 	}
 	const bound = parseTarget(metadata[METADATA_KEY]);
 	return bound?.agentId === target.agentId && bound.projectId === target.projectId;
+}
+
+/** Whether the thread builds or edits an agent: it has a bound, a pending or an earlier agent target. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	const { bound, pending, targets } = readAgentTargetsMetadata(metadata);
+	return bound !== undefined || pending !== undefined || targets.length > 0;
 }
 
 /**

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
+import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
 	ref,
 	computed,
@@ -35,6 +37,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
+	isDraftIntegration,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -65,6 +68,7 @@ import { buildAgentTestHref } from '../utils/agentTestUrl';
 import {
 	getAgent,
 	createAgent,
+	moveAgent,
 	createAgentTask,
 	deleteAgent,
 	updateAgentSkill,
@@ -1026,9 +1030,18 @@ let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
+const agentsInvocationStepExperiment = useAgentsInvocationStepExperiment();
 const connectedTriggers = ref<string[]>([]);
 const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
+	const connectedChannelIds = (localConfig.value?.integrations ?? [])
+		.filter((integration) => !isDraftIntegration(integration))
+		.map((integration) => integration.type);
+
+	const enabledScheduleCount = (localConfig.value?.tasks ?? []).filter(
+		(task) => task.enabled,
+	).length;
+
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
@@ -1039,10 +1052,11 @@ const setupChecklistContext = computed(() => {
 				(localConfig.value?.tools?.length ?? 0) +
 				(localConfig.value?.mcpServers?.length ?? 0) +
 				(localConfig.value?.subAgents?.agents?.length ?? 0),
+			scheduleCount: enabledScheduleCount,
 		},
 		channels: {
-			loaded: initialized.value,
-			ids: connectedTriggers.value,
+			loaded: initialized.value && localConfig.value !== null,
+			ids: connectedChannelIds,
 		},
 		publication: {
 			loaded: initialized.value,
@@ -1057,6 +1071,7 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && previewSessionsLoaded.value,
 			count: sessionsStore.previewThreads.length,
 		},
+		showTriggerStep: agentsInvocationStepExperiment.isEnabled.value,
 	};
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
@@ -1572,6 +1587,7 @@ async function createPendingAgent(
 		projectId: targetProjectId,
 		agentId: targetAgentId,
 		name,
+		...(typeof route.query.folderId === 'string' ? { parentFolderId: route.query.folderId } : {}),
 		config: initialConfig,
 	};
 	if (props.artifactPersistAgent) {
@@ -1581,6 +1597,7 @@ async function createPendingAgent(
 	try {
 		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
 			id: targetAgentId,
+			parentFolderId: request.parentFolderId,
 			config: initialConfig,
 		});
 	} catch (error) {
@@ -1588,6 +1605,17 @@ async function createPendingAgent(
 		const lostInsert = error instanceof ResponseError && error.httpStatusCode === 409;
 		if (!aiThreadId.value || !lostInsert) throw error;
 		const existing = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+
+		if (request.parentFolderId && existing.parentFolderId !== request.parentFolderId) {
+			await moveAgent(
+				rootStore.restApiContext,
+				targetProjectId,
+				targetAgentId,
+				request.parentFolderId,
+			);
+			existing.parentFolderId = request.parentFolderId;
+		}
+
 		return { ...existing, config: null, configHash: null, adopted: true };
 	}
 }
@@ -2606,8 +2634,23 @@ watch(
 	{ immediate: true },
 );
 
+const folderMoveAction = ref<AgentFolderAction | null>(null);
+
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [];
+
+	if (
+		agent.value &&
+		!isUnsaved.value &&
+		effectiveCanEditAgent.value &&
+		settingsStore.isFoldersFeatureEnabled
+	) {
+		actions.push({
+			id: 'move-folder',
+			label: locale.baseText('agents.folders.move'),
+			icon: 'folder',
+		});
+	}
 
 	// Same order as the workflow menu: description and favorite first, then import/export.
 	if (effectiveCanEditAgent.value) {
@@ -2780,6 +2823,21 @@ async function saveN8nChatDescription(description: string): Promise<void> {
 }
 
 async function onHeaderAction(action: string) {
+	if (action === 'move-folder') {
+		if (isUnsaved.value) {
+			return;
+		}
+
+		folderMoveAction.value = {
+			mode: 'moveAgent',
+			id: agentId.value,
+			name: agent.value?.name,
+			parentFolderId: agent.value?.parentFolderId,
+		};
+
+		return;
+	}
+
 	if (action === 'edit-description') {
 		openDescriptionModal();
 		return;
@@ -2878,11 +2936,13 @@ async function onHeaderAction(action: string) {
  */
 function draftAgentResource(personalisation: AgentJsonConfig['personalisation']): AgentResource {
 	const now = new Date().toISOString();
+
 	return {
 		resourceType: 'agent',
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
+		parentFolderId: typeof route.query.folderId === 'string' ? route.query.folderId : null,
 		project: null,
 		isArchived: false,
 		availableInMCP: false,
@@ -3419,6 +3479,12 @@ useKeybindings({
 		]"
 		data-testid="agent-builder-layout"
 	>
+		<AgentFolderDialog
+			:project-id="projectId"
+			:action="folderMoveAction"
+			@close="folderMoveAction = null"
+			@saved="fetchAgent()"
+		/>
 		<AgentTestHeader
 			v-if="isStandalonePreview"
 			:agent-id="agentId"

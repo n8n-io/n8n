@@ -74,6 +74,8 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCallInterception,
+	ToolCallInterceptor,
 	ToolCancellationContext,
 	ToolExecutionContext,
 	ToolApprovalContext,
@@ -81,6 +83,7 @@ export type {
 	ToolSuspendOptions,
 	BuiltTool,
 	ToolDispatch,
+	LegacyCallConverter,
 	BuiltProviderTool,
 } from './sdk/tool';
 

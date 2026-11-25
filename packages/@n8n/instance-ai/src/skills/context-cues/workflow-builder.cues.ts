@@ -1,4 +1,10 @@
-import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
+import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
+import {
+	getBlockedEngineV2NodeSettingRules,
+	type EngineV2NodeSettingCode,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
+
+import type { InstanceAiEngineSetup } from '../../types';
 
 /**
  * Context cues for the `workflow-builder` skill. They are not in
@@ -7,7 +13,7 @@ import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
  */
 export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 	id: 'workflow-builder',
-	isActive: whileSkillActive('workflow-builder'),
+	isActive: whileSkillLoaded('workflow-builder'),
 	cues: [
 		{
 			id: 'if-branches-on-builder',
@@ -293,3 +299,65 @@ export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 		},
 	],
 };
+
+type WorkflowBuilderCue = ContextCueSet['cues'][number];
+
+/**
+ * Cues that recommend a node setting that engine v2 rejects. With the `engine-v2`
+ * module, the cue text gets the build check text for `code` as the v2 way, because a
+ * cue can apply to a v1 or a v2 workflow. `v1Only` marks a cue whose own text is only
+ * for engine v1, so it gets an "On engine v1:" prefix. A cue keeps its text when the
+ * engine check no longer blocks `code`.
+ */
+const ENGINE_AWARE_CUES: Record<string, { code: EngineV2NodeSettingCode; v1Only?: true }> = {
+	'on-error-one-handler': { code: 'CONTINUE_ERROR_OUTPUT' },
+	'zero-items-end-branch': { code: 'ALWAYS_OUTPUT_DATA' },
+	'always-output-data-empty-json': { code: 'ALWAYS_OUTPUT_DATA', v1Only: true },
+	'execute-once': { code: 'EXECUTE_ONCE', v1Only: true },
+};
+
+function lowerFirst(text: string): string {
+	return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function buildEngineAwareCues(): ContextCueSet {
+	const blocked = getBlockedEngineV2NodeSettingRules();
+	const v2Rule = (code: EngineV2NodeSettingCode) => {
+		const rule = blocked[code];
+		return rule ? `On engine v2: ${rule.text}` : undefined;
+	};
+
+	const cues: WorkflowBuilderCue[] = WORKFLOW_BUILDER_CUES.cues.map((cue) => {
+		const engineAware = Object.hasOwn(ENGINE_AWARE_CUES, cue.id)
+			? ENGINE_AWARE_CUES[cue.id]
+			: undefined;
+		const v2 = engineAware && v2Rule(engineAware.code);
+		if (!engineAware || !v2) return cue;
+		const v1 = engineAware.v1Only ? `On engine v1: ${lowerFirst(cue.text)}` : cue.text;
+		return { ...cue, text: `${v1} ${v2}` };
+	});
+
+	const retryOnFail = v2Rule('RETRY_ON_FAIL');
+	if (retryOnFail) {
+		cues.push({
+			id: 'engine-v2-retry-on-fail',
+			text: retryOnFail,
+			appliesWhen:
+				'A node calls an unreliable API and the workflow should retry it or continue after a failure.',
+		});
+	}
+
+	return { ...WORKFLOW_BUILDER_CUES, cues };
+}
+
+let engineAwareCues: ContextCueSet | undefined;
+
+/**
+ * The workflow builder cues for the engines of the instance. Without the `engine-v2`
+ * module every workflow runs on v1, so the cues stay the same.
+ */
+export function getWorkflowBuilderCues(engineSetup?: InstanceAiEngineSetup): ContextCueSet {
+	if (engineSetup?.engineV2Available !== true) return WORKFLOW_BUILDER_CUES;
+	engineAwareCues ??= buildEngineAwareCues();
+	return engineAwareCues;
+}

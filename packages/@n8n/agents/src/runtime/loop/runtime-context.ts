@@ -1,9 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import {
-	isAzureFoundryAnthropicModel,
-	isOpenRouterAnthropicModel,
-	splitModelId,
-} from '@n8n/ai-utilities/agent-config';
+import { isAzureFoundryAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -17,6 +13,7 @@ import type {
 	NativeToolDeferralConfig,
 } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
+import type { ReasoningReplayScope } from '../../types/sdk/provider';
 import { lockAdditionalProperties } from '../../utils/json-schema';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
@@ -49,7 +46,6 @@ import {
 	isAnthropicToolDeferred,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
-	buildSkillInstructionCacheOptions,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
 import {
@@ -57,7 +53,6 @@ import {
 	PROVIDER_QUIRKS,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
-import type { ActiveSkills } from '../skills/active-skills';
 import type { ToolCatalog } from '../tools/tool-catalog';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -264,14 +259,12 @@ export class RuntimeContextBuilder {
 		instructionProviderOptions,
 		providerOptions,
 		hostVolatileInstructions,
-		activeSkills,
 	}: {
 		list: AgentMessageList;
 		tools: Awaited<ReturnType<RuntimeContextBuilder['buildToolLoopContext']>>;
 		instructionProviderOptions: ProviderOptions | undefined;
 		providerOptions?: ProviderOptions;
 		hostVolatileInstructions: string | undefined;
-		activeSkills: ActiveSkills | undefined;
 	}) {
 		this.synchronizeSkillCatalog(list);
 		// Compaction can hide the list that was added at the start of the turn. Add it again.
@@ -280,26 +273,13 @@ export class RuntimeContextBuilder {
 			.map((value) => value?.trim())
 			.filter((value): value is string => Boolean(value))
 			.join('\n\n');
-		const skillContent = activeSkills?.instructions();
 		const { system, messages } = list.forLlm(
 			tools.effectiveInstructions,
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
-			skillContent
-				? {
-						content: skillContent,
-						cacheOptions: (messages) => {
-							if (isOpenRouterAnthropicModel(this.modelId)) return undefined;
-							return buildSkillInstructionCacheOptions(
-								instructionProviderOptions,
-								tools.aiTools,
-								messages,
-							);
-						},
-					}
-				: undefined,
 			splitModelId(this.modelId).provider,
+			this.replayReasoningScope(),
 		);
 		const preparedMessages =
 			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??
@@ -307,7 +287,7 @@ export class RuntimeContextBuilder {
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
 			system,
-			messages: activeSkills?.modelMessages(preparedMessages, list) ?? preparedMessages,
+			messages: preparedMessages,
 			aiTools: tools.aiTools,
 			promptCaching: this.config.promptCaching,
 			modelId: this.modelId,
@@ -510,6 +490,12 @@ export class RuntimeContextBuilder {
 			fragments.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
 		}
 		return fragments;
+	}
+
+	/** The reasoning replay scope asked for in the thinking config, if any. */
+	private replayReasoningScope(): ReasoningReplayScope | undefined {
+		const thinking = this.config.thinking;
+		return thinking && 'replayReasoning' in thinking ? thinking.replayReasoning : undefined;
 	}
 
 	/** Build the providerOptions object for provider-specific thinking config. */

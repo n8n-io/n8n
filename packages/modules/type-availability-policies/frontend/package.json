@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-type-availability-policies",
-  "version": "0.9.0",
+  "version": "0.11.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -20,7 +20,9 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*",
+    "@n8n/composables": "workspace:*",
     "@n8n/design-system": "workspace:*",
+    "@n8n/frontend-constants": "workspace:*",
     "@n8n/frontend-module-sdk": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
@@ -30,7 +32,8 @@
     "@vueuse/core": "catalog:frontend",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
-    "vue": "catalog:frontend"
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
   },
   "devDependencies": {
     "@iconify/json": "catalog:",

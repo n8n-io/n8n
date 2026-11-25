@@ -13,11 +13,11 @@ export class ExecutionsPage extends BasePage {
 	readonly logsPanel = new LogsPanel(this.getPreview().getByTestId('logs-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
-		await this.clickButtonByName('Debug in editor');
+		await this.getDebugButton().click();
 	}
 
 	async clickCopyToEditorButton(): Promise<void> {
-		await this.clickButtonByName('Copy to editor');
+		await this.getDebugButton().click();
 	}
 
 	getExecutionItems(): Locator {
@@ -33,20 +33,12 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('auto-refresh-checkbox');
 	}
 
-	/**
-	 * The debug button. The test id sits on the inner label, so step up to the
-	 * button element to assert its state.
-	 */
 	getDebugButton(): Locator {
-		return this.page.getByTestId('execution-debug-button').locator('xpath=ancestor::button');
+		return this.page.getByTestId('execution-debug-button');
 	}
 
-	/**
-	 * Hover the tooltip's trigger, not the disabled button: Chrome does not
-	 * dispatch mouse events to disabled form controls.
-	 */
 	async hoverDebugButton(): Promise<void> {
-		await this.getDebugButton().locator('xpath=ancestor::a').hover();
+		await this.getDebugButton().hover();
 	}
 
 	getPreview(): Locator {

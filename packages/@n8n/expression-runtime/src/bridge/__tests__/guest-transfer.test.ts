@@ -118,6 +118,96 @@ describe('prepareForGuest', () => {
 		expect(result.point).toEqual({ x: 1 });
 	});
 
+	it('keeps a small class instance of primitive fields inside an Error', () => {
+		class MessageToken {
+			name = 'ERROR';
+
+			constructor(readonly number: number) {}
+		}
+		const error = Object.assign(new Error('x'), { info: new MessageToken(111202) });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.info).toStrictEqual({ name: 'ERROR', number: 111202 });
+	});
+
+	it('keeps one copy of a small class instance shared inside an Error', () => {
+		class MessageToken {
+			number = 111202;
+		}
+		const token = new MessageToken();
+		const error = Object.assign(new Error('x'), { info: token, details: token });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.info).toStrictEqual({ number: 111202 });
+		expect(result.details).toBe(result.info);
+	});
+
+	it('keeps the Error when reading a class instance inside it throws', () => {
+		class MessageToken {
+			number = 111202;
+		}
+		const token = new Proxy(new MessageToken(), {
+			ownKeys() {
+				throw new Error('revoked');
+			},
+		});
+		const error = Object.assign(new Error('x'), { info: token, code: 1 });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.message).toBe('x');
+		expect(result.code).toBe(1);
+		expect(result.info).toBeUndefined();
+	});
+
+	class Payload {}
+	class Serializable {
+		id = 1;
+
+		toJSON() {
+			return 'x';
+		}
+	}
+	const payloadWith = (fields: object) =>
+		Object.defineProperties(new Payload(), Object.getOwnPropertyDescriptors(fields));
+
+	it.each([
+		['has toJSON', new Serializable()],
+		['holds an object', payloadWith({ nested: { a: 1 } })],
+		[
+			'has a getter',
+			payloadWith({
+				get value() {
+					return 1;
+				},
+			}),
+		],
+		[
+			'has too many fields',
+			payloadWith(Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`k${i}`, i]))),
+		],
+		['has too many characters', payloadWith({ body: 'x'.repeat(10_001) })],
+	])('drops a class instance inside an Error when it %s', (_case, instance) => {
+		const error = Object.assign(new Error('x'), { payload: instance });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.payload).toBeUndefined();
+	});
+
+	it.each([
+		['fields', Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`k${i}`, i]))],
+		['characters', { body: 'x'.repeat(9_996) }],
+	])('keeps a class instance inside an Error at the limit of %s', (_case, fields) => {
+		const error = Object.assign(new Error('x'), { payload: payloadWith(fields) });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.payload).toStrictEqual(fields);
+	});
+
 	it('drops a Promise inside an Error', () => {
 		const error = Object.assign(new Error('x'), { pending: Promise.resolve(1), code: 1 });
 
@@ -132,6 +222,10 @@ describe('prepareForGuest', () => {
 		(order) => {
 			class RequestData {
 				id = 1;
+
+				toJSON() {
+					return undefined;
+				}
 			}
 			const meta = { request: new RequestData() };
 			const error = Object.assign(new Error('x'), { meta });
@@ -150,6 +244,10 @@ describe('prepareForGuest', () => {
 	it('encodes a shared parent once per mode across two Errors', () => {
 		class RequestData {
 			id = 1;
+
+			toJSON() {
+				return undefined;
+			}
 		}
 		const meta = { request: new RequestData() };
 		const first = Object.assign(new Error('first'), { meta });
@@ -170,6 +268,10 @@ describe('prepareForGuest', () => {
 	it('reuses the filtered parent in a nested Error', () => {
 		class RequestData {
 			id = 1;
+
+			toJSON() {
+				return undefined;
+			}
 		}
 		const meta = { request: new RequestData() };
 		const inner = Object.assign(new Error('inner'), { meta });

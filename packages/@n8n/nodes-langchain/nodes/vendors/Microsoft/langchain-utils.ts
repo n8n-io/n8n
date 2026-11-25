@@ -11,6 +11,7 @@ import { SYSTEM_MESSAGE } from '../../agents/Agent/agents/ConversationalAgent/pr
 import { createAgentExecutor } from '../../agents/Agent/agents/ToolsAgent/V2/execute';
 import type { RunnableConfig } from '@langchain/core/runnables';
 
+import { createRunCancellation } from '../../../utils/agent-execution/createRunCancellation';
 import { getOptionalOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
 
 import type { ChatPromptTemplate, BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
@@ -96,7 +97,10 @@ export async function invokeAgent(
 			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 	};
 
-	const result = await executor.invoke(invokeParams, invokeOptions);
+	const runCancellation = createRunCancellation(invokeOptions.signal);
+	const result = await runCancellation.abortOnFailure(
+		executor.invoke(invokeParams, { ...invokeOptions, signal: runCancellation.signal }),
+	);
 
 	if (result.status === 'rejected') {
 		const error = result.reason as Error;

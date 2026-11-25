@@ -3,7 +3,7 @@ import { isIconOrEmoji, type IconOrEmoji, type SelectSize } from '@n8n/design-sy
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
 import { compareSharingEntries, type ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
@@ -90,7 +90,10 @@ const emit = defineEmits<{
 	'update:shareWithAllUsers': [value: boolean];
 }>();
 
-const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
+const selectedSingleProject = computed(() =>
+	Array.isArray(model.value) ? null : (model.value ?? null),
+);
+const selectedProject = computed(() => selectedSingleProject.value?.id ?? '');
 
 type ListEntry =
 	| { kind: 'shared'; project: ProjectSharingData }
@@ -148,9 +151,24 @@ const filteredProjects = computed(() => {
 	return list;
 });
 
-const sortedProjects = computed((): ProjectListItem[] => {
-	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
-		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+// The select shows a name only for a matching option, and search results can miss the
+// selected project. List it while the search is empty; Element Plus keeps its label after.
+const selectedProjectOption = computed((): ProjectSharingData | null => {
+	const selected = selectedSingleProject.value;
+	if (
+		!selected ||
+		filter.value !== '' ||
+		filteredProjects.value.some((p) => p.id === selected.id)
+	) {
+		return null;
+	}
+	return selected;
+});
+
+const sortedProjects = computed((): ProjectSharingData[] => {
+	const option = selectedProjectOption.value;
+	const projects = [...filteredProjects.value, ...(option ? [option] : [])].sort(
+		(projectA, projectB) => (projectA.name ?? '').localeCompare(projectB.name ?? ''),
 	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
@@ -159,7 +177,10 @@ const sortedProjects = computed((): ProjectListItem[] => {
 });
 
 const moreResultsCount = computed(() => {
-	return Math.max(0, searchCount.value - searchResults.value.length);
+	// An off-page selected option is part of the count, so it is not one of the "more" results.
+	const option = selectedProjectOption.value;
+	const offPage = option && !searchResults.value.some((p) => p.id === option.id) ? 1 : 0;
+	return Math.max(0, searchCount.value - searchResults.value.length - offPage);
 });
 const showSearchHint = computed(
 	() => filter.value === '' && sortedProjects.value.length === 0 && moreResultsCount.value > 0,
@@ -167,7 +188,8 @@ const showSearchHint = computed(
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
-	const project = searchResults.value.find((p) => p.id === selectedProject.value);
+	const project =
+		searchResults.value.find((p) => p.id === selectedProject.value) ?? selectedSingleProject.value;
 
 	if (project?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
@@ -268,18 +290,6 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 		emit('projectRemoved', project);
 	}
 };
-
-watch(
-	() => model.value,
-	() => {
-		if (model.value === null || Array.isArray(model.value)) {
-			selectedProject.value = '';
-		} else {
-			selectedProject.value = model.value.id;
-		}
-	},
-	{ immediate: true },
-);
 </script>
 <template>
 	<div>
@@ -378,6 +388,7 @@ watch(
 							</N8nText>
 							<N8nTooltip
 								v-if="canRemoveProject(entry.project)"
+								as-child
 								:content="locale.baseText('projects.sharing.removeAccess')"
 								placement="top"
 							>
@@ -388,6 +399,7 @@ watch(
 									icon="trash-2"
 									:aria-label="locale.baseText('projects.sharing.removeAccess')"
 									:disabled="props.readonly"
+									focusable-when-disabled
 									data-test-id="project-sharing-remove"
 									@click="onRoleAction(entry.project, 'remove')"
 								/>
@@ -417,6 +429,7 @@ watch(
 					</N8nSelect>
 					<N8nTooltip
 						v-if="!props.static && !showStaticRole && canRemoveProject(entry.project)"
+						as-child
 						:content="locale.baseText('projects.sharing.removeAccess')"
 						placement="top"
 					>
@@ -427,6 +440,7 @@ watch(
 							icon="trash-2"
 							:aria-label="locale.baseText('projects.sharing.removeAccess')"
 							:disabled="props.readonly"
+							focusable-when-disabled
 							data-test-id="project-sharing-remove"
 							@click="onRoleAction(entry.project, 'remove')"
 						/>

@@ -74,6 +74,7 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
@@ -81,6 +82,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision

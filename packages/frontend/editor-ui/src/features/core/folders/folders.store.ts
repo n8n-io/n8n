@@ -1,4 +1,4 @@
-import type { FolderTransferResult } from '@n8n/api-types';
+import type { FolderResourceType, FolderTransferResult } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -138,6 +138,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		filter?: {
 			name?: string;
 		},
+		resourceType: FolderResourceType = 'workflow',
 	): Promise<ChangeLocationSearchResult[]> {
 		const PAGE_SIZE = 100;
 		let skip = 0;
@@ -149,6 +150,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 				rootStore.restApiContext,
 				projectId,
 				{
+					resourceType,
 					skip,
 					take: PAGE_SIZE,
 					sortBy: 'updatedAt:desc',
@@ -179,6 +181,8 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			);
 			totalAvailable = count;
 			skip += folders.length;
+
+			if (folders.length === 0) break;
 		} while (allFolders.length < totalAvailable && skip < totalAvailable);
 
 		const forCache: FolderShortInfo[] = allFolders.map((folder) => ({

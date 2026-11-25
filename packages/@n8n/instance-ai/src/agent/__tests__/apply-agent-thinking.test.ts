@@ -61,20 +61,31 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
-		'enables medium OpenAI reasoning effort for %s',
-		(modelId) => {
-			const agent = new Agent('test');
-			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-				reasoningEffort: 'medium',
-			});
-		},
-	);
-
-	it('enables high OpenAI reasoning effort for non-GPT-5.6 models', () => {
+	it.each([
+		'openai/gpt-5.6-sol',
+		'openai/gpt-5.6-terra',
+		'openai/gpt-5.6-luna',
+		'openai/gpt-5.10',
+		'openai/gpt-6-astra',
+		'openai/gpt-6.1-sol',
+		'openai/gpt-7',
+	] as const)('enables medium OpenAI reasoning effort for %s', (modelId) => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openai/gpt-4.1');
+		applyAgentThinking(agent, modelId);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'medium',
+		});
+	});
+
+	it.each([
+		'openai/gpt-4.1',
+		'openai/gpt-4o',
+		'openai/gpt-5',
+		'openai/gpt-5.5',
+		'openai/o3',
+	] as const)('enables high OpenAI reasoning effort for %s', (modelId) => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, modelId);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
 			reasoningEffort: 'high',
 		});
@@ -127,6 +138,26 @@ describe('applyAgentThinking', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/unknown-model');
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('asks for whole-conversation reasoning replay when N8N_INSTANCE_AI_REPLAY_REASONING is conversation', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REPLAY_REASONING;
+		process.env.N8N_INSTANCE_AI_REPLAY_REASONING = 'conversation';
+		try {
+			applyAgentThinking(new Agent('test'), 'custom/unknown-model');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
+				replayReasoning: 'conversation',
+			});
+
+			applyAgentThinking(new Agent('test'), 'custom/Kimi-K3');
+			expect(mockAgentInstances[1]?.thinking).toHaveBeenCalledWith('custom', {
+				reasoningEffort: 'low',
+				replayReasoning: 'conversation',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REPLAY_REASONING;
+			else process.env.N8N_INSTANCE_AI_REPLAY_REASONING = previous;
+		}
 	});
 
 	it('prefers N8N_INSTANCE_AI_REASONING_EFFORT over the known-model map', () => {

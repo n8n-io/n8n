@@ -1,69 +1,16 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
-import { useI18n } from '@n8n/i18n';
-import type {
-	InstanceAiAgentNode,
-	InstanceAiMessage,
-	InstanceAiTimelineEntry,
-	InstanceAiToolCallState,
-} from '@n8n/api-types';
+import type { InstanceAiMessage, InstanceAiTimelineEntry } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
-import { useToolLabel } from '../toolLabels';
-import {
-	collectActiveBuilderAgents,
-	getAgentActivityKey,
-	getAgentSectionTitle,
-	isActiveBuilderAgent,
-} from '../builderAgents';
+import { collectActiveBuilderAgents } from '../builderAgents';
+import { useSteadyRunActivity } from '../composables/useRunActivity';
 
 const thread = useThread();
-const i18n = useI18n();
-const { getToolLabel } = useToolLabel();
 
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
 
-function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
-	// Match the still-streaming orchestrator message, or — once it has handed off
-	// to a background builder — the message that owns the active builder, so the
-	// label keeps tracking work after `isStreaming` flips false.
-	const lastMsg = [...messages]
-		.reverse()
-		.find(
-			(m) =>
-				m.role === 'assistant' &&
-				(m.isStreaming || (m.agentTree?.children.some(isActiveBuilderAgent) ?? false)),
-		);
-	if (!lastMsg?.agentTree) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
-
-	const tree = lastMsg.agentTree;
-
-	// Check active children first (sub-agents)
-	const activeChild = tree.children.find((c: InstanceAiAgentNode) => c.status === 'active');
-	if (activeChild) {
-		const activityKey = getAgentActivityKey(activeChild);
-		const roleLabel =
-			getAgentSectionTitle(activeChild, activityKey ? i18n.baseText(activityKey) : undefined) ??
-			i18n.baseText('instanceAi.statusBar.thinking');
-		const activeTool = activeChild.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
-		if (activeTool) {
-			const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
-			return { label: roleLabel, detail: toolLabel };
-		}
-		return { label: roleLabel };
-	}
-
-	// Check root-level active tools
-	const activeTool = tree.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
-	if (activeTool) {
-		const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
-		return { label: toolLabel };
-	}
-
-	return { label: i18n.baseText('instanceAi.statusBar.thinking') };
-}
-
-const activity = computed(() => deriveActivity(thread.messages));
+const activity = useSteadyRunActivity(() => thread.messages);
 
 /**
  * True while the streaming orchestrator is rendering an active thinking

@@ -13,11 +13,13 @@ import type {
 	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
+	AgentToolOutputFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -31,10 +33,16 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiApprovalMode,
 	InstanceAiPromptConfiguration,
-	InstanceAiEvent,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -43,6 +51,8 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -52,6 +62,7 @@ import type {
 	INodeTypes,
 	ITaskData,
 	NodeConnectionType,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
@@ -63,9 +74,11 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { AgentContextInput } from './tools/agent-context.tool';
+import type { StartCloudBrowserTask } from './tools/orchestration/start-cloud-browser-task.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
+import type { InstanceAiApprovalReviewer } from './approval-review/approval-review';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -86,7 +99,7 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderTemplatesService } from './workspace/builder-templates-service';
+import type { WorkflowDraftPublisher } from './tools/workflows/workflow-draft-publisher';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1238,8 +1251,30 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+/** One report from the `send_feedback` tool. */
+export interface InstanceAiAgentFeedback {
+	category: InstanceAiAgentFeedbackCategory;
+	severity: InstanceAiAgentFeedbackSeverity;
+	summary: string;
+	toolName?: string;
+	threadId?: string;
+	runId?: string;
+}
+
+export interface InstanceAiAgentFeedbackService {
+	/** Records the report for the n8n team. Nothing replies to it. */
+	send(feedback: InstanceAiAgentFeedback): void;
+}
+
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1365,7 +1400,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data_tables tool). */
+ *  Table the caller already created (via the change_data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1453,10 +1488,10 @@ export interface InstanceAiWebResearchService {
 		},
 	): Promise<WebSearchResponse>;
 
+	/** Fetch the full extracted page. The research tool slices it for the model. */
 	fetchUrl(
 		url: string,
 		options?: {
-			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
 			/** When aborted, in-flight page fetches should stop promptly. */
@@ -1705,13 +1740,65 @@ export interface InstanceAiStoredFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
+}
+
+/** A conversation file, as the chat shows it. */
+export type InstanceAiConversationFile = AgentToolOutputFile;
+
+/** The sandbox files feature of the host: conversation files in and out of the sandbox. */
+export interface InstanceAiSandboxFiles {
+	/** Most bytes that one `import-files` call copies, for all files together. */
+	maxImportBytes: number;
+	/**
+	 * Copy conversation files into `inputs/` of the sandbox. Each key is a path
+	 * relative to `inputs/`, each value a fileId. The host checks every file,
+	 * path and the cap before the first write. Throws when a check or the copy
+	 * fails. The message is for the model, and for a failed copy it names the
+	 * files that were copied before it.
+	 */
+	importFiles(
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<InstanceAiImportedFile[]>;
+	/**
+	 * Store one file of `outputs/` as a conversation file, or give the stored
+	 * file when its name and bytes did not change. `path` is relative to `outputs/`.
+	 * Throws when the file is missing or over a storage cap. The message is for the model.
+	 */
+	storeOutput(path: string, abortSignal?: AbortSignal): Promise<InstanceAiConversationFile>;
+}
+
+/** A conversation file that the host copied into the sandbox. */
+export type InstanceAiImportedFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/sales.csv`. */
+	path: string;
+};
+
+/** A file in the list of the thread's files. */
+export interface InstanceAiListedFile extends InstanceAiConversationFile {
+	/** `upload`: the user attached it. `sandbox`: it came from `outputs/` of the sandbox. */
+	origin: 'upload' | 'sandbox';
+	/** ISO date and time when n8n stored the file. */
+	createdAt: string;
 }
 
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+	/**
+	 * The files of the thread, newest first. `read` finds each listed file.
+	 * The host sets it only when the sandbox files feature is on.
+	 */
+	list?(): Promise<InstanceAiListedFile[]>;
+	/**
+	 * Whether the model of the turn can see a file of this type. The runtime
+	 * attaches only these types to the model input. `view-file` needs it.
+	 */
+	canView?(mimeType: string): boolean;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────
@@ -1721,6 +1808,14 @@ export type InstanceAiChangedArtifact = Pick<
 	InstanceAiThreadArtifact,
 	'type' | 'id' | 'name' | 'projectId'
 >;
+
+/** The workflow engine setup of the instance. */
+export interface InstanceAiEngineSetup {
+	/** True when the `engine-v2` module is active, so the instance can run workflows on engine v2. */
+	engineV2Available: boolean;
+	/** The engine that a new workflow gets when it is saved without `settings.engineType`. */
+	newWorkflowEngine: WorkflowEngineType;
+}
 
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
@@ -1755,6 +1850,8 @@ export interface InstanceAiContext {
 	utilityModelId?: ModelConfig;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
+	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1777,6 +1874,8 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	/** Present when the host can record agent feedback; its absence hides `send_feedback`. */
+	agentFeedbackService?: InstanceAiAgentFeedbackService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
@@ -1800,8 +1899,6 @@ export interface InstanceAiContext {
 		executionId?: string;
 	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
-	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
-	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
@@ -1812,6 +1909,18 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/**
+	 * Auto mode: reviews an approval before its card shows, and runs the action
+	 * when the review approves it. Absent means Manual mode.
+	 */
+	approvalReviewer?: InstanceAiApprovalReviewer;
+	/** The approval mode of this run. Absent while approval modes are off. */
+	approvalMode?: InstanceAiApprovalMode;
+	/**
+	 * When true, a user's MCP tool permissions can only make the admin's
+	 * permissions stricter. Otherwise they replace them.
+	 */
+	enforceAdminMcpPermissions?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -1831,6 +1940,11 @@ export interface InstanceAiContext {
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
+	/**
+	 * The workflow engine setup of the instance. The host resolves it when it builds the
+	 * context. Absent means that new workflows run on engine v1.
+	 */
+	engineSetup?: InstanceAiEngineSetup;
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
@@ -1856,6 +1970,8 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
+	/** Shows each compiled workflow on the canvas before the build saves it. Present only while the draft preview gate is on. */
+	workflowDraftPublisher?: WorkflowDraftPublisher;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as
@@ -1903,6 +2019,11 @@ export interface InstanceAiContext {
 	 * and files from earlier messages stay readable.
 	 */
 	storedFiles?: InstanceAiStoredFileReader;
+	/**
+	 * Moves conversation files in and out of the sandbox. The host sets it only
+	 * when the sandbox files feature is on, so its presence is the gate.
+	 */
+	sandboxFiles?: InstanceAiSandboxFiles;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -2008,6 +2129,22 @@ export interface McpServerConfig {
 	};
 }
 
+// ── Helper model usage ───────────────────────────────────────────────────────
+
+/** Token usage of one helper LLM call, such as the destructiveness classifier. */
+export interface HelperModelUsageReport {
+	/** Helper name, for example `verification-simulation-fixtures`. */
+	helper: string;
+	/** Catalog model id the host prices the call by, for example `anthropic/claude-haiku-5-5`. */
+	model: string;
+	usage: TokenUsage;
+	/** Unique for each call, so hosts can build idempotent billing keys. */
+	reportId: string;
+}
+
+/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+export type HelperUsageHook = (report: HelperModelUsageReport) => Promise<void>;
+
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
@@ -2091,6 +2228,8 @@ export interface ServiceProxyConfig {
 	 * transparently refreshed during long-running agent turns.
 	 */
 	getAuthHeaders: () => Promise<Record<string, string>>;
+	/** Tags added to every span exported through the LangSmith proxy. Other proxies ignore them. */
+	traceTags?: string[];
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
@@ -2292,12 +2431,12 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	/** Add loaded Hub content to UI events without changing agent memory. */
-	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
+	/** Start a browser task in the background. Set only when this run can use the cloud browser. */
+	startCloudBrowserTask?: StartCloudBrowserTask;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */

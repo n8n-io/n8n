@@ -55,7 +55,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		nodeService: {
 			listAvailable: vi.fn(),
 			getDescription: vi.fn(),
-			listSearchable: vi.fn(),
+			listSearchable: vi.fn().mockResolvedValue([]),
 			exploreResources: vi.fn(),
 		},
 		dataTableService: {
@@ -447,7 +447,6 @@ describe('nodes tools', () => {
 					outputs: ['ai_languageModel'],
 				},
 			]);
-			const loadSkill = vi.fn().mockResolvedValue(null);
 			const tool = createGetNodeTypesTool(context);
 			for (const nodeType of [
 				'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
@@ -455,13 +454,35 @@ describe('nodes tools', () => {
 				'@n8n/n8n-nodes-langchain.googleGemini',
 				'@n8n/n8n-nodes-langchain.anthropic',
 			]) {
-				loadSkill.mockClear();
-				const result = await executeTool(tool, { nodeTypes: [nodeType] }, { loadSkill });
+				const result = await executeTool(tool, { nodeTypes: [nodeType] });
 				expect(result.definitions).toEqual([
 					expect.objectContaining({ nodeType, content: expect.stringContaining('modelId') }),
 				]);
-				expect(loadSkill).toHaveBeenCalledExactlyOnceWith('model-selection');
+				expect(result.hint).toContain('model-selection');
 			}
+		});
+
+		it('accepts and resolves more than ten node types in one call', async () => {
+			const context = createMockContext();
+			context.nodeService.getNodeTypeDefinition = vi
+				.fn()
+				.mockResolvedValue({ content: 'export type Params = { fileId: string };' });
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+			const tool = createGetNodeTypesTool(context);
+			const nodeTypes = Array.from({ length: 25 }, (_, index) => ({
+				nodeType: `n8n-nodes-base.node${index}`,
+			}));
+
+			expect(parseToolInput(tool, { nodeTypes }).success).toBe(true);
+
+			const result = await executeTool(tool, { nodeTypes });
+			expect(result.definitions).toHaveLength(25);
+		});
+
+		it('still rejects an empty node type list', () => {
+			const tool = createGetNodeTypesTool(createMockContext());
+
+			expect(parseToolInput(tool, { nodeTypes: [] }).success).toBe(false);
 		});
 
 		it('keeps model selection inactive for unrelated operations and failed definitions', async () => {
@@ -471,16 +492,11 @@ describe('nodes tools', () => {
 				.mockResolvedValueOnce({ content: 'export type Params = { fileId: string };' })
 				.mockResolvedValueOnce({ error: 'Unknown node type' });
 			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
-			const loadSkill = vi.fn();
 			const tool = createGetNodeTypesTool(context);
-			await executeTool(
-				tool,
-				{
-					nodeTypes: ['@n8n/n8n-nodes-langchain.openAi', 'missing.node'],
-				},
-				{ loadSkill },
-			);
-			expect(loadSkill).not.toHaveBeenCalled();
+			const result = await executeTool(tool, {
+				nodeTypes: ['@n8n/n8n-nodes-langchain.openAi', 'missing.node'],
+			});
+			expect(result).not.toHaveProperty('hint');
 		});
 
 		it('should require a non-empty nodeTypes list', () => {
@@ -500,7 +516,7 @@ describe('nodes tools', () => {
 				nodeService: {
 					listAvailable: vi.fn(),
 					getDescription: vi.fn(),
-					listSearchable: vi.fn(),
+					listSearchable: vi.fn().mockResolvedValue([]),
 					exploreResources: vi.fn(),
 					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: 'export type IfNode = unknown;',
@@ -534,7 +550,7 @@ describe('nodes tools', () => {
 				nodeService: {
 					listAvailable: vi.fn(),
 					getDescription: vi.fn(),
-					listSearchable: vi.fn(),
+					listSearchable: vi.fn().mockResolvedValue([]),
 					exploreResources: vi.fn(),
 					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: '/**\n * @deprecated This node type is retired.\n */',
@@ -576,7 +592,7 @@ describe('nodes tools', () => {
 				nodeService: {
 					listAvailable: vi.fn(),
 					getDescription: vi.fn(),
-					listSearchable: vi.fn(),
+					listSearchable: vi.fn().mockResolvedValue([]),
 					exploreResources: vi.fn(),
 					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: 'export type MessageAnAgentNode = unknown;',
@@ -1046,7 +1062,7 @@ describe('nodes tools', () => {
 						credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
 					},
 					input: [{ json: { text: 'hi' } }],
-					timeoutMs: 10_000,
+					timeoutMs: 120_000,
 				} as never,
 				{ resumeData: { approved: true } } as never,
 			);
@@ -1059,7 +1075,7 @@ describe('nodes tools', () => {
 					credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
 				},
 				input: [{ json: { text: 'hi' } }],
-				timeoutMs: 10_000,
+				timeoutMs: 120_000,
 			});
 			expect(result).toEqual(serviceResult);
 		});

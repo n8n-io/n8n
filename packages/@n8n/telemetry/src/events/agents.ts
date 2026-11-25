@@ -446,6 +446,18 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Error names of the failed search_text calls, each name once. Absent when no call finished.',
 				),
+			file_sandbox_wait_ms_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Time in ms that each search_text or read_file call waited for a running sandbox. The first 25 calls, in the order they started. A call that ended before the sandbox step is not in the list. Absent when no call reached the sandbox.',
+				),
+			file_mirror_wait_ms_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Time in ms that each call in file_sandbox_wait_ms_first_25 waited for the copy of the knowledge files in the sandbox, in the same order. 0 when the call did not wait for another sync of the copy and did not change the copy. Absent when no call reached the sandbox.',
+				),
 			vector_store_search_duration_ms_avg: z
 				.number()
 				.optional()
@@ -1255,6 +1267,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.enum([
 					'incomplete',
 					'temporary_token',
+					'employee_system_user',
+					'missing_permissions',
+					'insufficient_access',
 					'mismatch',
 					'unreachable',
 					'not_found',
@@ -1263,7 +1278,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				])
 				.optional()
 				.describe(
-					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
+					'Only when status is failed. employee_system_user: the token belongs to an Employee system user; missing_permissions: the token lacks a required WhatsApp permission; insufficient_access: the token cannot manage the Messaging account; not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
 				),
 			push_ref: pushRef,
 		}),

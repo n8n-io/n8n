@@ -15,7 +15,7 @@ function makeLogger(): EngineLogger {
 }
 
 function stepFinding(stepId: string): FindingOf<StepKind> {
-	return { kind: 'step-queued-no-message', stepId, staleAfter: new Date(0) };
+	return { kind: 'step-queued-no-message', stepId, executionId: 'exec-1', staleAfter: new Date(0) };
 }
 
 function executionFinding(executionId: string): FindingOf<ExecutionKind> {
