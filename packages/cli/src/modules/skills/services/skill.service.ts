@@ -1,12 +1,12 @@
 import {
 	hasSkillInstructions,
+	SaveSkillDto,
 	SKILL_INSTRUCTIONS_REQUIRED_MESSAGE,
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
 	type ListSkillAgentsQueryDto,
 	type ListSkillsQueryDto,
-	type SaveSkillDto,
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListCollapsedSource,
@@ -58,6 +58,8 @@ import {
 	withTrimmedName,
 	type LatestSkill,
 	type McpSkillContent,
+	type McpSkillFile,
+	type McpSkillListItem,
 	type ResolvedSkillRow,
 	type SkillMoveOptions,
 	type SkillSaveResult,
@@ -67,6 +69,7 @@ import {
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
 import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
+import { withUnsentSkillFiles } from '../utils/skill-model-update';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
@@ -97,7 +100,12 @@ const LIST_SORTS: Record<SkillSortOption, SkillListSort> = {
 };
 
 function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
-	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
+	return {
+		id: row.skill.id,
+		projectId: row.skill.projectId,
+		versionId: row.version.id,
+		skill: toAgentSkill(row),
+	};
 }
 
 function assertUnchangedSince(
@@ -326,24 +334,35 @@ export class SkillService {
 		});
 	}
 
-	/** One page of the latest saved versions the user may list, for the MCP skills extension. */
+	/**
+	 * One page of the latest saved versions the user may list, for the MCP skills extension.
+	 * Reads no content for a version that `isKnown` accepts, so a repeated list reads no files.
+	 */
 	async listForMcp(
 		user: User,
 		skip: number,
 		take: number,
-	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		isKnown: (versionId: string) => boolean = () => false,
+	): Promise<{ count: number; skills: McpSkillListItem[] }> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		const page = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
 			skip,
 			take,
 			availableToMCP: true,
 		});
-		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		const versionIds = await this.skillRepository.findLatestVersionIds(
+			page.skills.map((skill) => skill.id),
+		);
+		const rows = await this.skillRepository.findVersionsByIds(
+			[...versionIds.values()].filter((versionId) => !isKnown(versionId)),
+		);
 		return {
 			count: page.count,
 			skills: page.skills.flatMap((skill) => {
-				const row = rows.get(skill.id);
-				return row ? [toMcpSkillContent(row)] : [];
+				const versionId = versionIds.get(skill.id);
+				if (!versionId) return [];
+				const row = rows.get(versionId);
+				return [{ id: skill.id, versionId, ...(row ? { content: toMcpSkillContent(row) } : {}) }];
 			}),
 		};
 	}
@@ -358,8 +377,40 @@ export class SkillService {
 		) {
 			return null;
 		}
-		const content = toMcpSkillContent(row);
-		// The origin is only for telemetry: a failed lookup must not break the read.
+		return { ...toMcpSkillContent(row), ...(await this.mcpOriginOf(skillId)) };
+	}
+
+	/**
+	 * One file of the latest saved version, for an MCP resource read. Reads the content of this
+	 * file only, so a client that reads every file of a skill does not load the skill each time.
+	 */
+	async readFileForMcp(user: User, skillId: string, path: string): Promise<McpSkillFile | null> {
+		const [skill] = await this.skillRepository.findByIds([skillId]);
+		if (
+			!skill ||
+			!skill.availableToMCP ||
+			!(await this.skillAccess.canAccess(user, skill, 'read'))
+		) {
+			return null;
+		}
+		const found = await this.skillRepository.findLatestFile(skillId, path);
+		if (!found) return null;
+		const { name, file } = found;
+		return {
+			id: skillId,
+			projectId: skill.projectId,
+			name,
+			file: {
+				path: file.path,
+				content: file.content,
+				...(file.isBinary ? { isBinary: true as const } : {}),
+			},
+			...(await this.mcpOriginOf(skillId)),
+		};
+	}
+
+	/** The origin is only for telemetry: a failed lookup must not break the read. */
+	private async mcpOriginOf(skillId: string): Promise<Pick<McpSkillContent, 'origin'>> {
 		const synced = await this.sourceRepository.findSyncedFrom(skillId).catch((error: unknown) => {
 			this.logger.warn('Could not find the source of a synced skill', {
 				skillId,
@@ -367,9 +418,8 @@ export class SkillService {
 			});
 			return null;
 		});
-		if (!synced) return content;
+		if (!synced) return {};
 		return {
-			...content,
 			origin: { provider: synced.type, access: synced.credentialId ? 'credential' : 'public' },
 		};
 	}
@@ -434,6 +484,13 @@ export class SkillService {
 		skillId: string,
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
+		options: {
+			/**
+			 * For a caller that reads binary files without their content, such as a model. Its
+			 * `references` replace the text files, and the binary files that it does not name stay.
+			 */
+			keepUnnamedBinaryFiles?: boolean;
+		} = {},
 	): Promise<SkillSaveResponse> {
 		if (
 			payload.availableToAssistant !== undefined &&
@@ -443,6 +500,14 @@ export class SkillService {
 		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
+		if (options.keepUnnamedBinaryFiles && update.references) {
+			const references = await this.withStoredBinaryFiles(skillId, update.references);
+			const result = SaveSkillDto.schema.shape.references.safeParse(references);
+			if (!result.success) {
+				throw new UserError(`Invalid skill files: ${result.error.issues[0].message}`);
+			}
+			update.references = references;
+		}
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })
 			: undefined;
@@ -495,6 +560,19 @@ export class SkillService {
 			);
 		}
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
+	}
+
+	private async withStoredBinaryFiles(
+		skillId: string,
+		references: NonNullable<AgentSkill['references']>,
+	): Promise<NonNullable<AgentSkill['references']>> {
+		const latest = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		const stored = (latest?.files ?? []).map((file) => ({
+			path: file.path,
+			content: file.content,
+			...(file.isBinary ? { isBinary: true as const } : {}),
+		}));
+		return withUnsentSkillFiles(stored, references);
 	}
 
 	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */

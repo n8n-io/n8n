@@ -164,7 +164,7 @@ describe('SkillSourceController', () => {
 					location: 'skills/pdf',
 					name: 'pdf',
 					description: 'pdf description',
-					skippedFiles: ['assets/form.pdf'],
+					skippedFiles: [],
 					nameTaken: false,
 					error: null,
 					webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
@@ -347,6 +347,7 @@ describe('SkillSourceController', () => {
 				canStopSyncing: true,
 			});
 			expect(detail.data.skill.references).toEqual([
+				{ path: 'assets/form.pdf', content: '%PDF-1.4\n' },
 				{ path: 'references/pages.md', content: '# Pages\n' },
 			]);
 
@@ -378,32 +379,59 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
-		it('reports the skipped files of the imported skills by extension', async () => {
+		it('imports a large skill with its supporting files at their original paths', async () => {
 			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			const documents = Array.from({ length: 45 }, (_, index) => ({
+				path: `reference/degraded/note-${index}.md`,
+				content: `# Note ${index}\n${'Guidance.\n'.repeat(1100)}`,
+			}));
 			github.push('acme/files', {
-				'tools/SKILL.md': skillMd('tools'),
+				'tools/SKILL.md': skillMd('tools', 'Tools', 'Read [Note 0](reference/degraded/note-0.md).'),
+				...Object.fromEntries(documents.map(({ path, content }) => [`tools/${path}`, content])),
 				'tools/scripts/run.py': 'print(1)\n',
-				'tools/scripts/Build.PY': 'print(2)\n',
-				'tools/scripts/setup.sh': 'echo 1\n',
-				'tools/assets/logo.png': 'png\n',
+				'tools/assets/logo.png': 'PNG\0data',
+				'tools/assets/large.bin': 'x'.repeat(1024 * 1024 + 1),
 				'tools/LICENSE': 'MIT\n',
 			});
 			const url = 'https://github.com/acme/files';
 			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			expect(discovery.skills[0].skippedFiles).toEqual(['assets/large.bin']);
+			expect(discovery.skills[0].check?.findings).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ rule: 'file_too_large', file: 'assets/large.bin' }),
+					expect.objectContaining({ rule: 'script_file', file: 'scripts/run.py' }),
+				]),
+			);
 
-			await connect(owner, {
+			const { data } = await connect(owner, {
 				url,
 				scope: 'instance',
 				skillKeys: keysOf(discovery, ['tools']),
 				reviewedSkillKeys: keysOf(discovery, ['tools']),
 			});
+			const {
+				body: { data: detail },
+			} = await owner.get(`/skills/${data.imported[0].skillId}`).expect(200);
+			expect(detail.skill.instructions).toBe('Read [Note 0](reference/degraded/note-0.md).');
+			expect(detail.skill.references).toHaveLength(48);
+			expect(detail.skill.references).toEqual(
+				expect.arrayContaining([
+					...documents,
+					{ path: 'scripts/run.py', content: 'print(1)\n' },
+					{
+						path: 'assets/logo.png',
+						content: Buffer.from('PNG\0data').toString('base64'),
+						isBinary: true,
+					},
+					{ path: 'LICENSE', content: 'MIT\n' },
+				]),
+			);
 
 			expect(importedFromSource).toHaveBeenCalledWith(
 				expect.objectContaining({
 					imported: 1,
-					skipped_files: 5,
-					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1, none: 1 },
-					skipped_script_files: 3,
+					skipped_files: 1,
+					skipped_script_files: 0,
 					status: 'success',
 				}),
 				ownerUser.id,
@@ -1195,8 +1223,7 @@ describe('SkillSourceController', () => {
 			expect(await countSources()).toBe(0);
 		});
 
-		// Postgres stores no NUL character, so such content must never reach the import write.
-		it('leaves out a reference that n8n cannot store, and blocks a SKILL.md it cannot store', async () => {
+		it('preserves binary file bytes but requires SKILL.md to be text', async () => {
 			github.push('acme/binary', {
 				'binary/SKILL.md': skillMd('binary'),
 				'binary/references/data.md': 'PNG\0data',
@@ -1207,10 +1234,23 @@ describe('SkillSourceController', () => {
 			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
 
 			const binary = discovery.skills.find((skill) => skill.location === 'binary');
-			expect(binary?.skippedFiles).toEqual(['references/data.md']);
-			expect(binary?.check?.findings).toEqual([
-				expect.objectContaining({ rule: 'file_unstorable', file: 'references/data.md' }),
-			]);
+			expect(binary?.skippedFiles).toEqual([]);
+			expect(binary?.previewFiles).toContainEqual({
+				path: 'references/data.md',
+				text: '',
+				isBinary: true,
+			});
+			// The check cannot read a binary file, and this one has a Markdown name.
+			expect(binary?.check).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'binary_file',
+						severity: 'needs_review',
+						file: 'references/data.md',
+					}),
+				],
+			});
 			const broken = discovery.skills.find((skill) => skill.location === 'broken');
 			expect(broken?.check).toEqual({
 				verdict: 'blocked',
@@ -1226,12 +1266,18 @@ describe('SkillSourceController', () => {
 				url,
 				scope: 'instance',
 				skillKeys: discovery.skills.map((skill) => skill.key),
+				reviewedSkillKeys: binary ? [binary.key] : [],
 			});
 
 			expect(data.imported).toEqual([expect.objectContaining({ name: 'binary' })]);
 			expect(data.failed).toEqual([{ key: broken?.key, name: null, reason: 'blocked_by_check' }]);
 			const { body: detail } = await owner.get(`/skills/${data.imported[0].skillId}`).expect(200);
 			expect(detail.data.skill.references).toEqual([
+				{
+					path: 'references/data.md',
+					content: Buffer.from('PNG\0data').toString('base64'),
+					isBinary: true,
+				},
 				{ path: 'references/notes.md', content: '# Notes\n' },
 			]);
 		});

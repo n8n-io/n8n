@@ -1,5 +1,6 @@
 import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { TransactionRunner } from '@n8n/db';
 import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
@@ -40,11 +41,14 @@ export class AgentCheckpointPruningTask implements SystemTask {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly backgroundJobs: AgentBackgroundJobService,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {
-		const threadIds = await this.checkpointStorage.pruneStaleSuspensions();
-		await this.agentExecutionRepository.failExpiredWaitingApprovals(threadIds);
+		await this.txRunner.run({}, async (ctx) => {
+			const threadIds = await this.checkpointStorage.pruneStaleSuspensions(ctx);
+			await this.agentExecutionRepository.failExpiredWaitingApprovals(threadIds, ctx);
+		});
 		await this.backgroundJobs.pruneExpiredPausedJobs(undefined, signal);
 	}
 }

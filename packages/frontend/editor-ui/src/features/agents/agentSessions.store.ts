@@ -12,6 +12,7 @@ import {
 	type AgentSessionFilters,
 	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
+import type { AgentChatChannel } from './composables/useAgentApi';
 
 const ITEMS_PER_PAGE = 20;
 const AUTO_REFRESH_INTERVAL_MS = 5_000;
@@ -194,9 +195,16 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		projectId: string,
 		agentId: string,
 		threadId: string,
+		channel?: AgentChatChannel,
 	): Promise<ThreadDetail> {
 		const rootStore = useRootStore();
-		return await getThreadDetailApi(rootStore.restApiContext, projectId, agentId, threadId);
+		return await getThreadDetailApi(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			threadId,
+			channel,
+		);
 	}
 
 	function upsertThread(thread: AgentExecutionThread) {

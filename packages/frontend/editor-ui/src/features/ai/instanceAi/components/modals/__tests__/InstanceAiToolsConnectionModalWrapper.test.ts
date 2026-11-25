@@ -107,12 +107,14 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 	}),
 }));
 
+const instanceAiSettingsMock = vi.hoisted(() => ({
+	isMcpAvailable: true,
+	isBrowserUseAvailable: true,
+	browserConnected: false,
+}));
+
 vi.mock('../../../instanceAiSettings.store', () => ({
-	useInstanceAiSettingsStore: () => ({
-		isMcpAvailable: true,
-		isBrowserUseAvailable: true,
-		browserConnected: false,
-	}),
+	useInstanceAiSettingsStore: () => instanceAiSettingsMock,
 }));
 
 const { browserTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(() => ({
@@ -154,6 +156,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 const credentialsStoreMock = vi.hoisted(() => ({
 	allCredentials: [] as Array<{ id: string }>,
+	allCredentialTypes: [] as Array<{ name: string }>,
 	fetchAllCredentials: vi.fn(),
 	fetchCredentialTypes: vi.fn(),
 	getCredentialsByType: vi.fn(),
@@ -357,6 +360,9 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
 		credentialsStoreMock.allCredentials = [];
+		instanceAiSettingsMock.isMcpAvailable = true;
+		// The credential types are in the store by default. The credential types tests empty it.
+		credentialsStoreMock.allCredentialTypes = [{ name: 'mcpOAuth2Api' }];
 		credentialsStoreMock.fetchAllCredentials.mockResolvedValue([]);
 		credentialsStoreMock.fetchCredentialTypes.mockResolvedValue(undefined);
 		credentialsStoreMock.getCredentialsByType.mockReturnValue([]);
@@ -382,6 +388,43 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	it('stops loading when the first credentials fetch fails', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		credentialsStoreMock.fetchAllCredentials.mockRejectedValue(new Error('Network error'));
+		renderComponent();
+
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('shows the loading screen until the credential types are loaded', async () => {
+		credentialsStoreMock.allCredentialTypes = [];
+		const { promise, resolve } = Promise.withResolvers<void>();
+		credentialsStoreMock.fetchCredentialTypes.mockReturnValue(promise);
+		renderComponent();
+		await flushPromises();
+
+		expect(credentialsStoreMock.fetchCredentialTypes).toHaveBeenCalledWith(false);
+		expect(modalProps.loading).toBe(true);
+
+		resolve();
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('does not wait for the credential types when MCP is not available', async () => {
+		instanceAiSettingsMock.isMcpAvailable = false;
+		credentialsStoreMock.allCredentialTypes = [];
+		credentialsStoreMock.fetchCredentialTypes.mockReturnValue(new Promise(() => {}));
+		renderComponent();
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('stops loading when the credential types fail to load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		credentialsStoreMock.allCredentialTypes = [];
+		credentialsStoreMock.fetchCredentialTypes.mockRejectedValue(new Error('Network error'));
 		renderComponent();
 
 		await flushPromises();
