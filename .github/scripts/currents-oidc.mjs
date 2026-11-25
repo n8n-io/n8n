@@ -449,7 +449,11 @@ export async function revokeCurrentsRecordKey(options = {}) {
  * @param {{
  *   env?: NodeJS.ProcessEnv,
  *   fetchFn?: typeof fetch,
+ *   sleepFn?: (ms: number) => Promise<void>,
+ *   nowFn?: () => number,
  *   stdout?: { write(chunk: string): unknown },
+ *   stderr?: { write(chunk: string): unknown },
+ *   maxRetries?: number,
  *   cancelUrl?: string,
  * }} [options]
  * @returns {Promise<{ cancelled: boolean, reason?: 'missing-env' }>}
@@ -458,7 +462,11 @@ export async function cancelCurrentsRun(options = {}) {
 	const {
 		env = process.env,
 		fetchFn = globalThis.fetch,
+		sleepFn = defaultSleep,
+		nowFn = Date.now,
 		stdout = process.stdout,
+		stderr = process.stderr,
+		maxRetries = 2,
 		cancelUrl = CURRENTS_CANCEL_RUN_URL,
 	} = options;
 
@@ -473,14 +481,25 @@ export async function cancelCurrentsRun(options = {}) {
 		return { cancelled: false, reason: 'missing-env' };
 	}
 
-	const response = await fetchFn(cancelUrl, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'application/json',
+	const response = await fetchWithRateLimitRetry(
+		cancelUrl,
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json',
+			},
+			body: JSON.stringify({ recordKey, projectId, ciBuildId }),
 		},
-		body: JSON.stringify({ recordKey, projectId, ciBuildId }),
-	});
+		{
+			fetchFn,
+			sleepFn,
+			nowFn,
+			stderr,
+			maxRetries,
+			operation: 'Currents run cancellation',
+		},
+	);
 
 	if (!response.ok) {
 		throw new Error(`Currents run cancellation failed (HTTP ${response.status})`);

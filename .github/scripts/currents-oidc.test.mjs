@@ -432,6 +432,38 @@ describe('cancelCurrentsRun', () => {
 		});
 	});
 
+	it('retries HTTP 429 responses honoring Retry-After when cancelling a run', async () => {
+		const sleeps = [];
+		let attempts = 0;
+		const stdout = createBuffer();
+		const stderr = createBuffer();
+
+		const result = await cancelCurrentsRun({
+			env: {
+				CURRENTS_RECORD_KEY: 'crnts_ci_cancel_retry_key',
+				CURRENTS_PROJECT_ID: 'nHHLA5',
+				CURRENTS_CI_BUILD_ID: 'n8n-io/n8n-12345-1',
+			},
+			fetchFn: async () => {
+				attempts += 1;
+				if (attempts === 1) {
+					return new Response('rate limited', { status: 429, headers: { 'Retry-After': '4' } });
+				}
+				return jsonResponse({ status: 'ok' });
+			},
+			sleepFn: async (ms) => {
+				sleeps.push(ms);
+			},
+			stdout,
+			stderr,
+		});
+
+		assert.deepEqual(result, { cancelled: true });
+		assert.equal(attempts, 2);
+		assert.deepEqual(sleeps, [4000]);
+		assert.doesNotMatch(stderr.toString(), /crnts_ci_cancel_retry_key/);
+	});
+
 	it('skips cancellation when any required env var is missing', async () => {
 		for (const env of [
 			{ CURRENTS_PROJECT_ID: 'nHHLA5', CURRENTS_CI_BUILD_ID: 'build-1' },
