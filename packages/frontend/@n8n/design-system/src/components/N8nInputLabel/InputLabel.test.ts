@@ -68,6 +68,43 @@ describe('component', () => {
 		});
 	});
 
+	describe('Label suffix slot', () => {
+		const labelSuffix = '<span data-test-id="suffix">New</span>';
+
+		it('renders the suffix inside the title, after the label text', () => {
+			const { getByTestId, getByText } = render(InputLabel, {
+				props: { label: 'a label' },
+				slots: { labelSuffix },
+			});
+
+			const wrapper = getByTestId('suffix').parentElement;
+			expect(wrapper).toHaveClass('labelSuffix');
+			expect(wrapper?.previousElementSibling).toBe(getByText('a label'));
+		});
+
+		it('does not render the suffix when there is no label', () => {
+			const { queryByTestId } = render(InputLabel, {
+				props: { label: '' },
+				slots: { labelSuffix, options: '<button>options</button>' },
+			});
+
+			expect(queryByTestId('suffix')).not.toBeInTheDocument();
+		});
+
+		it('keeps the wrapper empty when the slot content renders nothing', () => {
+			const { container } = render(InputLabel, {
+				props: { label: 'a label' },
+				slots: { labelSuffix: '<span v-if="false" />' },
+			});
+
+			// The style hides the wrapper with `:empty`. jsdom does not ignore the empty text
+			// nodes that Vue adds, so check the two conditions of `:empty` directly.
+			const wrapper = container.querySelector('.labelSuffix');
+			expect(wrapper?.childElementCount).toBe(0);
+			expect(wrapper?.textContent).toBe('');
+		});
+	});
+
 	describe('Text overflow behavior', () => {
 		it('displays full text without options', () => {
 			const { container } = render(InputLabel, {

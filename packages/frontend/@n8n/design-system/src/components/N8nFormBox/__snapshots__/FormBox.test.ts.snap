@@ -60,6 +60,7 @@ exports[`FormBox > should render the component 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                     </div>
                     <!--v-if-->
                   </div>
@@ -146,6 +147,7 @@ exports[`FormBox > should render the component 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                     </div>
                     <!--v-if-->
                   </div>
@@ -232,6 +234,7 @@ exports[`FormBox > should render the component 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                     </div>
                     <!--v-if-->
                   </div>
