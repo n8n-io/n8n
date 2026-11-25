@@ -18,7 +18,6 @@ describe('AgentsConfig plan tools', () => {
 		expect(Container.get(AgentsConfig).planToolsEnabled).toBe(expected);
 	});
 });
-
 describe('AgentsConfig sandbox egress policy', () => {
 	afterEach(() => {
 		vi.unstubAllEnvs();
@@ -45,5 +44,20 @@ describe('AgentsConfig sandbox egress policy', () => {
 
 		expect(Container.get(AgentsConfig).sandboxEgressPolicy).toBe('disabled');
 		expect(warnSpy).toHaveBeenCalled();
+	});
+});
+
+describe('AgentsConfig human review', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		Container.reset();
+	});
+	it.each([
+		['', false],
+		['human-review', true],
+	])('enables configured approvals with modules=%s', (modules, enabled) => {
+		vi.stubEnv('N8N_AGENTS_MODULES', modules);
+		Container.reset();
+		expect(Container.get(AgentsConfig).humanReviewEnabled).toBe(enabled);
 	});
 });

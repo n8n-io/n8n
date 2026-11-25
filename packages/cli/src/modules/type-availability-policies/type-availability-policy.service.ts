@@ -1,4 +1,9 @@
-import type { InstanceTypeAccessResponse, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type {
+	InstanceTypeAccessResponse,
+	NodeTypeAvailabilityScope,
+	ProjectPolicyEffectiveCounts,
+	ProjectPolicyKindSummary,
+} from '@n8n/api-types';
 import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -25,6 +30,7 @@ import {
 	type EffectivePolicy,
 	type ProjectEffectivePolicy,
 } from './effective-policy';
+import type { ListTypes } from './listed-node-types';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
 import {
 	evaluateComposedType,
@@ -52,6 +58,12 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+/** One kind's counts for the project policy list. Projects without a scope row are absent. */
+export type ProjectPolicyKindSummaries = {
+	withoutProjectPolicy: ProjectPolicyEffectiveCounts;
+	byProject: Map<string, { updatedAt: Date; summary: ProjectPolicyKindSummary }>;
+};
 
 export type AllProjectsEvaluation = {
 	withoutProjectPolicy: ComposedTypeVerdict[];
@@ -844,6 +856,7 @@ export class TypeAvailabilityPolicyService {
 	async getInstanceAccess(
 		kind: string,
 		typeNames: readonly string[],
+		listTypes: ListTypes = (types) => types,
 	): Promise<InstanceTypeAccessResponse> {
 		const effective = await this.getEffectivePolicy(kind, null);
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
@@ -853,16 +866,19 @@ export class TypeAvailabilityPolicyService {
 			scopeId: effective.scopeId,
 			version: effective.version,
 			defaultAction: effective.defaultAction,
-			types: typeNames.map((name) => {
-				const { action, matchedRuleId } = evaluateRules(
-					effective.rules,
-					effective.defaultAction,
-					policedType(name),
-					resolvePackage,
-				);
+			types: listTypes(
+				typeNames.map((name) => {
+					const { action, matchedRuleId } = evaluateRules(
+						effective.rules,
+						effective.defaultAction,
+						policedType(name),
+						resolvePackage,
+					);
 
-				return { name, access: action, matchedRuleId };
-			}),
+					return { name, access: action, matchedRuleId };
+				}),
+				effective.rules,
+			),
 		};
 	}
 
@@ -979,7 +995,65 @@ export class TypeAvailabilityPolicyService {
 		return this.snapshot.read(kind, projectId) ?? (await this.getEffectivePolicy(kind, projectId));
 	}
 
-	private async readProjectScopes(kind: string): Promise<ProjectEffectivePolicy[]> {
+	/**
+	 * Counts for the project policy list. Reads the database, not the snapshot, so the counts and
+	 * `updatedAt` come from one source. `listTypes` picks the types to count from the verdicts of a
+	 * project without a policy.
+	 */
+	async summarizeProjectPolicies(
+		kind: string,
+		typeNames: readonly string[],
+		listTypes: ListTypes = (verdicts) => verdicts,
+	): Promise<ProjectPolicyKindSummaries> {
+		const [instance, projects] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.readProjectScopes(kind),
+		]);
+
+		const withoutProjectPolicy = listTypes(
+			this.verdictComposer(kind, typeNames)(instance, unconfiguredScope(kind, null)),
+			instance.rules,
+		);
+		const composeVerdicts = this.verdictComposer(
+			kind,
+			withoutProjectPolicy.map((verdict) => verdict.name),
+		);
+
+		const effectiveCounts = (verdicts: readonly ComposedTypeVerdict[]) => {
+			const allowed = verdicts.filter((verdict) => verdict.action === 'allow').length;
+			return { allowed, restricted: verdicts.length - allowed };
+		};
+
+		return {
+			withoutProjectPolicy: effectiveCounts(withoutProjectPolicy),
+			byProject: new Map(
+				projects.map((project) => {
+					// Same type order as `withoutProjectPolicy`, so index `i` names the same type. Only a
+					// satisfied `delegate` turns a deny into an allow.
+					const verdicts = composeVerdicts(instance, project);
+					let restricted = 0;
+					let optedIn = 0;
+					verdicts.forEach((verdict, i) => {
+						const before = withoutProjectPolicy[i].action;
+						if (before === 'allow' && verdict.action === 'deny') restricted++;
+						if (before === 'deny' && verdict.action === 'allow') optedIn++;
+					});
+
+					return [
+						project.projectId,
+						{
+							updatedAt: project.updatedAt,
+							summary: { restricted, optedIn, effective: effectiveCounts(verdicts) },
+						},
+					];
+				}),
+			),
+		};
+	}
+
+	private async readProjectScopes(
+		kind: string,
+	): Promise<Array<ProjectEffectivePolicy & { updatedAt: Date }>> {
 		const scopes = await this.scopeRepository.findProjectScopes(kind, {});
 		const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
 			scopes.map((scope) => scope.id),
@@ -989,6 +1063,7 @@ export class TypeAvailabilityPolicyService {
 		return scopes.map((scope) => ({
 			...toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []),
 			projectId: scope.projectId,
+			updatedAt: scope.updatedAt,
 		}));
 	}
 }

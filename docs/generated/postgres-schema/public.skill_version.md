@@ -101,6 +101,7 @@ erDiagram
 "public.skill_file" {
   text content
   timestamp_3__with_time_zone createdAt
+  boolean isBinary
   varchar_512_ path
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt

@@ -16,6 +16,10 @@ export interface ExecutionLedgerFoldStep {
 	 * starting with a letter, 48 characters at most.
 	 */
 	readonly name: string;
+	/**
+	 * Throw only when the step cannot count the batch: two throws park every row for the step.
+	 * Read the fold step rules in `packages/modules/execution-ledger/backend/README.md`.
+	 */
 	fold(
 		rows: readonly ExecutionLedgerRow[],
 		ctx: OperationContext,

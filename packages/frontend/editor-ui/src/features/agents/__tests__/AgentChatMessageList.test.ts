@@ -15,6 +15,7 @@ import {
 	TEST_HOST_EVENT,
 	TEST_RESULT_TOOL_NAME,
 	testHostEventExtensions,
+	testToolFooterExtension,
 	testToolResultExtension,
 } from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
@@ -490,6 +491,35 @@ describe('AgentChatMessageList', () => {
 			true,
 		);
 		expect(wrapper.text()).toMatch(/Research is in progress\.[\s\S]*Stopping all tasks…/);
+
+		wrapper.unmount();
+	});
+
+	it('renders the references of a user message in its attachment group, above the bubble', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'u-1', role: 'user', content: 'Explain it', references: [{ type: 'workflow' }] },
+				],
+				messagingState: 'idle',
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			slots: { 'user-message-references': '<span data-testid="reference">Orders</span>' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						template: '<div data-testid="message-attachments"><slot /></div>',
+					},
+				},
+			},
+		});
+
+		const group = wrapper.get('[data-testid="message-attachments"]').element;
+		const bubble = wrapper.get('[data-testid="chat-message-shell"]').element;
+		expect(group.contains(wrapper.get('[data-testid="reference"]').element)).toBe(true);
+		expect(bubble.contains(group)).toBe(false);
+		expect(group.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
 		wrapper.unmount();
 	});
@@ -2055,6 +2085,28 @@ describe('AgentChatMessageList', () => {
 			expect(results[0].find('[data-testid="test-tool-result"]').text()).toContain('tc-note');
 			expect(results[0].text()).toContain('{"saved":true}');
 			expect(stepToolCallIds(wrapper)).toEqual(['tc-http']);
+			wrapper.unmount();
+		});
+
+		it.each([
+			[
+				'keeps the default step and renders a host footer after the steps',
+				[testToolFooterExtension],
+				['tc-http', 'tc-note'],
+			],
+			[
+				'renders no footer for a call that a host result replaces',
+				[testToolResultExtension, testToolFooterExtension],
+				['tc-http'],
+			],
+		])('%s', (_, extensions, steps) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [assistantMessage([httpCall, savedNote])], messagingState: 'idle' },
+				global: { provide: { [AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => extensions) } },
+			});
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(stepToolCallIds(wrapper)).toEqual(steps);
 			wrapper.unmount();
 		});
 

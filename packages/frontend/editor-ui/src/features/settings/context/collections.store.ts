@@ -4,6 +4,7 @@ import type {
 	KnowledgeCollectionDto,
 	KnowledgeCollectionFileDto,
 	KnowledgeCollectionFileListResponse,
+	UpdateKnowledgeCollectionDto,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -54,6 +55,18 @@ export const useCollectionsStore = defineStore('contextCollections', () => {
 		return await api.createCollection(rootStore.restApiContext, projectId, payload);
 	}
 
+	async function updateCollection(
+		projectId: string,
+		collectionId: string,
+		payload: UpdateKnowledgeCollectionDto,
+	): Promise<KnowledgeCollectionDto> {
+		return await api.updateCollection(rootStore.restApiContext, projectId, collectionId, payload);
+	}
+
+	async function deleteCollection(projectId: string, collectionId: string): Promise<void> {
+		await api.deleteCollection(rootStore.restApiContext, projectId, collectionId);
+	}
+
 	async function getCollection(
 		projectId: string,
 		collectionId: string,
@@ -102,6 +115,8 @@ export const useCollectionsStore = defineStore('contextCollections', () => {
 		loading,
 		fetchCollections,
 		createCollection,
+		updateCollection,
+		deleteCollection,
 		getCollection,
 		listCollectionFiles,
 		uploadCollectionFiles,

@@ -17,6 +17,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 import CollectionModal from '@/features/settings/context/components/CollectionModal.vue';
 import CollectionsTable from '@/features/settings/context/components/CollectionsTable.vue';
+import DeleteCollectionDialog from '@/features/settings/context/components/DeleteCollectionDialog.vue';
 import { useCollectionsStore } from '@/features/settings/context/collections.store';
 
 const i18n = useI18n();
@@ -26,6 +27,9 @@ const collectionsStore = useCollectionsStore();
 const { showError } = useToast();
 
 const modalOpen = ref(false);
+/** The collection the dialog edits. None means the dialog creates one. */
+const editingCollection = ref<KnowledgeCollectionDto | null>(null);
+const deletingCollection = ref<KnowledgeCollectionDto | null>(null);
 const loadFailed = ref(false);
 const { next: nextLoad } = useLatestFetch();
 
@@ -52,16 +56,40 @@ async function load() {
 	}
 }
 
+// The edited collection stays set while the dialog closes, so its header does not change.
 function openCreateModal() {
+	editingCollection.value = null;
 	modalOpen.value = true;
 }
 
-async function onCreated(collection: KnowledgeCollectionDto) {
-	modalOpen.value = false;
+function openEditModal(collection: KnowledgeCollectionDto) {
+	editingCollection.value = collection;
+	modalOpen.value = true;
+}
+
+async function openCollection(collection: KnowledgeCollectionDto) {
 	await router.push({
 		name: VIEWS.KNOWLEDGE_COLLECTION,
 		params: { projectId: collection.homeProject.id, collectionId: collection.id },
 	});
+}
+
+async function onCreated(collection: KnowledgeCollectionDto) {
+	modalOpen.value = false;
+	await openCollection(collection);
+}
+
+function openDeleteDialog(collection: KnowledgeCollectionDto) {
+	deletingCollection.value = collection;
+}
+
+function closeDeleteDialog() {
+	deletingCollection.value = null;
+}
+
+async function onDeleted() {
+	closeDeleteDialog();
+	await load();
 }
 
 async function goBack() {
@@ -101,6 +129,9 @@ onMounted(async () => {
 			:collections="collectionsStore.collections"
 			:loading="collectionsStore.loading"
 			:show-empty="showEmptyState"
+			@open="openCollection"
+			@edit="openEditModal"
+			@delete="openDeleteDialog"
 		>
 			<template #empty>
 				<div :class="$style.empty" data-test-id="collections-empty-state">
@@ -119,7 +150,18 @@ onMounted(async () => {
 			</template>
 		</CollectionsTable>
 
-		<CollectionModal v-model:open="modalOpen" @saved="load" @created="onCreated" />
+		<CollectionModal
+			v-model:open="modalOpen"
+			:collection="editingCollection"
+			@saved="load"
+			@created="onCreated"
+		/>
+		<DeleteCollectionDialog
+			v-if="deletingCollection"
+			:collection="deletingCollection"
+			@close="closeDeleteDialog"
+			@deleted="onDeleted"
+		/>
 	</N8nSettingsLayout>
 </template>
 

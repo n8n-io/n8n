@@ -1,4 +1,6 @@
 import type { NodeIconName } from './node-icon-names';
+import NodeAgentDecisionResponse from './nodes/agent-decision-response.svg';
+import NodeAgentDecisionTrigger from './nodes/agent-decision-trigger.svg';
 import NodeAggregate from './nodes/aggregate.svg';
 import NodeAiAgent from './nodes/ai-agent.svg';
 import NodeAiTransform from './nodes/ai-transform.svg';
@@ -81,6 +83,8 @@ import NodeWorkflowRetriever from './nodes/workflow-retriever.svg';
 import NodeXml from './nodes/xml.svg';
 
 export const nodeIconSet = {
+	'node:agent-decision-response': NodeAgentDecisionResponse,
+	'node:agent-decision-trigger': NodeAgentDecisionTrigger,
 	'node:aggregate': NodeAggregate,
 	'node:ai-agent': NodeAiAgent,
 	'node:ai-transform': NodeAiTransform,

@@ -1,4 +1,4 @@
-import type { Tool } from '@n8n/agents';
+import type { BuiltTool, Tool } from '@n8n/agents';
 import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
@@ -420,6 +420,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<FolderService>(),
@@ -465,10 +466,17 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					ChatIntegrationContextQueryExecutor,
 					mock<ChatIntegrationContextQueryExecutor>(),
 				);
-				const attached: Array<ReturnType<Tool['build']>> = [];
+				const attached: BuiltTool[] = [];
+				// Like Agent.tool: takes builders or built tools.
 				const agent = {
-					tool: (tools: Tool | Tool[]) => {
-						for (const tool of Array.isArray(tools) ? tools : [tools]) attached.push(tool.build());
+					tool: (tools: Tool | BuiltTool | Array<Tool | BuiltTool>) => {
+						for (const tool of Array.isArray(tools) ? tools : [tools]) {
+							attached.push(
+								'build' in tool && typeof tool.build === 'function'
+									? tool.build()
+									: (tool as BuiltTool),
+							);
+						}
 					},
 				};
 				await (
@@ -498,6 +506,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 								'do_not_respond',
 							],
 				);
+				// A test run tells integration tools apart by this tag.
+				for (const tool of attached) expect(tool.metadata).toEqual({ kind: 'integration' });
 				const actions = attached.filter(({ name }) => name.endsWith('_action'));
 				for (const action of actions) {
 					expect(action.systemInstruction).toContain('Search your tools');

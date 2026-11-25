@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
+	EngineRole,
 	EngineRuntime,
 	EngineWorkQueues,
 	ExecutionResponseSender,
@@ -12,6 +13,7 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	ENGINE_ROLES,
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
@@ -44,6 +46,8 @@ export interface EngineV2RuntimeOptions {
 	lifecycleEventSender?: { send: LifecycleEventCallback };
 	/** The queues the engine runs on. The caller closes their connections. */
 	queues: EngineWorkQueues;
+	/** The engine roles this process runs. Without it, the process runs every role. */
+	roles?: readonly EngineRole[];
 }
 
 /**
@@ -130,18 +134,23 @@ export class EngineV2Runtime {
 		responseSender,
 		lifecycleEventSender,
 		queues,
+		roles,
 	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
 		this.stopping = stopping;
+		const runsApi = (roles ?? ENGINE_ROLES).includes('api');
 
-		const engine = createEngineRuntime({
+		this.engine = createEngineRuntime({
+			roles,
 			dataSource: this.dataSource,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
-			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			identityVerifier: runsApi
+				? new SharedSecretIdentityVerifier(this.engineConfig.authSecret)
+				: undefined,
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
@@ -165,9 +174,8 @@ export class EngineV2Runtime {
 				}),
 			}),
 		});
-		engine.start();
-
-		this.engine = engine;
+		// Stored first, so the rollback can stop a queue that began consuming before `start()` threw.
+		this.engine.start();
 	}
 
 	private resumeMinters(): Pick<

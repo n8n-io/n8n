@@ -140,15 +140,27 @@ describe('ResponseWaitTracker', () => {
 	it('keeps a durable wake-up when immediate resume fails', async () => {
 		const { tracker, executions, core, logger } = setup();
 		core.startExecution.mockRejectedValue(new OperationalError('Unavailable'));
-		await expect(tracker.respond('1', response)).resolves.toBeUndefined();
+		await expect(tracker.respond('1', response)).resolves.toBe(true);
 		expect(executions.updateExistingExecution.mock.calls[0][1].waitTill).toBeInstanceOf(Date);
 		expect(logger.warn).toHaveBeenCalledOnce();
+	});
+
+	it('reports a resume that the resume-attempt limit refuses', async () => {
+		const { tracker, core } = setup();
+		core.startExecution.mockResolvedValue(false);
+		await expect(tracker.respond('1', response)).resolves.toBe(false);
+	});
+
+	it('reports a granted resume', async () => {
+		const { tracker, core } = setup();
+		core.startExecution.mockResolvedValue(true);
+		await expect(tracker.respond('1', response)).resolves.toBe(true);
 	});
 
 	it('accepts a response when the core poll already started the saved continuation', async () => {
 		const { tracker, core, logger } = setup();
 		core.startExecution.mockRejectedValue(new ExecutionAlreadyResumingError('1'));
-		await expect(tracker.respond('1', response)).resolves.toBeUndefined();
+		await expect(tracker.respond('1', response)).resolves.toBe(true);
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
