@@ -119,6 +119,34 @@ describe('usePolicyViolationToast', () => {
 		emitSpy.mockRestore();
 	});
 
+	it('reports the violation count of the response, before the toast removes duplicates', async () => {
+		prepareWorkflowWithTwoSlackNodes();
+		registerSlackNodeType();
+
+		const { showPolicyViolationToast } = usePolicyViolationToast();
+		showPolicyViolationToast(
+			[slackViolation, slackViolation],
+			'Problem publishing',
+			'publish',
+			createWorkflowDocumentId('w1'),
+		);
+
+		const toastOptions = showMessageSpy.mock.calls[0][0];
+		const { getAllByTestId } = render(defineComponent({ render: () => toastOptions.message }));
+		expect(getAllByTestId('policy-violation')).toHaveLength(1);
+
+		await userEvent.click(getAllByTestId('policy-violation-jump')[0]);
+
+		expect(trackSpy).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.POLICIES.USER_JUMPED_TO_POLICY_VIOLATION,
+			{
+				refused_action: 'publish',
+				violation_kind: 'node-type-unavailable',
+				violation_count: 2,
+			},
+		);
+	});
+
 	it('names a blocked credential type and jumps to the nodes that use it', async () => {
 		const workflow = createTestWorkflow({
 			id: 'w-credentials',

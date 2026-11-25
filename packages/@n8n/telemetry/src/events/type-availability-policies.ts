@@ -33,10 +33,10 @@ const kind = z
 const projectId = z.string().optional().describe('Absent at instance scope');
 
 /**
- * Where the editor showed a type restriction. Exported so the components that pass it type their
- * prop against the same set this schema validates against.
+ * Where the editor showed a type restriction. The components that pass it type their prop with
+ * `RestrictedTypeSurface`, so the prop and this schema share one list.
  */
-export const RESTRICTED_TYPE_SURFACES = [
+const RESTRICTED_TYPE_SURFACES = [
 	'node_creator',
 	'command_bar',
 	'ndv',

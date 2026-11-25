@@ -461,6 +461,41 @@ describe('ContactAdminModal', () => {
 			expect(track).not.toHaveBeenCalled();
 		});
 
+		it('reports each opening of the dialog', async () => {
+			setup([owner]);
+			const { rerender } = renderComponent();
+
+			await rerender({ open: false });
+			await rerender({ open: true });
+
+			expect(track).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports the audience whose admins the dialog lists', async () => {
+			setup([]);
+			mockPolicyProject({
+				type: 'team',
+				relations: [],
+				implicitMembers: [
+					{
+						id: 'global-owner-1',
+						firstName: 'Katherine',
+						lastName: 'Johnson',
+						email: 'katherine@example.com',
+						globalRole: { slug: 'global:owner', displayName: 'Owner' },
+					},
+				],
+			});
+			renderComponent({ props: { audience: 'project' } });
+
+			expect(track).toHaveBeenCalledWith(USER_OPENED_CONTACT_ADMIN_DIALOG, {
+				kind: 'node-types',
+				audience: 'instance',
+				source: 'node_creator',
+				restricted_type_count: 1,
+			});
+		});
+
 		it('reports a click on the email of an admin', async () => {
 			setup([owner]);
 			const { findByTestId, getByText } = renderComponent();

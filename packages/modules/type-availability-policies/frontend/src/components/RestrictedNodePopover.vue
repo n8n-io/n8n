@@ -90,14 +90,10 @@ const anchorFocused = computed(() =>
 const contentFocused = computed(() =>
 	Boolean(contentRef.value?.contains(activeElement.value ?? null)),
 );
-const hasIntent = computed(
-	() =>
-		anchorHovered.value ||
-		contentHovered.value ||
-		anchorFocused.value ||
-		contentFocused.value ||
-		props.active,
+const hasUserIntent = computed(
+	() => anchorHovered.value || contentHovered.value || anchorFocused.value || contentFocused.value,
 );
+const hasIntent = computed(() => hasUserIntent.value || props.active);
 /**
  * A dismissed card stays closed until the pointer and the focus leave, so it cannot open again at once.
  * A new pointer entry or a press on the lock also opens it, because a focused lock keeps the intent.
@@ -111,14 +107,10 @@ const wantsOpen = computed(
 );
 const { open, claim } = useExclusiveOpen(wantsOpen);
 
-// Hover opens the card, so a pointer that crosses a list would otherwise report every row it passes.
+// Hover opens the card, so each pass of the pointer would report it again; one card reports once.
 // An `active` row alone does not count: a list can select its first row before the user does anything.
 let hasTrackedOpen = false;
-const isOpenByUser = computed(
-	() =>
-		open.value &&
-		(anchorHovered.value || contentHovered.value || anchorFocused.value || contentFocused.value),
-);
+const isOpenByUser = computed(() => open.value && hasUserIntent.value);
 watch(
 	isOpenByUser,
 	(isOpen) => {

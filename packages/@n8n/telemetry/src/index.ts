@@ -11,7 +11,7 @@ export type {
 export { ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH, ASSISTANT_RUNTIMES } from './events/instance-ai';
 export type { AssistantRuntime } from './events/instance-ai';
 export { PUBLIC_API_USAGE_JSON_FIELDS } from './events/public-api';
-export { POLICY_KINDS, RESTRICTED_TYPE_SURFACES } from './events/type-availability-policies';
+export { POLICY_KINDS } from './events/type-availability-policies';
 export type { PolicyKind, RestrictedTypeSurface } from './events/type-availability-policies';
 export { findPageHideEvent, PAGE_HIDE_EVENTS } from './page-hide-events';
 export type { PageHideEvent } from './page-hide-events';
