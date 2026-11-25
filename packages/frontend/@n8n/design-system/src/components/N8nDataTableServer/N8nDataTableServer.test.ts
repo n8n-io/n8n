@@ -533,7 +533,7 @@ describe('N8nDataTableServer', () => {
 		const notSelectable = itemFactory();
 		const allIds = [...items, ...otherPages].map((item) => item.id);
 		const hidden = 'hidden-by-a-filter';
-		const { container, emitted, rerender } = render(N8nDataTableServer<Item>, {
+		const { getByRole, emitted, rerender } = render(N8nDataTableServer<Item>, {
 			props: {
 				items,
 				headers,
@@ -544,7 +544,8 @@ describe('N8nDataTableServer', () => {
 				itemSelectable: (item: Item) => item.id !== notSelectable.id,
 			},
 		});
-		const header = container.querySelector<HTMLElement>('thead [role="checkbox"]')!;
+		// The default name says that the header selects more than the page.
+		const header = getByRole('checkbox', { name: 'Select all rows' });
 		expect(header).toHaveAttribute('aria-checked', 'false');
 
 		await userEvent.click(header);

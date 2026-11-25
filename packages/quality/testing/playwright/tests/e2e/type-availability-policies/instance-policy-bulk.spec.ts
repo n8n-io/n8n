@@ -137,7 +137,7 @@ test.describe(
 			});
 			await page.getBulkButton('Allowed').click();
 
-			await expect(page.getPolicyChangedNotice()).toBeVisible();
+			await expect(n8n.notifications.getNotificationByTitle('The policy changed')).toBeVisible();
 			await expect(page.getSelectionBar()).toContainText('1 row selected');
 
 			await n8n.page.reload();

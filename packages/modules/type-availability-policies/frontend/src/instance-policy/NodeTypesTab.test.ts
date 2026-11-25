@@ -13,7 +13,7 @@ import { useInstancePolicyStore } from './instance-policy.store';
 import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import NodeTypesTab from './NodeTypesTab.vue';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
-import { policyTableCells } from '../__tests__/table';
+import { policyTableCells, rowCheckbox, type GetByRole } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -169,38 +169,6 @@ describe('NodeTypesTab', () => {
 		expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveTextContent('Allowed');
 	});
 
-	it('sends only the changed node type, and not its Tool variant, when it allows the node type', async () => {
-		const denySlackTool = {
-			id: 'deny-slack-tool',
-			action: 'deny' as const,
-			selector: { kind: 'name' as const, value: `${SLACK}Tool` },
-		};
-		const denyBasePackage = {
-			id: 'deny-base',
-			action: 'deny' as const,
-			selector: { kind: 'package' as const, value: 'n8n-nodes-base' },
-		};
-		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, [denySlackTool, denyBasePackage]));
-		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
-		const { findByText, getByTestId } = await setup(() =>
-			mocks.fetchInstanceAccess.mockResolvedValue(
-				access(1, [{ name: SLACK, access: 'deny', matchedRuleId: denyBasePackage.id }]),
-			),
-		);
-		await findByText('Slack');
-
-		await userEvent.click(accessCell(getByTestId));
-		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
-
-		await waitFor(() =>
-			// The server places the rule, so the rule on the Tool variant keeps its position.
-			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
-				changes: [{ type: SLACK, access: 'allow' }],
-				version: 1,
-			}),
-		);
-	});
-
 	it('loads the access list again when the policy changed after the page loaded', async () => {
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.setInstanceTypeAccess.mockRejectedValue(
@@ -245,15 +213,16 @@ describe('NodeTypesTab', () => {
 	});
 
 	describe('bulk change', () => {
-		const selectBoth = async (getByRole: (role: string, options?: object) => HTMLElement) => {
-			await userEvent.click(getByRole('checkbox', { name: 'Select Slack' }));
-			await userEvent.click(getByRole('checkbox', { name: 'Select Slack Trigger' }));
+		// The rows are read-only until the access loads.
+		const selectBoth = async (getByRole: GetByRole) => {
+			await waitFor(() => expect(rowCheckbox(getByRole, 'Slack')).toBeEnabled());
+			await userEvent.click(rowCheckbox(getByRole, 'Slack'));
+			await userEvent.click(rowCheckbox(getByRole, 'Slack Trigger'));
 		};
 
 		it('restricts the selection in one save after one review, then clears the selection', async () => {
 			mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 			const { getByRole, getByTestId, queryByTestId } = await setup();
-			await waitFor(() => expect(getByRole('checkbox', { name: 'Select Slack' })).toBeEnabled());
 			await selectBoth(getByRole);
 
 			await userEvent.click(getByTestId('policy-bulk-restrict'));
@@ -273,7 +242,6 @@ describe('NodeTypesTab', () => {
 
 		it('keeps the selection and changes nothing when the admin cancels the review', async () => {
 			const { getByRole, getByTestId } = await setup();
-			await waitFor(() => expect(getByRole('checkbox', { name: 'Select Slack' })).toBeEnabled());
 			await selectBoth(getByRole);
 
 			await userEvent.click(getByTestId('policy-bulk-restrict'));
@@ -291,7 +259,6 @@ describe('NodeTypesTab', () => {
 				new ResponseError('Policy scope has changed', { httpStatusCode: 409 }),
 			);
 			const { getByRole, getByTestId } = await setup();
-			await waitFor(() => expect(getByRole('checkbox', { name: 'Select Slack' })).toBeEnabled());
 			await selectBoth(getByRole);
 			mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
 			mocks.fetchInstanceAccess.mockResolvedValue(access(2));

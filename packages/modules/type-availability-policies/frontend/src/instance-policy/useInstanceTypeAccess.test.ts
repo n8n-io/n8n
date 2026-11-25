@@ -266,12 +266,12 @@ describe('useInstanceTypeAccess', () => {
 			],
 		});
 
-		const savedRules = () =>
-			(
-				mocks.setInstanceTypeAccess.mock.calls[0][2] as {
-					changes: Array<{ type: string; access: string }>;
-				}
-			).changes.map((change) => [change.type, change.access]);
+		const allAllowed: InstanceTypeAccessResponse = {
+			...threeTypes(1),
+			types: threeTypes(1).types.map((type) => ({ ...type, access: 'allow' })),
+		};
+
+		const sentChanges = () => mocks.setInstanceTypeAccess.mock.calls[0][2].changes;
 
 		beforeEach(() => {
 			mocks.fetchInstanceAccess.mockResolvedValue(threeTypes(1));
@@ -294,17 +294,14 @@ describe('useInstanceTypeAccess', () => {
 			expect(useRestrictReviewStore().bulkRequest).toBeNull();
 			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 			// GitHub is already allowed, so the save leaves it out.
-			expect(savedRules()).toEqual([
-				[SLACK, 'allow'],
-				[NOTION, 'allow'],
+			expect(sentChanges()).toEqual([
+				{ type: SLACK, access: 'allow' },
+				{ type: NOTION, access: 'allow' },
 			]);
 		});
 
 		it('asks once for the restricted types in use and restricts all of them on confirm', async () => {
-			mocks.fetchInstanceAccess.mockResolvedValue({
-				...threeTypes(1),
-				types: threeTypes(1).types.map((type) => ({ ...type, access: 'allow' as const })),
-			});
+			mocks.fetchInstanceAccess.mockResolvedValue(allAllowed);
 			await setup();
 			const review = useRestrictReviewStore();
 			const { changeAccessMany } = useInstanceTypeAccess('node');
@@ -326,18 +323,15 @@ describe('useInstanceTypeAccess', () => {
 
 			expect(await change).toBe('saved');
 			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
-			expect(savedRules()).toEqual([
-				[SLACK, 'deny'],
-				[NOTION, 'deny'],
-				[GITHUB, 'deny'],
+			expect(sentChanges()).toEqual([
+				{ type: SLACK, access: 'deny' },
+				{ type: NOTION, access: 'deny' },
+				{ type: GITHUB, access: 'deny' },
 			]);
 		});
 
 		it('changes nothing when the admin cancels the review', async () => {
-			mocks.fetchInstanceAccess.mockResolvedValue({
-				...threeTypes(1),
-				types: threeTypes(1).types.map((type) => ({ ...type, access: 'allow' as const })),
-			});
+			mocks.fetchInstanceAccess.mockResolvedValue(allAllowed);
 			await setup();
 			const review = useRestrictReviewStore();
 			const { types, changeAccessMany } = useInstanceTypeAccess('node');
@@ -357,7 +351,7 @@ describe('useInstanceTypeAccess', () => {
 
 			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'deny')).toBe('saved');
 			expect(useRestrictReviewStore().bulkRequest).toBeNull();
-			expect(savedRules()).toEqual([[GITHUB, 'deny']]);
+			expect(sentChanges()).toEqual([{ type: GITHUB, access: 'deny' }]);
 		});
 
 		it('leaves out read-only types and saves nothing when no type needs the change', async () => {

@@ -277,7 +277,8 @@ watch(rowsByName, (rows) => {
 	if (kept.length !== selection.value.length) selection.value = kept;
 });
 
-const isEditable = (row: InstancePolicyTableRow) => row.editable;
+const canRestrict = computed(() => selectedRows.value.some((row) => row.access !== 'deny'));
+const canAllow = computed(() => selectedRows.value.some((row) => row.access !== 'allow'));
 
 const selectRowLabel = (row: InstancePolicyTableRow) =>
 	i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectRow', {
@@ -372,10 +373,9 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			v-model:sort-by="sortBy"
 			v-model:selection="selection"
 			show-select
-			:item-selectable="isEditable"
+			item-selectable="editable"
 			:select-row-label="selectRowLabel"
 			:select-all-items="filteredRows"
-			:select-all-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectAll')"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"
@@ -467,8 +467,8 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 		</div>
 		<PolicySelectionBar
 			:count="selectedRows.length"
-			:can-restrict="selectedRows.some((row) => row.access !== 'deny')"
-			:can-allow="selectedRows.some((row) => row.access !== 'allow')"
+			:can-restrict="canRestrict"
+			:can-allow="canAllow"
 			:busy="bulkBusy"
 			@restrict="onBulkChange('deny')"
 			@allow="onBulkChange('allow')"

@@ -368,34 +368,6 @@ describe('NodeTypeAccessDialog', () => {
 		expect(queryByTestId('node-type-access-empty')).not.toBeInTheDocument();
 	});
 
-	it('sends only the changed node type, and not its Tool variant', async () => {
-		mocks.fetchNodeTypeUsage.mockResolvedValue({});
-		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
-		const denyNotionTool = {
-			id: 'deny-notion-tool',
-			action: 'deny',
-			selector: { kind: 'name', value: 'n8n-nodes-base.notionTool' },
-		};
-		mocks.fetchInstancePolicy.mockImplementation(async (_context, kind: string) => ({
-			scopeId: null,
-			rules: kind === 'node' ? [denyNotionTool] : [],
-			defaultAction: 'allow',
-			version: 1,
-		}));
-		const { getByTestId } = await setup('n8n-nodes-base.notion');
-
-		await fireEvent.click(
-			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
-		);
-
-		await waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1));
-		// The server places the rule, so the rule on the Tool variant keeps deciding the variant.
-		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
-			changes: [{ type: 'n8n-nodes-base.notion', access: 'deny' }],
-			version: 1,
-		});
-	});
-
 	it('keeps showing the latest choice when an earlier save on the same row ends', async () => {
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});

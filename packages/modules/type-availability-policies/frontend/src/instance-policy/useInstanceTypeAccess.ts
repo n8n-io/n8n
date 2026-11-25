@@ -93,11 +93,10 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 		if (access === 'deny') {
 			if (!(await restrictReview.reviewBulkRestrict(kind, toChange))) return 'cancelled';
 		} else {
-			// Ends a restriction of these types that still waits for its review. A change that does not
-			// restrict returns `true` at once.
-			for (const { name, label } of toChange) {
-				void restrictReview.reviewChange(kind, name, access, label);
-			}
+			restrictReview.supersede(
+				kind,
+				toChange.map(({ name }) => name),
+			);
 		}
 
 		const changes = toChange.map(({ name }): [string, PendingChange] => {

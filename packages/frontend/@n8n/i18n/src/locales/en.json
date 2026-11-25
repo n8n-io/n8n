@@ -3141,7 +3141,6 @@
 	"typeAvailabilityPolicies.instancePolicy.bulk.allow": "Allow",
 	"typeAvailabilityPolicies.instancePolicy.bulk.toolbarLabel": "Actions for the selected rows",
 	"typeAvailabilityPolicies.instancePolicy.bulk.selectRow": "Select {name}",
-	"typeAvailabilityPolicies.instancePolicy.bulk.selectAll": "Select all rows",
 	"typeAvailabilityPolicies.instancePolicy.bulk.announce": "{count} row selected | {count} rows selected",
 	"typeAvailabilityPolicies.instancePolicy.bulk.cleared": "Selection cleared",
 	"typeAvailabilityPolicies.usage.none": "Not used in any workflow",

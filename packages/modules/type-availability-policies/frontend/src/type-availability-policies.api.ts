@@ -11,8 +11,8 @@ import type {
 	PolicyEffectiveWriteResultPublicDto,
 	ProjectPoliciesResponse,
 	ProjectPolicySummary,
+	SetInstanceTypeAccessDto,
 	SubWorkflowPolicyCheckResponse,
-	TypeAccessChange,
 	WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { get, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -58,7 +58,7 @@ export async function fetchInstancePolicy<K extends RestrictedTypeKind>(
 export async function setInstanceTypeAccess<K extends RestrictedTypeKind>(
 	context: IRestApiContext,
 	kind: K,
-	body: { changes: TypeAccessChange[]; version: number },
+	body: SetInstanceTypeAccessDto,
 ): Promise<InstancePolicyWriteResult<K>> {
 	return await makeRestApiRequest(
 		context,

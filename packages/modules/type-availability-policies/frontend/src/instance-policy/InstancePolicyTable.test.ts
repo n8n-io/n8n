@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { findPopupItem, MENU_ITEM, OPTION, popupLabels } from '../__tests__/popups';
-import { accessFilter } from '../__tests__/table';
+import { accessFilter, rowCheckbox } from '../__tests__/table';
 
 const row = (
 	name: string,
@@ -558,14 +558,11 @@ describe('InstancePolicyTable', () => {
 	});
 
 	describe('selection', () => {
-		const checkbox = (getByRole: (role: string, options?: object) => HTMLElement, name: string) =>
-			getByRole('checkbox', { name: `Select ${name}` });
-
 		it('gives each row a checkbox named after it, and disables it on a read-only row', () => {
 			const { getByRole } = setup([...ROWS, row('slackApi', 'Slack API', 'delegate', false)]);
 
-			expect(checkbox(getByRole, 'Bitly API')).toBeEnabled();
-			expect(checkbox(getByRole, 'Slack API')).toBeDisabled();
+			expect(rowCheckbox(getByRole, 'Bitly API')).toBeEnabled();
+			expect(rowCheckbox(getByRole, 'Slack API')).toBeDisabled();
 			expect(getByRole('checkbox', { name: 'Select all rows' })).toBeInTheDocument();
 		});
 
@@ -574,7 +571,7 @@ describe('InstancePolicyTable', () => {
 			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
 
 			for (const name of ['Bitly API', 'Airtable API', 'Notion API']) {
-				await userEvent.click(checkbox(getByRole, name));
+				await userEvent.click(rowCheckbox(getByRole, name));
 			}
 
 			const bar = within(getByTestId('selected-items-info'));
@@ -588,15 +585,15 @@ describe('InstancePolicyTable', () => {
 		it('does not open a row when the admin clicks its checkbox', async () => {
 			const { getByRole, emitted } = setup();
 
-			await userEvent.click(checkbox(getByRole, 'Airtable API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Airtable API'));
 
 			expect(emitted('open')).toBeUndefined();
 		});
 
 		it('emits the selected types with the access of the action', async () => {
 			const { getByRole, getByTestId, emitted } = setup();
-			await userEvent.click(checkbox(getByRole, 'Bitly API'));
-			await userEvent.click(checkbox(getByRole, 'Airtable API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Airtable API'));
 
 			await userEvent.click(getByTestId('policy-bulk-allow'));
 			await userEvent.click(getByTestId('policy-bulk-restrict'));
@@ -614,7 +611,7 @@ describe('InstancePolicyTable', () => {
 		it('disables the action that would change no selected row', async () => {
 			const { getByRole, getByTestId } = setup();
 
-			await userEvent.click(checkbox(getByRole, 'Airtable API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Airtable API'));
 
 			expect(getByTestId('policy-bulk-allow')).toBeDisabled();
 			expect(getByTestId('policy-bulk-restrict')).toBeEnabled();
@@ -626,13 +623,13 @@ describe('InstancePolicyTable', () => {
 			);
 			const { getByRole, getByTestId, getByPlaceholderText } = setup(rows);
 
-			await userEvent.click(checkbox(getByRole, 'Type 00'));
+			await userEvent.click(rowCheckbox(getByRole, 'Type 00'));
 			await fireEvent.click(getByTestId('pagination-next'));
-			await userEvent.click(checkbox(getByRole, 'Type 25'));
+			await userEvent.click(rowCheckbox(getByRole, 'Type 25'));
 			await fireEvent.update(getByPlaceholderText('Search credentials'), 'Type 25');
 
 			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
-			expect(checkbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');
+			expect(rowCheckbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');
 		});
 
 		it('selects every row that the search and the filter show, on all pages', async () => {
@@ -669,19 +666,19 @@ describe('InstancePolicyTable', () => {
 
 		it('clears the selection and moves the focus to the select-all checkbox', async () => {
 			const { getByRole, getByTestId, queryByTestId } = setup();
-			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
 
 			await userEvent.click(getByRole('button', { name: 'Clear selection' }));
 
 			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
-			expect(checkbox(getByRole, 'Bitly API')).toHaveAttribute('aria-checked', 'false');
+			expect(rowCheckbox(getByRole, 'Bitly API')).toHaveAttribute('aria-checked', 'false');
 			expect(getByTestId('policy-bulk-status')).toHaveTextContent('Selection cleared');
 			await waitFor(() => expect(getByRole('checkbox', { name: 'Select all rows' })).toHaveFocus());
 		});
 
 		it('clears the selection when the admin presses Escape in the bar', async () => {
 			const { getByRole, getByTestId, queryByTestId } = setup();
-			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
 
 			getByTestId('policy-bulk-allow').focus();
 			await userEvent.keyboard('{Escape}');
@@ -691,7 +688,7 @@ describe('InstancePolicyTable', () => {
 
 		it('drops a selected type that becomes read-only', async () => {
 			const { getByRole, getByTestId, queryByTestId, rerender } = setup();
-			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+			await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
 			expect(getByTestId('selected-items-info')).toBeInTheDocument();
 
 			await rerender({ rows: [row('bitlyApi', 'Bitly API', 'delegate', false), ...ROWS.slice(1)] });

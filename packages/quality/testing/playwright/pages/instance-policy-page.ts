@@ -62,8 +62,9 @@ export class InstancePolicyPage extends BasePage {
 	async holdPolicySaves(kind: TypeKind): Promise<() => void> {
 		let release = () => {};
 		const released = new Promise<void>((resolve) => (release = resolve));
-		await this.page.route(`**/rest/${kind}-type-policies/instance`, async (route) => {
-			if (route.request().method() === 'PUT') await released;
+		// The access read uses the same path, so only the write waits.
+		await this.page.route(`**/rest/${kind}-type-policies/instance/access`, async (route) => {
+			if (route.request().method() === 'PATCH') await released;
 			await route.fallback();
 		});
 		return release;
@@ -114,10 +115,5 @@ export class InstancePolicyPage extends BasePage {
 	/** A button of the restrict review, such as `Cancel` or `Restrict 2`. */
 	getRestrictReviewButton(name: string): Locator {
 		return this.getRestrictReview().getByRole('button', { name, exact: true });
-	}
-
-	/** The warning that a save did not apply because another admin changed the policy. */
-	getPolicyChangedNotice(): Locator {
-		return this.page.getByText('The policy changed', { exact: true });
 	}
 }

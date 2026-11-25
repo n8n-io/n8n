@@ -490,7 +490,9 @@ const selectColumn: ColumnDef<T> = {
 	header: ({ table }) =>
 		h(N8nCheckbox, {
 			...(props.selectAllItems ? selectAllState(props.selectAllItems) : pageSelectAllState(table)),
-			'aria-label': props.selectAllLabel ?? t('dataTable.selectAll'),
+			'aria-label':
+				props.selectAllLabel ??
+				t(props.selectAllItems ? 'dataTable.selectAllPages' : 'dataTable.selectAll'),
 		}),
 	cell: ({ row }) => {
 		return h(N8nCheckbox, {

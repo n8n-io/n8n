@@ -16,7 +16,7 @@ import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
 import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
-import { accessFilter, policyTableCells } from '../__tests__/table';
+import { accessFilter, policyTableCells, rowCheckbox } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
@@ -39,11 +39,6 @@ const policy = (
 	version: number,
 	rules: InstancePolicy<'credential'>['rules'] = [],
 ): InstancePolicy<'credential'> => ({ scopeId: 'scope-1', rules, defaultAction: 'allow', version });
-
-const EXISTING_RULES: InstancePolicy<'credential'>['rules'] = [
-	{ id: 'notion', action: 'deny', selector: { kind: 'name', value: 'notionApi' } },
-	{ id: 'oauth2', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } },
-];
 
 const access = (
 	version: number,
@@ -162,7 +157,7 @@ describe('CredentialTypesTab', () => {
 	it('sends the access of only the changed credential type', async () => {
 		// No workflow uses the type, so the change applies with no review.
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
-		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, EXISTING_RULES));
+		mocks.fetchInstancePolicy.mockResolvedValue(policy(1));
 		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
@@ -324,8 +319,10 @@ describe('CredentialTypesTab', () => {
 	it('allows the selected credential types at once with no review, then clears the selection', async () => {
 		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByRole, getByRole, getByTestId, queryByTestId } = await setup();
-		await userEvent.click(await findByRole('checkbox', { name: 'Select Bitly API' }));
-		await userEvent.click(getByRole('checkbox', { name: 'Select Notion API' }));
+		// Waits for the rows to render.
+		await findByRole('checkbox', { name: 'Select Bitly API' });
+		await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
+		await userEvent.click(rowCheckbox(getByRole, 'Notion API'));
 
 		await userEvent.click(getByTestId('policy-bulk-allow'));
 
