@@ -10182,6 +10182,22 @@ describe('createContext: appService', () => {
 		]);
 	});
 
+	it('keeps numbered namespaces within the namespace length limit of the instance', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.maxNamespaceLength.mockReturnValue(9);
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(mock<AppResponse>({ id: APP_ID }));
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await context.appService?.createApp({ name: 'Todo list', namespace: 'todo-list' });
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todo-list',
+			'todo-li-2',
+		]);
+	});
+
 	it('reports a taken namespace when every numbered namespace is taken too', async () => {
 		const { apps } = mockAppsModule(true);
 		apps.createApp.mockRejectedValue(new ConflictError('An app already uses this namespace.'));

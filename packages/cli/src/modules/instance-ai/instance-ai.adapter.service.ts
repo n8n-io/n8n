@@ -3826,7 +3826,7 @@ export class InstanceAiAdapterService {
 				const { apps } = await services('app:create');
 				// The user doesn't see the namespace on the plan card, so a taken
 				// namespace moves on to the next numbered one instead of failing.
-				for (const candidate of appNamespaceCandidates(namespace)) {
+				for (const candidate of appNamespaceCandidates(namespace, apps.maxNamespaceLength())) {
 					try {
 						return await apps.createApp(
 							projectId,

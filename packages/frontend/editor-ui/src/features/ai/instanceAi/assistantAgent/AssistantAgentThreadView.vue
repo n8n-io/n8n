@@ -313,10 +313,6 @@ const interactionExtensions = [
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
-// The Assistant is working, not waiting on a card, so an app it builds may be on its way.
-const isAssistantWorking = computed(
-	() => !!panel.value?.isStreaming && !panel.value?.isAwaitingUserAnswer,
-);
 
 provide(
 	ASSISTANT_PREFERENCE_CARDS,
@@ -1213,7 +1209,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							:project-id="preview.activeApp.value.projectId"
 							:app-id="preview.activeApp.value.id"
 							:refresh-key="preview.appRefreshKey.value"
-							:assistant-working="isAssistantWorking"
+							:assistant-working="preview.isActiveAppInLiveTurn.value"
 							@deleted="preview.closeTab"
 						/>
 						<InstanceAiAgentPreview

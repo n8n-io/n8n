@@ -20,6 +20,16 @@ describe('appNamespaceCandidates', () => {
 		expect(appNamespaceCandidates(longest)[1]).toBe('a'.repeat(50) + '-b-2');
 	});
 
+	it('keeps each numbered namespace within a lower limit', () => {
+		const namespace = 'a'.repeat(49);
+
+		const candidates = appNamespaceCandidates(namespace, 49);
+
+		expect(candidates[0]).toBe(namespace);
+		expect(candidates[1]).toBe('a'.repeat(47) + '-2');
+		expect(candidates.every((candidate) => candidate.length <= 49)).toBe(true);
+	});
+
 	it('does not leave a double hyphen where the cut meets a hyphen', () => {
 		const candidates = appNamespaceCandidates('a'.repeat(51) + '-cd');
 
