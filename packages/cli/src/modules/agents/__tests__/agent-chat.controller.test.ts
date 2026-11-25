@@ -1335,7 +1335,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	])('queues the chat mode with a preview message (mode: $mode)', async ({ mode, expected }) => {
 		const { controller, messageQueue } = makeController();
 		const { res } = makeCleanupSseResponse();
-		void controller.chat(
+		const request = controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
@@ -1352,6 +1352,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(payload).toMatchObject({ kind: 'preview', ...expected });
 		if (!mode) expect(payload).not.toHaveProperty('mode');
 		res.emit('close');
+		await request;
 	});
 
 	it('keeps accepted input and attachments when the waiting browser disconnects', async () => {

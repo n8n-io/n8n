@@ -203,7 +203,17 @@ describe('SimulationSessionService', () => {
 
 		const session = await service.openForDraftRun(openInput);
 
+		// A missing session means a live run, which this path must never produce.
+		expect(session).toBeDefined();
 		expect(session?.worldId).toBeUndefined();
+		const tools = await service.describeTools('agent-1', 'project-1');
+		expect(tools).toContainEqual(
+			expect.objectContaining({
+				toolName: 'Send_Slack',
+				testability: 'blocked',
+				reason: 'simulator_unavailable',
+			}),
+		);
 	});
 
 	it('blocks every call when the world fails to open, without falling back', async () => {
