@@ -346,8 +346,9 @@ It needs the same two scopes as the list. It returns the new entry, in the same 
 
 - The call creates a scope row for each kind that has none, in one transaction. If one write
   fails, the call saves nothing.
-- A new row has no rules and `defaultAction: 'allow'`, so the project still follows the instance
-  policy.
+- A new row has no rules and `defaultAction: 'allow'`, so the project gets the access that the
+  instance policy gives. A type that the instance delegates stays blocked, because only an
+  explicit project `allow` rule satisfies `delegate`.
 - A kind that already has a row does not change.
 - If the project already has a row of both kinds, the call returns 409.
 - A personal project returns 400. A project that does not exist returns 404.
