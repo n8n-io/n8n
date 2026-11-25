@@ -356,13 +356,26 @@ describe('AppView', () => {
 		expect(getAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
 	});
 
-	it('shows no attention count when the connections fail to load', async () => {
+	it('clears the attention count when the connections fail to load', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		vi.mocked(getAppBindings).mockRejectedValue(new Error('offline'));
-		const { findByTestId } = renderComponent();
+		vi.mocked(getAppBindings)
+			.mockResolvedValueOnce({
+				versionId: 'v1',
+				bindings: [],
+				warnings: [
+					{ key: 'syncStats', code: 'resource_unpublished', message: '' },
+					{ key: 'chatBot', code: 'resource_unpublished', message: '' },
+				],
+			})
+			.mockRejectedValueOnce(new Error('offline'));
+		const { findByTestId, getByTestId } = renderComponent();
+		await waitFor(() => expect(getByTestId('attention-count')).toHaveTextContent(/^2$/));
 
-		await waitFor(() => expect(getAppBindings).toHaveBeenCalled());
-		expect(await findByTestId('attention-count')).toHaveTextContent('0');
+		// Switching tabs loads the count again, and this load fails.
+		await userEvent.click(await findByTestId('configure'));
+
+		await waitFor(() => expect(getAppBindings).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(getByTestId('attention-count')).toHaveTextContent(/^0$/));
 		expect(showError).not.toHaveBeenCalled();
 	});
 });
