@@ -161,12 +161,20 @@ export async function execute(
 				column,
 				columnInfo,
 				await uniqueColumnsOf(schema, table),
+				Boolean(nodeOptions.largeNumbersOutputAsString),
 			);
 			if (columnInfo.type !== 'NUMBER') startAfterTextColumn = column;
 
 			if (value !== undefined) {
 				const operator = rules[0].direction === 'DESC' ? '<' : '>';
-				const bind = addStartAfterBind(columnInfo, value, values);
+				const bind = addStartAfterBind(
+					this.getNode(),
+					i,
+					columnInfo,
+					value,
+					values,
+					Boolean(nodeOptions.largeNumbersOutputAsString),
+				);
 				innerQuery = addCursorPredicate(
 					base,
 					innerQuery,

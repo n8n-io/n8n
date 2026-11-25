@@ -583,7 +583,7 @@ export const startAfterFixedCollection: INodeProperties = {
 					default: '',
 					description:
 						'The value of the column in the last row of the page before. Leave empty to get the first page.',
-					hint: 'The node runs once for each input item. In a loop, give it only the last row of the page before, for example with a Limit node that keeps the last item, and use {{ $json.id }}.',
+					hint: 'The node runs once for each input item. In a loop, give it only the last row of the page before, for example with a Limit node that keeps the last item, and use {{ $json.ID }}. Oracle returns a column name in upper case unless the column was created with a quoted name.',
 				},
 			],
 		},

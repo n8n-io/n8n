@@ -31,6 +31,8 @@ export type ColumnInfo = {
 	isGenerated?: 'ALWAYS' | 'NEVER';
 	identityGeneration?: 'ALWAYS' | 'NEVER';
 	maxSize: number;
+	precision?: number | null;
+	scale?: number | null;
 };
 
 export type QueriesRunner = (
@@ -95,6 +97,10 @@ export type ColumnDefinition = {
 	type: string;
 	nullable: boolean;
 	maxSize: number;
+	/** Total digits of a NUMBER column. Empty when the column declares none. */
+	precision?: number | null;
+	/** Digits after the decimal point of a NUMBER column. Empty when the column declares none. */
+	scale?: number | null;
 };
 
 export type ColumnMap = {
@@ -131,6 +137,8 @@ export interface TableColumnRow {
 	COLUMN_NAME: string;
 	DATA_TYPE: string;
 	DATA_LENGTH: number;
+	DATA_PRECISION?: number | null;
+	DATA_SCALE?: number | null;
 	CHAR_LENGTH: number;
 	DEFAULT_LENGTH: number | null;
 	NULLABLE: 'Y' | 'N';

@@ -1859,12 +1859,45 @@ VALUES (
 				});
 				const runQueries = getRunQueriesFn(mockThis, pool);
 
-				await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+				await select.execute.call(
+					mockThis,
+					runQueries,
+					items,
+					{ largeNumbersOutputAsString: true },
+					pool,
+				);
 
 				expect(runQueries.mock.calls[0][0][0].values).toEqual([
 					{ type: oracleDBTypes.STRING, val: '-123456789012345678.25' },
 					{ type: oracleDBTypes.STRING, val: '999999999999999999D99' },
 				]);
+			});
+
+			it.each(['+9007199254740993', '1e21', 'abc'])(
+				'should throw for the NUMBER value %s, which is not a plain number',
+				async (value) => {
+					const mockThis = createMockExecuteFunction({
+						...baseParameters,
+						startAfter: { values: { column: 'ID', value } },
+					});
+					const runQueries = getRunQueriesFn(mockThis, pool);
+
+					await expect(
+						select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+					).rejects.toThrow('The Start After value must be a plain number');
+				},
+			);
+
+			it('should throw for a NUMBER value with a fraction and more than 15 digits when numbers are not output as text', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'ID', value: '1700000000.1234565' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await expect(
+					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+				).rejects.toThrow('The Start After value has too many digits to be exact');
 			});
 
 			it('should throw for a text column when the session does not sort in binary order', async () => {
@@ -1892,6 +1925,94 @@ VALUES (
 					expect.anything(),
 					expect.anything(),
 				);
+			});
+
+			it('should run the page query for a text column when the session sorts in binary order', async () => {
+				mockConnection.execute.mockImplementation((sql: string = '') => {
+					if (isCatalogQuery([sql])) return { rows: [{ COLUMN_NAME: 'NAME' }] };
+					if (sql.includes('NLS_SORT')) return { rows: [{ NLS_SORT: 'BINARY' }] };
+					return {
+						rows: defaultImpl(sql).rows.map((row) =>
+							row.COLUMN_NAME === 'NAME' ? { ...row, NULLABLE: 'N' } : row,
+						),
+					};
+				});
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'NAME', value: 'b' } },
+				});
+				const runQueries = configureQueryRunner.call(mockThis, mockThis.getNode(), false, pool);
+
+				await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				expect(mockConnection.execute).toHaveBeenCalledWith(
+					`SELECT * FROM "${CONFIG.user}"."${table}" WHERE "NAME" > :0 ORDER BY "NAME" ASC FETCH FIRST 5 ROWS ONLY`,
+					[expect.objectContaining({ val: 'b' })],
+					expect.anything(),
+				);
+			});
+
+			it('should throw when Output Columns leaves out the cursor column', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					options: { outputColumns: ['NAME'] },
+					startAfter: { values: { column: 'ID', value: '7' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await expect(
+					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+				).rejects.toThrow('Add "ID" to Output Columns');
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
+			describe('NUMBER column with a fraction', () => {
+				const withIdColumn = (precision: number | null, scale: number | null) =>
+					mockConnection.execute.mockImplementation((sql: string = '') => {
+						if (isCatalogQuery([sql])) return { rows: [{ COLUMN_NAME: 'ID' }] };
+						return {
+							rows: defaultImpl(sql).rows.map((row) =>
+								row.COLUMN_NAME === 'ID'
+									? { ...row, DATA_PRECISION: precision, DATA_SCALE: scale }
+									: row,
+							),
+						};
+					});
+				const run = async (options: IDataObject) => {
+					const mockThis = createMockExecuteFunction({
+						...baseParameters,
+						startAfter: { values: { column: 'ID', value: '' } },
+					});
+					const runQueries = getRunQueriesFn(mockThis, pool);
+					await select.execute.call(mockThis, runQueries, items, options, pool);
+					return runQueries;
+				};
+
+				it.each([
+					['NUMBER(38,18)', 38, 18],
+					['NUMBER(*,18)', null, 18],
+				])('should throw for %s, which the output rounds', async (_, precision, scale) => {
+					withIdColumn(precision, scale);
+
+					await expect(run({})).rejects.toThrow(
+						'Start After cannot keep the values of column "ID" exact',
+					);
+				});
+
+				it.each([
+					['NUMBER(10,2), which the output keeps exact', 10, 2, {}],
+					['NUMBER(38,0), which has no fraction', 38, 0, {}],
+					[
+						'NUMBER(38,18) when numbers are output as text',
+						38,
+						18,
+						{ largeNumbersOutputAsString: true },
+					],
+				])('should page by %s', async (_, precision, scale, options) => {
+					withIdColumn(precision, scale);
+
+					expect(await run(options)).toHaveBeenCalled();
+				});
 			});
 
 			it('should not duplicate ORDER BY when the cursor column is already sorted', async () => {
@@ -1964,6 +2085,28 @@ VALUES (
 				await select.execute.call(mockThis, runQueries, twoItems, nodeOptions, pool);
 
 				expect(mockConnection.execute.mock.calls.filter(isCatalogQuery)).toHaveLength(1);
+			});
+
+			it('should query the catalog for each table when items use different tables', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'ID', value: '7' } },
+				});
+				const getNodeParameter = mockThis.getNodeParameter.bind(mockThis);
+				mockThis.getNodeParameter = ((name: string, index: number, ...rest: unknown[]) =>
+					name === 'table' && index === 1
+						? 'OTHER_TABLE'
+						: getNodeParameter(name, index, ...rest)) as typeof mockThis.getNodeParameter;
+				const runQueries = getRunQueriesFn(mockThis, pool);
+				const twoItems = [{ json: {} }, { json: {} }];
+
+				await select.execute.call(mockThis, runQueries, twoItems, nodeOptions, pool);
+
+				const catalogCalls: unknown[][] = mockConnection.execute.mock.calls.filter(isCatalogQuery);
+				expect(catalogCalls.map(([, binds]) => binds)).toEqual([
+					expect.objectContaining({ table_name: table }),
+					expect.objectContaining({ table_name: 'OTHER_TABLE' }),
+				]);
 			});
 
 			it('should throw when the cursor column is unique but has no column metadata', async () => {

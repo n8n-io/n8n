@@ -306,6 +306,8 @@ SELECT
   atc.COLUMN_NAME,
   atc.DATA_TYPE,
   atc.DATA_LENGTH,
+  atc.DATA_PRECISION,
+  atc.DATA_SCALE,
   atc.CHAR_LENGTH,
   atc.DEFAULT_LENGTH,
   atc.NULLABLE,
@@ -343,6 +345,8 @@ SELECT
   atc.COLUMN_NAME,
   atc.DATA_TYPE,
   atc.DATA_LENGTH,
+  atc.DATA_PRECISION,
+  atc.DATA_SCALE,
   atc.CHAR_LENGTH,
   atc.DEFAULT_LENGTH,
   atc.NULLABLE,
@@ -377,6 +381,8 @@ ORDER BY atc.COLUMN_NAME`;
 			dataType: row.DATA_TYPE,
 			isNullable: row.NULLABLE === 'Y',
 			maxSize: row.DATA_LENGTH,
+			precision: row.DATA_PRECISION,
+			scale: row.DATA_SCALE,
 		}));
 	} finally {
 		if (conn) {
@@ -454,6 +460,7 @@ const START_AFTER_TYPE = /^(NUMBER|N?VARCHAR2|N?CHAR)$/;
 /**
  * Throws if Start After cannot page by the column without skipped or repeated rows.
  * `uniqueColumns` comes from getUniqueKeyColumns. The query runner checks the sort order of a text column.
+ * `numbersAsString` is the Output Numbers As String option.
  */
 export function checkStartAfterColumn(
 	node: INode,
@@ -462,6 +469,7 @@ export function checkStartAfterColumn(
 	column: string,
 	columnInfo: ColumnDefinition | undefined,
 	uniqueColumns: string[],
+	numbersAsString: boolean,
 ) {
 	if (!columnInfo) {
 		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
@@ -471,30 +479,64 @@ export function checkStartAfterColumn(
 	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
 	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
 	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
+
+	// A number in the output keeps about 15 digits, so a longer value with a fraction comes out rounded.
+	// A NUMBER with a scale and no precision holds up to 38 digits.
+	const { type, precision, scale } = columnInfo;
+	if (!numbersAsString && type === 'NUMBER' && (scale ?? 0) > 0 && (precision ?? 38) > 15) {
+		throw new NodeOperationError(
+			node,
+			`Start After cannot keep the values of column "${column}" exact`,
+			{
+				itemIndex,
+				description:
+					'n8n rounds a number with a fraction and more than 15 digits in the output, so the next page can repeat or skip rows. In Options, turn on Output Numbers As String.',
+			},
+		);
+	}
 }
 
 /**
  * Adds the binds of the Start After value and returns the SQL that reads it.
  * A NUMBER value stays text, so Oracle reads all its digits. The format made from
  * the value keeps the conversion independent of the session NLS_NUMERIC_CHARACTERS.
+ * `numbersAsString` is the Output Numbers As String option.
  */
 export function addStartAfterBind(
+	node: INode,
+	itemIndex: number,
 	colInfo: ColumnDefinition,
 	value: string,
 	bindParameters: oracledb.BindParameter[],
+	numbersAsString: boolean,
 ): string {
 	const index = bindParameters.length;
-	const text = value.trim();
-	if (colInfo.type === 'NUMBER' && /^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
-		const format = text.replace('-', '').replace(/\d/g, '9').replace('.', 'D');
-		bindParameters.push(
-			{ type: oracledb.STRING, val: text },
-			{ type: oracledb.STRING, val: format },
-		);
-		return `TO_NUMBER(:${index}, :${index + 1}, 'NLS_NUMERIC_CHARACTERS=''.,''')`;
+	if (colInfo.type !== 'NUMBER') {
+		addBindParam(colInfo, value, bindParameters);
+		return `:${index}`;
 	}
-	addBindParam(colInfo, value, bindParameters);
-	return `:${index}`;
+
+	const text = value.trim();
+	// Other number text would need a number bind, which rounds
+	if (!/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
+		throw new NodeOperationError(node, 'The Start After value must be a plain number', {
+			itemIndex,
+			description: 'Use digits with an optional minus sign and decimal point, for example 1234.5.',
+		});
+	}
+	// A number in the output keeps about 15 digits of a NUMBER that has a fraction
+	const digits = text.replace(/[-.]/g, '').replace(/^0+/, '');
+	if (!numbersAsString && text.includes('.') && digits.length > 15) {
+		throw new NodeOperationError(node, 'The Start After value has too many digits to be exact', {
+			itemIndex,
+			description:
+				'n8n rounds a number with a fraction and more than 15 digits in the output, so the next page can skip rows. In Options, turn on Output Numbers As String.',
+		});
+	}
+
+	const format = text.replace('-', '').replace(/\d/g, '9').replace('.', 'D');
+	bindParameters.push({ type: oracledb.STRING, val: text }, { type: oracledb.STRING, val: format });
+	return `TO_NUMBER(:${index}, :${index + 1}, 'NLS_NUMERIC_CHARACTERS=''.,''')`;
 }
 
 export function prepareErrorItem(
@@ -934,11 +976,13 @@ export const configureTableSchemaUpdater = (
 
 export function getColumnMap(tableSchema: ColumnInfo[]) {
 	const columnMetaDataObject = tableSchema.reduce<ColumnMap>(
-		(acc, { columnName, dataType, isNullable, maxSize }) => {
+		(acc, { columnName, dataType, isNullable, maxSize, precision, scale }) => {
 			acc[columnName] = {
 				type: dataType.toUpperCase(),
 				nullable: isNullable,
 				maxSize,
+				precision,
+				scale,
 			};
 			return acc;
 		},
