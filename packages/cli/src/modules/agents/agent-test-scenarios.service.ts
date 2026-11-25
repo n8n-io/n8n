@@ -1,4 +1,4 @@
-import { type Agent, isSupportedAgentProvider } from '@n8n/agents';
+import type { Agent } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	MANAGED_CREDENTIAL_TOKEN,
@@ -46,7 +46,10 @@ function truncate(text: string, max: number): string {
 }
 
 function toolDisplayName(tool: AgentJsonToolConfig): string {
-	const name = tool.type === 'custom' ? tool.id : (tool.name ?? tool.type);
+	const name =
+		tool.type === 'custom'
+			? tool.id
+			: (tool.name ?? (tool.type === 'workflow' ? tool.workflow : tool.type));
 	return truncate(name, MAX_LABEL_CHARS);
 }
 
@@ -54,13 +57,16 @@ function buildUserPrompt(config: AgentJsonConfig, previousScenarios: string[]): 
 	const name = truncate(config.name?.trim() || 'Unnamed agent', MAX_LABEL_CHARS);
 	const instructions = truncate(config.instructions.trim(), MAX_INSTRUCTIONS_CHARS);
 
-	const tools = (config.tools ?? []).slice(0, MAX_TOOLS_IN_PROMPT).map((tool) => {
-		const description = tool.type === 'custom' ? undefined : tool.description?.trim();
-		const label = toolDisplayName(tool);
-		return description
-			? `- ${label}: ${truncate(description, MAX_TOOL_DESCRIPTION_CHARS)}`
-			: `- ${label}`;
-	});
+	const tools = (config.tools ?? [])
+		.filter((tool) => tool.enabled !== false)
+		.slice(0, MAX_TOOLS_IN_PROMPT)
+		.map((tool) => {
+			const description = tool.type === 'custom' ? undefined : tool.description?.trim();
+			const label = toolDisplayName(tool);
+			return description
+				? `- ${label}: ${truncate(description, MAX_TOOL_DESCRIPTION_CHARS)}`
+				: `- ${label}`;
+		});
 
 	const sections = [
 		'<agent>',
@@ -163,6 +169,7 @@ export class AgentTestScenariosService {
 			);
 		}
 
+		const { isSupportedAgentProvider } = await import('@n8n/agents');
 		if (!isSupportedAgentProvider(getProviderPrefix(model))) {
 			throw new UserError(
 				`The agent's model provider is not supported for generating test scenarios ("${model}").`,
@@ -211,11 +218,10 @@ export class AgentTestScenariosService {
 		const retry = await attempt(
 			`${userPrompt}\n\nReturn ONLY a JSON object with a "scenarios" array of ${SCENARIO_COUNT} distinct non-empty strings — no extra keys, no prose.`,
 		);
-		if (retry.length > 0) return retry;
-		if (first.length > 0) return first;
+		if (retry.length >= SCENARIO_COUNT) return retry;
 
 		throw new OperationalError(
-			'Test scenario generation returned no valid scenarios after a retry',
+			`Test scenario generation did not return ${SCENARIO_COUNT} valid scenarios after a retry`,
 		);
 	}
 }

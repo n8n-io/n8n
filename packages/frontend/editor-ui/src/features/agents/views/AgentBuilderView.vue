@@ -457,7 +457,9 @@ if (!isArtifactMode.value) {
 	provide('openAgentChatPreview', (targetAgentId: string, targetProjectId: string): boolean => {
 		if (targetAgentId === agentId.value && targetProjectId === projectId.value) {
 			pendingAssistantAutoTest.value = true;
-			void setChatMode('test');
+			void setChatMode('test').then((opened) => {
+				if (!opened) pendingAssistantAutoTest.value = false;
+			});
 		} else if (openParentAgentChatPreview) {
 			return openParentAgentChatPreview(targetAgentId, targetProjectId);
 		} else {
@@ -3442,6 +3444,7 @@ function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 }
 
 function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
+	// Preserve existing test conversations rather than injecting a new test prompt.
 	if (count > 0) {
 		consumeAutoStartTest();
 	}

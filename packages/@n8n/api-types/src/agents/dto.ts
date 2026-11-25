@@ -963,7 +963,7 @@ export class AgentChatResumeDto extends Z.class({
 }) {}
 
 export class GenerateAgentTestScenariosDto extends Z.class({
-	previousScenarios: z.array(z.string().trim().min(1).max(300)).max(20).optional(),
+	previousScenarios: z.array(z.string().trim().min(1).max(300)).optional(),
 }) {}
 
 const agentConnectIntegrationShape = {

@@ -17,7 +17,11 @@ describe('useAgentTestScenariosExperiment', () => {
 
 	it('enables and shows when enrolled in variant and safe testing is off', () => {
 		const posthog = usePostHog();
-		vi.mocked(posthog.isVariantEnabled).mockReturnValue(true);
+		vi.mocked(posthog.isVariantEnabled).mockImplementation(
+			(flag, variant) =>
+				flag === AGENT_TEST_SCENARIOS_EXPERIMENT.name &&
+				variant === AGENT_TEST_SCENARIOS_EXPERIMENT.variant,
+		);
 		vi.mocked(posthog.isFeatureEnabled).mockReturnValue(false);
 
 		const { isEnabled, shouldShow } = useAgentTestScenariosExperiment();
@@ -42,11 +46,31 @@ describe('useAgentTestScenariosExperiment', () => {
 		expect(shouldShow.value).toBe(false);
 	});
 
-	it('hides when 140_agent_safe_testing is enabled even if enrolled in variant', () => {
+	it('hides when 140_agent_safe_testing is enabled as a boolean flag', () => {
 		const posthog = usePostHog();
-		vi.mocked(posthog.isVariantEnabled).mockReturnValue(true);
+		vi.mocked(posthog.isVariantEnabled).mockImplementation(
+			(flag, variant) =>
+				flag === AGENT_TEST_SCENARIOS_EXPERIMENT.name &&
+				variant === AGENT_TEST_SCENARIOS_EXPERIMENT.variant,
+		);
 		vi.mocked(posthog.isFeatureEnabled).mockImplementation(
 			(flag) => flag === AGENT_SAFE_TESTING_FLAG,
+		);
+
+		const { isEnabled, shouldShow } = useAgentTestScenariosExperiment();
+
+		expect(isEnabled.value).toBe(true);
+		expect(shouldShow.value).toBe(false);
+	});
+
+	it('hides when 140_agent_safe_testing is assigned to variant', () => {
+		const posthog = usePostHog();
+		vi.mocked(posthog.isFeatureEnabled).mockReturnValue(false);
+		vi.mocked(posthog.isVariantEnabled).mockImplementation(
+			(flag, variant) =>
+				(flag === AGENT_TEST_SCENARIOS_EXPERIMENT.name &&
+					variant === AGENT_TEST_SCENARIOS_EXPERIMENT.variant) ||
+				(flag === AGENT_SAFE_TESTING_FLAG && variant === 'variant'),
 		);
 
 		const { isEnabled, shouldShow } = useAgentTestScenariosExperiment();

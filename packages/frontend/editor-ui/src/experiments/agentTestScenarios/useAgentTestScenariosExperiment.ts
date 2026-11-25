@@ -19,9 +19,13 @@ export function useAgentTestScenariosExperiment() {
 		),
 	);
 
-	const shouldShow = computed(
-		() => isEnabled.value && !posthog.isFeatureEnabled(AGENT_SAFE_TESTING_FLAG),
+	const isSafeTestingActive = computed(
+		() =>
+			posthog.isFeatureEnabled(AGENT_SAFE_TESTING_FLAG) ||
+			posthog.isVariantEnabled(AGENT_SAFE_TESTING_FLAG, 'variant'),
 	);
+
+	const shouldShow = computed(() => isEnabled.value && !isSafeTestingActive.value);
 
 	return { isEnabled, shouldShow };
 }

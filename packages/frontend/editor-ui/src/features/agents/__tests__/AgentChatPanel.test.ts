@@ -3551,6 +3551,33 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('preserves a newer user draft typed while an outside message is awaiting acceptance', async () => {
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		messagesMock.value = [
+			{
+				id: 'existing-1',
+				role: 'user',
+				content: 'Earlier message',
+				timestamp: new Date(),
+			},
+		];
+		const wrapper = mountPanel({ inputDraft: '' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Handed off prompt');
+		await flushPromises();
+
+		await wrapper.setProps({ inputDraft: 'User typed something new' });
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:inputDraft')?.at(-1)).not.toEqual(['']);
+		wrapper.unmount();
+	});
+
 	it('submits an outside message while the current stream runs', async () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);

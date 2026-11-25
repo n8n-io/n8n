@@ -159,7 +159,7 @@ describe('AgentTestScenariosEmptyState', () => {
 		expect(wrapper.findAll('[data-testid="agent-test-scenario-row"]')).toHaveLength(1);
 	});
 
-	it('auto-generates and emits the first scenario when autoRun is true', async () => {
+	it('auto-generates, transitions to ready, and emits the first scenario when autoRun is true', async () => {
 		generateAgentTestScenariosMock.mockResolvedValueOnce({
 			scenarios: ['Auto-started scenario', 'Second scenario'],
 		});
@@ -169,6 +169,32 @@ describe('AgentTestScenariosEmptyState', () => {
 
 		expect(wrapper.emitted('auto-run-consumed')).toEqual([[]]);
 		expect(wrapper.emitted('select')).toEqual([['Auto-started scenario']]);
+		expect(wrapper.find('[data-testid="agent-test-scenarios-loading"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="agent-test-scenario-row"]')).toHaveLength(2);
+	});
+
+	it('caps accumulated previousScenarios to the latest 20 across repeated regenerations', async () => {
+		for (let batch = 0; batch < 7; batch++) {
+			generateAgentTestScenariosMock.mockResolvedValueOnce({
+				scenarios: [`S-${batch}-1`, `S-${batch}-2`, `S-${batch}-3`, `S-${batch}-4`],
+			});
+		}
+
+		const wrapper = mountEmptyState();
+		await wrapper.get('[data-testid="agent-test-scenarios-write-btn"]').trigger('click');
+		await flushPromises();
+
+		for (let i = 0; i < 6; i++) {
+			await wrapper.get('[data-testid="agent-test-scenarios-different-btn"]').trigger('click');
+			await flushPromises();
+		}
+
+		const lastCallPayload = generateAgentTestScenariosMock.mock.calls.at(-1)?.[3] as {
+			previousScenarios: string[];
+		};
+		expect(lastCallPayload.previousScenarios).toHaveLength(20);
+		expect(lastCallPayload.previousScenarios[0]).toBe('S-1-1');
+		expect(lastCallPayload.previousScenarios.at(-1)).toBe('S-5-4');
 	});
 
 	it('ignores stale responses if the agent changes while generating', async () => {

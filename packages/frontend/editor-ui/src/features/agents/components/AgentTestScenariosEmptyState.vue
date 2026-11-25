@@ -29,6 +29,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 
+const MAX_SEEN_SCENARIOS = 20;
+
 const state = ref<ScenarioState>('idle');
 const scenarios = ref<string[]>([]);
 const seenScenarios = ref<string[]>([]);
@@ -71,14 +73,14 @@ async function generate(different: boolean, options: { autoSelectFirst?: boolean
 		}
 
 		scenarios.value = response.scenarios;
-		seenScenarios.value = [...new Set([...seenScenarios.value, ...response.scenarios])];
+		seenScenarios.value = [...new Set([...seenScenarios.value, ...response.scenarios])].slice(
+			-MAX_SEEN_SCENARIOS,
+		);
+		state.value = 'ready';
 
 		if (options.autoSelectFirst) {
 			emit('select', response.scenarios[0]);
-			return;
 		}
-
-		state.value = 'ready';
 	} catch {
 		if (currentRequest !== requestVersion) return;
 		state.value = 'error';
