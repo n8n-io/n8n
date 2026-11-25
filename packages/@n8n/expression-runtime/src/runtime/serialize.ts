@@ -28,6 +28,8 @@ function encode(value: object): object | undefined {
 	return undefined;
 }
 
+type ErrorEncodedHook = (error: Error, sentinel: object) => void;
+
 /**
  * Prepare a value for transfer across the V8 isolate boundary.
  *
@@ -46,11 +48,15 @@ function encode(value: object): object | undefined {
  * expression results are not expected to refer to themselves. Inside an Error
  * it records them: an Error can hold itself, and a host Error can share objects.
  */
-export function __prepareForTransfer(value: unknown): unknown {
-	return prepareValue(value, undefined);
+export function __prepareForTransfer(value: unknown, onEncodeError?: ErrorEncodedHook): unknown {
+	return prepareValue(value, undefined, onEncodeError);
 }
 
-function prepareValue(value: unknown, walk: ObjectWalk | undefined): unknown {
+function prepareValue(
+	value: unknown,
+	walk: ObjectWalk | undefined,
+	onEncodeError?: ErrorEncodedHook,
+): unknown {
 	// An unsupported child must not prevent its Error from crossing the boundary.
 	if (
 		walk !== undefined &&
@@ -63,18 +69,26 @@ function prepareValue(value: unknown, walk: ObjectWalk | undefined): unknown {
 	}
 	const errorWalk = walk ?? (value instanceof Error ? newObjectWalk() : undefined);
 	if (errorWalk !== undefined) {
-		return encodeOnce(value, errorWalk, (object) => prepareObject(object, errorWalk));
+		return encodeOnce(value, errorWalk, (object) =>
+			prepareObject(object, errorWalk, onEncodeError),
+		);
 	}
-	return prepareObject(value, undefined);
+	return prepareObject(value, undefined, onEncodeError);
 }
 
-function prepareObject(value: object, walk: ObjectWalk | undefined): unknown {
-	const prepareChild = (child: unknown) => prepareValue(child, walk);
+function prepareObject(
+	value: object,
+	walk: ObjectWalk | undefined,
+	onEncodeError?: ErrorEncodedHook,
+): unknown {
+	const prepareChild = (child: unknown) => prepareValue(child, walk, onEncodeError);
 	const sentinel = encode(value);
 	if (sentinel !== undefined) return sentinel;
 
 	if (value instanceof Error) {
-		return errorToSentinel(value, prepareChild);
+		const errorSentinel = errorToSentinel(value, prepareChild);
+		onEncodeError?.(value, errorSentinel);
+		return errorSentinel;
 	}
 
 	if (isArray(value)) return value.map(prepareChild);

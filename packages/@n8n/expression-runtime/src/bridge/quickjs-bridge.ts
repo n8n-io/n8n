@@ -357,10 +357,10 @@ function unwrapValue(value: unknown, refs: Map<number, unknown>, defId?: number)
 	}
 	if (isLuxonSentinel(value)) return registerRef(refs, defId, rebuildLuxonValue(value));
 	if (isErrorTransferSentinel(value)) {
-		return registerRef(
-			refs,
-			defId,
-			rebuildErrorValue(value, (child) => unwrapValue(child, refs)),
+		return rebuildErrorValue(
+			value,
+			(child) => unwrapValue(child, refs),
+			(error) => registerRef(refs, defId, error),
 		);
 	}
 	if (isEscapedTransferValue(value)) return unescapeTransferValue(value, refs, defId);
@@ -1224,6 +1224,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	var dateGetTime = Date.prototype.getTime;
 	var dateToISOString = Date.prototype.toISOString;
 	var mapGet = Map.prototype.get;
+	var mapHas = Map.prototype.has;
 	var mapSet = Map.prototype.set;
 	var mapForEach = Map.prototype.forEach;
 	var setAdd = Set.prototype.add;
@@ -1234,17 +1235,29 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
-		var prepared = original(value);
+		var errorToSentinel;
+		var sentinelToError;
+		function recordError(error, sentinel) {
+			if (!errorToSentinel) {
+				errorToSentinel = new NativeMap();
+				sentinelToError = new NativeMap();
+			}
+			if (!mapHas.call(errorToSentinel, error)) {
+				mapSet.call(errorToSentinel, error, sentinel);
+			}
+			mapSet.call(sentinelToError, sentinel, error);
+		}
+		var prepared = original(value, recordError);
 		if (prepared === null || prepared === undefined) return prepared;
 		if (typeof prepared === 'function') {
 			throw new NativeTypeError(toStr(prepared) + ' could not be cloned');
 		}
 		if (numberIsNaN(prepared)) return { __isNaN: true };
 		if (typeof prepared !== 'object') return prepared;
-		return wrapGraph(prepared);
+		return wrapGraph(prepared, errorToSentinel, sentinelToError);
 	};
 
-	function wrapGraph(rootValue) {
+	function wrapGraph(rootValue, errorToSentinel, sentinelToError) {
 		var seen = new NativeMap();
 		var repeated = [];
 		var nextId = 0;
@@ -1255,6 +1268,22 @@ export class QuickJsBridge implements RuntimeBridge {
 				repeated[repeated.length] = entry;
 			}
 			return { __isRef: true, __id: entry.id };
+		}
+
+		function wrapPreparedError(originalError, marker) {
+			var existing = mapGet.call(seen, originalError);
+			if (existing === undefined) existing = mapGet.call(seen, marker);
+			if (existing !== undefined) {
+				mapSet.call(seen, originalError, existing);
+				mapSet.call(seen, marker, existing);
+				return makeRef(existing);
+			}
+			var entry = { id: -1, out: null };
+			mapSet.call(seen, originalError, entry);
+			mapSet.call(seen, marker, entry);
+			var out = wrapErrorMarker(marker);
+			entry.out = out;
+			return out;
 		}
 
 		// __prepareForTransfer does not walk into a Map, a Set or the extra keys of an
@@ -1276,6 +1305,22 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			var existing = mapGet.call(seen, v);
 			if (existing !== undefined) return makeRef(existing);
+
+			// original() turns an Error into a marker while a Map or Set keeps the raw
+			// Error. Bind both to one seen entry so cycles through a collection keep one
+			// Error instance on the host.
+			if (errorToSentinel !== undefined) {
+				var preparedError = mapGet.call(errorToSentinel, v);
+				if (preparedError !== undefined) {
+					return wrapPreparedError(v, preparedError);
+				}
+				if (!inCollection) {
+					var originalError = mapGet.call(sentinelToError, v);
+					if (originalError !== undefined) {
+						return wrapPreparedError(originalError, v);
+					}
+				}
+			}
 
 			// Outside a collection, an escaped wrapper carries the same object as its payload.
 			// Reuse an earlier entry for that payload, or bind both to one entry so cycles

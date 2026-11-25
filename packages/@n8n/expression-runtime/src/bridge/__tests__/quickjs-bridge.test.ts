@@ -698,10 +698,88 @@ describe('QuickJsBridge cycle guard', () => {
 				{},
 			) as Error & { m: Map<string, Error & { m: unknown }> };
 			expect(errWithMap).toBeInstanceOf(Error);
+			expect(errWithMap.m.get('e')).toBe(errWithMap);
 			expect(errWithMap.m.get('e')?.m).toBe(errWithMap.m);
 
 			// The runtime stays healthy for subsequent expressions on the same bridge.
 			expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should preserve Error identity across Map, Set, nested objects, and cause cycles', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const errAsMapKey = bridge.execute(
+				'const e = new Error("key"); const m = new Map([[e, 42]]); e.m = m; return e;',
+				{},
+			) as Error & { m: Map<unknown, number> };
+			expect(errAsMapKey).toBeInstanceOf(Error);
+			expect(errAsMapKey.m.get(errAsMapKey)).toBe(42);
+
+			const errWithSet = bridge.execute(
+				'const e = new Error("set"); const s = new Set([e]); e.s = s; return e;',
+				{},
+			) as Error & { s: Set<unknown> };
+			expect(errWithSet).toBeInstanceOf(Error);
+			expect(errWithSet.s.has(errWithSet)).toBe(true);
+			expect(errWithSet.s.size).toBe(1);
+
+			const nestedErr = bridge.execute(
+				'const e = new Error("nested"); const m = new Map([["e", e]]); e.m = m; return { e };',
+				{},
+			) as { e: Error & { m: Map<string, unknown> } };
+			expect(nestedErr.e).toBeInstanceOf(Error);
+			expect(nestedErr.e.m.get('e')).toBe(nestedErr.e);
+
+			const mapBeforeErr = bridge.execute(
+				`
+				const e = new TypeError("before");
+				e.code = 42;
+				Object.defineProperty(e, "hidden", { value: 9 });
+				const m = new Map([["e", e]]);
+				e.m = m;
+				return { m, e };
+				`,
+				{},
+			) as { m: Map<string, unknown>; e: TypeError & { code: number; m: Map<string, unknown> } };
+			expect(mapBeforeErr.e).toBeInstanceOf(TypeError);
+			expect(mapBeforeErr.m.get('e')).toBe(mapBeforeErr.e);
+			expect(mapBeforeErr.e.m).toBe(mapBeforeErr.m);
+			expect(mapBeforeErr.e.code).toBe(42);
+			expect(Object.getOwnPropertyDescriptor(mapBeforeErr.e, 'hidden')).toMatchObject({
+				value: 9,
+				enumerable: false,
+			});
+			expect(typeof mapBeforeErr.e.stack).toBe('string');
+
+			const causeCycle = bridge.execute(
+				`
+				const inner = new Error("inner");
+				const outer = new Error("outer", { cause: inner });
+				inner.m = new Map([["outer", outer], ["inner", inner]]);
+				return outer;
+				`,
+				{},
+			) as Error & { cause: Error & { m: Map<string, unknown> } };
+			expect(causeCycle.cause.m.get('outer')).toBe(causeCycle);
+			expect(causeCycle.cause.m.get('inner')).toBe(causeCycle.cause);
+
+			const repeatedErr = bridge.execute(
+				'const e = new Error("shared"); const m = new Map([["e", e]]); e.m = m; return { a: e, b: e };',
+				{},
+			) as { a: Error & { m: Map<string, unknown> }; b: Error };
+			expect(repeatedErr.a).toBe(repeatedErr.b);
+			expect(repeatedErr.a.m.get('e')).toBe(repeatedErr.a);
+
+			const errWithToJson = bridge.execute(
+				'const e = new Error("json"); e.m = new Map([["e", e]]); e.toJSON = function() { return { m: this.m }; }; return e;',
+				{},
+			) as Error & { m: Map<string, unknown>; toJSON: () => { m: Map<string, unknown> } };
+			expect(errWithToJson.m.get('e')).toBe(errWithToJson);
+			expect(errWithToJson.toJSON().m.get('e')).toBe(errWithToJson);
 		} finally {
 			await expect(bridge.dispose()).resolves.toBeUndefined();
 		}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
+import { errorToSentinel, rebuildErrorValue } from '../error-transfer';
 import { __prepareForTransfer } from '../serialize';
 import type { SentinelDecoder, TransferSentinel } from '../transfer';
 import {
@@ -344,5 +345,42 @@ describe('__prepareForTransfer', () => {
 		const prepared = __prepareForTransfer(error) as { __props: unknown };
 
 		expect(prepared.__props).toStrictEqual({ self: undefined });
+	});
+
+	it('reports each encoded Error and its sentinel when onEncodeError is given', () => {
+		const inner = new Error('inner');
+		const outer = new Error('outer', { cause: inner });
+		const recorded = new Map<Error, object>();
+
+		const prepared = __prepareForTransfer(outer, (error, sentinel) => {
+			recorded.set(error, sentinel);
+		}) as { __cause: object };
+
+		expect(recorded.get(outer)).toBe(prepared);
+		expect(recorded.get(inner)).toBe(prepared.__cause);
+	});
+
+	it('invokes onCreate in rebuildErrorValue before decoding children', () => {
+		const sentinel = errorToSentinel(
+			Object.assign(new Error('loop'), { marker: 'self' }),
+			(v) => v,
+		);
+		let created: Error | undefined;
+
+		const rebuilt = rebuildErrorValue(
+			sentinel,
+			(child) => {
+				if (child && typeof child === 'object' && 'marker' in child) {
+					return { self: created };
+				}
+				return child;
+			},
+			(error) => {
+				created = error;
+			},
+		) as Error & { self?: unknown };
+
+		expect(created).toBe(rebuilt);
+		expect(rebuilt.self).toBe(rebuilt);
 	});
 });

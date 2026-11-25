@@ -123,10 +123,19 @@ export function errorToSentinel(error: Error, encodeChild: Encode): ErrorValueSe
 	};
 }
 
-/** Rebuild an Error from a marker. `decodeChild` rebuilds the values inside it. */
-export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Encode): Error {
+/**
+ * Rebuild an Error from a marker. `decodeChild` rebuilds the values inside it.
+ * When given, `onCreate` runs before `decodeChild` so cycles back to the Error
+ * resolve to the same instance.
+ */
+export function rebuildErrorValue(
+	sentinel: ErrorValueSentinel,
+	decodeChild: Encode,
+	onCreate?: (error: Error) => void,
+): Error {
 	const ErrorClass = STANDARD_ERRORS.get(sentinel.__name) ?? Error;
 	const error = new ErrorClass(typeof sentinel.__message === 'string' ? sentinel.__message : '');
+	onCreate?.(error);
 	const decoded = decodeChild(sentinel.__props);
 	const props = typeof decoded === 'object' && decoded !== null ? decoded : {};
 
