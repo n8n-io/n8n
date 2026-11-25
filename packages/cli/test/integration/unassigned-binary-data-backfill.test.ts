@@ -1,5 +1,5 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { BinaryDataRepository } from '@n8n/db';
+import { BinaryDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import type { IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
@@ -15,6 +15,7 @@ import {
 } from './shared/db/executions';
 
 const ONE_MINUTE_MS = 60_000;
+const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
 
 let workflow: IWorkflowBase;
 let backfillService: UnassignedBinaryDataBackfillService;
@@ -52,6 +53,11 @@ const createExecutionReferringTo = async (
 		workflow,
 	);
 
+const passGracePeriod = () => {
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(Date.now() + ONE_HOUR_MS);
+};
+
 const findSourceId = async (fileId: string) =>
 	(await Container.get(BinaryDataRepository).findSourceByFileId(fileId))?.sourceId;
 
@@ -66,6 +72,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	vi.restoreAllMocks();
 });
 
@@ -148,6 +155,51 @@ it('should fail and do the execution again when its data cannot be read for now'
 	expect(await findSourceId(fileId)).toBe(execution.id);
 });
 
+it('should skip an execution after 5 failed attempts in a row', async () => {
+	const failing = await createExecutionReferringTo(await storeUnassignedFile());
+	const fileId = await storeUnassignedFile();
+	const execution = await createExecutionReferringTo(fileId);
+	const persistence = Container.get(ExecutionPersistence);
+	const findSingleExecution = persistence.findSingleExecution.bind(persistence);
+	vi.spyOn(persistence, 'findSingleExecution').mockImplementation(async (id, options) => {
+		if (id === failing.id) {
+			throw new Error('store unreachable');
+		}
+		return await findSingleExecution(id, options);
+	});
+
+	for (let attempt = 1; attempt < 5; attempt++) {
+		await expect(backfillService.backfill(neverAborted(), ONE_MINUTE_MS)).rejects.toThrow(
+			'store unreachable',
+		);
+	}
+	expect(await findSourceId(fileId)).toBe('temp');
+
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+	expect(await findSourceId(fileId)).toBe(execution.id);
+});
+
+it('should count the failed attempts of each execution separately', async () => {
+	const fileIds = [await storeUnassignedFile(), await storeUnassignedFile()];
+	const executions = [
+		await createExecutionReferringTo(fileIds[0]),
+		await createExecutionReferringTo(fileIds[1]),
+	];
+	const findSingleExecution = vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution');
+	const failOnce = () => findSingleExecution.mockRejectedValueOnce(new Error('store unreachable'));
+
+	for (let attempt = 1; attempt < 5; attempt++) {
+		failOnce();
+		await expect(backfillService.backfill(neverAborted(), ONE_MINUTE_MS)).rejects.toThrow();
+	}
+	findSingleExecution.mockImplementationOnce(async () => undefined);
+	failOnce();
+	await expect(backfillService.backfill(neverAborted(), ONE_MINUTE_MS)).rejects.toThrow();
+
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+	expect(await Promise.all(fileIds.map(findSourceId))).toEqual(['temp', executions[1].id]);
+});
+
 it('should cover executions beyond the first ID range', async () => {
 	const firstFileId = await storeUnassignedFile();
 	const first = await createExecutionReferringTo(firstFileId);
@@ -221,7 +273,7 @@ it('should stop when the signal aborts', async () => {
 	expect(await findSourceId(fileId)).toBe('temp');
 });
 
-it('should not cover an execution created after the first call', async () => {
+it('should not cover an execution created after the first call before the grace period has passed', async () => {
 	await createExecutionReferringTo(await storeUnassignedFile());
 	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
 
@@ -230,6 +282,48 @@ it('should not cover an execution created after the first call', async () => {
 	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
 
 	expect(await findSourceId(laterFileId)).toBe('temp');
+});
+
+it('should cover an execution created after the first call when the grace period has passed', async () => {
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+	const fileId = await storeUnassignedFile();
+	const execution = await createExecutionReferringTo(fileId);
+
+	passGracePeriod();
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+
+	expect(await findSourceId(fileId)).toBe(execution.id);
+});
+
+it('should cover an earlier execution that stopped after the first call when the grace period has passed', async () => {
+	const fileId = await storeUnassignedFile();
+	const execution = await createExecutionReferringTo(fileId);
+	vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
+		undefined,
+	);
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+	expect(await findSourceId(fileId)).toBe('temp');
+	await Container.get(ExecutionRepository).update(execution.id, { stoppedAt: new Date() });
+
+	passGracePeriod();
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+
+	expect(await findSourceId(fileId)).toBe(execution.id);
+});
+
+it('should not read again an execution that stopped before the first call', async () => {
+	await storeUnassignedFile();
+	await createExecution(
+		{ mode: 'webhook', stoppedAt: new Date(Date.now() - ONE_MINUTE_MS) },
+		workflow,
+	);
+	const findSingleExecution = vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution');
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+
+	passGracePeriod();
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+
+	expect(findSingleExecution).toHaveBeenCalledTimes(1);
 });
 
 it('should give the same result when two calls run in parallel', async () => {
