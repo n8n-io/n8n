@@ -71,7 +71,7 @@
 		},
 		{
 			"name": "McpServer",
-			"path": "packages/modules/mcp-servers/backend/src/mcp-server.entity.ts",
+			"path": "packages/modules/mcp-servers/backend/src/database/entities/mcp-server.entity.ts",
 			"reason": "Custom MCP servers stay in their source project. The project FK cascade deletes the servers, their tools, connections, and blocks."
 		},
 		{

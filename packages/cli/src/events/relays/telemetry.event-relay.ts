@@ -430,6 +430,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
 			'mcp-server-tool-added': (event) => this.mcpServerToolAdded(event),
 			'mcp-server-tool-called': (event) => this.mcpServerToolCalled(event),
+			'mcp-server-tool-drafted': (event) => this.mcpServerToolDrafted(event),
 		});
 	}
 
@@ -665,7 +666,6 @@ export class TelemetryEventRelay extends EventRelay {
 		source,
 		threadId,
 		toolKind,
-		isAiDraft,
 	}: RelayEventMap['mcp-server-tool-added']) {
 		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER, {
 			server_id: serverId,
@@ -673,7 +673,6 @@ export class TelemetryEventRelay extends EventRelay {
 			source,
 			thread_id: threadId,
 			tool_kind: toolKind,
-			is_ai_draft: isAiDraft,
 		});
 	}
 
@@ -685,7 +684,7 @@ export class TelemetryEventRelay extends EventRelay {
 		status,
 		durationMs,
 	}: RelayEventMap['mcp-server-tool-called']) {
-		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.CUSTOM_MCP_SERVER_TOOL_CALLED, {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CALLED_CUSTOM_MCP_SERVER_TOOL, {
 			server_id: serverId,
 			user_id: userId,
 			client_name: clientName,
@@ -693,6 +692,27 @@ export class TelemetryEventRelay extends EventRelay {
 			status,
 			duration_ms: durationMs,
 		});
+	}
+
+	private mcpServerToolDrafted({
+		serverId,
+		userId,
+		source,
+		threadId,
+		field,
+		status,
+	}: RelayEventMap['mcp-server-tool-drafted']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
+			{
+				server_id: serverId,
+				user_id: userId,
+				source,
+				thread_id: threadId,
+				field,
+				status,
+			},
+		);
 	}
 
 	// #endregion

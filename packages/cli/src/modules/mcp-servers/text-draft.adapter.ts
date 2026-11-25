@@ -15,8 +15,9 @@ const DRAFT_TIMEOUT_MS = 30_000;
 const DRAFT_MAX_OUTPUT_TOKENS = 1_000;
 
 /**
- * Text drafts of custom MCP servers, written by the model of the n8n Assistant. The model call
- * goes through the same path as the Assistant, so it counts as a use of the Assistant.
+ * Text drafts of custom MCP servers, written by the model of the n8n Assistant. With the AI
+ * proxy, the Assistant bills a call only when it claims the usage. A draft claims nothing yet,
+ * because `InstanceAiCreditService.claimSideCallUsage` needs a thread.
  */
 @Service()
 export class TextDraftAdapter extends TextDraftPort {

@@ -20,19 +20,19 @@ import {
 	ServiceUnavailableError,
 } from '@n8n/errors';
 
-import type { McpServerActor } from './mcp-server-events';
-import type { McpServerTool } from './mcp-server-tool.entity';
+import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
+import type { McpServer } from '../database/entities/mcp-server.entity';
 import {
 	McpServerToolRepository,
 	type McpServerToolChanges,
 	type NewWorkflowTool,
-} from './mcp-server-tool.repository';
-import type { McpServer } from './mcp-server.entity';
-import { McpServerRepository } from './mcp-server.repository';
-import { TextDraftPort, type TextDraftResult } from './tools/text-draft-port';
-import { buildToolDraftPrompt, parseToolDraftAnswer, type ToolDraft } from './tools/tool-draft';
-import { toToolName, uniqueToolName } from './tools/tool-name';
-import { WorkflowToolPort, type WorkflowToolRefusal } from './tools/workflow-tool-port';
+} from '../database/repositories/mcp-server-tool.repository';
+import { McpServerRepository } from '../database/repositories/mcp-server.repository';
+import type { McpServerActor, McpServerToolDraftStatus } from '../mcp-server-events';
+import { TextDraftPort, type TextDraftResult } from '../tools/text-draft-port';
+import { buildToolDraftPrompt, parseToolDraftAnswer, type ToolDraft } from '../tools/tool-draft';
+import { toToolName, uniqueToolName } from '../tools/tool-name';
+import { WorkflowToolPort, type WorkflowToolRefusal } from '../tools/workflow-tool-port';
 
 /**
  * Parallel drafts after an add can pick the same name. The unique index refuses the second
@@ -104,7 +104,7 @@ export class McpServerToolsService {
 		);
 	}
 
-	/** Every workflow of the project, with the reason when it cannot be a tool of this server. */
+	/** Every workflow that the project owns, with the reason when it cannot be a tool of this server. */
 	async listCandidates(projectId: string, serverId: string): Promise<McpServerToolCandidate[]> {
 		const server = await this.findServer(projectId, serverId);
 		const [workflows, tools] = await Promise.all([
@@ -168,7 +168,6 @@ export class McpServerToolsService {
 				...actor,
 				serverId: server.id,
 				toolKind: tool.kind,
-				isAiDraft: false,
 			});
 		}
 		return saved.map((tool) => toToolResponse(tool, null));
@@ -203,10 +202,19 @@ export class McpServerToolsService {
 		projectId: string,
 		serverId: string,
 		toolId: string,
+		actor: McpServerActor,
 		field?: McpServerToolDraftField,
 	): Promise<McpServerToolDraftResponse> {
 		const tool = await this.findTool(projectId, serverId, toolId);
+		const track = (status: McpServerToolDraftStatus) =>
+			this.events.emit('mcp-server-tool-drafted', {
+				...actor,
+				serverId: tool.serverId,
+				field: field ?? 'both',
+				status,
+			});
 		if (!(await this.textDrafts.isAvailable(user))) {
+			track('not_available');
 			return {
 				status: 'not_available',
 				tool: toToolResponse(tool, await this.brokenReason(projectId, tool)),
@@ -237,9 +245,11 @@ export class McpServerToolsService {
 		try {
 			result = await this.textDrafts.draft(user, prompt);
 		} catch {
+			track('model_failed');
 			throw new ServiceUnavailableError('The n8n Assistant could not write a draft. Try again.');
 		}
 		if (result.status === 'not_available') {
+			track('not_available');
 			return { status: 'not_available', tool: toToolResponse(tool, null) };
 		}
 
@@ -250,9 +260,11 @@ export class McpServerToolsService {
 				toolId: tool.id,
 				error: answer.error,
 			});
+			track('invalid_answer');
 			throw new ServiceUnavailableError(answer.error);
 		}
 		const updated = await this.saveDraft(tool, answer.draft);
+		track('drafted');
 		return { status: 'drafted', tool: toToolResponse(updated, null) };
 	}
 

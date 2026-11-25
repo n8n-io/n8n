@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
 
 /**
- * The CLI implements this port with the model of the n8n Assistant. The model call counts
- * as a use of the Assistant, for the person who asks for the draft.
+ * The CLI implements this port with the model of the n8n Assistant, for the person who asks
+ * for the draft.
  */
 
 /** `not_available`: the Assistant is off, has no model, or the person cannot use it. */
