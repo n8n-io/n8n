@@ -194,5 +194,5 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           node .github/scripts/slack/notify.mjs \
-            --channel '#alerts-developer-platforms' \
+            --channel '#alerts-community-engineering' \
             --text "<${RUN_URL}|n8n-nodes-starter scaffold refresh failed before a PR was opened>"
