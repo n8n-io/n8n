@@ -142,6 +142,11 @@ describe('MessageParser', () => {
 			expect(MessageParser.getRequestId(message)).toBe('42');
 		});
 
+		it('should extract numeric id 0 and return as string "0"', () => {
+			const message = { jsonrpc: '2.0', id: 0, method: 'tools/call', params: {} };
+			expect(MessageParser.getRequestId(message)).toBe('0');
+		});
+
 		it('should extract string id as-is', () => {
 			const message = { jsonrpc: '2.0', id: 'abc-123', method: 'test' };
 			expect(MessageParser.getRequestId(message)).toBe('abc-123');

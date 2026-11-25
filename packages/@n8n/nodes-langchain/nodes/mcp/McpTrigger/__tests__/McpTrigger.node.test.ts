@@ -391,6 +391,24 @@ describe('McpTrigger', () => {
 			});
 		});
 
+		it('should return workflow data with mcpMessageId "0" when request ID is 0', async () => {
+			setupToolCall(2);
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				toolCallInfo: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+				messageId: '0',
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).toEqual({
+				mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+				mcpMessageId: '0',
+			});
+		});
+
 		it('should include the request headers from version 2.1 on', async () => {
 			setupToolCall(2.1);
 
