@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	MCP_SERVER_TOOL_NAME_MAX_LENGTH,
 	mcpServerToolNameSchema,
 	type McpServerToolDraftField,
@@ -245,6 +246,7 @@ function saveDescription() {
 							type="textarea"
 							:rows="2"
 							:disabled="isGenerating('description')"
+							:maxlength="MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH"
 							:class="$style.resizable"
 							data-test-id="mcp-tool-row-description-input"
 							@focus="editing = 'description'"

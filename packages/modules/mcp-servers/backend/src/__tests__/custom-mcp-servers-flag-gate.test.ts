@@ -3,10 +3,9 @@ import type { PostHogClient } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { CustomMcpServersFlagGate } from '../custom-mcp-servers-flag-gate';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
 
 describe('CustomMcpServersFlagGate', () => {
-	const user = { id: 'user-1', createdAt: new Date('2026-01-01') };
 	const postHog = mock<PostHogClient>();
 	const gate = new CustomMcpServersFlagGate(postHog);
 
@@ -16,21 +15,29 @@ describe('CustomMcpServersFlagGate', () => {
 		[true, false],
 		[undefined, false],
 	])('reads the variant %j as enabled %j', async (variant, enabled) => {
-		postHog.getFeatureFlags.mockResolvedValue({ [CUSTOM_MCP_SERVERS_FLAG]: variant } as never);
+		postHog.getFeatureFlagForInstance.mockResolvedValue(variant);
 
-		expect(await gate.isEnabled(user)).toBe(enabled);
-		expect(postHog.getFeatureFlags).toHaveBeenCalledWith(user);
+		expect(await gate.isEnabled()).toBe(enabled);
+		expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(CUSTOM_MCP_SERVERS_FLAG);
+	});
+
+	it('reads the flag for the instance, not for a user', async () => {
+		postHog.getFeatureFlagForInstance.mockResolvedValue('test');
+
+		await gate.isEnabled();
+
+		expect(postHog.getFeatureFlags).not.toHaveBeenCalled();
 	});
 
 	it('gives a 404 error when the flag is off, so that the feature looks unknown', async () => {
-		postHog.getFeatureFlags.mockResolvedValue({ [CUSTOM_MCP_SERVERS_FLAG]: 'control' });
+		postHog.getFeatureFlagForInstance.mockResolvedValue('control');
 
-		await expect(gate.assertEnabled(user)).rejects.toBeInstanceOf(NotFoundError);
+		await expect(gate.assertEnabled()).rejects.toBeInstanceOf(NotFoundError);
 	});
 
 	it('passes when the flag gives the variant test', async () => {
-		postHog.getFeatureFlags.mockResolvedValue({ [CUSTOM_MCP_SERVERS_FLAG]: 'test' });
+		postHog.getFeatureFlagForInstance.mockResolvedValue('test');
 
-		await expect(gate.assertEnabled(user)).resolves.toBeUndefined();
+		await expect(gate.assertEnabled()).resolves.toBeUndefined();
 	});
 });

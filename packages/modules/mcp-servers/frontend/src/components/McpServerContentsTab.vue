@@ -11,7 +11,7 @@ import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import {
@@ -39,6 +39,7 @@ const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
+const style = useCssModule();
 
 const server = ref<McpServerDetailResponse | null>(null);
 const loading = ref(true);
@@ -214,11 +215,11 @@ async function onRemove(tool: McpServerToolResponse) {
 	try {
 		await removeTool(rootStore.restApiContext, props.projectId, props.serverId, tool.id);
 		if (server.value) server.value.tools = server.value.tools.filter(({ id }) => id !== tool.id);
+		// The toast title capitalizes its first letter, so the exact tool name goes in the message.
 		toast.showMessage({
 			type: 'success',
-			title: i18n.baseText('mcpServers.tools.removed', {
-				interpolate: { name: tool.toolName },
-			}),
+			title: i18n.baseText('mcpServers.tools.removed'),
+			message: h('span', { class: style.toastToolName }, tool.toolName),
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('mcpServers.tools.removeError'));
@@ -345,5 +346,10 @@ onMounted(load);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.toastToolName {
+	font-family: var(--font-family--monospace);
+	overflow-wrap: anywhere;
 }
 </style>

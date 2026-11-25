@@ -34,7 +34,7 @@ export class CreateMcpServerTables1795535783698 implements ReversibleMigration {
 				column('slug')
 					.varchar(128)
 					.notNull.comment(
-						'Path segment of the server URL. It never changes, and a deleted server keeps it',
+						'Path segment of the server URL. It never changes. A deleted server keeps it, until its project is deleted',
 					),
 				column('description')
 					.text.notNull.default("''")

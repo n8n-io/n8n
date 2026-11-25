@@ -48,7 +48,7 @@ export type CallableWorkflowRefusal =
 type CallableTrigger = ReturnType<typeof detectTriggerNode>;
 
 export type CallableWorkflowCheck =
-	| { callable: true; workflow: WorkflowEntity }
+	| { callable: true }
 	| { callable: false; reason: CallableWorkflowRefusal };
 
 /** A JSON schema of the tool input. It always describes an object. */
@@ -111,6 +111,12 @@ const OPEN_INPUT_SCHEMA: CallableWorkflowInputSchema = {
 /**
  * Loads, checks, describes, and runs the published version of a project
  * workflow that another feature calls as a tool, such as a custom MCP server.
+ *
+ * `AppWorkflowAdapter` keeps its own copy of this path in the MVP, with its own
+ * run cap. The copies differ: here a stop during the wait gives `canceled` and
+ * a run checks that the project owns the workflow. Apps throws on a stop and
+ * checks the owner only when it binds the workflow. Move Apps onto this runner
+ * after the MVP.
  */
 @Service()
 export class CallableWorkflowRunner {
@@ -130,15 +136,14 @@ export class CallableWorkflowRunner {
 	) {}
 
 	async check(projectId: string, workflowId: string): Promise<CallableWorkflowCheck> {
-		const checked = await this.load(projectId, workflowId);
-		return 'reason' in checked
-			? { callable: false, reason: checked.reason }
-			: { callable: true, workflow: checked.workflow };
+		const checked = await this.load(projectId, workflowId, { preview: true });
+		// The entity stays in the runner, so a caller cannot hand it to its module.
+		return 'reason' in checked ? { callable: false, reason: checked.reason } : { callable: true };
 	}
 
 	/** The name and the description are not versioned. The inputs come from the published version. */
 	async describe(projectId: string, workflowId: string): Promise<CallableWorkflowDescription> {
-		const checked = await this.load(projectId, workflowId);
+		const checked = await this.load(projectId, workflowId, { preview: true });
 		if ('reason' in checked) return { callable: false, reason: checked.reason };
 		const { workflow, trigger } = checked;
 		return {
@@ -160,7 +165,7 @@ export class CallableWorkflowRunner {
 		input: unknown,
 		options: CallableWorkflowRunOptions,
 	): Promise<CallableWorkflowRunResult> {
-		const checked = await this.load(projectId, workflowId);
+		const checked = await this.load(projectId, workflowId, { preview: false });
 		if ('reason' in checked) return { status: 'refused', reason: checked.reason };
 		const { workflow, trigger } = checked;
 
@@ -240,10 +245,14 @@ export class CallableWorkflowRunner {
 		}
 	}
 
-	/** Loads the published version and runs every check that does not need the input. */
+	/**
+	 * Loads the published version and runs every check that does not need the input. A preview
+	 * (`check`, `describe`) does not log a policy denial, because nothing runs.
+	 */
 	private async load(
 		projectId: string,
 		workflowId: string,
+		{ preview }: { preview: boolean },
 	): Promise<
 		{ workflow: WorkflowEntity; trigger: CallableTrigger } | { reason: CallableWorkflowRefusal }
 	> {
@@ -269,11 +278,17 @@ export class CallableWorkflowRunner {
 		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 		if (incompatibility) return { reason: incompatibility.reason };
 
-		try {
-			await this.subworkflowPolicyChecker.checkForProject(workflow, projectId);
-		} catch (error) {
-			if (error instanceof SubworkflowPolicyDenialError) return { reason: 'not_callable' };
-			throw error;
+		if (preview) {
+			if (!(await this.subworkflowPolicyChecker.isCallableByProject(workflow, projectId))) {
+				return { reason: 'not_callable' };
+			}
+		} else {
+			try {
+				await this.subworkflowPolicyChecker.checkForProject(workflow, projectId);
+			} catch (error) {
+				if (error instanceof SubworkflowPolicyDenialError) return { reason: 'not_callable' };
+				throw error;
+			}
 		}
 
 		return { workflow, trigger: detectTriggerNode(workflow) };
@@ -306,12 +321,9 @@ function toRunData(
 		executionMode: 'integrated',
 		workflowData: {
 			...workflow,
-			// A run that ends before the wait starts is read back from the execution row.
-			settings: {
-				...workflow.settings,
-				saveDataSuccessExecution: 'all',
-				saveDataErrorExecution: 'all',
-			},
+			// Only a run that fails to start ends before the wait, and it is read back from its
+			// execution row. A success comes from memory, so the owner's success setting stays.
+			settings: { ...workflow.settings, saveDataErrorExecution: 'all' },
 		},
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData,

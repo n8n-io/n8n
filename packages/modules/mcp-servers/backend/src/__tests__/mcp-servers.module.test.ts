@@ -7,8 +7,8 @@ import { TextDraftPort } from '../tools/text-draft-port';
 import { McpServerToolAdapters, WorkflowToolPort } from '../tools/workflow-tool-port';
 
 // The REST routes have their integration tests in the CLI. Their imports only slow this test.
-vi.mock('../mcp-servers.controller', () => ({}));
-vi.mock('../mcp-server-tools.controller', () => ({}));
+vi.mock('../controllers/mcp-servers.controller', () => ({}));
+vi.mock('../controllers/mcp-server-tools.controller', () => ({}));
 
 describe('McpServersModule', () => {
 	it('registers the module entrypoint', () => {

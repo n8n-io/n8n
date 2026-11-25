@@ -253,6 +253,15 @@ describe('McpServerContentsTab', () => {
 			expect(toast.showError).toHaveBeenCalledTimes(1);
 		});
 
+		it('limits the description to the length that the server accepts', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+
+			expect(getByTestId('mcp-tool-row-description-input')).toHaveAttribute('maxlength', '2000');
+		});
+
 		it('does not save a tool name that breaks the rules', async () => {
 			api.getMcpServer.mockResolvedValue(server([tool()]));
 			const { findByTestId, getByTestId } = render();
@@ -294,6 +303,62 @@ describe('McpServerContentsTab', () => {
 				SERVER_ID,
 				tool().id,
 			);
+			// The title capitalizes its first letter, so the exact name is in the message.
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+					title: 'Tool removed',
+					message: expect.objectContaining({ children: 'get_campaign_numbers' }),
+				}),
+			);
+		});
+	});
+
+	describe('a failed request', () => {
+		it.each([
+			['tool name', 'mcp-tool-row-name-input', 'campaign_numbers', 'get_campaign_numbers'],
+			['description', 'mcp-tool-row-description-input', 'New text.', 'Numbers of a campaign.'],
+		])('shows the saved %s again when the save fails', async (_field, testId, typed, saved) => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.updateTool.mockRejectedValue(new Error('Conflict'));
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			const input = getByTestId(testId);
+			await userEvent.clear(input);
+			await userEvent.type(input, typed);
+			await fireEvent.blur(input);
+
+			await waitFor(() => expect(getByTestId(testId)).toHaveValue(saved));
+			expect(toast.showError).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the row when the remove fails', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.removeTool.mockRejectedValue(new Error('Server error'));
+			const { findByTestId, getByTestId, findByText } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			await userEvent.click(within(getByTestId('mcp-tool-row-menu')).getByRole('button'));
+			await userEvent.click(await findByText('Remove'));
+
+			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+			expect(getByTestId('mcp-tool-row')).toBeInTheDocument();
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+
+		it('keeps the tool count when the add fails', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.addWorkflowTools.mockRejectedValue(new Error('Server error'));
+			const { findByTestId, findAllByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-server-add-workflow'));
+			const rows = await findAllByTestId('mcp-workflow-picker-row');
+			await userEvent.click(rows.find((row) => row.textContent?.includes('Escalate to on-call'))!);
+			await userEvent.click(getByTestId('mcp-workflow-picker-confirm'));
+
+			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+			expect(getByTestId('mcp-server-tools-count')).toHaveTextContent('1');
 		});
 	});
 

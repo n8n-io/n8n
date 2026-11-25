@@ -11,9 +11,9 @@ import {
 	RestController,
 } from '@n8n/decorators';
 
-import { CustomMcpServersFlagGate } from './custom-mcp-servers-flag-gate';
-import { McpServerToolsService } from './mcp-server-tools.service';
-import { McpServersService } from './mcp-servers.service';
+import { McpServerToolsService } from '../services/mcp-server-tools.service';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
+import { McpServersService } from '../services/mcp-servers.service';
 
 type ServerRequest = AuthenticatedRequest<{ projectId: string; serverId: string }>;
 
@@ -32,14 +32,14 @@ export class McpServersController {
 	@Get('/')
 	@ProjectScope('mcpServer:list')
 	async list(req: ServerRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.list(req.params.projectId);
 	}
 
 	@Post('/')
 	@ProjectScope('mcpServer:create')
 	async create(req: ServerRequest, _res: unknown, @Body dto: CreateMcpServerDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.create(req.params.projectId, dto, {
 			userId: req.user.id,
 			source: 'ui',
@@ -49,8 +49,8 @@ export class McpServersController {
 	// Before `/:serverId`, which would match this path too.
 	@Get('/slug-available')
 	@ProjectScope('mcpServer:create')
-	async slugAvailable(req: ServerRequest, _res: unknown, @Query query: McpServerSlugQueryDto) {
-		await this.flagGate.assertEnabled(req.user);
+	async slugAvailable(_req: ServerRequest, _res: unknown, @Query query: McpServerSlugQueryDto) {
+		await this.flagGate.assertEnabled();
 		return await this.service.slugAvailability(query.slug);
 	}
 
@@ -58,7 +58,7 @@ export class McpServersController {
 	@Get('/:serverId')
 	@ProjectScope('mcpServer:read')
 	async get(req: ServerRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		const { projectId, serverId } = req.params;
 		const server = await this.service.get(projectId, serverId);
 		const [tools, toolDraftsAvailable] = await Promise.all([
@@ -71,14 +71,14 @@ export class McpServersController {
 	@Patch('/:serverId')
 	@ProjectScope('mcpServer:update')
 	async update(req: ServerRequest, _res: unknown, @Body dto: UpdateMcpServerDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.update(req.params.projectId, req.params.serverId, dto);
 	}
 
 	@Delete('/:serverId')
 	@ProjectScope('mcpServer:delete')
 	async delete(req: ServerRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		await this.service.delete(req.params.projectId, req.params.serverId, {
 			userId: req.user.id,
 			source: 'ui',
