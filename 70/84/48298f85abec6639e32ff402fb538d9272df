@@ -1,0 +1,14 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/pre-authentication-refresh.test.ts
+  h_52a137d26d774c 68-69,87,128-133,256,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "708448298f85abec6639e32ff402fb538d9272df",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

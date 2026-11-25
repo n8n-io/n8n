@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_0590ea7473091e::t_6768ca2efc3674 36,227-231,233-239,362,434,450,532-539
+  s_0590ea7473091e::t_ea12b77d19a8d1 20,232
+  s_0590ea7473091e::t_cd527201144956 226
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_1db5e13e793f11::t_9a364b25d86fe0 122-123,156,189-190,557-573
+  s_1db5e13e793f11::t_10cce04bd443e4 574-575
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskForm.vue
+  s_0590ea7473091e::t_f9e87a6a7438cb 2-64,66-259,261-405,409-578,580-644,646-648
+  s_1db5e13e793f11::t_c7cd8eb862cc8f 65,260
+  s_0590ea7473091e::t_3b9768f413a2c7 1,406-408,579,645,649
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersList.test.ts
+  s_0590ea7473091e::t_c8d68c6a3c0ea5 217,224-225,227,231-232,235
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_0590ea7473091e::t_ea12b77d19a8d1 112-114
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_0590ea7473091e::t_8a7589a2cbc446 7-9,12,41,43,50-51,54,58-60,64-66,76-77,83-92,97,107-109,118-119
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_0590ea7473091e::t_ebabaa18963a11 264-268
+  s_0590ea7473091e::t_74bcafeaa3fb71 269-270
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersList.vue
+  s_0590ea7473091e::t_1847cead505eb9 42,47,175
+  s_0590ea7473091e::t_aeba2b56b8bb85 215-218,220-221,223-224,227
+  s_0590ea7473091e::t_ebabaa18963a11 226
+  s_0590ea7473091e::t_433807bfeaa3fa 92-93
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_0590ea7473091e::t_7f6d62e9b11d8b 2-8,33-34,53-61,69-74,83-84,143,145-147,149-159,306,373-375,388,671-689,730-735,744,780-786,788-790,794-807,879-892,905-914,916-927
+  s_0590ea7473091e::t_9f7e9070ddbd16 787
+  s_0590ea7473091e::t_ea12b77d19a8d1 36,144,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e487f3fca473da06e97760d5c80def11dec18ece",
+  "prompts": {},
+  "sessions": {
+    "s_0590ea7473091e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ee2d-6c4f-7088-97b1-647b375197e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_1db5e13e793f11": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ee3f-137d-7088-97b1-647cce3dc2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

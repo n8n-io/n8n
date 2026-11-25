@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  h_23d60aac2fe72e 213,223,226-227,246,250-251,353
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  h_23d60aac2fe72e 340-343,346-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53c49bc2885f52eede75eb8c4de968522ecbe3e5",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

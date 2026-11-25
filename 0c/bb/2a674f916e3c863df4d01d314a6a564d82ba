@@ -1,0 +1,25 @@
+packages/core/src/execution-engine/ssh-clients-manager.ts
+  s_867500b2efe594::t_14af0e95d677f6 216-217
+  s_867500b2efe594::t_ac130f953e6929 226,229
+  s_867500b2efe594::t_8cc7a622fa4eef 162,166,170,177-181,183-184
+  s_867500b2efe594::t_93f7e3de711c8a 204
+packages/core/src/execution-engine/__tests__/ssh-clients-manager.test.ts
+  s_867500b2efe594::t_24e964d10768ac 188-207
+  s_867500b2efe594::t_7f386fd5247e15 310-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cbb2a674f916e3c863df4d01d314a6a564d82ba",
+  "prompts": {},
+  "sessions": {
+    "s_867500b2efe594": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc7ec9b0-2751-4299-9e61-c7f54c56e22b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
