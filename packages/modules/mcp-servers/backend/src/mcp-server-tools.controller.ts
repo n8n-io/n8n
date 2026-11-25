@@ -61,6 +61,7 @@ export class McpServerToolsController {
 			req.params.projectId,
 			req.params.serverId,
 			req.params.toolId,
+			{ userId: req.user.id, source: 'ui' },
 			dto.field,
 		);
 	}

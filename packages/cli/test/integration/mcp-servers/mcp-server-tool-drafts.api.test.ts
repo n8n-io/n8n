@@ -5,7 +5,7 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { PostHogClient } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { McpServer } from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -256,6 +256,31 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 
 		const response = await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(503);
 		expect(JSON.stringify(response.body)).not.toContain('sk-ant-');
+	});
+
+	it.each([
+		['drafted', undefined, 'both'],
+		['drafted', 'toolName', 'toolName'],
+		['invalid_answer', 'description', 'description'],
+		['model_failed', undefined, 'both'],
+		['not_available', undefined, 'both'],
+	] as const)('sends the event "%s" for the field %s', async (status, field, eventField) => {
+		const { serverId, draftUrl } = await setup();
+		if (status === 'drafted') answer({ toolName: 'get_numbers', description: 'Gives numbers.' });
+		if (status === 'invalid_answer') answer({ description: '' });
+		if (status === 'model_failed') draft.mockRejectedValueOnce(new Error('rate limited'));
+		if (status === 'not_available') isAvailable.mockResolvedValue(false);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		await testServer.authAgentFor(editor).post(draftUrl).send({ field });
+
+		expect(emit).toHaveBeenCalledWith('mcp-server-tool-drafted', {
+			serverId,
+			userId: editor.id,
+			source: 'ui',
+			field: eventField,
+			status,
+		});
 	});
 
 	it('refuses an unknown field', async () => {

@@ -259,7 +259,6 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools', () => {
 			serverId,
 			userId: editor.id,
 			toolKind: 'workflow',
-			isAiDraft: false,
 			source: 'ui',
 		});
 		emit.mockRestore();
