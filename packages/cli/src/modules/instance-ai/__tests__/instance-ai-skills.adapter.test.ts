@@ -143,6 +143,7 @@ describe('InstanceAiSkillsAdapterService', () => {
 			'skill_a',
 			{ baseSkillHash: 'hash-2', instructions: 'Be kinder.' },
 			'assistant',
+			{ keepUnnamedBinaryFiles: true },
 		);
 	});
 

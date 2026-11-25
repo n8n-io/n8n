@@ -9,6 +9,16 @@ const hasField = objectExtensions.functions.hasField as (
 ) => boolean;
 
 describe('hasField', () => {
+	it('should return false for inherited Object.prototype names', () => {
+		expect(hasField({}, ['toString'])).toBe(false);
+		expect(hasField({}, ['constructor'])).toBe(false);
+		expect(hasField({ test1: 1 }, ['hasOwnProperty'])).toBe(false);
+	});
+
+	it('should return true when an own field shadows a prototype name', () => {
+		expect(hasField({ toString: 'custom' }, ['toString'])).toBe(true);
+	});
+
 	it('should return true for a key served through has/get traps without an own property descriptor', () => {
 		const target = { test1: 1 };
 		const proxy = new Proxy(target, {

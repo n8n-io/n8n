@@ -223,6 +223,7 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
+				mock(),
 				mock<TagService>(),
 				mock<FolderService>(),
 				mock(),

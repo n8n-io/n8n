@@ -279,6 +279,7 @@ export async function executeActionToolOperation(params: {
 			{
 				type: 'approval',
 				toolName: operation.action,
+				...(ctx.approvalDescription ? { description: ctx.approvalDescription } : {}),
 				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
 				displayName: describeActionForApproval(operation),
 				args: ctx.approvalContext?.getDisplayArgs

@@ -260,6 +260,18 @@ describe('Expression - native evaluation verify mode', () => {
 			}
 		});
 
+		test('does not report an evaluation after the workflow released its isolate', async () => {
+			const { workflow } = modules;
+			await workflow.expression.releaseIsolate();
+			try {
+				expect(() => evaluate('={{ $json.user.name }}', { user: { name: 'Ada' } })).toThrow();
+				expect(evaluateNatively).toHaveReturnedWith({ handled: true, value: 'Ada' });
+				expect(report).not.toHaveBeenCalled();
+			} finally {
+				await workflow.expression.acquireIsolate();
+			}
+		});
+
 		test('does not compare values too large to compare', () => {
 			const list = Array.from({ length: 20_000 }, () => 0);
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: [...list.slice(1), 1] });

@@ -18,8 +18,12 @@ import {
 } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import {
+	mockActionCreateElement,
+	mockSimplifiedNodeType,
+} from '@/features/shared/nodeCreator/__tests__/utils';
 import { useViewStacks } from '../../composables/useViewStacks';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import NodeItem from './NodeItem.vue';
 import type { AddedNodesAndConnections } from '@/Interface';
 
@@ -298,6 +302,53 @@ describe('NodeItem', () => {
 			});
 
 			expect(queryByTestId('node-creator-restricted-item')).toBeInTheDocument();
+		});
+
+		describe('trigger with events', () => {
+			const acmeTrigger = () =>
+				mockSimplifiedNodeType({
+					name: 'n8n-nodes-base.acmeTrigger',
+					displayName: 'Acme Trigger',
+					group: ['trigger'],
+				});
+
+			beforeEach(() => {
+				useNodeCreatorStore().setActions({
+					'n8n-nodes-base.acmeTrigger': [
+						mockActionCreateElement().properties,
+						mockActionCreateElement().properties,
+					],
+				});
+			});
+
+			it('drops "Trigger" from the name when the trigger is allowed', () => {
+				mockRestrictedNodeTypes();
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-action-item')).toHaveTextContent('Acme');
+				expect(getByTestId('node-creator-action-item')).not.toHaveTextContent('Acme Trigger');
+			});
+
+			it('keeps the full name when the trigger is allowed but its app node is restricted', () => {
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.acme': 'instance' });
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-action-item')).toHaveTextContent('Acme Trigger');
+			});
+
+			it('keeps the full name in the row and the explanation when the trigger is restricted', async () => {
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.acmeTrigger': 'instance' });
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-restricted-item')).toHaveTextContent('Acme Trigger');
+				await userEvent.hover(getByTestId('node-creator-restricted-item'));
+				expect(await screen.findByTestId('node-restricted-popover')).toHaveTextContent(
+					'Acme Trigger',
+				);
+			});
 		});
 
 		it('renders a normal row when the type is not restricted', () => {

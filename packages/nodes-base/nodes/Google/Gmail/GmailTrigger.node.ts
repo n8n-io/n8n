@@ -368,10 +368,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		const simple = this.getNodeParameter('simple') as boolean;
 
 		const shouldLimitMessages = this.getMode() !== 'manual';
+		if (shouldLimitMessages) this.declareBoundedPoll?.();
 		// How far this tick may reach before it must return — bounds scanning and
 		// fetching time, not delivery volume (maxResults stays the per-tick bound).
-		// Only consulted on shouldLimitMessages paths; pre-1.4 and manual polls are
-		// unchanged.
+		// Manual polls do not use this deadline.
 		const pollDeadline = Date.now() + this.getPollBudgetMs();
 		const maxResults = shouldLimitMessages
 			? (this.getNodeParameter('maxResults', 10) as number)
