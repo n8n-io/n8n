@@ -380,6 +380,13 @@ function markPointerFocus() {
 function revealKeyboardFocus(event: FocusEvent) {
 	if (isPointerFocus || !(event.target instanceof Element)) return;
 	event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+	// The sticky header covers the top rows. A top scroll padding would also scroll the
+	// table to the top when a header button gets focus, so rows are moved clear here instead.
+	const header = tableElement.value?.tHead;
+	if (!scrollContainer.value || !header || header.contains(event.target)) return;
+	const covered = header.getBoundingClientRect().bottom - event.target.getBoundingClientRect().top;
+	if (covered > 0) scrollContainer.value.scrollTop -= covered;
 }
 
 const page = defineModel<number>('page', { default: 0 });

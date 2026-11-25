@@ -616,6 +616,30 @@ describe('N8nDataTableServer', () => {
 		expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
 	});
 
+	it('should move a focused row out from under the sticky header, but not move for a header', async () => {
+		const { container, getAllByRole, getByRole } = render(N8nDataTableServer<Item>, {
+			props: { items, headers, itemsLength: 3, showSelect: true, selection: [] },
+		});
+		const scroll = container.querySelector<HTMLElement>('.table-scroll')!;
+		let scrollTop = 100;
+		Object.defineProperty(scroll, 'scrollTop', {
+			get: () => scrollTop,
+			set: (value: number) => (scrollTop = value),
+		});
+		const header = container.querySelector('thead')!;
+		vi.spyOn(header, 'getBoundingClientRect').mockReturnValue({ bottom: 36 } as DOMRect);
+		const rowCheckbox = getAllByRole('checkbox')[1];
+		vi.spyOn(rowCheckbox, 'getBoundingClientRect').mockReturnValue({ top: 10 } as DOMRect);
+		const headerButton = getByRole('button', { name: 'Id' });
+		vi.spyOn(headerButton, 'getBoundingClientRect').mockReturnValue({ top: 10 } as DOMRect);
+
+		headerButton.focus();
+		expect(scrollTop).toBe(100);
+
+		rowCheckbox.focus();
+		expect(scrollTop).toBe(74);
+	});
+
 	it('should not pin any column by default', () => {
 		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
