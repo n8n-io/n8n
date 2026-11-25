@@ -1,0 +1,22 @@
+packages/@n8n/config/src/configs/ssrf-protection.config.ts
+  s_637d81201b0024::t_03f19b66ba2ba1 26
+packages/@n8n/backend-network/src/ssrf/__tests__/ssrf-protection.service.test.ts
+  s_637d81201b0024::t_4c92be12015a95 102
+  s_637d81201b0024::t_3e87e3096ef05a 103-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd67fd2b537a5991db756b4b70e7a8fa23b9e2f9",
+  "prompts": {},
+  "sessions": {
+    "s_637d81201b0024": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c947fd2-617e-406f-9081-014b7424bd2b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
