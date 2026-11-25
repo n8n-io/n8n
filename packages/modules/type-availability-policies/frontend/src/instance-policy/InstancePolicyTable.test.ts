@@ -128,17 +128,25 @@ describe('InstancePolicyTable', () => {
 	});
 
 	it('sorts from the keyboard, from the column headers that follow the access filter', async () => {
-		const { getByTestId, getByRole } = setup();
-		const nameHeader = getByRole('button', { name: 'Name' });
+		const { container, getByTestId, getByRole } = setup();
+		const filter = getByRole('combobox', { name: 'Filter by access' });
+		const firstRow = getByTestId('instance-policy-open-airtableApi');
 		const follows = (a: Node, b: Node) =>
 			Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
-		// The tab order is the DOM order. jsdom cannot tab from the filter, because the select sets
-		// a disabled attribute on its trigger, so the test checks the order directly.
-		expect(follows(getByRole('combobox', { name: 'Filter by access' }), nameHeader)).toBe(true);
-		expect(follows(nameHeader, getByTestId('instance-policy-open-airtableApi'))).toBe(true);
+		// The tab order is the DOM order. jsdom cannot tab from the filter: the select sets a disabled
+		// attribute on its trigger, which user-event skips. So the test lists what Tab reaches between.
+		const reachedBetween = Array.from(
+			container.querySelectorAll<HTMLElement>(
+				'button, input, select, textarea, a[href], [tabindex]',
+			),
+		).filter(
+			(element) => element.tabIndex >= 0 && follows(filter, element) && follows(element, firstRow),
+		);
+		const headers = ['Name', 'Access', 'Projects', 'Uses', 'Workflows', 'Active workflows'];
+		expect(reachedBetween).toEqual(headers.map((name) => getByRole('button', { name })));
 
-		nameHeader.focus();
+		getByRole('button', { name: 'Name' }).focus();
 		await userEvent.tab();
 		expect(getByRole('button', { name: 'Access' })).toHaveFocus();
 
