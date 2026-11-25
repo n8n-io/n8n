@@ -765,7 +765,7 @@ export class HttpRequestV3 implements INodeType {
 					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
 					const credentialType = nodeCredentialType ?? genericCredentialType;
 					const additionalOAuth2Options = credentialType
-						? getOAuth2AdditionalParameters(credentialType, true)
+						? getOAuth2AdditionalParameters(credentialType)
 						: undefined;
 
 					const requestPromise = this.helpers.requestWithAuthenticationPaginated
@@ -817,7 +817,7 @@ export class HttpRequestV3 implements INodeType {
 						requestPromises.push(request);
 					}
 				} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType, true);
+					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
 
 					// service-specific cred: OAuth1, OAuth2, plain
 

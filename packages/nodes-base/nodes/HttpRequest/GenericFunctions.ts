@@ -195,10 +195,7 @@ export function getSecrets(credentials: ICredentialDataDecryptedObject): string[
 	return secrets;
 }
 
-export const getOAuth2AdditionalParameters = (
-	nodeCredentialType: string,
-	includeMicrosoft403 = false,
-) => {
+export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
 		bitlyOAuth2Api: {
 			tokenType: 'Bearer',
@@ -258,12 +255,10 @@ export const getOAuth2AdditionalParameters = (
 		},
 	};
 
-	if (includeMicrosoft403) {
-		oAuth2Options.microsoftOAuth2Api = {
-			tokenExpiredStatusCode: [401, 403],
-			skipRefreshWhileTokenIsFresh: true,
-		};
-	}
+	oAuth2Options.microsoftOAuth2Api = {
+		tokenExpiredStatusCode: [401, 403],
+		skipRefreshWhileTokenIsFresh: true,
+	};
 
 	return oAuth2Options[nodeCredentialType];
 };
