@@ -2664,9 +2664,16 @@ describe('AgentChatPanel', () => {
 			}
 		});
 
-		it('shows new running jobs', () => {
+		it('shows new running jobs', async () => {
 			backgroundJobsMock.value = [job];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			expect(panel.get('button').getComponent({ name: 'N8nSpinner' }).props('type')).toBe('dots');
+
+			await panel.get('button').trigger('click');
+			expect(
+				panel.get('[data-status="running"]').getComponent({ name: 'N8nSpinner' }).props('type'),
+			).toBe('dots');
 
 			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).not.toContain(
 				'Stopped',
