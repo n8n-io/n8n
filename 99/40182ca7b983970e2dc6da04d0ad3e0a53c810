@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_f4d26adb514784::t_1bef01bf888584 8,13-16,176-263
+packages/cli/src/modules/instance-ai/eval/__tests__/resolve-canonical-mcp-catalogs.test.ts
+  s_f4d26adb514784::t_2584930a4b3689 1-59
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_f4d26adb514784::t_d915247b3f5ec2 125,128-130
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_f4d26adb514784::t_0a943e76c233ce 5,21,128-130,132,146-161,163-165,187-198,238-274
+packages/cli/src/modules/instance-ai/eval/mcp-mock-fetch.ts
+  s_f4d26adb514784::t_27cb6e50725c87 62-63,281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9940182ca7b983970e2dc6da04d0ad3e0a53c810",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
