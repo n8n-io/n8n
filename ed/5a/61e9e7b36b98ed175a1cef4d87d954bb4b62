@@ -1,0 +1,1647 @@
+scripts/experimental/rig/src/env-catalog/extract.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-219
+packages/cli/src/commands/update/workflow.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/Attachment/Attachment.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-2,7-8,19-20
+packages/nodes-base/nodes/Splunk/test/v2/transport.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-2,5-9,12-22,24-32,36,40,45,49-134
+packages/modules/code-sandbox/backend/src/task-builder.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-127
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1215-1216,1233-1248
+scripts/experimental/rig/test/layers.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-109
+packages/cli/src/modules/skills/sources/github/github-archive.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-5,10,20-23,30-32,35-46,49,53-54,56-57,64,86-106,108-111,115,155-156,160-165,168-170,173-174,176-180,184-186,198
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 186-187
+packages/@n8n/instance-ai/evaluations/approval-judge/eval-results.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-104
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 73-86
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14-15,168-171,177,179-183
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantNodeAttachments.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 59-60
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactCardMetadata.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-45
+packages/@n8n/code-runtime-js/src/run-task.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 9
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 280-285
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,214-227,350,358-360,725,728-730,774,783-785
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,302,382,420,443,616-621
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 32
+packages/quality/testing/engine-parity/src/grammar/expressions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-188
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsCollectionsView.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20,30-32,59,61-66,78-90,128-129,148-159
+packages/cli/src/modules/skills/__tests__/github-skill-discovery.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-9,97,108,115,120-281
+  s_e2020f334615fd::t_bbe0623ab179c6 282
+packages/cli/test/integration/token-exchange/token-exchange-jti.repository.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,7,15,23-25,45,57-58,66,72,74,80,82,89-90,98-99,109,116-117,119,122,128-129,131,134-135,140-142,144,147,155,179,196,213,227
+packages/cli/src/modules/skills/utils/skill-content.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 31-36,129-130,136-144,155,191-193,203
+scripts/experimental/rig/bin/rig.mjs
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-29
+scripts/experimental/rig/src/environment.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-394
+packages/cli/src/modules/skills/services/skill-security-scanner.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12-13,23-24,40-48
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 96-99,110,147-165
+  s_e2020f334615fd::t_22951737741fd9 166-167
+packages/cli/test/migration/1795524706285-allow-import-source-on-ai-preference.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-172
+scripts/experimental/rig/test/runtime.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-114
+packages/@n8n/code-runtime-js/src/runtime.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-152
+packages/@n8n/telemetry/src/schemas.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.adapter.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 146
+packages/@n8n/db/src/entities/project-workflow-review-settings.ee.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-23
+packages/@n8n/agents/src/types/sdk/mcp.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,59-60
+  s_e2020f334615fd::t_0629a644bb4604 61
+packages/@n8n/api-types/src/workflow-reviews-policy.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10-12
+packages/cli/src/modules/agents/approval/decision-continuation.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-15
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17-20,130,144,154-159,162-171,173-176,232-263
+  s_e2020f334615fd::t_32d84b05c7d125 264-265
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-suspension-cards.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 26-44,56-65
+  s_e2020f334615fd::t_c2b91f7c1e2c43 66
+packages/@n8n/db/src/entities/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 57,239,316
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 97-99,114-115,155-157
+packages/cli/src/modules/skills/sources/github/github-folder.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7,11,44,67,69,80-95,100-102,115
+packages/@n8n/instance-ai/evaluations/approval-judge/__tests__/cases.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7-9,17-20,44,53-58,72,90,108,124-133,135,140-141,143,146-147,149-167,172
+packages/cli/src/modules/instance-ai/instance-ai-hub-skills.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 295
+packages/cli/src/scaling/scaling.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 661,743,792
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillFileNav.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,8-11,14-19,46-48,61,139,141-142,145,147-149,151,153
+packages/@n8n/expression-runtime/src/runtime/__tests__/transfer-codec.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 279-290
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 85-89,92-96,558
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 22
+packages/quality/testing/engine-parity/src/grammar/combinators.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-138
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 106-110,124,142,145-166,260-278,280-281,305
+  s_e2020f334615fd::t_8138350e2561c9 105
+.code-health-baseline.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 182-187,1889-1895
+  s_e2020f334615fd::t_751b47e693f537 1896
+packages/@n8n/config/test/config.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 765-766,788,901-902,906-907,960,964-967
+  s_e2020f334615fd::t_043ebfcff530f0 968
+packages/cli/test/integration/agents/agent-hitl-workflow.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-188
+scripts/experimental/rig/src/meta.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-24
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantNodeAttachments.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 825-924
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6-24,26,28-66,91-95,100,126-159
+  s_e2020f334615fd::t_95377d03c1b61e 160
+packages/@n8n/expression-runtime/src/bridge/__tests__/small-json-data.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-173
+packages/cli/src/modules/agents/simulation/test-run-credentials-helper.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-85
+packages/workflow/src/extensions/object-extensions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30-33
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17-107
+  s_e2020f334615fd::t_f14768e5fadf14 16
+packages/quality/AGENTS.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 9
+scripts/experimental/rig/src/runtime/health.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-134
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 42-44,56-59,64
+packages/@n8n/db/src/migrations/common/1795524706285-AllowImportSourceOnAiPreference.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-45
+packages/modules/promotions/frontend/src/composables/usePromotionSelection.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10,19-23,71-74
+packages/frontend/editor-ui/src/features/agents/utils/agentSkillExport.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,47-49
+packages/cli/src/modules/agents/approval/__tests__/approval-description.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-109
+packages/cli/src/modules/skills/__tests__/test-utils/fake-github.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,35,157,177-179,200-202,208
+packages/quality/environments/containers/README.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 36-38
+packages/quality/testing/engine-parity/src/grammar/catalog/if.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-32
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentNewTestRun.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-212
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,66
+packages/cli/src/scaling/job-processor.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 547
+packages/cli/src/modules/agents/agent-context-readers.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,15,17-19,21-27,33
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-8
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,45-46,53-54,63-71,81-92
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 38-43,168,253-256,290-344,347,349
+  s_e2020f334615fd::t_8f39b8a38a9b04 345-346,348,350
+scripts/experimental/rig/src/config/paths.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-132
+packages/cli/src/modules/knowledge/collections/knowledge-collections.controller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-5,7-16,50-72
+packages/cli/src/modules/skills/__tests__/github-skill-source-client.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-6,33-34,407,413,415,436-545,577-693,697,708,726-730,732,734-735,740,748,761,850,852,858-908
+  s_e2020f334615fd::t_edb0134106dff0 909
+packages/quality/testing/engine-parity/package.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-35
+packages/cli/src/modules/skills/sources/github/skill-discovery.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 65-66,69-70,72-181,183-193
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 18-19
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12,23,60,63-64,74-77,142-146,155,158-166,168
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20,472-493,1307-1308
+packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-3,252-407
+  s_e2020f334615fd::t_879b7f22a5e798 408
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 33-56
+packages/@n8n/constants/src/client.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-4
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 493-497,505,519,544,576-662
+packages/cli/src/modules/agents/approval/__tests__/channel-hitl-options.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-227
+packages/cli/src/modules/agents/json-config/agent-document.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-7,22-27,38-47
+  s_e2020f334615fd::t_ef79def63a5daa 48
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 43,475-494,1262-1279,1282
+  s_e2020f334615fd::t_959ea4d204d689 1280-1281,1283
+packages/quality/testing/playwright/tests/e2e/workflows/editor/execution/subworkflow-stop.spec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 62-96
+packages/cli/test/migration/1795546358453-add-skill-file-encoding.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-116
+scripts/experimental/rig/oxlint.config.mts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-7
+scripts/experimental/rig/src/commands/running.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-427
+packages/@n8n/expression-runtime/src/bridge/small-json-data.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-158
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 565,601-606,880-883
+packages/@n8n/expression-runtime/src/extensions/__tests__/object-extensions.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12-21
+packages/cli/src/modules/skills/__tests__/skill-runtime.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 441
+packages/cli/src/public-api/public-api-client.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,4,21
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10,110-111
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 21,25,108-117,119-123,125,127-129,148
+packages/frontend/@n8n/stores/src/useRootStore.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1
+packages/@n8n/backend-services/src/services/__tests__/ai-preference.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 560,563,572,574,847
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agentSkillExport.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 68-77
+scripts/experimental/rig/src/runtime/preflight.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-65
+packages/cli/src/modules/agents/agent-context.contracts.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17-23
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requirement.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-34
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 179-207
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 232
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 38,45,51,62
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30-34,52-62,89,92-104,423
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 86-92
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 368
+packages/@n8n/code-runtime-js/src/control-protocol.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-63
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 471-481
+packages/modules/code-sandbox/backend/src/__tests__/task-builder.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-152
+packages/quality/testing/playwright/tests/e2e/workflows/editor/subworkflows/wait.spec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 113-114,179-180,225-226
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 226
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/__tests__/MessageFormatter.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 211-239
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-feature-gate.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,8-10,29-34,58
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 64
+packages/modules/promotions/frontend/src/promotionPreview.tree.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 8-10,23-24,130-131,136-137,139-142,153
+scripts/experimental/rig/src/runtime/state.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-134
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 111-115,135-139,155-159
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 277-300,949-977,1087-1088
+packages/cli/src/modules/agents/approval/agent-hitl-channels.controller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-41
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20-21,107
+packages/quality/testing/engine-parity/src/grammar/arbitrary.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-167
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-98
+scripts/experimental/rig/src/source.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-124
+scripts/experimental/rig/test/source.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-128
+packages/cli/src/__tests__/wait-tracker.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 133,144,230,241,303,1396
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-2,390-415
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 146-170
+packages/@n8n/api-types/src/agents/__tests__/agent-skill.dto.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,6-7,10-11,41-45,94-123,184-227,246-363
+  s_e2020f334615fd::t_706119836c7278 364
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 76-78,82
+packages/cli/src/modules/agents/agents.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,196,1050-1051,1056-1057
+packages/nodes-base/nodes/Splunk/v2/transport/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 22,34,46-47,77-84
+  s_e2020f334615fd::t_1bce1a99c88aaf 85
+packages/quality/testing/engine-parity/src/grammar/catalog/set.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-78
+packages/cli/src/modules/skills/__tests__/skill-update-review.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 67-109
+scripts/experimental/rig/src/services/tunnel.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-112
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,410,765-845
+  s_e2020f334615fd::t_6e625deb386f6c 846-847
+scripts/experimental/rig/src/topology/components.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-254
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 21,26,267,318
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14,30,38,47-50,52,74,108,116,307,402-409,503-552,571-581,974-1016,1108-1123
+  s_e2020f334615fd::t_bfb8b997279fd9 1124
+scripts/experimental/rig/src/topology/slots.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-62
+scripts/experimental/rig/test/log-format.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-63
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-navigation.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 9,17,22-64,74,83
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 43-45
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25,347,369,406,413,453-468,493,499,718,720,728,738-741,846
+packages/@n8n/instance-ai/evaluations/routing/eval-results.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 50-51,53-54
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 43-46
+  s_e2020f334615fd::t_5ff06fc762c4ef 42
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/MessageFormatter.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,10-11,16-17,19,22-26,47-52,59,78
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,8,23-40
+  s_e2020f334615fd::t_0505569a233545 41-42
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,201,214
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4146-4164
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request-status.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 19,44
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 139,151,209,215-228
+  s_e2020f334615fd::t_cc0841d7914567 229
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,8-9,12-15,74-94,96,98,101-115,117-119,122-124,128,130-143
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 360
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,6-7,12-31,42-48,50-54,56-57,59-85,88-92,95-124,126-158,161-195,197,199-204,207-302,306-310,312-313,315-317,320-330,334,336-337,339-341,344-354,358,360-364,366-367,370-378,382
+packages/cli/src/modules/skills/sources/github/github-skill-source-client.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7-10,27,41-48,88,134,290,293-304,307-309,317,320-326,329-359,364-367,371-374,547,575-605
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-170
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3-12,19,22-23,29-30,33-44,47-50,54-56,58-60,63-107,109,112-113,116-170,174,185,194-201,207-220,225,229-230,251-256,258-268,270-283,285-313,315-319,323-352,355-361,365-375,377-384,388,390,392-401,407,412-413,420-422,424-429,434-439,442-451,453-456,458,461-462,465-472,475-476,479-483,485,487-501,503-504,511-514,516-517,521,523,525,531-536,539-542,544-551,553-555,557-559,562-563,565-570,573-583,586-593,595-607,610-616,618-623,627-637,642,649-651,656-662
+packages/frontend/editor-ui/src/features/agents/components/skillVersions/skillVersionDiff.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,6-7,15-16,29-30,36-57,63-67,71,73
+scripts/experimental/rig/src/integrations/editor.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-160
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-hub-skills.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 231,356-376
+packages/@n8n/constants/src/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,8-13,464,476-497,526,530-531,536,546,556,580-644,794-985
+  s_e2020f334615fd::t_7fd08d539e96b5 986
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 131-134,208,210,220-229
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunToolsNotice.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-242
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-4,218-229,260-264,621,1410,1766,1769-1779,1781-1783,1785-1789,1791,1793-1797,1801,1821,1867,1878-1879,1887,1893-1939,1975,2002
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28-33
+packages/modules/code-sandbox/backend/package.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 35,39-40
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 37
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,11,48,225-229,239,317,321-347,423,606,771
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 521,604,623-628
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-2,442-460
+  s_e2020f334615fd::t_196147cf96d88c 461-462
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 99-101,111-112
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 80-125,1137,1141,1191,1196
+packages/@n8n/expression-runtime/src/runtime/__tests__/context.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 27,40,57,71,124,145,159,186
+packages/cli/src/modules/agents/approval/agent-approval-cleanup.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-84
+packages/quality/testing/engine-parity/vitest.config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-3
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 80,2439-2449,2463-2473,2480-2482,2640-2783
+packages/nodes-base/test/nodes/TriggerHelpers.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 69,338,340-341,354
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-response.svg
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-12
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 34-37,40
+packages/frontend/@n8n/design-system/src/components/N8nIcon/node-icons.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-3,86-87
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 282
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 84,283-289
+  s_e2020f334615fd::t_a43f52fcd4cf48 290-291
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,19-21,34,53,126-127,172-174,258,758,872,874-893,897,914,920-922,1010-1055,1060,1066,1073-1075,1281-1290,1405-1409,1411-1419,1421-1429,1432-1439,1641-1648
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 19,179
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 89-91
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-192
+packages/cli/src/modules/skills/__tests__/skill-content-hash.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 72-79
+packages/frontend/@n8n/design-system/src/components/N8nIcon/node-icon-names.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-3
+packages/frontend/editor-ui/src/features/settings/context/collections.api.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 8,37-62
+  s_e2020f334615fd::t_c5172657afe3ad 63
+packages/cli/src/modules/skills/__tests__/integration/skill.repository.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 124-127,131-146,163-172,184-208
+  s_e2020f334615fd::t_b63a70ac3c113e 209-210
+packages/quality/testing/engine-parity/src/grammar/data.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-36
+.agents/review-rules/db-migrations/conventions-and-tests.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10-11,15-16,31-41
+packages/@n8n/engine/src/runtime/__tests__/redis-work-queues.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,14-15,22,32-35,73-78,80,83-86,92,99,117,155,182-295
+packages/workflow/src/interfaces.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1630-1631,4074-4075
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1
+scripts/experimental/rig/test/commands.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-44
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillFileNav.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-7,63-84
+  s_e2020f334615fd::t_ef08e883366dae 85
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 61,99-101,1156,1463-1464
+packages/@n8n/instance-ai/evaluations/approval-judge/__tests__/eval-results.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-152
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25,1257-1374
+  s_e2020f334615fd::t_00ab3626288b5a 1375-1376
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 252-277
+packages/cli/src/scaling/scaling.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 137-138
+packages/frontend/editor-ui/src/features/setupPanel/components/FocusSidebarTabs.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,133,145,151
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,41-45,84,95-110,114-146
+  s_e2020f334615fd::t_e276fa437ccf6f 147-148
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 317-326
+packages/quality/testing/playwright/tests/e2e/nodes/form-trigger-node.spec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17,29,80,158,220,287-290,438
+packages/cli/test/integration/token-exchange/jti-cleanup.task.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-5,8,19,26,45,57-58,85,91-92
+scripts/experimental/rig/src/services/engine-tls.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-60
+packages/@n8n/instance-ai/evaluations/approval-judge/cli.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7-8,39,166,210-211,228-229
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10,55,60
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 89-91,95-100
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-146
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 43
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-hitl.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-110
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.credentials.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-144
+packages/quality/testing/engine-parity/src/compile/to-sdk.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-128
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-approval-response.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-264
+packages/cli/src/modules/knowledge/collections/knowledge-collection-catalog.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,11,34-36,38-40,56-58,68-69,81,86,90-96,107,119-180,197,199,241-256
+  s_e2020f334615fd::t_328651528f06ff 257
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 586,632-636,662-665
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 494
+scripts/experimental/rig/src/env-catalog/catalog.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-98
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 119-173
+scripts/experimental/rig/src/commands/env-browse.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-394
+packages/@n8n/constants/src/nodes.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28-29,44-53
+packages/cli/src/modules/knowledge/collections/__tests__/knowledge-collection-catalog.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,58,131-168,385-599
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/component-attachments.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17,31,37,114,119
+.agents/review-rules/db-migrations/performance-and-scale.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5-9,14-15,18,20-21,23,31
+packages/@n8n/config/src/configs/__tests__/agents.config.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 21-35
+packages/@n8n/api-types/src/agents/agent-skill.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-15,19-46,48-51,53-287,289-294
+packages/@n8n/api-types/src/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1160-1179
+packages/@n8n/engine/src/queue/__tests__/redis-work-queue.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 42
+packages/@n8n/instance-ai/evaluations/__tests__/helpers/fixture-navigation.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3-6,15-23
+  s_e2020f334615fd::t_acca8fe1790068 24-25
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 408,411,436,439-442,447,453-461,902-971
+  s_e2020f334615fd::t_510c20d9e40d33 972
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-bindings.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-69
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-7,11-15,17,106-113,297-341,343,345,347-352,354-366,369-376,378-381,383-385,387-401,403-408,410-427,429,532,534,631-782
+  s_e2020f334615fd::t_70114d334879f1 783-784
+packages/cli/src/modules/token-exchange/database/repositories/__tests__/token-exchange-jti.repository.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-125
+packages/cli/src/telemetry/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 82,367,370
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 167,350,382,384-387,389-390,392-393,398-404,406,412-428,433-434,1226,1237-1253,1269,1276-1280
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteList.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,10-15,29,46-48
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 289,295
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 74
+packages/cli/src/modules/agents/approval/approval-description.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-65
+packages/@n8n/telemetry/src/events/context.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 578,601-605,623,656
+scripts/experimental/rig/src/commands/layers.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-75
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-40
+packages/quality/testing/playwright/pages/components/ProjectTabsComponent.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 13,20,27,34
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 8,10-11,347-375,406-408,450,456,475,500
+packages/@n8n/engine/src/queue/__tests__/redis-work-queue.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 32
+packages/quality/testing/playwright/tests/e2e/api/form-endpoint-isolation.spec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30-32
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-publish-guard.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,9,16,21,41
+scripts/experimental/rig/test/env-catalog.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-167
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/utils.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3-7,15,78,82-86
+packages/cli/test/integration/public-api/ai-preferences.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-5,61,69,168-169,173,181,341-342,353,538,542,545
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request-status.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20,31,47,56,62
+packages/cli/src/modules/skills/utils/skill-model-update.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-31
+packages/@n8n/config/src/configs/instance-settings-loader.config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 90-106
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,46-69
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17,21-26,29,63-66,88-90,117-122,163-171,220-222,290,319,454-470,523-524,607-623,635,639,731-736,785-797,800,810-815,817-830,842-941,990,999-1011,1017-1018,1074,1076,1090-1096,1306
+packages/cli/src/modules/skills/__tests__/skill-security-scanner.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 60-61,64-67,73-75,138,153,170,246-387,417-418,420
+packages/@n8n/api-types/src/agents/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3
+.github/scripts/workflow-validation.test.mjs
+  s_e2020f334615fd::t_ea5bf23cdc95a2 540
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 141-218
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantArtifactCards.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-148
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 177-180,265,277,549-552
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,15,54-57,74
+packages/cli/src/modules/agents/approval/register-approval-runtime.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-19
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,5,8-9,12,19-20,103-104,1105,1107-1108,1111-1113,1122-1123,1125-1133,1135,1830-1832,1854-1896,2162-2314,2403-2669
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-6,20,990-1108,1142-1158,1162-1168,1184-1267,1287,1331,1353
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAnsweredQuestions.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-73
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 150,162,170,177
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-1107
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,22,191-194,200,218,222-238,335,427-428,865,949-950,981-996,1022,1138-1150,1152,1167-1283,1296-1297,1348-1350,1395-1403,1422,1537-1553,1557,1561-1564,1581
+packages/cli/src/modules/agents/utils/thread-detail-response.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-29
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 164-178,182
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-session.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,20-58
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,2049-2055,2063-2064
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunModal.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-66
+packages/quality/testing/engine-parity/src/grammar/grammar.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-141
+scripts/experimental/rig/src/ui/log-format.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-74
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 139,168-169
+packages/quality/efficiency/microbenchmarks/benchmarks/expression-engine/fixtures/expressions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 40-51,59
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 103-156
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28,40,87,229,317,320-330,355,647,653-655,1133-1140
+packages/cli/src/instance-settings-loader/loaders/security-policy.instance-settings-loader.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,19,31-32,56-70
+  s_e2020f334615fd::t_f9a5cf030141ee 71
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 175-176
+packages/cli/src/modules/agents/approval/__tests__/agent-approval-cleanup.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-181
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-40
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 34,42,260,263,344
+scripts/experimental/rig/test/resolve.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-165
+scripts/experimental/rig/test/topology.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-124
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,9,15-24,29,156-158,172-174,214-216,221-222,238-543,630,1148,1160
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,61-62,72,103-108,337-340,345-346,353-358,362-365,380-413,421,487-493,503-510,565-576
+  s_e2020f334615fd::t_a86a2607de8844 577
+packages/cli/src/modules/skills/__tests__/skill-model-update.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-38
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 158,520,529
+package.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 54
+packages/@n8n/api-types/src/builder-tool-names.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 107-115,357-380
+  s_e2020f334615fd::t_4ef5b954a45eaa 381
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-10,25-200,311-312,321,323-324,330,334-337,340,344-345,350-356,364-369,376-381,385-390,402-403,409-425,432-460,466-467,471-478,481,495-516,529-532,534,551-553,590,626,628,635-637,644-648,651-661
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,79
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantArtifactCards.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-92
+packages/@n8n/engine/AGENTS.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 48-51,60-67
+scripts/experimental/rig/src/commands/common.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-144
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 77,107,248,457,539,3182-3298
+  s_e2020f334615fd::t_58c592d52ee9a7 3299
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,14-17,19-27,29-33,37,40-55
+packages/frontend/editor-ui/src/features/settings/context/collections.store.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7,58-69,118-119
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25,248-256,263
+scripts/experimental/rig/src/errors.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-18
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14-15,23-25
+  s_e2020f334615fd::t_4e290dd66aae70 26
+scripts/experimental/rig/src/integrations/browser.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-149
+packages/quality/testing/playwright/pages/SidebarPage.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 56-57,61
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-5,291-296
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1
+packages/nodes-base/nodes/Splunk/test/workflow/Splunk.workflow.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 46,48-51,60-64,75,77-80,91
+scripts/experimental/rig/test/setup.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-16
+packages/@n8n/code-runtime-js/src/__tests__/fixtures.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-5,66-76
+  s_e2020f334615fd::t_175412afe0f4c3 77-78
+packages/@n8n/api-types/src/agents/types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6
+packages/@n8n/engine/src/runtime/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-2
+packages/cli/src/modules/agents/approval/README.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-134
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 670-671,702-703
+packages/cli/src/modules/agents/agent-project-cleanup.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,33,58-59,67-79
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,98-99
+packages/frontend/editor-ui/src/features/agents/components/skillVersions/SkillVersionDiff.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 29-30,55,61,85-88,90-99
+.github/WORKFLOWS.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 264-269,699
+packages/@n8n/code-runtime-js/src/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12-13
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,190,194
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 50-57,65
+packages/cli/src/modules/token-exchange/services/jti-store.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 36
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 22,314
+packages/cli/src/modules/mcp/tools/skills/skill-tools.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6-7,10,14,120-124,127,187-188,197-202,245,263
+packages/cli/src/modules/skills/sources/skill-source-client.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 66,70-73
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,28-53,74-79
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 78-89
+packages/cli/src/modules/skills/database/entities/skill-file.entity.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,15-21
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 586,603
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 45-49,52-59,63-67,101-102,111,113-116,129,152-164,261-288,294-295,306-307
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/wrapped-component-bans.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 133,182-188
+  s_e2020f334615fd::t_76c7d8e360aa96 189
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 337-342,344,374,388,411-413
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 357
+packages/@n8n/agents/src/skills/tools.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30-32,68-75,133,138-139,150,179,235,286-290,388-403
+  s_e2020f334615fd::t_8c592b387cde0a 404-405
+packages/cli/src/modules/mcp/__tests__/skill-extension.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 44-45,49-53,184-188,193,197-202,218,222-227,231-253,296,306-330,332-336,354,357,359-361
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 247-248,272-274,276,487-488,744-746,785-786,803-818,1120,1755-1759,2084-2086,2089,2093-2103,2112,2114
+scripts/experimental/rig/src/env/dotenv.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-145
+scripts/experimental/rig/src/launcher/config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-134
+packages/cli/test/integration/agents/agent-service-accounts.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 31,506-522
+  s_e2020f334615fd::t_794ef7f54c3381 523-524
+scripts/experimental/rig/test/logs.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-101
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 44-46
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 64-118,229-263,268-270,277-283,286,288-289,291-335
+packages/@n8n/api-types/src/knowledge/collections/create-knowledge-collection.dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5-7
+scripts/experimental/rig/test/tunnel.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-149
+packages/cli/src/modules/agents/simulation/__tests__/test-run-credentials-helper.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-97
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,292-293
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 22-23,25-26,29-30,121-133,200-207,669,679,683-687,689-694,697-706,1406,1453,1469-1508
+  s_e2020f334615fd::t_ddc2d2a7c26b76 1509-1511
+packages/frontend/editor-ui/src/features/settings/context/collections.api.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,12,116-143
+packages/cli/src/modules/agents/__tests__/agent-project-cleanup.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 13,29,42,118-163,173-175
+packages/@n8n/expression-runtime/src/bridge/__tests__/batch-read.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-449
+scripts/experimental/rig/src/env/secrets.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-31
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 26,66-91,168
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 68-72,111-112,142-147,286-288,300,380,385-394,401-405,477-478,481,510-512,514,544-545,562-565,585-587,603-605
+scripts/experimental/rig/src/ui/output.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-133
+scripts/experimental/rig/test/state.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-88
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-100
+scripts/experimental/rig/src/runtime/split.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-137
+packages/cli/src/modules/agents/__tests__/agent-workflow-dependency.repository.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 97-136
+scripts/experimental/rig/vitest.config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-9
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsTabs.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14,78,93,99,115-116,130,132,157,160-186,189-198
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillViewer.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17-19,70-94,654-754
+  s_e2020f334615fd::t_c5da8280c39f97 755-756
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 742
+packages/cli/src/modules/agents/approval/review-requester.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-37
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 32,88
+scripts/experimental/rig/src/commands/tools.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-240
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-project-settings.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-53
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 110-114
+packages/cli/src/modules/skills/__tests__/skipped-files.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,23-40
+  s_e2020f334615fd::t_64cbb8066ff397 41-43
+packages/cli/src/node-catalog/__tests__/module-gated-node-types.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-36
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 363-365
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15,198,201-207
+scripts/experimental/rig/test/slots.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-69
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,862,867-870
+packages/@n8n/db/src/repositories/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 70
+.github/workflows/ci-detect-new-packages.yml
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 132,136
+packages/nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-189
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10,212-229
+  s_e2020f334615fd::t_9bcaf7d632801a 230
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 151-154,159
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 346-357
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 109,123-126,149,153,183,454-466,483,950,1003
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,22,44-49,61,66-67,76,116
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 468-486
+packages/@n8n/code-runtime-js/src/__tests__/runtime.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-191
+packages/cli/src/modules/mcp/tools/skills/skill-extension.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 8,13,17,23-24,69,74-75,78-79,87,98-99,102-110,139,148-150,162-170,177-192,207-226
+  s_e2020f334615fd::t_ea46d53f951258 227
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsCollectionsView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 8-10,28-29,32,35-39,53-67,69-74,96-117,258-317
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 406-412
+packages/cli/src/modules/skills/utils/skill-security-rules.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,20,33,35-37,160,164-165,167-197,218-268,443-453
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 147
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14,117,126,133
+packages/@n8n/api-types/src/knowledge/collections/__tests__/update-knowledge-collection.dto.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-55
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15,42-45,427-500
+  s_e2020f334615fd::t_608c4c77bc4eb4 501
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 594,675-676,685-686,693-702,1267-1268
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,39-43
+scripts/experimental/rig/package.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-41
+packages/@n8n/config/src/configs/agents.config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,12,41-44,74-76,81-83
+  s_e2020f334615fd::t_9bca0623aebb57 84
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 346,357,362,365-366
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,8,27,54,133-137,141-142,193,396-686
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,175,183-187,214,251,1247,1249,1277,1291,1311,1322,1335,1366,1379-1434
+  s_e2020f334615fd::t_b60a4f04f97ab3 1435
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 77-81,96,131
+packages/@n8n/expression-runtime/src/runtime/intrinsics.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30-31,42,68-69,147-170
+  s_e2020f334615fd::t_051e372d0271d4 171-172
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 215,1013,1090-1092,1125,1129,1139-1141,1165-1168
+  s_e2020f334615fd::t_a01fff77171495 1169
+packages/quality/testing/playwright/tests/e2e/workflow-reviews/required-approval.spec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,18,43-54
+packages/nodes-base/nodes/N8n/v1/N8nV1.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14
+packages/quality/testing/engine-parity/src/grammar/ir.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-53
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-5,63-83,85-86
+  s_e2020f334615fd::t_a39f6cf4f06b31 84
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-85
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-3,14,20,24-28,46,48-51,89,99-105
+  s_e2020f334615fd::t_4c77cb52e3ea3a 106-107
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-status.controller.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,81,304,324,379-421
+  s_e2020f334615fd::t_91031cf4c61d3b 422
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowCommands.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 123-126
+packages/cli/src/modules/agents/approval/decision-result.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-49
+packages/@n8n/api-types/src/knowledge/collections/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1521,1536,1631
+packages/cli/src/modules/skills/utils/skipped-files.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 45-81,89,99,109
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 53
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 16,81-85,87,94,100,120,123-127
+packages/@n8n/telemetry/src/__tests__/public-api-usage.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10-14,16,21
+packages/cli/src/services/import.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 367-368
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 38-42,50
+  s_e2020f334615fd::t_e47abf7fab7a92 51
+packages/frontend/@n8n/design-system/src/components/N8nTabs/reka-ui.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,5
+packages/@n8n/backend-services/src/services/workflow-project.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,7-19,43-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1479,1483,1499,1508,1519
+packages/cli/src/modules/instance-ai/instance-ai-skills.adapter.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 114-115
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AnsweredQuestions.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12-14,16,28-29
+packages/@n8n/api-types/src/dto/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 722-725
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 119,130,134-138,223-224,228,235,237-240,371-374,496-507,847-852,855-862,1044,1079-1088
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 256
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5-6,47-48,2893-2989
+.agents/review-rules/db-migrations/data-safety.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10-11,16-19,24-25,27,30-35
+packages/cli/src/modules/agents/agent-service-account.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 95-101
+scripts/experimental/rig/README.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-375
+packages/frontend/editor-ui/src/features/settings/context/components/DeleteCollectionDialog.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-129
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1259,1262
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25-26,100-103,120,124
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/Attachment/Attachment.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 167,228-231
+packages/@n8n/engine/src/queue/__tests__/redis-work-queues.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30,33-34,41,48,65-66,84-85,104-107,119-146,150-151
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-65
+packages/quality/testing/engine-parity/src/grammar/rules.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-52
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-472
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12,15,125-132,157,178,198,267-269,309-331,598-651,665
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,400-410,492-506,573-587
+packages/nodes-base/package.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 698-700,972
+packages/quality/testing/playwright/services/project-api-helper.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 124-138
+packages/@n8n/engine/src/queue/redis-work-queue.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25-26,70-72,104,120,123-125,150,157,170-173,175
+packages/cli/src/modules/promotions.ee/__tests__/promotion-credential-selection.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-91
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14-15,40-51,54-55,58-81,89-92,96-109,111-114,197,300-318,330-332,376-397
+packages/quality/testing/engine-parity/src/grammar/catalog/types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-40
+scripts/experimental/rig/src/services/runtime.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-144
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1378
+packages/@n8n/db/src/migrations/common/1795546358453-AddSkillFileEncoding.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-23
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/toolResultRenderers.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,18,107-116
+  s_e2020f334615fd::t_7e8892a83dc9ee 117-120
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,9-10,129-152
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-8
+packages/cli/src/modules/agents/agents.module.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11-12,51
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15-20,32,37-38,40-44
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-177
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,7,39-41,44,53-54,198-262,267,368,379-383,458-477,769
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,4,12,20-28,47-56,58-82,101-114
+packages/cli/test/integration/knowledge/knowledge-collections.api.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15,363-584
+.github/workflows/util-refresh-starter-scaffold.yml
+  s_e2020f334615fd::t_ea5bf23cdc95a2 56-57,60
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 40,140-143,253,284,331,343,378,392,405,418,431,464,545,568,593,610,626,724,744,786,1082,1099,1113,1129,1146,1163,1242,1267,1291,1337,1428,1441,1530,1545,1560,1575,1590,1648,1664,1676-1747,1780
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 182
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,5-6,374-453
+  s_e2020f334615fd::t_ec6d722c3cd1ff 454
+packages/cli/src/modules/agents/repositories/agent-hitl-workflow.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-99
+packages/cli/src/events/maps/relay.event-map.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1582-1587
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-97
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/Attachment/Attachment.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 291-296
+packages/quality/environments/AGENTS.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6-7
+.github/workflows/test-unit-reusable.yml
+  s_e2020f334615fd::t_ea5bf23cdc95a2 115-123
+packages/cli/src/modules/agents/repositories/agent-workflow-dependency.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 62-66,68-71
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,28-52
+  s_e2020f334615fd::t_8c8468eb7bb316 53-54
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 80-104
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25,101-175
+  s_e2020f334615fd::t_8ed36f0b5f9162 176
+packages/modules/promotions/frontend/src/promotionPreview.tree.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,51-84
+  s_e2020f334615fd::t_5ce6ebf0034a16 85
+packages/quality/testing/playwright/janitor.config.mjs
+  s_e2020f334615fd::t_ea5bf23cdc95a2 101-103
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,173-176,191-195
+  s_e2020f334615fd::t_7344ffa02e3b1a 196
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-267
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAssistantTestRunCard.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-163
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 87-88,142-143
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 46,289,496,536
+packages/cli/src/modules/skills/services/skill-runtime.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17,91,93,114-119,212,217,220
+scripts/experimental/rig/src/runtime/supervisor.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-445
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,58
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionModal.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 335-508
+packages/@n8n/expression-runtime/src/runtime/transfer-codec.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 9-11,31-34,38-40,43-45
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 27,53-54,91-96,130-133
+  s_e2020f334615fd::t_fd48753cd71efe 134-135
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 49,921-948,1114-1123,2502-2506,2591-2594,3339
+packages/frontend/editor-ui/src/app/components/ChatEmbedModal.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 33
+packages/cli/test/integration/commands/publish/workflow.reviews.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-148
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-81
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28,39,95,100-137
+packages/frontend/editor-ui/src/features/agents/utils/composer-attachments.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12-13
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-134
+packages/frontend/editor-ui/src/features/settings/context/skills.utils.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 126-133,140-143
+packages/cli/src/modules/agents/approval/workflow-caller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-10
+packages/@n8n/db/src/repositories/project-workflow-review-settings.repository.ee.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-66
+packages/quality/efficiency/microbenchmarks/benchmarks/expression-engine/fixtures/data.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 138-159
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 39
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 37
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 477-481,489,491,501
+packages/cli/src/modules/knowledge/repositories/knowledge-collection.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,107,135-164
+  s_e2020f334615fd::t_c53e8b54527189 165
+packages/cli/src/modules/agents/approval/__tests__/agent-hitl-channels.controller.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-44
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 73,160,519,651,694,699,1676,1684-1687
+packages/@n8n/instance-ai/docs/tools.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 113,1527,1531-1548,1559-1560,1563-1564,1688-1690,1724-1726
+  s_e2020f334615fd::t_07afc3c90c3eb8 1727
+packages/cli/src/modules/skills/utils/skill-preview.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28,34
+packages/cli/test/integration/commands/update/workflow.reviews.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-65
+packages/cli/src/modules/agents/__tests__/agent-document.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-6,38-118
+  s_e2020f334615fd::t_75d08f208d1baf 119
+scripts/experimental/rig/src/ui/status-line.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-80
+packages/cli/src/modules/agents/__tests__/agent-config-hash.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-71
+packages/cli/src/modules/agents/approval/__tests__/review-requester.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-53
+packages/cli/src/modules/agents/approval/approval-expiry.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-11
+packages/cli/test/integration/executions/poll-refusal-cursor.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-110
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 301
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-server.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 449-500
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3109,3117,5166,5263,5266-5267,5270-5288,5290-5291,5293-5294,5296,5298,5300-5324
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-43
+packages/frontend/editor-ui/src/Interface.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 19,881,884-885
+.github/workflows/util-notify-merge-queue-removal.yml
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,5
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-83
+packages/quality/testing/engine-parity/src/grammar/catalog/no-op.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-14
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 63,113,241,2247,2277-2283,2305-2311,2335-2341
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionModal.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,35,39,64,125-159,174-175,185-201,203-207,214-215,219,223-227,231-233,235,245-248,263-266,275-281,347,388-395
+packages/@n8n/code-runtime-js/src/__tests__/snapshot.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-3,6-9,12,16-17,24-45,47-58,60-63,65-66
+packages/workflow/test/ExpressionExtensions/object-extensions.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 35-44
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 371,647,685,701,735,975
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-61
+packages/cli/src/modules/token-exchange/database/repositories/token-exchange-jti.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,4,9-14,16-18,23-28,30,44-45,49,58,62,93-94,98,111,115
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-37
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 30,117,122-125,129-136,310,334-341,888-893,896-902,1282-1283,1285-1307
+  s_e2020f334615fd::t_60b44ed451ce2a 692-696
+packages/@n8n/expression-runtime/ARCHITECTURE.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 151-178
+.github/scripts/test-files.mjs
+  s_e2020f334615fd::t_ea5bf23cdc95a2 26-27
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionsTable.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,7-8,17-20,31-35,38-75,145-153,227-238,281-285
+packages/@n8n/db/src/migrations/common/1795534091000-CreateProjectWorkflowReviewSettingsTable.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-32
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 327-332,373,472-475,644
+scripts/experimental/rig/src/ui/prompt.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-153
+packages/cli/src/modules/engine-v2/__tests__/redis-work-queues.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 37-45
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunChangesNote.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-31
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 64,323-337,380-384,421-432
+packages/frontend/editor-ui/src/features/settings/context/components/DeleteCollectionDialog.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-168
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-hitl.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-25
+packages/nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.node.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-7
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 516,658-660
+packages/cli/src/modules/skills/utils/skill-update-review.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,23-25,59,61-62,66-85,101-113
+packages/cli/src/modules/agents/approval/__tests__/decision-result.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-144
+packages/nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-139
+packages/cli/src/commands/base-command.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 595-603
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,6,2042-2267
+  s_e2020f334615fd::t_5499cd704287b5 2268
+packages/cli/src/modules/mcp/__tests__/skill-tools.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 292-382,517-518,543
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 35,133
+packages/cli/src/node-catalog/module-gated-node-types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-5,10-19,30,40,42-49
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 227
+packages/frontend/editor-ui/src/features/agents/components/skillVersions/SkillVersionDiffView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 838,846,1078,1080,2110-2112,2121-2128,2189-2190,2194-2196,2204-2221,2658,2670,2807-2810,2836-2838
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14,37,72-81,96-103
+scripts/experimental/rig/src/commands/doctor.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-445
+packages/modules/promotions/frontend/src/promotionPreview.selection.groups.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-161
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-746
+packages/cli/src/modules/agents/utils/visit-agent-credential-references.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 46
+packages/quality/testing/engine-parity/src/grammar/catalog/conditions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-75
+scripts/experimental/rig/test/generated-files.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-90
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-trigger.svg
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-12
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 136-143,287-290
+scripts/experimental/rig/src/commands/clone.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-49
+scripts/experimental/rig/test/mail.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-97
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowCommands.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 26,313-346
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1050-1051,1056-1057,1085-1086
+packages/@n8n/api-types/src/schemas/ai-preference.schema.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15-17,19
+packages/@n8n/api-types/src/agents/dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,1075-1076
+packages/@n8n/expression-runtime/src/bridge/batch-read.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-296
+packages/cli/src/modules/skills/__tests__/test-utils/skill-services.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 21,49,76
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-feature-gate.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 35-45
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1192,1225,1230-1246,1500,1733
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,13,21-27,65-80,115-118,121,165-182,197,214,363,380,387-390,406-451,515-516,534,586-590
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHeader.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 79
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 17,714-788
+  s_e2020f334615fd::t_bba84c28600f1a 789
+packages/@n8n/backend-services/src/services/__tests__/workflow-project.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,7-15,35,52,83-111
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 163-168,198-205
+  s_e2020f334615fd::t_41e24149dcc4d8 206
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/skillFileLinks.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-27
+packages/@n8n/agents/src/sdk/tool.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20,52-55,139,151-153,158-161,180-183
+packages/frontend/editor-ui/src/features/settings/context/collections.store.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 16-17,27-28,173-211
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,44,70-72,102-127,130-160,163-174,272-275,292,297-314
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 29
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 169
+scripts/experimental/rig/tsconfig.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-12
+packages/nodes-base/nodes/N8n/shared/GenericFunctions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 20
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11-12,18,21,43-44,58-59,71-72,413-482
+  s_e2020f334615fd::t_97c57717b722a9 483-484
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,4276-4280,4447,4483-4484,4497-4499,4512-4520,6414-6415,7296-7300,7728-7733,9469-9477,9825-9828,9901-9921,10641-10644,10646,10649,10690-10691,11570-11571,11573,11587
+packages/cli/src/executions/__tests__/response-wait-tracker.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 143,148-159,163
+packages/cli/src/modules/skills/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 42-44,50
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,423,469-470,472-479,509-510
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3-12,17,48-58,82,85-91,137-147,152,157-170,190,193-200,211,217-235
+packages/cli/src/webhooks/__tests__/engine-v2-webhooks.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,32,45-79,173
+.github/test-metrics/e2e-impact-map.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 201-230
+  s_e2020f334615fd::t_8bdbed6e5818e8 199-200
+packages/cli/src/modules/knowledge/AGENTS.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,32
+  s_e2020f334615fd::t_9db9fc18ee746d 33
+packages/@n8n/expression-runtime/src/extensions/object-extensions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 24-27
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 49,74,159-163,171-173,177-182,184-189
+packages/@n8n/cli/src/client.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 14,241
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 94-175
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 444-535
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 225
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunButton.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-107
+packages/@n8n/cli/package.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 84
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageAttachments.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 51-59
+  s_e2020f334615fd::t_dd0d878db9723f 49-50
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantArtifactCard.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-40
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 35,154-163,185,190,194,245,254,259,266
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 221-222,1714-1726
+  s_e2020f334615fd::t_1fdc3ce53cd083 1727
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,11,66,69-92,104-123,215-216,240-242,439-443
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 65-72,80,101
+packages/quality/testing/engine-parity/oxlint.config.mts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-8
+packages/quality/testing/engine-parity/src/grammar/resolve.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-43
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2840-2841,2852-2854,2861,2883-2885,2909,3506-3525
+  s_e2020f334615fd::t_6acbb9648f4338 3526
+packages/nodes-base/nodes/N8n/v2/N8nV2.node.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 8
+packages/@n8n/engine/src/execution/wait-sweeper.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 25,41
+scripts/experimental/rig/src/commands/profile.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-112
+packages/@n8n/telemetry/src/events/public-api.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,8-9,12,17,22,40,45,48-52
+packages/cli/src/executions/response-wait-tracker.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 22-29,63,65,70
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 157
+packages/frontend/editor-ui/src/features/settings/context/components/CollectionsTable.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,6-8,34-47,60-67,196-263
+  s_e2020f334615fd::t_a02ec2d5dd20ab 264
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-251
+packages/cli/src/modules/skills/utils/skill-md.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,7,11,15-16,21-25,30-31,33,37,39-58,66,68,75,87-90
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 16,20,334-348,820-847
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceFilesView.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 13-16,23-27,67-68,70-71,74-75,172-173,183-192,195-198,354,365-374,389,548-550
+  s_e2020f334615fd::t_3cc8e5650c0433 551-552
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 221,231,489
+packages/quality/testing/engine-parity/src/grammar/catalog/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-38
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 18,498-526,2177-2195,2197
+  s_e2020f334615fd::t_97639657be33fa 2196,2198
+packages/quality/testing/engine-parity/tsconfig.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-15
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-97
+packages/@n8n/api-types/src/dto/workflow-reviews/update-project-workflow-review-settings.dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-11
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 10-15,17-22,38,45,53-59,63,81-85,91-195
+  s_e2020f334615fd::t_8de6a829cc060b 196
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 43,924-989
+  s_e2020f334615fd::t_d1ae3d402139b0 990
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 418-430
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7,109-250
+packages/@n8n/expression-runtime/src/bridge/__tests__/bridge-item-data.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-433
+scripts/experimental/rig/src/commands/lifecycle.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-452
+scripts/experimental/rig/test/runners.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-223
+scripts/experimental/rig/src/env-catalog/search.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-48
+.agents/review-rules/db-migrations/necessity-and-schema-design.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15-16
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4,14-16,44,50,58-59,64,67,69-70,94,98,103-104,131-132,134,143-145,156-158,202-226
+  s_e2020f334615fd::t_cb335eb31b4cef 227
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-608
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestRunToolsNotice.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-226
+scripts/experimental/rig/src/config/presets.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-30
+scripts/experimental/rig/src/runtime/session.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-721
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12,14,67-70,130-131,281-294
+  s_e2020f334615fd::t_368b7354b75b37 295
+scripts/experimental/rig/src/services/compose.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-394
+scripts/experimental/rig/src/commands/wizard.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-204
+scripts/experimental/rig/test/imports.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-63
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 498-516
+packages/frontend/editor-ui/src/features/agents/components/AgentAssistantTestRunCard.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-133
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 27-31,303,992-995,1081,1179,1578-1580,1605-1609,1904-1907,1977
+packages/cli/src/instance-settings-loader/__tests__/security-policy.instance-settings-loader.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,19,27-28,36,44-47,59,181-235
+  s_e2020f334615fd::t_523a10ddee2696 236
+packages/cli/src/modules/skills/__tests__/index.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 38
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 100-108,137,161,181,295,299,324,426,437,486,598,630,673
+packages/@n8n/instance-ai/src/tools/__tests__/skills.tool.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 169-232
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,8,16
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 351-358,1124-1129
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceFilesView.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 106-145
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1,9,12-16,19,33-34,36-55,61-62
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 18-22,95,131-135
+packages/@n8n/instance-ai/src/tools/skills.tool.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7-8,10,15,86,89,111-113,182-186,189,470-473
+  s_e2020f334615fd::t_02591af6f89b16 474
+packages/@n8n/instance-ai/src/tools/__tests__/agent-context.tool.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 49-65
+scripts/experimental/rig/src/config/global-config.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-147
+packages/@n8n/instance-ai/evaluations/README.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 44-67,80-86,812-813
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2241-2244
+  s_e2020f334615fd::t_74993cba1ffa6b 2240
+packages/cli/src/modules/skills/__tests__/skill-md.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 140-143,153-154,170-171,173-175,178-220,236-238,240,249,251-253,262,303,307
+scripts/experimental/rig/src/topology/validate.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-93
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-hitl.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-116
+packages/cli/src/commands/__tests__/engine.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 52,115-123,261,371,406
+packages/quality/environments/README.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5-6
+packages/quality/testing/engine-parity/src/grammar/catalog/triggers.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-15
+packages/quality/testing/playwright/janitor.config.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 360-362
+packages/frontend/editor-ui/src/features/agents/assistantTestRun.types.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-12
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useThinkingWords.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,16-45,51
+scripts/experimental/rig/src/env/resolve.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-302
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 266-274
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-8,27-33,38,678-1209
+  s_e2020f334615fd::t_0474cf5077404b 1210
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12
+packages/cli/src/public-api/__tests__/public-api-client.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 7
+scripts/experimental/rig/src/launcher/binary.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-257
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-535
+pnpm-workspace.yaml
+  s_e2020f334615fd::t_ea5bf23cdc95a2 55
+packages/cli/src/workflow-execute-additional-data.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 56,611-633,817-824
+packages/cli/src/wait-tracker.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 148-149,158,164,166,170,333-335
+packages/frontend/@n8n/stores/src/useRootStore.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1082-1092
+packages/cli/src/modules/skills/utils/skill-content-hash.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2,12,51-53
+packages/frontend/@n8n/design-system/src/components/N8nTabs/component-tabs.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-130
+packages/cli/src/modules/skills/__tests__/github-archive.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 51-98,109-112,119-120,159-160,168-169,176,194
+packages/quality/policy/code-health/src/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 77
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 37-40,87-93,141,205-219
+  s_e2020f334615fd::t_a61cc76657cfbe 220-221
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2477
+scripts/experimental/rig/src/cli.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-136
+packages/@n8n/engine/src/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-2
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 38-48,159-166,318-326,328-331,473-478
+packages/frontend/@n8n/design-system/src/components/N8nTabs/index.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 5,13
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 38,45,53-57,59-60,62-63,66-71,73-74,76,78-93,95-100,103-104,107-112,114,116-117,119,121-154,156,158-163,165-205,207,209-214,216-229,232-275,277-287,289,291-294,297-298,302,304-312,314-332,335-336,340-341,343-347,350,354-404,406,408-410,412-415,417-420,422-427,429-430,432,434-435,437-440,442-453,455,457-459,461-462,464,466-467,470-473,476,478-484,487-490,493,495-502,504-505,507,509-511,513-514,516,518-522,524-525,527,529-531,533-534,536,538-540,542-543,545,547-548,551-552,554-557,559-563,565-566,568-569,571-575,578-581,583-593,595-615,617-618,620-623,625-632,634-635,637-644,646-649,652-654,656-668,670-702,704-711,713-719,721-723,725-732,734-740,742-744,746-753,755-761,763-765,767-774,776-784,786-790,792-847,853,861,866-868,870,879,882,886,889-896,898-901,903-906,908-933
+scripts/experimental/rig/test/integrations.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-126
+packages/quality/efficiency/microbenchmarks/benchmarks/expression-engine/fixtures/pattern-benchmarks.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12,19,94-128
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 3,8,10-13,15-24,27-30,33-36,39-42
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-project-settings.controller.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-37
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 243
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactCardMetadata.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-17
+packages/quality/testing/engine-parity/src/grammar/catalog/split-out.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-24
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 28,32,38-41,62-64,235-257,450-452
+packages/frontend/editor-ui/src/features/agents/utils/skillFileLinks.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-77
+scripts/experimental/rig/test/dotenv.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-79
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 12,52,63-65
+packages/@n8n/engine/src/queue/redis-work-queues.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 18,31,46-51,57,65,73
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 275,278-279,359-421
+  s_e2020f334615fd::t_52fa9a59401232 422
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 4-5,10,18,98,101-105,131,140,147,162,173,189,239,258,346,368,382,401,439,461,469,477,487,499,508,518,531,553,562,565,586,618,634,645,655,675,695,702,708-709,714-722
+  s_e2020f334615fd::t_8248faec96aed1 723
+packages/cli/src/commands/publish/workflow.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 32
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 437,443,447-458,462,467-501,503
+  s_e2020f334615fd::t_8391fbed53885d 502,504
+packages/@n8n/code-runtime-js/src/snapshot.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 11,17
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_e2020f334615fd::t_ea5bf23cdc95a2 6,8
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1612-1615,1619-1623,1629,1641-1642,1652-1653
+packages/quality/testing/engine-parity/src/grammar/catalog/merge.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-21
+scripts/experimental/rig/src/commands/env.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-281
+scripts/experimental/rig/src/config/env-yaml.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-213
+packages/@n8n/api-types/src/knowledge/collections/update-knowledge-collection.dto.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-13
+packages/@n8n/instance-ai/evaluations/approval-judge/cases.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 2-4,6-13,33-34,37-39,41-61,63-73,75,80-148,152
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 350-351,362-367,395-396,449,497-501,516
+scripts/experimental/rig/src/env/managed.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-272
+.agents/skills/db-migrations/SKILL.md
+  s_e2020f334615fd::t_ea5bf23cdc95a2 46,126-129,131-135,164-165,295-307,327-336,343-347,442-453,603-616,632-644,714-725,779,783,785,836-837,844,846,883-898
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-121
+scripts/experimental/rig/src/runtime/logs.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-158
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 15-18,114
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_e2020f334615fd::t_ea5bf23cdc95a2 1-157
+docs/generated/postgres-schema/README.md
+  s_e2020f334615fd::t_5bc1221ab48a82 140,165,426,1853-1859,2095
+docs/generated/postgres-schema/public.ai_preference.md
+  s_e2020f334615fd::t_394606308e145c 12,21
+docs/generated/postgres-schema/public.project.md
+  s_e2020f334615fd::t_07ae72573d57bf 12,57,268-274
+docs/generated/postgres-schema/public.project_workflow_review_settings.md
+  s_e2020f334615fd::t_ca3a85ae2478c4 1-60
+docs/generated/postgres-schema/public.skill_file.md
+  s_e2020f334615fd::t_b770b3913dd471 9,22,43
+docs/generated/postgres-schema/public.skill_version.md
+  s_e2020f334615fd::t_d4aeed91145dc5 104
+docs/generated/sqlite-schema/README.md
+  s_e2020f334615fd::t_5d8b29c0cfc966 139,164,297-298,407,1834-1840,2076
+docs/generated/sqlite-schema/ai_preference.md
+  s_e2020f334615fd::t_4099223e4883fb 9,31-33,35
+docs/generated/sqlite-schema/project.md
+  s_e2020f334615fd::t_7b16bbdc4ac3b6 23,63,274-280
+docs/generated/sqlite-schema/project_workflow_review_settings.md
+  s_e2020f334615fd::t_5eabd1e73e67b2 1-67
+docs/generated/sqlite-schema/skill_file.md
+  s_e2020f334615fd::t_4bbab7d5fa08b5 9,20,50
+docs/generated/sqlite-schema/skill_version.md
+  s_e2020f334615fd::t_dc8f4d9642082c 107
+docs/generated/sqlite-schema/user.md
+  s_e2020f334615fd::t_4228d0033d9787 66
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_e2020f334615fd::t_a50d9b2a963ac5 9,44-46,411-415,457-464,1223-1225,1395,1400-1403,1435-1453,1506-1507,1509,1529,1540-1545,1549,1585-1586,1599,1603
+packages/cli/src/public-api/v1/handlers/ai-preferences/spec/paths/listAiPreferences.generated.yml
+  s_e2020f334615fd::t_c8b1c0f1d937f1 65
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_e2020f334615fd::t_3d194089e12aaf 39-45
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/activateWorkflow.generated.yml
+  s_e2020f334615fd::t_f35f0fa6065fdb 49
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  s_e2020f334615fd::t_2a98d3897c1be4 48
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_e2020f334615fd::t_d2b4ebe4fd7ddc 1143
+packages/cli/src/public-api/v1/shared/spec/schemas/aiPreferencePublicDto.generated.yml
+  s_e2020f334615fd::t_93d8eb90aa4bc9 26
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  s_e2020f334615fd::t_05f049726a2f5a 41
+pnpm-lock.yaml
+  s_e2020f334615fd::t_8eb428535ac758 488-490,2270-2272,7768-7770,7783-7785,9396-9398,10014-10056,10435-10483,15784,18422,27569,27573,27577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed5a61e9e7b36b98ed175a1cef4d87d954bb4b62",
+  "prompts": {},
+  "sessions": {
+    "s_e2020f334615fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e862a579-4717-46f7-bca2-e10eefeaf15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
