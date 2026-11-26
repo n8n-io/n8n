@@ -464,13 +464,14 @@ export class AgentValidationService {
 		);
 		for (const { skillId, tool } of unattached) {
 			const path = `skills.${skillId}.workflows.${tool.workflowId}`;
+			const workflow = workflowsByReference.get(tool.workflowId);
+			const isAvailable = workflow !== undefined && !workflow.isArchived;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'tool',
-				id: tool.workflow,
+				id: isAvailable ? workflow.name : tool.workflow,
 				toolType: 'workflow',
 			};
-			const workflow = workflowsByReference.get(tool.workflowId);
-			if (workflow && !workflow.isArchived) {
+			if (isAvailable) {
 				const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 				if (incompatibility) {
 					issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
