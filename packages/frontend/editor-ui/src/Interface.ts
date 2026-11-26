@@ -372,6 +372,7 @@ export type CredentialsResource = BaseResource & {
 	restrictionProject?: { id: string; type?: ProjectSharingData['type'] };
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	isRuntime?: boolean;
 	connectedByMe?: boolean;
 	connectedAccountIdentifier?: string;
 };

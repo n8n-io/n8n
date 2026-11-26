@@ -31,6 +31,8 @@ export interface ICredentialsResponse
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	/** Stub that gets its value from the incoming request at run time. Nothing is stored. */
+	isRuntime?: boolean;
 	usageScope?: 'project' | 'instance';
 	/**
 	 * How this credential reaches the workflow being edited: `project` when the

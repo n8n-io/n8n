@@ -1138,6 +1138,34 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	describe('run-time credentials', () => {
+		it('should label run-time stubs in the dropdown', async () => {
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ isRuntime: true }),
+			};
+
+			renderComponent();
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(screen.getByTestId('credential-option-runtime-badge')).toBeInTheDocument();
+			expect(screen.getByText('Provided at run time')).toBeInTheDocument();
+		});
+
+		it('should not label regular credentials', async () => {
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ isRuntime: false }),
+			};
+
+			renderComponent();
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(screen.queryByTestId('credential-option-runtime-badge')).not.toBeInTheDocument();
+			expect(screen.queryByText('Provided at run time')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('resolvable credentials', () => {
 		const resolvableCredential = createCredential({
 			name: 'OpenAi account 2',
