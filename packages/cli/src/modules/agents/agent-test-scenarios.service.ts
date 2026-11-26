@@ -1,4 +1,4 @@
-import type { Agent } from '@n8n/agents';
+import type { Agent, FetchFn } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	MANAGED_CREDENTIAL_TOKEN,
@@ -7,6 +7,7 @@ import {
 	type GenerateAgentTestScenariosResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, OperationalError, UserError } from '@n8n/errors';
@@ -15,8 +16,10 @@ import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from './agent-config.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
@@ -126,6 +129,8 @@ export class AgentTestScenariosService {
 		private readonly logger: Logger,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly credentialsService: CredentialsService,
+		private readonly agentsSettingsService: AgentsSettingsService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/**
@@ -138,6 +143,8 @@ export class AgentTestScenariosService {
 		agentId: string,
 		options: { previousScenarios?: string[] } = {},
 	): Promise<GenerateAgentTestScenariosResponse> {
+		await this.agentsSettingsService.assertEnabledFor(agentId);
+
 		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to access this agent draft.');
 		}
@@ -148,11 +155,21 @@ export class AgentTestScenariosService {
 			throw new UserError('Add instructions to this agent before generating test scenarios.');
 		}
 
-		const modelConfig = await this.resolveAgentModel(config, projectId, user);
+		const { modelConfig, modelFetch } = await this.resolveAgentModel(
+			config,
+			projectId,
+			user,
+			agentId,
+		);
 		const previousScenarios = options.previousScenarios ?? [];
 		const userPrompt = buildUserPrompt(config, previousScenarios);
 
-		const scenarios = await this.invokeModel(modelConfig, userPrompt, previousScenarios);
+		const scenarios = await this.invokeModel(
+			modelConfig,
+			modelFetch,
+			userPrompt,
+			previousScenarios,
+		);
 
 		this.logger.debug('Generated test chat scenarios', {
 			agentId,
@@ -162,7 +179,12 @@ export class AgentTestScenariosService {
 		return { scenarios };
 	}
 
-	private async resolveAgentModel(config: AgentJsonConfig, projectId: string, user: User) {
+	private async resolveAgentModel(
+		config: AgentJsonConfig,
+		projectId: string,
+		user: User,
+		agentId: string,
+	) {
 		const { model, credential } = config;
 
 		if (!model || !credential || credential === MANAGED_CREDENTIAL_TOKEN) {
@@ -182,9 +204,19 @@ export class AgentTestScenariosService {
 			this.credentialsService,
 			projectId,
 			user,
+			agentId,
 		);
 
-		return await resolveCredentialAwareModelConfig(model, credential, credentialProvider);
+		const modelConfig = await resolveCredentialAwareModelConfig(
+			model,
+			credential,
+			credentialProvider,
+		);
+		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+		const modelFetch =
+			credentialProvider.createAiGatewayTokenRefreshFetch?.(aiProxyFetch) ?? aiProxyFetch;
+
+		return { modelConfig, modelFetch };
 	}
 
 	/**
@@ -194,6 +226,7 @@ export class AgentTestScenariosService {
 	 */
 	private async invokeModel(
 		modelConfig: Awaited<ReturnType<typeof resolveCredentialAwareModelConfig>>,
+		modelFetch: FetchFn,
 		userPrompt: string,
 		previousScenarios: string[],
 	): Promise<string[]> {
@@ -201,6 +234,7 @@ export class AgentTestScenariosService {
 
 		const agent: Agent = new Agent('agent-test-scenarios')
 			.model(modelConfig)
+			.modelFetch(modelFetch)
 			.instructions(TEST_SCENARIOS_SYSTEM_PROMPT)
 			.structuredOutput(generatedTestScenariosSchema);
 

@@ -19,7 +19,8 @@ function makeLocalConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonCon
 	};
 }
 
-const { sendMessageFromOutsideMock } = vi.hoisted(() => ({
+const { sendHostMessageMock, sendMessageFromOutsideMock } = vi.hoisted(() => ({
+	sendHostMessageMock: vi.fn(),
 	sendMessageFromOutsideMock: vi.fn(),
 }));
 
@@ -30,6 +31,7 @@ const AgentChatPanelStub = defineComponent({
 			focusInput: vi.fn(),
 			getConversationMarkdown: vi.fn().mockResolvedValue(''),
 			clearBudgetStops: vi.fn(),
+			sendHostMessage: sendHostMessageMock,
 			sendMessageFromOutside: sendMessageFromOutsideMock,
 		});
 
@@ -86,16 +88,23 @@ describe('AgentTestChatPage', () => {
 		expect(wrapper.find('[data-testid="scenarios-empty-state-stub"]').exists()).toBe(false);
 	});
 
-	it('renders the suggested scenarios empty state and sends selected scenarios when enabled', async () => {
+	it('renders the suggested scenarios empty state and sends selected scenarios via sendHostMessage', async () => {
+		const beforeSend = vi.fn();
+		const beforeGenerate = vi.fn();
 		const wrapper = mountPage({
 			showTestScenarios: true,
 			localConfig: makeLocalConfig(),
+			beforeSend,
+			beforeGenerate,
 		});
 
-		expect(wrapper.find('[data-testid="scenarios-empty-state-stub"]').exists()).toBe(true);
+		const emptyState = wrapper.findComponent(AgentTestScenariosEmptyStateStub);
+		expect(emptyState.exists()).toBe(true);
+		expect(emptyState.props('beforeGenerate')).toBe(beforeGenerate);
 
 		await wrapper.get('[data-testid="trigger-select"]').trigger('click');
-		expect(sendMessageFromOutsideMock).toHaveBeenCalledExactlyOnceWith('Run scenario 1');
+		expect(sendHostMessageMock).toHaveBeenCalledExactlyOnceWith('Run scenario 1');
+		expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
 	});
 
 	it('renders the suggested scenarios empty state for Gateway credits credentials', () => {

@@ -4,22 +4,37 @@ import {
 	MANAGED_CREDENTIAL_TOKEN,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { ForbiddenError, OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentConfigService } from '../agent-config.service';
+import type { AgentsSettingsService } from '../agents-settings.service';
 import { AgentTestScenariosService } from '../agent-test-scenarios.service';
 
-const { generateMock, agentModelMock, agentInstructionsMock, userHasScopesMock, resolveModelMock } =
-	vi.hoisted(() => ({
-		generateMock: vi.fn(),
-		agentModelMock: vi.fn(),
-		agentInstructionsMock: vi.fn(),
-		userHasScopesMock: vi.fn(),
-		resolveModelMock: vi.fn(),
-	}));
+const {
+	generateMock,
+	agentModelMock,
+	agentModelFetchMock,
+	agentInstructionsMock,
+	userHasScopesMock,
+	resolveModelMock,
+	createAiProxyFetchMock,
+	createAgentCredentialProviderMock,
+	createAiGatewayTokenRefreshFetchMock,
+} = vi.hoisted(() => ({
+	generateMock: vi.fn(),
+	agentModelMock: vi.fn(),
+	agentModelFetchMock: vi.fn(),
+	agentInstructionsMock: vi.fn(),
+	userHasScopesMock: vi.fn(),
+	resolveModelMock: vi.fn(),
+	createAiProxyFetchMock: vi.fn(),
+	createAgentCredentialProviderMock: vi.fn(),
+	createAiGatewayTokenRefreshFetchMock: vi.fn(),
+}));
 
 vi.mock('@n8n/agents', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/agents')>();
@@ -27,6 +42,11 @@ vi.mock('@n8n/agents', async (importOriginal) => {
 	class FakeAgent {
 		model(modelConfig: unknown) {
 			agentModelMock(modelConfig);
+			return this;
+		}
+
+		modelFetch(fetchFn: unknown) {
+			agentModelFetchMock(fetchFn);
 			return this;
 		}
 
@@ -54,8 +74,16 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: (...args: unknown[]) => userHasScopesMock(...args),
 }));
 
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: (...args: unknown[]) => createAiProxyFetchMock(...args),
+}));
+
 vi.mock('../json-config/model-config', () => ({
 	resolveCredentialAwareModelConfig: (...args: unknown[]) => resolveModelMock(...args),
+}));
+
+vi.mock('../utils/agent-credential-provider', () => ({
+	createAgentCredentialProvider: (...args: unknown[]) => createAgentCredentialProviderMock(...args),
 }));
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -83,26 +111,39 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 function makeService() {
 	const agentConfigService = mock<AgentConfigService>();
 	const credentialsService = mock<CredentialsService>();
+	const agentsSettingsService = mock<AgentsSettingsService>();
+	const outboundHttp = mock<OutboundHttp>();
+	agentsSettingsService.assertEnabledFor.mockResolvedValue(undefined);
 	const service = new AgentTestScenariosService(
 		mockLogger(),
 		agentConfigService,
 		credentialsService,
+		agentsSettingsService,
+		outboundHttp,
 	);
 
-	return { service, agentConfigService, credentialsService };
+	return { service, agentConfigService, credentialsService, agentsSettingsService, outboundHttp };
 }
 
 const user = mock<User>({ id: 'user-1' });
+const guardedFetch = vi.fn();
+const wrappedFetch = vi.fn();
 
 describe('AgentTestScenariosService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
 		resolveModelMock.mockResolvedValue({ id: 'openai/gpt-4.1', apiKey: 'test-key' });
+		createAiProxyFetchMock.mockReturnValue(guardedFetch);
+		createAiGatewayTokenRefreshFetchMock.mockReturnValue(wrappedFetch);
+		createAgentCredentialProviderMock.mockReturnValue({
+			createAiGatewayTokenRefreshFetch: createAiGatewayTokenRefreshFetchMock,
+		});
 	});
 
 	it('generates four trimmed scenarios from the agent instructions and tools', async () => {
-		const { service, agentConfigService } = makeService();
+		const { service, agentConfigService, credentialsService, agentsSettingsService, outboundHttp } =
+			makeService();
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
 		generateMock.mockResolvedValue({
 			structuredOutput: {
@@ -126,11 +167,21 @@ describe('AgentTestScenariosService', () => {
 				'Which tickets has nobody replied to yet?',
 			],
 		});
+		expect(agentsSettingsService.assertEnabledFor).toHaveBeenCalledWith('agent-1');
 		expect(agentConfigService.getConfig).toHaveBeenCalledWith('agent-1', 'project-1');
 		expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:read'], false, {
 			projectId: 'project-1',
 		});
+		expect(createAgentCredentialProviderMock).toHaveBeenCalledWith(
+			credentialsService,
+			'project-1',
+			user,
+			'agent-1',
+		);
+		expect(createAiProxyFetchMock).toHaveBeenCalledWith(outboundHttp);
+		expect(createAiGatewayTokenRefreshFetchMock).toHaveBeenCalledWith(guardedFetch);
 		expect(agentModelMock).toHaveBeenCalledWith({ id: 'openai/gpt-4.1', apiKey: 'test-key' });
+		expect(agentModelFetchMock).toHaveBeenCalledWith(wrappedFetch);
 		expect(agentInstructionsMock).toHaveBeenCalledWith(
 			expect.stringContaining('Generate up to 4 short, natural user messages'),
 		);
@@ -310,6 +361,20 @@ describe('AgentTestScenariosService', () => {
 			OperationalError,
 		);
 		expect(generateMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('rejects requests when Agents are disabled by admin settings', async () => {
+		const { service, agentConfigService, agentsSettingsService } = makeService();
+		agentsSettingsService.assertEnabledFor.mockRejectedValueOnce(
+			new ForbiddenError('Agents are disabled on this instance.'),
+		);
+
+		await expect(service.generateTestScenarios(user, 'project-1', 'agent-1')).rejects.toThrow(
+			ForbiddenError,
+		);
+		expect(userHasScopesMock).not.toHaveBeenCalled();
+		expect(agentConfigService.getConfig).not.toHaveBeenCalled();
+		expect(generateMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects users without agent:read access to the project', async () => {

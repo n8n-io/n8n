@@ -63,6 +63,7 @@ const props = withDefaults(
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
+		beforeGenerate?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
@@ -346,6 +347,7 @@ defineExpose({ clearBudgetStops });
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
+				:before-generate="props.beforeGenerate"
 				:budget-cards="props.budgetCards"
 				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"

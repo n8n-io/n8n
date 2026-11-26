@@ -2051,6 +2051,11 @@ async function beforePreviewSend() {
 	}
 }
 
+async function beforeTestScenariosGenerate() {
+	await flushAutosave();
+	await ensureAgentPersisted();
+}
+
 /**
  * Raises a budget cap from a preview notice card. The card stays up (and
  * keeps blocking Send) until the new cap is persisted: a failed save must
@@ -3717,6 +3722,7 @@ useKeybindings({
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
+					:before-generate="beforeTestScenariosGenerate"
 					budget-cards
 					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
@@ -3871,6 +3877,7 @@ useKeybindings({
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 							:before-send="beforePreviewSend"
+							:before-generate="beforeTestScenariosGenerate"
 							budget-cards
 							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 							@view-trace="viewPreviewTrace"

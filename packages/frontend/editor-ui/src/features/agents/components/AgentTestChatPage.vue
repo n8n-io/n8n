@@ -35,6 +35,7 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
+		beforeGenerate?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
@@ -44,6 +45,7 @@ const props = withDefaults(
 		visible: true,
 		newSession: false,
 		showTestScenarios: false,
+		beforeGenerate: undefined,
 		layout: 'dock',
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
@@ -80,7 +82,7 @@ function onFirstUserMessage(text: string | undefined) {
 }
 
 function onSelectTestScenario(prompt: string) {
-	chatPanel.value?.sendMessageFromOutside(prompt);
+	void chatPanel.value?.sendHostMessage(prompt);
 }
 
 function focusInput(options?: FocusOptions) {
@@ -149,7 +151,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 					<AgentTestScenariosEmptyState
 						:project-id="projectId"
 						:agent-id="agentId"
-						:before-generate="beforeSend"
+						:before-generate="beforeGenerate"
 						@select="onSelectTestScenario"
 					/>
 				</template>
