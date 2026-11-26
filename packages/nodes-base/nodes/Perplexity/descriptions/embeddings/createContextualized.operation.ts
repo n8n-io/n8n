@@ -28,7 +28,7 @@ const properties: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'input',
-				value: '={{ JSON.parse($value) }}',
+				value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 			},
 		},
 	},
