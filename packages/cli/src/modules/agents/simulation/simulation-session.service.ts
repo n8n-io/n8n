@@ -2,12 +2,13 @@ import { createHash } from 'node:crypto';
 
 import type { AgentJsonConfig, ToolTestCapability } from '@n8n/api-types';
 import { AI_GATEWAY_MANAGED_TAG, isCredentialAgentIntegration } from '@n8n/api-types';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, TelemetryProxy } from '@n8n/backend-services';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { Time } from '@n8n/constants';
 import { nodeNameToToolName } from 'n8n-workflow';
@@ -27,6 +28,7 @@ import { instrumentedRunGap } from '../tools/instrumented-run-guard';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import { nodeSimulationGap } from './non-http-node-types';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
+import { countBy, noBlockedReasons, telemetryBackend } from './safe-testing-telemetry';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
 import type { SimulatedAgent, SimulatedTool, SimulationWorld } from './tool-simulation.contracts';
@@ -69,6 +71,7 @@ export class SimulationSessionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrations: ChatIntegrationRegistry,
 		private readonly credentialsFinder: CredentialsFinderService,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	/** Returns the active simulation session bound to this owner, project, agent, and test chat. */
@@ -282,6 +285,7 @@ export class SimulationSessionService {
 				if (!(await this.threadRepository.markTestChat(input.testChatId))) {
 					throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
 				}
+				if (!entry.marked) this.trackTestRunStarted(input, world, capabilities);
 				entry.marked = true;
 			},
 		});
@@ -293,6 +297,26 @@ export class SimulationSessionService {
 		};
 		this.sessions.set(sessionKey(input), entry);
 		return session;
+	}
+
+	private trackTestRunStarted(
+		input: OpenSimulationInput,
+		world: SimulationWorld | undefined,
+		capabilities: ToolTestCapability[],
+	): void {
+		const blockedReasons = capabilities.flatMap((tool) =>
+			tool.testability === 'blocked' ? [tool.reason] : [],
+		);
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_STARTED, {
+			agent_id: input.agentId,
+			project_id: input.projectId,
+			user_id: input.user.id,
+			backend: telemetryBackend(world?.backend),
+			world_opened: world !== undefined,
+			simulated_tool_count: capabilities.length - blockedReasons.length,
+			blocked_tool_count: blockedReasons.length,
+			blocked_tools_by_reason: countBy(noBlockedReasons(), blockedReasons),
+		});
 	}
 
 	/** Testability of each tool, before the run starts. */

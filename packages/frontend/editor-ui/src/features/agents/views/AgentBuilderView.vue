@@ -3759,6 +3759,7 @@ useKeybindings({
 					</template>
 					<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
 						<AgentHeldActionsTray
+							:agent-id="agentId"
 							:actions="extractHeldActions(toolCalls)"
 							:committed="heldActionsState.committedByReply.value[groupId]"
 							:busy="heldActionsState.committingReplyId.value === groupId"
@@ -3939,6 +3940,7 @@ useKeybindings({
 							</template>
 							<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
 								<AgentHeldActionsTray
+									:agent-id="agentId"
 									:actions="extractHeldActions(toolCalls)"
 									:committed="heldActionsState.committedByReply.value[groupId]"
 									:busy="heldActionsState.committingReplyId.value === groupId"

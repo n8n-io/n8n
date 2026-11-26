@@ -1,6 +1,6 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, TelemetryProxy } from '@n8n/backend-services';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -143,6 +143,7 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 		workflowRepository,
 		chatIntegrations,
 		credentialsFinder,
+		mock<TelemetryProxy>(),
 	);
 
 	const owner = mock<User>({ id: 'user-1' });

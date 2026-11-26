@@ -1,13 +1,16 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { AgentTestRunCommitActionResult, AgentTestRunCommitResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { redactText } from '@n8n/utils/redaction/redact-text';
 
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { countBy, telemetryBackend } from './safe-testing-telemetry';
 import type { HeldActionDescriptor } from './simulation-session';
 import { SimulationSessionService } from './simulation-session.service';
 
@@ -43,6 +46,7 @@ export class HeldActionCommitService {
 		private readonly logger: Logger,
 		private readonly simulationSessions: SimulationSessionService,
 		private readonly runtimeCache: AgentRuntimeCacheService,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async commitHeldActions(input: CommitHeldActionsInput): Promise<AgentTestRunCommitResponse> {
@@ -173,12 +177,25 @@ export class HeldActionCommitService {
 			}
 		}
 
-		return {
-			committedAt,
-			results: results.filter(
-				(result): result is AgentTestRunCommitActionResult => result !== undefined,
-			),
-		};
+		const done = results.filter(
+			(result): result is AgentTestRunCommitActionResult => result !== undefined,
+		);
+		const counts = countBy(
+			{ done: 0, failed: 0, already_committed: 0 },
+			done.map((result) => result.status),
+		);
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_RAN_HELD_AGENT_ACTIONS, {
+			agent_id: input.agentId,
+			project_id: input.projectId,
+			user_id: input.user.id,
+			backend: telemetryBackend(session.backend),
+			requested_count: input.actionIds.length,
+			done_count: counts.done,
+			failed_count: counts.failed,
+			already_committed_count: counts.already_committed,
+		});
+
+		return { committedAt, results: done };
 	}
 }
 

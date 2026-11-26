@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
+import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import type {
 	AgentTestRunCommitResponse,
 	AgentTestRunCommitResult,
@@ -26,6 +27,7 @@ import {
 
 const props = withDefaults(
 	defineProps<{
+		agentId: string;
 		actions: AgentHeldAction[];
 		committed?: AgentTestRunCommitResponse;
 		busy?: boolean;
@@ -44,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 const expanded = ref(Boolean(props.committed));
 const expandedActionIds = ref<Record<string, boolean>>({});
 
@@ -57,6 +60,21 @@ const appIconActions = computed<AgentHeldAction[]>(() => {
 		return true;
 	});
 });
+
+// Fires once, when the reply has all its held actions and they have not run.
+let shownTracked = false;
+watch(
+	() => props.actions.length > 0 && !props.runDisabled && !props.committed,
+	(shown) => {
+		if (!shown || shownTracked) return;
+		shownTracked = true;
+		agentTelemetry.trackHeldActionsShown({
+			agentId: props.agentId,
+			actionCount: props.actions.length,
+		});
+	},
+	{ immediate: true },
+);
 
 // The result of a run shows without another click.
 watch(
@@ -124,6 +142,7 @@ const doneSummaryText = computed(() =>
 
 function setActionPreviewOpen(actionId: string, open: boolean) {
 	expandedActionIds.value = { ...expandedActionIds.value, [actionId]: open };
+	if (open) agentTelemetry.trackOpenedHeldActionPreview({ agentId: props.agentId });
 }
 
 function actionStatus(actionId: string) {
@@ -132,6 +151,10 @@ function actionStatus(actionId: string) {
 
 function onRunClick() {
 	if (props.busy || props.runDisabled || props.committed) return;
+	agentTelemetry.trackClickedRunHeldActions({
+		agentId: props.agentId,
+		actionCount: props.actions.length,
+	});
 	emit('run-actions', props.actions);
 }
 </script>

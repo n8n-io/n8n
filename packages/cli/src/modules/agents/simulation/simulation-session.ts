@@ -186,6 +186,8 @@ export class SimulationSession {
 
 	private readonly committingActions = new Set<string>();
 
+	private admittedTurnCount = 0;
+
 	constructor(init: SimulationSessionInit) {
 		this.testChatId = init.testChatId;
 		this.world = init.world;
@@ -200,6 +202,12 @@ export class SimulationSession {
 	/** Store that this chat is a test chat before the turn runs, so a later turn never runs live. */
 	async markTestChat(): Promise<void> {
 		await this.markTestChatFn?.();
+		this.admittedTurnCount++;
+	}
+
+	/** The number of turns that stored the marker. A turn that fails before that never ran. */
+	admittedTurns(): number {
+		return this.admittedTurnCount;
 	}
 
 	get runtimeCacheKey(): string {
