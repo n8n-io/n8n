@@ -658,6 +658,7 @@ export class ScalingService {
 						msg.sessionId,
 						msg.messageId,
 						msg.response,
+						msg.toolName,
 					);
 					break;
 				default:
@@ -739,6 +740,7 @@ export class ScalingService {
 		sessionId: string,
 		messageId: string,
 		response: unknown,
+		toolName?: string,
 	): Promise<void> {
 		try {
 			if (mcpType === 'service') {
@@ -787,7 +789,7 @@ export class ScalingService {
 						context: { executionId },
 					});
 
-					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult);
+					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult, toolName);
 				}
 			}
 		} catch (error) {

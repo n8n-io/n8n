@@ -3,10 +3,14 @@ import { decodeHostValue, isHostData } from './transfer-codec';
 import {
 	arrayFrom,
 	defineProperty,
+	getOwnPropertyDescriptor,
 	hasOwn,
 	isArray as isArrayValue,
+	isExtensible,
 	isInteger,
+	isPrototypeOf,
 	objectCreate,
+	reflectApply,
 } from './intrinsics';
 import { isArrayIndexKey, isKeyOf } from './utils';
 
@@ -17,7 +21,7 @@ import { isArrayIndexKey, isKeyOf } from './utils';
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
 
 // ---------------------------------------------------------------------------
-// Proxy registry — used only for testing/introspection, not accessible from
+// Proxy registry — read by the runtime and by tests, not accessible from
 // expression code. Avoids shadowing user data keys like __isProxy / __path.
 // ---------------------------------------------------------------------------
 const proxyPaths = new WeakMap<object, string[]>();
@@ -224,6 +228,24 @@ interface ArrayMetadata {
 	__length: number;
 }
 
+/** A boxed primitive with the own field keys it holds on the host. */
+export interface BoxedMetadata {
+	__isBoxed: true;
+	__value: object;
+	__keys: string[];
+	__hiddenKeys?: string[];
+}
+
+export function isBoxedMetadata(value: unknown): value is BoxedMetadata {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		hasOwn(value, '__isBoxed') &&
+		'__isBoxed' in value &&
+		value.__isBoxed === true
+	);
+}
+
 export function isObjectMetadata(value: unknown): value is ObjectMetadata {
 	return (
 		typeof value === 'object' &&
@@ -287,6 +309,121 @@ export function getProxyPath(obj: object): string[] | undefined {
  */
 export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; length: number };
 
+export interface LazyProxyCallbacks {
+	getValueAtPath: (path: string[]) => unknown;
+	getArrayElement: (path: string[], index: number) => unknown;
+	readBatch: ReadBatch;
+}
+
+function defineOwnDataField(target: object, key: string, value: unknown, enumerable = true): void {
+	defineProperty(target, key, {
+		value,
+		writable: true,
+		enumerable,
+		configurable: true,
+	});
+}
+
+function isObjectLike(value: unknown): value is object {
+	return (typeof value === 'object' && value !== null) || typeof value === 'function';
+}
+
+function materializeHostValue(
+	basePath: string[],
+	propOrIdx: string,
+	value: unknown,
+	callbacks: LazyProxyCallbacks,
+	childTrace?: ReadTrace,
+): unknown {
+	if (value === undefined || value === null) return value;
+	throwIfErrorSentinel(value);
+	// `path = [...basePath, propOrIdx]` is built only inside the branches
+	// that actually use it, so non-metadata objects don't pay for the spread.
+	if (isArrayMetadata(value)) {
+		const path = [...basePath, propOrIdx];
+		return createDeepLazyProxy(
+			path,
+			{ kind: 'array', length: value.__length },
+			callbacks,
+			childTrace,
+		);
+	}
+	if (isObjectMetadata(value)) {
+		const path = [...basePath, propOrIdx];
+		return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks, childTrace);
+	}
+	if (isBoxedMetadata(value)) {
+		return createLazyBoxedPrimitive([...basePath, propOrIdx], value, callbacks);
+	}
+	// Decoded data can hold the same keys as metadata or callback errors.
+	return decodeHostValue(value);
+}
+
+function defineLazyBoxedField(
+	target: object,
+	path: string[],
+	key: string,
+	enumerable: boolean,
+	callbacks: LazyProxyCallbacks,
+): void {
+	let resolved: unknown;
+	let isResolved = false;
+
+	defineProperty(target, key, {
+		enumerable,
+		configurable: true,
+		get() {
+			if (!isResolved) {
+				resolved = materializeHostValue(
+					path,
+					key,
+					callbacks.getValueAtPath([...path, key]),
+					callbacks,
+				);
+				isResolved = true;
+				if (getOwnPropertyDescriptor(target, key)?.configurable) {
+					defineOwnDataField(target, key, resolved, enumerable);
+				}
+			}
+			return resolved;
+		},
+		set(this: unknown, next: unknown) {
+			if (this === target) {
+				if (getOwnPropertyDescriptor(target, key)?.configurable) {
+					resolved = next;
+					isResolved = true;
+					defineOwnDataField(target, key, next, enumerable);
+				}
+			} else if (
+				isObjectLike(this) &&
+				isExtensible(this) &&
+				reflectApply(isPrototypeOf, target, [this])
+			) {
+				defineOwnDataField(this, key, next);
+			}
+		},
+	});
+}
+
+/** Give the boxed primitive that the host sent, with its own fields resolved on access. */
+export function createLazyBoxedPrimitive(
+	path: string[],
+	boxed: BoxedMetadata,
+	callbacks: LazyProxyCallbacks,
+): object {
+	const target = boxed.__value;
+	for (let i = 0; i < boxed.__keys.length; i++) {
+		defineLazyBoxedField(target, path, boxed.__keys[i], true, callbacks);
+	}
+	const hiddenKeys = boxed.__hiddenKeys;
+	if (hiddenKeys !== undefined) {
+		for (let i = 0; i < hiddenKeys.length; i++) {
+			defineLazyBoxedField(target, path, hiddenKeys[i], false, callbacks);
+		}
+	}
+	return target;
+}
+
 /**
  * Creates a deep lazy-loading proxy for workflow data.
  *
@@ -315,19 +452,16 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
 export function createDeepLazyProxy(
 	basePath: string[] = [],
 	meta?: ProxyMeta,
-	callbacks?: {
-		getValueAtPath: any;
-		getArrayElement: any;
-		readBatch: ReadBatch;
-	},
+	callbacks?: LazyProxyCallbacks,
 	trace: ReadTrace = { bulk: false },
 	firstFields?: Record<string, unknown>,
 ): Record<string | symbol, unknown> {
 	if (!callbacks) {
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
 	}
-	const { getValueAtPath, getArrayElement } = callbacks;
-	const batchRead = batchReadOf(basePath, callbacks);
+	const resolvedCallbacks = callbacks;
+	const { getValueAtPath, getArrayElement } = resolvedCallbacks;
+	const batchRead = batchReadOf(basePath, resolvedCallbacks);
 
 	const isArray = meta?.kind === 'array';
 	const arrayLength = isArray ? meta.length : 0;
@@ -367,30 +501,7 @@ export function createDeepLazyProxy(
 		value: unknown,
 		childTrace?: ReadTrace,
 	): unknown {
-		if (value === undefined || value === null) return value;
-		throwIfErrorSentinel(value);
-		// `path = [...basePath, propOrIdx]` is built only inside the two branches
-		// that actually use it, so non-metadata objects don't pay for the spread.
-		if (isArrayMetadata(value)) {
-			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(
-				path,
-				{ kind: 'array', length: value.__length },
-				callbacks,
-				childTrace,
-			);
-		}
-		if (isObjectMetadata(value)) {
-			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(
-				path,
-				{ kind: 'object', keys: value.__keys },
-				callbacks,
-				childTrace,
-			);
-		}
-		// Decoded data can hold the same keys as metadata or callback errors.
-		return decodeHostValue(value);
+		return materializeHostValue(basePath, propOrIdx, value, resolvedCallbacks, childTrace);
 	}
 
 	const target: object = isArray ? [] : {};

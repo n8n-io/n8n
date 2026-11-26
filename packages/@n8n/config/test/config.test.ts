@@ -554,7 +554,9 @@ describe('GlobalConfig', () => {
 			ownerSettleSeconds: 300,
 		},
 		leases: {
-			enabled: false,
+			leaseSeconds: 20,
+			renewSeconds: 5,
+			marginSeconds: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -758,6 +760,8 @@ describe('GlobalConfig', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			workflowReviewsEnabled: false,
+			workflowReviewsAlwaysRequired: false,
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
@@ -892,6 +896,8 @@ describe('GlobalConfig', () => {
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
+			N8N_WORKFLOW_REVIEWS_ENABLED: 'true',
+			N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED: 'true',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -952,6 +958,11 @@ describe('GlobalConfig', () => {
 				...agentDefaults,
 				sandboxEphemeral: true,
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
+			},
+			instanceSettingsLoader: {
+				...defaultConfig.instanceSettingsLoader,
+				workflowReviewsEnabled: true,
+				workflowReviewsAlwaysRequired: true,
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();

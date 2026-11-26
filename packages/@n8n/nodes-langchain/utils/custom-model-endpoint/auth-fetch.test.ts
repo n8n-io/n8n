@@ -42,7 +42,7 @@ function authFetchFor(
 		credential?: ICredentialDataDecryptedObject;
 		egressFilter?: NodeEgressFilter;
 		responses?: Response[];
-		requestHeaders?: Record<string, string>;
+		contextHeaders?: Record<string, string>;
 	} = {},
 ) {
 	const { calls, fetchImpl } = recordingFetch(overrides.responses);
@@ -50,7 +50,7 @@ function authFetchFor(
 		endpoint,
 		egressFilter: overrides.egressFilter ?? allowAll,
 		baseFetch: fetchImpl,
-		requestHeaders: overrides.requestHeaders,
+		contextHeaders: overrides.contextHeaders,
 	});
 	return { calls, authFetch };
 }
@@ -97,7 +97,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 			{ type: 'header', name: 'X-Api-Key', prefix: 'Token', key: 'secret' },
 			{ 'X-Gateway-Team': 'platform' },
 		);
-		const { calls, authFetch } = authFetchFor(endpoint, { requestHeaders: { 'X-Run-Id': '42' } });
+		const { calls, authFetch } = authFetchFor(endpoint, { contextHeaders: { 'X-Run-Id': '42' } });
 
 		await authFetch(BASE_URL);
 
@@ -258,7 +258,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 					endpoint: { ...oauth2, gatewayHeaders: { 'X-Tenant': 'acme' } },
 					egressFilter: allowAll,
 					baseFetch: fetchImpl,
-					requestHeaders: { 'x-n8n-workflow-id': 'wf-1' },
+					contextHeaders: { 'x-n8n-workflow-id': 'wf-1' },
 				},
 			);
 

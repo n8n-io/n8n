@@ -9,6 +9,15 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
+<<<<<<< HEAD
+=======
+	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROMOTION_PROJECT_ACCESS_SETTING_KEYS,
+	readPromotionProjectAccess,
+	getPromotionScopesOfProjectRoles,
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
 } from '@n8n/permissions';
 
 import { In } from '@n8n/typeorm';
@@ -158,6 +167,44 @@ export class AuthRolesService {
 		return scopes.filter((slug) => !denied.includes(slug));
 	}
 
+<<<<<<< HEAD
+=======
+	private async getExternalSecretsSystemRolesScopes(
+		roleSlug: string,
+		tx: EntityManager,
+	): Promise<string[]> {
+		const settingRow = await tx.findOneBy(Settings, {
+			key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
+		});
+
+		if (settingRow?.value !== 'true') {
+			return [];
+		}
+
+		const roleScopeMap = EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap;
+		const scopesForRole = roleScopeMap[roleSlug];
+
+		if (scopesForRole) {
+			this.logger.debug(
+				`${EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key} is enabled - allowing ${scopesForRole.join(', ')} scopes to ${roleSlug} role`,
+			);
+			return scopesForRole;
+		}
+
+		return [];
+	}
+
+	private async getPromotionProjectRoleScopes(
+		roleSlug: typeof PROJECT_ADMIN_ROLE_SLUG | typeof PROJECT_EDITOR_ROLE_SLUG,
+		tx: EntityManager,
+	): Promise<string[]> {
+		const rows = await tx.findBy(Settings, {
+			key: In(Object.values(PROMOTION_PROJECT_ACCESS_SETTING_KEYS)),
+		});
+		return getPromotionScopesOfProjectRoles(readPromotionProjectAccess(rows))[roleSlug];
+	}
+
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
 	/**
 	 * Modifies the expected scopes for a role based on settings.
 	 * Uses a "closed first" approach: certain scopes are not in the base definition
@@ -176,6 +223,15 @@ export class AuthRolesService {
 			return this.removeCanvasOnlyPersonalOwnerScopes(scopes);
 		}
 
+<<<<<<< HEAD
+=======
+		// Scopes that instance settings give to the system project roles
+		if (roleSlug === PROJECT_ADMIN_ROLE_SLUG || roleSlug === PROJECT_EDITOR_ROLE_SLUG) {
+			scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
+			scopes.push(...(await this.getPromotionProjectRoleScopes(roleSlug, tx)));
+		}
+
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
 		return scopes;
 	}
 

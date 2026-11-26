@@ -1268,7 +1268,10 @@ describe('ProjectSettings', () => {
 
 		beforeEach(() => {
 			setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: false });
-			projectsStore.currentProjectWorkflowReviewSettings = { requiredByProject: false };
+			projectsStore.currentProjectWorkflowReviewSettings = {
+				requiredByProject: false,
+				requiredByInstance: false,
+			};
 			projectsStore.fetchProjectWorkflowReviewSettings.mockResolvedValue(undefined);
 			projectsStore.updateProject.mockResolvedValue(undefined);
 			projectsStore.updateCurrentProjectWorkflowReviewSettings.mockResolvedValue(undefined);
@@ -1290,8 +1293,14 @@ describe('ProjectSettings', () => {
 			});
 		});
 
-		it('sends no workflow review setting on a name-only save', async () => {
-			projectsStore.currentProjectWorkflowReviewSettings = { requiredByProject: true };
+		it.each([
+			['the project requires approval', { requiredByProject: true, requiredByInstance: false }],
+			[
+				'the instance requires approval for the project',
+				{ requiredByProject: false, requiredByInstance: true },
+			],
+		])('sends no workflow review setting on a name-only save when %s', async (_case, settings) => {
+			projectsStore.currentProjectWorkflowReviewSettings = settings;
 			const { getByTestId } = renderComponent();
 			await nextTick();
 
@@ -1321,7 +1330,10 @@ describe('ProjectSettings', () => {
 		it('shows the loaded Require approval value', async () => {
 			projectsStore.currentProjectWorkflowReviewSettings = null;
 			projectsStore.fetchProjectWorkflowReviewSettings.mockImplementation(async () => {
-				projectsStore.currentProjectWorkflowReviewSettings = { requiredByProject: true };
+				projectsStore.currentProjectWorkflowReviewSettings = {
+					requiredByProject: true,
+					requiredByInstance: false,
+				};
 			});
 			const { getByTestId } = renderComponent();
 
@@ -1360,18 +1372,34 @@ describe('ProjectSettings', () => {
 			expect(queryByTestId('project-settings-require-approval-select')).not.toBeInTheDocument();
 		});
 
-		it('shows Require approval on and locked when the instance requires approval', async () => {
-			setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: true });
-			const { getByTestId, findAllByText } = renderComponent();
-			await nextTick();
+		it.each([
+			['always', () => setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: true })],
+			[
+				'for this project',
+				() => {
+					projectsStore.currentProjectWorkflowReviewSettings = {
+						requiredByProject: false,
+						requiredByInstance: true,
+					};
+				},
+			],
+		])(
+			'shows Require approval on and locked when the instance requires approval %s',
+			async (_case, arrange) => {
+				arrange();
+				const { getByTestId, findAllByText } = renderComponent();
+				await nextTick();
 
-			const requireApproval = getByTestId('project-settings-require-approval-select');
-			expect(requireApproval).toHaveTextContent('Always required');
-			expect(requireApproval).toHaveAttribute('data-disabled');
+				const requireApproval = getByTestId('project-settings-require-approval-select');
+				expect(requireApproval).toHaveTextContent('Always required');
+				expect(requireApproval).toHaveAttribute('data-disabled');
 
-			await userEvent.hover(requireApproval.parentElement!);
-			expect(await findAllByText('This policy is set by your instance admin.')).not.toHaveLength(0);
-		});
+				await userEvent.hover(requireApproval.parentElement!);
+				expect(await findAllByText('This policy is set by your instance admin.')).not.toHaveLength(
+					0,
+				);
+			},
+		);
 	});
 
 	describe('External secrets permission (no project:update)', () => {

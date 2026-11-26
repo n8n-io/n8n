@@ -358,6 +358,9 @@ catalogs:
     '@mozilla/readability':
       specifier: ^0.6.0
       version: 0.6.0
+    '@n8n/sandbox-client':
+      specifier: 1.4.0
+      version: 1.4.0
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.27.0
       version: 1.27.0
@@ -1107,7 +1110,8 @@ overrides:
   protobufjs: 7.6.5
   shell-quote: 1.11.0
   adm-zip: 0.6.1
-  ip-address@10: 10.7.1
+  ip-address@10: 10.7.6
+  socks@2: 2.8.9
   brace-expansion@5: 5.0.12
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.42
@@ -1331,8 +1335,8 @@ importers:
         specifier: workspace:*
         version: link:../client-oauth2
       '@n8n/sandbox-client':
-        specifier: 1.3.0
-        version: 1.3.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+        specifier: 'catalog:'
+        version: 1.4.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -3121,6 +3125,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -4093,7 +4100,11 @@ importers:
         version: 1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
+<<<<<<< HEAD
         version: 1.1.27(a6c5dde5a7866d3008f31f456ee8cd2a)
+=======
+        version: 1.1.27(a4d94d26bce574e0185a96e917957c90)
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -4120,7 +4131,7 @@ importers:
         version: 1.1.0(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@langchain/mongodb':
         specifier: 1.3.1
-        version: 1.3.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
+        version: 1.3.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       '@langchain/ollama':
         specifier: 1.2.6
         version: 1.2.6(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
@@ -4264,7 +4275,7 @@ importers:
         version: 3.0.2
       mongodb:
         specifier: ^6.17.0
-        version: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
+        version: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2:
         specifier: 'catalog:'
         version: 3.23.1(@types/node@20.19.41)
@@ -5185,6 +5196,9 @@ importers:
       '@n8n/backend-module-data-table':
         specifier: workspace:*
         version: link:../modules/data-table/backend
+      '@n8n/backend-module-durable-leases':
+        specifier: workspace:*
+        version: link:../modules/durable-leases/backend
       '@n8n/backend-module-execution-ledger':
         specifier: workspace:*
         version: link:../modules/execution-ledger/backend
@@ -7107,6 +7121,9 @@ importers:
       '@n8n/frontend-module-engine-v2':
         specifier: workspace:*
         version: link:../../modules/engine-v2/frontend
+      '@n8n/frontend-module-html-display-mode':
+        specifier: workspace:*
+        version: link:../../modules/html-display-mode/frontend
       '@n8n/frontend-module-inbox':
         specifier: workspace:*
         version: link:../../modules/inbox/frontend
@@ -7775,6 +7792,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../../../@n8n/errors
+      '@n8n/sandbox-client':
+        specifier: 'catalog:'
+        version: 1.4.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
@@ -7912,6 +7932,55 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/modules/durable-leases/backend:
+    dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../../@n8n/config
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../../../@n8n/db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      '@n8n/leases':
+        specifier: workspace:*
+        version: link:../../../@n8n/leases
+    devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-test-utils
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/modules/engine-v2/frontend:
     dependencies:
@@ -8149,6 +8218,88 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/modules/html-display-mode/frontend:
+    dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-module-sdk':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-module-sdk
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/i18n
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+    devDependencies:
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.488
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-test-utils
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-vite-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../quality/testing/janitor
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/stylelint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.9.1
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      stylelint:
+        specifier: 'catalog:'
+        version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vize:
+        specifier: 'catalog:'
+        version: 0.715.0(vue@3.5.26(typescript@6.0.2))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
   packages/modules/inbox/frontend:
     dependencies:
@@ -9479,7 +9630,7 @@ importers:
         version: 0.5.48
       mongodb:
         specifier: 6.11.0
-        version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
+        version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mqtt:
         specifier: 5.16.0
         version: 5.16.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -9751,6 +9902,9 @@ importers:
 
   packages/quality/efficiency/microbenchmarks:
     devDependencies:
+      '@codspeed/vitest-plugin':
+        specifier: ^6.1.1
+        version: 6.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(tinybench@6.1.4)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../../../@n8n/expression-runtime
@@ -9806,6 +9960,9 @@ importers:
 
   packages/quality/environments/containers:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.808.0
+        version: 3.808.0
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0
@@ -9935,6 +10092,58 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/quality/testing/engine-parity:
+    dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../../../@n8n/workflow-engine-check
+      '@n8n/workflow-sdk':
+        specifier: workspace:*
+        version: link:../../../@n8n/workflow-sdk
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../../../nodes-base
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.41
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
@@ -11899,6 +12108,16 @@ packages:
   '@codemirror/view@6.39.8':
     resolution: {integrity: sha512-1rASYd9Z/mE3tkbC9wInRlCNyCkSn+nLsiQKZhEDUUJiUfs/5FHDpCUDaQpoTIaNGeDc6/bhaEAyLmeEucEFPw==}
 
+  '@codspeed/core@6.1.1':
+    resolution: {integrity: sha512-Lz9xqyeoHI2T7QoLjcJGFrKzyOJKzJM8/2kNRiCcMsqeLzntFpMXHj1No4efraWmdAG+6+7DZmKodrjh+9H6ng==}
+
+  '@codspeed/vitest-plugin@6.1.1':
+    resolution: {integrity: sha512-zzZGaUmpBgAypYbMyWtm79RkGKVgDlkNV5iOBUT8vKayvrdXm8XpfC4/FaTuydOhGBVbrpxIeneoY6fl00NkTg==}
+    peerDependencies:
+      tinybench: '>=2.9.0'
+      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+      vitest: ^3.2 || ^4 || ^5
+
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
@@ -13528,8 +13747,8 @@ packages:
     resolution: {integrity: sha512-qmDvJIjcNsZ6tXWy2G9yuCgMPTTn35GMA3dPpSLm7QJVpbQzYdw0ALy1bKoivXnEM3U93/OrK+/M719b+fg84Q==}
     engines: {node: '>=18'}
 
-  '@n8n/sandbox-client@1.3.0':
-    resolution: {integrity: sha512-FrEwS1/LHH6MrdEPSYbaOAxKT86K385G7dlvLZ/wgljrhkGxF4iQXajYMIC8Ye/yMgWNVcGLTKqPrW4VxIsNqQ==}
+  '@n8n/sandbox-client@1.4.0':
+    resolution: {integrity: sha512-Y3C2oBSNfkjnbYekhQxF4OfSdEWARfcGmkgiIUaw4gTnNe73aEgCp3jPB4Vqjn/jJf8DL/ihdY/u6IFJo4W1sw==}
     engines: {node: '>=22.16', pnpm: '>=12.3.4'}
 
   '@n8n_io/ai-assistant-sdk@1.27.0':
@@ -21719,12 +21938,8 @@ packages:
     resolution: {integrity: sha512-1DKMMzlIHM02eBBVOFQ1+AolGjs6+xEcM4PDL7NqOS6szq7H9jSaEkIUH6/a5Hl241LzW6JLSiAbNvTQjUupUA==}
     engines: {node: '>=12.22.0'}
 
-  ip-address@10.7.1:
-    resolution: {integrity: sha512-4OUAqU9Z1i3vCnS05hzGiFnEMDpQ+62pAD/MVQOp83fYyNC8GleCqaS0QikQBmcWCrKFiUs/B8ztRRiYOAXuCA==}
-    engines: {node: '>= 12'}
-
-  ip-address@9.0.5:
-    resolution: {integrity: sha512-zHtQzGojZXTwZTHQqra+ETKd4Sn3vgi7uBmlPoXVWZqYvuKmtI0l/VZTjqGmJY9x88GGOaZ9+G9ES8hC4T4X8g==}
+  ip-address@10.7.6:
+    resolution: {integrity: sha512-00LYkM6byILa9eQIx6qoaXCM40xTLd56AZ4vyaPW3YTyb49VZYPo5xsiAq4tuQ54GH4R7gVdYScJ1B7B77PuTg==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -22139,9 +22354,6 @@ packages:
 
   jsbn@0.1.1:
     resolution: {integrity: sha512-UVU9dibq2JcFWxQPA6KCqj5O42VOmAY3zQUfEKxU0KpTGXwNoCjkX1e13eHNvw/xPynt6pU0rZ1htjWTNTSXsg==}
-
-  jsbn@1.1.0:
-    resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
 
   jscpd-darwin-arm64@5.2.0:
     resolution: {integrity: sha512-QnEDfTH2MymizVHiEQpqfYEj63k1DW7QC0QBZoevh+o/iHQrHxKlgrakMysUIwIJlnmvqPB6iP/G3dBpFmnmeQ==}
@@ -23376,7 +23588,7 @@ packages:
       kerberos: ^2.0.1
       mongodb-client-encryption: '>=6.0.0 <7'
       snappy: ^7.2.2
-      socks: ^2.7.1
+      socks: 2.8.9
     peerDependenciesMeta:
       '@aws-sdk/credential-providers':
         optional: true
@@ -23403,7 +23615,7 @@ packages:
       kerberos: ^2.0.1
       mongodb-client-encryption: '>=6.0.0 <7'
       snappy: ^7.3.2
-      socks: ^2.7.1
+      socks: 2.8.9
     peerDependenciesMeta:
       '@aws-sdk/credential-providers':
         optional: true
@@ -25591,10 +25803,6 @@ packages:
     resolution: {integrity: sha512-HehCEsotFqbPW9sJ8WVYB6UbmIMv7kUUORIF2Nncq4VQvBfNBLibW9YZR5dlYCSUhwcD628pRllm7n+E+YTzJw==}
     engines: {node: '>= 14'}
 
-  socks@2.8.3:
-    resolution: {integrity: sha512-l5x7VUUWbjVFbafGLxPWkYsHIhEvmF85tbIeFZWc8ZPtoMyybuEhL7Jye/ooC4/d48FgOjSJXgsF/AJPYCW8Zw==}
-    engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
-
   socks@2.8.9:
     resolution: {integrity: sha512-LJhUYUvItdQ0LkJTmPeaEObWXAqFyfmP85x0tch/ez9cahmhlBBLbIqDFnvBnUJGagb0JbIQrkBs1wJ+yRYpEw==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
@@ -25686,6 +25894,10 @@ packages:
 
   stack-trace@0.0.10:
     resolution: {integrity: sha512-KGzahc7puUKkzyMt+IqAep+TVNbKP+k2Lmwhub39m1AsTSkaDutx56aDCo+HLDzf/D26BIHTJWNiTG1KAJiQCg==}
+
+  stack-trace@1.0.0-pre2:
+    resolution: {integrity: sha512-2ztBJRek8IVofG9DBJqdy2N5kulaacX30Nz7xmkYF6ale9WBVmIy6mFBchvGX7Vx/MyjBhx+Rcxqrj+dbOnQ6A==}
+    engines: {node: '>=16'}
 
   stack-utils@2.0.6:
     resolution: {integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==}
@@ -30508,6 +30720,26 @@ snapshots:
       style-mod: 4.1.0
       w3c-keyname: 2.2.6
 
+  '@codspeed/core@6.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      form-data: 4.0.6
+      node-gyp-build: 4.8.4
+      stack-trace: 1.0.0-pre2
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  '@codspeed/vitest-plugin@6.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(tinybench@6.1.4)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)':
+    dependencies:
+      '@codspeed/core': 6.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      tinybench: 6.1.4
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   '@colors/colors@1.5.0':
     optional: true
 
@@ -31512,7 +31744,11 @@ snapshots:
       - aws-crt
       - encoding
 
+<<<<<<< HEAD
   '@langchain/community@1.1.27(6a537aadd7ef46c1b62ec015156742f1)':
+=======
+  '@langchain/community@1.1.27(4e59d8369963e09853e77d65cd00623b)':
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31535,6 +31771,10 @@ snapshots:
       '@azure/storage-blob': 12.32.0(supports-color@8.1.1)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(9980a818c6426eec4183d32c32b19e1a)
+<<<<<<< HEAD
+=======
+      '@getzep/zep-js': 2.0.2(encoding@0.1.13)
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)(supports-color@8.1.1)
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@mozilla/readability': 0.6.0
@@ -31560,7 +31800,11 @@ snapshots:
       jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
+<<<<<<< HEAD
       mammoth: 1.12.1
+=======
+      mammoth: 1.12.3
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
@@ -31578,7 +31822,11 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
+<<<<<<< HEAD
   '@langchain/community@1.1.27(a6c5dde5a7866d3008f31f456ee8cd2a)':
+=======
+  '@langchain/community@1.1.27(a4d94d26bce574e0185a96e917957c90)':
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31602,6 +31850,10 @@ snapshots:
       '@azure/storage-blob': 12.32.0(supports-color@8.1.1)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(9980a818c6426eec4183d32c32b19e1a)
+<<<<<<< HEAD
+=======
+      '@getzep/zep-js': 2.0.2(encoding@0.1.13)
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)(supports-color@8.1.1)
       '@huggingface/inference': 4.0.5
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
@@ -31631,7 +31883,11 @@ snapshots:
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mammoth: 1.12.3
+<<<<<<< HEAD
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
+=======
+      mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
+>>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
       pg: 8.21.0(pg-native@3.8.0)
@@ -31736,10 +31992,10 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@langchain/mongodb@1.3.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)':
+  '@langchain/mongodb@1.3.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)':
     dependencies:
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
+      mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
@@ -32339,7 +32595,7 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/sandbox-client@1.3.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+  '@n8n/sandbox-client@1.4.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
     transitivePeerDependencies:
@@ -40060,12 +40316,12 @@ snapshots:
   express-rate-limit@8.2.2(express@5.1.0(supports-color@8.1.1)):
     dependencies:
       express: 5.1.0(supports-color@8.1.1)
-      ip-address: 10.7.1
+      ip-address: 10.7.6
 
   express-rate-limit@8.2.2(express@5.2.1(supports-color@8.1.1)):
     dependencies:
       express: 5.2.1(supports-color@8.1.1)
-      ip-address: 10.7.1
+      ip-address: 10.7.6
 
   express@5.1.0(supports-color@8.1.1):
     dependencies:
@@ -41352,13 +41608,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ip-address@10.7.1: {}
-
-  ip-address@9.0.5:
-    dependencies:
-      jsbn: 1.1.0
-      sprintf-js: 1.1.3
-    optional: true
+  ip-address@10.7.6: {}
 
   ipaddr.js@1.9.1: {}
 
@@ -41701,9 +41951,6 @@ snapshots:
       argparse: 2.0.1
 
   jsbn@0.1.1: {}
-
-  jsbn@1.1.0:
-    optional: true
 
   jscpd-darwin-arm64@5.2.0:
     optional: true
@@ -43453,7 +43700,7 @@ snapshots:
       '@types/whatwg-url': 11.0.4
       whatwg-url: 13.0.0
 
-  mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3):
+  mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9):
     dependencies:
       '@mongodb-js/saslprep': 1.3.2
       bson: 6.10.4
@@ -43461,17 +43708,7 @@ snapshots:
     optionalDependencies:
       '@aws-sdk/credential-providers': 3.808.0
       gcp-metadata: 5.3.0(supports-color@8.1.1)
-      socks: 2.8.3
-
-  mongodb@6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3):
-    dependencies:
-      '@mongodb-js/saslprep': 1.3.2
-      bson: 6.10.4
-      mongodb-connection-string-url: 3.0.2
-    optionalDependencies:
-      '@aws-sdk/credential-providers': 3.808.0
-      gcp-metadata: 5.3.0(supports-color@8.1.1)
-      socks: 2.8.3
+      socks: 2.8.9
 
   mongodb@6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9):
     dependencies:
@@ -43482,7 +43719,6 @@ snapshots:
       '@aws-sdk/credential-providers': 3.808.0
       gcp-metadata: 5.3.0(supports-color@8.1.1)
       socks: 2.8.9
-    optional: true
 
   monocart-coverage-reports@2.12.12:
     dependencies:
@@ -46302,15 +46538,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  socks@2.8.3:
-    dependencies:
-      ip-address: 9.0.5
-      smart-buffer: 4.2.0
-    optional: true
-
   socks@2.8.9:
     dependencies:
-      ip-address: 10.7.1
+      ip-address: 10.7.6
       smart-buffer: 4.2.0
 
   sonic-boom@4.2.1:
@@ -46406,6 +46636,8 @@ snapshots:
   stable-hash-x@0.1.1: {}
 
   stack-trace@0.0.10: {}
+
+  stack-trace@1.0.0-pre2: {}
 
   stack-utils@2.0.6:
     dependencies:

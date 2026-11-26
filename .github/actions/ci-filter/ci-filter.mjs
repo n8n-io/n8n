@@ -240,6 +240,51 @@ export function getMergeBase(headRef = 'HEAD') {
 	return execSync(`git merge-base FETCH_HEAD ${headRef}`, { encoding: 'utf-8' }).trim();
 }
 
+function gitLines(command) {
+	return execSync(command, { encoding: 'utf-8' })
+		.split('\n')
+		.map((f) => f.trim())
+		.filter(Boolean);
+}
+
+function isAncestor(ancestor, ref) {
+	try {
+		execSync(`git merge-base --is-ancestor ${ancestor} ${ref}`, { stdio: 'pipe' });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Files changed since `lastGreenSha`, a PR commit that already passed CI.
+ *
+ * Returns `{ reason }` when the delta is not safe to test alone. Then the
+ * caller tests the whole PR. Call it after getChangedFiles, which leaves the
+ * base branch in FETCH_HEAD.
+ */
+export function getIncrementalChanges(lastGreenSha, headRef = 'HEAD') {
+	if (!/^[0-9a-f]{40}$/.test(lastGreenSha)) return { reason: 'not a full commit SHA' };
+	if (!hasCommit(lastGreenSha)) return { reason: 'commit is not in the checkout' };
+	if (!isAncestor(lastGreenSha, headRef)) {
+		return { reason: 'commit is not an ancestor of the head' };
+	}
+	// A merge brings in base-branch changes that the base branch already tested.
+	if (gitLines(`git rev-list --merges ${lastGreenSha}..${headRef}`).length > 0) {
+		return { reason: 'new commits include a merge' };
+	}
+	// For example, the PR now targets another branch.
+	if (getMergeBase(lastGreenSha) !== getMergeBase(headRef)) {
+		return { reason: 'merge base changed' };
+	}
+	return {
+		changedFiles: gitLines(`git diff --name-only --no-renames ${lastGreenSha} ${headRef}`),
+		addedFiles: gitLines(
+			`git diff --name-only --no-renames --diff-filter=A ${lastGreenSha} ${headRef}`,
+		),
+	};
+}
+
 // --- Filter evaluation ---
 
 /**
@@ -315,12 +360,30 @@ export function runFilter() {
 
 	const filters = parseFilters(filtersInput);
 	const headRef = resolveHeadRef();
-	const changedFiles = getChangedFiles(baseRef, headRef);
-	const addedFiles = getAddedFiles(baseRef, headRef);
+	let changedFiles = getChangedFiles(baseRef, headRef);
+	let addedFiles = getAddedFiles(baseRef, headRef);
 	const mergeBase = getMergeBase(headRef);
+	let diffBase = mergeBase;
+	let isIncremental = false;
 
 	console.log(`Diffing ${headRef} against ${baseRef}`);
 	console.log(`Merge base: ${mergeBase}`);
+
+	const lastGreenSha = process.env.INPUT_INCREMENTAL_BASE;
+	if (lastGreenSha) {
+		const incremental = getIncrementalChanges(lastGreenSha, headRef);
+		if (incremental.reason) {
+			console.log(
+				`Testing the whole PR, not the changes since ${lastGreenSha}: ${incremental.reason}`,
+			);
+		} else {
+			console.log(`Testing only the changes since ${lastGreenSha}, which passed CI`);
+			changedFiles = incremental.changedFiles;
+			addedFiles = incremental.addedFiles;
+			diffBase = lastGreenSha;
+			isIncremental = true;
+		}
+	}
 	console.log(`Changed files (${changedFiles.length}):`);
 	for (const f of changedFiles) {
 		console.log(`  ${f}`);
@@ -339,6 +402,8 @@ export function runFilter() {
 	setOutput('added-files', formatChangedFilesOutput(addedFiles));
 	setOutput('base-ref', baseRef);
 	setOutput('merge-base', mergeBase);
+	setOutput('diff-base', diffBase);
+	setOutput('incremental', String(isIncremental));
 }
 
 // --- Mode: validate ---
