@@ -1,6 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { TransactionRunner } from '@n8n/db';
+import type { ProjectRepository, TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -40,6 +40,7 @@ describe('RequestFedCredentialTypePolicy', () => {
 		snapshot,
 		loadNodesAndCredentials,
 		mock<NodeTypes>(),
+		mock<ProjectRepository>(),
 	);
 
 	let policy: RequestFedCredentialTypePolicy;

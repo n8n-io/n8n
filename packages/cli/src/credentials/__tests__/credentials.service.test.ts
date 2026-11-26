@@ -6010,6 +6010,7 @@ describe('run-time credential protection', () => {
 		policyEnforcementService,
 		new CredentialDescriptionsService(postHogClient),
 		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {

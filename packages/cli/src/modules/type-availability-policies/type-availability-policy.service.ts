@@ -26,7 +26,7 @@ import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/t
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
-import { isCredentialTypeKind, NODE_TYPES_KIND } from './constants';
+import { CREDENTIAL_TYPES_KIND, isCredentialTypeKind, NODE_TYPES_KIND } from './constants';
 import {
 	toEffectivePolicy,
 	unconfiguredScope,
