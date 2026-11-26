@@ -419,7 +419,9 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 
 		const pinia = createTestingPinia();
 		const posthog = mockedStore(usePostHog);
-		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 

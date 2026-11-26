@@ -8247,7 +8247,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 
 		const wrapper = await renderView({
 			seedStores: () => {
-				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: 'test' } };
 			},
 			stubs: {
 				AgentTestDock: {
