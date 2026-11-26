@@ -18,14 +18,9 @@ test.describe('Chat session ID reset', () => {
 		const sessionIdButton = n8n.page.getByTestId('chat-session-id');
 		await sessionIdButton.click();
 
-		// Scope to the session-id tooltip: the header also renders a "reset session"
-		// tooltip that shares the `.n8n-tooltip` popper class, so an unscoped locator
-		// can match both poppers and trip Playwright's strict mode.
-		const sessionIdTooltip = n8n.page.locator('.n8n-tooltip').filter({ hasText: 'click to copy' });
+		const sessionIdTooltip = n8n.page.getByRole('tooltip', { name: /^\S+ \(click to copy\)$/ });
 
-		await expect(sessionIdTooltip).toContainText('click to copy');
-		// Tooltip text is "SESSIONID (click to copy)" — take the session id portion.
-		const initialSessionId = ((await sessionIdTooltip.textContent()) ?? '').split(' ')[0];
+		const initialSessionId = (await sessionIdTooltip.innerText()).trim().split(/\s+/)[0];
 
 		// Click on the chat trigger node in the logs to see its output
 		await n8n.canvas.logsPanel.clickLogEntryAtRow(0);
@@ -41,8 +36,9 @@ test.describe('Chat session ID reset', () => {
 
 		// Step 5: Get the new session ID
 		await sessionIdButton.click();
-		await expect(sessionIdTooltip).toContainText('click to copy');
-		const newSessionId = ((await sessionIdTooltip.textContent()) ?? '').split(' ')[0];
+		// The previous tooltip can still be visible while it fades out.
+		const newSessionTooltip = sessionIdTooltip.filter({ hasNotText: initialSessionId });
+		const newSessionId = (await newSessionTooltip.innerText()).trim().split(/\s+/)[0];
 
 		expect(newSessionId).not.toEqual(initialSessionId);
 

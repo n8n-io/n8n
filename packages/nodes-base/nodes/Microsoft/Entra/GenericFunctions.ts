@@ -15,6 +15,8 @@ import type {
 import { NodeApiError, requestPath, requestUrl, sanitizeXmlName } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
 
+import { escapeODataSearchValue, escapeODataValue } from '@utils/query-escaping';
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -348,7 +350,7 @@ export async function getGroups(
 		const headers: IDataObject = {};
 		if (filter) {
 			headers.ConsistencyLevel = 'eventual';
-			qs.$search = `"displayName:${filter}"`;
+			qs.$search = `"displayName:${escapeODataSearchValue(filter)}"`;
 		}
 		response = await microsoftApiRequest.call(this, 'GET', requestPath`/groups`, {}, qs, headers);
 	}
@@ -392,7 +394,8 @@ export async function getUsers(
 		};
 		const headers: IDataObject = {};
 		if (filter) {
-			qs.$filter = `startsWith(displayName, '${filter}') OR startsWith(userPrincipalName, '${filter}')`;
+			const filterValue = escapeODataValue(filter);
+			qs.$filter = `startsWith(displayName, '${filterValue}') OR startsWith(userPrincipalName, '${filterValue}')`;
 		}
 		response = await microsoftApiRequest.call(this, 'GET', requestPath`/users`, {}, qs, headers);
 	}

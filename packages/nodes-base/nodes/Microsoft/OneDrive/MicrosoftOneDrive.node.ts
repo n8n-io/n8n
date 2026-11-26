@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
@@ -193,7 +195,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = escapeODataValue(this.getNodeParameter('query', i));
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
@@ -315,7 +317,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = escapeODataValue(this.getNodeParameter('query', i));
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',

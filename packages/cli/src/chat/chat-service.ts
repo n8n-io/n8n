@@ -144,8 +144,8 @@ export class ChatService {
 				chatInput: '',
 				sessionId: session.sessionId,
 			};
-			await this.resumeExecution(session.executionId, data, sessionKey);
-			session.nodeWaitingForChatResponse = undefined;
+			const resumed = await this.resumeExecution(session.executionId, data, sessionKey);
+			if (resumed) session.nodeWaitingForChatResponse = undefined;
 		} else {
 			session.nodeWaitingForChatResponse = lastNode?.name;
 		}
@@ -228,8 +228,12 @@ export class ChatService {
 
 				const executionId = session.executionId;
 
-				await this.resumeExecution(executionId, this.parseChatMessage(message), sessionKey);
-				session.nodeWaitingForChatResponse = undefined;
+				const resumed = await this.resumeExecution(
+					executionId,
+					this.parseChatMessage(message),
+					sessionKey,
+				);
+				if (resumed) session.nodeWaitingForChatResponse = undefined;
 			} catch (e) {
 				const error = ensureError(e);
 				this.errorReporter.error(error);
@@ -240,10 +244,27 @@ export class ChatService {
 		};
 	}
 
-	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
+	private async resumeExecution(
+		executionId: string,
+		message: ChatMessage,
+		sessionKey: string,
+	): Promise<boolean> {
 		const execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
-		if (!execution || execution.status !== 'waiting') return;
+		if (!execution || execution.status !== 'waiting') return false;
+
+		// A chat message may only resume nodes designed to accept one (see
+		// ChatExecutionManager.canResumeOverChat); refuse everything else.
+		// Log the refusal so the denial is visible rather than silent.
+		if (!this.executionManager.canResumeOverChat(execution)) {
+			const nodeType = this.executionManager.resolveResumeNodeType(execution);
+			this.logger.warn(
+				`Refused chat resume for execution ${executionId}: suspended node (type: ${nodeType ?? 'unknown'}) is not resumable over chat`,
+			);
+			return false;
+		}
+
 		await this.executionManager.runWorkflow(execution, message);
+		return true;
 	}
 
 	private async getExecutionOrCleanupSession(executionId: string, sessionKey: string) {

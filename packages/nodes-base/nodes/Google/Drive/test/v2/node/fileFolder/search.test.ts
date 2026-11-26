@@ -60,6 +60,31 @@ describe('test GoogleDriveV2: fileFolder search', () => {
 		);
 	});
 
+	it('escapes every quote in the query string, not just the first', async () => {
+		const nodeParameters = {
+			searchMethod: 'name',
+			resource: 'fileFolder',
+			queryString: "a'b'c",
+			returnAll: false,
+			limit: 2,
+			filter: {},
+			options: {},
+		};
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
+
+		await search.execute.call(fakeExecuteFunction, 0);
+
+		expect(transport.googleApiRequest).toBeCalledWith(
+			'GET',
+			requestPath`/drive/v3/files`,
+			undefined,
+			expect.objectContaining({
+				q: "name contains 'a\\'b\\'c'",
+			}),
+		);
+	});
+
 	it('returnAll = true', async () => {
 		const nodeParameters = {
 			resource: 'fileFolder',

@@ -81,6 +81,7 @@ import {
 	searchForHeader,
 	setAxiosAgents,
 	throwIfDomainNotAllowed,
+	throwIfProxyNotAllowed,
 } from './request-helpers/axios-utils';
 import { toHttpRequestOptions, toLegacyRequestOptions } from './request-helpers/request-target';
 
@@ -438,6 +439,8 @@ export async function proxyRequestToAxios(
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+	throwIfDomainNotAllowed(axiosConfig, configObject.allowedDomains);
+	throwIfProxyNotAllowed(configObject.proxy, configObject.allowedDomains);
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -645,6 +648,7 @@ export async function httpRequest(
 	}
 
 	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
+	throwIfProxyNotAllowed(requestOptions.proxy, requestOptions.allowedDomains);
 
 	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 

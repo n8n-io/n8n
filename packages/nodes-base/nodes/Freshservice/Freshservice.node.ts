@@ -361,7 +361,7 @@ export class Freshservice implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+							Object.assign(qs, formatFilters.call(this, filters, i));
 						}
 
 						responseData = await handleListing.call(this, 'GET', requestPath`/agents`, {}, qs);
@@ -624,7 +624,7 @@ export class Freshservice implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+							Object.assign(qs, formatFilters.call(this, filters, i));
 						}
 
 						responseData = await handleListing.call(this, 'GET', requestPath`/assets`, {}, qs);
@@ -778,7 +778,7 @@ export class Freshservice implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+							Object.assign(qs, formatFilters.call(this, filters, i));
 						}
 
 						responseData = await handleListing.call(this, 'GET', requestPath`/changes`, {}, qs);
@@ -859,7 +859,7 @@ export class Freshservice implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+							Object.assign(qs, formatFilters.call(this, filters, i));
 						}
 
 						responseData = await handleListing.call(this, 'GET', requestPath`/departments`, {}, qs);
@@ -1209,7 +1209,7 @@ export class Freshservice implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+							Object.assign(qs, formatFilters.call(this, filters, i));
 						}
 
 						responseData = await handleListing.call(this, 'GET', requestPath`/requesters`, {}, qs);
@@ -1436,7 +1436,7 @@ export class Freshservice implements INodeType {
 						let endpoint: RequestPath;
 
 						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+							Object.assign(qs, formatFilters.call(this, filters, i));
 							endpoint = requestPath`/tickets/filter`;
 						} else {
 							endpoint = requestPath`/tickets`;

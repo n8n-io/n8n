@@ -18,10 +18,13 @@ export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
 	allowedDomains?: string,
 ): void {
-	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
+	const url =
+		typeof configOrUrl === 'string'
+			? configOrUrl
+			: (buildTargetUrl(configOrUrl.url, configOrUrl.baseURL) ?? configOrUrl.url ?? '');
 	if (allowedDomains && !isDomainAllowed(url, { allowedDomains })) {
 		throw new ApplicationError(
-			`Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`,
+			`Domain not allowed: This credential is restricted from accessing ${tryParseUrl(url)?.host ?? url}. Only the following domains are allowed: ${allowedDomains}`,
 		);
 	}
 }
@@ -235,6 +238,16 @@ export function getUrlFromProxyConfig(
 	} catch {
 		return null;
 	}
+}
+
+export function throwIfProxyNotAllowed(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	allowedDomains?: string,
+): void {
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig);
+	if (!proxyUrl) return;
+
+	throwIfDomainNotAllowed(proxyUrl, allowedDomains);
 }
 
 /** Resolves `url` against an optional `baseURL`, returning the absolute href. */

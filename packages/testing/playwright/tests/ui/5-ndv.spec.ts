@@ -39,7 +39,7 @@ test.describe('NDV', () => {
 
 		const webhookUrl = await n8n.ndv.getWebhookUrl();
 		await expect(n8n.ndv.getWebhookTriggerListening()).toBeVisible();
-		const response = await n8n.ndv.makeWebhookRequest(webhookUrl as string);
+		const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
 		expect(response.status()).toBe(200);
 
 		await expect(n8n.ndv.outputPanel.get()).toBeVisible();

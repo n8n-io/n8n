@@ -14,6 +14,7 @@ import {
 	mkdirSync,
 	readFileSync,
 	readdirSync,
+	renameSync,
 	symlinkSync,
 	writeFileSync,
 } from 'node:fs';
@@ -638,6 +639,27 @@ describe('Git Node repository reference validation', () => {
 		expect(branchesOf(repoDir)).toBe(branchesBefore);
 	});
 
+	it.each(['fetch', 'pull'])(
+		'does not %s from a local remote with alternates',
+		async (operation) => {
+			const source = join(allowedRoot, 'alternate-remote');
+			initRepository(source);
+			runGit(['-C', source, 'commit', '-q', '--allow-empty', '-m', 'remote']);
+			writeFileSync(
+				join(source, '.git', 'objects', 'info', 'alternates'),
+				join(outsideDir, 'objects'),
+			);
+			trackRemote(source);
+
+			const result = await gitNode.execute.call(
+				buildAllowedRootContext(operation, repoDir, {}, allowedRoot),
+			);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(join(repoDir, '.git', 'FETCH_HEAD'))).toBe(false);
+		},
+	);
+
 	it('does not push to a relative target repository outside the allowed path', async () => {
 		allowLocalPushTransport();
 		const target = createOutsideTarget();
@@ -775,6 +797,40 @@ describe('Git Node repository reference validation', () => {
 
 		expect(errorOf(result)).toContain(REPOSITORY_OUT_OF_BOUNDS);
 		expect(JSON.stringify(result)).not.toContain(redirectedSubject);
+	});
+
+	it('rejects a repository with an alternates file', async () => {
+		writeFileSync(
+			join(repoDir, '.git', 'objects', 'info', 'alternates'),
+			join(outsideDir, 'objects'),
+		);
+
+		const result = await gitNode.execute.call(
+			buildAllowedRootContext('log', repoDir, {}, allowedRoot),
+		);
+
+		expect(errorOf(result)).toContain(REPOSITORY_OUT_OF_BOUNDS);
+	});
+
+	it('rejects a repository with a symlinked reftable directory', async () => {
+		symlinkSync(outsideDir, join(repoDir, '.git', 'reftable'), 'dir');
+
+		const result = await gitNode.execute.call(
+			buildAllowedRootContext('log', repoDir, {}, allowedRoot),
+		);
+
+		expect(errorOf(result)).toContain(REPOSITORY_OUT_OF_BOUNDS);
+	});
+
+	it('allows a repository with a symlinked hook', async () => {
+		writeFileSync(join(repoDir, 'pre-commit'), '#!/bin/sh\n');
+		symlinkSync(join(repoDir, 'pre-commit'), join(repoDir, '.git', 'hooks', 'pre-commit'), 'file');
+
+		const result = await gitNode.execute.call(
+			buildAllowedRootContext('log', repoDir, {}, allowedRoot),
+		);
+
+		expect(errorOf(result)).toBeUndefined();
 	});
 
 	it('rejects a linked worktree whose git directory is outside the allowed path', async () => {
@@ -1009,7 +1065,7 @@ describe('Git Node repository reference validation', () => {
 		expect(existsSync(target)).toBe(false);
 	});
 
-	describe('file URL clone sources', () => {
+	describe('local clone sources', () => {
 		let outsideSource: string;
 		let target: string;
 
@@ -1024,6 +1080,108 @@ describe('Git Node repository reference validation', () => {
 			await gitNode.execute.call(
 				buildAllowedRootContext('clone', target, { sourceRepository }, allowedRoot),
 			);
+
+		const createGitDir = (commonDir: string) => {
+			const gitDir = join(allowedRoot, 'git-dir');
+			mkdirSync(gitDir);
+			writeFileSync(join(gitDir, 'HEAD'), 'ref: refs/heads/main\n');
+			writeFileSync(join(gitDir, 'commondir'), `${commonDir}\n`);
+			return gitDir;
+		};
+
+		it('rejects an absolute common directory outside the allowed path', async () => {
+			const result = await cloneFrom(createGitDir(join(outsideSource, '.git')));
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('rejects a relative common directory outside the allowed path', async () => {
+			const commonDir = join('..', '..', 'outside', 'src', '.git');
+
+			const result = await cloneFrom(createGitDir(commonDir));
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('rejects a git directory whose nested .git hides an outside common directory', async () => {
+			const gitDir = createGitDir(join(outsideSource, '.git'));
+			runGit(['init', '-q', '--bare', join(gitDir, '.git')]);
+			const source = join(allowedRoot, 'gitfile-source');
+			mkdirSync(source);
+			writeFileSync(join(source, '.git'), `gitdir: ${gitDir}\n`);
+
+			const result = await cloneFrom(source);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('rejects a repository whose alternates and refs redirect outside', async () => {
+			const source = join(allowedRoot, 'redirected-source');
+			mkdirSync(join(source, 'objects', 'info'), { recursive: true });
+			writeFileSync(join(source, 'HEAD'), 'ref: refs/heads/main\n');
+			writeFileSync(
+				join(source, 'objects', 'info', 'alternates'),
+				join(outsideSource, '.git', 'objects'),
+			);
+			symlinkSync(join(outsideSource, '.git', 'refs'), join(source, 'refs'), 'dir');
+
+			const result = await cloneFrom(source);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it.each([
+			['objects', 'dir'],
+			['refs', 'dir'],
+			['packed-refs', 'file'],
+			['objects/pack', 'dir'],
+			['refs/heads', 'dir'],
+			['refs/heads/main', 'file'],
+			['logs/HEAD', 'file'],
+			['reftable', 'dir'],
+			['config', 'file'],
+		] as const)('rejects a repository with symlinked %s', async (entry, type) => {
+			const source = join(allowedRoot, 'symlinked-source');
+			initRepository(source);
+			runGit(['-C', source, 'commit', '-q', '--allow-empty', '-m', 'source']);
+			if (entry === 'packed-refs') {
+				runGit(['-C', outsideSource, 'pack-refs', '--all']);
+			}
+
+			const path = join(source, '.git', entry);
+			if (existsSync(path)) renameSync(path, join(tmpRoot, 'original-git-entry'));
+			symlinkSync(join(outsideSource, '.git', entry), path, type);
+
+			// A `file://` clone runs upload-pack, which follows links that a local clone refuses.
+			const result = await cloneFrom(`file://${source.replace(/\\/g, '/')}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('clones a linked worktree inside the allowed path', async () => {
+			const worktree = join(allowedRoot, 'clone-source-worktree');
+			runGit(['-C', repoDir, 'worktree', 'add', '-q', '-b', 'clone-source', worktree]);
+
+			const result = await cloneFrom(worktree);
+
+			expect(errorOf(result)).toBeUndefined();
+			expect(commitSubject(target, 'HEAD')).toBe('init');
+		});
+
+		it('clones from a bundle inside the allowed path', async () => {
+			const bundle = join(allowedRoot, 'source.bundle');
+			runGit(['-C', outsideSource, 'bundle', 'create', bundle, 'main']);
+
+			const result = await cloneFrom(bundle);
+
+			expect(errorOf(result)).toBeUndefined();
+			expect(existsSync(target)).toBe(true);
+		});
 
 		it.each(['#', '?'])('validates the full path of a file URL containing "%s"', async (char) => {
 			mkdirSync(join(allowedRoot, `p${char}`));

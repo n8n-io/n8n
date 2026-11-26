@@ -13,6 +13,8 @@ import {
 	requestPath,
 } from 'n8n-workflow';
 
+import { escapeSgqlLikeValue } from '@utils/query-escaping';
+
 import { contactFields, contactOperations } from './ContactDescription';
 import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
@@ -200,7 +202,9 @@ export class SendGrid implements INodeType {
 							const email = this.getNodeParameter('email', i) as string;
 							endpoint = requestPath`/marketing/contacts/search`;
 							method = 'POST';
-							Object.assign(body, { query: `email LIKE '${email}' ` });
+							Object.assign(body, {
+								query: `email LIKE '${escapeSgqlLikeValue(email)}' `,
+							});
 						}
 						responseData = await sendGridApiRequest.call(this, endpoint, method, body, qs);
 						responseData = responseData.result || responseData;

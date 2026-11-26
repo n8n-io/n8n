@@ -62,6 +62,7 @@ export async function execute(
 		items,
 		nodeOptions.replaceEmptyStrings as boolean,
 	).map((_, index) => {
+		const nodeVersion = nodeOptions.nodeVersion as number;
 		let query = this.getNodeParameter('query', index) as string;
 
 		for (const resolvable of getResolvables(query)) {
@@ -82,8 +83,6 @@ export async function execute(
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
 			if (rawReplacements) {
-				const nodeVersion = nodeOptions.nodeVersion as number;
-
 				if (nodeVersion >= 2.5) {
 					const rawValues = rawReplacements.replace(/^=+/, '');
 					const resolvables = getResolvables(rawValues);
@@ -133,7 +132,10 @@ export async function execute(
 			}
 		}
 
-		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+		if (
+			nodeVersion < 2.9 &&
+			(!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText)
+		) {
 			let nextValueIndex = values.length + 1;
 			const literals = query.match(/'\$[0-9]+'/g) ?? [];
 			for (const literal of literals) {

@@ -221,8 +221,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.page.request.get(path);
 	}
 
-	getWebhookUrl() {
-		return this.page.locator('.webhook-url').textContent();
+	async getWebhookUrl() {
+		return (await this.page.locator('.webhook-url').innerText()).trim();
 	}
 
 	getVisiblePoppers() {

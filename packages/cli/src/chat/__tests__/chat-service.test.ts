@@ -24,6 +24,9 @@ describe('ChatService', () => {
 
 	beforeEach(() => {
 		mockExecutionManager = mock<ChatExecutionManager>();
+		// Default: the parked node is chat-resumable. Node-type gating is covered in
+		// chat-execution-manager.test.ts; individual tests override to false.
+		mockExecutionManager.canResumeOverChat.mockReturnValue(true);
 		mockLogger = mock<Logger>();
 		mockErrorReporter = mock<ErrorReporter>();
 		chatService = new ChatService(mockExecutionManager, mockLogger, mockErrorReporter);
@@ -238,6 +241,39 @@ describe('ChatService', () => {
 
 			expect(mockExecutionManager.runWorkflow).toHaveBeenCalled();
 			expect(session.nodeWaitingForChatResponse).toBeUndefined();
+		});
+
+		it('should not resume execution when the parked node is not chat-resumable', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				executionId: '123',
+				nodeWaitingForChatResponse: 'node1',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+
+			const data = JSON.stringify({ action: 'sendMessage', chatInput: 'hello', sessionId: 'abc' });
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				status: 'waiting',
+				data: { resultData: { lastNodeExecuted: 'node1' } },
+				workflowData: {
+					nodes: [{ name: 'node1', type: 'n8n-nodes-base.telegram' }],
+				},
+			} as any);
+			// The guard refuses this node type, so the message must not resume it and
+			// the node must stay marked as waiting.
+			mockExecutionManager.canResumeOverChat.mockReturnValue(false);
+			mockExecutionManager.resolveResumeNodeType.mockReturnValue('n8n-nodes-base.telegram');
+
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(session.nodeWaitingForChatResponse).toBe('node1');
+			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
+			// The refusal is logged rather than silent.
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('n8n-nodes-base.telegram'),
+			);
 		});
 
 		it('should handle errors during message processing', async () => {

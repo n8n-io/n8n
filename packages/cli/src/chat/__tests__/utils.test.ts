@@ -1,8 +1,8 @@
 import type { IExecutionResponse } from '@n8n/db';
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteData, INode, Workflow } from 'n8n-workflow';
 import { CHAT_WAIT_USER_REPLY, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { getMessage, getLastNodeExecuted, shouldResumeImmediately } from '../utils';
+import { findResumeNode, getMessage, getLastNodeExecuted, shouldResumeImmediately } from '../utils';
 
 // helpers --------------------------------------------------------
 const createMockExecution = (
@@ -440,5 +440,26 @@ describe('shouldResumeImmediately', () => {
 		});
 		const result = shouldResumeImmediately(node);
 		expect(result).toBe(false);
+	});
+});
+
+describe('findResumeNode', () => {
+	const chatNode = { name: 'Chat', type: '@n8n/n8n-nodes-langchain.chat' } as INode;
+	const gateNode = { name: 'Gate', type: 'n8n-nodes-base.telegram' } as INode;
+	const workflow = {
+		getNode: (name: string) => [chatNode, gateNode].find((node) => node.name === name) ?? null,
+	} as unknown as Workflow;
+
+	it('returns the workflow node for the parked stack entry', () => {
+		const executionData = { node: gateNode, data: { main: [[]] } } as unknown as IExecuteData;
+		expect(findResumeNode(executionData, workflow)).toBe(gateNode);
+	});
+
+	it('returns null when the parked node is not in the workflow', () => {
+		const executionData = {
+			node: { name: 'Missing', type: 'x' },
+			data: { main: [[]] },
+		} as unknown as IExecuteData;
+		expect(findResumeNode(executionData, workflow)).toBeNull();
 	});
 });

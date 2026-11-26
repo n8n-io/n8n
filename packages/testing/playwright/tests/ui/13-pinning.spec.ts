@@ -184,14 +184,17 @@ test.describe('Data pinning', () => {
 
 		test('should use pin data in manual webhook executions', async ({ n8n, setupRequirements }) => {
 			await setupRequirements(webhookTestRequirements);
+			await n8n.canvas.openNode(NODES.WEBHOOK);
+			const webhookUrl = await n8n.ndv.getWebhookUrl();
+			await n8n.ndv.close();
+
 			await n8n.canvas.clickExecuteWorkflowButton();
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText(
 				'Waiting for trigger event from Webhook',
 			);
 
-			const webhookPath = '/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
-			const response = await n8n.ndv.makeWebhookRequest(webhookPath);
-			expect(response.status()).toBe(200);
+			const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
+			expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);
 
 			await n8n.canvas.openNode(NODES.END);
 
@@ -205,8 +208,14 @@ test.describe('Data pinning', () => {
 		}) => {
 			await setupRequirements(webhookTestRequirements);
 			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await n8n.canvas.openNode(NODES.WEBHOOK);
+			const productionUrl = n8n.ndv.getContainer().getByRole('radio', { name: 'Production URL' });
+			await productionUrl.click();
+			await expect(productionUrl).toBeChecked();
+			const webhookUrl = await n8n.ndv.getWebhookUrl();
+			await n8n.ndv.close();
+
 			await n8n.canvas.activateWorkflow();
-			const webhookUrl = '/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
 			const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
 			expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);
 

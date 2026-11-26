@@ -30,6 +30,46 @@ const MAX_REDIRECT_URIS = 10;
 /** Maximum length for a single redirect URI */
 const MAX_REDIRECT_URI_LENGTH = 2048;
 
+/** Maximum length for a client_name, matching the column size declared in the CreateOAuthEntities migration */
+const MAX_CLIENT_NAME_LENGTH = 255;
+
+/**
+ * Grant types this OAuth server implements. Kept in sync with the
+ * `grant_types_supported` list advertised by the metadata endpoint
+ * (see mcp.oauth.controller.ts).
+ */
+const SUPPORTED_GRANT_TYPES = ['authorization_code', 'refresh_token'];
+
+/** Maximum number of grant types per client — one entry per supported grant type is all a client ever needs */
+const MAX_GRANT_TYPES = SUPPORTED_GRANT_TYPES.length;
+
+/**
+ * Token endpoint auth methods this OAuth server implements. Kept in sync
+ * with the `token_endpoint_auth_methods_supported` list advertised by the
+ * metadata endpoint (see mcp.oauth.controller.ts).
+ */
+const SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS = ['none', 'client_secret_post', 'client_secret_basic'];
+
+/**
+ * Counts Unicode code points rather than UTF-16 code units, so a value
+ * containing supplementary-plane characters (surrogate pairs) isn't counted
+ * as longer than it is. Stops once past `limit` to avoid scanning an
+ * oversized value in full.
+ */
+function countCodePointsUpTo(value: string, limit: number): number {
+	let count = 0;
+
+	for (const _codePoint of value) {
+		count++;
+
+		if (count > limit) {
+			break;
+		}
+	}
+
+	return count;
+}
+
 /**
  * OAuth 2.1 server implementation for MCP
  * Implements MCP SDK OAuthServerProvider interface for client registration, authorization, and token management
@@ -108,6 +148,25 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	private validateClientRegistration(client: OAuthClientInformationFull): void {
+		if (
+			client.client_name &&
+			countCodePointsUpTo(client.client_name, MAX_CLIENT_NAME_LENGTH) > MAX_CLIENT_NAME_LENGTH
+		) {
+			throw new Error(`client_name exceeds maximum length of ${MAX_CLIENT_NAME_LENGTH} characters`);
+		}
+
+		if (client.grant_types) {
+			if (client.grant_types.length > MAX_GRANT_TYPES) {
+				throw new Error(`grant_types exceeds maximum count of ${MAX_GRANT_TYPES}`);
+			}
+
+			for (const grantType of client.grant_types) {
+				if (!SUPPORTED_GRANT_TYPES.includes(grantType)) {
+					throw new Error('grant_types contains an unsupported value');
+				}
+			}
+		}
+
 		if (client.redirect_uris) {
 			if (client.redirect_uris.length > MAX_REDIRECT_URIS) {
 				throw new Error(`redirect_uris exceeds maximum count of ${MAX_REDIRECT_URIS}`);
@@ -120,6 +179,13 @@ export class McpOAuthService implements OAuthServerProvider {
 					);
 				}
 			}
+		}
+
+		if (
+			client.token_endpoint_auth_method !== undefined &&
+			!SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS.includes(client.token_endpoint_auth_method)
+		) {
+			throw new Error('token_endpoint_auth_method contains an unsupported value');
 		}
 	}
 
