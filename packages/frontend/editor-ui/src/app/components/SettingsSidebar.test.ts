@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import SettingsSidebar from './SettingsSidebar.vue';
@@ -53,13 +53,26 @@ describe('SettingsSidebar', () => {
 		expect(getByTestId('settings-section-billing')).toContainElement(getByText('Gateway credits'));
 	});
 
-	it('keeps the back link out of the scrolling list', () => {
+	it('keeps the back link out of the scrolling list', async () => {
 		const { getByTestId } = renderComponent();
 
 		const scrollArea = getByTestId('settings-sidebar-scroll');
 		expect(scrollArea).not.toContainElement(getByTestId('settings-back'));
 		expect(scrollArea).toContainElement(getByTestId('settings-section-personal'));
-		// Both edges fade so the list hints that more of it scrolls into view.
-		expect(scrollArea.querySelector('[data-reka-scroll-area-viewport]')).toHaveClass('fadeY');
+
+		// jsdom has no layout. Give the viewport content that is hidden past both edges.
+		const viewport = scrollArea.querySelector<HTMLElement>('[data-reka-scroll-area-viewport]')!;
+		for (const [name, value] of [
+			['scrollHeight', 200],
+			['clientHeight', 100],
+			['scrollTop', 50],
+		] as const) {
+			Object.defineProperty(viewport, name, { configurable: true, writable: true, value });
+		}
+		viewport.dispatchEvent(new Event('scroll'));
+		await nextTick();
+
+		// Both edges fade while the list has more content above and below.
+		expect(viewport).toHaveClass('fadeY');
 	});
 });
