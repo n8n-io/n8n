@@ -28,6 +28,11 @@ export const promotionProviderIcon = {
 	gitlab: 'gitlab',
 } satisfies Record<PromotionProviderType, IconName>;
 
+export const promotionDirectionIcon = {
+	apply: 'arrow-down',
+	promote: 'arrow-up',
+} satisfies Record<PromotionDirection, IconName>;
+
 export const promotionEnvironmentBranch = (environment: PromotionEnvironment): string =>
 	environment.direction === 'apply'
 		? environment.settings.branchName

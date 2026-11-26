@@ -26,6 +26,12 @@ const createTestRouter = () =>
 		routes: [
 			{ path: '/home', name: VIEWS.HOMEPAGE, component: stub },
 			{ path: '/settings', component: stub, children: moduleRoutes },
+			// `registerModuleRoutes` mounts project routes under the project.
+			{
+				path: '/projects/:projectId',
+				component: stub,
+				children: moduleRoutes.filter((route) => route.meta?.projectRoute),
+			},
 		],
 	});
 
@@ -136,9 +142,72 @@ describe('ContextModule routes', () => {
 		);
 	});
 
+	describe('collections', () => {
+		const limits = { maxFileSizeBytes: 1, maxFilesPerUpload: 1, maxTotalSizeBytes: 1 };
+
+		const setupKnowledge = (knowledgeActive: boolean, collectionsEnabled: boolean) => {
+			setup(false, { knowledge: { limits, collectionsEnabled } } as FrontendModuleSettings);
+			const settingsStore = useSettingsStore();
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: knowledgeActive ? ['knowledge'] : [],
+			};
+		};
+
+		test('opens the collections page while collections are on', async () => {
+			setupKnowledge(true, true);
+			const router = createTestRouter();
+
+			await router.push('/settings/context/collections');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_COLLECTIONS);
+		});
+
+		test.each([
+			{ knowledgeActive: true, collectionsEnabled: false },
+			{ knowledgeActive: false, collectionsEnabled: true },
+		])(
+			'redirects to the homepage (knowledge module active: $knowledgeActive, collections on: $collectionsEnabled)',
+			async ({ knowledgeActive, collectionsEnabled }) => {
+				setupKnowledge(knowledgeActive, collectionsEnabled);
+				const router = createTestRouter();
+
+				await router.push('/settings/context/collections');
+
+				expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+			},
+		);
+
+		test('opens the collection page of a project while collections are on', async () => {
+			setupKnowledge(true, true);
+			const router = createTestRouter();
+
+			await router.push('/projects/project-1/collections/c1');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.KNOWLEDGE_COLLECTION);
+			expect(router.currentRoute.value.params).toEqual({
+				projectId: 'project-1',
+				collectionId: 'c1',
+			});
+		});
+
+		test('redirects the collection page to the homepage while collections are off', async () => {
+			setupKnowledge(true, false);
+			const router = createTestRouter();
+
+			await router.push('/projects/project-1/collections/c1');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		});
+	});
+
 	it('lists no custom middleware, so the initializer does not gate it on a backend module', () => {
 		for (const route of ContextModule.routes ?? []) {
 			expect(route.meta?.middleware).toEqual(['authenticated']);
+			// The collection page is a project page, not a settings page.
+			if (route.meta?.projectRoute) {
+				continue;
+			}
 			expect(route.meta?.telemetry?.pageCategory).toBe('settings');
 		}
 	});

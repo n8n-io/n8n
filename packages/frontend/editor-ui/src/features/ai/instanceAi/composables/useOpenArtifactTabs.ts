@@ -66,6 +66,11 @@ function toStoredTab(tab: ArtifactTab): AssistantThreadTab {
 	};
 }
 
+/** Stored tabs, without drafts: a draft is replaced by its saved workflow and must not outlive it. */
+function toStoredTabs(tabs: ArtifactTab[]): AssistantThreadTab[] {
+	return tabs.filter((tab) => !tab.draft).map(toStoredTab);
+}
+
 function fromStoredTab(tab: AssistantThreadTab): ArtifactTab {
 	return { ...tab, icon: ARTIFACT_TAB_ICONS[tab.type] };
 }
@@ -96,9 +101,13 @@ export function useOpenArtifactTabs({
 	// True only when the load succeeded and found no stored tabs. A failed load
 	// must not count, or storing the default tabs would overwrite the stored ones.
 	let hasNoStoredTabs = false;
+	// Closed draft tabs. Kept apart from the stored layout, as a draft never outlives the session.
+	const closedDraftIds = shallowRef(new Set<string>());
 
 	const openTabs = computed((): ArtifactTab[] => {
-		const artifacts = artifactTabs();
+		const artifacts = artifactTabs().filter(
+			(tab) => !(tab.draft && closedDraftIds.value.has(tab.id)),
+		);
 		const current = layout.value;
 		if (!current) return artifacts;
 
@@ -125,7 +134,7 @@ export function useOpenArtifactTabs({
 	});
 
 	function currentLayout(): TabsLayout {
-		return layout.value ?? { tabs: openTabs.value.map(toStoredTab), closedTabs: [] };
+		return layout.value ?? { tabs: toStoredTabs(openTabs.value), closedTabs: [] };
 	}
 
 	function findTab(tabId: string) {
@@ -149,24 +158,34 @@ export function useOpenArtifactTabs({
 		if (index === -1) return undefined;
 
 		const closed = tabs[index];
+		const nextTabId = (tabs[index + 1] ?? tabs[index - 1])?.id;
+		if (closed.draft) {
+			closedDraftIds.value = new Set([...closedDraftIds.value, closed.id]);
+			return nextTabId;
+		}
 		const closedKey = tabKey(closed);
 		const { closedTabs } = currentLayout();
 		layout.value = {
-			tabs: tabs.filter((_, i) => i !== index).map(toStoredTab),
+			tabs: toStoredTabs(tabs.filter((_, i) => i !== index)),
 			closedTabs: [
 				...closedTabs.filter((tab) => tabKey(tab) !== closedKey),
 				{ type: closed.type, id: closed.id },
 			].slice(-MAX_ASSISTANT_THREAD_CLOSED_TABS),
 		};
-		return (tabs[index + 1] ?? tabs[index - 1])?.id;
+		return nextTabId;
 	}
 
 	/** Open a closed artifact again, at the end. Returns true when the tabs changed. */
 	function reopenTab(tabId: string): boolean {
+		if (closedDraftIds.value.has(tabId)) {
+			// The stored tabs do not change, as they never hold a draft.
+			closedDraftIds.value = new Set([...closedDraftIds.value].filter((id) => id !== tabId));
+			return false;
+		}
 		const current = layout.value;
 		if (!current) return false;
 		const tab = findTab(tabId);
-		if (!tab) return false;
+		if (!tab || tab.draft) return false;
 
 		const key = tabKey(tab);
 		const isClosed = current.closedTabs.some((closed) => tabKey(closed) === key);
@@ -193,7 +212,7 @@ export function useOpenArtifactTabs({
 		const isOpen = openTabs.value.some((open) => tabKey(open) === key);
 		layout.value = fitWithinTabLimit(
 			{
-				tabs: isOpen ? current.tabs : [...openTabs.value.map(toStoredTab), toStoredTab(tab)],
+				tabs: isOpen ? current.tabs : [...toStoredTabs(openTabs.value), toStoredTab(tab)],
 				closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
 			},
 			new Set([key]),
@@ -210,7 +229,7 @@ export function useOpenArtifactTabs({
 
 		const [moved] = tabs.splice(fromIndex, 1);
 		tabs.splice(target, 0, moved);
-		layout.value = { tabs: tabs.map(toStoredTab), closedTabs: currentLayout().closedTabs };
+		layout.value = { tabs: toStoredTabs(tabs), closedTabs: currentLayout().closedTabs };
 	}
 
 	// --- Storage ---
@@ -219,10 +238,10 @@ export function useOpenArtifactTabs({
 	let pendingActiveTabId: string | undefined;
 
 	function buildState(activeTabId: string | undefined): AssistantThreadTabsState {
-		const active = openTabs.value.find((tab) => tab.id === activeTabId);
+		const active = openTabs.value.find((tab) => tab.id === activeTabId && !tab.draft);
 		// New artifacts join the tabs on their own, so the tabs can pass the limit here too.
 		const current = {
-			tabs: openTabs.value.map(toStoredTab),
+			tabs: toStoredTabs(openTabs.value),
 			closedTabs: currentLayout().closedTabs,
 		};
 		const fitted = fitWithinTabLimit(current, new Set(active ? [tabKey(active)] : []));

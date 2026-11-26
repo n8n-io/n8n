@@ -164,7 +164,7 @@ function finishReturn(event: TransitionEvent) {
 }
 
 const fileType = computed(() => {
-	const mimeType = props.mimeType.split(';')[0].trim().toLowerCase();
+	const mimeType = (props.mimeType ?? '').split(';')[0].trim().toLowerCase();
 	const fileName = props.fileName.toLowerCase();
 
 	if (mimeType.startsWith('image/')) return 'image';
@@ -225,7 +225,10 @@ const displayType = computed(() => {
 			/>
 			<div v-else :class="$style.preview" aria-hidden="true">
 				<N8nIcon
-					:icon="fileType === 'pdf' ? 'file-text' : fileType === 'markdown' ? 'file-code' : 'file'"
+					:icon="
+						icon ??
+						(fileType === 'pdf' ? 'file-text' : fileType === 'markdown' ? 'file-code' : 'file')
+					"
 					size="large"
 				/>
 			</div>

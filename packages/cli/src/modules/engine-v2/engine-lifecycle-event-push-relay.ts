@@ -13,6 +13,8 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 /** A lifecycle event scoped to one step. */
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
+type ExecutionStarted = Extract<LifecycleEvent, { type: 'execution:started' }>;
+
 /**
  * How a step settled. A completed step may have no outputs: the channel
  * sender drops them from the event when the frame is over its size limit.
@@ -62,7 +64,7 @@ export class EngineLifecycleEventPushRelay {
 	private relayOne(update: LifecycleEvent, session: EngineV2PushSession): void {
 		switch (update.type) {
 			case 'execution:started':
-				return this.onExecutionStarted(update.executionId, update.at, session);
+				return this.onExecutionStarted(update, session);
 			case 'step:started':
 				return this.onStepStarted(update, session);
 			case 'step:completed':
@@ -84,17 +86,41 @@ export class EngineLifecycleEventPushRelay {
 	}
 
 	/**
-	 * Reports the trigger's run, since the engine never announces it as a step.
+	 * Announces the run, then reports the trigger's run, since the engine never
+	 * announces it as a step.
 	 *
-	 * Sends no `executionStarted`: the editor already promoted the run from the
-	 * dispatch response, and the message would overwrite its run data with an
-	 * empty scaffold. Runs the editor did not start need it — TODO(CAT-4258).
+	 * `executionStarted` is what a run the editor did not start over REST (a
+	 * test webhook, an Instance AI run) initialises from. The editor replaces
+	 * its staged run data with `flattedRunData`, so it holds all the run data
+	 * the run reuses.
 	 */
-	private onExecutionStarted(executionId: string, at: string, session: EngineV2PushSession): void {
-		const { trigger } = session;
-		// Clear before use so a redelivery can't re-emit the run or hold onto
-		// the (possibly large) pinned data.
+	private onExecutionStarted(update: ExecutionStarted, session: EngineV2PushSession): void {
+		const { executionId, at } = update;
+		const { start, trigger } = session;
+		// Clear before use so a redelivery can't re-emit either message or hold
+		// onto the (possibly large) run and pinned data.
+		session.start = undefined;
 		session.trigger = undefined;
+
+		if (start) {
+			this.push.send(
+				{
+					type: 'executionStarted',
+					data: {
+						executionId,
+						mode: start.mode,
+						source: start.source,
+						startedAt: new Date(at),
+						workflowId: update.workflowId,
+						workflowName: start.workflowName,
+						flattedRunData: start.flattedRunData,
+					},
+				},
+				session.pushRef,
+				session.userId,
+			);
+		}
+
 		// No trigger, no node to report outputs for.
 		if (!trigger) return;
 

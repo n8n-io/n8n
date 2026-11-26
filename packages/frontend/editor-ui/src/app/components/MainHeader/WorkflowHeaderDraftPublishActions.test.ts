@@ -1,4 +1,7 @@
-import type { WorkflowReviewRequestForWorkflow } from '@n8n/api-types';
+import type {
+	WorkflowReviewRequestForWorkflow,
+	WorkflowReviewRequirementLevel,
+} from '@n8n/api-types';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -26,6 +29,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import {
+	describeEngineV2Block,
+	type EngineCompatibilityReason,
+} from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -207,6 +215,18 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		};
 	};
 
+	/** The level the server reports for the workflow, seeded before the first render. */
+	const setServerReviewRequirement = async (
+		reviewRequiredBy: WorkflowReviewRequirementLevel | null,
+	) => {
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+			count: 0,
+			data: [],
+			reviewRequiredBy,
+		});
+		await useWorkflowReviewStatusStore().fetchStatus(defaultWorkflowProps.id);
+	};
+
 	const setHomeProjectType = (type: 'personal' | 'team') => {
 		workflowDocumentStore.setHomeProject({
 			id: `${type}-project`,
@@ -237,7 +257,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
 		// The testing pinia is shared across this file, so reset the review status to
 		// "fetched, no open review" between tests.
-		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+			count: 0,
+			data: [],
+			reviewRequiredBy: null,
+		});
 		await useWorkflowReviewStatusStore().fetchStatus(defaultWorkflowProps.id);
 
 		const nodeTypesStore = useNodeTypesStore();
@@ -594,6 +618,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		const seedOpenReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [
 					{
 						id: 'req-1',
@@ -1356,6 +1381,191 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
+	describe('Engine v2 compatibility', () => {
+		const blockingReason: EngineCompatibilityReason = {
+			code: 'TRIGGER_EXTERNAL_IDENTITY',
+			kind: 'temporary',
+			severity: 'blocking',
+			nodeId: triggerNode.id,
+			nodeName: triggerNode.name,
+			message: 'Engine v2 cannot run this trigger yet.',
+		};
+		const warningReason: EngineCompatibilityReason = {
+			...blockingReason,
+			severity: 'warning',
+		};
+
+		const setEngineV2Gate = ({ moduleActive = true, engineType = 'v2' as 'v1' | 'v2' } = {}) => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: moduleActive ? ['engine-v2'] : [],
+			};
+			workflowDocumentStore.mergeSettings({ engineType });
+		};
+
+		const seedOpenReview = () => {
+			setWorkflowReviewGates();
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				reviewRequiredBy: null,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						workflowVersionId: 'version-0',
+						workflowVersionName: null,
+						description: null,
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						viewerCanOpen: true,
+					},
+				],
+			});
+		};
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([triggerNode]);
+		});
+
+		afterEach(() => {
+			settingsStore.settings = { ...settingsStore.settings, activeModules: [] };
+			workflowDocumentStore.setSettings({});
+		});
+
+		it('should disable publish and give the reason for a never-published workflow', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		it('should disable publish and give the reason for a published workflow with changes', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+			uiStore.markStateDirty();
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		// The NDV, the command bar and the shortcut publish through the event bus,
+		// which never sees the button's disabled state.
+		it('should stop a publish command from the event bus', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			renderComponent();
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() => expect(mockShowMessage).toHaveBeenCalled());
+
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+			);
+			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				title: describeEngineV2Block(),
+				type: 'warning',
+			});
+		});
+
+		it('should keep publish enabled and open the modal for a warning only', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
+
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+				),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the engine-v2 module is off', { moduleActive: false }],
+			['the workflow runs on engine v1', { engineType: 'v1' as const }],
+		])('should change nothing when %s', async (_case, gate) => {
+			setEngineV2Gate(gate);
+			const { checkWorkflow } = mockEngineV2Compatibility({ reasons: [blockingReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
+			expect(checkWorkflow).not.toHaveBeenCalled();
+
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+				),
+			);
+		});
+
+		it('should disable Submit changes with Publish for a blocking reason', async () => {
+			seedOpenReview();
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+		});
+
+		it('should keep Submit changes enabled for a warning only', async () => {
+			seedOpenReview();
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-review-submit-changes-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+		});
+	});
+
 	describe('Name Version action', () => {
 		let workflowHistoryStore: MockedStore<typeof useWorkflowHistoryStore>;
 		let settingsStore: MockedStore<typeof useSettingsStore>;
@@ -1553,34 +1763,42 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
-	describe('When the instance always requires approval', () => {
+	describe('When the instance or the project requires approval', () => {
 		const choiceDialogName = 'New: Submit for review before publishing';
 
-		it('offers Submit for review for a team project workflow and opens the submit dialog', async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			setWorkflowReviewGates({ alwaysRequired: true });
-			setHomeProjectType('team');
-			setupEnabledPublishButton();
+		it.each([
+			{ level: 'instance', alwaysRequired: true },
+			{ level: 'project', alwaysRequired: false },
+		] as const)(
+			'offers Submit for review for a team project workflow and opens the submit dialog ($level)',
+			async ({ level, alwaysRequired }) => {
+				const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+				setWorkflowReviewGates({ alwaysRequired });
+				await setServerReviewRequirement(level);
+				setHomeProjectType('team');
+				setupEnabledPublishButton();
 
-			const { getByTestId, findByTestId, findByRole, queryByRole } = renderComponent();
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toHaveTextContent('Submit for review');
+				const { getByTestId, findByTestId, findByRole, queryByRole } = renderComponent();
+				const publishButton = getByTestId('workflow-open-publish-modal-button');
+				expect(publishButton).toHaveTextContent('Submit for review');
 
-			await userEvent.click(getByTestId('version-menu-button'));
-			expect(await findByTestId('version-menu-item-publish')).toHaveTextContent(
-				'Submit for review',
-			);
-			await userEvent.keyboard('{Escape}');
+				await userEvent.click(getByTestId('version-menu-button'));
+				expect(await findByTestId('version-menu-item-publish')).toHaveTextContent(
+					'Submit for review',
+				);
+				await userEvent.keyboard('{Escape}');
 
-			await userEvent.click(publishButton);
+				await userEvent.click(publishButton);
 
-			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
-			expect(queryByRole('dialog', { name: choiceDialogName })).not.toBeInTheDocument();
-			expect(openModalSpy).not.toHaveBeenCalled();
-		});
+				expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+				expect(queryByRole('dialog', { name: choiceDialogName })).not.toBeInTheDocument();
+				expect(openModalSpy).not.toHaveBeenCalled();
+			},
+		);
 
 		it('offers Submit for review when the saved version is not the live version', async () => {
 			setWorkflowReviewGates({ alwaysRequired: true });
+			await setServerReviewRequirement('instance');
 			setHomeProjectType('team');
 			setupEnabledPublishButton();
 			workflowDocumentStore.setActiveState({
@@ -1600,6 +1818,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		it('offers Publish to retry a live version whose publication failed', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			setWorkflowReviewGates({ alwaysRequired: true });
+			await setServerReviewRequirement('instance');
 			setHomeProjectType('team');
 			setupEnabledPublishButton();
 			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, true);
@@ -1645,6 +1864,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						viewerCanOpen: true,
 					},
 				],
+				reviewRequiredBy: 'instance',
 			});
 
 			const { getByTestId } = renderComponent();
@@ -1655,7 +1875,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('shows Review required on and locked with the reason for a published team workflow', async () => {
-			setWorkflowReviewGates({ alwaysRequired: true });
+			setWorkflowReviewGates({ alwaysRequired: false });
+			await setServerReviewRequirement('project');
 			setHomeProjectType('team');
 			setupEnabledPublishButton();
 			workflowDocumentStore.setActiveState({
@@ -1663,15 +1884,59 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				activeVersion: createMockActiveVersion('version-1'),
 			});
 
-			const { getByTestId, findByRole, getByText } = renderComponent();
+			const { getByTestId, findByRole, findByText } = renderComponent();
 			await userEvent.click(getByTestId('version-menu-button'));
 
 			const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
 			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
 			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-			expect(
-				getByText('New versions need an approved review before they can be published.'),
-			).toBeInTheDocument();
+			await userEvent.hover(reviewItem.parentElement!);
+			expect(await findByText('This policy is set by your project admin.')).toBeInTheDocument();
+		});
+
+		it('refetches the requirement on Publish and opens the submit dialog when the project now requires approval', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			setWorkflowReviewGates({ alwaysRequired: false });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			await vi.waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+			expect(publishButton).toHaveTextContent('Publish');
+
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 0,
+				data: [],
+				reviewRequiredBy: 'project',
+			});
+			await userEvent.click(publishButton);
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(openModalSpy).not.toHaveBeenCalled();
+		});
+
+		it('ignores a second Publish click while the review status loads', async () => {
+			setWorkflowReviewGates({ alwaysRequired: false });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			await vi.waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			let resolveFetch!: (value: Awaited<ReturnType<typeof fetchWorkflowReviewRequests>>) => void;
+			vi.mocked(fetchWorkflowReviewRequests).mockReturnValue(
+				new Promise((resolve) => (resolveFetch = resolve)),
+			);
+			await userEvent.click(publishButton);
+			await userEvent.click(publishButton);
+			resolveFetch({ count: 0, data: [], reviewRequiredBy: 'project' });
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(fetchWorkflowReviewRequests).toHaveBeenCalledTimes(1);
 		});
 
 		it.each([
@@ -1707,6 +1972,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			setupEnabledPublishButton();
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [
 					{
 						id: 'req-1',
@@ -1733,6 +1999,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		const seedLatestReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [
 					{
 						id: 'req-1',

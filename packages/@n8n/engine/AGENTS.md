@@ -28,7 +28,7 @@ a deployable engine worker) without touching core logic.
 
 ## Layers (today, all in this package)
 
-- **Core (decides)** — `graph/`, `execution/`, `reconciliation/`, `admittance/`. Pure
+- **Core (decides)** — `graph/`, `execution/`, `reconciliation/`, `retention/`, `admittance/`. Pure
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
@@ -45,8 +45,10 @@ a deployable engine worker) without touching core logic.
   in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
   the engine sets the list names and the message schemas. The host gives the
   Redis connections, the key prefix and the concurrency limits.
-  `RedisWorkQueue` never closes a connection. The factory's `close()` closes
-  only the consumer connections; the host closes the publisher. The engine has
+  `RedisWorkQueue` never closes a connection. A queue opens its consumer
+  connection on its first `start()`, so a process that only publishes to a
+  queue opens none for it. The factory's `close()` closes only the consumer
+  connections that were opened; the host closes the publisher. The engine has
   no runtime dependency on `ioredis`; the adapter declares the client commands
   it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
@@ -55,7 +57,14 @@ a deployable engine worker) without touching core logic.
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
   engine, so no host repeats the wiring. The host gives it the queues. It
-  starts and stops them, but never closes their connections.
+  starts and stops the queues its roles consume, but never closes their
+  connections.
+  A process runs one or more roles (all three by default): `api` mounts `/api`,
+  `orchestrator` runs the orchestration worker and the reconciliation sweeper,
+  and `step-worker` runs the step worker and the wait sweeper. Every role serves
+  `/healthz`. Roles can be split over processes only on shared queues: the
+  in-memory queues need all three roles in one process. Only the `api` role
+  needs an identity verifier, and the factory refuses that role without one.
   A data plane database is not optional — the factory's type requires one, and
   each composition root refuses to start without it rather than serving
   `/healthz` while unable to run a workflow.
@@ -69,7 +78,7 @@ a deployable engine worker) without touching core logic.
 
 ## Rules that keep the seams extractable
 
-- Core modules (`graph`, `execution`, `reconciliation`, `admittance`) don't import `express`,
+- Core modules (`graph`, `execution`, `reconciliation`, `retention`, `admittance`) don't import `express`,
   `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
   `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
   is one-way: `database/` imports the interface + domain types from the core, not
@@ -93,12 +102,17 @@ a deployable engine worker) without touching core logic.
 Change the schema only with a new migration, for example one that adds a
 column. Never edit a migration that is already on master. Engine databases
 persist, and a database that ran a migration does not run it again, so an edit
-never reaches it.
+never reaches it. The engine roles are deployed and upgraded independently, so
+for a while old code runs on the new schema and a migration must not remove
+what that code uses.
 
 A new migration gets a timestamp later than the last one and its entry in
 `src/database/migrations/index.ts`. Add its file name to the
 `unicorn/filename-case` exemptions in `oxlint.config.mts` and
 `eslint.config.mjs`. Mirror a new column or index in the entity decorators.
+All pending engine migrations run in one transaction under the migration lock,
+so a migration cannot opt out of the transaction (for example,
+`CREATE INDEX CONCURRENTLY` does not work).
 
 ## Crash recovery: reconciliation, not transactions
 

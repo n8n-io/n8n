@@ -356,10 +356,13 @@ export function bindQueryParameters(
 	// $1..$N were all replaced above (none were, if queryValues is empty), so
 	// anything still shaped like a placeholder here references a number past
 	// the last bound value. SQL Server reads it as a money literal instead of
-	// failing. A $N inside a quoted string is text, not a placeholder.
+	// failing. A $N inside a quoted string or [bracketed] identifier is text,
+	// not a placeholder.
 	const unboundNumbers = safeRegex
 		.matchAll('\\$(\\d+)(?!\\d)', processedQuery, 'g')
-		.filter((match) => !isInsideQuotes(processedQuery, match.index ?? 0))
+		.filter(
+			(match) => !isInsideQuotes(processedQuery, match.index ?? 0, { bracketIdentifiers: true }),
+		)
 		.map((match) => Number(match[1]));
 
 	if (unboundNumbers.length > 0) {

@@ -1,7 +1,7 @@
 import type { DataSource, Repository } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { ExecutionNotFoundError, ParentExecutionEndedError } from '../../execution/execution-store';
 import type { NewExecutionRecord } from '../../execution/execution-store';
@@ -194,6 +194,43 @@ describe('workflow_execution table (integration)', () => {
 			).rejects.toBeInstanceOf(ExecutionNotFoundError);
 		},
 	);
+
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView reports the parent workflow and the sub-executions', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const viewStore = new TypeOrmExecutionViewStore(
+			dataSource.getRepository(WorkflowExecution),
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+		const parentId = generateId();
+		await store.createExecution({
+			...newRecord(parentId),
+			workflowId: 'wf-parent',
+			status: 'running',
+		});
+		const [first, second] = [generateId(), generateId()];
+		const [firstStepId, secondStepId] = [generateId(), generateId()];
+		await store.createExecution({
+			...newRecord(first),
+			workflowId: 'wf-sub-1',
+			parent: { executionId: parentId, stepId: firstStepId, awaited: true },
+		});
+		await store.createExecution({
+			...newRecord(second),
+			workflowId: 'wf-sub-2',
+			parent: { executionId: parentId, stepId: secondStepId, awaited: false },
+		});
+
+		const parent = await viewStore.loadExecutionWithStepsView(parentId);
+		const child = await viewStore.loadExecutionWithStepsView(first);
+
+		expect(parent.parentWorkflowId).toBeNull();
+		expect(parent.subExecutions).toEqual([
+			{ executionId: first, workflowId: 'wf-sub-1', stepId: firstStepId },
+			{ executionId: second, workflowId: 'wf-sub-2', stepId: secondStepId },
+		]);
+		expect(child.parentWorkflowId).toBe('wf-parent');
+		expect(child.subExecutions).toEqual([]);
+	});
 
 	it('counts rows by workflowId and status (admittance support)', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
@@ -585,24 +622,30 @@ describe('workflow_execution table (integration)', () => {
 			]);
 		});
 
-		it('renewQueuedExecution moves the time forward once for one observed value', async () => {
-			const store = stalenessStore();
-			const id = generateId();
-			await store.createExecution(newRecord(id));
-			const observed = await loadStaleAfter(id);
-			if (!observed) throw new Error('expected a stale_after value');
+		it.each([
+			{ elapsedMs: 0, expectedAdvanceMs: 1 },
+			{ elapsedMs: 20_000, expectedAdvanceMs: 20_000 },
+		])(
+			'renewQueuedExecution moves the deadline forward once for one observed value after $elapsedMs ms',
+			async ({ elapsedMs, expectedAdvanceMs }) => {
+				const store = stalenessStore();
+				const id = generateId();
+				const now = Date.now();
+				const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+				onTestFinished(() => {
+					clock.mockRestore();
+				});
 
-			const before = Date.now();
-			expect(await store.renewQueuedExecution(id, observed)).toBe(true);
-			const after = Date.now();
+				await store.createExecution(newRecord(id));
+				const observed = await loadStaleAfter(id);
+				if (!observed) throw new Error('expected a stale_after value');
+				clock.mockReturnValue(now + elapsedMs);
 
-			const renewed = await loadStaleAfter(id);
-			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
-			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
-			// a second caller that read the same value changes nothing
-			expect(await store.renewQueuedExecution(id, observed)).toBe(false);
-			expect(await loadStaleAfter(id)).toEqual(renewed);
-		});
+				expect(await store.renewQueuedExecution(id, observed)).toBe(true);
+				expect(await store.renewQueuedExecution(id, observed)).toBe(false);
+				expect(await loadStaleAfter(id)).toEqual(new Date(observed.getTime() + expectedAdvanceMs));
+			},
+		);
 
 		it('renewQueuedExecution changes nothing once the execution left queued', async () => {
 			const store = stalenessStore();

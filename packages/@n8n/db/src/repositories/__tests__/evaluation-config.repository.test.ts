@@ -1,13 +1,19 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import type { DataSource, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { EvaluationConfig } from '../../entities/evaluation-config.ee';
+import { TransactionRunner } from '../../services/transaction';
+import { TypeOrmTransactionRunner } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { EvaluationConfigRepository } from '../evaluation-config.repository';
 
 describe('EvaluationConfigRepository', () => {
 	const entityManager = mockEntityManager(EvaluationConfig);
+	Container.set(TransactionRunner, mock<TransactionRunner>());
 	const repo = Container.get(EvaluationConfigRepository);
 
 	const buildPayload = (
@@ -45,7 +51,7 @@ describe('EvaluationConfigRepository', () => {
 			] as EvaluationConfig[];
 			entityManager.find.mockResolvedValueOnce(rows);
 
-			const result = await repo.listByWorkflowId('wf-1');
+			const result = await repo.listByWorkflowId('wf-1', {});
 
 			expect(result).toBe(rows);
 			const callArgs = entityManager.find.mock.calls[0];
@@ -57,14 +63,14 @@ describe('EvaluationConfigRepository', () => {
 
 		it('returns an empty array when none exist', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
-			expect(await repo.listByWorkflowId('wf-1')).toEqual([]);
+			expect(await repo.listByWorkflowId('wf-1', {})).toEqual([]);
 		});
 	});
 
 	describe('findByIdAndWorkflowId', () => {
 		it('returns null when no row matches', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
-			expect(await repo.findByIdAndWorkflowId('cfg-1', 'wf-1')).toBeNull();
+			expect(await repo.findByIdAndWorkflowId('cfg-1', 'wf-1', {})).toBeNull();
 			const callArgs = entityManager.findOne.mock.calls[0];
 			expect(callArgs?.[1]).toEqual({ where: { id: 'cfg-1', workflowId: 'wf-1' } });
 		});
@@ -72,7 +78,7 @@ describe('EvaluationConfigRepository', () => {
 		it('returns the config when one exists', async () => {
 			const row = { id: 'cfg-1', workflowId: 'wf-1' } as EvaluationConfig;
 			entityManager.findOne.mockResolvedValueOnce(row);
-			expect(await repo.findByIdAndWorkflowId('cfg-1', 'wf-1')).toBe(row);
+			expect(await repo.findByIdAndWorkflowId('cfg-1', 'wf-1', {})).toBe(row);
 		});
 	});
 
@@ -84,7 +90,7 @@ describe('EvaluationConfigRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			const result = await repo.createForWorkflow('cfg-1', 'wf-1', payload);
+			const result = await repo.createForWorkflow('cfg-1', 'wf-1', payload, {});
 
 			expect(entityManager.save).toHaveBeenCalledTimes(1);
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
@@ -119,7 +125,7 @@ describe('EvaluationConfigRepository', () => {
 			entityManager.findOne.mockResolvedValueOnce(existing);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			const result = await repo.updateForWorkflow('cfg-1', 'wf-1', updated);
+			const result = await repo.updateForWorkflow('cfg-1', 'wf-1', updated, {});
 
 			expect(result).toBe(existing);
 			expect(existing).toMatchObject({
@@ -132,7 +138,30 @@ describe('EvaluationConfigRepository', () => {
 
 		it('returns null when no config matches', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
-			expect(await repo.updateForWorkflow('cfg-1', 'wf-1', buildPayload())).toBeNull();
+			expect(await repo.updateForWorkflow('cfg-1', 'wf-1', buildPayload(), {})).toBeNull();
+			expect(entityManager.save).not.toHaveBeenCalled();
+		});
+
+		it('reads and saves the config within the supplied transaction', async () => {
+			const transactionManager = mock<EntityManager>();
+			const dataSource = mock<DataSource>({
+				transaction: async <T>(run: string | ((manager: EntityManager) => Promise<T>)) => {
+					if (typeof run === 'string') throw new Error('Unexpected isolation level');
+					return await run(transactionManager);
+				},
+			});
+			const runner = new TypeOrmTransactionRunner(dataSource, mock<Logger>());
+			const existing = mock<EvaluationConfig>({ id: 'cfg-1', workflowId: 'wf-1' });
+			transactionManager.findOne.mockResolvedValueOnce(existing);
+			transactionManager.save.mockResolvedValueOnce(existing);
+
+			const result = await runner.run({}, async (ctx) => {
+				return await repo.updateForWorkflow('cfg-1', 'wf-1', buildPayload(), ctx);
+			});
+
+			expect(result).toBe(existing);
+			expect(transactionManager.save).toHaveBeenCalledWith(EvaluationConfig, existing);
+			expect(entityManager.findOne).not.toHaveBeenCalled();
 			expect(entityManager.save).not.toHaveBeenCalled();
 		});
 	});
@@ -140,14 +169,14 @@ describe('EvaluationConfigRepository', () => {
 	describe('deleteByIdAndWorkflowId', () => {
 		it('issues a scoped delete and returns the affected count', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: {} });
-			expect(await repo.deleteByIdAndWorkflowId('cfg-1', 'wf-1')).toBe(1);
+			expect(await repo.deleteByIdAndWorkflowId('cfg-1', 'wf-1', {})).toBe(1);
 			const callArgs = entityManager.delete.mock.calls[0];
 			expect(callArgs?.[1]).toEqual({ id: 'cfg-1', workflowId: 'wf-1' });
 		});
 
 		it('returns 0 when no config matches', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 0, raw: {} });
-			expect(await repo.deleteByIdAndWorkflowId('cfg-1', 'wf-1')).toBe(0);
+			expect(await repo.deleteByIdAndWorkflowId('cfg-1', 'wf-1', {})).toBe(0);
 		});
 	});
 
@@ -159,7 +188,7 @@ describe('EvaluationConfigRepository', () => {
 				generatedMaps: [],
 			});
 
-			await repo.markInvalid('cfg-1', 'END_NODE_DELETED');
+			await repo.markInvalid('cfg-1', 'END_NODE_DELETED', {});
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toEqual({ id: 'cfg-1' });
@@ -168,17 +197,18 @@ describe('EvaluationConfigRepository', () => {
 	});
 
 	describe('countDistinctWorkflowsWithConfigs', () => {
-		it('returns the count of distinct workflowIds that have at least one config', async () => {
-			const qbMock = {
-				select: vi.fn().mockReturnThis(),
-				distinct: vi.fn().mockReturnThis(),
-				getCount: vi.fn().mockResolvedValueOnce(7),
-			};
-			vi.spyOn(repo, 'createQueryBuilder').mockReturnValueOnce(
-				qbMock as unknown as ReturnType<typeof repo.createQueryBuilder>,
-			);
+		it('returns the count from the quota query', async () => {
+			const qbMock = mock<SelectQueryBuilder<EvaluationConfig>>();
+			qbMock.select.mockReturnThis();
+			qbMock.distinct.mockReturnThis();
+			qbMock.getCount.mockResolvedValueOnce(7);
+			entityManager.createQueryBuilder.mockReturnValueOnce(qbMock);
 
-			expect(await repo.countDistinctWorkflowsWithConfigs()).toBe(7);
+			expect(await repo.countDistinctWorkflowsWithConfigs({})).toBe(7);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(
+				EvaluationConfig,
+				'evaluation_config',
+			);
 			expect(qbMock.select).toHaveBeenCalledWith('evaluation_config.workflowId');
 			expect(qbMock.distinct).toHaveBeenCalledWith(true);
 			expect(qbMock.getCount).toHaveBeenCalledTimes(1);

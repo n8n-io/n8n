@@ -438,6 +438,7 @@ describe('SkillRuntimeService', () => {
 			expect(skills.findVersionsByIds).toHaveBeenCalledWith(
 				['skill_a-v2', 'skill_gone-v1'],
 				TX_CTX,
+				{},
 			);
 			expect([...versions]).toEqual([
 				[

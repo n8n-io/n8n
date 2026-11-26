@@ -103,6 +103,9 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
 
+	/** Whether to load the node and credential types. */
+	protected needsNodeTypes = true;
+
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
 	 * Only server processes hold the encryption key these are derived from.
@@ -126,7 +129,7 @@ export abstract class BaseCommand<F = never> {
 
 		this.nodeTypes = Container.get(NodeTypes);
 
-		await Container.get(LoadNodesAndCredentials).init();
+		if (this.needsNodeTypes) await Container.get(LoadNodesAndCredentials).init();
 		Container.get(NodeTypesProxy).registerProvider(this.nodeTypes);
 
 		const useRedisForLocking =
@@ -590,6 +593,15 @@ export abstract class BaseCommand<F = never> {
 	 */
 	async initPolicyEnforcement() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
+	}
+
+	/**
+	 * Registers the workflow review rules, so a one-off command that publishes is refused what the
+	 * server refuses. Call after `initLicense()`: the module is license-gated. Call it once per
+	 * process: a second init of the module throws.
+	 */
+	async initWorkflowReviews() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['workflow-reviews']);
 	}
 
 	/** One-off commands that run workflows init only the modules they need. */

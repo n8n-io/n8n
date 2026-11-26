@@ -90,6 +90,7 @@ export class ManualExecutionService {
 			}
 
 			const executionData = createRunExecutionData({
+				binaryDataAccess: data.binaryDataAccess,
 				resultData: {
 					runData,
 					pinData,
@@ -181,7 +182,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
-				createRunExecutionData({ resumeToken }),
+				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess, resumeToken }),
 				storedAt,
 			);
 			return workflowExecute.run({
@@ -204,7 +205,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
-				createRunExecutionData({ resumeToken }),
+				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess, resumeToken }),
 				storedAt,
 			);
 

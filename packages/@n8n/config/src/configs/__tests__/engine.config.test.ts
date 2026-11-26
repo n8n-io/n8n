@@ -75,6 +75,15 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
 	});
 
+	it('should leave the engine roles empty by default and read them as given', () => {
+		expect(Container.get(EngineConfig).roles).toBe('');
+
+		Container.reset();
+		process.env.N8N_ENGINE_ROLES = 'api,orchestrator';
+
+		expect(Container.get(EngineConfig).roles).toBe('api,orchestrator');
+	});
+
 	it('should host the data plane in-process by default', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 	});

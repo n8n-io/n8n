@@ -1,5 +1,6 @@
 import type {
 	Agent as RuntimeAgent,
+	AgentMessage,
 	CheckpointStore,
 	ExecutionOptions,
 	JSONObject,
@@ -26,7 +27,10 @@ import type {
 	AgentTurnStatus,
 	FormattedTurnError,
 } from '../types/agent-turn-outcome';
-import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
+import type {
+	SystemAgentHostEventEmitter,
+	SystemAgentTransientHostEventEmitter,
+} from './system-agent-host-events';
 
 export type { AgentHostInstruction as SystemAgentHostInstruction } from '../types/agent-host-instruction';
 
@@ -75,6 +79,14 @@ interface SystemAgentTurnBase<TLease> {
 	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
+	/**
+	 * Send a custom event that the chat shows live, such as a preview. The
+	 * runtime streams it as a `transient-host-event` SSE event and does not
+	 * record it, so history does not show it after a reload. Events after the
+	 * turn closed are dropped. It throws when the payload is larger than 1 MiB
+	 * as JSON. Do not put secrets in it.
+	 */
+	emitTransientHostEvent: SystemAgentTransientHostEventEmitter;
 	/**
 	 * Find a file that the user attached to any message of this thread, by id.
 	 * Gives `undefined` for a file of another thread.
@@ -369,6 +381,13 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * The resources that a stored user message sent, such as mentioned
+	 * workflows. The chat history returns them as the `references` of the
+	 * message. `modelInput` is the stored model input of the message, that is
+	 * the `input` of the turn handle. Return an empty list when there are none.
+	 */
+	readMessageReferences?(modelInput: AgentMessage): unknown[];
 	/**
 	 * Called before a user deletes a thread of this agent, while the thread
 	 * state can still be read. Do not change data here: the deletion can still

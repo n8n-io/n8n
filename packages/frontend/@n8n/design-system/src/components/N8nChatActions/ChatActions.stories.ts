@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { ref } from 'vue';
 
-import N8nIconButton from '../N8nIconButton';
-import N8nTooltip from '../N8nTooltip';
+import N8nChatRating from '../N8nChatRating/ChatRating.vue';
 import N8nChatActions from './ChatActions.vue';
 
 const meta = {
@@ -106,41 +106,15 @@ export const ReadAloudOnly: Story = {
 export const WithCustomActions: Story = {
 	render: function render(args) {
 		return {
-			components: { N8nChatActions, N8nIconButton, N8nTooltip },
+			components: { N8nChatActions, N8nChatRating },
 			setup: function setup() {
-				function handleThumbsUp() {
-					window.alert('Thumbs up selected');
-				}
-
-				function handleThumbsDown() {
-					window.alert('Thumbs down selected');
-				}
-
-				return { args, handleThumbsUp, handleThumbsDown };
+				const rating = ref<'up' | 'down'>();
+				return { args, rating };
 			},
 			template: `
 				<p>{{ args.content }}</p>
 				<N8nChatActions v-bind="args">
-					<N8nTooltip content="Helpful" placement="bottom">
-						<N8nIconButton
-							icon="thumbs-up"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							aria-label="Helpful"
-							@click="handleThumbsUp"
-						/>
-					</N8nTooltip>
-					<N8nTooltip content="Not helpful" placement="bottom">
-						<N8nIconButton
-							icon="thumbs-down"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							aria-label="Not helpful"
-							@click="handleThumbsDown"
-						/>
-					</N8nTooltip>
+					<N8nChatRating :rating="rating" @rate="rating = $event" />
 				</N8nChatActions>
 			`,
 		};

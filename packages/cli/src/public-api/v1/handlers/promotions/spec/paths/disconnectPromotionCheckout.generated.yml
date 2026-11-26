@@ -7,8 +7,8 @@ description: |-
 
   Removes the local checkout on this instance, asks the other main instances to remove theirs, and keeps the environment, its credentials, and the trusted SSH host keys. Another operation on the same environment returns 423.
 
-  Requires the `promotions:connect` API key scope.
-x-required-scope: promotions:connect
+  Requires the `promotions:manageEnvironments` API key scope.
+x-required-scope: promotions:manageEnvironments
 parameters:
   - schema:
       type: string

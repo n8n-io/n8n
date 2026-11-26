@@ -23,15 +23,15 @@ async function loadSpec(config: GenerateConfig): Promise<Spec> {
 }
 
 export async function generate(config: GenerateConfig): Promise<GenerateResult> {
-	const [spec, overrides] = await Promise.all([
+	const [spec, { overrides, defaultResource }] = await Promise.all([
 		loadSpec(config),
 		loadOverrides(config.overridesFile),
 	]);
-	const { rows, errors } = resolveOperations(spec, overrides);
+	const { rows, errors } = resolveOperations(spec, overrides, defaultResource);
 	const inNode = rows.filter((row) => row.excludeReason === undefined);
 	return {
 		report: formatReport(rows),
 		errors,
-		content: renderProperties(buildProperties(inNode, config.spec)),
+		content: renderProperties(buildProperties(inNode, config.spec, defaultResource)),
 	};
 }
