@@ -134,11 +134,13 @@ export function usePromotionPreviewLabels() {
 			adjustToNumber: dependencies.length,
 			interpolate: { count: String(dependencies.length) },
 		};
-		// A personal project is outside the access of the user in the design, so Promote says the same.
+		// A dependency of a personal project that the user cannot access is outside the access of the
+		// user. A personal dependency that the user can access is only left out of the Promote.
 		if (
 			dependencies.every(
 				(entry) =>
-					isOutsideAccess(entry) || (direction === 'promote' && entry.group === 'personal'),
+					isOutsideAccess(entry) ||
+					(direction === 'promote' && entry.group === 'personal' && !entry.accessible),
 			)
 		) {
 			return i18n.baseText(`promotions.preview.marker.outside.${direction}`, options);
