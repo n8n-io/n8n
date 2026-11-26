@@ -32,7 +32,7 @@ import * as utils from '../shared/utils';
 const TRIGGER_NODE_TYPE = 'n8n-nodes-base.testScrubTrigger';
 const CONSUMER_NODE_TYPE = 'n8n-nodes-base.testScrubConsumer';
 const PLAIN_NODE_TYPE = 'n8n-nodes-base.testScrubPlain';
-const SECRET = 'sk_live_abcdef123456';
+const SECRET = 'test_secret_abcdef123456';
 const PLACEHOLDER = '[runtime credential: tenantKey]';
 const STUB_ID = runtimeStubId('tenantKey');
 
