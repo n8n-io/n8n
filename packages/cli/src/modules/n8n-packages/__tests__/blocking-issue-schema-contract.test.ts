@@ -24,6 +24,9 @@ describe('BlockingIssue / ImportBlockingIssue contract', () => {
 		>().branded.toEqualTypeOf<
 			Extract<ImportBlockingIssue, { type: 'workflow-archive-forbidden' }>
 		>();
+		expectTypeOf<
+			Extract<BlockingIssue, { type: 'workflow-write-forbidden' }>
+		>().branded.toEqualTypeOf<Extract<ImportBlockingIssue, { type: 'workflow-write-forbidden' }>>();
 		expectTypeOf<Extract<BlockingIssue, { type: 'credential-unresolved' }>>().branded.toEqualTypeOf<
 			Extract<ImportBlockingIssue, { type: 'credential-unresolved' }>
 		>();
@@ -54,6 +57,9 @@ describe('BlockingIssue / ImportBlockingIssue contract', () => {
 		expectTypeOf<
 			Extract<BlockingIssue, { type: 'folder-removal-forbidden' }>
 		>().branded.toEqualTypeOf<Extract<ImportBlockingIssue, { type: 'folder-removal-forbidden' }>>();
+		expectTypeOf<
+			Extract<BlockingIssue, { type: 'folder-write-forbidden' }>
+		>().branded.toEqualTypeOf<Extract<ImportBlockingIssue, { type: 'folder-write-forbidden' }>>();
 		expectTypeOf<Extract<BlockingIssue, { type: 'data-table-unresolved' }>>().branded.toEqualTypeOf<
 			Extract<ImportBlockingIssue, { type: 'data-table-unresolved' }>
 		>();

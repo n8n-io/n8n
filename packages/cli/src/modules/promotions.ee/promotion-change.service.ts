@@ -126,8 +126,9 @@ export class PromotionChangeService {
 	 * The file content of each requested resource on both sides, for the change cards.
 	 * The branch side is read at the commit of the summary. The instance side is read now,
 	 * so its blob SHA tells the caller whether the resource changed after the summary.
-	 * Variable values are left out unless the user's role can list variables. The scopes of an
-	 * API key do not matter, as for every promotion read.
+	 * Promote leaves out variable values unless the user's role can list variables. Apply shows
+	 * them: the branch holds them as plain text, and the instance side holds only the variables
+	 * that the user can list. The scopes of an API key do not matter, as for every promotion read.
 	 */
 	async getDetails(
 		user: User,
@@ -136,7 +137,7 @@ export class PromotionChangeService {
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
 	): Promise<PromotionResourceDetails> {
 		await this.assertCanPreview(user, projectId, direction);
-		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
+		const canSeeVariableValues = direction === 'apply' || hasGlobalScope(user, 'variable:list');
 		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
 		const readBranch = async (paths: readonly string[]) =>
 			commitSha === null
@@ -177,6 +178,7 @@ export class PromotionChangeService {
 			instance,
 			readBranch,
 			canSeeVariableValues,
+			tableProjectId: projectId,
 		});
 		return { details, missingKeys };
 	}
@@ -235,11 +237,13 @@ export class PromotionChangeService {
 				instance,
 				readBranch,
 				canSeeVariableValues,
+				tableProjectId: null,
 			}),
 			this.localEntities.dataTables(
 				unindexed.flatMap((key) =>
 					key.startsWith(tablePrefix) ? [key.slice(tablePrefix.length)] : [],
 				),
+				null,
 			),
 		]);
 		const found = new Set<string>();
@@ -268,6 +272,7 @@ export class PromotionChangeService {
 		instance,
 		readBranch,
 		canSeeVariableValues,
+		tableProjectId,
 	}: {
 		keys: readonly string[];
 		direction: PromotionDirection;
@@ -276,6 +281,8 @@ export class PromotionChangeService {
 		instance: InstancePackage;
 		readBranch: (paths: readonly string[]) => Promise<Map<string, string>>;
 		canSeeVariableValues: boolean;
+		/** The project whose local data tables a project Apply reuses. `null` for the whole instance. */
+		tableProjectId: string | null;
 	}): Promise<PromotionResourceDetail[]> {
 		const branchContents = await readBranch(
 			keys.flatMap((key) => branchIndex.get(key)?.path ?? []),
@@ -288,6 +295,7 @@ export class PromotionChangeService {
 							const resource = branchIndex.get(key);
 							return resource?.type === 'dataTable' && !instanceIndex.has(key) ? [resource.id] : [];
 						}),
+						tableProjectId,
 					)
 				: new Map<string, LocalDataTable>();
 		// Apply also reuses a tag that exists on this instance, by ID or by name.
@@ -343,9 +351,7 @@ export class PromotionChangeService {
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
 	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
 		const scope = PROMOTION_SCOPES[direction];
-		// Promote reads the role in the project. Apply from a project role ships with LIGO-1476.
-		const instanceRoleOnly = direction === 'apply';
-		if (!(await userHasScopes(user, [scope], instanceRoleOnly, { projectId }))) {
+		if (!(await userHasScopes(user, [scope], false, { projectId }))) {
 			throw new ForbiddenError(
 				`Change preview requires the ${scope} scope. Ask an administrator for access.`,
 			);

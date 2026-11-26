@@ -3,6 +3,8 @@ import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
 import { PROJECT_ROOT } from 'n8n-workflow';
+
+import { ProjectService } from '@/services/project.service.ee';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -30,6 +32,7 @@ import type {
 	WorkflowImportPlan,
 	WorkflowPlanItem,
 	WorkflowImportDecision,
+	WorkflowWriteForbidden,
 } from './workflow-import.types';
 import { decidePlannedPublishingAction } from './workflow-publishing-policy';
 import { LayoutConflictPolicy } from '../../n8n-packages.types';
@@ -61,6 +64,7 @@ export class WorkflowImporter {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async plan(
@@ -70,7 +74,13 @@ export class WorkflowImporter {
 		{
 			checkRootPlacement,
 			layoutConflictPolicy,
-		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
+			projectPendingCreation = false,
+		}: {
+			checkRootPlacement: boolean;
+			layoutConflictPolicy?: LayoutConflictPolicy;
+			/** The import creates the project, and its creator becomes project admin. */
+			projectPendingCreation?: boolean;
+		},
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -146,9 +156,16 @@ export class WorkflowImporter {
 			}
 		}
 
-		const [idConflicts, archiveForbidden] = await Promise.all([
+		const blockedIds = new Set(conflicts.map(({ sourceWorkflowId }) => sourceWorkflowId));
+		const [idConflicts, archiveForbidden, writeForbidden] = await Promise.all([
 			this.collectIdConflicts(sourceCreateIds),
 			this.collectArchiveForbidden(context, archiveTransitionItems),
+			projectPendingCreation
+				? []
+				: this.collectWriteForbidden(
+						context,
+						items.filter(({ sourceWorkflowId }) => !blockedIds.has(sourceWorkflowId)),
+					),
 		]);
 
 		return {
@@ -158,7 +175,54 @@ export class WorkflowImporter {
 			idConflicts,
 			folderConflicts,
 			archiveForbidden,
+			writeForbidden,
 		};
+	}
+
+	/**
+	 * The workflow writes check `workflow:create` and `workflow:update` only when they run, after
+	 * the import has written tags, folders, credentials and data tables. Report the misses at plan
+	 * time, so a preview shows them and the import writes nothing.
+	 */
+	private async collectWriteForbidden(
+		context: ImportContext,
+		items: WorkflowPlanItem[],
+	): Promise<WorkflowWriteForbidden[]> {
+		const creates = items.filter((item) => item.action === 'create');
+		const updates = items.filter((item) => item.action === 'update');
+
+		const [canCreate, canUpdate] = await Promise.all([
+			creates.length === 0 ||
+				this.projectService.getProjectWithScope(context.user, context.projectId, [
+					'workflow:create',
+				]),
+			this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+				updates.map(({ existing }) => existing.id),
+				context.user,
+				['workflow:update'],
+			),
+		]);
+
+		const { projectId } = context;
+		return [
+			...(canCreate
+				? []
+				: creates.map(({ sourceWorkflowId, entity }) => ({
+						sourceWorkflowId,
+						name: entity.name,
+						projectId,
+						action: 'create' as const,
+					}))),
+			...updates
+				.filter(({ existing }) => !canUpdate.has(existing.id))
+				.map(({ sourceWorkflowId, existing }) => ({
+					sourceWorkflowId,
+					existingWorkflowId: existing.id,
+					name: existing.name,
+					projectId,
+					action: 'update' as const,
+				})),
+		];
 	}
 
 	/**

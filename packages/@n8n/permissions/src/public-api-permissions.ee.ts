@@ -171,6 +171,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'variable:list',
 	'variable:update',
 	'promotions:promote',
+	'promotions:apply',
 	'promotions:readReviews',
 	'dataTable:create',
 	'dataTable:read',
@@ -250,9 +251,10 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'variable:create',
 	'variable:delete',
 	'variable:update',
-	// Each request checks the role in the target project. "Who can promote" decides which
-	// project roles hold the scope.
+	// Each request checks the role in the target project. "Who can promote" and "Who can apply"
+	// decide which project roles hold each scope.
 	'promotions:promote',
+	'promotions:apply',
 	// Each request checks the role. The key reads the reviews that the Inbox of its owner shows.
 	'promotions:readReviews',
 	'dataTable:create',

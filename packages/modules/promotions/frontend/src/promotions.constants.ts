@@ -15,13 +15,9 @@ export const PROMOTIONS_SETTINGS_SCOPES = [
 	'promotions:readEnvironments',
 ] as const;
 
-/**
- * The project access settings that the Environments settings page shows. A setting shows
- * only when the capability it unlocks ships: LIGO-1476 adds `whoCanApply` and names Apply in
- * `settings.promotions.projectAccess.description`.
- */
+/** The project access settings that the Environments settings page shows. */
 export const PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE: readonly PromotionProjectAccessSetting[] =
-	['whoCanPromote'];
+	['whoCanPromote', 'whoCanApply'];
 
 /** The promotion review settings that Settings > Policies shows. */
 export const PROMOTION_REVIEW_SETTINGS_ON_POLICIES_PAGE: ReadonlyArray<keyof PromotionSettings> = [

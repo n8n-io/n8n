@@ -1,3 +1,5 @@
+import type { PromotionBindingConflict } from '@n8n/api-types';
+
 import type { ApplyCheckResult } from './promotions.types';
 
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
@@ -18,6 +20,15 @@ const consumer = (...ids: string[]) => [
 		workflows: ids.map((id) => ({ id, name: id })),
 	},
 ];
+
+const forbiddenFolder: Extract<PromotionBindingConflict, { code: 'folder-forbidden' }> = {
+	kind: 'folder',
+	code: 'folder-forbidden',
+	id: 'f1',
+	name: 'Payments',
+	reason: 'create',
+	consumers: [],
+};
 
 const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-1',
@@ -46,13 +57,16 @@ describe('promotion operation', () => {
 		).toEqual({ workflowIds: ['w1', 'w2'], folderIds: ['f1'] });
 	});
 
-	it('should block only the workflows that need a missing binding or moved to another project', () => {
+	it('should block only the workflows that need a missing binding, need a folder that the role cannot write, or moved to another project', () => {
 		const index = indexBlockers(
 			listBlockers(
 				{
 					...check({
 						missingBindings: [{ ...credential, sourceId: 'c1', consumers: consumer('w1') }],
-						conflicts: [{ ...destructiveChange, id: 't1', consumers: consumer('w2') }],
+						conflicts: [
+							{ ...destructiveChange, id: 't1', consumers: consumer('w2') },
+							{ ...forbiddenFolder, consumers: consumer('w5') },
+						],
 						warnings: [
 							{
 								kind: 'variable',
@@ -78,7 +92,11 @@ describe('promotion operation', () => {
 			),
 		);
 
-		expect([...index.blocked]).toEqual(['workflow:w1', 'workflow:w4']);
+		expect([...index.blocked]).toEqual(['workflow:w1', 'workflow:w5', 'workflow:w4']);
+		expect(index.byResource.get('folder:f1')?.[0]).toMatchObject({
+			kind: 'conflict',
+			workflowKeys: ['workflow:w5'],
+		});
 		// The tree marks the dependency rows with the same keys as the preview.
 		expect(index.byResource.get('credential:c1')?.[0]).toMatchObject({
 			kind: 'missing',
@@ -171,11 +189,17 @@ describe('promotion operation', () => {
 				accessRequirements: [
 					{ ...credential, code: 'access-required', consumers: consumer('w99') },
 				],
+				conflicts: [
+					{ ...forbiddenFolder, consumers: consumer('w99') },
+					{ ...forbiddenFolder, id: 'f99', consumers: consumer('w99') },
+				],
 			}),
 			graph,
 		);
 
 		expect(scoped.accessRequirements).toEqual([]);
+		// A listed folder keeps its blocker without workflows. An unlisted one has none left.
+		expect(scoped.conflicts).toEqual([{ ...forbiddenFolder, consumers: [] }]);
 		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
 	});
 });

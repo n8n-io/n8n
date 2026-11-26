@@ -4,6 +4,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { decideMatchedFolder } from './folder-conflict-policy';
 import type {
@@ -13,7 +14,11 @@ import type {
 	PreparedFolder,
 } from './folder-import.types';
 import { LayoutConflictPolicy } from '../../n8n-packages.types';
-import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
+import type {
+	FolderConflict,
+	FolderWriteForbidden,
+	ImportedFolderSummary,
+} from '../../n8n-packages.types';
 
 interface ExistingFolder {
 	resourceType: 'workflow' | 'agent';
@@ -24,7 +29,10 @@ interface ExistingFolder {
 
 @Service()
 export class FolderImporter {
-	constructor(private readonly folderService: FolderService) {}
+	constructor(
+		private readonly folderService: FolderService,
+		private readonly projectService: ProjectService,
+	) {}
 
 	async plan(context: FolderImportContext, folders: PreparedFolder[]): Promise<FolderImportPlan> {
 		const ordered = orderParentsFirst(folders);
@@ -140,7 +148,34 @@ export class FolderImporter {
 			}
 		}
 
-		return { items, conflicts };
+		return { items, conflicts, forbidden: await this.findForbiddenWrites(context, items) };
+	}
+
+	/**
+	 * The folder service does not check the project role, so the plan does. Reported here, so a
+	 * preview shows it and the import writes nothing. Moving and renaming both need `folder:update`.
+	 */
+	private async findForbiddenWrites(
+		context: FolderImportContext,
+		items: FolderPlanItem[],
+	): Promise<FolderWriteForbidden[]> {
+		if (context.projectPendingCreation) return [];
+
+		const forbidden: FolderWriteForbidden[] = [];
+		for (const action of ['create', 'update'] as const) {
+			const writes = items.filter((item) => item.action === action);
+			if (writes.length === 0) continue;
+			const allowed = await this.projectService.getProjectWithScope(
+				context.user,
+				context.projectId,
+				[`folder:${action}`],
+			);
+			if (allowed) continue;
+			for (const { sourceFolderId, name } of writes) {
+				forbidden.push({ sourceFolderId, name, projectId: context.projectId, action });
+			}
+		}
+		return forbidden;
 	}
 
 	/**

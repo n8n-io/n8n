@@ -1073,6 +1073,66 @@ properties:
             kind:
               type: string
               enum:
+                - folder
+            code:
+              type: string
+              enum:
+                - folder-forbidden
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            reason:
+              type: string
+              enum:
+                - create
+                - update
+            consumers:
+              type: array
+              items:
+                type: object
+                properties:
+                  project:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        minLength: 1
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+                  workflows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    minItems: 1
+                required:
+                  - project
+                  - workflows
+          required:
+            - kind
+            - code
+            - id
+            - name
+            - reason
+            - consumers
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
                 - data-table
             code:
               type: string

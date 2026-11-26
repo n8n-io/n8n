@@ -25,6 +25,7 @@ import {
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { GlobalConfig } from '@n8n/config';
+import { GLOBAL_MEMBER_SCOPES } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -51,7 +52,13 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
-import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import {
+	createMember,
+	createOwner,
+	createOwnerWithApiKey,
+	createUser,
+} from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
@@ -84,7 +91,12 @@ const server = setupTestServer({
 	reuseServer: true,
 	endpointGroups: ['publicApi'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin', 'feat:folders'],
+	enabledFeatures: [
+		'feat:promotions',
+		'feat:projectRole:admin',
+		'feat:folders',
+		'feat:customRoles',
+	],
 });
 
 let remoteRoot: string;
@@ -199,16 +211,24 @@ function changedResources({ resources }: { resources: PromotionResource[] }) {
 	return resources.filter(({ change }) => change !== 'unchanged');
 }
 
-/** A member who administers the project, while "Who can promote" allows project admins. */
-async function createPromotingProjectAdmin(owner: User, project: Project) {
+/** A member with `role` in the project, while the given project access settings apply. */
+async function createProjectMemberWithAccess(
+	owner: User,
+	project: Project,
+	role: 'project:admin' | 'project:editor',
+	access: Parameters<PromotionSettingsService['update']>[1],
+) {
 	const settings = Container.get(PromotionSettingsService);
 	onTestFinished(async () => {
-		await settings.update(owner, { whoCanPromote: 'instanceAdmins' });
+		await settings.update(owner, {
+			whoCanPromote: 'instanceAdmins',
+			whoCanApply: 'instanceAdmins',
+		});
 	});
-	await settings.update(owner, { whoCanPromote: 'projectAdmins' });
-	const projectAdmin = await createMember();
-	await linkUserToProject(projectAdmin, project, 'project:admin');
-	return projectAdmin;
+	await settings.update(owner, access);
+	const member = await createMember();
+	await linkUserToProject(member, project, role);
+	return member;
 }
 
 function changedWorkflows(preview: { resources: PromotionResource[] }) {
@@ -941,16 +961,23 @@ describe('resources in the preview', () => {
 		]);
 	}, 30_000);
 
-	it('stops Apply when this instance changed after the preview, then applies what the preview shows', async () => {
+	it('lets a project editor apply into their project, stops Apply when this instance changed after the preview, then applies what the preview shows with the project details of the branch', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
+		const projects = Container.get(ProjectRepository);
+		await projects.update(project.id, { description: 'Invoices and payments' });
 		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
 		const environments = await createInstanceEnvironments(['apply']);
 		await exportPreviewBaseline(environments.apply, owner);
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.update(workflow.id, { name: 'Invoice (local)' });
+		// Project editors do not hold project:update, which the project details need otherwise.
+		await projects.update(project.id, { name: 'Billing (local)', description: 'Local notes' });
+		const editor = await createProjectMemberWithAccess(owner, project, 'project:editor', {
+			whoCanApply: 'projectAdminsAndEditors',
+		});
 
-		const agent = server.publicApiAgentWithCookie(owner);
+		const agent = server.publicApiAgentWithCookie(editor);
 		const endpoint = `/promotions/projects/${project.id}/changes/apply`;
 		const loadPreview = async () => (await agent.get(endpoint).expect(200)).body;
 		const applyShown = async (preview: {
@@ -958,13 +985,31 @@ describe('resources in the preview', () => {
 			commitSha: string;
 			revision: string;
 		}) =>
-			await Container.get(PromotionsService).applyProjectSelection(project.id, owner, {
-				workflowIds: [workflow.id],
-				expectedSource: { ...preview.source, commitSha: preview.commitSha },
-				expectedPreviewRevision: preview.revision,
-			});
+			(
+				await agent
+					.post(`/promotions/projects/${project.id}/apply`)
+					.send({
+						workflowIds: [workflow.id],
+						expectedSource: {
+							environmentId: preview.source.environmentId,
+							branchName: preview.source.branchName,
+							commitSha: preview.commitSha,
+						},
+						expectedPreviewRevision: preview.revision,
+					})
+					.expect(200)
+			).body;
 
 		const stale = await loadPreview();
+		const { details } = (
+			await agent
+				.post(`${endpoint}/details`)
+				.send({ commitSha: stale.commitSha, keys: [`workflow:${workflow.id}`] })
+				.expect(200)
+		).body;
+		expect(details).toEqual([
+			expect.objectContaining({ after: expect.objectContaining({ name: 'Invoice' }) }),
+		]);
 		await workflowRepository.update(workflow.id, { name: 'Invoice (edited again)' });
 		expect(await applyShown(stale)).toMatchObject({ status: 'preview-changed' });
 		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
@@ -972,10 +1017,73 @@ describe('resources in the preview', () => {
 		});
 
 		expect(await applyShown(await loadPreview())).toMatchObject({ status: 'applied' });
+		expect(await projects.findOneByOrFail({ id: project.id })).toMatchObject({
+			name: 'Billing',
+			description: 'Invoices and payments',
+		});
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
-	it('lets a project admin promote their project, stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
+	it('shows the branch value of a missing variable on Apply to a role that cannot list variables, and no value on Promote', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Config', owner);
+		const variables = Container.get(VariablesRepository);
+		const variable = await createVariable('API_URL', 'https://branch.example.com');
+		await Container.get(VariablesService).updateCache();
+		await buildWorkflowReferencingVariables({
+			name: 'Caller',
+			project,
+			variableNames: ['API_URL'],
+		});
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await exportPreviewBaseline(environments.promote, owner);
+		// Only the branch holds the variable, so Apply asks for it with the branch value.
+		await variables.delete(variable.id);
+		await Container.get(VariablesService).updateCache();
+		// The instance role decides, not the key: only a custom role lacks `variable:list`.
+		const instanceRole = await createCustomRoleWithScopeSlugs(
+			GLOBAL_MEMBER_SCOPES.filter((scope) => scope !== 'variable:list'),
+			{ roleType: 'global' },
+		);
+		const member = await createUser({ role: instanceRole });
+		const projectRole = await createCustomRoleWithScopeSlugs(
+			[
+				'promotions:promote',
+				'promotions:apply',
+				'project:read',
+				'project:export',
+				'folder:read',
+				'workflow:read',
+				'workflow:export',
+				'credential:read',
+			],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(member, project, projectRole.slug);
+		const agent = server.publicApiAgentWithCookie(member);
+		const detailsOf = async (direction: PromotionDirection) => {
+			const endpoint = `/promotions/projects/${project.id}/changes/${direction}`;
+			const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+			const { body } = await agent
+				.post(`${endpoint}/details`)
+				.send({ commitSha, keys: ['variable:global:API_URL'] })
+				.expect(200);
+			return body.details;
+		};
+		const withoutValue = { name: 'API_URL', type: expect.any(String) };
+
+		expect(await detailsOf('apply')).toEqual([
+			expect.objectContaining({
+				before: null,
+				after: { ...withoutValue, value: 'https://branch.example.com' },
+			}),
+		]);
+		expect(await detailsOf('promote')).toEqual([
+			expect.objectContaining({ before: withoutValue, after: null, valueHidden: true }),
+		]);
+	}, 60_000);
+
+	it('lets a project admin and a custom project role promote their project, stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const invoice = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
@@ -988,7 +1096,9 @@ describe('resources in the preview', () => {
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.update(invoice.id, { name: 'Invoice (local)' });
 		await workflowRepository.update(reminder.id, { name: 'Reminder (local)' });
-		const projectAdmin = await createPromotingProjectAdmin(owner, project);
+		const projectAdmin = await createProjectMemberWithAccess(owner, project, 'project:admin', {
+			whoCanPromote: 'projectAdmins',
+		});
 
 		const agent = server.publicApiAgentWithCookie(projectAdmin);
 		const loadPreview = async () =>
@@ -1018,12 +1128,40 @@ describe('resources in the preview', () => {
 		expect(await promoteShown(beforeEdit)).toEqual(stopped);
 		expect(await remoteHead()).toBe(head);
 
-		// Another promotion of the project lands on the branch during the review.
+		// A release manager promotes the project during the review. An instance admin created
+		// their role with the scopes that the role editor selects with promote.
 		const beforePromotion = await loadPreview();
-		await Container.get(PromotionsService).promoteProjectSelection(project.id, owner, {
-			workflowIds: [reminder.id],
-		});
+		const { body: releaseRole } = await server
+			.publicApiAgentWithCookie(owner)
+			.post('/roles')
+			.send({
+				displayName: 'Release manager',
+				roleType: 'project',
+				scopes: [
+					'promotions:promote',
+					'promotions:readReviews',
+					'project:export',
+					'workflow:export',
+					'folder:read',
+					'dataTable:read',
+				],
+			})
+			.expect(201);
+		const releaseManager = await createMember();
+		await linkUserToProject(releaseManager, project, releaseRole.slug);
+		const otherProject = await createTeamProject('Payroll', owner);
+		await linkUserToProject(releaseManager, otherProject, 'project:viewer');
+		const releaseAgent = server.publicApiAgentWithCookie(releaseManager);
+		const { revision } = (
+			await releaseAgent.get(`/promotions/projects/${project.id}/changes/promote`).expect(200)
+		).body;
+		await releaseAgent
+			.post(`/promotions/projects/${project.id}/promote`)
+			.send({ workflowIds: [reminder.id], expectedPreviewRevision: revision })
+			.expect(200);
+		await releaseAgent.get(`/promotions/projects/${otherProject.id}/changes/promote`).expect(403);
 		const promotedHead = await remoteHead();
+		expect(promotedHead).not.toBe(head);
 		expect(await promoteShown(beforePromotion)).toEqual(stopped);
 		expect(await remoteHead()).toBe(promotedHead);
 
@@ -1332,12 +1470,16 @@ describe('resources in the preview', () => {
 		expect(body.missingKeys).toEqual([draftKey]);
 	}, 30_000);
 
-	it("leaves out a credential on the branch that the project admin can't read", async () => {
+	it("leaves out a credential on the branch that the project admin can't read, on Promote and Apply", async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const payments = await createTeamProject('Payments', owner);
 		const credential = await saveCredential(
-			{ name: 'Payments API', type: 'httpHeaderAuth', data: {} },
+			{
+				name: 'Payments API',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: '={{ $json.token }}' },
+			},
 			{ project: payments, role: 'credential:owner' },
 		);
 		// The owner can use every credential, so the branch holds one that Billing can't read.
@@ -1346,32 +1488,67 @@ describe('resources in the preview', () => {
 			project,
 			credential,
 		});
-		const environments = await createInstanceEnvironments();
+		// Both environments read the same branch.
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await exportPreviewBaseline(environments.promote, owner);
-		const projectAdmin = await createPromotingProjectAdmin(owner, project);
+		const projectAdmin = await createProjectMemberWithAccess(owner, project, 'project:admin', {
+			whoCanPromote: 'projectAdmins',
+			whoCanApply: 'projectAdmins',
+		});
 		const agent = server.publicApiAgentWithCookie(projectAdmin);
-		const endpoint = `/promotions/projects/${project.id}/changes/promote`;
-		const { commitSha } = (await agent.get(endpoint).expect(200)).body;
 		const credentialKey = `credential:${credential.id}`;
 		const workflowKey = `workflow:${charge.id}`;
 
-		const loadDetails = async () =>
-			(
+		const loadDetails = async (direction: PromotionDirection) => {
+			const endpoint = `/promotions/projects/${project.id}/changes/${direction}`;
+			const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+			return (
 				await agent
 					.post(`${endpoint}/details`)
 					.send({ commitSha, keys: [credentialKey, workflowKey] })
 					.expect(200)
 			).body;
+		};
 
 		const expected = {
 			missingKeys: [credentialKey],
 			details: [expect.objectContaining({ key: workflowKey })],
 		};
-		expect(await loadDetails()).toEqual(expected);
+		for (const direction of ['promote', 'apply'] as const) {
+			expect(await loadDetails(direction)).toEqual(expected);
+		}
+
 		// The branch still holds the credential after its deletion on this instance.
 		await Container.get(CredentialsRepository).delete(credential.id);
-		expect(await loadDetails()).toEqual(expected);
-	}, 30_000);
+		for (const direction of ['promote', 'apply'] as const) {
+			expect(await loadDetails(direction)).toEqual(expected);
+		}
+
+		// Apply now blocks on the missing credential. Its expressions fill the editor of the user who
+		// can create it in Payments. Billing's admin can't, so their blocker leaves them out.
+		await Container.get(WorkflowRepository).update(charge.id, { name: 'Charge customers (local)' });
+		const missingCredential = async (user: User, operation: 'preview' | 'apply') => {
+			const userAgent = server.publicApiAgentWithCookie(user);
+			const { body } =
+				operation === 'preview'
+					? await userAgent.get(`/promotions/projects/${project.id}/changes/apply`).expect(200)
+					: await userAgent
+							.post(`/promotions/projects/${project.id}/apply`)
+							.send({ workflowIds: [charge.id] })
+							.expect(200);
+			return body.check.missingBindings.find(
+				(binding: { sourceId?: string }) => binding.sourceId === credential.id,
+			);
+		};
+		expect(await missingCredential(owner, 'preview')).toMatchObject({
+			expressionData: { value: '={{ $json.token }}' },
+		});
+		for (const operation of ['preview', 'apply'] as const) {
+			const binding = await missingCredential(projectAdmin, operation);
+			expect(binding).toMatchObject({ kind: 'credential' });
+			expect(binding).not.toHaveProperty('expressionData');
+		}
+	}, 60_000);
 
 	it('returns both sides of a project whose id has a colon', async () => {
 		const owner = await createOwner();

@@ -100,6 +100,18 @@ export function usePromotionBindingCreation(
 		return binding.scope.kind === 'project' ? binding.scope.project : undefined;
 	}
 
+	/** A project role often cannot create the binding, for example a credential of another project. */
+	function canCreate(binding: MissingPromotionBinding): boolean {
+		const project = bindingProject(binding);
+		if (!project) return rbacStore.hasScope('variable:create');
+		const scope = binding.kind === 'credential' ? 'credential:create' : 'projectVariable:create';
+		// The scopes of a project also hold the instance role, so instance admins can always create.
+		return capabilityRegistry
+			.use(capabilities.projectPermissions)
+			.scopesFor(project.id)
+			.includes(scope);
+	}
+
 	async function prepareDestination(project: { id: string } | undefined): Promise<EditorSetup> {
 		if (!project) return {};
 		const missing = check.missingProjects.find((item) => item.id === project.id);
@@ -286,6 +298,7 @@ export function usePromotionBindingCreation(
 	});
 
 	return {
+		canCreate,
 		createBinding,
 		updateCheck,
 		createdProjects: computed(() => Array.from(createdProjects.value.values())),

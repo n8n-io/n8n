@@ -19,6 +19,7 @@ import {
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { InstanceSettings } from 'n8n-core';
+import { onTestFinished } from 'vitest';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -33,6 +34,7 @@ import {
 	serializedWorkflowWithCredential,
 	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
+import { PromotionSettingsService } from '@/modules/promotions.ee/promotion-settings.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 
@@ -668,6 +670,12 @@ describe('POST /n8n-packages/import-selection project and folder scopes', () => 
 	});
 
 	it('still refuses a user who may not update the existing project', async () => {
+		// The editor may apply into the project. That must not let a package import update it.
+		const settings = Container.get(PromotionSettingsService);
+		onTestFinished(async () => {
+			await settings.update(owner, { whoCanApply: 'instanceAdmins' });
+		});
+		await settings.update(owner, { whoCanApply: 'projectAdminsAndEditors' });
 		const project = await createTeamProject('Target', owner);
 		const editor = await createMemberWithApiKey({ scopes: ['workflow:import'] });
 		await linkUserToProject(editor, project, 'project:editor');

@@ -748,6 +748,9 @@ export class N8nPackagesService {
 			...(request.credentialPersonalRoute !== undefined
 				? { credentialPersonalRoute: request.credentialPersonalRoute }
 				: {}),
+			...(request.projectWriteScope !== undefined
+				? { projectWriteScope: request.projectWriteScope }
+				: {}),
 			publishingPolicy: request.publishingPolicy ?? WorkflowPublishingPolicy.MatchSource,
 			selection,
 		};

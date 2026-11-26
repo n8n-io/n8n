@@ -46,6 +46,7 @@ function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): Workfl
 		idConflicts: [],
 		folderConflicts: [],
 		archiveForbidden: [],
+		writeForbidden: [],
 	};
 }
 

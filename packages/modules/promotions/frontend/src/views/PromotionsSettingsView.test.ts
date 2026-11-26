@@ -119,7 +119,7 @@ describe('PromotionsSettingsView', () => {
 		},
 	);
 
-	it('shows who can promote in the Project access section to a user who manages security settings', async () => {
+	it('shows who can promote and who can apply in the Project access section to a user who manages security settings', async () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'securitySettings:manage']);
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		getPromotionSettings.mockResolvedValue({
@@ -132,6 +132,7 @@ describe('PromotionsSettingsView', () => {
 
 		const section = await screen.findByTestId('promotion-project-access-section');
 		expect(within(section).getByRole('combobox', { name: 'Who can promote' })).toBeVisible();
+		expect(within(section).getByRole('combobox', { name: 'Who can apply' })).toBeVisible();
 	});
 
 	it('shows the Preview and limited enterprise readiness tags next to the title on enterprise', () => {

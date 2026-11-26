@@ -20,6 +20,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Person, Project } from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -64,7 +65,7 @@ import {
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
-import { saveCredential } from '@test-integration/db/credentials';
+import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
@@ -83,7 +84,11 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
-import { createMember, createOwnerWithApiKey } from '@test-integration/db/users';
+import {
+	createMember,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+} from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
@@ -508,8 +513,8 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 }
 
 /** The Apply preview, read through the test's `service` and its working directory. */
-async function loadApplyPreview(projectId: string) {
-	const preview = await changeService().getPreview(owner, projectId, 'apply');
+async function loadApplyPreview(projectId: string, user: Person = owner) {
+	const preview = await changeService().getPreview(user, projectId, 'apply');
 	assert(preview.check && preview.commitSha && preview.revision);
 	return {
 		...preview,
@@ -2316,7 +2321,7 @@ describe('Apply moves and renames within a project', () => {
 		expect(await head()).toBe(before);
 	});
 
-	it('applies only the selected folders on project Apply, and the project details with every selection', async () => {
+	it('applies only the selected folders on project Apply, and the project details with every selection, and blocks the folder writes that a project role does not allow', async () => {
 		const { exportSource } = await connect();
 		const {
 			project,
@@ -2339,7 +2344,75 @@ describe('Apply moves and renames within a project', () => {
 		const projectName = async () =>
 			(await projectRepository.findOneByOrFail({ id: project.id })).name;
 
-		const result = await service.applyProjectSelection(project.id, owner, {
+		// A custom role that can apply and change workflows, but not create or change folders.
+		const member = await createMember();
+		const scopes: Scope[] = [
+			'promotions:apply',
+			'project:read',
+			'project:list',
+			'project:export',
+			'folder:read',
+			'folder:list',
+			'workflow:read',
+			'workflow:list',
+			'workflow:export',
+			'workflow:update',
+			'credential:read',
+			'credential:list',
+		];
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, project, role.slug);
+		const forbiddenFolder = (id: string, reason: 'create' | 'update', consumers?: unknown[]) =>
+			expect.objectContaining({
+				kind: 'folder',
+				code: 'folder-forbidden',
+				id,
+				reason,
+				...(consumers ? { consumers } : {}),
+			});
+		// The workflows inside a blocked folder are blocked with it. An empty folder blocks nothing else.
+		const inFolder = (...workflowIds: string[]) =>
+			workflowIds.length === 0
+				? []
+				: [
+						expect.objectContaining({
+							workflows: workflowIds.map((id) => expect.objectContaining({ id })),
+						}),
+					];
+
+		const preview = await loadApplyPreview(project.id, member);
+
+		expect(preview.check.conflicts).toEqual(
+			expect.arrayContaining([
+				forbiddenFolder(reports.id, 'update', inFolder(report.id)),
+				forbiddenFolder(archive.id, 'update', inFolder(old.id)),
+				forbiddenFolder(drafts.id, 'create', inFolder()),
+			]),
+		);
+		const before = await snapshotApplyState();
+		expect(
+			await service.applyProjectSelection(project.id, member, {
+				folderIds: [archive.id, drafts.id],
+			}),
+		).toMatchObject({
+			status: 'blocked',
+			check: {
+				conflicts: expect.arrayContaining([
+					forbiddenFolder(archive.id, 'update'),
+					forbiddenFolder(drafts.id, 'create'),
+				]),
+			},
+		});
+		// Nothing is written, also not the project details that come first.
+		expect(await snapshotApplyState()).toEqual(before);
+
+		// With `folder:update`, a selection that only renames a folder applies.
+		const canRename = await createCustomRoleWithScopeSlugs([...scopes, 'folder:update'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, project, canRename.slug);
+
+		const result = await service.applyProjectSelection(project.id, member, {
 			workflowIds: [report.id],
 		});
 
@@ -2667,13 +2740,30 @@ describe('Apply a project selection over the public API', () => {
 		expect(await repository.findOneByOrFail({ id: workflows[1].id })).toEqual(siblingBefore);
 	});
 
-	it('returns blocked, then applies through Continue once the bindings exist', async () => {
+	it('returns blocked for a credential that the project editor cannot use, then applies through Continue once it is shared', async () => {
 		const { project, workflow, credential, variable } = await prepareBindingApply();
 		const agent = testServer.publicApiAgentFor(owner);
+		// The credential exists, but another project owns it and does not share it.
+		const payments = await createTeamProject('Payments', owner);
+		await agent
+			.post('/credentials')
+			.send({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				projectId: payments.id,
+				data: { name: 'Authorization', value: 'target-secret' },
+			})
+			.expect(200);
+		const settings = Container.get(PromotionSettingsService);
+		onTestFinished(async () => {
+			await settings.update(owner, { whoCanApply: 'instanceAdmins' });
+		});
+		await settings.update(owner, { whoCanApply: 'projectAdminsAndEditors' });
 		// A pipeline key needs only promotions:apply. The importer checks the role of the key owner.
-		const applyOnly = testServer.publicApiAgentFor(
-			await createOwnerWithApiKey({ scopes: ['promotions:apply'] }),
-		);
+		const editor = await createMemberWithApiKey({ scopes: ['promotions:apply'] });
+		await linkUserToProject(editor, project, 'project:editor');
+		const applyOnly = testServer.publicApiAgentFor(editor);
 		const before = await snapshotApplyState();
 
 		const blockedResponse = await applyOnly
@@ -2691,16 +2781,10 @@ describe('Apply a project selection over the public API', () => {
 		expect(blocked).not.toHaveProperty('counts');
 		expect(await snapshotApplyState()).toEqual(before);
 
-		await agent
-			.post('/credentials')
-			.send({
-				id: credential.id,
-				name: credential.name,
-				type: credential.type,
-				projectId: project.id,
-				data: { name: 'Authorization', value: 'target-secret' },
-			})
-			.expect(200);
+		await shareCredentialWithProjects(
+			await Container.get(CredentialsRepository).findOneByOrFail({ id: credential.id }),
+			[project],
+		);
 		await createVariable(variable.key, 'target value');
 
 		const result = (
@@ -2714,9 +2798,9 @@ describe('Apply a project selection over the public API', () => {
 		).body;
 		expect(result.status, JSON.stringify(result)).toBe('applied');
 		expect(result.counts.credentials).toMatchObject({ matched: 1 });
-		expect(
-			await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id }),
-		).toMatchObject({ name: workflow.name });
+		const applied = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id });
+		expect(applied).toMatchObject({ name: workflow.name });
+		expect(applied.nodes[0].credentials?.httpHeaderAuth?.id).toBe(credential.id);
 	});
 
 	it('rejects an unknown selection with 400', async () => {
@@ -2855,11 +2939,12 @@ describe('Apply credential changes', () => {
 		});
 		const member = await createMember();
 		// Project editors and admins always hold `credential:update`: only a custom role lacks it.
+		// A project Apply needs `promotions:apply`, not `project:update`.
 		const role = await createCustomRoleWithScopeSlugs(
 			[
 				'project:read',
 				'project:list',
-				'project:update',
+				'promotions:apply',
 				'folder:create',
 				'folder:read',
 				'folder:update',

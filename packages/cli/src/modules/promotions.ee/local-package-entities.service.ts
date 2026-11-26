@@ -103,14 +103,17 @@ export class LocalPackageEntities {
 		);
 	}
 
-	async dataTables(ids: string[]): Promise<Map<string, LocalDataTable>> {
+	/** With a `projectId`, only the tables that this project owns. */
+	async dataTables(ids: string[], projectId: string | null): Promise<Map<string, LocalDataTable>> {
 		if (ids.length === 0 || !this.moduleRegistry.isActive('data-table')) return new Map();
 		const tables = await this.dataTableService.findDataTablesByIds(ids);
 		return new Map(
-			tables.map((table) => {
-				const content = formatEntityFile(this.dataTableSerializer.serialize(table));
-				return [table.id, { content, blobSha: gitBlobSha(content) }];
-			}),
+			tables
+				.filter((table) => projectId === null || table.projectId === projectId)
+				.map((table) => {
+					const content = formatEntityFile(this.dataTableSerializer.serialize(table));
+					return [table.id, { content, blobSha: gitBlobSha(content) }];
+				}),
 		);
 	}
 }

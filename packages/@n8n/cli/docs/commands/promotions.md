@@ -29,9 +29,17 @@ Requires the Promotions feature to be licensed. The API key scopes are:
 - `promotions:promote`: preview and promote. Every member can add it to a key.
   The key promotes only the projects where the role of its owner can promote:
   instance owners and admins in every project, project admins and editors as
-  the `promotion-settings` option `--who-can-promote` allows. Only instance
-  owners and admins can promote all team projects
-- `promotions:apply`: preview, apply and continue
+  the `promotion-settings` option `--who-can-promote` allows, and custom
+  project roles with this scope. Only instance owners and admins can promote
+  all team projects
+- `promotions:apply`: preview, apply and continue. Every member can add it to a
+  key. The key applies only into the projects where the role of its owner can
+  apply: instance owners and admins in every project, project admins and
+  editors as the `promotion-settings` option `--who-can-apply` allows, and
+  custom project roles with this scope. Apply also needs the folder and
+  workflow scopes in the project for each folder and workflow that it creates
+  or changes. Only instance owners and admins can apply the whole instance or
+  create missing projects
 - `promotions:readReviews`: list and get promotion reviews. Every member can
   add it to a key. The key reads the reviews that the Inbox of its owner shows:
   instance owners and admins see every review, other users see the reviews of
@@ -40,8 +48,10 @@ Requires the Promotions feature to be licensed. The API key scopes are:
 - `securitySettings:manage`: get and update the promotion settings
 
 A scope lets the key start the operation. The role of the key owner still
-decides what the operation can read and write. For example, the change details
-show variable values only when that role can list variables.
+decides what the operation can read and write. For example, the Promote change
+details show variable values only when that role can list variables. The Apply
+change details show the values on the branch, and the current values only of
+the variables that the role can list.
 
 ## Setup example: Git over SSH
 
@@ -557,9 +567,10 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same selection. With `--json`, the output is the full result for
 each status.
 
-Connect the environment first. The API key needs `promotions:apply`. The
-environment is the project's own Apply environment when it has one, otherwise
-the instance Apply environment.
+Connect the environment first. The API key needs `promotions:apply`, and the
+role of its owner must be able to apply in the project. The environment is the
+project's own Apply environment when it has one, otherwise the instance Apply
+environment.
 
 ## `promotion-environment apply-selection-continue`
 

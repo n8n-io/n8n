@@ -8,7 +8,6 @@ import { ProjectTypes } from '@n8n/rest-api-client';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useUsersStore } from '@n8n/stores/users.store';
 
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
@@ -16,7 +15,6 @@ import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 
 const i18n = useI18n();
 const router = useRouter();
-const usersStore = useUsersStore();
 // The project header renders in editor tests that provide no capabilities. Then no badges show.
 const projectContext = capabilityRegistry.tryUse(capabilities.projectContext);
 const environmentsSettings = capabilityRegistry.tryUse(capabilities.environmentsSettings);
@@ -26,10 +24,6 @@ const currentProject = computed(() => projectContext?.currentProject() ?? null);
 const currentProjectId = computed(() => currentProject.value?.id);
 const isTeamProject = computed(() => currentProject.value?.type === ProjectTypes.Team);
 const projectPermissions = computed(() => getResourcePermissions(currentProject.value?.scopes));
-// Apply from a project role ships with LIGO-1476. Until then only the instance role counts.
-const instancePromotionsPermissions = computed(
-	() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
-);
 
 const canPreviewChanges = computed(
 	() =>
@@ -40,7 +34,7 @@ const canPreviewPromote = computed(
 	() => canPreviewChanges.value && !!projectPermissions.value.promotions.promote,
 );
 const canPreviewApply = computed(
-	() => canPreviewChanges.value && !!instancePromotionsPermissions.value.apply,
+	() => canPreviewChanges.value && !!projectPermissions.value.promotions.apply,
 );
 
 const promote = usePromotionChangeCount(currentProjectId, 'promote', canPreviewPromote);

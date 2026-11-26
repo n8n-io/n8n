@@ -2557,40 +2557,64 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(403);
 		});
 
-		it('lets a member key promote only where the project role allows it', async () => {
+		it('lets a member key promote and apply only where the project role allows each', async () => {
 			const member = await createMember();
 			// The member makes the key in the UI before they join the project.
 			const created = await testServer
 				.authAgentFor(member)
 				.post('/api-keys')
-				.send({ label: 'Promote', expiresAt: null, scopes: ['promotions:promote'] });
+				.send({
+					label: 'Release',
+					expiresAt: null,
+					scopes: ['promotions:promote', 'promotions:apply'],
+				});
 			expect(created.status, JSON.stringify(created.body)).toBe(200);
 			const key = testServer.publicApiAgentWithApiKey(created.body.data.rawApiKey as string);
 			const project = await createTeamProject('Billing', owner);
 			await linkUserToProject(member, project, PROJECT_ADMIN_ROLE_SLUG);
-			const promote = vi
-				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
-				.mockResolvedValue(promoteResult);
+			const service = Container.get(PromotionsService);
+			const promote = vi.spyOn(service, 'promoteProjectSelection').mockResolvedValue(promoteResult);
+			const apply = vi.spyOn(service, 'applyProjectSelection').mockResolvedValue({
+				status: 'source-changed',
+				environmentId: 'env1',
+				git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+			});
 			onTestFinished(async () => {
 				promote.mockRestore();
+				apply.mockRestore();
 				await setPromotionSettings();
 			});
-			const promoteBilling = async () =>
-				(await key.post(`/promotions/projects/${project.id}/promote`).send({ workflowIds: ['w1'] }))
-					.status;
+			const statusOf = async (operation: 'promote' | 'apply') =>
+				(
+					await key
+						.post(`/promotions/projects/${project.id}/${operation}`)
+						.send({ workflowIds: ['w1'] })
+				).status;
 
-			expect(await promoteBilling()).toBe(403);
+			expect(await statusOf('promote')).toBe(403);
+			expect(await statusOf('apply')).toBe(403);
 
+			// The two settings are independent.
 			await setPromotionSettings({ whoCanPromote: 'projectAdmins' });
-			expect(await promoteBilling()).toBe(200);
+			expect(await statusOf('promote')).toBe(200);
+			expect(await statusOf('apply')).toBe(403);
 			expect(promote).toHaveBeenCalledWith(project.id, expect.objectContaining({ id: member.id }), {
 				workflowIds: ['w1'],
 			});
 
-			// Revoking the setting stops the existing key.
+			await setPromotionSettings({ whoCanPromote: 'projectAdmins', whoCanApply: 'projectAdmins' });
+			expect(await statusOf('apply')).toBe(200);
+			expect(apply.mock.calls[0].slice(0, 2)).toEqual([
+				project.id,
+				expect.objectContaining({ id: member.id }),
+			]);
+
+			// Revoking the settings stops the existing key.
 			await setPromotionSettings();
-			expect(await promoteBilling()).toBe(403);
+			expect(await statusOf('promote')).toBe(403);
+			expect(await statusOf('apply')).toBe(403);
 			expect(promote).toHaveBeenCalledTimes(1);
+			expect(apply).toHaveBeenCalledTimes(1);
 		});
 
 		it('requires a licensed and active module', async () => {
@@ -2702,6 +2726,10 @@ describe('Promotions in Public API', () => {
 				'GET /promotions/projects/:projectId/changes/:direction (promote)',
 				'POST /promotions/projects/:projectId/changes/:direction/details (promote)',
 				'POST /promotions/projects/:projectId/promote',
+				'GET /promotions/projects/:projectId/changes/:direction (apply)',
+				'POST /promotions/projects/:projectId/changes/:direction/details (apply)',
+				'POST /promotions/projects/:projectId/apply',
+				'POST /promotions/projects/:projectId/apply/continue',
 			];
 			// A new route joins this list on its own. A new path param needs a value below.
 			const requests = resolvePublicApiRoutes()
@@ -2729,6 +2757,7 @@ describe('Promotions in Public API', () => {
 				expect.arrayContaining([
 					...projectRoleRoutes,
 					'POST /promotions/environments/:promotionEnvironmentId/promote',
+					'POST /promotions/environments/:promotionEnvironmentId/apply',
 				]),
 			);
 
@@ -2768,19 +2797,6 @@ describe('Promotions in Public API', () => {
 				.send(selectionBody);
 			expect(response.status).toBe(403);
 		});
-
-		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the apply grant',
-			async (route) => {
-				// The key carries the apply scope, but a member's role does not grant it.
-				const member = await createMemberWithApiKey({ scopes: ['promotions:apply'] });
-				const response = await testServer
-					.publicApiAgentFor(member)
-					.post(`/promotions/projects/proj1/${route}`)
-					.send(selectionBody);
-				expect(response.status).toBe(403);
-			},
-		);
 
 		it.each(['apply', 'apply/continue'])(
 			'%s requires a licensed and active module',

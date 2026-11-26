@@ -106,7 +106,7 @@ describe('ProjectImporter.plan — projectConflictPolicy', () => {
 	it('plans an update under overwrite', async () => {
 		const { importer } = makeImporter(existingProject());
 
-		const plan = await importer.plan(user, [packaged], 'overwrite');
+		const plan = await importer.plan(user, [packaged], 'overwrite', 'project:update');
 
 		expect(plan.conflicts).toEqual([]);
 		expect(plan.items).toEqual([
@@ -117,7 +117,7 @@ describe('ProjectImporter.plan — projectConflictPolicy', () => {
 	it('plans a skip carrying the existing name under merge', async () => {
 		const { importer } = makeImporter(existingProject());
 
-		const plan = await importer.plan(user, [packaged], 'merge');
+		const plan = await importer.plan(user, [packaged], 'merge', 'project:update');
 
 		expect(plan.conflicts).toEqual([]);
 		expect(plan.items).toEqual([
@@ -128,7 +128,7 @@ describe('ProjectImporter.plan — projectConflictPolicy', () => {
 	it('records a conflict and plans nothing under fail', async () => {
 		const { importer } = makeImporter(existingProject());
 
-		const plan = await importer.plan(user, [packaged], 'fail');
+		const plan = await importer.plan(user, [packaged], 'fail', 'project:update');
 
 		expect(plan.items).toEqual([]);
 		expect(plan.conflicts).toEqual([
@@ -141,7 +141,7 @@ describe('ProjectImporter.plan — projectConflictPolicy', () => {
 		async (policy) => {
 			const { importer } = makeImporter();
 
-			const plan = await importer.plan(projectCreator, [packaged], policy);
+			const plan = await importer.plan(projectCreator, [packaged], policy, 'project:update');
 
 			expect(plan.conflicts).toEqual([]);
 			expect(plan.items).toEqual([expect.objectContaining({ action: 'create' })]);

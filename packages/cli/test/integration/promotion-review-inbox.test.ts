@@ -19,6 +19,7 @@ import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
 import { PromotionSettingsService } from '@/modules/promotions.ee/promotion-settings.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import {
 	createAdmin,
 	createMember,
@@ -546,7 +547,7 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(otherTab.status).toBe(400);
 	});
 
-	it('shows a project admin only the reviews of their projects, also through a key, keeps instance reviews with instance admins, and shows none on environments v1', async () => {
+	it('shows a project admin and a custom reviewer role only the reviews of their projects, also through a key, keeps instance reviews with instance admins, and shows none on environments v1', async () => {
 		const [projectA, projectB] = [
 			await createTeamProject('A', owner),
 			await createTeamProject('B', owner),
@@ -585,7 +586,24 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(
 			(await testServer.authAgentFor(member).get(`/promotions/reviews/${ofB}/changes`)).status,
 		).toBe(404);
+
+		// A custom project role reads and approves the reviews of its project, whatever the settings say.
+		const reviewerRole = await createCustomRoleWithScopeSlugs(
+			['promotions:readReviews', 'promotions:approveReviews'],
+			{ roleType: 'project' },
+		);
+		const reviewer = await createMember();
+		await linkUserToProject(reviewer, projectB, reviewerRole.slug);
+		expect((await inbox(reviewer, { state: 'open', category: 'waiting' })).body.data.data).toEqual([
+			expect.objectContaining({ id: ofB, viewerApproval: 'allowed' }),
+		]);
+		expect((await approve(reviewer, ofA)).status).toBe(404);
 		expect(writes).toEqual([]);
+		gitlabWrites(2);
+		const approved = await approve(reviewer, ofB);
+		expect(approved.status, approved.text).toBe(200);
+		expect(await approvedById(ofB)).toBe(reviewer.id);
+		expect(await approvedById(ofA)).toBeNull();
 		expect(
 			(await testServer.publicApiAgentFor(owner).get(`/promotions/reviews/${uuidv7()}`)).status,
 		).toBe(404);

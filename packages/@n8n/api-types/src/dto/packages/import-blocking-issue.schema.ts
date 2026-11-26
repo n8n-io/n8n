@@ -18,6 +18,8 @@ import {
 	folderConflictIssueOpenApi,
 	folderRemovalForbiddenFieldDocs,
 	folderRemovalForbiddenIssueOpenApi,
+	folderWriteForbiddenFieldDocs,
+	folderWriteForbiddenIssueOpenApi,
 	missingNodeTypeFieldDocs,
 	missingNodeTypeIssueOpenApi,
 	policyCheckFailedIssueOpenApi,
@@ -45,6 +47,8 @@ import {
 	workflowRemovalConflictIssueOpenApi,
 	workflowRemovalForbiddenFieldDocs,
 	workflowRemovalForbiddenIssueOpenApi,
+	workflowWriteForbiddenFieldDocs,
+	workflowWriteForbiddenIssueOpenApi,
 } from './import-blocking-issue.openapi';
 import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { policyViolationSchema } from '../../schemas/policy-violation.schema';
@@ -126,6 +130,20 @@ const workflowArchiveForbiddenIssueSchema = z
 			.openapi(workflowArchiveForbiddenFieldDocs.transition),
 	})
 	.openapi(workflowArchiveForbiddenIssueOpenApi);
+
+const workflowWriteForbiddenIssueSchema = z
+	.object({
+		type: z.literal('workflow-write-forbidden'),
+		sourceWorkflowId: z.string(),
+		existingWorkflowId: z
+			.string()
+			.optional()
+			.openapi(workflowWriteForbiddenFieldDocs.existingWorkflowId),
+		name: z.string(),
+		projectId: z.string().openapi(workflowWriteForbiddenFieldDocs.projectId),
+		action: z.enum(['create', 'update']).openapi(workflowWriteForbiddenFieldDocs.action),
+	})
+	.openapi(workflowWriteForbiddenIssueOpenApi);
 
 const credentialUnresolvedIssueSchema = z
 	.object({
@@ -227,6 +245,17 @@ const folderRemovalForbiddenIssueSchema = z
 		projectId: z.string().openapi(folderRemovalForbiddenFieldDocs.projectId),
 	})
 	.openapi(folderRemovalForbiddenIssueOpenApi);
+
+const folderWriteForbiddenIssueSchema = z
+	.object({
+		type: z.literal('folder-write-forbidden'),
+		sourceFolderId: z.string(),
+		name: z.string(),
+		projectId: z.string().openapi(folderWriteForbiddenFieldDocs.projectId),
+		action: z.enum(['create', 'update']).openapi(folderWriteForbiddenFieldDocs.action),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(folderWriteForbiddenFieldDocs.usedBy),
+	})
+	.openapi(folderWriteForbiddenIssueOpenApi);
 
 /** `destructive` operations remove the values in a column. */
 const dataTableSchemaOperationSchema = z
@@ -455,6 +484,7 @@ export const importBlockingIssueSchema = z
 		workflowIdConflictIssueSchema,
 		workflowFolderConflictIssueSchema,
 		workflowArchiveForbiddenIssueSchema,
+		workflowWriteForbiddenIssueSchema,
 		credentialUnresolvedIssueSchema,
 		credentialConflictIssueSchema,
 		credentialUpdateForbiddenIssueSchema,
@@ -463,6 +493,7 @@ export const importBlockingIssueSchema = z
 		workflowRemovalForbiddenIssueSchema,
 		workflowRemovalConflictIssueSchema,
 		folderRemovalForbiddenIssueSchema,
+		folderWriteForbiddenIssueSchema,
 		dataTableUnresolvedIssueSchema,
 		tagUnresolvedIssueSchema,
 		variableUnresolvedIssueSchema,

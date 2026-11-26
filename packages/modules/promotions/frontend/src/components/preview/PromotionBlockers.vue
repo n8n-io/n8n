@@ -98,6 +98,17 @@ type HardConflict = Exclude<
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
+	if (conflict.code === 'folder-forbidden') {
+		return {
+			key: `conflict:${index}`,
+			icon: resourceIcon('folder'),
+			name: conflict.name,
+			type: 'folder',
+			usedBy: usedBy(conflict.consumers),
+			status: status('conflict'),
+			detail: i18n.baseText(`promotions.bindings.conflicts.folder-forbidden.${conflict.reason}`),
+		};
+	}
 	const row = {
 		key: `conflict:${index}`,
 		status: status('conflict'),
@@ -168,18 +179,25 @@ function movedRow(
 const blockerRows = computed<BlockerRow[]>(() => {
 	const { accessRequirements, movedWorkflows, movedFolders } = props.check;
 	return [
-		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => ({
-			key,
-			icon: resourceIcon(binding.kind),
-			name: binding.name,
-			type: binding.kind,
-			usedBy: usedBy(binding.consumers),
-			status: status(bindingStatus === 'resolved' ? 'resolved' : 'missing'),
-			createLabel:
-				bindingStatus === 'missing'
+		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => {
+			const missing = bindingStatus === 'missing';
+			const canCreate = missing && creation.canCreate(binding);
+			return {
+				key,
+				icon: resourceIcon(binding.kind),
+				name: binding.name,
+				type: binding.kind,
+				usedBy: usedBy(binding.consumers),
+				status: status(bindingStatus === 'resolved' ? 'resolved' : 'missing'),
+				createLabel: canCreate
 					? i18n.baseText(`promotions.preview.blockers.create.${binding.kind}`)
 					: undefined,
-		})),
+				detail:
+					missing && !canCreate
+						? i18n.baseText(`promotions.preview.blockers.createDenied.${binding.kind}`)
+						: undefined,
+			};
+		}),
 		...accessRequirements.map((access) => ({
 			key: `access:${access.sourceId}`,
 			icon: resourceIcon('credential'),

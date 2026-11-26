@@ -17,11 +17,17 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
+import {
+	PROMOTION_SCOPE_NEEDS,
+	SCOPE_TYPES,
+	SCOPES,
+	normalizeCoupledScopes,
+} from './projectRoleScopes';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { CUSTOM_ROLE_SCOPE_WHITELIST } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
@@ -32,6 +38,7 @@ const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -93,6 +100,9 @@ const scopeTypes = computed(() => {
 	if (!settingsStore.isModuleActive('agents')) {
 		types = types.filter((type) => type !== 'projectSkill');
 	}
+	if (!isPromotionsEnabled.value) {
+		types = types.filter((type) => type !== 'promotions');
+	}
 	return types;
 });
 const scopes = SCOPES;
@@ -105,6 +115,17 @@ function toggleScope(scope: string) {
 		form.value.scopes.splice(index, 1);
 	} else {
 		form.value.scopes.push(scope);
+	}
+
+	// Dependency: a promotion operation needs the scopes that it reads the project with
+	if (isBeingAdded) {
+		for (const needed of PROMOTION_SCOPE_NEEDS[scope] ?? []) {
+			if (!form.value.scopes.includes(needed)) toggleScope(needed);
+		}
+	} else {
+		for (const [operation, needs] of Object.entries(PROMOTION_SCOPE_NEEDS)) {
+			if (needs?.includes(scope) && form.value.scopes.includes(operation)) toggleScope(operation);
+		}
 	}
 
 	if (scope.startsWith('dataTable:') && scope.endsWith(':read')) {

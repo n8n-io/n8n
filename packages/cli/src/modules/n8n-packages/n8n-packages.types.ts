@@ -26,6 +26,7 @@ import type {
 	WorkflowArchiveForbidden,
 	WorkflowConflict,
 	WorkflowFolderConflict,
+	WorkflowWriteForbidden,
 } from './entities/workflow/workflow-import.types';
 import type {
 	WorkflowPublishingOutcome,
@@ -405,6 +406,11 @@ export type PromotionLayoutProperties = {
 	layoutConflictPolicy?: LayoutConflictPolicy;
 	/** Omitted means `allow`. */
 	credentialPersonalRoute?: CredentialPersonalRoute;
+	/**
+	 * The scope that an import into an existing project needs. Omitted means `project:update`.
+	 * A project Apply uses `promotions:apply`, so that the "Who can apply" setting decides.
+	 */
+	projectWriteScope?: 'project:update' | 'promotions:apply';
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
@@ -682,6 +688,7 @@ export type BlockingIssue =
 	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)
 	| ({ type: 'workflow-folder-conflict' } & WorkflowFolderConflict)
 	| ({ type: 'workflow-archive-forbidden' } & WorkflowArchiveForbidden)
+	| ({ type: 'workflow-write-forbidden' } & WorkflowWriteForbidden)
 	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
@@ -702,6 +709,10 @@ export type BlockingIssue =
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
+	| ({
+			type: 'folder-write-forbidden';
+			usedBy: PackageRequirementConsumer[];
+	  } & FolderWriteForbidden)
 	| ({
 			type: 'data-table-unresolved';
 			usedBy: PackageRequirementConsumer[];
@@ -776,6 +787,14 @@ export interface FolderRemovalFailure {
 	folderId: string;
 	name: string;
 	projectId: string;
+}
+
+/** A folder that the import must create or change, but the user's project role does not allow it. */
+export interface FolderWriteForbidden {
+	sourceFolderId: string;
+	name: string;
+	projectId: string;
+	action: 'create' | 'update';
 }
 
 /**
