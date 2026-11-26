@@ -4186,6 +4186,13 @@ export interface IWorkflowExecuteAdditionalData {
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
 	/**
+	 * Every run-time input value of the execution, with the alias of its rule. The engine
+	 * uses it to remove the values from node output and errors. Not set when the feature is off.
+	 */
+	getRuntimeCredentialValues?: (
+		runExecutionData: IRunExecutionData,
+	) => Promise<Array<{ alias: string; value: string }>>;
+	/**
 	 * Backing implementations for the trigger identity pipeline exposed to nodes on
 	 * `IWebhookFunctions` (see the docs there). Optional here because they are only
 	 * wired in by the CLI webhook layer when the OAuth server is available; the
@@ -4262,6 +4269,12 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * Aliases of the run-time rules whose stub credential a node resolved during its execution.
+	 * Includes the stubs of its sub-nodes. The engine reads it to remove the values from the
+	 * output of the node, and resets it before each node runs.
+	 */
+	currentNodeRuntimeCredentialAliases?: string[];
 	/**
 	 * Mutable flag set to true during a node's execution when it attempts to resolve a
 	 * private (resolvable) credential, set before resolution is attempted so it is

@@ -20,6 +20,16 @@ type ContextEstablishmentHookOptions = {
 	 * and must not overwrite context the child legitimately inherited.
 	 */
 	runForSubExecution?: boolean;
+
+	/**
+	 * If true, the hook runs in a third phase for every execution, after the hooks
+	 * that the trigger node configures. It sees the trigger items as those hooks left
+	 * them, so it can clear a request value that they needed to read first.
+	 *
+	 * The hook does not run in the global phase. If you also set `alwaysExecute`,
+	 * this option wins and the hook runs only in the post-node phase.
+	 */
+	runAfterNodeHooks?: boolean;
 };
 
 /**
@@ -116,7 +126,17 @@ export class ContextEstablishmentHookMetadata {
 
 	getGlobalClasses() {
 		return [...this.contextEstablishmentHooks.values()]
-			.filter((entry) => entry.options?.alwaysExecute ?? false)
+			.filter(
+				(entry) =>
+					(entry.options?.alwaysExecute ?? false) && !(entry.options?.runAfterNodeHooks ?? false),
+			)
+			.map((entry) => entry.class);
+	}
+
+	/** Hooks that run after the node configured hooks, for every execution. */
+	getPostNodeClasses() {
+		return [...this.contextEstablishmentHooks.values()]
+			.filter((entry) => entry.options?.runAfterNodeHooks ?? false)
 			.map((entry) => entry.class);
 	}
 

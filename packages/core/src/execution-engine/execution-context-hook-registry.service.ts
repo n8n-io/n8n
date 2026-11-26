@@ -13,6 +13,7 @@ import { Container, Service } from '@n8n/di';
 export class ExecutionContextHookRegistry {
 	private hookMap: Map<string, IContextEstablishmentHook> = new Map();
 	private globalHook: Set<IContextEstablishmentHook> = new Set();
+	private postNodeHook: Set<IContextEstablishmentHook> = new Set();
 	private subExecutionHook: Set<IContextEstablishmentHook> = new Set();
 
 	constructor(
@@ -34,10 +35,12 @@ export class ExecutionContextHookRegistry {
 	async init() {
 		this.hookMap.clear();
 		this.globalHook.clear();
+		this.postNodeHook.clear();
 		this.subExecutionHook.clear();
 
 		const hookClasses = this.executionContextHookMetadata.getClasses();
 		const globalHookClasses = this.executionContextHookMetadata.getGlobalClasses();
+		const postNodeHookClasses = this.executionContextHookMetadata.getPostNodeClasses();
 		const subExecutionHookClasses = this.executionContextHookMetadata.getSubExecutionClasses();
 		this.logger.debug(`Registering ${hookClasses.length} execution context hooks.`);
 
@@ -73,6 +76,9 @@ export class ExecutionContextHookRegistry {
 			this.hookMap.set(hook.hookDescription.name, hook);
 			if (globalHookClasses.includes(hookClass)) {
 				this.globalHook.add(hook);
+			}
+			if (postNodeHookClasses.includes(hookClass)) {
+				this.postNodeHook.add(hook);
 			}
 			if (subExecutionHookClasses.includes(hookClass)) {
 				this.subExecutionHook.add(hook);
@@ -116,6 +122,14 @@ export class ExecutionContextHookRegistry {
 
 	getGlobalHooks(): IContextEstablishmentHook[] {
 		return Array.from(this.globalHook);
+	}
+
+	/**
+	 * Returns hooks that opted into `runAfterNodeHooks`. They run for every
+	 * execution, after the hooks that the trigger node configures.
+	 */
+	getPostNodeHooks(): IContextEstablishmentHook[] {
+		return Array.from(this.postNodeHook);
 	}
 
 	/**

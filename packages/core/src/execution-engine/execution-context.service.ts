@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { IContextEstablishmentHook } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	ICredentialContext,
@@ -254,69 +255,15 @@ export class ExecutionContextService {
 		// decrypt the context to work with plaintext data
 		let context = await this.decryptExecutionContext(contextToAugment);
 
-		// Run global hooks!
-		for (const globalHook of this.executionContextHookRegistry.getGlobalHooks()) {
-			// call the hook to let it modify the context and/or the main input data
-			const result = await globalHook.execute({
-				triggerNode: startItem.node,
-				workflow,
-				triggerItems: currentTriggerItems,
-				context,
-				options: {},
-			});
-
-			if (result.triggerItems !== undefined) {
-				// Update trigger items in case they were modified by the hook
-				currentTriggerItems = result.triggerItems;
-			}
-
-			if (result.contextUpdate) {
-				// Merge any returned context fields into the execution context
-				context = this.mergeExecutionContexts(context, result.contextUpdate);
-			}
-		}
-
-		const startNodeParametersResult = toExecutionContextEstablishmentHookParameter(
-			contextEstablishmentHookParameters,
-		);
-
-		if (!startNodeParametersResult || startNodeParametersResult.error) {
-			if (startNodeParametersResult?.error) {
-				this.logger.warn(
-					`Failed to parse execution context establishment hook parameters for node ${startItem.node.name}: ${startNodeParametersResult.error.message}`,
-				);
-			}
-			// no node specific execution establishment hooks found, we return early
-			return {
-				context: await this.encryptExecutionContext(context),
-				triggerItems: currentTriggerItems,
-			};
-		}
-
-		// startNodeParameters will hold the parameters of the start node
-		// this can be the settings for the different hooks to be executed
-		// for example to extract the bearer token from the start node data.
-		const startNodeParameters = startNodeParametersResult.data;
-
-		// based on startNodeParameters, startNodeType and currentTriggerItems we can now
-		// iterate over the different hooks to extract specific data for the runtime context
-		for (const hookParameters of startNodeParameters.contextEstablishmentHooks.hooks) {
-			const hook = this.executionContextHookRegistry.getHookByName(hookParameters.hookName);
-
-			if (!hook) {
-				this.logger.warn(
-					`Execution context establishment hook ${hookParameters.hookName} not found, skipping this hook`,
-				);
-				continue;
-			}
-			try {
+		const runUnconfiguredHooks = async (hooks: IContextEstablishmentHook[]) => {
+			for (const hook of hooks) {
 				// call the hook to let it modify the context and/or the main input data
 				const result = await hook.execute({
 					triggerNode: startItem.node,
 					workflow,
 					triggerItems: currentTriggerItems,
 					context,
-					options: hookParameters,
+					options: {},
 				});
 
 				if (result.triggerItems !== undefined) {
@@ -328,17 +275,74 @@ export class ExecutionContextService {
 					// Merge any returned context fields into the execution context
 					context = this.mergeExecutionContexts(context, result.contextUpdate);
 				}
-			} catch (error) {
-				this.logger.warn(
-					`Failed to execute context establishment hook ${hookParameters.hookName}`,
-					{ error },
-				);
-				if (!hookParameters.isAllowedToFail) {
-					// If the hook is not allowed to fail, rethrow the error
-					throw error;
+			}
+		};
+
+		// Phase 1: global hooks
+		await runUnconfiguredHooks(this.executionContextHookRegistry.getGlobalHooks());
+
+		// Phase 2: hooks that the start node configures
+		const startNodeParametersResult = toExecutionContextEstablishmentHookParameter(
+			contextEstablishmentHookParameters,
+		);
+
+		if (startNodeParametersResult?.error) {
+			this.logger.warn(
+				`Failed to parse execution context establishment hook parameters for node ${startItem.node.name}: ${startNodeParametersResult.error.message}`,
+			);
+		}
+
+		if (startNodeParametersResult && !startNodeParametersResult.error) {
+			// startNodeParameters will hold the parameters of the start node
+			// this can be the settings for the different hooks to be executed
+			// for example to extract the bearer token from the start node data.
+			const startNodeParameters = startNodeParametersResult.data;
+
+			// based on startNodeParameters, startNodeType and currentTriggerItems we can now
+			// iterate over the different hooks to extract specific data for the runtime context
+			for (const hookParameters of startNodeParameters.contextEstablishmentHooks.hooks) {
+				const hook = this.executionContextHookRegistry.getHookByName(hookParameters.hookName);
+
+				if (!hook) {
+					this.logger.warn(
+						`Execution context establishment hook ${hookParameters.hookName} not found, skipping this hook`,
+					);
+					continue;
+				}
+				try {
+					// call the hook to let it modify the context and/or the main input data
+					const result = await hook.execute({
+						triggerNode: startItem.node,
+						workflow,
+						triggerItems: currentTriggerItems,
+						context,
+						options: hookParameters,
+					});
+
+					if (result.triggerItems !== undefined) {
+						// Update trigger items in case they were modified by the hook
+						currentTriggerItems = result.triggerItems;
+					}
+
+					if (result.contextUpdate) {
+						// Merge any returned context fields into the execution context
+						context = this.mergeExecutionContexts(context, result.contextUpdate);
+					}
+				} catch (error) {
+					this.logger.warn(
+						`Failed to execute context establishment hook ${hookParameters.hookName}`,
+						{ error },
+					);
+					if (!hookParameters.isAllowedToFail) {
+						// If the hook is not allowed to fail, rethrow the error
+						throw error;
+					}
 				}
 			}
 		}
+
+		// Phase 3: post-node hooks, after the node configured hooks have read the items
+		await runUnconfiguredHooks(this.executionContextHookRegistry.getPostNodeHooks());
 
 		return {
 			context: await this.encryptExecutionContext(context),
