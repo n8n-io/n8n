@@ -29,6 +29,22 @@ const triggerNode: INode = {
 	parameters: { inputSource: 'passthrough' },
 };
 
+const decisionTriggerNode: INode = {
+	id: 'dt1',
+	name: 'Request from agent',
+	type: 'n8n-nodes-base.agentDecisionTrigger',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
+
+const decisionWorkflow = {
+	id: 'wf-decision',
+	name: 'Decision check workflow',
+	nodes: [decisionTriggerNode],
+	connections: {},
+} as unknown as WorkflowEntity;
+
 const workflow = {
 	id: 'wf-check',
 	name: 'Check workflow',
@@ -207,5 +223,68 @@ describe('createWorkflowGuardrailCheck', () => {
 
 		expect(result.executionFailed).toBe(true);
 		expect(result.originalException?.message).toContain('timed out');
+	});
+
+	it('runs a decision-trigger workflow with the decision request contract', async () => {
+		const loader = loaderWith(decisionWorkflow);
+		executeResult({ data: { 'Respond to agent': [{ tripwireTriggered: false }] } });
+
+		const decisionGuardrail = { ...guardrail, workflowId: 'wf-decision' };
+		const check = createWorkflowGuardrailCheck(decisionGuardrail, contextWith(loader));
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		const [workflowArg, triggerArg, inputArg] = vi.mocked(executeWorkflow).mock.calls[0];
+		expect(workflowArg.id).toBe('wf-decision');
+		expect(triggerArg.type).toBe('n8n-nodes-base.agentDecisionTrigger');
+		// The trigger documents `$json.toolInput`; the guardrail name rides
+		// along as the request description.
+		expect(inputArg).toEqual({
+			toolName: 'read_file',
+			description: 'My check',
+			toolInput: { note: 'check me' },
+			requestedAt: expect.any(String),
+		});
+		expect(result.tripwireTriggered).toBe(false);
+		expect(result.executionFailed).toBeUndefined();
+	});
+
+	it('reports a tripwire from a decision-trigger workflow', async () => {
+		const loader = loaderWith(decisionWorkflow);
+		executeResult({ data: { 'Respond to agent': [{ tripwireTriggered: true }] } });
+
+		const decisionGuardrail = { ...guardrail, workflowId: 'wf-decision' };
+		const check = createWorkflowGuardrailCheck(decisionGuardrail, contextWith(loader));
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		expect(result.tripwireTriggered).toBe(true);
+		expect(result.executionFailed).toBeUndefined();
+	});
+
+	it('still fails closed on a workflow without a supported check trigger', async () => {
+		const cronWorkflow = {
+			id: 'wf-cron',
+			name: 'Scheduled workflow',
+			nodes: [
+				{
+					id: 'c1',
+					name: 'Cron',
+					type: 'n8n-nodes-base.cronTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowEntity;
+
+		const check = createWorkflowGuardrailCheck(
+			{ ...guardrail, workflowId: 'wf-cron' },
+			contextWith(loaderWith(cronWorkflow)),
+		);
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		expect(result.executionFailed).toBe(true);
+		expect(result.originalException?.message).toContain('Request from agent');
+		expect(executeWorkflow).not.toHaveBeenCalled();
 	});
 });

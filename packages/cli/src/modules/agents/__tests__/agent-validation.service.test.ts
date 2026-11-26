@@ -1451,6 +1451,51 @@ describe('AgentValidationService — structured issues', () => {
 		).toEqual([]);
 	});
 
+	it('accepts a decision-trigger workflow as a check at every scope', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				config: {
+					guardrails: {
+						tools: [{ kind: 'workflow', id: 'guard_decision', workflowId: 'wf-decision' }],
+					},
+				},
+			}),
+		);
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			{
+				id: 'wf-decision',
+				name: 'Decision Check',
+				activeVersionId: 'v1',
+				nodes: [
+					{
+						id: 'dt1',
+						name: 'Request from agent',
+						type: 'n8n-nodes-base.agentDecisionTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			},
+		] as never);
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		for (const scope of ['publish', 'runtime'] as const) {
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+				scope,
+			);
+			expect(
+				result.issues.filter((issue) => issue.path === 'config.guardrails.tools.0.workflowId'),
+				`scope ${scope}`,
+			).toEqual([]);
+		}
+	});
+
 	it('does not treat a workflow tool name as a guardrail workflow id', async () => {
 		const { service, agentRepository, workflowRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

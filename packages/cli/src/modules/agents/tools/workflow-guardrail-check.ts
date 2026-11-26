@@ -1,12 +1,14 @@
 import type { GuardrailResult } from '@n8n/ai-utilities/guardrails';
-import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import {
+	AGENT_DECISION_TRIGGER_NODE_TYPE,
+	getGuardrailCheckWorkflowIncompatibilityReason,
+	SUPPORTED_GUARDRAIL_CHECK_TRIGGERS,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
+	type AgentToolGuardrailConfig,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import {
-	detectTriggerNode,
-	inferInputSchema,
-	validateCompatibility,
-} from '@/workflows/callable/callable-workflow-input';
+import { detectTriggerNode, inferInputSchema } from '@/workflows/callable/callable-workflow-input';
 
 import {
 	executeWorkflow,
@@ -58,10 +60,55 @@ export function createWorkflowGuardrailCheck(
 				);
 			}
 
-			validateCompatibility(workflow);
-			const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
-			const inputSchema = inferInputSchema(triggerNode, triggerType);
-			const checkInput = inputSchema.parse({ toolName, input, guardrailName });
+			// A guardrail check accepts the callable tool trigger and the
+			// decision trigger; body-node rules stay those of a callable run.
+			const incompatibility = getGuardrailCheckWorkflowIncompatibilityReason(workflow);
+			if (incompatibility) {
+				if (incompatibility.reason === 'incompatible_nodes') {
+					const names = (workflow.nodes ?? [])
+						.filter((node) => !node.disabled && incompatibility.nodeTypes.includes(node.type))
+						.map((node) => `${node.name} (${node.type})`)
+						.join(', ');
+					return failed(
+						guardrailName,
+						`The check workflow "${workflow.name}" contains nodes that aren't supported in a guardrail check: ${names}`,
+					);
+				}
+				return failed(
+					guardrailName,
+					`The check workflow "${workflow.name}" needs a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' or 'Request from agent' trigger`,
+				);
+			}
+			// Entry point: the first supported check trigger in node order,
+			// mirroring the workflow-tool scan.
+			const entryNode = (workflow.nodes ?? []).find((node) =>
+				(SUPPORTED_GUARDRAIL_CHECK_TRIGGERS as readonly string[]).includes(node.type),
+			);
+			if (!entryNode) {
+				return failed(
+					guardrailName,
+					`The check workflow "${workflow.name}" has no supported trigger`,
+				);
+			}
+
+			let checkInput: Record<string, unknown>;
+			if (entryNode.type === AGENT_DECISION_TRIGGER_NODE_TYPE) {
+				// The decision request contract: the trigger documents
+				// `$json.toolInput`, and the review routing sends this shape.
+				checkInput = {
+					toolName,
+					description: guardrailName,
+					toolInput: input,
+					requestedAt: new Date().toISOString(),
+				};
+			} else {
+				const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
+				checkInput = inferInputSchema(triggerNode, triggerType).parse({
+					toolName,
+					input,
+					guardrailName,
+				});
+			}
 
 			const runContext: WorkflowToolRunContext = {
 				...context,
@@ -72,7 +119,7 @@ export function createWorkflowGuardrailCheck(
 					executionMetadata: { [GUARDRAIL_CHECK_FOR_KEY]: context.agentId },
 				}),
 			};
-			const result = await executeWorkflow(workflow, triggerNode, checkInput, runContext);
+			const result = await executeWorkflow(workflow, entryNode, checkInput, runContext);
 
 			if (result.error !== undefined || result.status !== 'success') {
 				return failed(

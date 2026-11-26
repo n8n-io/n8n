@@ -538,6 +538,7 @@ function onRemove() {
 								:model-value="checkWorkflowId"
 								:project-id="projectId"
 								:disabled="disabled"
+								for-guardrail-check
 								data-testid="agent-guardrail-check-workflow"
 								@update:model-value="checkWorkflowId = $event"
 							/>

@@ -9,6 +9,7 @@ import {
 	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	getAgentModelProviderCredentialTypes,
+	getGuardrailCheckWorkflowIncompatibilityReason,
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	integrationNeedsCredential,
@@ -700,7 +701,8 @@ export class AgentValidationService {
 				continue;
 			}
 
-			const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+			// A check may also start with the decision trigger, unlike a tool.
+			const incompatibility = getGuardrailCheckWorkflowIncompatibilityReason(workflow);
 			if (incompatibility) {
 				issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
 				continue;

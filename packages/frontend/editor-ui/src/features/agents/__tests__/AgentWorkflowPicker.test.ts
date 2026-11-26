@@ -7,9 +7,45 @@ const workflows = ref([
 	{ id: 'wf-2', name: 'Old report', description: 'Weekly', updatedAt: '2026-10-01T10:00:00Z' },
 ]);
 
+/** Every project workflow the catalog loaded: includes non-tool-callable ones. */
+const allProjectWorkflows = ref([
+	...workflows.value,
+	{
+		id: 'wf-decision',
+		name: 'Approve expenses',
+		description: '',
+		updatedAt: '2026-11-25T10:00:00Z',
+		isArchived: false,
+		nodes: [
+			{
+				id: 'dt1',
+				name: 'Request from agent',
+				type: 'n8n-nodes-base.agentDecisionTrigger',
+				disabled: false,
+			},
+		],
+	},
+	{
+		id: 'wf-archived-decision',
+		name: 'Old approvals',
+		description: '',
+		updatedAt: '2026-11-01T10:00:00Z',
+		isArchived: true,
+		nodes: [
+			{
+				id: 'dt2',
+				name: 'Request from agent',
+				type: 'n8n-nodes-base.agentDecisionTrigger',
+				disabled: false,
+			},
+		],
+	},
+]);
+
 vi.mock('../composables/useAgentToolCatalog', () => ({
 	useAgentToolCatalog: () => ({
 		availableWorkflows: workflows,
+		projectWorkflows: allProjectWorkflows,
 		loadWorkflows: vi.fn(async () => true),
 	}),
 }));
@@ -82,9 +118,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 
 import AgentWorkflowPicker from '../components/AgentWorkflowPicker.vue';
 
-function mountPicker(modelValue = '') {
+function mountPicker(modelValue = '', forGuardrailCheck = false) {
 	return mount(AgentWorkflowPicker, {
-		props: { modelValue, projectId: 'project-1' },
+		props: { modelValue, projectId: 'project-1', forGuardrailCheck },
 		attachTo: document.body,
 	});
 }
@@ -139,5 +175,36 @@ describe('AgentWorkflowPicker', () => {
 
 		expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
 		expect(wrapper.find('[data-testid="agent-workflow-picker-unresolvable"]').exists()).toBe(true);
+	});
+
+	it('offers decision-trigger workflows for a guardrail check, skipping archived ones', async () => {
+		const wrapper = mountPicker('', true);
+
+		const optionIds = optionValues(wrapper, 'agent-workflow-picker-target');
+		// The decision workflow joins the callable ones; the archived one stays out.
+		expect(optionIds).toContain('wf-decision');
+		expect(optionIds).not.toContain('wf-archived-decision');
+		expect(optionIds).toContain('wf-1');
+
+		await wrapper.get('[data-testid="agent-workflow-picker-target"]').setValue('wf-decision');
+		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['wf-decision']);
+	});
+
+	it('keeps decision-trigger workflows out of the tool list', () => {
+		const wrapper = mountPicker();
+
+		expect(optionValues(wrapper, 'agent-workflow-picker-target')).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('resolves a decision-trigger id in check mode id entry', async () => {
+		const wrapper = mountPicker('', true);
+
+		await wrapper.get('[data-testid="agent-workflow-picker-mode"]').setValue('id');
+		const idInput = wrapper.get('[data-testid="agent-workflow-picker-target-id"]');
+		await idInput.setValue('wf-decision');
+		await idInput.trigger('keyup', { key: 'Enter' });
+
+		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['wf-decision']);
+		expect(wrapper.find('[data-testid="agent-workflow-picker-unresolvable"]').exists()).toBe(false);
 	});
 });

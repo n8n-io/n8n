@@ -11,6 +11,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { AGENT_DECISION_TRIGGER_NODE_TYPE } from '@n8n/api-types';
+
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 
@@ -20,15 +22,17 @@ const props = withDefaults(
 		modelValue: string;
 		projectId?: string;
 		disabled?: boolean;
+		/** A guardrail check also accepts workflows starting with the decision trigger. */
+		forGuardrailCheck?: boolean;
 	}>(),
-	{ projectId: undefined, disabled: false },
+	{ projectId: undefined, disabled: false, forGuardrailCheck: false },
 );
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 const i18n = useI18n();
 const router = useRouter();
-const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCatalog();
 
 const isLoading = ref(true);
 const mode = ref<'list' | 'id'>('list');
@@ -40,9 +44,24 @@ onMounted(async () => {
 	isLoading.value = false;
 });
 
+/** The workflows this picker offers: tool-callable, plus decision-trigger ones for a check. */
+const sourceWorkflows = computed(() => {
+	if (!props.forGuardrailCheck) return availableWorkflows.value;
+	const seen = new Set(availableWorkflows.value.map((workflow) => workflow.id));
+	const decisionWorkflows = projectWorkflows.value.filter(
+		(workflow) =>
+			!workflow.isArchived &&
+			!seen.has(workflow.id) &&
+			(workflow.nodes ?? []).some(
+				(node) => node.type === AGENT_DECISION_TRIGGER_NODE_TYPE && !node.disabled,
+			),
+	);
+	return [...availableWorkflows.value, ...decisionWorkflows];
+});
+
 /** Options are keyed by id so same-named workflows remain individually selectable. */
 const workflowOptions = computed(() =>
-	[...availableWorkflows.value]
+	[...sourceWorkflows.value]
 		.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
 		.map((workflow) => ({
 			id: workflow.id,
@@ -69,11 +88,11 @@ function handleSelectWorkflow(optionId: string) {
 	if (selected) emit('update:modelValue', selected.id);
 }
 
-/** Only workflows the agent can call are valid targets, the same rule as the tool form. */
+/** Only workflows this picker offers are valid targets, the same rule as the tool form. */
 function handleEnterWorkflowId(id: string) {
 	const trimmed = id.trim();
 	if (!trimmed) return;
-	const known = availableWorkflows.value.find((workflow) => workflow.id === trimmed);
+	const known = sourceWorkflows.value.find((workflow) => workflow.id === trimmed);
 	isIdUnresolvable.value = !known;
 	if (known) emit('update:modelValue', known.id);
 }

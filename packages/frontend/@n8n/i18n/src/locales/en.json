@@ -10509,7 +10509,7 @@
 	"agents.builder.guardrails.review.configuration.label": "Human review destination",
 	"agents.builder.guardrails.review.configuration.none": "Add a human review destination to this agent first.",
 	"agents.builder.guardrails.workflow.checkWorkflow.label": "Check workflow",
-	"agents.builder.guardrails.workflow.checkWorkflow.hint": "The workflow runs before each tool call and receives the call as its input.",
+	"agents.builder.guardrails.workflow.checkWorkflow.hint": "The workflow runs before each tool call, receives the call as its input, and stops it when an output item reports tripwireTriggered true.",
 	"agents.builder.guardrails.workflow.checkWorkflow.idNotFound": "This workflow is not available to this agent.",
 	"agents.builder.guardrails.tools.label": "Which tools",
 	"agents.builder.guardrails.tools.all": "All tools",
