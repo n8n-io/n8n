@@ -86,6 +86,10 @@ provideAgentPersonalisation(
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
 const isCollectionsEnabled = useIsCollectionsEnabled();
+// Collections link to a saved agent, and the full memory list replaces the Knowledge cards.
+const showCollectionsPanel = computed(
+	() => isCollectionsEnabled.value && !props.agentUnsaved && !isMemoryViewAll.value,
+);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -365,7 +369,7 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 					<AgentKnowledgeCollectionsPanel
-						v-if="isCollectionsEnabled && !agentUnsaved && !isMemoryViewAll"
+						v-if="showCollectionsPanel"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:disabled="childrenDisabled"
