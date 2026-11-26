@@ -20,6 +20,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import type { Scope } from '@n8n/permissions';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
@@ -941,7 +942,7 @@ describe('WorkflowSettingsVue', () => {
 				mockEngineV2Compatibility({ reasons });
 				workflowDocumentStore.setActiveState({
 					activeVersionId: 'version-1',
-					activeVersion: mock({ versionId: 'version-1', settings: {} }),
+					activeVersion: mock<WorkflowHistory>({ versionId: 'version-1', settings: {} }),
 				});
 
 				const { getByTestId } = createComponent({ pinia });
@@ -1068,7 +1069,7 @@ describe('WorkflowSettingsVue', () => {
 				const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
 				expect(checkWorkflow).toHaveBeenLastCalledWith(
 					expect.objectContaining({
-						settings: expect.objectContaining({ redactionPolicy: data.settings.redactionPolicy }),
+						settings: expect.objectContaining({ redactionPolicy: data.settings?.redactionPolicy }),
 					}),
 				);
 			});

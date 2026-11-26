@@ -15,7 +15,9 @@ export function useOpenEngineV2Findings() {
 
 	return async function openEngineV2Findings(workflowId: string) {
 		if (route.meta?.nodeView !== true) {
-			await router.push({ name: VIEWS.WORKFLOW, params: { workflowId } });
+			// A guard can refuse the move. Then nothing opens, so the next canvas doesn't open it later.
+			const failure = await router.push({ name: VIEWS.WORKFLOW, params: { workflowId } });
+			if (failure) return;
 		}
 		findingsDialog.open();
 	};

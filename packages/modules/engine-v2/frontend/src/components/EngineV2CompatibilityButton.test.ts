@@ -27,6 +27,7 @@ function renderButton(reasons: EngineCompatibilityReason[]) {
 
 const button = () => screen.getByTestId('engine-v2-compatibility-button');
 const badge = () => screen.getByTestId('engine-v2-compatibility-button-count');
+const label = () => screen.getByTestId('engine-v2-compatibility-button-label');
 
 describe('EngineV2CompatibilityButton', () => {
 	afterEach(() => useEngineV2FindingsDialog().close());
@@ -35,7 +36,7 @@ describe('EngineV2CompatibilityButton', () => {
 		renderButton([reason('blocking', 'a'), reason('blocking', 'a'), reason('warning', 'b')]);
 
 		expect(button()).toHaveAccessibleName('2 compatibility issues');
-		expect(button()).toHaveTextContent('Compatibility issues');
+		expect(label()).toHaveTextContent(/^Compatibility issues$/);
 		expect(badge()).toHaveTextContent('2');
 	});
 
@@ -43,7 +44,7 @@ describe('EngineV2CompatibilityButton', () => {
 		renderButton([reason('blocking', 'a')]);
 
 		expect(button()).toHaveAccessibleName('1 compatibility issue');
-		expect(button()).toHaveTextContent('Compatibility issue');
+		expect(label()).toHaveTextContent(/^Compatibility issue$/);
 		expect(badge()).toHaveTextContent('1');
 	});
 

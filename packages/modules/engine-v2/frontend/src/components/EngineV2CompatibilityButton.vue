@@ -47,7 +47,7 @@ const visibleLabel = computed(() => countText('labelWithoutCount'));
 			<N8nIcon :icon="icon.icon" :color="icon.color" />
 		</template>
 		<span :class="$style.content" aria-hidden="true">
-			{{ visibleLabel }}
+			<span data-test-id="engine-v2-compatibility-button-label">{{ visibleLabel }}</span>
 			<N8nBadge
 				:variant="badgeVariant"
 				size="xsmall"
