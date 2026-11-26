@@ -90,6 +90,10 @@ describe('deriveAssistantUsageTier', () => {
 	it('returns strict for a tool it does not know, such as a tool from an MCP server', () => {
 		expect(deriveAssistantUsageTier([returnedCall('github_create_issue')])).toBe('strict');
 	});
+
+	it('returns strict for the Browser Use tools', () => {
+		expect(deriveAssistantUsageTier([returnedCall('browser_snapshot')])).toBe('strict');
+	});
 });
 
 describe('listAssistantToolsUsed', () => {
@@ -113,6 +117,7 @@ describe('listAssistantToolsUsed', () => {
 		[DOMAIN_TOOL_IDS.SKILLS, 'unknown-action', 'skills'],
 		[DOMAIN_TOOL_IDS.RUN_WORKFLOW, 'list', 'run_workflow'],
 		['workspace_execute_command', undefined, 'workspace'],
+		['browser_navigate', undefined, 'browser'],
 		['github_create_issue', undefined, 'other'],
 	])('labels %s with action %s as %s', (toolName, action, label) => {
 		expect(listAssistantToolsUsed([returnedCall(toolName, { action })])).toEqual([label]);

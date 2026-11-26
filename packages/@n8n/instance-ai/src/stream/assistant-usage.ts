@@ -222,6 +222,8 @@ export function deriveAssistantUsageTier(toolCalls: ToolCallSummary[]): Assistan
 
 function usageLabel({ toolName, action }: ToolCallSummary): string {
 	if (toolName.startsWith('workspace_')) return 'workspace';
+	// Browser Use tools come from a local MCP server. They count as strict, like other MCP tools.
+	if (toolName.startsWith('browser_')) return 'browser';
 	// Do not send the names of MCP tools or other tools that are not built in.
 	const tier = TIERS_BY_TOOL.get(toolName);
 	if (tier === undefined) return 'other';

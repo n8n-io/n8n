@@ -250,7 +250,7 @@ const instanceContextTurnSchema = z.object({
 	tools_used: z
 		.array(z.string())
 		.describe(
-			'The tools that usage_tier counts, each once and sorted. skills and eval-config add the action, for example skills:list. MCP tools and other tools that are not built in show as other, and the agent sandbox tools as workspace.',
+			'The tools that usage_tier counts, each once and sorted. skills and eval-config add the action, for example skills:list. MCP tools and other tools that are not built in show as other, the Browser Use tools as browser, and the agent sandbox tools as workspace.',
 		),
 	turn_prompt_tokens: z
 		.number()
