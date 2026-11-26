@@ -254,6 +254,10 @@ describe('Salesforce Node', () => {
 				.reply(200, { objectDescribe: { name: 'Attachment' } })
 				.post('/actions/custom/flow/Order_Sync_Flow')
 				.reply(200, [{ isSuccess: true }])
+				.post('/actions/custom/flow/Json_Flow', { inputs: [{ orderId: 'A-1' }] })
+				.reply(200, [{ isSuccess: true }])
+				.post('/actions/custom/flow/Expression_Flow', { inputs: [{ orderId: 'A-2' }] })
+				.reply(200, [{ isSuccess: true }])
 				.get('/actions/custom/flow')
 				.reply(200, { actions: [{ name: 'Order_Sync_Flow' }] });
 		});

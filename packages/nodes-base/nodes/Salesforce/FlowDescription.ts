@@ -99,6 +99,7 @@ export const flowFields: INodeProperties[] = [
 		displayName: 'Variables',
 		name: 'variablesJson',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				resource: ['flow'],

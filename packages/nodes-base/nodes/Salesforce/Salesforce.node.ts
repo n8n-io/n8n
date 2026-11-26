@@ -3284,7 +3284,8 @@ export class Salesforce implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						let variables = {};
 						if (jsonParameters) {
-							variables = this.getNodeParameter('variablesJson', i) as object;
+							variables =
+								(this.getNodeParameter('variablesJson', i) as IDataObject | undefined) ?? {};
 						} else {
 							// Input variables are defined in UI
 							const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;
