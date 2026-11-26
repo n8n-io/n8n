@@ -40,11 +40,8 @@ export const STALE_MS = 7 * DAY_MS;
 export const WAIT_MS = 2 * DAY_MS;
 
 const REFRESH_BRANCH = 'base-image-refresh/';
-const DAILY_BRANCH = `${REFRESH_BRANCH}daily`;
-const REVIEW_BRANCH = `${REFRESH_BRANCH}review`;
-
-/** The severities that make a finding stale after 7 days. */
-const STALE_SEVERITIES = new Set(['CRITICAL', 'HIGH']);
+export const DAILY_BRANCH = `${REFRESH_BRANCH}daily`;
+export const REVIEW_BRANCH = `${REFRESH_BRANCH}review`;
 
 /** The run summary lists all the findings. An alert lists the first ones. */
 const MAX_LISTED = 10;
@@ -129,7 +126,6 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		// The version-update alert already covers a source that a newer patch fixes.
 		const stale = new Map();
 		for (const finding of unique(result.platforms.flatMap((platform) => platform.remaining))) {
-			if (!STALE_SEVERITIES.has(finding.severity)) continue;
 			const key = `${source} ${finding.id} ${finding.pkg}`;
 			const firstSeen = state.findings?.[key] ?? iso;
 			next.findings[key] = firstSeen;
@@ -191,7 +187,7 @@ const REFRESH_BRANCHES = [
 ];
 
 /** The open refresh PRs, with the names of their failed checks. */
-async function collectPullRequests() {
+export async function collectPullRequests() {
 	const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
 	const pulls = (
 		await Promise.all(

@@ -17,6 +17,8 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
+import { SEVERITIES } from './base-image-candidates.mjs';
+
 const BAKE_FILE = 'docker/docker-bake.hcl';
 
 export const GROUPS = {
@@ -54,9 +56,9 @@ export function removedFindings(result) {
 			findings.set(key, entry);
 		}
 	}
-	const order = ['CRITICAL', 'HIGH', 'MEDIUM'];
 	return [...findings.values()].sort(
-		(a, b) => order.indexOf(a.severity) - order.indexOf(b.severity) || a.id.localeCompare(b.id),
+		(a, b) =>
+			SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity) || a.id.localeCompare(b.id),
 	);
 }
 
