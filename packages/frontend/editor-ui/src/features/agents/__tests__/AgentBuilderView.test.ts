@@ -8120,6 +8120,49 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 		wrapper.unmount();
 	});
 
+	it('disables Run until the test chat has a session', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+
 	it('sends a starter prompt from the standalone preview page', async () => {
 		routeState.name = AGENT_PREVIEW_VIEW;
 		const sendMessageFromOutside = vi.fn();
