@@ -60,7 +60,7 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
-import { RuntimeCredentialRuleEntity } from './runtime-credential-rule';
+import { RuntimeCredentialRuleEntity } from './runtime-credential-rule-entity';
 import {
 	ScheduledJob,
 	ScheduledJobKind,
