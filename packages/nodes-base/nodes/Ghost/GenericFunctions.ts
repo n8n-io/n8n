@@ -68,13 +68,3 @@ export async function ghostApiRequestAllItems(
 	} while (query.page !== null);
 	return returnData;
 }
-
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}

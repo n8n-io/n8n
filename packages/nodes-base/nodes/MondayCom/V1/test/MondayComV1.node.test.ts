@@ -296,6 +296,42 @@ describe('MondayCom', () => {
 					}),
 				)
 				.reply(200, { data: { create_item: { id: '1122334455' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnId: 'status',
+						value: '{"label":"Done"}',
+					}),
+				)
+				.reply(200, { data: { change_column_value: { id: '1234567890' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnId: 'status',
+						value: '{"label":"Stuck"}',
+					}),
+				)
+				.reply(200, { data: { change_column_value: { id: '1234567891' } } });
+			api
+				.post(
+					'/v2/',
+					hasVariables({
+						boardId: '9876543210',
+						itemId: '1234567890',
+						columnId: 'text',
+						value: '"Hello"',
+					}),
+				)
+				.reply(200, { data: { change_column_value: { id: '1234567892' } } });
+			api
+				.post('/v2/', hasVariables({ itemId: '1234567890', value: 'Hello' }))
+				.reply(200, { data: { create_update: { id: '555' } } });
 		});
 
 		new NodeTestHarness().setupTests({

@@ -1431,6 +1431,62 @@ describe('MongoDB CRUD Node', () => {
 		});
 	});
 
+	describe('query field', () => {
+		const queries: unknown[] = [];
+		const originalFind = Collection.prototype.find;
+		const originalAggregate = Collection.prototype.aggregate;
+		const cursor = { toArray: async () => [{ name: 'Alice' }] };
+		beforeAll(() => {
+			Collection.prototype.find = function (query: unknown) {
+				queries.push(query);
+				return cursor;
+			} as typeof Collection.prototype.find;
+			Collection.prototype.aggregate = function (pipeline: unknown) {
+				queries.push(pipeline);
+				return cursor;
+			} as typeof Collection.prototype.aggregate;
+		});
+		afterAll(() => {
+			Collection.prototype.find = originalFind;
+			Collection.prototype.aggregate = originalAggregate;
+		});
+
+		const expectedResult = [{ json: { name: 'Alice' } }];
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: { operation: 'find', collection: 'foo', query: '{ "name": "Alice" }' },
+				expectedResult,
+			}),
+		);
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: { operation: 'find', collection: 'foo', query: '{ name: "Bob" }' },
+				expectedResult,
+			}),
+		);
+
+		testHarness.setupTest(
+			buildWorkflow({
+				parameters: {
+					operation: 'aggregate',
+					collection: 'foo',
+					query: '={{ [{ "$match": { "name": "Carol" } }] }}',
+				},
+				expectedResult,
+			}),
+		);
+
+		it('passes the parsed query and pipeline to the driver', () => {
+			expect(queries).toEqual([
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+				[{ $match: { name: 'Carol' } }],
+			]);
+		});
+	});
+
 	describe('listSearchIndexes operation', () => {
 		describe('no index name provided', function () {
 			const calls: unknown[][] = [];

@@ -30,6 +30,18 @@ describe('Perplexity Node - Create Embedding', () => {
 					total_tokens: 10,
 				},
 			});
+		const contextualizedResponse = { object: 'list', model: 'pplx-embed-context-v1-4b' };
+		nock('https://api.perplexity.ai')
+			.post('/v1/contextualizedembeddings', {
+				model: 'pplx-embed-context-v1-4b',
+				input: [['a', 'b'], ['c']],
+			})
+			.reply(200, contextualizedResponse)
+			.post('/v1/contextualizedembeddings', {
+				model: 'pplx-embed-context-v1-4b',
+				input: [['d'], ['e', 'f']],
+			})
+			.reply(200, contextualizedResponse);
 	});
 
 	afterEach(() => {

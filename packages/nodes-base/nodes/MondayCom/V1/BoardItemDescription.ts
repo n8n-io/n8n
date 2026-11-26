@@ -160,6 +160,7 @@ export const boardItemFields: INodeProperties[] = [
 	{
 		displayName: 'Value',
 		name: 'value',
+		// oxlint-disable-next-line n8n-local-rules/require-json-validate-type -- Monday accepts any JSON value, including strings and numbers
 		type: 'json',
 		required: true,
 		default: '',

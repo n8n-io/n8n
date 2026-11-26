@@ -15,7 +15,7 @@ import {
 	requestPath,
 } from 'n8n-workflow';
 
-import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { ghostApiRequest, ghostApiRequestAllItems } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
 export class Ghost implements INodeType {
@@ -207,7 +207,7 @@ export class Ghost implements INodeType {
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
-							const content = this.getNodeParameter('content', i) as string;
+							const content = this.getNodeParameter('content', i);
 
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -218,22 +218,14 @@ export class Ghost implements INodeType {
 							if (contentFormat === 'html') {
 								post.html = content;
 								qs.source = 'html';
-							} else if (contentFormat === 'lexical') {
-								const lexical = validateJSON(content);
-								if (lexical === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
-										itemIndex: i,
-									});
-								}
-								post.lexical = content;
+							} else if (content === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
+									itemIndex: i,
+								});
 							} else {
-								const mobileDoc = validateJSON(content);
-								if (mobileDoc === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
-										itemIndex: i,
-									});
-								}
-								post.mobiledoc = content;
+								// Ghost expects the document as a JSON string
+								post[contentFormat === 'lexical' ? 'lexical' : 'mobiledoc'] =
+									JSON.stringify(content);
 							}
 
 							delete post.content;

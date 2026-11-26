@@ -94,6 +94,18 @@ describe('Ghost > Request URLs', () => {
 				meta: { pagination: { next: null } },
 			});
 		mock
+			.post('/v2/admin/posts', {
+				posts: [{ title: 'Lexical', lexical: '{"root":{"children":[]}}' }],
+			})
+			.query(true)
+			.reply(201, { posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1e' }] });
+		mock
+			.post('/v2/admin/posts', {
+				posts: [{ title: 'Mobiledoc', mobiledoc: '{"version":"0.3.1","sections":[]}' }],
+			})
+			.query(true)
+			.reply(201, { posts: [{ id: '5f2a1b3c4d5e6f7a8b9c0d1e' }] });
+		mock
 			.post('/v2/admin/posts')
 			.query(true)
 			.reply(201, {

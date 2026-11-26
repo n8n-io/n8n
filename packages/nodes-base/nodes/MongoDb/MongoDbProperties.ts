@@ -127,6 +127,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayName: 'Query',
 		name: 'query',
 		type: 'json',
+		validateType: 'array',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -151,6 +152,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayName: 'Delete Query (JSON Format)',
 		name: 'query',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			rows: 5,
 		},
@@ -264,6 +266,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayName: 'Query (JSON Format)',
 		name: 'query',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			rows: 5,
 		},

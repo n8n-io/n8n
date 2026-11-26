@@ -141,6 +141,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content (JSON)',
 		name: 'content',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				source: ['adminApi'],
@@ -158,6 +159,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content (JSON)',
 		name: 'content',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				source: ['adminApi'],

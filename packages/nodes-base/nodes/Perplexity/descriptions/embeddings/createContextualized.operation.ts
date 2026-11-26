@@ -21,6 +21,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Input Documents',
 		name: 'input',
 		type: 'json',
+		validateType: 'array',
 		required: true,
 		default: '[["paragraph 1 of doc A", "paragraph 2 of doc A"], ["paragraph 1 of doc B"]]',
 		description: 'Array of documents, where each document is an array of paragraph strings',
@@ -28,7 +29,6 @@ const properties: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'input',
-				value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
 			},
 		},
 	},
