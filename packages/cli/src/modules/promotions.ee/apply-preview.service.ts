@@ -45,7 +45,12 @@ import {
 
 import { plannedChanges, toPreviewCheck, withoutTagIds, withoutTags } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
-import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
+import {
+	crossProjectMoves,
+	foldersInScope,
+	type CrossProjectMove,
+	type CrossProjectMoves,
+} from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
 import { exportInstancePackage, type InstancePackage } from './instance-package';
@@ -132,6 +137,16 @@ export function instanceApplyRequest(
 	};
 }
 
+/** A move between two left-out projects changes only their old copies, so it does not stop Apply. */
+export function withoutLeftOutMoves(
+	moves: CrossProjectMoves,
+	leftOutProjectIds: ReadonlySet<string>,
+): CrossProjectMoves {
+	const kept = ({ project, instanceProject }: CrossProjectMove) =>
+		!leftOutProjectIds.has(project.id) || !leftOutProjectIds.has(instanceProject.id);
+	return { workflows: moves.workflows.filter(kept), folders: moves.folders.filter(kept) };
+}
+
 /**
  * Builds the Apply preview of a project from the import plan, so that the preview shows what
  * Apply does and what stops it. Writes nothing.
@@ -214,7 +229,7 @@ export class ApplyPreviewService {
 	}): Promise<ApplyPreview> {
 		const { reader, inventory } = await this.readPackage(files);
 		const teamProjectIds = await this.coveredTeamProjectIds(leftOutProjectIds);
-		const [moves, deletedProjects, instance] = await Promise.all([
+		const [allMoves, deletedProjects, instance] = await Promise.all([
 			this.findCrossProjectMoves(inventory),
 			this.deletionsOf(inventory, teamProjectIds),
 			exportInstancePackage(this.packagesService, user, teamProjectIds),
@@ -224,7 +239,12 @@ export class ApplyPreviewService {
 			reader,
 			'check',
 		);
-		const planCheck = this.check(plan, inventory, undefined, moves);
+		const planCheck = this.check(
+			plan,
+			inventory,
+			undefined,
+			withoutLeftOutMoves(allMoves, leftOutProjectIds),
+		);
 		const check = { ...planCheck, conflicts: [...planCheck.conflicts, ...deletedProjects] };
 
 		const deletedProjectIds = deletedProjects.flatMap((conflict) =>

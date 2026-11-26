@@ -69,6 +69,7 @@ import {
 	applySelectionRequest,
 	ApplyPreviewService,
 	instanceApplyRequest,
+	withoutLeftOutMoves,
 } from './apply-preview.service';
 import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import { PromotePreviewService } from './promote-preview.service';
@@ -1180,7 +1181,10 @@ export class PromotionsService {
 
 		const reader = new GitCommitPackageReader(files);
 		const inventory = await this.inventoryReader.read(reader);
-		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
+		const moves = withoutLeftOutMoves(
+			await this.applyPreviewService.findCrossProjectMoves(inventory),
+			leftOutProjectIds,
+		);
 		const plan = await this.n8nPackagesService.planPackage(
 			{
 				...instanceApplyRequest(actor, publicApi, leftOutProjectIds, confirmDestructiveChanges),
