@@ -56,6 +56,59 @@ describe('rawBodyReader', () => {
 			cause: { type: 'request.aborted' },
 		});
 	});
+
+	it.each(['gzip', 'deflate'] as const)(
+		'rejects an unreadable %s stream before creating a decompression stream',
+		async (encoding) => {
+			const req = {
+				headers: { 'content-encoding': encoding },
+				destroyed: false,
+				readable: false,
+				pipe: vi.fn(),
+			} as unknown as Request;
+
+			await expect(readRawBody(req)).rejects.toThrow(BadRequestError);
+			expect(req.pipe).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['gzip', 'deflate'] as const)(
+		'maps a mid-read abort on a %s stream to BadRequestError without hanging',
+		async (encoding) => {
+			const req = new Readable({ read() {} }) as unknown as Request;
+			req.headers = { 'content-encoding': encoding };
+			const promise = readRawBody(req);
+			req.emit('aborted');
+
+			await expect(promise).rejects.toMatchObject({
+				constructor: BadRequestError,
+				cause: { type: 'request.aborted' },
+			});
+		},
+		1000,
+	);
+
+	it.each(['gzip', 'deflate'] as const)(
+		'maps a premature destroy on a %s stream to BadRequestError without hanging',
+		async (encoding) => {
+			const req = new Readable({ read() {} }) as unknown as Request;
+			req.headers = { 'content-encoding': encoding };
+			const promise = readRawBody(req);
+			req.destroy();
+
+			await expect(promise).rejects.toThrow(BadRequestError);
+		},
+		1000,
+	);
+
+	it.each(['gzip', 'deflate'] as const)(
+		'rejects a corrupt %s stream with BadRequestError instead of a raw zlib error',
+		async (encoding) => {
+			const req = mockRequest('not-valid-compressed-bytes', { 'content-encoding': encoding });
+
+			await expect(readRawBody(req)).rejects.toThrow(BadRequestError);
+		},
+	);
 });
 
 describe('parseBody', () => {

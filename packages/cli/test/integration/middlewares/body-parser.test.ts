@@ -85,6 +85,33 @@ describe('bodyParser', () => {
 		await expect(req.readRawBody()).rejects.toThrow(BadRequestError);
 	});
 
+	it.each(['gzip', 'deflate'] as const)(
+		'should reject a corrupt %s payload with BadRequestError',
+		async (encoding) => {
+			const errorServer = createServer((req, res) => {
+				const expressReq = req as unknown as Request;
+				const expressRes = res as unknown as Response;
+				void rawBodyReader(expressReq, expressRes, () => {
+					parseBody(expressReq).then(
+						() => res.end(JSON.stringify(expressReq.body)),
+						(error: unknown) => {
+							res.statusCode = error instanceof BadRequestError ? error.httpStatusCode : 500;
+							res.end(error instanceof Error ? error.message : 'error');
+						},
+					);
+				});
+			});
+
+			await request(errorServer)
+				.post('/')
+				.set('content-type', 'application/json')
+				.set('content-encoding', encoding)
+				.serialize(((data: unknown) => data) as (obj: unknown) => string)
+				.send(Buffer.from('corrupt-compressed-payload'))
+				.expect(400);
+		},
+	);
+
 	describe('leading byte order mark', () => {
 		const utf8Bom = Buffer.from([0xef, 0xbb, 0xbf]);
 		const utf16leBom = Buffer.from([0xff, 0xfe]);

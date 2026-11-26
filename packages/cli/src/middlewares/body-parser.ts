@@ -7,7 +7,7 @@ import { parse as parseQueryString } from 'querystring';
 import getRawBody from 'raw-body';
 import { type Readable } from 'stream';
 import { Parser as XmlParser } from 'xml2js';
-import { createGunzip, createInflate } from 'zlib';
+import { createGunzip, createInflate, type Gunzip, type Inflate } from 'zlib';
 
 import { BadRequestError, UnprocessableRequestError, UserError } from '@n8n/errors';
 
@@ -79,28 +79,58 @@ const isClientAbortError = (error: unknown): boolean =>
 	// raw-body sets these error.type values for a client aborting mid-read.
 	(error.type === 'stream.not.readable' || error.type === 'request.aborted');
 
+const isDecompressionError = (error: unknown): boolean =>
+	error instanceof Error &&
+	'code' in error &&
+	typeof error.code === 'string' &&
+	error.code.startsWith('Z_');
+
 export const rawBodyReader: RequestHandler = (req, _res, next) => {
 	parseIncomingMessage(req);
 
 	req.readRawBody = async () => {
 		if (!req.rawBody) {
+			// Client aborted before we read the body: treat as client error, not a 500.
+			if (req.destroyed || !req.readable) {
+				throw new BadRequestError('Request body stream was aborted or is not readable');
+			}
+
 			let stream: Readable = req;
+			let decoder: Gunzip | Inflate | undefined;
 			let contentLength: string | undefined;
 			const contentEncoding = req.headers['content-encoding'];
 			switch (contentEncoding) {
 				case 'gzip':
-					stream = req.pipe(createGunzip());
+					decoder = createGunzip();
+					stream = req.pipe(decoder);
 					break;
 				case 'deflate':
-					stream = req.pipe(createInflate());
+					decoder = createInflate();
+					stream = req.pipe(decoder);
 					break;
 				default:
 					contentLength = req.headers['content-length'];
 			}
 
-			// Client aborted before we read the body: treat as client error, not a 500.
-			if (req.destroyed || !stream.readable) {
-				throw new BadRequestError('Request body stream was aborted or is not readable');
+			// Node stream.pipe() does not forward abort, error, or premature close events to
+			// the destination stream. Forward them so raw-body settles instead of hanging.
+			const abortDecoder = () => {
+				if (!decoder || decoder.destroyed) return;
+				decoder.emit('aborted');
+				decoder.destroy();
+			};
+			const onReqError = (error: Error) => {
+				if (!decoder || decoder.destroyed) return;
+				decoder.destroy(error);
+			};
+			const onReqClose = () => {
+				if (!req.readableEnded) abortDecoder();
+			};
+
+			if (decoder) {
+				req.on('aborted', abortDecoder);
+				req.on('error', onReqError);
+				req.on('close', onReqClose);
 			}
 
 			try {
@@ -115,7 +145,18 @@ export const rawBodyReader: RequestHandler = (req, _res, next) => {
 						error,
 					);
 				}
+				if (isDecompressionError(error)) {
+					throw BadRequestError.wrap('Failed to decompress request body', error);
+				}
 				throw error;
+			} finally {
+				if (decoder) {
+					req.off('aborted', abortDecoder);
+					req.off('error', onReqError);
+					req.off('close', onReqClose);
+					req.unpipe(decoder);
+					if (!decoder.destroyed) decoder.destroy();
+				}
 			}
 			req._body = true;
 		}
