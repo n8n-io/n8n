@@ -242,5 +242,7 @@ export type {
 	GuardrailModelCallContext,
 	GuardrailToolCallContext,
 	GuardrailDecision,
+	GuardrailNotice,
 	GuardrailStop,
+	GuardrailToolCallOutcome,
 } from './sdk/guardrail';

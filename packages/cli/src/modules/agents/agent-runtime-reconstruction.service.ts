@@ -125,6 +125,7 @@ import type { WorkflowToolContext, WorkflowToolExecutionMode } from './tools/wor
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import type { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
 import { withApprovalDescription } from './approval/approval-description';
+import type { ToolGuardrailReviewContext } from './guardrail-review';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
@@ -166,6 +167,11 @@ export interface ReconstructedAgentRuntime {
 	 * run with. Absent when no workflow guardrail is configured.
 	 */
 	guardrailWorkflowContext?: WorkflowToolContext;
+	/**
+	 * The routing identity for `review`-response guardrails. Absent when no
+	 * guardrail uses the review response.
+	 */
+	guardrailReview?: ToolGuardrailReviewContext;
 }
 
 export interface SubAgentDelegationConfig {
@@ -413,6 +419,25 @@ function hasWorkflowGuardrail(config: AgentJsonConfig): boolean {
 	return (
 		config.config?.guardrails?.tools?.some((guardrail) => guardrail.kind === 'workflow') === true
 	);
+}
+
+/**
+ * The routing identity for `review`-response guardrails: the agent's own
+ * human-review configurations and the identity a decision workflow runs with.
+ * A review never suspends the run, so no resumability gate applies here.
+ */
+function buildToolGuardrailReviewContext(
+	options: RuntimeReconstructionOptions,
+): ToolGuardrailReviewContext | undefined {
+	const tools = options.config.config?.guardrails?.tools ?? [];
+	if (!tools.some((guardrail) => guardrail.response === 'review')) return undefined;
+	return {
+		agentId: options.memoryOwnerAgentId,
+		projectId: options.projectId,
+		published: options.runType === 'production',
+		integrations: options.credentialIntegrations,
+		configurations: options.config.hitlConfigurations ?? [],
+	};
 }
 
 @Service()
@@ -819,6 +844,7 @@ export class AgentRuntimeReconstructionService {
 					options.user,
 				)
 			: undefined;
+		const guardrailReview = buildToolGuardrailReviewContext(options);
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -834,6 +860,7 @@ export class AgentRuntimeReconstructionService {
 				: {}),
 			...(runtime.guardrailModel !== undefined ? { guardrailModel: runtime.guardrailModel } : {}),
 			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
+			...(guardrailReview !== undefined ? { guardrailReview } : {}),
 		};
 	}
 

@@ -178,17 +178,25 @@ export class ToolCallRunner {
 				return await this.toolError(params, new GuardrailStopError('before', stop.code));
 			}
 		}
+		// A before-stage redact rewrote the input inside the context
+		const effectiveInput = (guardCtx?.input ?? input) as typeof input;
 
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionStart,
 				toolCallId,
 				toolName,
-				args: input,
+				args: effectiveInput,
 			});
 		}
 
-		return await this.executeValidatedToolCall(params, builtTool, input, guardrails, guardCtx);
+		return await this.executeValidatedToolCall(
+			params,
+			builtTool,
+			effectiveInput,
+			guardrails,
+			guardCtx,
+		);
 	}
 
 	private async executeValidatedToolCall(
@@ -490,11 +498,15 @@ export class ToolCallRunner {
 					// Final result only: a call that suspended reports once,
 					// after resume. The after-stage check runs inside the span
 					// so a refused result is recorded as the refusal, never as
-					// span output; the throw becomes a tool error upstream.
+					// span output; the throw becomes a tool error upstream. An
+					// after-stage redact returns the rewritten result instead.
 					if (guardrails && guardCtx && !isSuspendedToolResult(result)) {
-						const stop = await guardrails.afterTool(guardCtx, result);
-						if (stop) {
-							throw new GuardrailStopError('after', stop.code);
+						const outcome = await guardrails.afterTool(guardCtx, result);
+						if (outcome && 'stop' in outcome) {
+							throw new GuardrailStopError('after', outcome.stop.code);
+						}
+						if (outcome && 'redacted' in outcome) {
+							return outcome.redacted;
 						}
 					}
 					return result;

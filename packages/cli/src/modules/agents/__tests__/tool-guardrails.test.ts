@@ -4,10 +4,13 @@ import { createModel } from '@n8n/agents';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 import type { LanguageModel } from 'ai';
 import { MockLanguageModelV3 } from 'ai/test';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 import { createServer } from 'node:http';
 import { vi } from 'vitest';
 
 import { withToolGuardrails } from '../tool-guardrails';
+import { ToolGuardrailReviewService } from '../guardrail-review';
 import { createWorkflowGuardrailCheck } from '../tools/workflow-guardrail-check';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import type { ToolRegistry } from '../tool-registry';
@@ -238,7 +241,7 @@ describe('withToolGuardrails', () => {
 		expect(uncoveredAfter).toEqual({ action: 'allow' });
 	});
 
-	it('stops a PII before-guardrail on matching input and allows clean input', async () => {
+	it('redacts a matching PII input and lets the clean input through', async () => {
 		const hooks = hooksFor([
 			{
 				kind: 'pii',
@@ -253,13 +256,36 @@ describe('withToolGuardrails', () => {
 		const dirty = await hooks[0].beforeTool?.(
 			ctx('read_file', { message: 'Contact john@example.com' }),
 		);
-		expect(dirty).toEqual({ action: 'stop', code: 'guardrail.pii.pii-g' });
+		expect(dirty).toEqual({
+			action: 'redact',
+			code: 'guardrail.pii.pii-g',
+			value: { message: 'Contact <EMAIL_ADDRESS>' },
+		});
 
 		const clean = await hooks[0].beforeTool?.(ctx('read_file', { message: 'Just a note' }));
 		expect(clean).toBeUndefined();
 	});
 
-	it('stops an after-guardrail on a matching tool result and allows a clean one', async () => {
+	it('blocks a PII guardrail that names the block response', async () => {
+		const hooks = hooksFor([
+			{
+				kind: 'pii',
+				id: 'pii-g',
+				stage: 'before',
+				response: 'block',
+				type: 'selected',
+				entities: ['EMAIL_ADDRESS'],
+				tools: [{ type: 'node', name: 'read_file' }],
+			},
+		]);
+
+		const dirty = await hooks[0].beforeTool?.(
+			ctx('read_file', { message: 'Contact john@example.com' }),
+		);
+		expect(dirty).toEqual({ action: 'stop', code: 'guardrail.pii.pii-g' });
+	});
+
+	it('redacts a matching tool result at the after stage', async () => {
 		const hooks = hooksFor([
 			{
 				kind: 'pii',
@@ -274,10 +300,107 @@ describe('withToolGuardrails', () => {
 		const dirty = await hooks[0].afterTool?.(ctx('read_file', {}), {
 			content: 'Reply to john@example.com',
 		});
-		expect(dirty).toEqual({ action: 'stop', code: 'guardrail.pii.pii-g' });
+		expect(dirty).toEqual({
+			action: 'redact',
+			code: 'guardrail.pii.pii-g',
+			value: { content: 'Reply to <EMAIL_ADDRESS>' },
+		});
 
 		const clean = await hooks[0].afterTool?.(ctx('read_file', {}), { content: 'All done' });
 		expect(clean).toEqual({ action: 'allow' });
+	});
+
+	it('runs only the kind preset stages when stage is absent', () => {
+		const [piiHook] = hooksFor([{ kind: 'pii', id: 'g1', type: 'all' }]);
+		expect(piiHook.beforeTool).toBeDefined();
+		expect(piiHook.afterTool).toBeUndefined();
+
+		const [jailbreakHook] = hooksFor(
+			[{ kind: 'jailbreak', id: 'g2' }],
+			mockModel('{"confidenceScore":0,"flagged":false}'),
+		);
+		expect(jailbreakHook.beforeTool).toBeUndefined();
+		expect(jailbreakHook.afterTool).toBeDefined();
+
+		const [keywordsHook] = hooksFor([{ kind: 'keywords', id: 'g3', keywords: ['a'] }]);
+		expect(keywordsHook.beforeTool).toBeDefined();
+		expect(keywordsHook.afterTool).toBeDefined();
+	});
+
+	it('fails closed when a redact cannot rewrite the value', async () => {
+		vi.mocked(createKeywordsCheckFn).mockImplementationOnce(
+			() => (input: string) =>
+				({
+					guardrailName: 'keywords',
+					tripwireTriggered: input.includes('x'),
+					info: { maskEntities: { X: ['"'] } },
+				}) as GuardrailResult,
+		);
+
+		const hooks = hooksFor([
+			{
+				kind: 'keywords',
+				id: 'g1',
+				stage: 'before',
+				response: 'redact',
+				keywords: ['a'],
+				tools: [{ type: 'node', name: 'read_file' }],
+			},
+		]);
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { note: 'x' }));
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+	});
+
+	it('routes a review response and lets the call continue', async () => {
+		const route = vi.fn<ToolGuardrailReviewService['route']>().mockResolvedValue(undefined);
+		Container.set(ToolGuardrailReviewService, mock<ToolGuardrailReviewService>({ route }));
+		const notice = vi.fn();
+		const options: RunOptions & ExecutionOptions = {
+			...base,
+			guardrails: { hooks: [], onNotice: notice },
+		};
+
+		const attached = withToolGuardrails(options, {
+			toolGuardrails: [
+				{
+					kind: 'keywords',
+					id: 'g1',
+					stage: 'before',
+					response: 'review',
+					reviewConfigurationId: 'config-1',
+					keywords: ['secret'],
+				},
+			],
+			toolRegistry: registry,
+			guardrailReview: {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				published: false,
+				integrations: [],
+				configurations: [
+					{ id: 'config-1', name: 'Review', method: 'workflow', workflowId: 'wf-9' },
+				],
+			},
+		});
+		const hook = attached.guardrails?.hooks.at(-1);
+		expect(hook).toBeDefined();
+
+		const decision = await hook?.beforeTool?.(ctx('read_file', { note: 'a secret' }));
+		expect(decision).toBeUndefined();
+		expect(route).toHaveBeenCalledTimes(1);
+		const [context, guardrail, toolCtx, payload] = route.mock.calls[0];
+		expect(context?.agentId).toBe('agent-1');
+		expect(guardrail.id).toBe('g1');
+		expect(toolCtx.toolName).toBe('read_file');
+		expect(payload).toMatchObject({ stage: 'before', value: { note: 'a secret' } });
+
+		// The notice marks the review outcome; the budget sink may drop it.
+		expect(notice).toHaveBeenCalledWith({ code: 'guardrail.keywords.g1', outcome: 'review' });
+
+		// A clean call routes nothing.
+		await hook?.beforeTool?.(ctx('read_file', { note: 'fine' }));
+		expect(route).toHaveBeenCalledTimes(1);
 	});
 
 	it('fails closed when the check itself throws', async () => {
@@ -308,6 +431,11 @@ describe('withToolGuardrails', () => {
 			tools: [{ type: 'node', name: 'read_file' }],
 			tripping: { note: 'token sk-abcdefghij1234567890KLMNOP' },
 			clean: { note: 'just words' },
+			expected: {
+				action: 'redact',
+				code: 'guardrail.secretKeys.g1',
+				value: { note: 'token <SECRET>' },
+			},
 		},
 		{
 			kind: 'urls',
@@ -316,13 +444,14 @@ describe('withToolGuardrails', () => {
 			tools: [{ type: 'node', name: 'read_file' }],
 			tripping: { note: 'see http://example.com/docs' },
 			clean: { note: 'no links here' },
+			expected: { action: 'stop', code: 'guardrail.urls.g2' },
 		},
 	])('enforces the $kind kind end to end', async (guardrail) => {
-		const { kind, id, tripping, clean, ...config } = guardrail;
+		const { kind, id, tripping, clean, expected, ...config } = guardrail;
 		const hooks = hooksFor([{ kind, id, ...config } as AgentToolGuardrailConfig]);
 
-		const stop = await hooks[0].beforeTool?.(ctx('read_file', tripping));
-		expect(stop).toEqual({ action: 'stop', code: `guardrail.${kind}.${id}` });
+		const triggered = await hooks[0].beforeTool?.(ctx('read_file', tripping));
+		expect(triggered).toEqual(expected);
 
 		const allowed = await hooks[0].beforeTool?.(ctx('read_file', clean));
 		expect(allowed).toBeUndefined();

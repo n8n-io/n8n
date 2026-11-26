@@ -555,12 +555,62 @@ const toolGuardrailBaseShape = {
 	stage: z.enum(['before', 'after']).optional(),
 	/** Covers every tool when absent. At least one ref when present. */
 	tools: z.array(ToolGuardrailToolRefSchema).min(1).optional(),
+	/**
+	 * The human-review configuration the `review` response routes flagged
+	 * content to. Required for `review`, rejected for every other response.
+	 * Refers to an entry of the agent's `hitlConfigurations`.
+	 */
+	reviewConfigurationId: z.string().min(1).optional(),
 };
 
 const modelToolGuardrailShape = {
 	prompt: z.string().min(1).optional(),
 	threshold: z.number().min(0).max(1).optional(),
 };
+
+export type ToolGuardrailResponse = 'block' | 'redact' | 'review';
+
+/**
+ * Stage scope per kind: absent `stage` means these stages, so a kind cannot
+ * run outside its scope. Single source for the backend hook builder and the
+ * builder modal presets.
+ */
+export const TOOL_GUARDRAIL_STAGE_SCOPE: Record<
+	AgentToolGuardrailKind,
+	readonly ('before' | 'after')[]
+> = {
+	keywords: ['before', 'after'],
+	pii: ['before'],
+	secretKeys: ['before'],
+	urls: ['before'],
+	jailbreak: ['after'],
+	nsfw: ['after'],
+	topicalAlignment: ['before', 'after'],
+	workflow: ['before'],
+};
+
+/**
+ * Response presets per kind: the agreed default and the allowed alternatives.
+ * Absent `response` means the kind's default; the schema rejects a response
+ * the kind does not allow.
+ */
+export const TOOL_GUARDRAIL_RESPONSES = {
+	keywords: { default: 'block', allowed: ['block', 'redact', 'review'] },
+	pii: { default: 'redact', allowed: ['redact', 'block', 'review'] },
+	secretKeys: { default: 'redact', allowed: ['redact', 'block', 'review'] },
+	urls: { default: 'block', allowed: ['block', 'redact', 'review'] },
+	jailbreak: { default: 'block', allowed: ['block', 'review'] },
+	nsfw: { default: 'block', allowed: ['block', 'review'] },
+	topicalAlignment: { default: 'block', allowed: ['block', 'review'] },
+	workflow: { default: 'block', allowed: ['block', 'review'] },
+} as const;
+
+const toolGuardrailResponseSchema = <K extends keyof typeof TOOL_GUARDRAIL_RESPONSES>(kind: K) =>
+	// Optional: the kind's preset in TOOL_GUARDRAIL_RESPONSES is the default
+	// the runtime and the modal resolve for an absent response.
+	z
+		.enum(TOOL_GUARDRAIL_RESPONSES[kind].allowed)
+		.optional();
 
 /**
  * A guardrail running before or after the referenced tools. Pattern kinds
@@ -571,22 +621,26 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('keywords'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('keywords'),
 		keywords: z.array(z.string().min(1)).min(1),
 	}),
 	z.object({
 		kind: z.literal('pii'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('pii'),
 		type: z.enum(['all', 'selected']),
 		entities: z.array(z.enum(TOOL_GUARDRAIL_PII_ENTITIES)).min(1).optional(),
 	}),
 	z.object({
 		kind: z.literal('secretKeys'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('secretKeys'),
 		permissiveness: z.enum(['strict', 'balanced', 'permissive']),
 	}),
 	z.object({
 		kind: z.literal('urls'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('urls'),
 		allowedUrls: z.array(z.string().min(1)).optional(),
 		allowedSchemes: z.array(z.string().min(1)).optional(),
 		blockUserinfo: z.boolean().optional(),
@@ -595,17 +649,25 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('jailbreak'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('jailbreak'),
 		...modelToolGuardrailShape,
 	}),
-	z.object({ kind: z.literal('nsfw'), ...toolGuardrailBaseShape, ...modelToolGuardrailShape }),
+	z.object({
+		kind: z.literal('nsfw'),
+		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('nsfw'),
+		...modelToolGuardrailShape,
+	}),
 	z.object({
 		kind: z.literal('topicalAlignment'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('topicalAlignment'),
 		...modelToolGuardrailShape,
 	}),
 	z.object({
 		kind: z.literal('workflow'),
 		...toolGuardrailBaseShape,
+		response: toolGuardrailResponseSchema('workflow'),
 		/** The check workflow, run before each covered call. */
 		workflowId: z.string().min(1),
 	}),
@@ -738,12 +800,31 @@ export const AgentJsonConfigBaseSchema = z.object({
 								}
 								// The workflow kind registers before-only, so an
 								// after-stage check workflow cannot run: reject the
-								// config instead of silently dropping the hook.
+								// config instead of silently dropping the hook. Every
+								// other kind honors an explicit stage, so an older
+								// config saved with one stays valid.
 								if (guardrail.kind === 'workflow' && guardrail.stage === 'after') {
 									ctx.addIssue({
 										code: z.ZodIssueCode.custom,
 										path: [index, 'stage'],
 										message: 'A workflow guardrail cannot run after a tool call',
+									});
+								}
+								// The review response routes flagged content to a
+								// human-review configuration; no other response has
+								// anywhere to route it to.
+								if (guardrail.response === 'review' && !guardrail.reviewConfigurationId) {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'reviewConfigurationId'],
+										message: 'Send to review requires a human-review configuration',
+									});
+								}
+								if (guardrail.response !== 'review' && guardrail.reviewConfigurationId) {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'reviewConfigurationId'],
+										message: 'A human-review configuration only applies to send to review',
 									});
 								}
 							}
@@ -762,6 +843,18 @@ export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((conf
 			path: ['credential'],
 			message: 'A credential requires a model to be set',
 		});
+	}
+	// A review-response guardrail routes through a human-review configuration
+	// of the same agent, so the referenced id must exist on the document.
+	const configurationIds = new Set((config.hitlConfigurations ?? []).map(({ id }) => id));
+	for (const [index, guardrail] of (config.config?.guardrails?.tools ?? []).entries()) {
+		if (guardrail.reviewConfigurationId && !configurationIds.has(guardrail.reviewConfigurationId)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['config', 'guardrails', 'tools', index, 'reviewConfigurationId'],
+				message: 'Select a human-review configuration of this agent',
+			});
+		}
 	}
 });
 

@@ -2222,6 +2222,51 @@ describe('AgentRuntime — guardrails', () => {
 		expect(toolResult).toEqual({ echoed: 'x' });
 	});
 
+	it('runs the tool with the rewritten input when beforeTool() redacts', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const handler = vi.fn(async ({ v }: { v: string }) => await Promise.resolve({ echoed: v }));
+		const hook = makeGuardrail({
+			beforeTool: vi.fn<NonNullable<ModelGuardrail['beforeTool']>>().mockResolvedValue({
+				action: 'redact',
+				code: 'guardrail.redact',
+				value: { v: '<KEYWORD>' },
+			}),
+		});
+		const runtime = createRuntimeWithEchoTool(handler);
+
+		const result = await runtime.generate('go', { guardrails: guardrailsOption(hook) });
+
+		expect(handler.mock.calls[0]?.[0]).toEqual({ v: '<KEYWORD>' });
+		const [, toolResult] = hook.afterTool.mock.calls[0];
+		expect(toolResult).toEqual({ echoed: '<KEYWORD>' });
+		expect(result.finishReason).toBe('stop');
+	});
+
+	it('feeds the rewritten result to the model when afterTool() redacts', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail({
+			afterTool: vi.fn<NonNullable<ModelGuardrail['afterTool']>>().mockResolvedValue({
+				action: 'redact',
+				code: 'guardrail.redact',
+				value: '<REDACTED_RESULT>',
+			}),
+		});
+		const runtime = createRuntimeWithEchoTool(
+			async ({ v }) => await Promise.resolve({ echoed: v }),
+		);
+
+		await runtime.generate('go', { guardrails: guardrailsOption(hook) });
+
+		const secondModelCall = generateText.mock.calls[1]?.[0];
+		// The model sees the rewritten result, not the raw handler output.
+		expect(JSON.stringify(secondModelCall?.messages)).toContain('<REDACTED_RESULT>');
+		expect(JSON.stringify(secondModelCall?.messages)).not.toContain('echoed');
+	});
+
 	it.each([false, true])('checks approval once with native deferral %s', async (native) => {
 		const approvalTool = new ToolBuilder('delete')
 			.description('Delete a record')
