@@ -100,7 +100,9 @@ function rowMenu(wrapper: VueWrapper, index = 0) {
 }
 
 function fixAction(wrapper: VueWrapper, index = 0) {
-	const items = rowMenu(wrapper, index).props('items') as Array<DropdownMenuItemProps<string>>;
+	const { items } = rowMenu(wrapper, index).props() as {
+		items: Array<DropdownMenuItemProps<string>>;
+	};
 	return items.find((item) => item.id === FIX_ACTION);
 }
 

@@ -16,6 +16,13 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import { createArtifactTestRouter } from './artifactTestRouter';
+import { handoffContextKey } from '@/features/ai/instanceAi/instanceAi.handoffContext';
+
+const previewContextKey = handoffContextKey({
+	source: 'agent-preview',
+	agentId: 'agent-1',
+	threadId: 'preview-thread-1',
+});
 
 const storeState = reactive({
 	id: 'thread-1',
@@ -306,7 +313,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		});
 		const dismissPendingComposerContext = vi.fn((key: string) => {
 			pendingComposerContext.value = null;
-			return key === 'agent-preview:agent-1:preview-thread-1::';
+			return key === previewContextKey;
 		});
 
 		const { getByTestId, queryByText } = renderComponent({
@@ -321,9 +328,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
-			'agent-preview:agent-1:preview-thread-1::',
-		);
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(previewContextKey);
 		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
@@ -363,9 +368,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
-			'agent-preview:agent-1:preview-thread-1::',
-		);
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(previewContextKey);
 		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).toBeInTheDocument();
 	});
@@ -443,7 +446,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1::'],
+			dismissedContextKeys: [previewContextKey],
 		});
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
