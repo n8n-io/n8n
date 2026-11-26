@@ -9,12 +9,8 @@ import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
 import { UnexpectedError, UserError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
-<<<<<<< HEAD
-import { isExpression } from './expressions/expression-helpers';
-import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './expressions/removed-globals';
-=======
 import { isExpression, toParameterAdditionalKeys } from './expressions/expression-helpers';
->>>>>>> 9d3bf43393d36be670206a1d8a6eeb294ef7c245
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './expressions/removed-globals';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {

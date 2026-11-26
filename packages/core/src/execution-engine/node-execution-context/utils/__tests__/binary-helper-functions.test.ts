@@ -10,11 +10,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { BINARY_ENCODING, BINARY_MODE_COMBINED } from 'n8n-workflow';
-=======
-import { BINARY_MODE_COMBINED, createRunExecutionData } from 'n8n-workflow';
->>>>>>> 9d3bf43393d36be670206a1d8a6eeb294ef7c245
+import { BINARY_ENCODING, BINARY_MODE_COMBINED, createRunExecutionData } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
