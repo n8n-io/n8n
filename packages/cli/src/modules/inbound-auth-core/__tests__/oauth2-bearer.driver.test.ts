@@ -15,6 +15,8 @@ import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import type { CryptoKey, JWTHeaderParameters, JWTPayload } from 'jose';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import { type UrlService } from '@n8n/backend-services';
+
 import { Oauth2BearerDriver } from '../oauth2-bearer.driver';
 
 const ISSUER = 'https://idp.example';
@@ -399,6 +401,28 @@ describe('Oauth2BearerDriver', () => {
 
 			expect(advertised.challenge).toBe(
 				'Bearer resource_metadata="https://n8n.example/.well-known/oauth-protected-resource/webhook/orders?method=POST"',
+			);
+		});
+
+		it('places subpath prefix before .well-known when instance is mounted on a subpath', () => {
+			const urlServiceMock = mock<UrlService>();
+			urlServiceMock.getInstanceBaseUrl.mockReturnValue('https://n8n.example/subpath');
+			const testLogger = mock<Logger>();
+			testLogger.scoped.mockReturnValue(testLogger);
+			const driverWithSubpath = new Oauth2BearerDriver(
+				store,
+				localServer,
+				testLogger,
+				urlServiceMock,
+			);
+			const url = 'https://n8n.example/subpath/mcp';
+			const advertised = driverWithSubpath.advertise(
+				{ surface: SURFACE, resource: { url, acceptedAudiences: [url] } },
+				[source()],
+			);
+
+			expect(advertised.challenge).toBe(
+				'Bearer resource_metadata="https://n8n.example/subpath/.well-known/oauth-protected-resource/mcp"',
 			);
 		});
 	});

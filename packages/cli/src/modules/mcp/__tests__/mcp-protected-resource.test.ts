@@ -352,7 +352,15 @@ describe('McpProtectedResource', () => {
 		it('should preserve a subpath in the base URL', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
 			expect(resource.getProtectedResourceMetadataUrl()).toBe(
-				'https://example.com/.well-known/oauth-protected-resource/n8n/mcp-server/http',
+				'https://example.com/n8n/.well-known/oauth-protected-resource/mcp-server/http',
+			);
+		});
+
+		it('should preserve a subpath when MCP base URL is configured', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			mcpConfig.baseUrl = 'https://example.com/mcp-custom';
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://example.com/mcp-custom/.well-known/oauth-protected-resource/mcp-server/http',
 			);
 		});
 

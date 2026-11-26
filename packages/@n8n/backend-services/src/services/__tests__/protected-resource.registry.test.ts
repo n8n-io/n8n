@@ -101,6 +101,24 @@ describe('ProtectedResourceRegistry', () => {
 			expect(await registry.getByResourcePath('/unknown')).toBeUndefined();
 		});
 
+		it('should resolve resources on a subpath when queried with or without the mount prefix', async () => {
+			const subpathRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const subpathResource: ProtectedResource = {
+				id: 'subpath-mcp',
+				surface: 'instance-mcp',
+				getResourceUrl: () => 'https://example.com/somepath/mcp-server/http',
+				getAudiences: () => ['https://example.com/somepath/mcp-server/http'],
+				scopes: ['tool:listWorkflows'],
+				authorize: async () => true,
+			};
+			subpathRegistry.register(subpathResource);
+
+			expect(await subpathRegistry.getByResourcePath('/mcp-server/http')).toBe(subpathResource);
+			expect(await subpathRegistry.getByResourcePath('/somepath/mcp-server/http')).toBe(
+				subpathResource,
+			);
+		});
+
 		it('should match a static resource on the path, ignoring a query component', async () => {
 			// a resource that doesn't use a query selector must not be missed because of one
 			expect(await registry.getByResourcePath('/mcp-server/http?method=GET')).toBe(resourceA);
