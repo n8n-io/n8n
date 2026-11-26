@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { I18nT } from 'vue-i18n';
 import {
 	NodeHelpers,
 	type INodeProperties,
@@ -193,11 +194,11 @@ const changedDefaultRows = computed(() => {
 					:key="credential.type"
 					data-test-id="node-version-change-unused-credential"
 				>
-					{{
-						i18n.baseText('nodeSettings.versionChange.unusedCredential', {
-							interpolate: { name: credential.name },
-						})
-					}}
+					<I18nT keypath="nodeSettings.versionChange.unusedCredential" tag="span" scope="global">
+						<template #name>
+							<span :class="$style.chip">{{ credential.name }}</span>
+						</template>
+					</I18nT>
 				</div>
 
 				<div :class="$style.hint">{{ i18n.baseText('nodeSettings.versionChange.behavior') }}</div>
