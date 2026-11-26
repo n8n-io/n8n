@@ -630,6 +630,8 @@ const treeResizer = useResizablePanel({
 		--n8n-tabs--height: calc(var(--height--lg) + var(--spacing--5xs));
 		/* The grey line of the tab row is the border, so the tab list has none. It left a gap of 1px. */
 		border-bottom-width: 0;
+		/* The design has 8px between the tab title and the count. */
+		--n8n-tabs--tab--gap: var(--spacing--2xs);
 		--n8n-tabs--tab--padding: calc(var(--spacing--4xs) - var(--border-width)) var(--spacing--sm)
 			calc(var(--spacing--2xs) + var(--spacing--5xs) - var(--border-width));
 	}
