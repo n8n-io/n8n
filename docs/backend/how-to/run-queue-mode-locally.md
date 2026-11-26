@@ -8,6 +8,9 @@ contact: ivov
 
 On [Start here](../README.md), you ran n8n as one process with SQLite. On this page, we start [queue mode](../how-n8n-runs.md) on your machine, run your workflow on a worker, and add a second main.
 
+> [!TIP]
+> For a faster setup, try the experimental [`rig`](../../../scripts/experimental/rig/README.md) CLI. It starts PostgreSQL, Redis, mains, and workers in one command, with presets for queue mode, multi-main, and engine v2. Run `pnpm rig doctor`, `pnpm rig create` to pick a preset, and `pnpm rig up`.
+
 ## Start Redis and PostgreSQL
 
 Queue mode needs Redis and PostgreSQL. From repository root:
