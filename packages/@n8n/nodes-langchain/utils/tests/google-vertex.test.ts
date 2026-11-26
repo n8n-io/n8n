@@ -281,3 +281,185 @@ describe('googleVertexAiCredentialTest', () => {
 		expect(getGoogleAccessToken).not.toHaveBeenCalled();
 	});
 });
+
+describe('Vertex region restrictions', () => {
+	const buildContext = (credentials: Record<string, unknown>, locationOverride: string) => {
+		const context = mock<ISupplyDataFunctions>();
+		context.getNode.mockReturnValue(mock<INode>({ name: 'Google Vertex Chat Model' }));
+		context.getCredentials.mockResolvedValue({
+			email: 'service@example.com',
+			privateKey: 'test-key',
+			region: 'us-central1',
+			...credentials,
+		});
+		context.getNodeParameter.mockImplementation((name) => {
+			if (name === 'authentication') return 'googleApi';
+			if (name === 'location') return locationOverride;
+			return 'some-project';
+		});
+		return context;
+	};
+
+	// The Region field is `type: 'options'`, but a stored workflow can carry any
+	// string, and the value lands in the request authority. The shape check has to
+	// hold on its own, because `all` is the default restriction mode.
+	it.each([
+		'elsewhere.example/',
+		'evil.example',
+		'us-central1:8443',
+		'user@evil.example',
+		'us-central1/../..',
+	])('refuses the region %j even when the credential allows every domain', async (location) => {
+		const context = buildContext({ allowedHttpRequestDomains: 'all' }, location);
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).rejects.toThrow(
+			'is not a valid Vertex region',
+		);
+	});
+
+	it.each(['global', 'eu', 'us', 'us-central1', 'europe-west4'])(
+		'allows the region %j',
+		async (location) => {
+			const context = buildContext({ allowedHttpRequestDomains: 'all' }, location);
+
+			await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+				location,
+			});
+		},
+	);
+
+	// The credential's own region is the baseline the credential already grants. `domains`
+	// mode does not read `pinnedUrl`, so checking it there rejected a credential for the very
+	// endpoint its owner configured, and `none` mode allowed what `domains` refused.
+	it.each([
+		['the field default', ''],
+		['the credential region named explicitly', 'europe-west2'],
+	])('allows the credential region with %s, though the list omits it', async (_label, override) => {
+		const context = buildContext(
+			{
+				region: 'europe-west2',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'oauth2.googleapis.com, aiplatform.googleapis.com',
+			},
+			override,
+		);
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+			location: 'europe-west2',
+		});
+	});
+
+	it('still refuses an override away from the credential region', async () => {
+		const context = buildContext(
+			{
+				region: 'europe-west2',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'oauth2.googleapis.com, aiplatform.googleapis.com',
+			},
+			'us-central1',
+		);
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).rejects.toThrow(/not allowed/i);
+	});
+
+	it('refuses a region whose host is outside the allowed domains', async () => {
+		const context = buildContext(
+			{
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'us-central1-aiplatform.googleapis.com',
+			},
+			'europe-west4',
+		);
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).rejects.toThrow(/not allowed/i);
+	});
+
+	it('allows a region whose host is on the allowed domains', async () => {
+		const context = buildContext(
+			{
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'europe-west4-aiplatform.googleapis.com',
+			},
+			'europe-west4',
+		);
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+			location: 'europe-west4',
+		});
+	});
+
+	// `none` pins to the credential's own region rather than blocking outright, so
+	// the credential still works where it was configured to.
+	it('allows the credential region when the credential blocks every domain', async () => {
+		const context = buildContext({ allowedHttpRequestDomains: 'none', region: 'us-central1' }, '');
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+			location: 'us-central1',
+		});
+	});
+
+	it('refuses an override away from the credential region when the credential blocks every domain', async () => {
+		const context = buildContext(
+			{ allowedHttpRequestDomains: 'none', region: 'us-central1' },
+			'europe-west4',
+		);
+
+		await expect(resolveGoogleVertexCredentials(context, 0)).rejects.toThrow(/not allowed/i);
+	});
+
+	// The multi-region locations are served from `aiplatform.<loc>.rep.googleapis.com`,
+	// so an allowlist naming the bare host does not reach them. That configuration was
+	// always wrong; it just was not enforced on this path before.
+	it.each(['eu', 'us'])(
+		'refuses the multi-region %j when only the bare aiplatform host is allowed',
+		async (location) => {
+			const context = buildContext(
+				{
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'aiplatform.googleapis.com',
+				},
+				location,
+			);
+
+			await expect(resolveGoogleVertexCredentials(context, 0)).rejects.toThrow(/not allowed/i);
+		},
+	);
+
+	// Allowlisting the exact `.rep.` host is what proves the resolver asks the
+	// allowlist about the host the SDK really calls. A regional-shaped host would
+	// fail this, where the bare-host and wildcard cases above would not notice.
+	it.each([
+		['eu', 'aiplatform.eu.rep.googleapis.com'],
+		['us', 'aiplatform.us.rep.googleapis.com'],
+	])('checks the multi-region %j against its .rep. host', async (location, host) => {
+		const allowed = buildContext(
+			{ allowedHttpRequestDomains: 'domains', allowedDomains: host },
+			location,
+		);
+		await expect(resolveGoogleVertexCredentials(allowed, 0)).resolves.toMatchObject({ location });
+
+		// The regional shape for the same location must not be what gets checked.
+		const regional = buildContext(
+			{
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: `${location}-aiplatform.googleapis.com`,
+			},
+			location,
+		);
+		await expect(resolveGoogleVertexCredentials(regional, 0)).rejects.toThrow(/not allowed/i);
+	});
+
+	it.each(['global', 'eu', 'us', 'europe-west4'])(
+		'allows the region %j under a wildcard that covers both host shapes',
+		async (location) => {
+			const context = buildContext(
+				{ allowedHttpRequestDomains: 'domains', allowedDomains: '*.googleapis.com' },
+				location,
+			);
+
+			await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+				location,
+			});
+		},
+	);
+});

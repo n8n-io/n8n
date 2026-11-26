@@ -20,6 +20,7 @@ import {
 	destroyRequestBody,
 	resolveLegacyRequestUrl,
 	throwIfDomainNotAllowed,
+	throwIfProxyNotAllowed,
 	validateProxySsrf,
 	validateUrlSsrf,
 } from './axios/utils';
@@ -86,6 +87,7 @@ async function sendLegacyRequest(
 		await buildAxiosConfigFromLegacyRequest(requestObject, ssrfBridge),
 	);
 	throwIfDomainNotAllowed(axiosConfig, requestObject.allowedDomains);
+	throwIfProxyNotAllowed(requestObject.proxy, requestObject.allowedDomains);
 
 	try {
 		const response = shouldFollowRedirectsManually(axiosConfig, requestObject.proxy, ssrfBridge)

@@ -875,6 +875,41 @@ describe('JobProcessor', () => {
 		);
 	});
 
+	it('should restore persisted binary grants for a reconstructed manual execution', async () => {
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+				data: createRunExecutionData({
+					binaryDataAccess: ['binary-id'],
+					executionData: null,
+				}),
+			}),
+		);
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock(),
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect([
+			...(vi.mocked(manualExecutionService.runManually).mock.calls[0][0].binaryDataAccess ?? []),
+		]).toEqual(['binary-id']);
+	});
+
 	it('should set restartExecutionId on additionalData when provided in job data', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const execution = mock<IExecutionResponse>({

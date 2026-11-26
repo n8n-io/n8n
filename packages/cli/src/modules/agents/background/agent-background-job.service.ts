@@ -210,6 +210,7 @@ export class AgentBackgroundJobService {
 		executionId: string,
 		settlement: AgentBackgroundJobSettlement,
 		runData?: IRunData,
+		binaryDataAccess?: string[],
 	): Promise<boolean> {
 		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
 		if (!job) return false;
@@ -222,7 +223,7 @@ export class AgentBackgroundJobService {
 		}
 		let storedFiles: JobOutputFiles['files'] = null;
 		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
-			const output = await this.storeOutputFiles(job, runData);
+			const output = await this.storeOutputFiles(job, runData, binaryDataAccess);
 			storedFiles = output.files;
 			settlement = { ...settlement, ...output };
 		}
@@ -242,9 +243,15 @@ export class AgentBackgroundJobService {
 	async storeOutputFiles(
 		job: Pick<
 			AgentBackgroundJob,
-			'id' | 'parentAgentId' | 'parentThreadId' | 'parentResourceId' | 'pauseRequestId'
+			| 'id'
+			| 'parentAgentId'
+			| 'parentThreadId'
+			| 'parentResourceId'
+			| 'pauseRequestId'
+			| 'workflowId'
 		>,
 		runData: IRunData,
+		binaryDataAccess?: string[],
 	): Promise<JobOutputFiles> {
 		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
 		if (!items.some((item) => item.binary) || !job.parentResourceId) return NO_OUTPUT_FILES;
@@ -256,6 +263,8 @@ export class AgentBackgroundJobService {
 				projectId,
 				threadId: job.parentThreadId,
 				resourceId: job.parentResourceId,
+				workflowId: job.workflowId ?? undefined,
+				...(binaryDataAccess?.length ? { binaryDataAccess } : {}),
 			});
 			return {
 				files: files.length > 0 ? files : null,
@@ -1222,7 +1231,9 @@ export class AgentBackgroundJobService {
 
 			return {
 				result: serializeWorkflowJobResult(collectResultData(runData, allOutputs)),
-				...(status === 'completed' ? await this.storeOutputFiles(job, runData) : NO_OUTPUT_FILES),
+				...(status === 'completed'
+					? await this.storeOutputFiles(job, runData, execution.data?.binaryDataAccess)
+					: NO_OUTPUT_FILES),
 			};
 		} catch (error) {
 			this.logger.warn('Failed to read a finished execution’s data for its job result', {

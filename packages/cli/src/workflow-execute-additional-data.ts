@@ -70,6 +70,7 @@ import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-ex
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 
 import { ActiveExecutions } from '@/active-executions';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -95,6 +96,7 @@ export function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
+	binaryDataAccess?: string[],
 ): IWorkflowExecutionDataProcess {
 	const mode = 'integrated';
 
@@ -119,6 +121,7 @@ export function getRunData(
 	});
 
 	const runExecutionData = createRunExecutionData({
+		binaryDataAccess,
 		executionData: {
 			nodeExecutionStack,
 		},
@@ -126,6 +129,7 @@ export function getRunData(
 	});
 
 	return {
+		binaryDataAccess,
 		executionMode: mode,
 		executionData: runExecutionData,
 		workflowData,
@@ -354,7 +358,8 @@ export async function executeWorkflow(
 				));
 
 	const runData =
-		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+		options.loadedRunData ??
+		getRunData(workflowData, options.inputData, options.parentExecution, options.binaryDataAccess);
 
 	if (runData.executionData) {
 		runData.executionData.subWorkflowOutput ??= getSubWorkflowOutputPolicy(
@@ -994,8 +999,23 @@ export async function getBase({
 	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
+	const grantedBinaryDataIds = new Set<string>();
 
 	const additionalData: IWorkflowExecuteAdditionalData = {
+		binaryDataAccess: {
+			grant: (binaryDataId) => grantedBinaryDataIds.add(binaryDataId),
+			isGranted: (binaryDataId) => grantedBinaryDataIds.has(binaryDataId),
+			async isAllowed(binaryDataId, executingWorkflowId, grantedIds) {
+				if (grantedBinaryDataIds.has(binaryDataId) || grantedIds?.includes(binaryDataId)) {
+					return true;
+				}
+
+				return await Container.get(BinaryDataAccessService).isOwnedByWorkflow(
+					executingWorkflowId,
+					binaryDataId,
+				);
+			},
+		},
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
