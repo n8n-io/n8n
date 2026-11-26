@@ -33,6 +33,17 @@ const configs = {
 			'@n8n/design-system/no-direct-component-imports': 'error',
 		},
 	},
+	/**
+	 * Sample only. Not part of `recommended`, so frontend lint does not run it yet.
+	 * A dynamic `$style[name]` access skips the unused-class check for that module.
+	 */
+	cssModuleClasses: {
+		files: ['**/*.vue'],
+		plugins,
+		rules: {
+			'@n8n/design-system/css-module-class-usage': 'error',
+		},
+	},
 } satisfies Record<string, Linter.Config>;
 
 const pluginWithConfigs = { ...plugin, configs } satisfies ESLint.Plugin;
