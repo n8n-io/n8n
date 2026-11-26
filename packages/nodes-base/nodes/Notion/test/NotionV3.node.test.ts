@@ -207,6 +207,11 @@ describe('NotionV3', () => {
 			{ property: 'Rollup', rollup: { ['any']: { ['number']: { greater_than: 5 } } } },
 		],
 		[
+			'rollup without a filter',
+			{ key: 'Rollup|rollup', rollupJson: undefined },
+			{ property: 'Rollup', rollup: {} },
+		],
+		[
 			'select',
 			{ key: 'Priority|select', condition: 'equals', optionValue: 'High' },
 			{ property: 'Priority', select: { equals: 'High' } },
@@ -263,6 +268,47 @@ describe('NotionV3', () => {
 				children: [{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } }],
 			}),
 		);
+	});
+
+	it('creates pages without blocks when the blocks field is empty', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page', id: 'page-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'create',
+			pageId: { __rl: true, mode: 'id', value: 'parent-page-id' },
+			title: 'New page',
+			simple: false,
+			contentType: 'json',
+			blocksJson: undefined,
+			options: {},
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/pages`,
+			expect.objectContaining({ children: [] }),
+		);
+	});
+
+	it('does not create pages when the blocks are not an array', async () => {
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'create',
+			pageId: { __rl: true, mode: 'id', value: 'parent-page-id' },
+			title: 'New page',
+			simple: false,
+			contentType: 'json',
+			blocksJson: { object: 'block' },
+			options: {},
+		});
+
+		await expect(node.execute.call(context)).rejects.toThrow(
+			'Blocks (JSON) must be an array of Notion block objects',
+		);
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
 	});
 
 	it('creates database pages with a data source parent', async () => {
