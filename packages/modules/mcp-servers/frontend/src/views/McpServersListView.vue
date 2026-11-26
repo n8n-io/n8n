@@ -24,6 +24,7 @@ async function initialize() {}
 		:is="ResourcesListLayout"
 		v-if="ResourcesListLayout"
 		resource-key="mcpServers"
+		tab-key="mcpServers"
 		type="list-paginated"
 		:resources="[]"
 		:initialize="initialize"
