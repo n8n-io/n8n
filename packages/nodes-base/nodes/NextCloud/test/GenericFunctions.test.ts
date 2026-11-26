@@ -348,6 +348,7 @@ describe('NextCloud GenericFunctions', () => {
 		it.each([
 			'https://nc.example.com/remote.php/webdav',
 			'https://nc.example.com/remote.php/webdav/',
+			'https://nc.example.com/remote.php/webdav//',
 			'https://nc.example.com/remote.php/dav/files/alice',
 			'https://nc.example.com/remote.php/dav/files/alice/',
 		])('builds the same dav files URL from %s', async (credentialUrl) => {
