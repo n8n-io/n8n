@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { onMounted, ref } from 'vue';
 
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { getSystemAgentThread } from '@/features/agents/composables/useAgentApi';
 
 import AssistantAgentThreadView from './assistantAgent/AssistantAgentThreadView.vue';
@@ -38,6 +39,12 @@ const runtime = ref<AssistantThreadRuntime | undefined>(
 	}),
 );
 const lookupFailed = ref(false);
+
+// Reset any previous thread title while resolving the runtime or showing an error.
+// The mounted thread view sets the thread title once the runtime resolves.
+if (!runtime.value) {
+	useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
+}
 
 async function lookUpRuntime(): Promise<void> {
 	lookupFailed.value = false;

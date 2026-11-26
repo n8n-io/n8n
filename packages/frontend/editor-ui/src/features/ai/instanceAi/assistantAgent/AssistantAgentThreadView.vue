@@ -30,6 +30,7 @@ import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { isString } from '@/app/utils/typeGuards';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
@@ -758,10 +759,19 @@ const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 // --- Header ---
 // The stored title, else the first user message, as in the Assistant runtime view.
 const threadTitle = computed(() => {
-	const title = threadsStore.threadsById.get(props.threadId)?.title;
+	const title = threadsStore.threadsById.get(props.threadId)?.title?.trim();
 	if (title) return title;
 	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
-	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
+	return firstUserMessage?.content
+		? firstMessageTitle(firstUserMessage.content) || undefined
+		: undefined;
+});
+
+// The tab names the conversation, not the workflow previewed inside it.
+// The parent view claims the title so the embedded canvas cannot overwrite this.
+const documentTitle = useDocumentTitle();
+watch(threadTitle, (title) => documentTitle.set(title ?? i18n.baseText('instanceAi.view.title')), {
+	immediate: true,
 });
 
 function startNewThread(): void {
