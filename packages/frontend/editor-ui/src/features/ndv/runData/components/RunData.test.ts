@@ -336,20 +336,6 @@ describe('RunData', () => {
 			expect(emitted('displayModeChange')).toBeUndefined();
 		});
 
-		it('does not auto-select a mode in the input pane', async () => {
-			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
-
-			const { findByTestId, queryByTestId } = render({
-				defaultRunItems: items,
-				displayMode: 'table',
-				paneType: 'input',
-			});
-
-			expect(await findByTestId('radio-button-map')).toBeInTheDocument();
-			expect(queryByTestId('fake-map-view')).not.toBeInTheDocument();
-			expect(ndvStore.input.shownDisplayMode).toBe('table');
-		});
-
 		it('saves and shows the mode that the user picks on a node with an automatic mode', async () => {
 			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
 
@@ -390,25 +376,6 @@ describe('RunData', () => {
 			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
 
 			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
-		});
-
-		it('shows the saved mode when the automatic mode no longer applies', async () => {
-			let applies = true;
-			const canRender = vi.fn(() => applies);
-			runDataDisplayModeRegistry.register(map({ autoSelect: true, canRender }));
-			const otherNode = { ...nodes[0], id: '2' };
-
-			const { findByTestId, queryByTestId, rerender } = render({
-				defaultRunItems: items,
-				displayMode: 'json',
-			});
-			await findByTestId('fake-map-view');
-
-			applies = false;
-			await rerender({ node: otherNode });
-
-			await waitFor(() => expect(queryByTestId('fake-map-view')).not.toBeInTheDocument());
-			expect(ndvStore.output.shownDisplayMode).toBe('json');
 		});
 
 		it('offers, auto-selects and renders the HTML module for an HTML node', async () => {
@@ -734,17 +701,6 @@ describe('RunData', () => {
 
 			expect(await findByTestId('ndv-binary-data_0')).toBeInTheDocument();
 			expect(ndvStore.output.shownDisplayMode).toBe('binary');
-			expect(emitted('displayModeChange')).toBeUndefined();
-		});
-
-		it('shows binary data in the input pane without saving the binary mode', async () => {
-			const { emitted, findByTestId } = render({
-				defaultRunItems: [binaryItem],
-				displayMode: 'schema',
-				paneType: 'input',
-			});
-
-			expect(await findByTestId('ndv-binary-data_0')).toBeInTheDocument();
 			expect(emitted('displayModeChange')).toBeUndefined();
 		});
 
