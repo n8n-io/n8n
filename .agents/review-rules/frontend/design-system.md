@@ -23,7 +23,7 @@ focus and disabled states. Name the replacement:
 - reka-ui `DropdownMenu*` parts: `N8nDropdownMenu` or `N8nActionDropdown`
 - `<table>` or `ElTable`: `N8nDataTableServer` or `N8nDatatable`
 - styled `<input>`: `N8nInput`
-- card used as a selector: `N8nListBox` or `N8nRadioGroup`
+- card used as a selector: `N8nListbox` or `N8nRadioGroup`
 - spinning `loader` icon: `N8nSpinner`
 - styled `<p>`, `<span>` or `<h*>` for UI text: `N8nText` with `step`
 - custom scroll container: `N8nScrollArea`
