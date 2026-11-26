@@ -48,6 +48,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		items: [],
 	});
 	const whatsNewCallout = ref<NotificationHandle | undefined>();
+	const isWhatsNewCalloutOpen = computed(() => whatsNewCallout.value !== undefined);
 
 	const telemetry = useTelemetry();
 	const { showToast, showMessage } = useToast();
@@ -225,6 +226,9 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 							duration: 0,
 							position: 'bottom-left',
 							customClass: 'clickable whats-new-notification',
+							onClose: () => {
+								whatsNewCallout.value = undefined;
+							},
 							onClick: () => {
 								const articleId = whatsNew.value.items[0]?.id ?? 0;
 								telemetry.track("User clicked on what's new notification", {
@@ -307,6 +311,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		isWhatsNewArticleRead,
 		setWhatsNewArticleRead,
 		closeWhatsNewCallout,
+		isWhatsNewCalloutOpen,
 		shouldShowWhatsNewCallout,
 		dismissWhatsNewCallout,
 	};
