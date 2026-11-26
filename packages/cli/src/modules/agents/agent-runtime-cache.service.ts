@@ -52,7 +52,10 @@ export interface GetRuntimeParams {
 	 * every other surface, so it is part of the cache key.
 	 */
 	previewChat?: boolean;
-	/** A test run. The runtime is cached for this session only. */
+	/**
+	 * A test run. The session is part of the cache key, so no other run reuses its runtime.
+	 * Nothing evicts the runtime when the session ends: it stays until the idle TTL expires.
+	 */
 	simulation?: SimulationSession;
 }
 

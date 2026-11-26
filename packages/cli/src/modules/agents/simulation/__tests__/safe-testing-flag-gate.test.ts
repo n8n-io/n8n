@@ -15,6 +15,21 @@ function gateWith(flags: Record<string, unknown> | undefined) {
 }
 
 describe('SafeTestingFlagGate', () => {
+	it('reads the flag for the user it checks', async () => {
+		const postHogClient = mock<PostHogClient>();
+		postHogClient.getFeatureFlags.mockResolvedValue({ [AGENT_SAFE_TESTING_FLAG]: 'test' });
+		const gate = new SafeTestingFlagGate(postHogClient);
+
+		await expect(gate.isEnabled(user)).resolves.toBe(true);
+		await expect(gate.assertEnabled(user)).resolves.toBeUndefined();
+
+		// The same user object, not only an equal one, so the flag is never read for someone else.
+		expect(postHogClient.getFeatureFlags.mock.calls).toHaveLength(2);
+		for (const [calledWith] of postHogClient.getFeatureFlags.mock.calls) {
+			expect(calledWith).toBe(user);
+		}
+	});
+
 	it('is on only when the user is in the test variant', async () => {
 		await expect(gateWith({ [AGENT_SAFE_TESTING_FLAG]: 'test' }).isEnabled(user)).resolves.toBe(
 			true,
