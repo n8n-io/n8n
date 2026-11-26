@@ -346,13 +346,16 @@ describe('withToolGuardrails', () => {
 		expect(keywordsHook.afterTool).toBeDefined();
 	});
 
-	it('fails closed when a redact cannot rewrite the value', async () => {
+	it('lets the call continue when the trigger is a serialization artifact', async () => {
+		// A check that trips only on the serialized form: JSON quotes and
+		// commas fuse adjacent words into one high-entropy token, like the
+		// real secretKeys detector does on multi-field inputs.
 		vi.mocked(createKeywordsCheckFn).mockImplementationOnce(
 			() => (input: string) =>
 				({
 					guardrailName: 'keywords',
-					tripwireTriggered: input.includes('x'),
-					info: { maskEntities: { X: ['"'] } },
+					tripwireTriggered: input.includes('","'),
+					info: { maskEntities: { X: ['key","description":"A'] } },
 				}) as GuardrailResult,
 		);
 
@@ -367,8 +370,43 @@ describe('withToolGuardrails', () => {
 			},
 		]);
 
-		const stop = await hooks[0].beforeTool?.(ctx('read_file', { note: 'x' }));
-		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+		// No field value carries the match, so nothing can be redacted.
+		const decision = await hooks[0].beforeTool?.(
+			ctx('read_file', {
+				title: 'Rotate exposed key',
+				description: 'A key was shared.',
+			}),
+		);
+		expect(decision).toBeUndefined();
+	});
+
+	it('redacts a real secret across the real secretKeys check on a multi-field input', async () => {
+		// The exact production shape: the serialized scan trips on JSON glue
+		// AND the description carries a real key; only the key gets masked.
+		const hooks = hooksFor([
+			{
+				kind: 'secretKeys',
+				id: 'g1',
+				stage: 'before',
+				response: 'redact',
+				permissiveness: 'balanced',
+				tools: [{ type: 'node', name: 'read_file' }],
+			},
+		]);
+
+		const decision = await hooks[0].beforeTool?.(
+			ctx('read_file', {
+				title: 'Rotate exposed live API key',
+				description:
+					'A live API key was shared in a chat. Rotate it. sk-live-4f9aB2cD8eF1gH3jK5lM7nP9qR',
+				priority: 'high',
+			}),
+		);
+		expect(decision).toMatchObject({ action: 'redact', code: 'guardrail.secretKeys.g1' });
+		const value = (decision as { value: Record<string, unknown> }).value;
+		expect(JSON.stringify(value)).toContain('<SECRET>');
+		expect(JSON.stringify(value)).not.toContain('sk-live-4f9a');
+		expect(value.title).toBe('Rotate exposed live API key');
 	});
 
 	it('routes a review response and lets the call continue', async () => {

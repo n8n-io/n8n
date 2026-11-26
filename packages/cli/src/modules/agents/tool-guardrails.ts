@@ -229,10 +229,10 @@ interface ResponseContext {
  * `block` response. A `redact` response re-runs the check on every string of
  * the value and masks the matches in place, so a token that the serialized
  * scan reported with JSON punctuation attached still redacts cleanly. A match
- * no string can carry (structural characters) cannot be honored, so it stops
- * the call instead of leaking through. A `review` response routes the flagged
- * content to the agent's human-review configuration and lets the call
- * continue.
+ * that exists only in the serialized form (a serialization artifact, no field
+ * content carries it) has nothing to remove, so the call continues. A
+ * `review` response routes the flagged content to the agent's human-review
+ * configuration and lets the call continue.
  */
 async function decide(
 	check: CheckFn,
@@ -284,9 +284,10 @@ async function decide(
 		return entry;
 	};
 	const rewritten = await walk(value);
-	return checkedText(rewritten) === checkedText(value)
-		? { action: 'stop', code: rc.code }
-		: { action: 'redact', code: rc.code, value: rewritten };
+	if (checkedText(rewritten) === checkedText(value)) {
+		return undefined;
+	}
+	return { action: 'redact', code: rc.code, value: rewritten };
 }
 
 /** The kinds whose check runs on an LLM rather than a local pattern. */
