@@ -617,6 +617,28 @@ describe('save_user_preference MCP tool', () => {
 			},
 		);
 
+		test('reports an unknown saved state when a concurrent change refuses removal', async () => {
+			const { aiPreferenceService, telemetry, tool } = createMocks();
+			const message = 'The Preference changed. Reload it and try again.';
+			aiPreferenceService.undoWrite.mockRejectedValue(
+				new ConflictError(message, undefined, { reason: 'stale' }),
+			);
+
+			const result = await tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: true, review: { action: 'decline' } }),
+			);
+
+			expect(isInputRequired(result)).toBe(false);
+			if (isInputRequired(result)) return;
+			expect(result.isError).toBe(true);
+			expect(structured(result)).toEqual({ saved: null, error: message, reason: 'failed' });
+			expect(text(result)).toContain('Read get_user_preferences');
+			expect(text(result)).not.toContain('The preference is still saved');
+			expect(aiPreferenceService.create).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+		});
+
 		test('reports a refused edit and states that the original text stands', async () => {
 			const { aiPreferenceService, tool } = createMocks();
 			aiPreferenceService.updateContent.mockRejectedValue(new ConflictError('dup'));

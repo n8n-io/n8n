@@ -231,6 +231,13 @@ export const createSaveUserPreferenceTool = (
 					);
 				} catch (error) {
 					const { reason, message } = classifyPreferenceWriteError(error);
+					if (error instanceof ConflictError && error.meta?.reason === 'stale') {
+						return done(
+							{ saved: null, error: message, reason },
+							`The removal was refused: ${message} Read ${MCP_GET_USER_PREFERENCES_TOOL_NAME} before reporting whether the preference is still saved.`,
+							true,
+						);
+					}
 					return done(
 						{ saved: true, error: message, reason },
 						`The user asked to remove the preference but the removal failed: ${message}. The preference is still saved. ${keep}`,
