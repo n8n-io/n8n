@@ -209,13 +209,15 @@ export class EvaluationsPublicController {
 	@ApiKeyScope('testRun:read')
 	@ProjectScope('workflow:read')
 	@ApiSummary('Retrieve test run cases')
-	@ApiDescription('Retrieve the per-case results of an evaluation test run.')
+	@ApiDescription(
+		'Retrieve the per-case results of an evaluation test run. Requires the `execution:read` project scope.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, TestCaseExecutionListPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async getTestCases(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('runId', testRunIdParamSchema) runId: string,
@@ -223,10 +225,12 @@ export class EvaluationsPublicController {
 	): Promise<TestCaseExecutionListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
 
-		const result = await this.evaluationTestRunService.findTestCasesAndCount(runId, workflowId, {
-			offset,
-			limit,
-		});
+		const result = await this.evaluationTestRunService.findTestCasesAndCount(
+			req.user,
+			runId,
+			workflowId,
+			{ offset, limit },
+		);
 		if (!result) throw new NotFoundError('Test run not found');
 
 		return {

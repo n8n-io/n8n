@@ -1,10 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { TestRun } from '@n8n/db';
+import type { TestRun, User } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { PaymentRequiredError } from '@n8n/errors';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 type Pagination = { offset: number; limit: number };
 
@@ -37,7 +38,21 @@ export class EvaluationTestRunService {
 		return await this.testRunRepository.findOneByIdAndWorkflowId(runId, workflowId);
 	}
 
-	async findTestCasesAndCount(runId: string, workflowId: string, pagination: Pagination) {
+	/**
+	 * Case inputs and outputs come from the case executions' run data, so they need
+	 * `execution:read`, which a custom project role can lack. Returns `null` (the
+	 * caller answers 404) when the run is absent or the user cannot read run data.
+	 */
+	async findTestCasesAndCount(
+		user: User,
+		runId: string,
+		workflowId: string,
+		pagination: Pagination,
+	) {
+		if (!(await userHasScopes(user, ['execution:read'], false, { workflowId }))) {
+			return null;
+		}
+
 		if (!(await this.testRunRepository.existsInWorkflow(runId, workflowId))) {
 			return null;
 		}

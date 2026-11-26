@@ -210,18 +210,11 @@ describe('promotion-settings', () => {
 		expect(commands['promotion-settings:update']).toBe(PromotionSettingsUpdate);
 	});
 
-	it('update keeps the settings of the flags that were left out', async () => {
+	it('update sends only the settings of the flags that were given', async () => {
 		const command = instantiate(PromotionSettingsUpdate);
 		const internals = command as unknown as Internals;
 		const updatePromotionSettings = vi.fn().mockResolvedValue({});
-		const client = {
-			getPromotionSettings: vi.fn().mockResolvedValue({
-				whoCanPromote: 'instanceAdmins',
-				whoCanApprove: 'projectAdmins',
-				whoCanApply: 'instanceAdmins',
-			}),
-			updatePromotionSettings,
-		};
+		const client = { updatePromotionSettings };
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: {},
 			flags: { 'who-can-promote': 'projectAdminsAndEditors' },
@@ -231,10 +224,9 @@ describe('promotion-settings', () => {
 
 		await command.run();
 
+		// The API keeps the other settings, so a newer change by another admin stays.
 		expect(updatePromotionSettings).toHaveBeenCalledWith({
 			whoCanPromote: 'projectAdminsAndEditors',
-			whoCanApprove: 'projectAdmins',
-			whoCanApply: 'instanceAdmins',
 		});
 	});
 });
