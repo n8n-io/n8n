@@ -9,12 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
-import {
-	apiTemplateIoApiRequest,
-	downloadImage,
-	loadResource,
-	validateJSON,
-} from './GenericFunctions';
+import { apiTemplateIoApiRequest, downloadImage, loadResource } from './GenericFunctions';
 
 export class ApiTemplateIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -200,6 +195,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Overrides (JSON)',
 				name: 'overridesJson',
 				type: 'json',
+				validateType: 'array',
 				default: '',
 				displayOptions: {
 					show: {
@@ -215,6 +211,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Properties (JSON)',
 				name: 'propertiesJson',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				displayOptions: {
 					show: {
@@ -445,15 +442,11 @@ export class ApiTemplateIo implements INodeType {
 								body.overrides = data;
 							}
 						} else {
-							const overrideJson = this.getNodeParameter('overridesJson', i) as string;
-							if (overrideJson !== '') {
-								const data = validateJSON(overrideJson);
-								if (data === undefined) {
-									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', {
-										itemIndex: i,
-									});
-								}
-								body.overrides = data;
+							const overridesJson = this.getNodeParameter('overridesJson', i) as
+								| IDataObject[]
+								| undefined;
+							if (overridesJson !== undefined) {
+								body.overrides = overridesJson;
 							}
 						}
 
@@ -538,8 +531,7 @@ export class ApiTemplateIo implements INodeType {
 								{},
 							);
 						} else {
-							const propertiesJson = this.getNodeParameter('propertiesJson', i) as string;
-							data = validateJSON(propertiesJson);
+							data = this.getNodeParameter('propertiesJson', i) as IDataObject | undefined;
 							if (data === undefined) {
 								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', {
 									itemIndex: i,

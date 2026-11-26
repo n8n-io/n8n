@@ -2,6 +2,66 @@
 	"name": "APITemplate.io Request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "pdf",
+				"operation": "create",
+				"pdfTemplateId": "79667b2b1876e347",
+				"jsonParameters": true,
+				"propertiesJson": "={{ { \"name\": \"Grace\" } }}"
+			},
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "ea5b8fc6-eb64-57b0-8240-847932740427",
+			"name": "PDF > Create Expression",
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "image",
+				"operation": "create",
+				"imageTemplateId": "a1b2c3d4e5f6a7b8",
+				"jsonParameters": true,
+				"overridesJson": "[{\"name\":\"text_1\",\"text\":\"Ada\"}]"
+			},
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "7ee74821-428e-50c8-b367-cf41d9fb9dfd",
+			"name": "Image > Create JSON",
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "image",
+				"operation": "create",
+				"imageTemplateId": "a1b2c3d4e5f6a7b8",
+				"jsonParameters": true,
+				"overridesJson": "={{ [{ \"name\": \"text_1\", \"text\": \"Grace\" }] }}"
+			},
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "3e5c7d9b-d331-5078-9870-c3fa855ec80a",
+			"name": "Image > Create Expression",
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -69,6 +129,21 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "PDF > Create Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Image > Create JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Image > Create Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Account > Get",
 						"type": "main",

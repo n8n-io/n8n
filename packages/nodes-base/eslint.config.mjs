@@ -37,7 +37,6 @@ const deprecatedNodes = [
 const jsonValidateTypePending = [
 	'./nodes/Airtop/**',
 	'./nodes/Amqp/**',
-	'./nodes/ApiTemplateIo/**',
 	'./nodes/Beeminder/**',
 	'./nodes/ClickUp/**',
 	'./nodes/Cockpit/**',

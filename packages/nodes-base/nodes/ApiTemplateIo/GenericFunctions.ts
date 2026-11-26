@@ -65,19 +65,6 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: 'image
 	}));
 }
 
-export function validateJSON(json: string | object | undefined): any {
-	let result;
-	if (typeof json === 'object') {
-		return json;
-	}
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
-
 export async function downloadImage(this: IExecuteFunctions, url: string) {
 	return await this.helpers.request({
 		uri: url,
