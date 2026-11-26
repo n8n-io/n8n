@@ -54,7 +54,6 @@ const jsonValidateTypePending = [
 	'./nodes/Kafka/**',
 	'./nodes/KoBoToolbox/**',
 	'./nodes/Mailchimp/**',
-	'./nodes/Mandrill/**',
 	'./nodes/Mautic/**',
 	'./nodes/MessageAnAgent/**',
 	'./nodes/Microsoft/AzureCosmosDb/**',

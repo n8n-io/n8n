@@ -7,7 +7,6 @@ import {
 	getTags,
 	getToEmailArray,
 	mandrillApiRequest,
-	validateJSON,
 } from '../GenericFunctions';
 
 describe('Mandrill GenericFunctions', () => {
@@ -121,49 +120,6 @@ describe('Mandrill GenericFunctions', () => {
 		it('should handle empty string', () => {
 			const result = getTags('');
 			expect(result).toEqual(['']);
-		});
-	});
-
-	describe('validateJSON', () => {
-		it('should parse valid JSON object', () => {
-			const result = validateJSON('{"Test": "value", "number": 123}');
-			expect(result).toEqual({ Test: 'value', number: 123 });
-		});
-
-		it('should parse valid JSON array', () => {
-			const result = validateJSON('[{"name": "Test", "value": "data"}]');
-			expect(result).toEqual([{ name: 'Test', value: 'data' }]);
-		});
-
-		it('should return empty array for invalid JSON', () => {
-			const result = validateJSON('invalid json');
-			expect(result).toEqual([]);
-		});
-
-		it('should return empty array for undefined input', () => {
-			const result = validateJSON(undefined);
-			expect(result).toEqual([]);
-		});
-
-		it('should return null for null JSON string', () => {
-			const result = validateJSON('null');
-			expect(result).toEqual(null);
-		});
-
-		it('should parse nested JSON correctly', () => {
-			const result = validateJSON('{"metadata": {"key": "value"}, "array": [1, 2, 3]}');
-			expect(result).toEqual({
-				metadata: { key: 'value' },
-				array: [1, 2, 3],
-			});
-		});
-
-		it('should handle JSON with special characters', () => {
-			const result = validateJSON('{"message": "Hello\\nWorld\\t!", "emoji": "🎉"}');
-			expect(result).toEqual({
-				message: 'Hello\nWorld\t!',
-				emoji: '🎉',
-			});
 		});
 	});
 });

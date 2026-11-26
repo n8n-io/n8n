@@ -80,13 +80,3 @@ export function getTags(s: string): any[] {
 	}
 	return array;
 }
-
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = [];
-	}
-	return result;
-}

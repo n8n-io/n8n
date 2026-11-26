@@ -1,6 +1,8 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
 import nock from 'nock';
 
 import { Mandrill } from '../Mandrill.node';
@@ -47,6 +49,26 @@ describe('Test Mandrill Node', () => {
 						_id: 'test-subaccount-message-id',
 					},
 				]);
+
+			for (const [email, name] of [
+				['json@example.com', 'Ada'],
+				['expression@example.com', 'Grace'],
+			]) {
+				mandrillNock
+					.post('/messages/send.json', (body) =>
+						isEqual(
+							pick(body.message, ['to', 'headers', 'metadata', 'global_merge_vars', 'attachments']),
+							{
+								to: [{ email, type: 'to' }],
+								headers: { 'Reply-To': 'replies@example.com' },
+								metadata: { website: 'n8n.io' },
+								global_merge_vars: [{ name: 'fname', content: name }],
+								attachments: [{ type: 'text/plain', name: 'a.txt', content: 'aGk=' }],
+							},
+						),
+					)
+					.reply(200, [{ email, status: 'sent' }]);
+			}
 
 			// Mock sendHtml API call
 			mandrillNock.post('/messages/send.json').reply(200, [

@@ -18,7 +18,6 @@ import {
 	getTags,
 	getToEmailArray,
 	mandrillApiRequest,
-	validateJSON,
 } from './GenericFunctions';
 
 interface Attachments {
@@ -432,6 +431,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Merge Vars',
 				name: 'mergeVarsJson',
 				type: 'json',
+				validateType: 'array',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -526,6 +526,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Metadata',
 				name: 'metadataJson',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -545,6 +546,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Attachments',
 				name: 'attachmentsJson',
 				type: 'json',
+				validateType: 'array',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -629,6 +631,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Headers',
 				name: 'headersJson',
 				type: 'json',
+				validateType: 'object',
 				default: '',
 				placeholder: `{
 	"Reply-To": "replies@example.com"
@@ -785,16 +788,18 @@ export class Mandrill implements INodeType {
 					}
 
 					if (jsonActive) {
-						body.message.headers = validateJSON(this.getNodeParameter('headersJson', i) as string);
-						body.message.metadata = validateJSON(
-							this.getNodeParameter('metadataJson', i) as string,
-						);
-						body.message.global_merge_vars = validateJSON(
-							this.getNodeParameter('mergeVarsJson', i) as string,
-						);
-						body.message.attachments = validateJSON(
-							this.getNodeParameter('attachmentsJson', i) as string,
-						);
+						body.message.headers = this.getNodeParameter('headersJson', i) as
+							| IDataObject
+							| undefined;
+						body.message.metadata = this.getNodeParameter('metadataJson', i) as
+							| IDataObject
+							| undefined;
+						body.message.global_merge_vars = this.getNodeParameter('mergeVarsJson', i) as
+							| [IDataObject]
+							| undefined;
+						body.message.attachments = this.getNodeParameter('attachmentsJson', i) as
+							| Attachments[]
+							| undefined;
 					} else {
 						const headersUi = this.getNodeParameter('headersUi', i) as IDataObject;
 						if (!isEmpty(headersUi)) {
