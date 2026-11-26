@@ -34,6 +34,16 @@ export function throwIfDomainNotAllowed(
 	assertUrlAllowed({ url, allowedDomains });
 }
 
+export function throwIfProxyNotAllowed(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	allowedDomains?: string,
+): void {
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig);
+	if (!isSupportedProxyUrl(proxyUrl)) return;
+
+	assertUrlAllowed({ url: proxyUrl, allowedDomains });
+}
+
 /** Attempts to parse a string as a URL. Returns the parsed `URL` or `null` on failure. */
 export function tryParseUrl(url: string): URL | null {
 	try {

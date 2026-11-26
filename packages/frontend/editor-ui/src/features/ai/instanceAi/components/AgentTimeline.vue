@@ -307,7 +307,6 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:request-id="block.toolCall.confirmation.requestId"
 						:input-thread-id="block.toolCall.confirmation.inputThreadId"
 						:blueprint="resolveAppBlueprint(block.toolCall)!"
-						:errors="block.toolCall.confirmation.appBlueprintErrors"
 						:failed="hasAppCreateError(block.toolCall)"
 						:read-only="isCardReadOnly(block.toolCall)"
 						:expired="block.toolCall.confirmation.expired"

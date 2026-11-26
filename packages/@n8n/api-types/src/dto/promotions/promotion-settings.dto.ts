@@ -30,9 +30,13 @@ export class PromotionSettingsPublicDto extends Z.class({
 	whoCanApply,
 }) {}
 
-/** The whole settings object, so a `GET` body can be sent back as is. */
+/** Only the settings to change, so a change never overwrites a newer value of another setting. */
 export class UpdatePromotionSettingsDto extends Z.class(
-	{ whoCanPromote, whoCanApprove, whoCanApply },
+	{
+		whoCanPromote: whoCanPromote.optional(),
+		whoCanApprove: whoCanApprove.optional(),
+		whoCanApply: whoCanApply.optional(),
+	},
 	{ strict: true },
 ) {}
 
