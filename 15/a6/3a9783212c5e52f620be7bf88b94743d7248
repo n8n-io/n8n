@@ -1,0 +1,9 @@
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  h_32d8cd6a0d6aad 321,323,420,422
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "15a63a9783212c5e52f620be7bf88b94743d7248",
+  "prompts": {}
+}
