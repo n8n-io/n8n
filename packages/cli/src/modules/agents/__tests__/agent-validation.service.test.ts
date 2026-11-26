@@ -1959,7 +1959,25 @@ describe('AgentValidationService — structured issues', () => {
 			]);
 		});
 
-		it('reports an archived mentioned workflow as not found', async () => {
+		it('reports an archived mentioned workflow in the project of the agent as not found', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				{ ...draftWorkflow, isArchived: true },
+			] as never);
+
+			const result = await validateMentionPublish(service, user);
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
+		});
+
+		it('reports an archived mentioned workflow outside the project of the agent as not found', async () => {
 			const { service, workflowRepository, workflowFinderService } = mentionSetup();
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
 				new Set(['wf-mentioned']),
