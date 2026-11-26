@@ -1,6 +1,7 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createAgent } from '@test-integration/db/agents';
@@ -107,6 +108,14 @@ describe('Knowledge collection repositories', () => {
 			const agentIds = await collectionRepo.findAgentIds(collectionId, {});
 
 			expect(agentIds.sort()).toEqual([firstAgentId, secondAgentId].sort());
+		});
+
+		it('throws not found when it adds an agent that does not exist to a collection', async () => {
+			const collectionId = await createCollection();
+
+			await expect(collectionRepo.addAgent(collectionId, 'missing-agent', {})).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 
