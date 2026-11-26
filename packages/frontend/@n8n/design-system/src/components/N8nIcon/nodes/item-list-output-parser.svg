@@ -1,8 +1,1 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M9 6.75H21" stroke="currentColor" stroke-width="1.5"/>
-<path d="M9 12.75H21" stroke="currentColor" stroke-width="1.5"/>
-<path d="M9 18.75H21" stroke="currentColor" stroke-width="1.5"/>
-<circle cx="4.5" cy="6.5" r="1.5" fill="currentColor"/>
-<circle cx="4.5" cy="12.5" r="1.5" fill="currentColor"/>
-<circle cx="4.5" cy="18.5" r="1.5" fill="currentColor"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3.7 18A1.3 1.3 0 0 1 5 19.3v.4A1.3 1.3 0 0 1 3.7 21h-.4A1.3 1.3 0 0 1 2 19.7v-.4A1.3 1.3 0 0 1 3.3 18zm18.2 2.4H8.6v-1.8h13.3zM3.7 10.5A1.3 1.3 0 0 1 5 11.8v.4a1.3 1.3 0 0 1-1.3 1.3h-.4A1.3 1.3 0 0 1 2 12.2v-.4a1.3 1.3 0 0 1 1.3-1.3zm18.2 2.4H8.6v-1.8h13.3zM3.7 3A1.3 1.3 0 0 1 5 4.3v.4A1.3 1.3 0 0 1 3.7 6h-.4A1.3 1.3 0 0 1 2 4.7v-.4A1.3 1.3 0 0 1 3.3 3zm18.2 2.4H8.6V3.6h13.3z"/></svg>
