@@ -43,8 +43,8 @@ const relations: Array<[projectId: string, user: UserName, role: string, created
 	['personal-alice', 'alice', 'project:personalOwner', 1],
 	['personal-service', 'service', 'project:personalOwner', 1],
 	['team', 'service', 'project:admin', 1],
-	['team', 'carol', 'project:admin', 2],
-	['team', 'bob', 'project:admin', 3],
+	['team', 'carol', 'project:admin', 3],
+	['team', 'bob', 'project:admin', 2],
 	['team', 'dave', 'project:editor', 4],
 	['team-sole-admin', 'service', 'project:admin', 1],
 	['team-sole-admin', 'alice', 'project:admin', 1],
@@ -91,7 +91,7 @@ const cases: Array<[rule: string, resource: Resource, owner: UserName | null]> =
 		'instanceAdmin',
 	],
 	[
-		'nobody when two people are project admins and no publisher is a valid member',
+		'the oldest person project admin when no publisher is a valid member',
 		{
 			projectId: 'team',
 			publications: [
@@ -100,7 +100,7 @@ const cases: Array<[rule: string, resource: Resource, owner: UserName | null]> =
 				['bob', 'deactivated'],
 			],
 		},
-		null,
+		'bob',
 	],
 	[
 		'the project admin when one person is project admin',

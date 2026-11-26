@@ -129,6 +129,7 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 				role: { slug: roleSlug },
 				user: { kind: 'person' },
 			},
+			order: { createdAt: 'ASC', userId: 'ASC' },
 		});
 		return relations.map(({ userId }) => userId);
 	}

@@ -41,29 +41,24 @@ export class BackfillOwnerUserIdOnWorkflowsAndAgents1794915015737 implements Irr
 		const ownerUserId = escape.columnName('ownerUserId');
 
 		await runQuery(`UPDATE ${escape.tableName(table.name)} AS t SET ${ownerUserId} = COALESCE(
-				(${this.soleMemberWithRole(ctx, table, 'personal', 'project:personalOwner')}),
+				(${this.solePersonalProjectOwner(ctx, table)}),
 				(${this.publisher(ctx, table, 'MIN')}),
 				(${this.publisher(ctx, table, 'MAX')}),
-				(${this.soleMemberWithRole(ctx, table, 'team', 'project:admin')}),
+				(${this.oldestTeamProjectAdmin(ctx, table)}),
 				(${this.instanceOwnerOfTeamProjectWithoutAdmin(ctx, table)})
 			) WHERE ${ownerUserId} IS NULL`);
 	}
 
-	private soleMemberWithRole(
-		ctx: MigrationContext,
-		table: OwnedTable,
-		projectType: 'personal' | 'team',
-		role: 'project:personalOwner' | 'project:admin',
-	) {
+	private solePersonalProjectOwner(ctx: MigrationContext, table: OwnedTable) {
 		const { escape } = ctx;
 		const c = escape.columnName;
 
 		return `SELECT r.${c('userId')} FROM ${escape.tableName('project_relation')} r
 			JOIN ${escape.tableName('project')} p
-				ON p.${c('id')} = r.${c('projectId')} AND p.${c('type')} = '${projectType}'
+				ON p.${c('id')} = r.${c('projectId')} AND p.${c('type')} = 'personal'
 			JOIN ${escape.tableName('user')} u
 				ON u.${c('id')} = r.${c('userId')} AND u.${c('kind')} = 'person'
-			WHERE r.${c('projectId')} = ${table.homeProjectId(ctx)} AND r.${c('role')} = '${role}'
+			WHERE r.${c('projectId')} = ${table.homeProjectId(ctx)} AND r.${c('role')} = 'project:personalOwner'
 				AND NOT EXISTS (
 					SELECT 1 FROM ${escape.tableName('project_relation')} o
 					JOIN ${escape.tableName('user')} ou
@@ -71,6 +66,20 @@ export class BackfillOwnerUserIdOnWorkflowsAndAgents1794915015737 implements Irr
 					WHERE o.${c('projectId')} = r.${c('projectId')} AND o.${c('role')} = r.${c('role')}
 						AND o.${c('userId')} <> r.${c('userId')}
 				)`;
+	}
+
+	private oldestTeamProjectAdmin(ctx: MigrationContext, table: OwnedTable) {
+		const { escape } = ctx;
+		const c = escape.columnName;
+
+		return `SELECT r.${c('userId')} FROM ${escape.tableName('project_relation')} r
+			JOIN ${escape.tableName('project')} p
+				ON p.${c('id')} = r.${c('projectId')} AND p.${c('type')} = 'team'
+			JOIN ${escape.tableName('user')} u
+				ON u.${c('id')} = r.${c('userId')} AND u.${c('kind')} = 'person'
+			WHERE r.${c('projectId')} = ${table.homeProjectId(ctx)} AND r.${c('role')} = 'project:admin'
+			ORDER BY r.${c('createdAt')} ASC, r.${c('userId')} ASC
+			LIMIT 1`;
 	}
 
 	private instanceOwnerOfTeamProjectWithoutAdmin(ctx: MigrationContext, table: OwnedTable) {
