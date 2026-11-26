@@ -128,34 +128,45 @@ export class AiPreferenceService {
 	async getApplicable(
 		user: User,
 		projects: Array<Required<AiPreferenceProjectRef>>,
+		ctx: OperationContext = {},
 	): Promise<ApplicableAiPreferences> {
-		const readable = await this.projectAccess(user).allowed('read');
+		const readable = await this.projectAccess(user, ctx).allowed('read');
 		const applicable = projects.filter((project) => readable === 'all' || readable.has(project.id));
-		return await this.findApplicableIn(user.id, applicable);
+		return await this.findApplicableIn(user.id, applicable, ctx);
 	}
 
 	private async findApplicableIn(
 		userId: string,
 		projects: AiPreferenceProjectRef[],
+		ctx: OperationContext,
 	): Promise<ApplicableAiPreferences> {
-		const rows = await this.aiPreferenceRepository.findApplicable({
-			userId,
-			projectIds: projects.map((project) => project.id),
-		});
+		const rows = await this.aiPreferenceRepository.findApplicable(
+			{
+				userId,
+				projectIds: projects.map((project) => project.id),
+			},
+			ctx,
+		);
 		return groupAiPreferences(rows, projects);
 	}
 
-	async getApplicableForProject(user: User, projectId: string): Promise<ApplicableAiPreferences> {
-		const readable = await this.projectAccess(user).has(projectId, 'read');
-		const project = readable ? await this.projectRepository.findOneBy({ id: projectId }) : null;
+	async getApplicableForProject(
+		user: User,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user, ctx).has(projectId, 'read');
+		const project = readable
+			? await this.projectRepository.findForPreferenceTarget(projectId, ctx)
+			: null;
 		// Global access does not include another user's personal project.
 		const foreignPersonal =
 			project?.type === 'personal' &&
-			(await this.projectRepository.getPersonalProjectForUser(user.id))?.id !== project.id;
+			(await this.projectRepository.findPersonalProjectForUser(user.id, ctx))?.id !== project.id;
 		if (!project || foreignPersonal) {
 			throw new NotFoundError(`Project with id ${projectId} not found`);
 		}
-		return await this.findApplicableIn(user.id, [project]);
+		return await this.findApplicableIn(user.id, [project], ctx);
 	}
 
 	/**
@@ -164,14 +175,17 @@ export class AiPreferenceService {
 	 * carries no `projectAiPreference:read` (a chat user) gets nothing here either. Never other
 	 * users' personal projects.
 	 */
-	async getApplicableAcrossProjects(user: User): Promise<ApplicableAiPreferences> {
-		const readable = await this.projectAccess(user).allowed('read');
+	async getApplicableAcrossProjects(
+		user: User,
+		ctx: OperationContext = {},
+	): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user, ctx).allowed('read');
 		const projects = new Map<string, Project>();
-		for (const project of await this.projectRepository.getAccessibleProjects(user.id)) {
+		for (const project of await this.projectRepository.getAccessibleProjects(user.id, ctx)) {
 			if (readable === 'all' || readable.has(project.id)) projects.set(project.id, project);
 		}
 		if (readable === 'all') {
-			for (const project of await this.projectRepository.findTeamProjects()) {
+			for (const project of await this.projectRepository.findTeamProjects(ctx)) {
 				projects.set(project.id, project);
 			}
 		}
@@ -179,7 +193,7 @@ export class AiPreferenceService {
 		const sorted = [...projects.values()].sort(
 			(a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
 		);
-		return await this.findApplicableIn(user.id, sorted);
+		return await this.findApplicableIn(user.id, sorted, ctx);
 	}
 
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
@@ -194,17 +208,21 @@ export class AiPreferenceService {
 			scope?: AiPreferenceScope;
 			projectId?: string;
 		},
+		ctx: OperationContext = {},
 	): Promise<AiPreferenceListDto> {
-		const access = this.projectAccess(user);
-		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
-			...(await this.visibleTo(user, access)),
-			...(await this.narrowedTo(access, page)),
-			skip: page.offset,
-			take: page.limit,
-			...(page.ids ? { ids: page.ids } : {}),
-			...(page.search ? { search: page.search } : {}),
-			...(page.sortBy ? { sortBy: page.sortBy } : {}),
-		});
+		const access = this.projectAccess(user, ctx);
+		const [rows, count] = await this.aiPreferenceRepository.findPageVisible(
+			{
+				...(await this.visibleTo(user, access)),
+				...(await this.narrowedTo(access, page)),
+				skip: page.offset,
+				take: page.limit,
+				...(page.ids ? { ids: page.ids } : {}),
+				...(page.search ? { search: page.search } : {}),
+				...(page.sortBy ? { sortBy: page.sortBy } : {}),
+			},
+			ctx,
+		);
 
 		return {
 			count,
@@ -214,9 +232,10 @@ export class AiPreferenceService {
 		};
 	}
 
-	async count(user: User): Promise<AiPreferenceCountDto> {
+	async count(user: User, ctx: OperationContext = {}): Promise<AiPreferenceCountDto> {
 		const count = await this.aiPreferenceRepository.countVisible(
-			await this.visibleTo(user, this.projectAccess(user)),
+			await this.visibleTo(user, this.projectAccess(user, ctx)),
+			ctx,
 		);
 		return { count };
 	}
@@ -229,13 +248,14 @@ export class AiPreferenceService {
 		user: User,
 		request: AiPreferenceRequestDto,
 		source: AiPreferenceSource,
+		ctx: OperationContext = {},
 	): Promise<AiPreferenceDto> {
-		const access = this.projectAccess(user);
-		const target = await this.resolveTarget(user, request, 'create', access);
-		await this.assertScopeHasRoom(target);
-		await this.assertNotDuplicate(target, request.content);
+		const access = this.projectAccess(user, ctx);
+		const target = await this.resolveTarget(user, request, 'create', access, ctx);
+		await this.assertScopeHasRoom(target, ctx);
+		await this.assertNotDuplicate(target, request.content, undefined, ctx);
 
-		const row = await this.aiPreferenceRepository.save(
+		const row = await this.aiPreferenceRepository.savePreference(
 			this.aiPreferenceRepository.create({
 				id: randomUUID(),
 				content: request.content,
@@ -244,6 +264,7 @@ export class AiPreferenceService {
 				projectId: target.projectId,
 				createdById: user.id,
 			}),
+			ctx,
 		);
 		row.project = target.project;
 		row.user = target.user;
@@ -265,9 +286,10 @@ export class AiPreferenceService {
 		id: string,
 		request: AiPreferenceUpdateRequest,
 		options: { allowMove?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<AiPreferenceDto> {
-		const access = this.projectAccess(user);
-		const row = await this.requireVisible(user, id, access);
+		const access = this.projectAccess(user, ctx);
+		const row = await this.requireVisible(user, id, access, ctx);
 		const resolved: AiPreferenceRequestDto =
 			request.scope === undefined
 				? this.keepTargetOf(row, request.content)
@@ -280,11 +302,17 @@ export class AiPreferenceService {
 			);
 		}
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
-		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
+		const target = await this.resolveTarget(
+			user,
+			resolved,
+			moved ? 'create' : 'update',
+			access,
+			ctx,
+		);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.
-		if (moved) await this.assertScopeHasRoom(target);
+		if (moved) await this.assertScopeHasRoom(target, ctx);
 		if (moved || row.content !== resolved.content) {
-			await this.assertNotDuplicate(target, resolved.content, row.id);
+			await this.assertNotDuplicate(target, resolved.content, row.id, ctx);
 		}
 
 		// `source` is not touched: it records the surface that created the row. An assistant
@@ -295,7 +323,7 @@ export class AiPreferenceService {
 		row.projectId = target.projectId;
 		row.project = target.project;
 
-		const saved = await this.aiPreferenceRepository.save(row);
+		const saved = await this.aiPreferenceRepository.savePreference(row, ctx);
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
@@ -308,26 +336,31 @@ export class AiPreferenceService {
 	 * to other people, and the settings area owns it, as in `undoWrite()`. A row that fails the
 	 * check answers like a row that does not exist.
 	 */
-	async updateContent(user: User, id: string, content: string): Promise<AiPreferenceDto> {
-		const access = this.projectAccess(user);
-		const row = await this.requireVisible(user, id, access);
+	async updateContent(
+		user: User,
+		id: string,
+		content: string,
+		ctx: OperationContext = {},
+	): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user, ctx);
+		const row = await this.requireVisible(user, id, access, ctx);
 		if (row.userId !== user.id) {
 			throw new NotFoundError(`Preference with id ${id} is not one of your personal preferences`);
 		}
 		await this.assertCanWrite(user, row, 'update', access);
-		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
+		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id, ctx);
 
 		row.content = content;
-		const saved = await this.aiPreferenceRepository.save(row);
+		const saved = await this.aiPreferenceRepository.savePreference(row, ctx);
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
-	async delete(user: User, id: string): Promise<void> {
-		const access = this.projectAccess(user);
-		const row = await this.requireVisible(user, id, access);
+	async delete(user: User, id: string, ctx: OperationContext = {}): Promise<void> {
+		const access = this.projectAccess(user, ctx);
+		const row = await this.requireVisible(user, id, access, ctx);
 		await this.assertCanWrite(user, row, 'delete', access);
 
-		await this.aiPreferenceRepository.delete({ id: row.id });
+		await this.aiPreferenceRepository.deletePreference(row.id, ctx);
 	}
 
 	/**
@@ -336,9 +369,14 @@ export class AiPreferenceService {
 	 * nothing the person wrote by hand in settings. A row that fails the check answers like a row
 	 * that does not exist.
 	 */
-	async undoWrite(user: User, id: string, source: AiPreferenceSource): Promise<AiPreferenceDto> {
-		const access = this.projectAccess(user);
-		const row = await this.requireVisible(user, id, access);
+	async undoWrite(
+		user: User,
+		id: string,
+		source: AiPreferenceSource,
+		ctx: OperationContext = {},
+	): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user, ctx);
+		const row = await this.requireVisible(user, id, access, ctx);
 		// Only a personal row the surface saved for the caller. A row the person has since moved to
 		// a project or the instance is a shared rule now, and the settings area owns it.
 		if (row.source !== source || row.createdById !== user.id || row.userId !== user.id) {
@@ -346,18 +384,18 @@ export class AiPreferenceService {
 		}
 		await this.assertCanWrite(user, row, 'delete', access);
 
-		await this.aiPreferenceRepository.delete({ id: row.id });
+		await this.aiPreferenceRepository.deletePreference(row.id, ctx);
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
 	/** One row the caller may see, with the rights the caller holds on it. A hidden row is a 404. */
-	async getById(user: User, id: string): Promise<AiPreferenceDto> {
-		const access = this.projectAccess(user);
-		const row = await this.requireVisible(user, id, access);
+	async getById(user: User, id: string, ctx: OperationContext = {}): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user, ctx);
+		const row = await this.requireVisible(user, id, access, ctx);
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
-	private projectAccess(user: User, ctx: OperationContext = {}): ProjectAccess {
+	private projectAccess(user: User, ctx: OperationContext): ProjectAccess {
 		return new ProjectAccess(user, this.projectScopeService, ctx);
 	}
 
@@ -387,7 +425,7 @@ export class AiPreferenceService {
 		user: User,
 		id: string,
 		access: ProjectAccess,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<AiPreference> {
 		const row = await this.aiPreferenceRepository.findByIdWithRelations(id, ctx);
 		if (!row || !(await this.canSee(user, row, access))) {
@@ -460,7 +498,7 @@ export class AiPreferenceService {
 		request: AiPreferenceRequestDto,
 		operation: WriteOperation,
 		access: ProjectAccess,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<PreferenceTarget> {
 		switch (request.scope) {
 			case 'user': {
@@ -471,7 +509,7 @@ export class AiPreferenceService {
 				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
 					throw new ForbiddenError('You are not allowed to set preferences for another user');
 				}
-				const target = await this.userRepository.findOneBy({ id: userId });
+				const target = await this.userRepository.findByIdWithRole(userId, ctx);
 				if (!target) throw new BadRequestError('The user of the preference does not exist');
 				return { userId: target.id, user: target, projectId: null, project: null };
 			}
@@ -536,9 +574,9 @@ export class AiPreferenceService {
 	 * serializing every write for this would cost more than the overshoot. A hard bound belongs
 	 * in the repository, with the count and the insert in one transaction.
 	 */
-	private async assertScopeHasRoom(target: PreferenceTarget) {
+	private async assertScopeHasRoom(target: PreferenceTarget, ctx: OperationContext) {
 		const scope = aiPreferenceTargetOf(target);
-		const saved = await this.aiPreferenceRepository.countForTarget(scope);
+		const saved = await this.aiPreferenceRepository.countForTarget(scope, ctx);
 		if (saved >= AI_PREFERENCE_MAX_PER_SCOPE) {
 			throw new AiPreferenceScopeFullError(scope.scope, {
 				limit: AI_PREFERENCE_MAX_PER_SCOPE,
@@ -549,12 +587,18 @@ export class AiPreferenceService {
 
 	/** Every surface refuses a restatement at this one point. A duplicate is a
 	 *  409, not a 400: the request is well formed, the state conflicts. */
-	private async assertNotDuplicate(target: PreferenceTarget, content: string, excludeId?: string) {
+	private async assertNotDuplicate(
+		target: PreferenceTarget,
+		content: string,
+		excludeId: string | undefined,
+		ctx: OperationContext,
+	) {
 		const scope = aiPreferenceTargetOf(target);
 		const exists = await this.aiPreferenceRepository.existsForTargetWithContent(
 			scope,
 			content,
 			excludeId,
+			ctx,
 		);
 		if (exists) {
 			throw new ConflictError(`This ${scope.scope} already has a preference with the same text`);

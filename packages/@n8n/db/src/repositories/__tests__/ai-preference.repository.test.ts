@@ -1,8 +1,10 @@
 import { Container } from '@n8n/di';
 import { In, IsNull, Not } from '@n8n/typeorm';
-import type { FindOperator } from '@n8n/typeorm';
+import type { EntityManager, FindOperator } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { AiPreference } from '../../entities';
+import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { AiPreferenceRepository } from '../ai-preference.repository';
 
@@ -12,6 +14,34 @@ describe('AiPreferenceRepository', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	describe('findByIdWithRelations', () => {
+		it('uses the default manager when no context is supplied', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await expect(repository.findByIdWithRelations('preference-1')).resolves.toBeNull();
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(AiPreference, {
+				where: { id: 'preference-1' },
+				relations: { project: true, user: true, createdBy: true },
+			});
+		});
+
+		it('loads the row and relations through the transaction manager', async () => {
+			const manager = mock<EntityManager>();
+			const preference = mock<AiPreference>({ id: 'preference-1' });
+			manager.findOne.mockResolvedValueOnce(preference);
+			const ctx = { trx: new TypeOrmTransaction(manager) };
+
+			await expect(repository.findByIdWithRelations(preference.id, ctx)).resolves.toBe(preference);
+
+			expect(manager.findOne).toHaveBeenCalledWith(AiPreference, {
+				where: { id: preference.id },
+				relations: { project: true, user: true, createdBy: true },
+			});
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('findApplicable', () => {
