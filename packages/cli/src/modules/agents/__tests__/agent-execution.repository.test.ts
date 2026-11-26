@@ -22,6 +22,47 @@ describe('AgentExecutionRepository', () => {
 		);
 	});
 
+	describe('findLatestStatusesByThreadIds', () => {
+		it.each(['parsed', 'text'] as const)(
+			'reads a %s timeline and preserves null timelines',
+			async (format) => {
+				const timeline = [
+					{ type: 'reasoning', content: 'Working on the request', timestamp: 1 },
+				] satisfies NonNullable<AgentExecution['timeline']>;
+				const qb = {
+					select: vi.fn().mockReturnThis(),
+					addSelect: vi.fn().mockReturnThis(),
+					setParameter: vi.fn().mockReturnThis(),
+					where: vi.fn().mockReturnThis(),
+					andWhere: vi.fn().mockReturnThis(),
+					getRawMany: vi.fn().mockResolvedValue([
+						{
+							threadId: 'running-thread',
+							status: 'running',
+							timeline: format === 'text' ? JSON.stringify(timeline) : timeline,
+						},
+						{ threadId: 'completed-thread', status: 'success', timeline: null },
+					]),
+				};
+				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(qb as never);
+
+				const result = await repository.findLatestStatusesByThreadIds([
+					'running-thread',
+					'completed-thread',
+				]);
+
+				expect(result.get('running-thread')).toEqual({ status: 'running', timeline });
+				expect(result.get('completed-thread')).toEqual({ status: 'success', timeline: null });
+			},
+		);
+
+		it('returns no statuses without querying for an empty thread list', async () => {
+			const query = vi.spyOn(repository, 'createQueryBuilder');
+			expect(await repository.findLatestStatusesByThreadIds([])).toEqual(new Map());
+			expect(query).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findLatestSuspendedByThreadId', () => {
 		it('finds the most recently suspended execution in the thread', async () => {
 			const suspended = { id: 'execution-1', source: 'telegram' } as AgentExecution;

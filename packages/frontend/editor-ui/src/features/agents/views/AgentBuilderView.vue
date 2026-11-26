@@ -994,7 +994,7 @@ const {
 	isDeletingSession,
 	setSessionInUrl,
 	clearContinueSessionParam,
-	onSessionPick,
+	onSessionPick: selectSession,
 	onNewChat,
 	markSessionCreated,
 	deleteSession,
@@ -1003,6 +1003,18 @@ const {
 	projectId,
 	agentId,
 });
+watch(
+	effectiveSessionId,
+	() => {
+		previewRequest++;
+	},
+	{ flush: 'sync' },
+);
+function onSessionPick(sessionId: string) {
+	previewRequest++;
+	selectSession(sessionId);
+}
+
 const { dismissedToolCallIds: dismissedFixToolCallIds, trackAcceptedFixHandoff: trackFixHandoff } =
 	useFixWithAssistantCalloutDismissal(effectiveSessionId);
 trackAcceptedFixHandoff = trackFixHandoff;
@@ -1344,15 +1356,11 @@ async function onOpenPreview(
 	} catch {
 		return false;
 	}
-	if (isArtifactMode.value) {
-		if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
-			return false;
-		}
-	} else if (
+	if (
 		request !== previewRequest ||
 		isStaleAgentTarget(target.projectId, target.agentId) ||
 		!isBuilt.value ||
-		!canExecuteAgent.value ||
+		(!isArtifactMode.value && !canExecuteAgent.value) ||
 		chatModeBusy.value
 	) {
 		return false;

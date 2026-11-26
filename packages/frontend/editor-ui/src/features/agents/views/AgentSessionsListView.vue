@@ -12,6 +12,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { buildAgentSessionFixWithAssistantPrompt } from '@/features/agents/utils/fix-with-assistant';
 import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
 import { useAgentAttentionFlags } from '@/features/agents/composables/useAgentAttentionFlags';
 import {
@@ -321,11 +322,10 @@ async function fixWithAssistant(thread: AgentExecutionThread) {
 			sessionTitle: threadTitleOf(thread),
 			executionId: failure?.executionId,
 			initialDraft: {
-				text: i18n.baseText('agentSessions.fixWithAssistantPrompt', {
-					interpolate: {
-						error: failure?.message || i18n.baseText('agentSessions.status.error'),
-					},
-				}),
+				text: buildAgentSessionFixWithAssistantPrompt(
+					failure?.message || i18n.baseText('agentSessions.status.error'),
+					i18n,
+				),
 				prefillType: 'handoff_agent_change_request',
 			},
 		});

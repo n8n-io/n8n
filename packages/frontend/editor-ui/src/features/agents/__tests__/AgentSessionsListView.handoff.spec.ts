@@ -8,6 +8,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import * as toastModule from '@n8n/composables/useToast';
+import { buildAgentSessionFixWithAssistantPrompt } from '@/features/agents/utils/fix-with-assistant';
 import type { AgentTestHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
@@ -185,7 +186,7 @@ describe('AgentSessionsListView Assistant handoff', () => {
 			sessionTitle: 'Failed session',
 			executionId: 'execution-1',
 			initialDraft: {
-				text: 'Fix this error: Service unavailable',
+				text: buildAgentSessionFixWithAssistantPrompt('Service unavailable', useI18n()),
 				prefillType: 'handoff_agent_change_request',
 			},
 		});
@@ -208,7 +209,10 @@ describe('AgentSessionsListView Assistant handoff', () => {
 				sessionTitle: 'Help with my report',
 				executionId: summary?.latest.executionId,
 				initialDraft: {
-					text: `Fix this error: ${useI18n().baseText('agentSessions.status.error')}`,
+					text: buildAgentSessionFixWithAssistantPrompt(
+						useI18n().baseText('agentSessions.status.error'),
+						useI18n(),
+					),
 					prefillType: 'handoff_agent_change_request',
 				},
 			});
