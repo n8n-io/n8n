@@ -115,16 +115,14 @@ export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEd
  * @param previousNodeRun Which run of the predecessor fed this one.
  * @param isLive Whether the edge delivered data. A live edge wins over a dead one.
  */
-export function toSourceSlots(
+function toSourceSlots(
 	edges: GraphEdge[],
 	namesById: Map<string, string>,
-	previousNodeRun?: (edge: GraphEdge) => number,
-	isLive?: (edge: GraphEdge) => boolean,
+	previousNodeRun: (edge: GraphEdge) => number,
+	isLive: (edge: GraphEdge) => boolean,
 ): Array<ISourceData | null> {
 	const sources: Array<ISourceData | null> = [];
-	const ordered = isLive
-		? [...edges.filter(isLive), ...edges.filter((edge) => !isLive(edge))]
-		: edges;
+	const ordered = [...edges.filter(isLive), ...edges.filter((edge) => !isLive(edge))];
 
 	for (const edge of ordered) {
 		const previousNode = namesById.get(edge.from);
@@ -137,7 +135,7 @@ export function toSourceSlots(
 		// slot, every item carries its own source in `pairedItem` (`item-links.ts`).
 		if (sources[inputIndex] !== null) continue;
 
-		const run = previousNodeRun?.(edge) ?? 0;
+		const run = previousNodeRun(edge);
 		sources[inputIndex] = {
 			previousNode,
 			previousNodeOutput: edge.outputIndex,
