@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddTestChatToAgentExecutionThreads1795566054225';
+const MIGRATION_NAME = 'AddTestChatToAgentExecutionThreads1795698661898';
 
 describe('AddTestChatToAgentExecutionThreads migration', () => {
 	let projectId: string;
