@@ -1,0 +1,90 @@
+{
+	"name": "HTTP Request JSON query and headers test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5c1f0b7e-2d1a-4f0e-8a51-0c6f3e7d9a01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [160, 720]
+		},
+		{
+			"parameters": {
+				"url": "https://json.example.com/string",
+				"sendQuery": true,
+				"specifyQuery": "json",
+				"jsonQuery": "{\"limit\": 2}",
+				"sendHeaders": true,
+				"specifyHeaders": "json",
+				"jsonHeaders": "{\"X-Custom\": \"string\"}",
+				"options": {}
+			},
+			"id": "5c1f0b7e-2d1a-4f0e-8a51-0c6f3e7d9a02",
+			"name": "HTTP Request JSON string",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [460, 600]
+		},
+		{
+			"parameters": {
+				"url": "https://json.example.com/expression",
+				"sendQuery": true,
+				"specifyQuery": "json",
+				"jsonQuery": "={{ { \"limit\": 3 } }}",
+				"sendHeaders": true,
+				"specifyHeaders": "json",
+				"jsonHeaders": "={{ { \"X-Custom\": \"expression\" } }}",
+				"options": {}
+			},
+			"id": "5c1f0b7e-2d1a-4f0e-8a51-0c6f3e7d9a03",
+			"name": "HTTP Request JSON expression",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [460, 800]
+		}
+	],
+	"pinData": {
+		"HTTP Request JSON string": [
+			{
+				"json": {
+					"seen": "string"
+				}
+			}
+		],
+		"HTTP Request JSON expression": [
+			{
+				"json": {
+					"seen": "expression"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request JSON string",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request JSON expression",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"tags": []
+}

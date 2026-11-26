@@ -284,7 +284,8 @@ export class HttpRequestV3 implements INodeType {
 					[],
 				) as [{ name: string; value: string }];
 				const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as string;
-				const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+				const jsonQueryParameter =
+					(this.getNodeParameter('jsonQuery', itemIndex, {}) as IDataObject | undefined) ?? {};
 
 				const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 				const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
@@ -311,7 +312,8 @@ export class HttpRequestV3 implements INodeType {
 					'keypair',
 				) as string;
 
-				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+				const jsonHeadersParameter =
+					(this.getNodeParameter('jsonHeaders', itemIndex, {}) as IDataObject | undefined) ?? {};
 
 				const {
 					redirect,
@@ -514,13 +516,7 @@ export class HttpRequestV3 implements INodeType {
 					if (specifyQuery === 'keypair') {
 						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 					} else if (specifyQuery === 'json') {
-						// query is specified using JSON
-						requestOptions.qs = parseJsonParameter(
-							this.getNode(),
-							jsonQueryParameter,
-							'JSON Query Parameters',
-							itemIndex,
-						);
+						requestOptions.qs = jsonQueryParameter;
 					}
 				}
 
@@ -533,12 +529,7 @@ export class HttpRequestV3 implements INodeType {
 							parametersToKeyValue,
 						);
 					} else if (specifyHeaders === 'json') {
-						additionalHeaders = parseJsonParameter(
-							this.getNode(),
-							jsonHeadersParameter,
-							'JSON Headers',
-							itemIndex,
-						);
+						additionalHeaders = jsonHeadersParameter;
 					}
 					requestOptions.headers = {
 						...requestOptions.headers,

@@ -19,6 +19,18 @@ describe('Test HTTP Request Node', () => {
 			.get('/override')
 			.reply(200, { ok: true, seen: 'override' });
 
+		nock('https://json.example.com')
+			.matchHeader('x-custom', 'string')
+			.get('/string')
+			.query({ limit: '2' })
+			.reply(200, { seen: 'string' });
+
+		nock('https://json.example.com')
+			.matchHeader('x-custom', 'expression')
+			.get('/expression')
+			.query({ limit: '3' })
+			.reply(200, { seen: 'expression' });
+
 		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
 			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
 
