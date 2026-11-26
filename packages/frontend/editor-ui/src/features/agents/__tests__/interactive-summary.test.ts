@@ -20,7 +20,7 @@ describe('summariseToolCall', () => {
 		},
 	);
 
-	it('does not summarise delegate_subagent; AgentChatToolSteps owns the i18n summary', () => {
+	it('does not summarise delegate_subagent; AgentChatActivity owns the i18n summary', () => {
 		expect(
 			summariseToolCall(
 				DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -30,7 +30,7 @@ describe('summariseToolCall', () => {
 		).toBeUndefined();
 	});
 
-	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {
+	it('does not summarise write_todos; AgentChatActivity owns the i18n summary', () => {
 		expect(
 			summariseToolCall(WRITE_TODOS_TOOL_NAME, {
 				status: 'ok',

@@ -1,4 +1,5 @@
 import type {
+	AgentKnowledgeCollectionDto,
 	CreateKnowledgeCollectionDto,
 	KnowledgeCollectionDto,
 	KnowledgeCollectionListResponse,
@@ -14,6 +15,7 @@ import { customAlphabet } from 'nanoid';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { KnowledgeCollection } from '../entities';
+import type { KnowledgeWriteRunner } from '../files/knowledge-file.service';
 import { KnowledgeAvailabilityService } from '../knowledge-availability.service';
 import {
 	KnowledgeCollectionRepository,
@@ -214,6 +216,70 @@ export class KnowledgeCollectionCatalogService {
 	async listAgentIds(user: User, ref: KnowledgeCollectionRef): Promise<string[]> {
 		await this.getInProject(user, ref, 'agent:read');
 		return await this.collectionRepository.findAgentIds(ref.collectionId, {});
+	}
+
+	/**
+	 * The collections that the project owns, by name, each with its file count and
+	 * whether the agent uses it.
+	 */
+	async listForAgent(
+		user: User,
+		projectId: string,
+		agentId: string,
+	): Promise<AgentKnowledgeCollectionDto[]> {
+		await this.assertCanAccessProject(user, projectId, 'agent:read');
+
+		const [collections, agentCollectionIds] = await Promise.all([
+			this.collectionRepository.findSharedByProjectId(projectId, {}),
+			this.collectionRepository.findAgentCollectionIds(agentId, {}),
+		]);
+		const usedIds = new Set(agentCollectionIds);
+		const fileTotals = await this.collectionRepository.findFileTotals(
+			collections.map(({ id }) => id),
+			{},
+		);
+
+		return collections
+			.map(({ id, name, description }) => ({
+				id,
+				name,
+				description: description ?? '',
+				fileCount: fileTotals.get(id)?.fileCount ?? 0,
+				usedByAgent: usedIds.has(id),
+			}))
+			.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/**
+	 * Adds the agent to the collection. A repeat add changes nothing. The caller
+	 * checks that the agent is in the project and is not archived.
+	 */
+	async addAgent(
+		user: User,
+		ref: KnowledgeCollectionRef,
+		agentId: string,
+		writeFence: KnowledgeWriteRunner,
+	): Promise<void> {
+		await this.getInProject(user, ref, 'agent:update');
+		await writeFence(
+			async (ctx) => await this.collectionRepository.addAgent(ref.collectionId, agentId, ctx),
+		);
+	}
+
+	/**
+	 * Removes the agent from the collection. The caller checks that the agent is
+	 * in the project and is not archived.
+	 */
+	async removeAgent(
+		user: User,
+		ref: KnowledgeCollectionRef,
+		agentId: string,
+		writeFence: KnowledgeWriteRunner,
+	): Promise<void> {
+		await this.getInProject(user, ref, 'agent:update');
+		await writeFence(
+			async (ctx) => await this.collectionRepository.removeAgent(ref.collectionId, agentId, ctx),
+		);
 	}
 
 	/**

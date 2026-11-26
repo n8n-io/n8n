@@ -29,6 +29,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '../shared/utils';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
 import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
+import { findWorkflowStatistic } from '../shared/workflow-statistics';
 
 describe('Insights vs Workflow Statistics Integration', () => {
 	beforeAll(async () => {
@@ -356,7 +357,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			fail: () => undefined,
 		},
 	])(
-		'should count runs refused by $cause as failures but not as billable',
+		'should count runs refused by $cause as Insights failures, but not as billable or in workflow statistics',
 		async ({ error, reason, workflowFixture, fail }) => {
 			const blockedCount = 3;
 			const blockedWorkflow = await createWorkflow(
@@ -386,18 +387,11 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			for (let i = 0; i < blockedCount; i++) await runWithTriggerItem();
 			spy?.mockRestore();
 
-			await waitForStatistics(
-				blockedWorkflow.id,
-				blockedCount,
-				10000,
-				StatisticsNames.productionError,
-			);
 			await waitForCompaction(blockedWorkflow.id, blockedCount, 20000, 'failure');
 
-			const productionError = await workflowStatisticsRepository.findOne({
-				where: { workflowId: blockedWorkflow.id, name: StatisticsNames.productionError },
-			});
-			expect(productionError).toMatchObject({ count: blockedCount, rootCount: 0 });
+			expect(
+				await findWorkflowStatistic(blockedWorkflow.id, StatisticsNames.productionError),
+			).toBeNull();
 
 			const [refused] = await executionRepository.findMultipleExecutions(
 				{ where: { workflowId: blockedWorkflow.id } },

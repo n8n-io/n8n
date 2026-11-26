@@ -44,6 +44,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		findPrunableExecutions: vi.fn(),
+		findRetentionCountCutoff: vi.fn(),
 		deleteEndedExecutions: vi.fn(),
 		...overrides,
 	};
@@ -68,6 +69,9 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		renewQueuedStep: vi.fn(),
 		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
 		failStaleRunningStep: vi.fn(),
+		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
+		renewSettledStep: vi.fn(),
+		acknowledgeSettledStep: vi.fn(),
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),

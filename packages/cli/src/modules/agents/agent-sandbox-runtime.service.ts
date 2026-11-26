@@ -14,6 +14,7 @@ import {
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents/sandbox';
+import { resolveAgentSandboxEgressEnabled } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -78,6 +79,7 @@ export interface AgentSandboxRuntime<
 	filesystem: WorkspaceFilesystem;
 	workspaceRoot: string;
 	cacheKey: string;
+	egressEnabled: boolean;
 }
 
 function buildWorkspaceSandboxId(scope: {
@@ -101,6 +103,11 @@ function buildKnowledgeSandboxId(scope: {
 		JSON.stringify([scope.instanceId, scope.projectId, scope.agentId]),
 		KNOWLEDGE_SANDBOX_NAMESPACE,
 	);
+}
+
+function sandboxIdForEgress(sandboxId: string, egressEnabled: boolean): string {
+	// Keep existing public workspaces. Restricted workspaces need a new creation policy.
+	return egressEnabled ? sandboxId : uuidv5('egress:none', sandboxId);
 }
 
 function buildWorkspaceLabels(
@@ -170,7 +177,7 @@ export class AgentSandboxRuntimeService {
 		await this.destroySandboxByIdentity(
 			projectId,
 			agentId,
-			`${WORKSPACE_SANDBOX_NAME_PREFIX}${sandboxId}`,
+			WORKSPACE_SANDBOX_NAME_PREFIX,
 			sandboxId,
 			buildWorkspaceLabels(projectId, agentId, principalHash),
 		);
@@ -187,7 +194,7 @@ export class AgentSandboxRuntimeService {
 		await this.destroySandboxByIdentity(
 			projectId,
 			agentId,
-			`${KNOWLEDGE_SANDBOX_NAME_PREFIX}${sandboxId}`,
+			KNOWLEDGE_SANDBOX_NAME_PREFIX,
 			sandboxId,
 			buildKnowledgeLabels(projectId, agentId),
 		);
@@ -197,24 +204,33 @@ export class AgentSandboxRuntimeService {
 		projectId: string,
 		agentId: string,
 		principalHash: AgentSandboxPrincipalHash,
-		options?: { onFilesystemInit?: FilesystemLifecycleHook },
+		options?: { onFilesystemInit?: FilesystemLifecycleHook; sandboxEgress?: boolean },
 	): Promise<AgentSandboxRuntime> {
 		if (this.isMxcWorkspaceProvider()) {
 			return await this.acquireMxcWorkspace(projectId, agentId, principalHash, options);
 		}
 		const provider = this.sandboxSettingsService.getProvider();
-		const sandboxId = buildWorkspaceSandboxId({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-			principalHash,
-		});
+		const egressEnabled = resolveAgentSandboxEgressEnabled(
+			this.agentsConfig.sandboxEgressPolicy,
+			options?.sandboxEgress,
+		);
+		const sandboxId = sandboxIdForEgress(
+			buildWorkspaceSandboxId({
+				instanceId: this.instanceSettings.instanceId,
+				projectId,
+				agentId,
+				principalHash,
+			}),
+			egressEnabled,
+		);
+
 		return await this.acquireSandboxByIdentity(
 			projectId,
 			agentId,
 			provider,
 			`${WORKSPACE_SANDBOX_NAME_PREFIX}${sandboxId}`,
 			sandboxId,
+			egressEnabled,
 			buildWorkspaceLabels(projectId, agentId, principalHash),
 			`${provider}:workspace:${sandboxId}`,
 			{
@@ -237,17 +253,24 @@ export class AgentSandboxRuntimeService {
 		agentId: string,
 	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		const provider = this.sandboxSettingsService.getProvider();
-		const sandboxId = buildKnowledgeSandboxId({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-		});
+		// Knowledge sandboxes only mirror and search files, so outbound network access is always disabled.
+		const egressEnabled = false;
+		const sandboxId = sandboxIdForEgress(
+			buildKnowledgeSandboxId({
+				instanceId: this.instanceSettings.instanceId,
+				projectId,
+				agentId,
+			}),
+			egressEnabled,
+		);
+
 		return await this.acquireSandboxByIdentity(
 			projectId,
 			agentId,
 			provider,
 			`${KNOWLEDGE_SANDBOX_NAME_PREFIX}${sandboxId}`,
 			sandboxId,
+			egressEnabled,
 			buildKnowledgeLabels(projectId, agentId),
 			`${provider}:knowledge:${sandboxId}`,
 			{
@@ -269,6 +292,7 @@ export class AgentSandboxRuntimeService {
 		provider: SandboxProvider,
 		daytonaName: string,
 		n8nSandboxId: string,
+		egressEnabled: boolean,
 		labels: Record<string, string>,
 		cacheKey: string,
 		lifecycle: SandboxLifecycle,
@@ -283,6 +307,7 @@ export class AgentSandboxRuntimeService {
 				provider,
 				daytonaName,
 				n8nSandboxId,
+				egressEnabled,
 				labels,
 				cacheKey,
 				lifecycle,
@@ -335,6 +360,8 @@ export class AgentSandboxRuntimeService {
 			filesystem,
 			workspaceRoot: sandbox.workspaceDir,
 			cacheKey: `mxc:workspace:${sandboxId}`,
+			// MXC always denies outbound network access, whatever the egress policy.
+			egressEnabled: false,
 		};
 	}
 
@@ -408,17 +435,27 @@ export class AgentSandboxRuntimeService {
 	private async destroySandboxByIdentity(
 		projectId: string,
 		agentId: string,
-		daytonaName: string,
+		daytonaNamePrefix: string,
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 	): Promise<void> {
-		const sandboxes = [
-			['daytona', daytonaName],
-			['n8n-sandbox', n8nSandboxId],
-		] as const;
+		for (const egressEnabled of [true, false]) {
+			const id = sandboxIdForEgress(n8nSandboxId, egressEnabled);
+			const sandboxes = [
+				['daytona', `${daytonaNamePrefix}${id}`],
+				['n8n-sandbox', id],
+			] as const;
 
-		for (const [provider, sandboxId] of sandboxes) {
-			await this.tryDestroySandbox(projectId, agentId, provider, sandboxId, labels);
+			for (const [provider, sandboxId] of sandboxes) {
+				await this.tryDestroySandbox(
+					projectId,
+					agentId,
+					provider,
+					sandboxId,
+					egressEnabled,
+					labels,
+				);
+			}
 		}
 	}
 
@@ -427,13 +464,14 @@ export class AgentSandboxRuntimeService {
 		agentId: string,
 		provider: SandboxProvider,
 		sandboxId: string,
+		egressEnabled: boolean,
 		labels: Record<string, string>,
 	): Promise<void> {
 		try {
 			const config =
 				provider === 'daytona'
-					? await this.resolveDaytonaSandboxConfig(projectId, sandboxId, labels)
-					: await this.resolveN8nSandboxConfig(sandboxId);
+					? await this.resolveDaytonaSandboxConfig(projectId, sandboxId, egressEnabled, labels)
+					: await this.resolveN8nSandboxConfig(sandboxId, egressEnabled);
 			const sandbox = await createSandbox(config, { logger: this.logger });
 			// deleteRemote deletes by sandbox identity even though this instance never
 			// started it; destroy() is scoped to remotes the instance acquired.
@@ -458,6 +496,7 @@ export class AgentSandboxRuntimeService {
 		provider: SandboxProvider,
 		daytonaName: string,
 		n8nSandboxId: string,
+		egressEnabled: boolean,
 		labels: Record<string, string>,
 		cacheKey: string,
 		lifecycle: SandboxLifecycle,
@@ -467,8 +506,14 @@ export class AgentSandboxRuntimeService {
 
 		const config =
 			provider === 'daytona'
-				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
-				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
+				? await this.resolveDaytonaSandboxConfig(
+						projectId,
+						daytonaName,
+						egressEnabled,
+						labels,
+						lifecycle,
+					)
+				: await this.resolveN8nSandboxConfig(n8nSandboxId, egressEnabled, lifecycle);
 		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 
@@ -505,12 +550,14 @@ export class AgentSandboxRuntimeService {
 			filesystem,
 			workspaceRoot,
 			cacheKey: `${cacheKey}:${sandbox.id}`,
+			egressEnabled: config.egress === 'public',
 		};
 	}
 
 	private async resolveDaytonaSandboxConfig(
 		projectId: string,
 		sandboxId: string,
+		egressEnabled: boolean,
 		labels: Record<string, string>,
 		lifecycle: SandboxLifecycle = {},
 	): Promise<DaytonaSandboxConfig> {
@@ -522,6 +569,7 @@ export class AgentSandboxRuntimeService {
 			...connection,
 			enabled: true,
 			provider: 'daytona',
+			egress: egressEnabled ? 'public' : 'none',
 			id: sandboxId,
 			name: sandboxId,
 			labels,
@@ -533,6 +581,7 @@ export class AgentSandboxRuntimeService {
 
 	private async resolveN8nSandboxConfig(
 		sandboxId: string,
+		egressEnabled: boolean,
 		lifecycle: Pick<SandboxLifecycle, 'ephemeral'> = {},
 	): Promise<N8nSandboxConfig> {
 		const { serviceUrl, apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig();
@@ -546,6 +595,7 @@ export class AgentSandboxRuntimeService {
 		return {
 			enabled: true,
 			provider: 'n8n-sandbox',
+			egress: egressEnabled ? 'public' : 'none',
 			id: sandboxId,
 			serviceUrl: normalizedServiceUrl,
 			apiKey,

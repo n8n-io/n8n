@@ -13,7 +13,7 @@ function makeLogger(): EngineLogger {
 	return { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
 }
 
-/** Only the two retention methods are exercised here. */
+/** Only the retention methods are exercised here. */
 function makeExecutionStore(): ExecutionStore {
 	return {
 		createExecution: vi.fn(),
@@ -28,6 +28,7 @@ function makeExecutionStore(): ExecutionStore {
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn(),
 		findPrunableExecutions: vi.fn().mockResolvedValue([]),
+		findRetentionCountCutoff: vi.fn().mockResolvedValue(undefined),
 		deleteEndedExecutions: vi.fn(async (ids: string[]) => ids.length),
 	};
 }
@@ -44,11 +45,12 @@ function makeSweeper(
 	{
 		deleteFiles,
 		random = () => 0,
-	}: Partial<{ deleteFiles: ExecutionFilesDeleter; random: () => number }> = {},
+		maxCount,
+	}: Partial<{ deleteFiles: ExecutionFilesDeleter; random: () => number; maxCount: number }> = {},
 ) {
 	const logger = makeLogger();
 	const cleanup = new ExecutionFileCleanup(deleteFiles ?? vi.fn(async () => {}), logger);
-	const policy = { maxAgeMs: DAY_MS, intervalMs: INTERVAL_MS, batchSize: 2 };
+	const policy = { maxAgeMs: DAY_MS, maxCount, intervalMs: INTERVAL_MS, batchSize: 2 };
 	return { sweeper: new RetentionSweeper(store, cleanup, policy, logger, random), store, logger };
 }
 
@@ -90,6 +92,48 @@ describe('RetentionSweeper', () => {
 			await sweeper.stop();
 		});
 
+		it('reads the count cutoff once per pass and passes it to every batch of the pass', async () => {
+			const store = makeExecutionStore();
+			const cutoff = { id: 'exec-9', finishedAt: new Date(9) };
+			vi.mocked(store.findRetentionCountCutoff).mockResolvedValue(cutoff);
+			vi.mocked(store.findPrunableExecutions)
+				.mockResolvedValueOnce([row(1), row(2)])
+				.mockResolvedValueOnce([row(3)]);
+			const { sweeper } = makeSweeper(store, { maxCount: 5 });
+
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(store.findRetentionCountCutoff).toHaveBeenCalledExactlyOnceWith(5);
+			expect(vi.mocked(store.findPrunableExecutions).mock.calls).toEqual([
+				[{ maxAgeMs: DAY_MS, countCutoff: cutoff, limit: 2 }],
+				[{ maxAgeMs: DAY_MS, countCutoff: cutoff, limit: 2, after: row(2) }],
+			]);
+
+			await vi.advanceTimersByTimeAsync(INTERVAL_MS);
+			expect(store.findRetentionCountCutoff).toHaveBeenCalledTimes(2);
+
+			await sweeper.stop();
+		});
+
+		it.each([undefined, 0])(
+			'does not read a count cutoff when maxCount is %s',
+			async (maxCount) => {
+				const { sweeper, store } = makeSweeper(undefined, { maxCount });
+
+				sweeper.start();
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(store.findRetentionCountCutoff).not.toHaveBeenCalled();
+				expect(store.findPrunableExecutions).toHaveBeenCalledExactlyOnceWith({
+					maxAgeMs: DAY_MS,
+					limit: 2,
+				});
+
+				await sweeper.stop();
+			},
+		);
+
 		it('keeps the rows of an execution whose files fail to delete, and selects it again only in the next pass', async () => {
 			const store = makeExecutionStore();
 			vi.mocked(store.findPrunableExecutions).mockResolvedValueOnce([row(1), row(2)]);
@@ -121,6 +165,12 @@ describe('RetentionSweeper', () => {
 
 		it.each([
 			[
+				'findRetentionCountCutoff',
+				0,
+				(store: ExecutionStore) =>
+					vi.mocked(store.findRetentionCountCutoff).mockRejectedValueOnce(error),
+			],
+			[
 				'findPrunableExecutions',
 				2,
 				(store: ExecutionStore) =>
@@ -142,7 +192,7 @@ describe('RetentionSweeper', () => {
 			async (_, deleted, reject) => {
 				const store = makeExecutionStore();
 				reject(store);
-				const { sweeper, logger } = makeSweeper(store);
+				const { sweeper, logger } = makeSweeper(store, { maxCount: 5 });
 
 				sweeper.start();
 				await vi.advanceTimersByTimeAsync(0);

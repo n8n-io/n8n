@@ -799,6 +799,7 @@ describe('GlobalConfig', () => {
 			mxcWorkspaceRoot: '',
 			mxcReadonlyPaths: '',
 			mxcDenialsReportDir: '',
+			sandboxEgressPolicy: 'opt-in',
 			maxGeneratedFileSizeMb: 50,
 			maxGeneratedFileCount: 100,
 			maxGeneratedTotalMb: 500,

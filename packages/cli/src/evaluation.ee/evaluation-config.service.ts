@@ -17,11 +17,11 @@ export class EvaluationConfigService {
 	) {}
 
 	async list(workflowId: string): Promise<EvaluationConfig[]> {
-		return await this.repository.listByWorkflowId(workflowId);
+		return await this.repository.listByWorkflowId(workflowId, {});
 	}
 
 	async get(workflowId: string, configId: string): Promise<EvaluationConfig | null> {
-		return await this.repository.findByIdAndWorkflowId(configId, workflowId);
+		return await this.repository.findByIdAndWorkflowId(configId, workflowId, {});
 	}
 
 	async create(
@@ -33,11 +33,11 @@ export class EvaluationConfigService {
 		// Quota: only enforce on the workflow's *first* config — subsequent configs
 		// on the same workflow do not count against the quota (the limit is workflows
 		// with at least one evaluation, not total configs).
-		const existing = await this.repository.listByWorkflowId(workflowId);
+		const existing = await this.repository.listByWorkflowId(workflowId, {});
 		if (existing.length === 0) {
 			const limit = this.licenseState.getMaxWorkflowsWithEvaluations();
 			if (limit > 0) {
-				const used = await this.repository.countDistinctWorkflowsWithConfigs();
+				const used = await this.repository.countDistinctWorkflowsWithConfigs({});
 				if (used >= limit) {
 					throw new EvaluationApiError(
 						'EVALUATION_QUOTA_EXCEEDED',
@@ -49,7 +49,7 @@ export class EvaluationConfigService {
 
 		await this.runValidator(workflow, user, dto);
 
-		return await this.repository.createForWorkflow(nanoid(), workflowId, dto);
+		return await this.repository.createForWorkflow(nanoid(), workflowId, dto, {});
 	}
 
 	async update(
@@ -61,7 +61,7 @@ export class EvaluationConfigService {
 	): Promise<EvaluationConfig> {
 		await this.runValidator(workflow, user, dto);
 
-		const updated = await this.repository.updateForWorkflow(configId, workflowId, dto);
+		const updated = await this.repository.updateForWorkflow(configId, workflowId, dto, {});
 		if (!updated) {
 			throw new EvaluationApiError('CONFIG_NOT_FOUND', `Evaluation config "${configId}" not found`);
 		}
@@ -69,11 +69,11 @@ export class EvaluationConfigService {
 	}
 
 	async delete(workflowId: string, configId: string): Promise<void> {
-		await this.repository.deleteByIdAndWorkflowId(configId, workflowId);
+		await this.repository.deleteByIdAndWorkflowId(configId, workflowId, {});
 	}
 
 	async markInvalid(configId: string, reason: string): Promise<void> {
-		await this.repository.markInvalid(configId, reason);
+		await this.repository.markInvalid(configId, reason, {});
 	}
 
 	private async runValidator(

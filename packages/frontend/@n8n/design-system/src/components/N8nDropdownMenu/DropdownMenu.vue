@@ -9,6 +9,8 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, useId, watch } from 'vue';
 
+import { useScrollEdges } from '../../composables/useScrollEdges';
+
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
@@ -87,6 +89,8 @@ provide(
 const internalOpen = ref(props.defaultOpen ?? false);
 
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+const listRef = ref<HTMLElement | null>(null);
+const { scrollMaskAttrs } = useScrollEdges(listRef, { axis: 'vertical' });
 const triggerRef = ref<InstanceType<typeof DropdownMenuTrigger> | null>(null);
 const searchableContentRef = ref<{ highlightFirstItem: () => void } | null>(null);
 const generatedContentId = `n8n-dropdown-menu-${useId()}`;
@@ -483,7 +487,12 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 				}"
 				data-menu-content
 				:data-test-id="contentTestId"
-				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
+				:class="[
+					$style.content,
+					searchable && $style.searchable,
+					!searchable && !slots.content && $style.bounded,
+					extraPopperClass,
+				]"
 				:side="placementParts.side"
 				:align="placementParts.align"
 				:reference="reference"
@@ -553,38 +562,41 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 						</template>
 					</DropdownMenuSearchableContent>
 
-					<DropdownMenuItems
-						v-else
-						:items="items"
-						:loading="loading"
-						:loading-item-count="loadingItemCount"
-						:empty-text="emptyText"
-						:open-sub-menu-index="openSubMenuIndex"
-						@select="handleItemSelect"
-						@search="handleItemSearch"
-						@submenu:toggle="handleSubMenuOpenChange"
-						@item-mouseup="handleItemMouseUp"
-					>
-						<template v-if="slots.loading" #loading>
-							<slot name="loading" />
-						</template>
-						<template v-if="slots.empty" #empty>
-							<slot name="empty" />
-						</template>
-						<template v-if="slots.item" #item="slotProps">
-							<slot name="item" v-bind="slotProps" />
-						</template>
-						<template v-if="slots['item-leading']" #item-leading="slotProps">
-							<slot name="item-leading" v-bind="slotProps" />
-						</template>
-						<template v-if="slots['item-label']" #item-label="slotProps">
-							<slot name="item-label" v-bind="slotProps" />
-						</template>
-						<template v-if="slots['item-trailing']" #item-trailing="slotProps">
-							<slot name="item-trailing" v-bind="slotProps" />
-						</template>
-					</DropdownMenuItems>
-					<slot v-if="slots.footer" name="footer" />
+					<div v-else ref="listRef" :class="$style.list" v-bind="scrollMaskAttrs">
+						<DropdownMenuItems
+							:items="items"
+							:loading="loading"
+							:loading-item-count="loadingItemCount"
+							:empty-text="emptyText"
+							:open-sub-menu-index="openSubMenuIndex"
+							@select="handleItemSelect"
+							@search="handleItemSearch"
+							@submenu:toggle="handleSubMenuOpenChange"
+							@item-mouseup="handleItemMouseUp"
+						>
+							<template v-if="slots.loading" #loading>
+								<slot name="loading" />
+							</template>
+							<template v-if="slots.empty" #empty>
+								<slot name="empty" />
+							</template>
+							<template v-if="slots.item" #item="slotProps">
+								<slot name="item" v-bind="slotProps" />
+							</template>
+							<template v-if="slots['item-leading']" #item-leading="slotProps">
+								<slot name="item-leading" v-bind="slotProps" />
+							</template>
+							<template v-if="slots['item-label']" #item-label="slotProps">
+								<slot name="item-label" v-bind="slotProps" />
+							</template>
+							<template v-if="slots['item-trailing']" #item-trailing="slotProps">
+								<slot name="item-trailing" v-bind="slotProps" />
+							</template>
+						</DropdownMenuItems>
+						<slot v-if="slots.footer" name="footer" />
+					</div>
+					<!-- A searchable list scrolls inside its own content, so the footer stays below it. -->
+					<slot v-if="searchable && slots.footer" name="footer" />
 				</template>
 			</DropdownMenuContent>
 		</DropdownMenuPortal>
@@ -619,7 +631,9 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 	z-index: var.$index-popper;
 	@include scrollbar-mixins.hoverable-scroll-bar;
 
-	&.searchable {
+	// The menu surface keeps its shadow. The list inside it scrolls and fades.
+	&.searchable,
+	&.bounded {
 		overflow-y: hidden;
 	}
 
@@ -630,6 +644,14 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 	&[data-state='closed'] {
 		display: none;
 	}
+}
+
+.list {
+	min-height: 0;
+	max-height: inherit;
+	overflow-y: auto;
+	@include scrollbar-mixins.hoverable-scroll-bar;
+	@include scrollbar-mixins.scroll-mask-when-y;
 }
 
 .content[data-state='open'][data-side='top'] {
