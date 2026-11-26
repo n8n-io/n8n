@@ -66,7 +66,6 @@ const jsonValidateTypePending = [
 	'./nodes/Perplexity/**',
 	'./nodes/QuickChart/**',
 	'./nodes/RespondToWebhook/**',
-	'./nodes/Rocketchat/**',
 	'./nodes/Salesforce/**',
 	'./nodes/Slack/**',
 	'./nodes/StopAndError/**',

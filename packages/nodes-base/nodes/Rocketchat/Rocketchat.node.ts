@@ -7,11 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
-import {
-	rocketchatApiRequest,
-	rocketchatApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { rocketchatApiRequest, rocketchatApiRequestAllItems } from './GenericFunctions';
 
 interface IField {
 	short?: boolean;
@@ -465,6 +461,7 @@ export class Rocketchat implements INodeType {
 				displayName: 'Attachments',
 				name: 'attachmentsJson',
 				type: 'json',
+				validateType: 'array',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -576,9 +573,9 @@ export class Rocketchat implements INodeType {
 								body.attachments = attachments;
 							}
 						} else {
-							body.attachments = validateJSON(
-								this.getNodeParameter('attachmentsJson', i) as string,
-							);
+							body.attachments = this.getNodeParameter('attachmentsJson', i) as
+								| IAttachment[]
+								| undefined;
 						}
 
 						responseData = await rocketchatApiRequest.call(

@@ -2,6 +2,50 @@
 	"name": "RocketChat post message",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "postMessage",
+				"channel": "#json",
+				"text": "hello",
+				"jsonParameters": true,
+				"options": {},
+				"attachmentsJson": "[{\"title\":\"Ada\"}]"
+			},
+			"id": "d68b3d92-7c9d-57a8-9d20-ffa247c1a9bd",
+			"name": "RocketChat JSON",
+			"type": "n8n-nodes-base.rocketchat",
+			"typeVersion": 1,
+			"position": [1040, 2360],
+			"credentials": {
+				"rocketchatApi": {
+					"id": "rocketchat-test-account",
+					"name": "RocketChat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "postMessage",
+				"channel": "#expression",
+				"text": "hello",
+				"jsonParameters": true,
+				"options": {},
+				"attachmentsJson": "={{ [{ \"title\": \"Grace\" }] }}"
+			},
+			"id": "348c56a4-11ec-5083-a8dd-299c493501a6",
+			"name": "RocketChat Expression",
+			"type": "n8n-nodes-base.rocketchat",
+			"typeVersion": 1,
+			"position": [1040, 2360],
+			"credentials": {
+				"rocketchatApi": {
+					"id": "rocketchat-test-account",
+					"name": "RocketChat account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "4de08470-bb1a-4204-aec0-6a0d2c811f2f",
 			"name": "When clicking \"Execute Workflow\"",
@@ -62,6 +106,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "RocketChat JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RocketChat Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "RocketChat",
 						"type": "main",
