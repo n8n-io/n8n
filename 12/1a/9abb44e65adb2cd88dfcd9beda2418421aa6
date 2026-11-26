@@ -1,0 +1,33 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_4a494bfdece475::t_aec885a4698751 520-521,540-541,545,554-574,652-653,655,672
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_4a494bfdece475::t_ada760f0dd375b 288-319,490
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_4a494bfdece475::t_acd0d3c5021e68 398,445,571
+packages/@n8n/cli/src/__tests__/promotion-missing-dependencies.test.ts
+  s_4a494bfdece475::t_ceba44021cfee2 149,155,171-256
+packages/@n8n/cli/src/commands/promotion-environment/missing-dependencies.ts
+  s_4a494bfdece475::t_185e80bfed5d56 16-19,21,31-39,55,81-84,100-103,106,133-136,141,144,147
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_d778c97362311e 11768,11772,11775
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_76db3437ff2a53 306-314,317-318,320
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_514669ac9731a2 1754,1762,1927-1929,1930-1934,1935-1939,1941-1950,1953-1956
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "121a9abb44e65adb2cd88dfcd9beda2418421aa6",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
