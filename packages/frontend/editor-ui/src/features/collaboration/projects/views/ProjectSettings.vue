@@ -1,7 +1,16 @@
 <script lang="ts" setup>
+import { loadProjectPromotionEnvironmentsSection } from '@n8n/frontend-module-promotions';
 import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
-import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	ref,
+	watch,
+	onBeforeMount,
+	onMounted,
+	nextTick,
+} from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
@@ -36,6 +45,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { isSelfHealingEnabled } from '@/features/collaboration/projects/projects.utils';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 import {
 	N8nAlert,
@@ -72,6 +82,10 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
 const { isWorkflowReviewsEnabled, isInstanceApprovalRequired } = useWorkflowReviewsFeature();
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
+const ProjectPromotionEnvironmentsSection = defineAsyncComponent(
+	loadProjectPromotionEnvironmentsSection,
+);
 
 const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
@@ -1020,7 +1034,14 @@ onMounted(async () => {
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</div>
+			</template>
 
+			<ProjectPromotionEnvironmentsSection
+				v-if="isPromotionsEnabled && projectsStore.currentProject?.type === ProjectTypes.Team"
+				:project-id="projectsStore.currentProject.id"
+			/>
+
+			<template v-if="canUpdateProject">
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{

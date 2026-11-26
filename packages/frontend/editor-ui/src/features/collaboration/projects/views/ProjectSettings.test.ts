@@ -21,6 +21,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { EnterpriseEditionFeature } from '@/app/constants';
 
@@ -74,6 +75,16 @@ vi.mock('vue-router', async () => {
 		},
 	};
 });
+
+vi.mock('@n8n/frontend-module-promotions', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	loadProjectPromotionEnvironmentsSection: async () =>
+		defineComponent({
+			props: { projectId: { type: String, required: true } },
+			template:
+				'<div data-test-id="project-promotion-environments-section" :data-project-id="projectId" />',
+		}),
+}));
 
 // Stub child components to simplify event-driven testing
 vi.mock('../components/ProjectMembersTable.vue', () => ({
@@ -1446,6 +1457,25 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
 		});
 	});
+
+	describe('Project environments', () => {
+		it('shows the environments to a role that can manage members but not update the project', async () => {
+			settingsStore.isModuleActive.mockImplementation((name: string) => name === 'promotions');
+			useSourceControlStore().preferences.environmentsVersion = 'v2';
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+			};
+
+			const { findByTestId } = renderComponent();
+
+			expect(await findByTestId('project-promotion-environments-section')).toHaveAttribute(
+				'data-project-id',
+				'123',
+			);
+		});
+	});
+
 	describe('member order and pagination', () => {
 		const member = (id: string, firstName: string | null, lastName: string | null) => ({
 			id,

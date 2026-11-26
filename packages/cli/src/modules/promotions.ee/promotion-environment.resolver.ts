@@ -41,7 +41,7 @@ export class PromotionEnvironmentResolver {
 	/**
 	 * A project's effective environment for one direction. Its own environment for
 	 * that direction wins; otherwise the instance environment for that direction
-	 * applies.
+	 * applies. ProjectPromotionEnvironmentsService shows the same choice to project readers.
 	 */
 	async resolveForProject(
 		projectId: string,

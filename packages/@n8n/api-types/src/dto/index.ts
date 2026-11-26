@@ -934,6 +934,12 @@ export {
 	UpdatePromotionSettingsDto,
 	type PromotionSettings,
 } from './promotions/promotion-settings.dto';
+export {
+	projectPromotionEnvironmentSchema,
+	projectPromotionEnvironmentsResponseSchema,
+	type ProjectPromotionEnvironment,
+	type ProjectPromotionEnvironmentsResponse,
+} from './promotions/project-promotion-environments.dto';
 
 export {
 	ScimConfigPatchDto,

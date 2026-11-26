@@ -26,6 +26,11 @@ export class PromotionEnvironmentProjectRepository extends BaseRepository<Promot
 		});
 	}
 
+	async findOwnEnvironmentDirections(projectId: string): Promise<PromotionDirection[]> {
+		const rows = await this.find({ select: { direction: true }, where: { projectId } });
+		return rows.map((row) => row.direction);
+	}
+
 	/**
 	 * Links a project without changing an existing link. Concurrent inserts race on
 	 * the (projectId, direction) primary key, and every caller then reads the link
