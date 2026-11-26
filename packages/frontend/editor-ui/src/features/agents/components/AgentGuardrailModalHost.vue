@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { AgentToolGuardrailConfig, AgentToolGuardrailKind } from '@n8n/api-types';
+import type {
+	AgentHitlConfiguration,
+	AgentToolGuardrailConfig,
+	AgentToolGuardrailKind,
+} from '@n8n/api-types';
 import { computed } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentJsonToolRef } from '../types';
@@ -18,6 +22,8 @@ export interface AgentGuardrailModalData {
 	kind?: AgentToolGuardrailKind;
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
+	/** The agent's human-review configurations, for the `review` response target. */
+	getReviewConfigurations?: () => AgentHitlConfiguration[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	/** Reopens the tool modal this one replaced. Runs on every close path. */
 	onExit: () => void;
@@ -58,6 +64,7 @@ function onRemove() {
 		:guardrail="data.guardrail"
 		:kind="data.kind ?? 'keywords'"
 		:tools="data.getTools()"
+		:review-configurations="data.getReviewConfigurations?.() ?? []"
 		:existing-ids="data.getGuardrails().map((guardrail) => guardrail.id)"
 		data-testid="agent-guardrail-modal-host"
 		@update:open="!$event && close()"

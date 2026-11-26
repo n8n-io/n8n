@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { N8nDropdownMenu } from '@n8n/design-system';
-import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import type { AgentHitlConfiguration, AgentToolGuardrailConfig } from '@n8n/api-types';
 
 import AgentGuardrailModal from '../components/AgentGuardrailModal.vue';
 import type { AgentJsonToolRef } from '../types';
@@ -16,8 +16,11 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.keywords.placeholder': 'Type a keyword and press Enter',
 				'agents.builder.guardrails.pii.all': 'All entities',
 				'agents.builder.guardrails.pii.entities': 'Entities to detect',
-				'agents.builder.guardrails.trigger.before': 'Block execution',
-				'agents.builder.guardrails.trigger.after': 'Block output',
+				'agents.builder.guardrails.response.label': 'Response',
+				'agents.builder.guardrails.response.block': 'Block execution',
+				'agents.builder.guardrails.response.redact': 'Redact the match',
+				'agents.builder.guardrails.response.review': 'Send to review',
+				'agents.builder.guardrails.review.configuration.label': 'Human review destination',
 				'agents.builder.guardrails.tools.all': 'All tools',
 				'agents.builder.guardrails.tools.selected': 'Select tools',
 				'agents.builder.guardrails.tools.none': 'Add tools to the agent first.',
@@ -149,7 +152,7 @@ const KEYWORDS_ENTRY = {
 	kind: 'keywords',
 	id: 'block_secrets',
 	name: 'Block secrets',
-	stage: 'after',
+	response: 'block',
 	keywords: ['secret'],
 } satisfies AgentToolGuardrailConfig;
 
@@ -159,6 +162,7 @@ function mountModal(
 		guardrail: AgentToolGuardrailConfig | null;
 		kind: AgentToolGuardrailConfig['kind'];
 		tools: AgentJsonToolRef[];
+		reviewConfigurations: AgentHitlConfiguration[];
 		existingIds: string[];
 		disabled: boolean;
 	}> = {},
@@ -231,7 +235,6 @@ describe('AgentGuardrailModal', () => {
 		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
 		await keywordInput.setValue('secret');
 		await keywordInput.trigger('keydown.enter');
-		await selectSingle(wrapper, 'agent-guardrail-trigger', 'after');
 		await saveButton(wrapper).trigger('click');
 
 		const saved = savedConfig(wrapper);
@@ -239,7 +242,7 @@ describe('AgentGuardrailModal', () => {
 			kind: 'keywords',
 			id: 'block_secrets',
 			name: 'Block secrets',
-			stage: 'after',
+			response: 'block',
 			keywords: ['secret'],
 		});
 		// "All tools" persists no tools field.
@@ -351,7 +354,7 @@ describe('AgentGuardrailModal', () => {
 		expect(saved).toEqual({
 			kind: 'jailbreak',
 			id: expect.stringMatching(/^jailbreak_[a-z0-9]+$/),
-			stage: 'before',
+			response: 'block',
 			prompt: 'Detect prompt injection',
 			threshold: 0.8,
 		});
@@ -368,11 +371,10 @@ describe('AgentGuardrailModal', () => {
 		expect(saved.allowedSchemes).toEqual(['https']);
 	});
 
-	it('keeps the shared fields and resets kind options on a kind switch', async () => {
+	it('resets the kind options and presets the new kind response on a switch', async () => {
 		const wrapper = mountModal({ kind: 'urls' });
 
 		await wrapper.find('[data-testid="agent-guardrail-block-userinfo"]').trigger('click');
-		await selectSingle(wrapper, 'agent-guardrail-trigger', 'after');
 		await pickKind(wrapper, 'secretKeys');
 		// The permissiveness picker is a segment control; its options carry
 		// radio-button-<value> ids.
@@ -383,7 +385,7 @@ describe('AgentGuardrailModal', () => {
 		expect(saved).toMatchObject({
 			kind: 'secretKeys',
 			permissiveness: 'strict',
-			stage: 'after',
+			response: 'redact',
 		});
 		expect('blockUserinfo' in saved).toBe(false);
 	});
@@ -429,12 +431,12 @@ describe('AgentGuardrailModal', () => {
 		await wrapper.setProps({ open: true });
 
 		expect(wrapper.find('[data-testid="agent-guardrail-type"]').exists()).toBe(true);
-		const triggerSelect = wrapper.find('[data-testid="agent-guardrail-trigger"]');
+		const responseSelect = wrapper.find('[data-testid="agent-guardrail-response"]');
 		expect(
-			Array.from((triggerSelect.element as HTMLSelectElement).options).find(
+			Array.from((responseSelect.element as HTMLSelectElement).options).find(
 				(option) => option.selected,
 			)?.value,
-		).toBe('after');
+		).toBe('block');
 	});
 
 	it('disables every control and both footer actions for a read-only builder', async () => {
@@ -464,5 +466,71 @@ describe('AgentGuardrailModal', () => {
 			toolsRadio.element.compareDocumentPosition(callout.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('offers only the responses the kind allows: model kinds never redact', () => {
+		const wrapper = mountModal({ kind: 'jailbreak' });
+		const options = Array.from(
+			(wrapper.get('[data-testid="agent-guardrail-response"]').element as HTMLSelectElement)
+				.options,
+		).map((option) => option.value);
+		expect(options).toEqual(['block', 'review']);
+	});
+
+	it('presets the kind default response: pii redacts, keywords block', () => {
+		const selected = (wrapper: ReturnType<typeof mountModal>) =>
+			Array.from(
+				(wrapper.get('[data-testid="agent-guardrail-response"]').element as HTMLSelectElement)
+					.options,
+			).find((option) => option.selected)?.value;
+
+		expect(selected(mountModal({ kind: 'pii' }))).toBe('redact');
+		expect(selected(mountModal({ kind: 'keywords' }))).toBe('block');
+		expect(selected(mountModal({ kind: 'jailbreak' }))).toBe('block');
+	});
+
+	it('requires a review destination for the review response and writes it', async () => {
+		const wrapper = mountModal({ kind: 'keywords' });
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'review');
+
+		// No configurations exist: the empty-state hint shows and save stays off.
+		expect(wrapper.find('[data-testid="agent-guardrail-review-configuration"]').exists()).toBe(
+			false,
+		);
+		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+
+		await wrapper.setProps({
+			reviewConfigurations: [
+				{ id: 'config-1', name: 'Security review', method: 'workflow', workflowId: 'wf-9' },
+			],
+		});
+		await selectSingle(wrapper, 'agent-guardrail-review-configuration', 'config-1');
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		await saveButton(wrapper).trigger('click');
+
+		expect(savedConfig(wrapper)).toMatchObject({
+			kind: 'keywords',
+			keywords: ['secret'],
+			response: 'review',
+			reviewConfigurationId: 'config-1',
+		});
+	});
+
+	it('requires a check workflow for the workflow kind and writes its id', async () => {
+		const wrapper = mountModal({ kind: 'workflow' });
+		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+
+		await wrapper.find('[data-testid="agent-guardrail-check-workflow"]').setValue('wf-7');
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		await saveButton(wrapper).trigger('click');
+
+		expect(savedConfig(wrapper)).toMatchObject({
+			kind: 'workflow',
+			workflowId: 'wf-7',
+			response: 'block',
+		});
 	});
 });

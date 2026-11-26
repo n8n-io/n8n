@@ -110,6 +110,7 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			...(request.kind ? { kind: request.kind } : {}),
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
+			getReviewConfigurations: wiring.getReviewConfigurations,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
 			onExit: () => uiStore.openModal(props.modalName),
 		},

@@ -175,6 +175,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return {
 			getGuardrails: () => localConfig.value?.config?.guardrails?.tools ?? [],
 			getTools: () => localConfig.value?.tools ?? [],
+			// The `review` response routes through one of these configurations.
+			getReviewConfigurations: () => localConfig.value?.hitlConfigurations ?? [],
 			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
 				if (agentId.value !== targetAgentId) return;
 				scheduleConfigUpdate(withToolGuardrails(localConfig.value, tools));

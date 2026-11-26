@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	AgentConfigValidationIssue,
+	AgentHitlConfiguration,
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
@@ -35,6 +36,8 @@ export interface ToolGuardrailsWiring {
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
+	/** The agent's human-review configurations, for the `review` response target. */
+	getReviewConfigurations?: () => AgentHitlConfiguration[];
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 }
 
@@ -43,6 +46,7 @@ const props = defineProps<{
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
+	getReviewConfigurations?: () => AgentHitlConfiguration[];
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 }>();
 

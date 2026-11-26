@@ -277,7 +277,7 @@ describe('AgentGuardrailsSection', () => {
 		expect(chip.find('[data-testid="guardrail-chip-tool-fallback-icon"]').exists()).toBe(false);
 	});
 
-	it('offers the seven kinds on the add menu', async () => {
+	it('offers the eight kinds on the add menu', async () => {
 		const wrapper = mountSection();
 
 		await openAddMenu(wrapper);
@@ -290,12 +290,12 @@ describe('AgentGuardrailsSection', () => {
 			'secretKeys',
 			'topicalAlignment',
 			'urls',
+			'workflow',
 		];
 		for (const kind of expectedKinds) {
 			expect(addMenuItem(kind), `add menu item ${kind}`).not.toBeNull();
 		}
-		// v1 has no Workflow, custom prompt, or custom regex kinds.
-		expect(addMenuItem('workflow')).toBeNull();
+		// v1 has no custom prompt or custom regex kinds.
 		expect(addMenuItem('customPrompt')).toBeNull();
 		expect(addMenuItem('customRegex')).toBeNull();
 	});
