@@ -264,6 +264,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Sync Commands',
 			name: 'commands',
 			type: 'string',
+			validateType: 'array',
 			displayOptions: {
 				show: {
 					resource: ['task'],
