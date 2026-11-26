@@ -14,8 +14,10 @@ import TypeAccessSection from './TypeAccessSection.vue';
 import { focusDialogContent } from './focusDialogContent';
 import { useRelatedTypeIndex } from './useRelatedTypeIndex';
 import { useTypeAccessEdits } from './useTypeAccessEdits';
+import { useAppliedTheme } from '../../composables/useAppliedTheme';
 import { ANY_CREDENTIAL_NODE_TYPES } from '../../related-types/relatedTypes.constants';
 import { getRelatedTypes } from '../../related-types/relatedTypes';
+import { catalogNodeIcon } from '../communityNode';
 
 const { nodeType } = defineProps<{ nodeType: string }>();
 
@@ -24,10 +26,16 @@ const open = defineModel<boolean>('open', { default: false });
 const RELATED_TAB = 'related';
 
 const i18n = useI18n();
-const { typesLoaded, index, nodeTypeOf, nodeLabel, toSections } = useRelatedTypeIndex();
+const theme = useAppliedTheme();
+const { typesLoaded, index, nodeTypeOf, catalogNodeOf, nodeLabel, toSections } =
+	useRelatedTypeIndex();
 const { canManage } = useTypeAccessEdits();
 
 const nodeName = computed(() => nodeLabel(nodeType));
+const catalogIcon = computed(() => {
+	const catalogNode = catalogNodeOf(nodeType);
+	return catalogNode ? catalogNodeIcon(catalogNode, theme.value) : undefined;
+});
 const sections = computed(() => toSections(getRelatedTypes(nodeType, index.value)));
 
 const relatedCount = computed(() =>
@@ -59,7 +67,7 @@ const tabs = computed(() => [
 			<TypeAccessSection
 				kind="node"
 				:heading="i18n.baseText('typeAvailabilityPolicies.nodeDialog.node')"
-				:items="[{ name: nodeType, label: nodeName }]"
+				:items="[{ name: nodeType, label: nodeName, icon: catalogIcon }]"
 				:node-type-of="nodeTypeOf"
 				:icon-size="24"
 				data-test-id="node-type-access-node"

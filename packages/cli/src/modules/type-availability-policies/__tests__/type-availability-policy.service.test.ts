@@ -1687,6 +1687,26 @@ describe('TypeAvailabilityPolicyService', () => {
 			});
 		});
 
+		it('evaluates a node type that is not installed by its name and its package', async () => {
+			const BROWSERLESS = 'n8n-nodes-browserless.browserless';
+			const TAVILY = 'n8n-nodes-tavily.tavily';
+			givenInstanceRules([
+				{ id: 'deny-browserless', action: 'deny', selector: { kind: 'name', value: BROWSERLESS } },
+				{
+					id: 'delegate-tavily',
+					action: 'delegate',
+					selector: { kind: 'package', value: 'n8n-nodes-tavily' },
+				},
+			]);
+
+			const result = await service.getInstanceAccess(KIND, [BROWSERLESS, TAVILY]);
+
+			expect(result.types).toEqual([
+				{ name: BROWSERLESS, access: 'deny', matchedRuleId: 'deny-browserless' },
+				{ name: TAVILY, access: 'delegate', matchedRuleId: 'delegate-tavily' },
+			]);
+		});
+
 		it('reports the default action with no rule when the scope is unconfigured', async () => {
 			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
 

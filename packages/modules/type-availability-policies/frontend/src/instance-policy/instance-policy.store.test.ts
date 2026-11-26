@@ -89,6 +89,44 @@ describe('useInstancePolicyStore', () => {
 			expect(store.typeAccess.credential).toBeNull();
 		});
 
+		it('keeps one entry for each node type, with the community nodes and their catalog data', async () => {
+			mocks.fetchInstanceAccess.mockResolvedValue({
+				...accessWithInstalledAcme(),
+				uninstalledCommunityTypes: [
+					{
+						name: 'n8n-nodes-browserless.browserless',
+						access: 'deny',
+						matchedRuleId: 'rule-1',
+						displayName: 'Browserless',
+						iconUrl: 'https://cdn.example.com/browserless.svg',
+					},
+				],
+			});
+			const store = useInstancePolicyStore();
+
+			await store.load(['node']);
+
+			const types = store.typeAccess.node?.types;
+			expect(types?.get('n8n-nodes-base.slack')).toEqual({
+				name: 'n8n-nodes-base.slack',
+				access: 'allow',
+				matchedRuleId: null,
+			});
+			expect(types?.get('n8n-nodes-acme.acme')?.community).toEqual({ installed: true });
+			expect(types?.get('n8n-nodes-browserless.browserless')).toEqual({
+				name: 'n8n-nodes-browserless.browserless',
+				access: 'deny',
+				matchedRuleId: 'rule-1',
+				community: {
+					installed: false,
+					displayName: 'Browserless',
+					icon: undefined,
+					iconUrl: 'https://cdn.example.com/browserless.svg',
+					iconColor: undefined,
+				},
+			});
+		});
+
 		it('reads the access of the credential policy for its own version', async () => {
 			mocks.fetchInstanceAccess.mockImplementation(async (_context, kind: string) =>
 				kind === 'node'

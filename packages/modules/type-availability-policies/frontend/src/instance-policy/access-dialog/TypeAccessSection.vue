@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TypeUsage } from '@n8n/api-types';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -70,9 +70,10 @@ const visibleItems = computed(() =>
 				:class="$style.item"
 				data-test-id="type-access-item"
 			>
+				<N8nNodeIcon v-if="item.icon" v-bind="item.icon" :size="iconSize" />
 				<component
 					:is="NodeTypeIcon"
-					v-if="kind === 'node' && NodeTypeIcon"
+					v-else-if="kind === 'node' && NodeTypeIcon"
 					:node-type="nodeTypeOf(item.name)"
 					:size="iconSize"
 				/>

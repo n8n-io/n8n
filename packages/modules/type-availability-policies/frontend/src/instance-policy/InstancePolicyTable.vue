@@ -30,13 +30,15 @@ export type InstancePolicyTableRow = InstanceTypeAccessRow & {
 	usage: TypeUsage | null;
 };
 
-type AccessFilter = 'all' | PolicyAction;
+type AccessFilter = 'all' | 'community' | PolicyAction;
 
 const props = defineProps<{
 	rows: InstancePolicyTableRow[];
 	loading: boolean;
 	searchPlaceholder: string;
 	noMatchText: string;
+	/** Adds the Community option, which also shows the community nodes that are not installed. */
+	communityFilter?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -145,14 +147,21 @@ const searchedRows = computed(() => {
 	);
 });
 
+// A node that is not installed shows only under Community, so the other options leave it out.
+const installedRows = computed(() =>
+	searchedRows.value.filter((row) => row.community?.installed !== false),
+);
+
+const communityRows = computed(() => searchedRows.value.filter((row) => row.community));
+
 const filterOptions = computed(() => {
 	const count = (access: PolicyAction) =>
-		searchedRows.value.filter((row) => row.access === access).length;
+		installedRows.value.filter((row) => row.access === access).length;
 	const options: Array<{ value: AccessFilter; label: string }> = [
 		{
 			value: 'all',
 			label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.all', {
-				interpolate: { count: searchedRows.value.length },
+				interpolate: { count: installedRows.value.length },
 			}),
 		},
 	];
@@ -169,22 +178,38 @@ const filterOptions = computed(() => {
 		});
 	}
 
+	if (props.communityFilter) {
+		options.push({
+			value: 'community',
+			label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.option', {
+				interpolate: {
+					label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.filter.community'),
+					count: communityRows.value.length,
+				},
+			}),
+		});
+	}
+
 	return options;
 });
 
 function isAccessFilter(value: unknown): value is AccessFilter {
-	return value === 'all' || ACCESS_ORDER.some((access) => access === value);
+	return (
+		value === 'all' ||
+		(value === 'community' && !!props.communityFilter) ||
+		ACCESS_ORDER.some((access) => access === value)
+	);
 }
 
 function onFilterChange(value: unknown) {
 	if (isAccessFilter(value)) accessFilter.value = value;
 }
 
-const filteredRows = computed(() =>
-	accessFilter.value === 'all'
-		? searchedRows.value
-		: searchedRows.value.filter((row) => row.access === accessFilter.value),
-);
+const filteredRows = computed(() => {
+	if (accessFilter.value === 'all') return installedRows.value;
+	if (accessFilter.value === 'community') return communityRows.value;
+	return installedRows.value.filter((row) => row.access === accessFilter.value);
+});
 
 // With rows to show, an empty result means that the search or the filter removed all of them. The
 // first load has no rows, so the message never replaces it.
@@ -345,7 +370,26 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					@click.stop="emit('open', item.name)"
 				>
 					<N8nNodeIcon v-bind="item.icon" :size="20" :class="$style.nameIcon" />
-					<N8nText color="text-dark" bold :class="$style.nameText">{{ item.displayName }}</N8nText>
+					<span :class="$style.nameLabel">
+						<N8nText color="text-dark" bold :class="$style.nameText">{{
+							item.displayName
+						}}</N8nText>
+						<N8nText
+							v-if="item.community"
+							size="xsmall"
+							color="text-light"
+							:class="$style.nameText"
+							:data-test-id="`instance-policy-community-${item.name}`"
+						>
+							{{
+								i18n.baseText(
+									item.community.installed
+										? 'typeAvailabilityPolicies.instancePolicy.table.communityNode'
+										: 'typeAvailabilityPolicies.instancePolicy.table.communityNode.notInstalled',
+								)
+							}}
+						</N8nText>
+					</span>
 				</button>
 			</template>
 			<template #[`item.access`]="{ item }">
@@ -463,6 +507,12 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 
 .nameIcon {
 	flex-shrink: 0;
+}
+
+.nameLabel {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .nameText {

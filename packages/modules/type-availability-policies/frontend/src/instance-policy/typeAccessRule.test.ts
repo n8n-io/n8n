@@ -11,9 +11,7 @@ describe('isTypeAccessEditable', () => {
 	] as const)(
 		'is $editable for $access access decided by rule $matchedRuleId',
 		({ access, matchedRuleId, editable }) => {
-			expect(isTypeAccessEditable({ name: 'n8n-nodes-base.slack', access, matchedRuleId })).toBe(
-				editable,
-			);
+			expect(isTypeAccessEditable({ access, matchedRuleId })).toBe(editable);
 		},
 	);
 });

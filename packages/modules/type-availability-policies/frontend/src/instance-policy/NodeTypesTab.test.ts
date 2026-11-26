@@ -11,8 +11,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInstancePolicyStore } from './instance-policy.store';
 import NodeTypesTab from './NodeTypesTab.vue';
-import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
-import { policyTableCells } from '../__tests__/table';
+import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
+import { accessFilter, policyTableCells } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -115,6 +115,98 @@ describe('NodeTypesTab', () => {
 
 		expect(await findByText(NOT_LOADED)).toBeInTheDocument();
 		expect(accessCell(getByTestId, NOT_LOADED)).toHaveTextContent('Restricted');
+	});
+
+	describe('community nodes', () => {
+		const MCP_CLIENT = 'n8n-nodes-mcp.mcpClient';
+		const BROWSERLESS = 'n8n-nodes-browserless.browserless';
+
+		const communityAccess = (version: number, browserlessAccess: 'allow' | 'deny') => ({
+			...access(version, [
+				{ name: SLACK, access: 'allow', matchedRuleId: null },
+				{ name: MCP_CLIENT, access: 'allow', matchedRuleId: null },
+			]),
+			uninstalledCommunityTypes: [
+				{
+					name: BROWSERLESS,
+					access: browserlessAccess,
+					matchedRuleId: browserlessAccess === 'deny' ? 'new-rule' : null,
+					displayName: 'Browserless',
+					iconUrl: 'https://cdn.example.com/browserless.svg',
+				},
+			],
+		});
+
+		const showCommunity = async (getByRole: (role: string, options?: object) => HTMLElement) => {
+			await userEvent.click(accessFilter(getByRole));
+			await userEvent.click(await findPopupItem(OPTION, 'Community (2)'));
+		};
+
+		beforeEach(() => {
+			mocks.fetchNodeTypeSummaries.mockResolvedValue(
+				new Map([...SUMMARIES, [MCP_CLIENT, summary('MCP Client')]]),
+			);
+			mocks.fetchNodeTypeUsage.mockResolvedValue({
+				[MCP_CLIENT]: { uses: 4, workflows: 2, activeWorkflows: 1, projects: 1 },
+			} satisfies NodeTypeUsageResponse);
+		});
+
+		it('shows a node that is not installed under Community, with its catalog name and icon and no usage', async () => {
+			const { findByText, getByTestId, getByRole, queryByText } = await setup(() =>
+				mocks.fetchInstanceAccess.mockResolvedValue(communityAccess(1, 'allow')),
+			);
+			await findByText('MCP Client');
+			expect(queryByText('Browserless')).not.toBeInTheDocument();
+
+			await showCommunity(getByRole);
+
+			expect(await findByText('Browserless')).toBeInTheDocument();
+			expect(getByTestId(`instance-policy-community-${BROWSERLESS}`)).toHaveTextContent(
+				'Community node · Not installed',
+			);
+			expect(getByTestId(`instance-policy-community-${MCP_CLIENT}`)).toHaveTextContent(
+				/^Community node$/,
+			);
+			const browserlessRow = accessCell(getByTestId, BROWSERLESS).closest('tr') as HTMLElement;
+			expect(browserlessRow.querySelector('img')).toHaveAttribute(
+				'src',
+				'https://cdn.example.com/browserless.svg',
+			);
+			expect(usageCells(getByTestId, BROWSERLESS)).toEqual(['—', '—', '—', '—']);
+			expect(usageCells(getByTestId, MCP_CLIENT)).toEqual(['1', '4', '2', '1']);
+		});
+
+		it('restricts a node that is not installed by its name', async () => {
+			mocks.fetchNodeTypeUsage.mockResolvedValue({});
+			mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+			const { findByText, getByTestId, getByRole } = await setup(() =>
+				mocks.fetchInstanceAccess
+					.mockResolvedValueOnce(communityAccess(1, 'allow'))
+					.mockResolvedValue(communityAccess(2, 'deny')),
+			);
+			await findByText('MCP Client');
+			await showCommunity(getByRole);
+			await findByText('Browserless');
+
+			await restrict(getByTestId, BROWSERLESS);
+
+			await waitFor(() =>
+				expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
+					defaultAction: 'allow',
+					version: 1,
+					rules: [
+						{
+							id: expect.any(String),
+							action: 'deny',
+							selector: { kind: 'name', value: BROWSERLESS },
+						},
+					],
+				}),
+			);
+			await waitFor(() =>
+				expect(accessCell(getByTestId, BROWSERLESS)).toHaveTextContent('Restricted'),
+			);
+		});
 	});
 
 	it('shows no rows until the node types load', async () => {

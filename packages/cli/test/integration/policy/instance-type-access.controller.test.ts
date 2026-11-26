@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { UninstalledCommunityNodes } from '@/modules/type-availability-policies/community-node-types';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import { HiddenNodeTypes } from '@/modules/type-availability-policies/hidden-node-types';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
@@ -16,6 +17,7 @@ import { fakeResolveBaseName } from './shared/workflow-index';
 
 const nodeTypes = mockInstance(NodeTypes);
 const hiddenNodeTypes = mockInstance(HiddenNodeTypes);
+const uninstalledCommunityNodes = mockInstance(UninstalledCommunityNodes);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
@@ -73,6 +75,7 @@ afterAll(() => {
 
 beforeEach(() => {
 	hiddenNodeTypes.get.mockResolvedValue(new Set());
+	uninstalledCommunityNodes.list.mockResolvedValue([]);
 	nodeTypes.getKnownTypes.mockReturnValue(knownTypes([SLACK, NOTION, GMAIL]));
 	nodeTypes.resolveBaseName.mockImplementation((name) => ({
 		baseName: name,
@@ -191,6 +194,7 @@ describe('GET /node-type-policies/instance/access', () => {
 				access: 'allow',
 				matchedRuleId: null,
 			})),
+			uninstalledCommunityTypes: [],
 		});
 	});
 
@@ -214,12 +218,45 @@ describe('GET /node-type-policies/instance/access', () => {
 				{ name: NOTION, access: 'delegate', matchedRuleId: 'delegate-notion' },
 				{ name: GMAIL, access: 'allow', matchedRuleId: null },
 			],
+			uninstalledCommunityTypes: [],
 		});
 
 		const write = await agent
 			.put(`${NODE_ROUTE}/instance`)
 			.send({ rules: [], defaultAction: 'allow', version: response.body.data.version });
 		expect(write.statusCode).toBe(200);
+	});
+});
+
+describe('GET /node-type-policies/instance/access with community nodes that are not installed', () => {
+	const BROWSERLESS = 'n8n-nodes-browserless.browserless';
+
+	test('lists a catalog node apart from the installed types, with the access that a rule gives it', async () => {
+		uninstalledCommunityNodes.list.mockResolvedValue([
+			{ name: BROWSERLESS, displayName: 'Browserless', iconUrl: 'https://cdn.example.com/b.svg' },
+		]);
+		await putInstancePolicy(NODE_ROUTE, [
+			{ id: 'deny-browserless', action: 'deny', selector: { kind: 'name', value: BROWSERLESS } },
+		]);
+
+		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
+
+		expect(response.statusCode).toBe(200);
+		expect(uninstalledCommunityNodes.list).toHaveBeenCalledWith(new Set([SLACK, NOTION, GMAIL]));
+		expect(response.body.data.types.map(({ name }: { name: string }) => name)).toEqual([
+			SLACK,
+			NOTION,
+			GMAIL,
+		]);
+		expect(response.body.data.uninstalledCommunityTypes).toEqual([
+			{
+				name: BROWSERLESS,
+				access: 'deny',
+				matchedRuleId: 'deny-browserless',
+				displayName: 'Browserless',
+				iconUrl: 'https://cdn.example.com/b.svg',
+			},
+		]);
 	});
 });
 

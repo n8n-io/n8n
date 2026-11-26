@@ -983,6 +983,53 @@ describe('CommunityNodeTypesService', () => {
 		});
 	});
 
+	describe('getCachedCommunityNodeTypes', () => {
+		beforeEach(() => {
+			(service as any).setCommunityNodeTypes([
+				{ name: 'package-1.node1', nodeDescription: { usableAsTool: true } },
+				{ name: 'package-1.node1Tool', nodeDescription: { usableAsTool: true } },
+				{ name: 'package-2.searchTool', nodeDescription: {} },
+			]);
+			(service as any).lastUpdateTimestamp = Date.now();
+		});
+
+		it('returns the catalog entries without the AI tool copies', () => {
+			const result = service.getCachedCommunityNodeTypes();
+
+			expect(result.map((n) => n.name)).toEqual(['package-1.node1', 'package-2.searchTool']);
+		});
+
+		it('returns the current entries and refreshes a stale catalog in the background', () => {
+			(service as any).lastUpdateTimestamp = 0;
+			let finishFetch = () => {};
+			const fetchSpy = vi
+				.spyOn(service as any, 'fetchNodeTypes')
+				.mockReturnValue(new Promise<void>((resolve) => (finishFetch = resolve)));
+
+			const result = service.getCachedCommunityNodeTypes();
+
+			expect(result).toHaveLength(2);
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+			finishFetch();
+		});
+
+		it('shares one fetch with a caller that waits for the refresh', async () => {
+			(service as any).lastUpdateTimestamp = 0;
+			communityPackagesServiceMock.getAllInstalledPackages = vi.fn().mockResolvedValue([]);
+			let finishFetch = () => {};
+			const fetchSpy = vi
+				.spyOn(service as any, 'fetchNodeTypes')
+				.mockReturnValue(new Promise<void>((resolve) => (finishFetch = resolve)));
+
+			service.getCachedCommunityNodeTypes();
+			const waiting = service.getCommunityNodeTypes();
+			finishFetch();
+			await waiting;
+
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getCommunityNodeType', () => {
 		beforeEach(() => {
 			communityPackagesServiceMock.getAllInstalledPackages = vi

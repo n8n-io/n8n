@@ -317,6 +317,25 @@ describe('InstancePolicyView', () => {
 		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
 	});
 
+	it('keeps the dialog of a community node that is not installed open after the access loads', async () => {
+		const BROWSERLESS = 'n8n-nodes-browserless.browserless';
+		fetchInstanceAccess.mockResolvedValue({
+			...credentialAccess(['n8n-nodes-base.notion']),
+			uninstalledCommunityTypes: [
+				{ name: BROWSERLESS, access: 'allow', matchedRuleId: null, displayName: 'Browserless' },
+			],
+		});
+		const { getByTestId } = setup(BOTH_SCOPES, { details: BROWSERLESS });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+		expect(getByTestId('node-type-access-dialog')).toHaveAttribute('data-node-type', BROWSERLESS);
+	});
+
 	it('keeps the dialog open when the access does not load', async () => {
 		fetchInstanceAccess.mockRejectedValue(new Error('offline'));
 		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });

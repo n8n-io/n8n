@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, shallowRef, useTemplateRef } from 'vue';
 
+import { catalogNodeIcon, catalogNodeOf } from './communityNode';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
 import { useInstancePolicy } from './useInstancePolicy';
@@ -37,18 +38,27 @@ const rows = computed<InstancePolicyTableRow[]>(() => {
 	const summaries = typeSummaries.value;
 	if (!summaries) return [];
 
-	return (
-		types.value
-			// An unknown one shows its name, as the Credential types tab does.
-			.map((type) => ({
+	return types.value.map((type) => {
+		const catalogNode = catalogNodeOf(type);
+		if (catalogNode) {
+			return {
 				...type,
-				...(decorations.value.get(type.name) ?? {
-					displayName: type.name,
-					icon: FALLBACK_NODE_TYPE_ICON,
-				}),
-				usage: instancePolicy.usageOf('node', type.name),
-			}))
-	);
+				displayName: catalogNode.displayName,
+				icon: catalogNodeIcon(catalogNode, theme.value),
+				usage: null,
+			};
+		}
+
+		// An unknown one shows its name, as the Credential types tab does.
+		return {
+			...type,
+			...(decorations.value.get(type.name) ?? {
+				displayName: type.name,
+				icon: FALLBACK_NODE_TYPE_ICON,
+			}),
+			usage: instancePolicy.usageOf('node', type.name),
+		};
+	});
 });
 
 async function loadSummaries() {
@@ -76,6 +86,7 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 		:loading="loading || typeSummaries === null"
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		:no-match-text="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.node')"
+		community-filter
 		data-test-id="node-types-tab"
 		@change="changeAccess"
 		@open="(name) => emit('open', name)"

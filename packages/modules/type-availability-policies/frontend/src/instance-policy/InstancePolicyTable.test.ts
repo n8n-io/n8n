@@ -61,6 +61,97 @@ const rowNames = (container: HTMLElement) =>
 		tableRow.cells[0]?.textContent?.trim(),
 	);
 
+describe('InstancePolicyTable community filter', () => {
+	const COMMUNITY_ROWS = [
+		row('n8n-nodes-base.slack', 'Slack'),
+		{ ...row('n8n-nodes-mcp.mcpClient', 'MCP Client', 'deny'), community: { installed: true } },
+		{
+			...row('n8n-nodes-browserless.browserless', 'Browserless', 'deny'),
+			community: { installed: false, displayName: 'Browserless' },
+		},
+	] satisfies InstancePolicyTableRow[];
+
+	const setupCommunity = (communityFilter = true) =>
+		renderTable({
+			pinia: createTestingPinia(),
+			props: {
+				rows: COMMUNITY_ROWS,
+				loading: false,
+				searchPlaceholder: 'Search nodes',
+				noMatchText: 'No nodes match your search or filter',
+				communityFilter,
+			},
+		});
+
+	it('counts the community rows, and leaves the uninstalled ones out of the other options', async () => {
+		const { getByRole } = setupCommunity();
+
+		await openFilter(getByRole);
+
+		expect(await findPopupItem(OPTION, 'All (2)')).toBeInTheDocument();
+		expect(await findPopupItem(OPTION, 'Allowed (1)')).toBeInTheDocument();
+		expect(await findPopupItem(OPTION, 'Restricted (1)')).toBeInTheDocument();
+		expect(await findPopupItem(OPTION, 'Community (2)')).toBeInTheDocument();
+	});
+
+	it('shows the installed rows only, with a subtitle on the community row', () => {
+		const { getByTestId, queryByTestId } = setupCommunity();
+
+		expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+			'MCP ClientCommunity node',
+			'Slack',
+		]);
+		expect(queryByTestId('instance-policy-community-n8n-nodes-base.slack')).not.toBeInTheDocument();
+	});
+
+	it('shows the installed and uninstalled community rows under Community', async () => {
+		const { getByTestId, getByRole } = setupCommunity();
+
+		await openFilter(getByRole);
+		await userEvent.click(await findPopupItem(OPTION, 'Community (2)'));
+
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'BrowserlessCommunity node · Not installed',
+				'MCP ClientCommunity node',
+			]),
+		);
+	});
+
+	it('finds no uninstalled row when the search runs outside Community', async () => {
+		const { getByTestId, getByPlaceholderText } = setupCommunity();
+
+		await userEvent.type(getByPlaceholderText('Search nodes'), 'browserless');
+
+		await waitFor(() => expect(getByTestId('instance-policy-no-match')).toBeInTheDocument());
+	});
+
+	it('counts and finds an uninstalled row under Community while a search runs', async () => {
+		const { getByTestId, getByRole, getByPlaceholderText } = setupCommunity();
+
+		await userEvent.type(getByPlaceholderText('Search nodes'), 'browserless');
+		await openFilter(getByRole);
+
+		expect(await findPopupItem(OPTION, 'All (0)')).toBeInTheDocument();
+		await userEvent.click(await findPopupItem(OPTION, 'Community (1)'));
+
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'BrowserlessCommunity node · Not installed',
+			]),
+		);
+	});
+
+	it('has no Community option without the prop', async () => {
+		const { getByRole } = setupCommunity(false);
+
+		await openFilter(getByRole);
+
+		expect(await findPopupItem(OPTION, 'All (2)')).toBeInTheDocument();
+		expect(popupLabels(OPTION).some((label) => label.startsWith('Community'))).toBe(false);
+	});
+});
+
 describe('InstancePolicyTable', () => {
 	it('lists the rows sorted by name', () => {
 		const { getByTestId } = setup();

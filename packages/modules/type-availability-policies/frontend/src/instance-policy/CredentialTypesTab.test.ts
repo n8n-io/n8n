@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
-import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
+import { findPopupItem, MENU_ITEM, OPTION, popupLabels } from '../__tests__/popups';
 import { accessFilter, policyTableCells } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -95,6 +95,16 @@ describe('CredentialTypesTab', () => {
 		expect(await findByText('Notion API')).toBeInTheDocument();
 		expect(mocks.fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential');
 		expect(accessCell(getByTestId, 'notionApi')).toHaveTextContent('Restricted');
+	});
+
+	it('has no Community option in the access filter', async () => {
+		const { findByText, getByRole } = await setup();
+		await findByText('Bitly API');
+
+		await userEvent.click(accessFilter(getByRole));
+
+		expect(await findPopupItem(OPTION, 'All (2)')).toBeInTheDocument();
+		expect(popupLabels(OPTION).some((label) => label.startsWith('Community'))).toBe(false);
 	});
 
 	it('shows the type name when the display names do not load', async () => {
