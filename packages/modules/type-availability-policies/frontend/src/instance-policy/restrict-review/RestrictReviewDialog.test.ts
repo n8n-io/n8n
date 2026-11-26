@@ -325,11 +325,12 @@ describe('RestrictReviewDialog', () => {
 			expect(await screen.findByText('Restrict 5 credential types?')).toBeInTheDocument();
 		});
 
-		it('confirms with the count', async () => {
+		it('confirms with the count, and reports no single-type review', async () => {
 			const { resolve } = openBulk(bulk);
 
 			await userEvent.click(await screen.findByRole('button', { name: 'Restrict 5' }));
 			expect(resolve).toHaveBeenCalledWith(true);
+			expect(track).not.toHaveBeenCalled();
 		});
 
 		it('cancels with Cancel', async () => {

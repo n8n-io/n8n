@@ -160,7 +160,13 @@ describe('InstancePolicyTable', () => {
 			(element) => element.tabIndex >= 0 && follows(filter, element) && follows(element, firstRow),
 		);
 		const headers = ['Name', 'Access', 'Projects', 'Uses', 'Workflows', 'Active workflows'];
-		expect(reachedBetween).toEqual(headers.map((name) => getByRole('button', { name })));
+		// The select controls come before the sort headers, and the checkbox of the first row after them.
+		expect(reachedBetween).toEqual([
+			getByRole('button', { name: 'Select all 3 rows' }),
+			getByRole('checkbox', { name: 'Select all rows on this page' }),
+			...headers.map((name) => getByRole('button', { name })),
+			rowCheckbox(getByRole, 'Airtable API'),
+		]);
 
 		getByRole('button', { name: 'Name' }).focus();
 		await userEvent.tab();
