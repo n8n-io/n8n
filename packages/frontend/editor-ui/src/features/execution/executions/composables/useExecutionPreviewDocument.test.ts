@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { setActivePinia, getActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
+import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -242,13 +243,13 @@ describe('useExecutionPreviewDocument', () => {
 				id,
 				finished: false,
 				status: 'error',
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: { 'Node A': [] },
 						lastNodeExecuted: 'Node A',
-						error: { name: 'NodeOperationError', message: 'Node failed' },
+						error: new NodeOperationError(createTestNode({ name: 'Node A' }), 'Node failed'),
 					},
-				} as IExecutionResponse['data'],
+				}),
 			});
 		}
 
