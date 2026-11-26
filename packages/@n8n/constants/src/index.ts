@@ -1,11 +1,13 @@
 export * from './api';
 export * from './browser';
+export * from './client';
 export * from './community-nodes';
 export * from './csp';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
+export * from './node-categories';
 export * from './scheduler';
 export * from './uuid';
 

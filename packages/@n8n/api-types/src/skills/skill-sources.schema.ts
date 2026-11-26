@@ -71,6 +71,29 @@ export class ConnectSkillSourceDto extends Z.class({
 	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
 }) {}
 
+export const discoverPublicSkillSourceSchema = DiscoverSkillSourceDto.schema
+	.omit({ credentialId: true })
+	.extend({
+		url: skillSourceTarget.url.describe('A public GitHub repository, folder, or SKILL.md URL'),
+		scope: skillSourceScopeSchema.describe('Global (instance) or one project (project)'),
+		projectId: skillSourceScope.projectId.describe('Required when scope is project'),
+	});
+
+export const connectPublicSkillSourceSchema = discoverPublicSkillSourceSchema.extend({
+	skillKeys: ConnectSkillSourceDto.schema.shape.skillKeys.describe(
+		'The keys of the selected skills that passed the check',
+	),
+	revision: z
+		.string()
+		.min(1)
+		.max(128)
+		.nullable()
+		.describe('The revision returned by discovery. Null when discovery returned null'),
+});
+
+export type DiscoverPublicSkillSource = z.infer<typeof discoverPublicSkillSourceSchema>;
+export type ConnectPublicSkillSource = z.infer<typeof connectPublicSkillSourceSchema>;
+
 /** Checks or moves a source without reading its remote repository. */
 export class MoveSkillSourceDto extends Z.class({
 	...skillSourceScope,
@@ -129,7 +152,7 @@ export type SkillSourceMovePreview = z.infer<typeof skillSourceMovePreviewSchema
 /** The source that a link points to. */
 export type SkillSourceSummary = {
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -151,6 +174,10 @@ export const SKILL_SCAN_RULES = [
 	'over_limit',
 	'file_skipped',
 	'file_unstorable',
+	'file_too_large',
+	'file_over_skill_limit',
+	'script_file',
+	'binary_file',
 	'hidden_unicode',
 	'new_url',
 	'risky_url',
@@ -189,13 +216,32 @@ export type SkillScanLocation = {
 	end: number;
 };
 
+/** The part of a skill that a size limit applies to. */
+export const SKILL_SCAN_LIMIT_FIELDS = [
+	'name',
+	'description',
+	'instructions',
+	'frontmatter',
+	'referenceCount',
+	'referencePath',
+	'referenceContent',
+	'referencesTotal',
+] as const;
+
+export type SkillScanLimitField = (typeof SKILL_SCAN_LIMIT_FIELDS)[number];
+
+/** A size limit and the size that the skill has. `referenceCount` counts files, each other field counts characters. */
+export type SkillScanLimit = { field: SkillScanLimitField; max: number; current: number };
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
 	/** `SKILL.md`, or the path of a file in the skill folder. */
 	file?: string;
-	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
+	/** English text for logs. The UI shows it only where no field of the finding gives the reason. */
 	detail: string;
+	/** Set for an `over_limit` finding, so the UI can write the reason in its language. */
+	limit?: SkillScanLimit;
 	/** The linked domain of a `new_url` or `risky_url` finding. */
 	domain?: string;
 	/** Set for a `risky_url` finding. */
@@ -216,6 +262,7 @@ export type SkillPreviewFile = {
 	 * line. Each hidden character shows as a marker such as `⟦U+200B⟧`.
 	 */
 	text: string;
+	isBinary?: boolean;
 };
 
 /** One skill in the picker. */
@@ -227,7 +274,7 @@ export type DiscoveredSkill = {
 	/** Null when n8n cannot read the skill. `error` then says why. */
 	name: string | null;
 	description: string | null;
-	/** Files that the import leaves out, such as scripts. */
+	/** Files that the import leaves out. */
 	skippedFiles: string[];
 	/** The files that the import keeps, for the review. Empty when n8n cannot read the skill. */
 	previewFiles: SkillPreviewFile[];
@@ -251,6 +298,28 @@ export type SkillSourceDiscovery = {
 	tooDeep?: number;
 };
 
+export type PublicSkillSourceDiscovery = Omit<SkillSourceDiscovery, 'skills'> & {
+	revision: string | null;
+	skills: Array<
+		Pick<DiscoveredSkill, 'key' | 'location' | 'name' | 'nameTaken' | 'webUrl'> & {
+			verdict: SkillScanVerdict | null;
+			reason: SkillSourceReason | null;
+		}
+	>;
+};
+
+/**
+ * What an import of the selection does at the previewed revision, before anything is
+ * stored. n8n Assistant shows it on the approval card.
+ */
+export type PublicSkillSourceImportCheck = {
+	source: SkillSourceSummary;
+	/** Selected skills that the import takes. */
+	importable: Array<{ key: string; name: string }>;
+	/** Selected skills that the import leaves out. */
+	failed: SkillSourceConnectResponse['failed'];
+};
+
 export type SkillSourceConnectResponse = {
 	sourceId: string;
 	imported: Array<{ key: string; skillId: string; name: string }>;
@@ -270,7 +339,7 @@ export type SkillSyncState =
 
 /** The answer of Check now. */
 export type SkillSourceCheckResponse = {
-	/** The source, such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** Skills of the source with an update that waits for review, after the check. */
 	updatesFound: number;
@@ -285,7 +354,7 @@ export type SkillSourceCheckResponse = {
 export type SkillSyncedFrom = {
 	sourceId: string;
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -348,7 +417,7 @@ export type SkillSourceHealth = 'connected' | 'credential_issue' | 'source_unava
 export type SkillSourceListItem = {
 	id: string;
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -477,7 +546,10 @@ export type SkillUpdateFile = {
 	path: string;
 	before: string;
 	after: string;
-	status?: 'added' | 'removed';
+	beforeIsBinary?: true;
+	afterIsBinary?: true;
+	/** Modified indicates a change to bytes or encoding that a text diff cannot show. */
+	status?: 'added' | 'removed' | 'modified';
 };
 
 /** Names are limited to agents the user can read. */
@@ -486,7 +558,11 @@ export type SkillUpdateAgents = {
 	hiddenAgentCount: number;
 };
 
-export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
+export type SkillUpdateReview = SkillUpdateAgents & {
+	files: SkillUpdateFile[];
+	/** Use a bounded preview when blocked content is too large for the diff viewer. */
+	preview?: Pick<DiscoveredSkill, 'previewFiles' | 'previewTruncated'>;
+};
 export type SkillSourceAcceptResponse = SkillUpdateAgents & {
 	updatedCount: number;
 	importedCount?: number;

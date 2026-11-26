@@ -28,6 +28,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -517,6 +518,48 @@ describe('Skill Sync with credentials', () => {
 			expect(meta).toEqual({ reason: 'not_found' });
 		});
 
+		it('requires an eligible credential for each sibling folder import', async () => {
+			github.push(
+				'acme/private',
+				{
+					'skills/pdf/SKILL.md': skillMd('pdf'),
+					'skills/docx/SKILL.md': skillMd('docx'),
+				},
+				'main',
+				{ private: true },
+			);
+			for (const folder of ['pdf', 'docx']) {
+				const payload = { url: `${PRIVATE}/tree/main/skills/${folder}`, ...scope() };
+				const missing = await post(editor, '/skill-sources/discover', payload, 404);
+				expect(missing.meta?.reason).toBe('not_found');
+				const refused = await post(
+					editor,
+					'/skill-sources/discover',
+					{ ...payload, credentialId: otherTeamCredential.id },
+					403,
+				);
+				expect(refused.meta?.reason).toBe('credential_out_of_scope');
+				const withCredential = { ...payload, credentialId: teamCredential.id };
+				const { data: discovery } = await post<SkillSourceDiscovery>(
+					editor,
+					'/skill-sources/discover',
+					withCredential,
+				);
+				expect(discovery.duplicate).toEqual({ kind: 'none' });
+				const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+					...withCredential,
+					skillKeys: discovery.skills.map(({ key }) => key),
+				});
+				expect(data.imported.map(({ name }) => name)).toEqual([folder]);
+				const source = await Container.get(DataSource).manager.findOneByOrFail(
+					SkillSourceConnection,
+					{ id: data.sourceId },
+				);
+				expect(source.credentialId).toBe(teamCredential.id);
+			}
+			expect(await Container.get(DataSource).manager.count(SkillSourceConnection)).toBe(2);
+		});
+
 		it.each([
 			['a credential of another project', () => otherTeamCredential.id],
 			['a credential that does not exist', () => 'no-such-credential'],
@@ -794,7 +837,7 @@ describe('Skill Sync with credentials', () => {
 		it('keeps a deleted credential visible while public access waits after a rate limit', async () => {
 			const { sourceId } = await importPrivate();
 			await db().update(SkillSourceConnection, { id: sourceId }, { credentialId: null });
-			const backoff = Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+			const backoff = Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
 				string,
 				{ until: number; attempts: number }
 			>;
@@ -914,7 +957,7 @@ describe('Skill Sync with credentials', () => {
 
 		describe('the wait after a rate limit, for each access', () => {
 			const backoff = () =>
-				Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+				Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
 					string,
 					{ until: number; attempts: number }
 				>;

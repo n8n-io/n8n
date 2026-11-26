@@ -1,7 +1,8 @@
-import type {
-	InstanceAiAgentAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiResourceAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type InstanceAiAgentAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
@@ -30,8 +31,6 @@ const {
 	sendMessageFromOutside,
 	setDraft,
 	clearDraftIfMatches,
-	stagedChips,
-	removeChip,
 	telemetryTrack,
 	chatMessages,
 	expectSetupResult,
@@ -40,8 +39,6 @@ const {
 	sendMessageFromOutside: vi.fn(),
 	setDraft: vi.fn(),
 	clearDraftIfMatches: vi.fn(),
-	stagedChips: { current: [] as Array<{ id: string; label: string }> },
-	removeChip: vi.fn(),
 	telemetryTrack: vi.fn(),
 	chatMessages: { current: undefined as Ref<ChatMessage[]> | undefined },
 	expectSetupResult: { current: undefined as ((save: PendingSetupSave) => void) | undefined },
@@ -74,7 +71,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				return h(
 					'div',
 					{ 'data-test-id': 'agent-chat-panel-stub' },
-					slots['composer-attachments']?.({ chips: stagedChips.current, removeChip }),
+					slots['composer-attachments']?.(),
 				);
 			};
 		},
@@ -132,9 +129,7 @@ describe('AssistantAgentPanelThread', () => {
 		sendMessageFromOutside.mockReset();
 		setDraft.mockReset();
 		clearDraftIfMatches.mockReset();
-		removeChip.mockReset();
 		telemetryTrack.mockReset();
-		stagedChips.current = [];
 		clearPendingHandoffContext('thread-1');
 	});
 
@@ -166,6 +161,11 @@ describe('AssistantAgentPanelThread', () => {
 		const onContentChange = panelProps.current.onContentChange as (hasContent: boolean) => void;
 		onContentChange(true);
 		expect(wrapper.emitted('content-change')).toEqual([[true]]);
+	});
+
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		await render();
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
 	});
 
 	it('opens a new thread of the Assistant agent on the system channel', async () => {
@@ -218,16 +218,10 @@ describe('AssistantAgentPanelThread', () => {
 
 	it('shows an agent preview hand-off as a chip, and drops it when the user removes the chip', async () => {
 		stashPendingHandoffContext('thread-1', preview);
-		stagedChips.current = [{ id: 'nodes-1', label: 'Slack' }];
 		const wrapper = await render();
 
 		const chip = wrapper.find('[data-test-id="instance-ai-handoff-context-chip"]');
 		expect(chip.text()).toContain('Support agent session');
-		// The other chips of the composer stay.
-		const staged = wrapper.find('[data-test-id="agent-chat-composer-chip"]');
-		expect(staged.text()).toContain('Slack');
-		await staged.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
-		expect(removeChip).toHaveBeenCalledWith('nodes-1');
 
 		await chip.find('[data-test-id="instance-ai-handoff-context-chip-dismiss"]').trigger('click');
 

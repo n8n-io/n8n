@@ -2,6 +2,7 @@ import type {
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersion as WorkflowPublishedVersionEntity,
 	WorkflowPublishedVersionRepository,
 	WorkflowHistoryRepository,
@@ -53,6 +54,7 @@ describe('WorkflowPublicationApplier', () => {
 	const durableJobProvisioner = mock<DurableJobProvisioner>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const workflowPublisherService = mock<WorkflowPublisherService>();
+	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -70,6 +72,7 @@ describe('WorkflowPublicationApplier', () => {
 		durableJobProvisioner,
 		credentialsPermissionChecker,
 		workflowPublisherService,
+		triggerStatusRepository,
 	);
 
 	function makeRecord(
@@ -151,6 +154,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue({ externalTeardownFailures: [] });
+		triggerStatusRepository.findRetriedTriggerNodeIds.mockResolvedValue(new Set());
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 		// The test nodes are scheduleTrigger nodes, so default every node to 'in-memory'.
 		workflowTriggerActivator.getTriggerKinds.mockImplementation(
@@ -677,6 +681,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['b']),
 			'update',
 			abort,
+			new Set(),
 		);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -702,6 +707,7 @@ describe('WorkflowPublicationApplier', () => {
 				new Set(['a']),
 				expectedMode,
 				abort,
+				new Set(),
 			);
 		});
 
@@ -716,6 +722,7 @@ describe('WorkflowPublicationApplier', () => {
 				new Set(['a']),
 				'update',
 				abort,
+				new Set(),
 			);
 		});
 
@@ -737,6 +744,7 @@ describe('WorkflowPublicationApplier', () => {
 						new Set(['a']),
 						'activate',
 						abort,
+						new Set(),
 					);
 				},
 			);
@@ -752,6 +760,7 @@ describe('WorkflowPublicationApplier', () => {
 					new Set(['a']),
 					'activate',
 					abort,
+					new Set(),
 				);
 			});
 
@@ -770,9 +779,49 @@ describe('WorkflowPublicationApplier', () => {
 					new Set(['a']),
 					expectedMode,
 					abort,
+					new Set(),
 				);
 			});
 		});
+	});
+
+	describe('retried trigger nodes', () => {
+		beforeEach(() => {
+			triggerStatusRepository.findRetriedTriggerNodeIds.mockResolvedValue(new Set(['a']));
+			setTriggerSets([], [triggerNode('a')]);
+		});
+
+		test.each(['startup', 'leadership-takeover', 'reconcile'] as const)(
+			'reason %s passes the retried trigger nodes to the activator',
+			async (reason) => {
+				await applier.apply(makeRecord({ reason }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					expect.any(String),
+					abort,
+					new Set(['a']),
+				);
+			},
+		);
+
+		test.each(['publish', 'transfer'] as const)(
+			'reason %s passes no retried trigger nodes to the activator',
+			async (reason) => {
+				await applier.apply(makeRecord({ reason }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					expect.any(String),
+					abort,
+					new Set(),
+				);
+			},
+		);
 	});
 
 	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
@@ -803,6 +852,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'update',
 			abort,
+			new Set(),
 		);
 	});
 
@@ -854,6 +904,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'update',
 			abort,
+			new Set(),
 		);
 	});
 
@@ -877,6 +928,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['b', 'c']),
 			'update',
 			abort,
+			new Set(),
 		);
 	});
 
@@ -949,6 +1001,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'update',
 			abort,
+			new Set(),
 		);
 		// The cache is invalidated before the version is advanced and repopulated
 		// straight after, so the empty window never serves a stale version, all
@@ -983,6 +1036,7 @@ describe('WorkflowPublicationApplier', () => {
 				new Set(['n8n']),
 				'update',
 				abort,
+				new Set(),
 			);
 		});
 
@@ -1076,6 +1130,7 @@ describe('WorkflowPublicationApplier', () => {
 					errorMessage: 'third-party unavailable',
 				},
 			],
+			error,
 		});
 		// The new version is published despite the partial activation; no deactivation.
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -1164,6 +1219,7 @@ describe('WorkflowPublicationApplier', () => {
 					errorMessage: error.message,
 				},
 			],
+			error,
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -1270,6 +1326,7 @@ describe('WorkflowPublicationApplier', () => {
 					errorMessage: error.message,
 				},
 			],
+			error,
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -1296,6 +1353,7 @@ describe('WorkflowPublicationApplier', () => {
 			new Set(['a']),
 			'activate',
 			abort,
+			new Set(),
 		);
 	});
 

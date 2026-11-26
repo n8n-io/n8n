@@ -252,10 +252,13 @@ export function getProjects(): Project[] {
 			testDir: './tests/e2e',
 			grep: new RegExp(ENGINE_TAG_PREFIX),
 			timeout: 180000,
-			// One worker, one stack. Every worker boots its own Postgres, main and
+			// One worker, one stack. Every worker boots its own Postgres, mains and
 			// engine, and the CI job asks for one worker anyway.
 			workers: 1,
-			use: { containerConfig: { postgres: true, engine: 'container' } },
+			// Two mains, so the execution channel runs over Redis in multi-main as
+			// it does in production. The worker runs what stays on the legacy
+			// engine: in multi-main the mains send manual runs to workers.
+			use: { containerConfig: { postgres: true, engine: 'container', mains: 2, workers: 1 } },
 		});
 
 		projects.push({
@@ -299,6 +302,23 @@ export function getProjects(): Project[] {
 			retries: 0,
 			// No browser runs here — the global trace/video/screenshot capture
 			// only produces empty artifacts for these tests.
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
+		});
+
+		// API-only, no browser: each cell boots its own stack against published
+		// images and runs the deployment probe (no e2e controller). When CI sets
+		// channel and arch, the project name becomes the Currents group.
+		const deploymentProjectName =
+			process.env.DEPLOYMENT_CHANNEL && process.env.DEPLOYMENT_ARCH
+				? `deployment · ${process.env.DEPLOYMENT_CHANNEL} · ${process.env.DEPLOYMENT_ARCH}`
+				: 'deployment';
+		projects.push({
+			name: deploymentProjectName,
+			testDir: './tests/deployment',
+			grep: /@cell:/,
+			workers: 1,
+			timeout: 300_000,
+			retries: 0,
 			use: { trace: 'off', video: 'off', screenshot: 'off' },
 		});
 

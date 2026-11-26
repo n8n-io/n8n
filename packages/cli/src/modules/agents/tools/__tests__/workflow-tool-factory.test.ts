@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentToolSkippedFile } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -29,6 +29,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
+import { InstrumentedRunUnsupportedError } from '../instrumented-run-guard';
 import {
 	executeWorkflow,
 	resolveWorkflowTool,
@@ -355,6 +356,22 @@ describe('executeWorkflow → eval instrumentation', () => {
 		});
 	});
 
+	it('marks the workflow execution as simulated in its custom data when instrumented', async () => {
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.resultData.metadata).toEqual({ simulated: 'true' });
+	});
+
 	it('leaves the run data untouched when not instrumented', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
@@ -362,6 +379,7 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+		expect(runData.executionData?.resultData.metadata).toBeUndefined();
 	});
 
 	it('leaves the run data untouched when instrumented but no tool name is bound', async () => {
@@ -377,6 +395,197 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('executeWorkflow → instrumented runs stay on main', () => {
+	const v2Workflow = {
+		...workflow,
+		settings: { engineType: 'v2' },
+	} as unknown as WorkflowEntity;
+	const offloadBefore = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+
+	function setQueue(mode: 'regular' | 'queue', offload?: 'true') {
+		Container.set(ExecutionsConfig, { mode } as ExecutionsConfig);
+		if (offload) process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offload;
+		else delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+	}
+
+	async function runInstrumented(
+		target: WorkflowEntity,
+		run: ReturnType<typeof vi.fn>,
+		executionMode: 'manual' | 'integrated' = 'manual',
+	) {
+		return await executeWorkflow(
+			target,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn(), executionMode }),
+			false,
+			'Lookup_workflow',
+		);
+	}
+
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+		if (offloadBefore === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offloadBefore;
+	});
+
+	it('refuses an Engine v2 workflow before it starts', async () => {
+		setQueue('regular');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(v2Workflow, run)).rejects.toThrow(
+			'Test runs and evaluations do not support Engine v2 workflows yet.',
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('still runs an Engine v2 workflow that is not instrumented', async () => {
+		setQueue('regular');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(v2Workflow, triggerNode, {}, buildContext(run), false);
+
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('runs a manual workflow in queue mode while manual runs stay on main', async () => {
+		setQueue('queue');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await runInstrumented(workflow, run);
+
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('refuses a manual workflow in queue mode when manual runs go to workers', async () => {
+		setQueue('queue', 'true');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run)).rejects.toThrow(
+			'This workflow would run on a queue worker',
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('refuses an integrated workflow in queue mode, which always goes to workers', async () => {
+		setQueue('queue');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run, 'integrated')).rejects.toThrow(
+			InstrumentedRunUnsupportedError,
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('stops a run that paused and refuses its result', async () => {
+		setQueue('regular');
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'waiting',
+				waitTill: new Date(Date.now() + 10 * 60_000),
+				data: { resultData: { runData: {} }, waitTill: new Date(Date.now() + 10 * 60_000) },
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run)).rejects.toThrow('This workflow paused to wait');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+	});
+
+	describe('backstop when the runner skips the instrumentation', () => {
+		const configuringRun = vi.fn(async (runData: IWorkflowExecutionDataProcess) => {
+			await runData.configureAdditionalData?.(mock());
+			return 'exec-1';
+		});
+
+		async function runWith(run: ReturnType<typeof vi.fn>, stillActive: boolean) {
+			return await executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildContext(run, {
+					instrumentToolAdditionalData: vi.fn(),
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => stillActive,
+						getPostExecutePromise: async () =>
+							await Promise.resolve({
+								status: 'success',
+								data: { resultData: { runData: {} } },
+							} as unknown as IRun),
+					}),
+				}),
+				false,
+				'Lookup_workflow',
+			);
+		}
+
+		it('stops a run that went on without the instrumentation and fails loudly', async () => {
+			setQueue('regular');
+			const stop = vi.fn().mockResolvedValue(undefined);
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			const run = vi.fn().mockResolvedValue('exec-1');
+
+			const failure = runWith(run, true);
+
+			await expect(failure).rejects.toThrow('started outside the test run, without its mocks');
+			await expect(failure).rejects.not.toBeInstanceOf(InstrumentedRunUnsupportedError);
+			expect(stop).toHaveBeenCalledWith('exec-1', ['wf-1']);
+		});
+
+		it('lets a run through when the runner applied the instrumentation', async () => {
+			setQueue('regular');
+			const stop = vi.fn();
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+
+			await expect(runWith(configuringRun, true)).resolves.toMatchObject({
+				executionId: 'exec-1',
+			});
+			expect(stop).not.toHaveBeenCalled();
+		});
+
+		it('reports the result of a run that failed before it started', async () => {
+			setQueue('regular');
+			const stop = vi.fn();
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			const run = vi.fn().mockResolvedValue('exec-1');
+
+			await expect(runWith(run, false)).resolves.toMatchObject({ executionId: 'exec-1' });
+			expect(stop).not.toHaveBeenCalled();
+		});
+	});
+
+	it('fails loudly, not as a safe refusal, when the paused run cannot be stopped', async () => {
+		setQueue('regular');
+		Container.set(Logger, mock<Logger>());
+		Container.set(
+			ExecutionService,
+			mock<ExecutionService>({ stop: vi.fn().mockRejectedValue(new Error('db down')) }),
+		);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'waiting',
+				data: { resultData: { runData: {} }, waitTill: new Date(Date.now() + 10 * 60_000) },
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		const failure = runInstrumented(workflow, run);
+
+		await expect(failure).rejects.toThrow('could not be stopped');
+		await expect(failure).rejects.not.toBeInstanceOf(InstrumentedRunUnsupportedError);
 	});
 });
 
@@ -870,6 +1079,17 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
 	});
 
+	it.each([true, false])(
+		'keeps the runtime choice when a task workflow waits (published=%s)',
+		async (published) => {
+			const executionData = await runToolWith(
+				{ agentId: 'agent-1', integrationType: 'task', usePublishedWorkflowVersion: published },
+				agentCtx,
+			);
+			expect(executionData?.parentAgentRun).toMatchObject({ integrationType: 'task', published });
+		},
+	);
+
 	it('stamps the production n8n Chat marker so the wake-up uses the published runtime', async () => {
 		const executionData = await runToolWith(
 			{
@@ -895,6 +1115,45 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).not.toHaveProperty('previewChat');
 	});
 
+	it('stamps the service account and the delegating agent for log attribution', async () => {
+		const executionData = await runToolWith(
+			{
+				agentId: 'agent-1',
+				integrationType: 'slack',
+				agentServiceAccountId: 'sa-1',
+				delegatingAgentId: 'parent-agent-1',
+			},
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			threadId: 'agent-1:slack:C123',
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			integrationType: 'slack',
+			agentServiceAccountId: 'sa-1',
+			delegatingAgentId: 'parent-agent-1',
+		});
+	});
+
+	it('does not run the execution as the agent or its service account', async () => {
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
+			...buildContext(run, { workflowLoader, agentId: 'agent-1', agentServiceAccountId: 'sa-1' }),
+			projectId: 'project-1',
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+		await tool.handler?.({}, agentCtx as never);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.parentAgentRun?.agentServiceAccountId).toBe('sa-1');
+		expect(runData.userId).toBeUndefined();
+	});
+
 	it('omits the integration type for a run with no chat platform', async () => {
 		const executionData = await runToolWith({ agentId: 'agent-1' }, agentCtx);
 
@@ -912,6 +1171,20 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		['no toolCallId', { agentId: 'agent-1' }, { ...agentCtx, toolCallId: undefined }],
 	])('writes no marker when there is %s', async (_label, contextExtras, ctx) => {
 		const executionData = await runToolWith(contextExtras, ctx);
+
+		expect(executionData?.parentAgentRun).toBeUndefined();
+	});
+
+	// Attribution rides on the marker, so a tool call without a full marker names no agent.
+	it.each([
+		['no thread', { ...agentCtx, persistence: undefined }],
+		['no runId', { ...agentCtx, runId: undefined }],
+		['no toolCallId', { ...agentCtx, toolCallId: undefined }],
+	])('writes no attribution when there is %s', async (_label, ctx) => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', agentServiceAccountId: 'sa-1' },
+			ctx,
+		);
 
 		expect(executionData?.parentAgentRun).toBeUndefined();
 	});
@@ -960,7 +1233,13 @@ describe('workflow tool → binary output', () => {
 
 		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
 			[binaryItem],
-			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1', resourceId: 'draft-chat:user-1' },
+			expect.objectContaining({
+				agentId: 'agent-1',
+				projectId: 'p1',
+				threadId: 't-1',
+				resourceId: 'draft-chat:user-1',
+				workflowId: workflow.id,
+			}),
 			expect.any(Map),
 			expect.any(Set),
 		);
@@ -1441,10 +1720,13 @@ describe('workflow tool → file input', () => {
 			{ data: 'aid-1' },
 			{ projectId: 'p1', threadId: 't-1' },
 		);
-		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const { pinData } = runData;
 		const [triggerItems] = Object.values(pinData ?? {});
 		expect(triggerItems[0].binary).toEqual(binary);
 		expect(triggerItems[0].json).not.toHaveProperty('files');
+		expect(runData.binaryDataAccess).toEqual(['fs:x']);
+		expect(runData.executionData?.binaryDataAccess).toEqual(['fs:x']);
 	});
 
 	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {

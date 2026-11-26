@@ -1,8 +1,15 @@
-import { createDataSource, WorkflowExecution, WorkflowStepExecution } from '@n8n/engine';
+import { WorkflowExecution, WorkflowStepExecution } from '@n8n/engine';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { converter, mainTo, makeRunWorkflow, setNode, TRIGGER } from './acceptance-fixtures';
+import {
+	acceptanceRuntime,
+	converter,
+	mainTo,
+	makeRunWorkflow,
+	setNode,
+	TRIGGER,
+} from './acceptance-fixtures';
 import { v1Workflow } from './fixtures';
 import { toStepOutputs } from '../io';
 import type { SubWorkflowResolveRequest, SubWorkflowResolver } from '../types';
@@ -68,23 +75,21 @@ function resolverFor(subWorkflow = subWorkflowFixture()): SubWorkflowResolver {
 
 describe('sub-workflow acceptance (integration)', () => {
 	let container: StartedPostgreSqlContainer;
-	let dataSource: ReturnType<typeof createDataSource>;
+	const engine = acceptanceRuntime();
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer('postgres:18-alpine').start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		await engine.start(container.getConnectionUri());
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
+		await engine.stop();
 		if (container) await container.stop();
 	});
 
-	const runWorkflow = makeRunWorkflow(() => dataSource);
+	const runWorkflow = makeRunWorkflow(() => engine);
 	const subExecutionOf = async (parentId: string) =>
-		await dataSource.getRepository(WorkflowExecution).findOneOrFail({
+		await engine.dataSource.getRepository(WorkflowExecution).findOneOrFail({
 			where: { parentExecutionId: parentId },
 		});
 
@@ -95,7 +100,7 @@ describe('sub-workflow acceptance (integration)', () => {
 			parentWorkflow(),
 			[[{ json: { name: 'ada' } }]],
 			'manual',
-			{ resolveSubWorkflow, finishCount: 2 },
+			{ resolveSubWorkflow },
 		);
 
 		expect(execution.status).toBe('completed');
@@ -129,7 +134,7 @@ describe('sub-workflow acceptance (integration)', () => {
 				items: [expect.objectContaining({ json: { name: 'ada' } })],
 			}),
 		);
-		const subExecutionSteps = await dataSource
+		const subExecutionSteps = await engine.dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId: subExecution.id } });
 		expect(subExecutionSteps.map(({ nodeId, status }) => [nodeId, status])).toEqual(
@@ -145,7 +150,7 @@ describe('sub-workflow acceptance (integration)', () => {
 			parentWorkflow({ waitForSubWorkflow: false }),
 			[[{ json: { name: 'ada' } }]],
 			'manual',
-			{ resolveSubWorkflow: resolverFor(), finishCount: 2 },
+			{ resolveSubWorkflow: resolverFor() },
 		);
 
 		expect(execution.status).toBe('completed');
@@ -171,7 +176,7 @@ describe('sub-workflow acceptance (integration)', () => {
 			parentWorkflow(),
 			[[{ json: { name: 'ada' } }]],
 			'manual',
-			{ resolveSubWorkflow: resolverFor(failing), finishCount: 2 },
+			{ resolveSubWorkflow: resolverFor(failing) },
 		);
 
 		expect(execution.status).toBe('failed');

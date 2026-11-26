@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-insights",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -33,13 +33,12 @@
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@vueuse/core": "catalog:frontend",
-    "chart.js": "^4.4.0",
+    "chart.js": "catalog:frontend",
     "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",
     "lodash": "catalog:",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
-    "vue-chartjs": "^5.2.0",
     "vue-i18n": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },

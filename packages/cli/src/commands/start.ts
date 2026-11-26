@@ -14,6 +14,7 @@ import {
 	AuthRolesService,
 	DeploymentKeyRepository,
 	ExecutionRepository,
+	FoldStepRegistry,
 	SettingsRepository,
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
@@ -34,6 +35,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CrashLoopRecovery } from '@/crash-loop/crash-loop-recovery';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -311,6 +313,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		Container.get(PushProxy).registerProvider(Container.get(Push));
+
+		// The step needs cli services, so cli registers it for the ledger module to run.
+		const { WorkflowStatisticsFoldStep } = await import(
+			'@/services/workflow-statistics.fold-step.js'
+		);
+		Container.get(FoldStepRegistry).register(Container.get(WorkflowStatisticsFoldStep));
+
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// The skills module reads the credentials of its sources through cli.
@@ -467,6 +476,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
+		// After the event bus noted the unfinished executions, and before the scheduler
+		// starts, so that no job of this session is in flight yet.
+		await Container.get(CrashLoopRecovery).recover();
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

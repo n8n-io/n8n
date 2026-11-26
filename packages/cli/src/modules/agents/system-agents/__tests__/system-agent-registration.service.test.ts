@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ServiceAccountService } from '@/services/service-account.service';
 
+import type { AgentServiceAccountService } from '../../agent-service-account.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SystemAgentRegistrationService } from '../system-agent-registration.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -14,6 +15,7 @@ describe('SystemAgentRegistrationService', () => {
 		const agentRepository = mock<AgentRepository>();
 		const serviceAccountService = mock<ServiceAccountService>();
 		const transactionRunner = mock<TransactionRunner>();
+		const agentServiceAccount = mock<AgentServiceAccountService>();
 		const txCtx: OperationContext = {};
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(txCtx));
 		serviceAccountService.create.mockResolvedValue({
@@ -25,6 +27,7 @@ describe('SystemAgentRegistrationService', () => {
 			agentRepository,
 			serviceAccountService,
 			transactionRunner,
+			agentServiceAccount,
 		);
 		const provider = {
 			agentId: 'other-agent',
@@ -32,7 +35,15 @@ describe('SystemAgentRegistrationService', () => {
 			authorize: vi.fn(async () => true),
 			prepareTurn: vi.fn(),
 		} satisfies SystemAgentProvider;
-		return { service, registry, agentRepository, serviceAccountService, txCtx, provider };
+		return {
+			service,
+			registry,
+			agentRepository,
+			serviceAccountService,
+			agentServiceAccount,
+			txCtx,
+			provider,
+		};
 	}
 
 	describe('register', () => {
@@ -70,7 +81,8 @@ describe('SystemAgentRegistrationService', () => {
 		});
 
 		it('inserts a new agent with a new service account in one transaction', async () => {
-			const { service, agentRepository, serviceAccountService, txCtx } = setup();
+			const { service, agentRepository, serviceAccountService, agentServiceAccount, txCtx } =
+				setup();
 			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(false);
 			agentRepository.insertInstanceAgent.mockResolvedValue(true);
 
@@ -84,10 +96,14 @@ describe('SystemAgentRegistrationService', () => {
 				txCtx,
 			);
 			expect(agentRepository.renameInstanceAgentIfExists).toHaveBeenCalledTimes(1);
+			expect(agentServiceAccount.reportCreated).toHaveBeenCalledWith(
+				{ id: 'other-agent', identityId: 'sa-1', projectId: null },
+				{ kind: 'system', reason: 'startup' },
+			);
 		});
 
-		it('rolls back and renames when another main inserted the agent first', async () => {
-			const { service, agentRepository } = setup();
+		it('rolls back, renames and reports nothing when another main inserted the agent first', async () => {
+			const { service, agentRepository, agentServiceAccount } = setup();
 			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(false);
 			agentRepository.insertInstanceAgent.mockResolvedValue(false);
 
@@ -96,6 +112,7 @@ describe('SystemAgentRegistrationService', () => {
 			).resolves.toBeUndefined();
 
 			expect(agentRepository.renameInstanceAgentIfExists).toHaveBeenCalledTimes(2);
+			expect(agentServiceAccount.reportCreated).not.toHaveBeenCalled();
 		});
 
 		it('throws other errors', async () => {

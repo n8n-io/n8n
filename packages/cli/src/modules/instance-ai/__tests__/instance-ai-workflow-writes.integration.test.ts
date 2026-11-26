@@ -164,4 +164,29 @@ describe('Instance AI workflow writes (integration)', () => {
 			expect(pushService.sendToUsers).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('workflow engine', () => {
+		// Source without settings must not move a v2 workflow back to v1.
+		it('keeps the stored engine when the source sets no engine', async () => {
+			await workflowRepository.update(workflow.id, { settings: { engineType: 'v2' } });
+
+			await instanceAiWorkflows().updateFromWorkflowJSON(
+				workflow.id,
+				workflowJson('Renamed by AI'),
+			);
+
+			expect((await storedWorkflow()).settings?.engineType).toBe('v2');
+		});
+
+		it('changes the engine when the source sets one', async () => {
+			await workflowRepository.update(workflow.id, { settings: { engineType: 'v2' } });
+
+			await instanceAiWorkflows().updateFromWorkflowJSON(workflow.id, {
+				...workflowJson('Renamed by AI'),
+				settings: { engineType: 'v1' },
+			} as WorkflowJSON);
+
+			expect((await storedWorkflow()).settings?.engineType ?? 'v1').toBe('v1');
+		});
+	});
 });

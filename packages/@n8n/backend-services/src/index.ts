@@ -10,12 +10,14 @@ export {
 	savesTime,
 	toLedgerFact,
 	toLedgerOutcome,
+	toWorkflowStatisticsCount,
 	type CompletedRun,
 	type LedgerEntityType,
 	type LedgerEvent,
 	type LedgerFact,
 	type LedgerOutcome,
 	type LedgerSource,
+	type WorkflowStatisticsCount,
 } from './executions/counting-rules';
 export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
@@ -50,6 +52,12 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export {
+	ProjectMutationHooksProxy,
+	type AfterProjectDeleted,
+	type ProjectDeletion,
+	type ProjectMutationHooks,
+} from './services/project-mutation-hooks-proxy.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export { UserDeactivationHooks } from './services/user-deactivation-hooks.service';
 export { PasswordUtility } from './services/password.utility';

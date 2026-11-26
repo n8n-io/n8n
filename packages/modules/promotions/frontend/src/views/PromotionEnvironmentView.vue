@@ -31,7 +31,6 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router';
 
 import PromotionGitHostSelect from '../components/PromotionGitHostSelect.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
-import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import { ENVIRONMENTS_PLAN_DOCS_URL, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
@@ -269,7 +268,6 @@ async function save() {
 			});
 		}
 		isSaved = true;
-		invalidateInstancePromotionConnection();
 		if (canConnect.value && !saved.checkout.matchesEnvironment) connected = await connect(saved.id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.environment.toast.error.save'));
@@ -530,6 +528,7 @@ onBeforeRouteLeave(() => {
 			:open="dialogOpen"
 			:type="pickedType"
 			:provider-id="loaded ? providerId : undefined"
+			:environment-id="loaded?.id"
 			@update:open="onDialogOpenChange"
 			@saved="onProviderSaved"
 		/>

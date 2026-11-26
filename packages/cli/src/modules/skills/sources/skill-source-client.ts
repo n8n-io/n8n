@@ -1,3 +1,5 @@
+import { sha256 } from '@n8n/utils/sha256';
+
 import type { SkillContent } from '../utils/skill-content-hash';
 
 /**
@@ -10,8 +12,7 @@ export type SkillSourceLocator = Record<string, unknown>;
 export type RemoteSkillRef = Record<string, unknown>;
 
 /**
- * The one structured value of a source, because the duplicate rules compare it. Two links to
- * the same repository give the same identity.
+ * The structured location that the duplicate rules compare. Folder paths retain their case.
  */
 export type SkillSourceIdentity = {
 	/** The source type, such as `github`. */
@@ -19,6 +20,8 @@ export type SkillSourceIdentity = {
 	host: string;
 	owner: string;
 	repository: string;
+	/** The discovery root. Absent or empty means the whole repository. */
+	path?: string;
 };
 
 /**
@@ -63,10 +66,14 @@ export type FetchedSkill = {
 	/** Opaque. Equal revisions mean equal content. The core compares content hashes, not these. */
 	revision: string;
 	fidelity: SkillSourceFidelityWarning[];
-	/** Paths of the remote files that the content leaves out, such as scripts. */
+	/** Paths of the remote files that the content leaves out. */
 	skippedFiles: string[];
 	/** The files in `skippedFiles` that n8n left out because it cannot store them. */
 	unstorableFiles?: string[];
+	/** The skipped files that exceed the source's per-file download limit. */
+	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 };
 
 /**
@@ -129,7 +136,7 @@ export abstract class SkillSourceClient {
 	abstract identity(locator: SkillSourceLocator): SkillSourceIdentity;
 
 	/**
-	 * How the picker names a source: a label such as `owner/repository`, the branch (null for
+	 * How the picker names a source: a label that includes its folder, the branch (null for
 	 * a source type without branches), and the folder that the link points to.
 	 */
 	abstract describe(locator: SkillSourceLocator): {
@@ -194,8 +201,30 @@ export abstract class SkillSourceClient {
 	): Promise<FetchedSkill>;
 }
 
-/** The `skill_source.identityKey` of an identity, in lower case. */
-export function skillSourceIdentityKey(identity: SkillSourceIdentity): string {
+/** The repository key used before folder sources had separate identities. */
+export function skillSourceRepositoryKey(identity: SkillSourceIdentity): string {
 	const { type, host, owner, repository } = identity;
 	return `${type}:${host}/${owner}/${repository}`.toLowerCase();
+}
+
+/** A bounded prefix for all folder sources in one repository. */
+export async function skillSourceFolderKeyPrefix(identity: SkillSourceIdentity): Promise<string> {
+	return `folder:${await sha256(skillSourceRepositoryKey(identity))}:`;
+}
+
+/** Keep root keys unchanged. Hash folder identities to fit the existing 255-character column. */
+export async function skillSourceIdentityKey(identity: SkillSourceIdentity): Promise<string> {
+	if (!identity.path) return skillSourceRepositoryKey(identity);
+	return `${await skillSourceFolderKeyPrefix(identity)}${await sha256(identity.path)}`;
+}
+
+/** Overlapping discovery roots could link the same remote skill to more than one source. */
+export function skillSourcePathsOverlap(first = '', second = ''): boolean {
+	return (
+		!first ||
+		!second ||
+		first === second ||
+		first.startsWith(`${second}/`) ||
+		second.startsWith(`${first}/`)
+	);
 }

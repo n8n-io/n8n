@@ -20,6 +20,7 @@ import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
 
 import { buildAlwaysAllowKeys } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
@@ -359,6 +360,7 @@ function onApprovalSelect(key: string) {
 			:questions="input.questions ?? []"
 			:intro-message="input.introMessage"
 			:disabled="isInactive"
+			:draft-key="input.requestId"
 			data-test-id="assistant-agent-questions"
 			@submit="onQuestionsSubmit"
 		/>
@@ -372,7 +374,6 @@ function onApprovalSelect(key: string) {
 		<AppBlueprintCard
 			v-else-if="variant === 'app-blueprint' && input.appBlueprint"
 			:blueprint="input.appBlueprint"
-			:errors="input.appBlueprintErrors"
 			:read-only="isInactive"
 			data-test-id="assistant-agent-app-blueprint"
 			@submit="
@@ -468,12 +469,14 @@ function onApprovalSelect(key: string) {
 			:url="input.domainAccess.url"
 			:host="input.domainAccess.host"
 			:severity="input.severity"
+			:ask-reason="input.askReason"
 			@decide="submit"
 		/>
 		<DomainAccessApproval
 			v-else-if="variant === 'web-search' && input.webSearch"
 			:query="input.webSearch.query"
 			:severity="input.severity"
+			:ask-reason="input.askReason"
 			@decide="submit"
 		/>
 		<N8nCard v-else-if="variant === 'text'" :class="$style.card">
@@ -545,7 +548,11 @@ function onApprovalSelect(key: string) {
 			:disabled="isInactive"
 			data-test-id="assistant-agent-approval"
 			@select="onApprovalSelect"
-		/>
+		>
+			<template v-if="input.askReason" #description>
+				<ApprovalAskReason :description="approvalDescription" :reason="input.askReason" />
+			</template>
+		</N8nApprovalCard>
 	</div>
 </template>
 

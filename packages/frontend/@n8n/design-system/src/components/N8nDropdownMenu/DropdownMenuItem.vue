@@ -11,12 +11,14 @@ import {
 } from 'reka-ui';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import Icon from '../N8nIcon/Icon.vue';
 import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuWidthKey,
+	DropdownMenuExtraPopperClassKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
@@ -42,6 +44,7 @@ const props = withDefaults(
 		checkbox: false,
 		closeOnSelect: true,
 		searchMode: 'internal',
+		iconSize: 'large',
 	},
 );
 const slots = defineSlots<DropdownMenuItemSlots<T, D>>();
@@ -57,6 +60,7 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const extraPopperClass = inject(DropdownMenuExtraPopperClassKey, ref(undefined));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
@@ -65,6 +69,7 @@ const internalSubMenuOpen = ref(false);
 // so the parent's prop never finds it closed.
 const subMenuOpenedByParent = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
+const { scrollMaskAttrs } = useScrollEdges(childrenContainerRef, { axis: 'vertical' });
 const subContentMaxHeight = ref<string>();
 
 const SUB_MENU_ITEM_GLIMPSE_RATIO = 0.5;
@@ -283,7 +288,7 @@ onBeforeUnmount(() => {
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="iconSize"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 						{{ icon.value }}
@@ -355,7 +360,7 @@ onBeforeUnmount(() => {
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					:class="$style['sub-content']"
+					:class="[$style['sub-content'], extraPopperClass]"
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
@@ -396,6 +401,7 @@ onBeforeUnmount(() => {
 									ref="childrenContainerRef"
 									:class="$style['children-container']"
 									data-menu-items
+									v-bind="scrollMaskAttrs"
 								>
 									<template v-for="(child, childIndex) in props.children" :key="child.id">
 										<N8nDropdownMenuItem
@@ -441,7 +447,12 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 						<template v-else-if="hasChildren">
-							<div ref="childrenContainerRef" :class="$style['children-container']" data-menu-items>
+							<div
+								ref="childrenContainerRef"
+								:class="$style['children-container']"
+								data-menu-items
+								v-bind="scrollMaskAttrs"
+							>
 								<template v-for="(child, childIndex) in props.children" :key="child.id">
 									<N8nDropdownMenuItem
 										v-bind="child"
@@ -490,7 +501,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -530,7 +541,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -572,12 +583,7 @@ onBeforeUnmount(() => {
 	max-height: inherit;
 	overflow-y: auto;
 	@include scrollbar-mixins.hoverable-scroll-bar;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
+	@include scrollbar-mixins.scroll-mask-when-y;
 }
 
 .section-header {

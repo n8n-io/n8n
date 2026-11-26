@@ -20,7 +20,9 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
+import MainSidebarCloudConsoleCoachmark from '@/app/components/MainSidebarCloudConsoleCoachmark.vue';
 import { useBugReporting } from '@/app/composables/useBugReporting';
+import { useCloudConsoleCoachmark } from '@/app/composables/useCloudConsoleCoachmark';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -76,6 +78,27 @@ const showNameTooltip = computed(
 const showCloudConsole = computed(
 	() => settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 );
+
+// Points owners who knew the old sidebar row at its new place. Opening the menu any way counts
+// as found, so the coachmark never stays up next to the menu it describes.
+const accountEl = ref<HTMLElement>();
+const cloudConsoleCoachmark = useCloudConsoleCoachmark();
+const isCoachmarkOpen = computed(() => cloudConsoleCoachmark.shouldShow.value && !isOpen.value);
+// Set by "Show me": the row glows once when the menu opens, so the eye lands on it.
+const spotlightCloudConsole = ref(false);
+
+watch(isOpen, (open) => {
+	if (open) {
+		void cloudConsoleCoachmark.dismiss();
+		return;
+	}
+	spotlightCloudConsole.value = false;
+});
+
+function onCoachmarkShowMe() {
+	spotlightCloudConsole.value = true;
+	isOpen.value = true;
+}
 
 const whatsNewArticles = computed(() => versionsStore.whatsNewArticles);
 const firstUnreadArticle = computed(() =>
@@ -213,9 +236,18 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 
 <template>
 	<div
+		ref="accountEl"
 		:class="[$style.account, { [$style.collapsed]: isCollapsed }]"
 		data-test-id="main-sidebar-account"
 	>
+		<MainSidebarCloudConsoleCoachmark
+			:open="isCoachmarkOpen"
+			:reference="accountEl"
+			:show-whats-new="hasWhatsNew"
+			:has-unread="hasUnread"
+			@show-me="onCoachmarkShowMe"
+			@dismiss="cloudConsoleCoachmark.dismiss"
+		/>
 		<!-- The full name as a tooltip: always on the rail, on the row only when it is cut. -->
 		<N8nTooltip
 			:disabled="!showNameTooltip"
@@ -302,6 +334,7 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 							v-if="showCloudConsole"
 							id="cloud-console"
 							test-id="main-sidebar-account-cloud-console"
+							:class="{ [$style.spotlight]: spotlightCloudConsole }"
 							:label="i18n.baseText('mainSidebar.cloudConsole')"
 							:icon="{ type: 'icon', value: 'cloud' }"
 							@select="onCloudConsole"
@@ -377,6 +410,7 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/focus';
+@use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/mixins/utils';
 
 .account {
@@ -559,6 +593,29 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 
 .external {
 	color: var(--color--text--tint-1);
+}
+
+// The row's hover fill, in brand pink, flashes twice after the menu has settled: a pointer, not a state.
+.spotlight {
+	--spotlight--fill: color-mix(in oklch, var(--background--brand) 24%, transparent);
+	animation: spotlight var(--duration--slow) var(--easing--ease-in-out) var(--duration--snappy) 2;
+
+	// Without the flashes the row would get no cue at all, so it keeps the fill while the menu is open.
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+		background-color: var(--spotlight--fill);
+	}
+}
+
+@keyframes spotlight {
+	0%,
+	100% {
+		background-color: transparent;
+	}
+	35%,
+	65% {
+		background-color: var(--spotlight--fill);
+	}
 }
 
 // The submenu is as wide as its widest row, so this gap is what keeps the

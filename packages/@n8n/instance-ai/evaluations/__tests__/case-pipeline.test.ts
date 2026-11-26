@@ -681,7 +681,7 @@ describe('createCasePipeline', () => {
 				agents: [
 					{
 						id: 'seed-agent',
-						config: { name: 'Support', model: 'anthropic/claude-sonnet-4-5', subAgents },
+						config: { name: 'Support', model: 'anthropic/claude-sonnet-5-5', subAgents },
 					},
 				],
 			},
@@ -727,7 +727,7 @@ describe('createCasePipeline', () => {
 			const { output, lane } = await runWith({
 				testCase: seededCase(),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(output).toMatchObject({ passed: false, attribution: 'framework_issue' });
@@ -739,7 +739,7 @@ describe('createCasePipeline', () => {
 			const { lane } = await runWith({
 				testCase: seededCase([{ type: 'anthropicApi' }]),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
@@ -750,7 +750,7 @@ describe('createCasePipeline', () => {
 			const { output, lane } = await runWith({
 				testCase: seededCase(),
 				createdAgentIds: ['seed-restored-elsewhere'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
@@ -761,7 +761,7 @@ describe('createCasePipeline', () => {
 			const { output, lane } = await runWith({
 				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('openai/gpt-4.1-nano'),
 			});
 
@@ -774,7 +774,7 @@ describe('createCasePipeline', () => {
 			const { lane } = await runWith({
 				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('xai/grok-4'),
 			});
 

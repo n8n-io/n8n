@@ -12,6 +12,7 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { truncate } from '@n8n/utils/string/truncate';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -47,7 +48,11 @@ import {
 	updateUserFromSamlAttributes,
 } from './saml-helpers';
 import { SamlValidator } from './saml-validator';
-import { getServiceProviderInstance } from './service-provider.ee';
+import {
+	getServiceProviderEntityId,
+	getServiceProviderInstance,
+	getServiceProviderReturnUrl,
+} from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 
 const TEST_CONFIG_TTL_MS = 10 * 60 * 1000;
@@ -811,7 +816,7 @@ export class SamlService {
 				: this.getIdentityProviderInstance();
 			const samlRequest: ESamlHttpRequest = {
 				body: req.body,
-				query: req.query as Record<string, string | undefined>,
+				query: req.query,
 			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				idp,
@@ -819,11 +824,18 @@ export class SamlService {
 				samlRequest,
 			);
 		} catch (error) {
-			// throw error;
-			throw new AuthError(
-				// INFO: The error can be a string. Samlify rejects promises with strings.
-				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
+			// INFO: The error can be a string. Samlify rejects promises with strings.
+			const reason = error instanceof Error ? error.message : String(error);
+			const loggedReason = truncate(reason.replace(/\s+/g, ' '), 200);
+			const expectedEntityId = getServiceProviderEntityId();
+			const expectedAcsUrl = getServiceProviderReturnUrl();
+			// The default text log format prints only the message, so the message holds the
+			// values that an admin compares with the identity provider settings
+			this.logger.warn(
+				`SAML response was rejected (${loggedReason}). n8n expects Entity ID ${expectedEntityId} and ACS URL ${expectedAcsUrl}`,
+				{ reason: loggedReason, expectedEntityId, expectedAcsUrl },
 			);
+			throw new AuthError(`SAML Authentication failed. Could not parse SAML response. ${reason}`);
 		}
 		const { attributes, missingAttributes, rawAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

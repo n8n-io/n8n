@@ -7,6 +7,7 @@ import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
+import { resolveToolCatalogCall } from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
 	EventKind,
@@ -16,6 +17,8 @@ import type {
 	MemoryAction,
 	TimelineItem,
 	TimelineStatusFilterKey,
+	TimelineTokenBreakdown,
+	TimelineTurnUsage,
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
@@ -404,7 +407,7 @@ export function builtinToolLabelKey(
 }
 
 export function formatDuration(ms: number): string {
-	if (!ms || ms <= 0) return '';
+	if (!Number.isFinite(ms) || ms <= 0) return '';
 	if (ms < 1000) return `${ms}ms`;
 	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
 	const minutes = Math.floor(ms / 60_000);
@@ -721,6 +724,84 @@ function inputTimelineItem(
 	};
 }
 
+function toEpoch(date: string | null): number | null {
+	return date ? new Date(date).getTime() : null;
+}
+
+/** The usage of a turn, or `undefined` when the turn recorded no tokens. */
+export function turnUsageOf(exec: AgentExecution): TimelineTurnUsage | undefined {
+	const inputTokens = exec.promptTokens ?? 0;
+	const outputTokens = exec.completionTokens ?? 0;
+	const totalTokens = exec.totalTokens ?? inputTokens + outputTokens;
+	if (totalTokens <= 0) return undefined;
+	return {
+		inputTokens,
+		cacheReadTokens: exec.cacheReadTokens ?? null,
+		cacheWriteTokens: exec.cacheWriteTokens ?? null,
+		outputTokens,
+		totalTokens,
+		cost: exec.cost,
+		startedAt: toEpoch(exec.startedAt),
+		stoppedAt: toEpoch(exec.stoppedAt),
+	};
+}
+
+/**
+ * The token breakdown of a whole thread: the sum of its turns. The cache counts
+ * are `null` unless every turn reported cache data: the input of a turn without
+ * it would otherwise show as uncached.
+ */
+export function threadTokenBreakdownOf(
+	executions: AgentExecution[],
+): TimelineTokenBreakdown & { turns: number } {
+	const sum: TimelineTokenBreakdown & { turns: number } = {
+		inputTokens: 0,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
+		outputTokens: 0,
+		totalTokens: 0,
+		turns: 0,
+	};
+	let cacheRead = 0;
+	let cacheWrite = 0;
+	let everyTurnHasCacheData = true;
+	for (const exec of executions) {
+		const usage = turnUsageOf(exec);
+		if (!usage) continue;
+		sum.turns++;
+		sum.inputTokens += usage.inputTokens;
+		sum.outputTokens += usage.outputTokens;
+		sum.totalTokens += usage.totalTokens;
+		if (usage.cacheReadTokens === null && usage.cacheWriteTokens === null) {
+			everyTurnHasCacheData = false;
+		}
+		cacheRead += usage.cacheReadTokens ?? 0;
+		cacheWrite += usage.cacheWriteTokens ?? 0;
+	}
+	if (sum.turns > 0 && everyTurnHasCacheData) {
+		sum.cacheReadTokens = cacheRead;
+		sum.cacheWriteTokens = cacheWrite;
+	}
+	return sum;
+}
+
+/**
+ * Puts the usage of a turn on its last agent message, the reply that closes the
+ * turn. A turn without an agent message, such as one that waits for an approval,
+ * shows no usage row. The header total still counts it.
+ */
+function attachTurnUsage(items: TimelineItem[], execStart: number, exec: AgentExecution): void {
+	const usage = turnUsageOf(exec);
+	if (!usage) return;
+	for (let index = items.length - 1; index >= execStart; index--) {
+		const item = items[index];
+		if (item.kind === 'agent' && item.executionId === exec.id) {
+			item.turnUsage = usage;
+			return;
+		}
+	}
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
 	const initialToolCalls = new Map<string, RawToolCallEvent>();
@@ -728,6 +809,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 	const hitlContexts = new Map<string, HitlContext>();
 	const legacyApprovalToolCallIds = collectLegacyApprovalToolCallIds(executions);
 	for (const exec of executions) {
+		const execStart = items.length;
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
@@ -822,15 +904,18 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
 				const kind = toolCallKind(event);
-				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
+				const call = resolveToolCatalogCall(event.name, event.input);
+				if (event.toolCallId) {
+					initialToolCalls.set(event.toolCallId, { ...event, name: call.tool, input: call.input });
+				}
 				const item: TimelineItem = {
 					kind,
 					executionId: exec.id,
-					toolName: event.name,
+					toolName: call.tool,
 					skillName: kind === 'skill' ? skillNameFromEvent(event) : undefined,
 					memoryAction: kind === 'memory' ? memoryActionOf(event) : undefined,
 					toolCallId: event.toolCallId,
-					toolInput: event.input,
+					toolInput: call.input,
 					toolOutput: event.output,
 					toolOutcome: toolCallOutcome(event),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
@@ -850,8 +935,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				if (event.toolCallId) initialToolItems.set(event.toolCallId, item);
 			} else if (event.type === 'suspension') {
 				const toolCall = initialToolCalls.get(event.toolCallId);
-				const requestType = inferHitlRequestType(event, toolCall, legacyApprovalToolCallIds);
-				const request = hitlRequestPayload(event, toolCall, requestType);
+				// A suspended tool catalog call is recorded as `call_tool`. Show the tool it runs.
+				const suspendedCall = resolveToolCatalogCall(event.toolName, event.input);
+				const suspension = {
+					...event,
+					toolName: suspendedCall.tool,
+					...(event.input !== undefined && { input: suspendedCall.input }),
+				};
+				const requestType = inferHitlRequestType(suspension, toolCall, legacyApprovalToolCallIds);
+				const request = hitlRequestPayload(suspension, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
 				if (event.toolCallId) {
 					const toolItem = initialToolItems.get(event.toolCallId);
@@ -865,7 +957,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					}
 					hitlContexts.set(event.toolCallId, {
 						requestType,
-						toolName: event.toolName || toolCall?.name || '',
+						toolName: suspension.toolName || toolCall?.name || '',
 						toolCallId: event.toolCallId,
 						toolCall,
 						toolItem: initialToolItems.get(event.toolCallId),
@@ -876,7 +968,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				items.push({
 					kind: 'suspension',
 					executionId: exec.id,
-					toolName: event.toolName,
+					toolName: suspension.toolName,
 					toolCallId: event.toolCallId,
 					timestamp: event.timestamp ?? 0,
 					hitlRequestType: requestType,
@@ -919,6 +1011,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				timestamp: terminalTimestamp ? new Date(terminalTimestamp).getTime() : 0,
 			});
 		}
+		attachTurnUsage(items, execStart, exec);
 	}
 	/** Count equal identities before task merging and sorting. Content can change during streaming. */
 	const occurrences = new Map<string, number>();

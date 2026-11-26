@@ -2,6 +2,7 @@ import type {
 	DecideWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestResponse,
 	WorkflowReviewAutoPublishOutcome,
+	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -272,6 +273,83 @@ export class WorkflowReviewRequestDecisionService {
 				pinnedVersionId,
 			),
 		};
+	}
+
+	/**
+	 * Closes an open review without an approval. The decision keeps its last value, so the
+	 * publish guard treats the review as never approved. No reviewability check: a review
+	 * on an archived or moved workflow must stay closable.
+	 */
+	async close(user: User, workflowReviewRequestId: string): Promise<WorkflowReviewRequestSummary> {
+		await this.featureGate.assertAvailable();
+
+		const access = await this.authorizationService.findReadableRequestOrFail(
+			user,
+			workflowReviewRequestId,
+		);
+		const { canClose } = await this.authorizationService.resolveViewerEligibility(user, access);
+		if (!canClose) {
+			throw new ForbiddenError(
+				"You can't close this review. Ask the requester, a reviewer, or a project admin to close it.",
+			);
+		}
+		assertWorkflowReviewRequestUpdatable(access.request);
+
+		const [workflowRow] = access.workflowRows;
+		if (!workflowRow) {
+			throw new NotFoundError('Could not find review request');
+		}
+
+		const { request: saved, pinnedVersionId } = await this.dbLockService.withLockContext(
+			DbLock.WORKFLOW_REVIEW_MUTATION,
+			async (ctx) => {
+				const current = await this.workflowReviewRequestRepository.findById(
+					workflowReviewRequestId,
+					ctx,
+				);
+				if (!current) {
+					throw new NotFoundError('Could not find review request');
+				}
+				assertWorkflowReviewRequestUpdatable(current);
+
+				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+					workflowReviewRequestId,
+					ctx,
+				);
+				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
+
+				// Not `updatedById`: the status read takes it as the user who requested changes.
+				current.state = 'closed';
+				current.closedById = user.id;
+				const savedRequest = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
+
+				await this.activityRepository.createActivity(
+					{
+						workflowReviewRequestId,
+						type: 'review.closed_by_user',
+						data: null,
+						createdById: user.id,
+					},
+					ctx,
+				);
+
+				return {
+					request: savedRequest,
+					pinnedVersionId: currentRow?.workflowVersionId ?? null,
+				};
+			},
+		);
+
+		this.stateNotifier.notify(workflowRow.workflowId);
+
+		this.eventService.emit('workflow-review-closed-by-user', {
+			user,
+			workflowReviewRequestId,
+			workflowId: workflowRow.workflowId,
+			workflowVersionId: pinnedVersionId,
+		});
+
+		return toRequestSummary(saved, pinnedVersionId);
 	}
 
 	/**

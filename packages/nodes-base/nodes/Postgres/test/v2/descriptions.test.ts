@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { NodeHelpers, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
 
 import { optionsCollection } from '../../v2/actions/common.descriptions';
@@ -14,6 +14,20 @@ const visibleQueryParameterOptions = (typeVersion: number) =>
 			}),
 	);
 
+const isLegacyQuotedParameterOptionVisible = (typeVersion: number) => {
+	const option = (optionsCollection.options as INodeProperties[]).find(
+		({ name }) => name === 'treatQueryParametersInSingleQuotesAsText',
+	);
+	if (!option) return false;
+
+	return NodeHelpers.displayParameter(
+		{ queryReplacement: 'value' },
+		option,
+		{ typeVersion },
+		versionDescription,
+	);
+};
+
 describe('PostgresV2, Query Parameters option', () => {
 	it.each(versionDescription.version as number[])(
 		'should show exactly one Query Parameters option at v%s',
@@ -25,6 +39,7 @@ describe('PostgresV2, Query Parameters option', () => {
 	it.each([
 		{ typeVersion: 2.7, mentionsOneValue: false },
 		{ typeVersion: 2.8, mentionsOneValue: true },
+		{ typeVersion: 2.9, mentionsOneValue: true },
 	])(
 		'should tell that an expression gives one value only from v2.8 (v$typeVersion)',
 		({ typeVersion, mentionsOneValue }) => {
@@ -33,6 +48,11 @@ describe('PostgresV2, Query Parameters option', () => {
 			expect(option.hint?.includes('An expression always gives one value')).toBe(mentionsOneValue);
 		},
 	);
+
+	it('should hide the legacy quoted parameter option from v2.9', () => {
+		expect(isLegacyQuotedParameterOptionVisible(2.8)).toBe(true);
+		expect(isLegacyQuotedParameterOptionVisible(2.9)).toBe(false);
+	});
 });
 
 describe('PostgresV2, annotations', () => {
@@ -90,4 +110,41 @@ describe('PostgresV2, Start After', () => {
 			).toBe(shown);
 		},
 	);
+});
+
+describe('PostgresV2, Load Rows With COPY option', () => {
+	const visibleOptions = (operation: string, options: INodeParameters) =>
+		(optionsCollection.options as INodeProperties[])
+			.filter((option) =>
+				NodeHelpers.displayParameter(options, option, { typeVersion: 2.8 }, versionDescription, {
+					operation,
+					options,
+				}),
+			)
+			.map((option) => option.name);
+
+	const optionsHiddenByCopy = ['queryBatching', 'outputColumns', 'skipOnConflict'];
+
+	it('should show only for Insert', () => {
+		expect(visibleOptions('insert', {})).toContain('useCopy');
+		['select', 'update', 'upsert', 'executeQuery', 'deleteTable'].forEach((operation) => {
+			expect(visibleOptions(operation, {})).not.toContain('useCopy');
+		});
+	});
+
+	it.each([{}, { useCopy: false }])(
+		'should keep the other Insert options when it is off (%o)',
+		(options) => {
+			expect(visibleOptions('insert', options)).toEqual(
+				expect.arrayContaining(optionsHiddenByCopy),
+			);
+		},
+	);
+
+	it('should hide Query Batching, Output Columns and Skip on Conflict when it is on', () => {
+		const visible = visibleOptions('insert', { useCopy: true });
+
+		expect(visible).toContain('useCopy');
+		optionsHiddenByCopy.forEach((name) => expect(visible).not.toContain(name));
+	});
 });

@@ -3,6 +3,7 @@ import { ExecutionLedger } from '@n8n/backend-services';
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { ExecutionLedgerParkedEntity } from '../database/entities/execution-ledger-parked.entity';
 import { ExecutionLedgerEntity } from '../database/entities/execution-ledger.entity';
 import { ExecutionLedgerRowWriter } from '../execution-ledger-row.writer';
 import { ExecutionLedgerModule } from '../execution-ledger.module';
@@ -15,8 +16,11 @@ describe('ExecutionLedgerModule', () => {
 		expect(entry?.instanceTypes).toEqual(['main', 'worker', 'webhook']);
 	});
 
-	it('registers the ledger entity', async () => {
-		expect(await new ExecutionLedgerModule().entities()).toEqual([ExecutionLedgerEntity]);
+	it('registers the ledger and parked ledger entities', async () => {
+		expect(await new ExecutionLedgerModule().entities()).toEqual([
+			ExecutionLedgerEntity,
+			ExecutionLedgerParkedEntity,
+		]);
 	});
 
 	it('binds the row writer to the core ledger service', async () => {

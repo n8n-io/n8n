@@ -8,10 +8,17 @@ import {
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
+	type PrunableExecution,
+	type PrunableExecutionQuery,
 	type StaleQueuedExecution,
 } from '../execution/execution-store';
-import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
+	DEFAULT_STALENESS_THRESHOLDS,
+	nextQueuedStaleAfter,
+	type StalenessThresholds,
+} from '../execution/staleness';
+import {
+	ENDED_EXECUTION_STATUSES,
 	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
@@ -170,7 +177,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, status: 'queued', staleAfter },
-			{ staleAfter: this.staleAfterFor('queued') },
+			{ staleAfter: nextQueuedStaleAfter(staleAfter, Date.now(), this.staleness.queuedMs) },
 		);
 		return result.affected === 1;
 	}
@@ -217,5 +224,88 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
 			[id],
 		);
+	}
+
+	async findPrunableExecutions({
+		maxAgeMs,
+		countCutoff,
+		limit,
+		after,
+	}: PrunableExecutionQuery): Promise<PrunableExecution[]> {
+		const pastMaxAge = "execution.finished_at < now() - interval '1 millisecond' * :maxAgeMs";
+		// Served by the partial index on `(finished_at, id)` for ended rows.
+		const qb = this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.finished_at', 'finishedAt')
+			.where('execution.finished_at IS NOT NULL');
+		if (countCutoff) {
+			qb.andWhere(
+				`(${pastMaxAge} OR (execution.finished_at, execution.id) <= (:cutoffFinishedAt, :cutoffId))`,
+				{ maxAgeMs, cutoffFinishedAt: countCutoff.finishedAt, cutoffId: countCutoff.id },
+			)
+				// Bounds the index scan, which the OR above cannot.
+				.andWhere(
+					"execution.finished_at <= GREATEST(now() - interval '1 millisecond' * :maxAgeMs, :cutoffFinishedAt)",
+				);
+		} else {
+			qb.andWhere(pastMaxAge, { maxAgeMs });
+		}
+		qb.andWhere('execution.status IN (:...ended)', { ended: ENDED_EXECUTION_STATUSES })
+			// A cancel does not stop a running step, and that step can still write.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution step
+					WHERE step.execution_id = execution.id
+						AND step.status IN ('queued', 'running', 'waiting')
+				)`,
+			)
+			// The waiting parent step still reads the result of this execution.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution parent_step
+					WHERE execution.parent_awaited
+						AND parent_step.id = execution.parent_step_id
+						AND parent_step.execution_id = execution.parent_execution_id
+						AND parent_step.status = 'waiting'
+				)`,
+			);
+		if (after) {
+			qb.andWhere('(execution.finished_at, execution.id) > (:afterFinishedAt, :afterId)', {
+				afterFinishedAt: after.finishedAt,
+				afterId: after.id,
+			});
+		}
+		return await qb
+			.orderBy('execution.finished_at')
+			.addOrderBy('execution.id')
+			.limit(limit)
+			.getRawMany<PrunableExecution>();
+	}
+
+	async findRetentionCountCutoff(
+		maxCount: number,
+	): Promise<Pick<PrunableExecution, 'id' | 'finishedAt'> | undefined> {
+		return await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.finished_at', 'finishedAt')
+			// Only an ended execution has a finish time.
+			.where('execution.finished_at IS NOT NULL')
+			.orderBy('execution.finished_at', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.offset(maxCount)
+			.limit(1)
+			.getRawOne<Pick<PrunableExecution, 'id' | 'finishedAt'>>();
+	}
+
+	async deleteEndedExecutions(ids: string[]): Promise<number> {
+		if (ids.length === 0) return 0;
+		const result = await this.repo.delete({
+			id: In(ids),
+			status: In([...ENDED_EXECUTION_STATUSES]),
+		});
+		return result.affected ?? 0;
 	}
 }
