@@ -4,6 +4,8 @@ import type { BinaryData } from 'n8n-core';
 import { BinaryDataConfig, BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
 import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { DatabaseManager } from '@/binary-data/database.manager';
+
 /**
  * Whenever the execution ID is not available to the binary data service at the
  * time of writing a binary data file, its name is missing the execution ID.
@@ -59,6 +61,38 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 	}
 
 	return [...entriesByFileId.values()];
+}
+
+const DATABASE_ID_PREFIX = 'database:';
+
+function collectDatabaseFileIds(run: IRun): string[] {
+	const fileIds = Object.values(run.data.resultData.runData)
+		.flatMap((nodeRuns) => nodeRuns ?? [])
+		.flatMap((nodeRun) => nodeRun.data?.main ?? [])
+		.flatMap((outputs) => outputs ?? [])
+		.flatMap((item) => Object.values(item?.binary ?? {}))
+		.flatMap((binaryData) =>
+			binaryData?.id?.startsWith(DATABASE_ID_PREFIX)
+				? [binaryData.id.slice(DATABASE_ID_PREFIX.length)]
+				: [],
+		);
+
+	return [...new Set(fileIds)];
+}
+
+export async function assignDatabaseFilesToExecution(run: IRun, executionId: string) {
+	try {
+		const fileIds = collectDatabaseFileIds(run);
+
+		if (fileIds.length > 0) {
+			await Container.get(DatabaseManager).assignToExecution(fileIds, executionId);
+		}
+	} catch (error) {
+		Container.get(Logger).error('Failed to assign binary data files to the execution', {
+			executionId,
+			error,
+		});
+	}
 }
 
 export async function restoreBinaryDataId(
