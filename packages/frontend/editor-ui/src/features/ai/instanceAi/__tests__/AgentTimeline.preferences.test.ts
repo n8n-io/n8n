@@ -8,7 +8,7 @@ import AgentTimeline from '../components/AgentTimeline.vue';
 const renderComponent = createThreadComponentRenderer(AgentTimeline, {
 	global: {
 		stubs: {
-			ThinkingBlock: { template: '<div data-test-id="thinking-block-stub" />' },
+			AiActivityTrace: { template: '<div data-test-id="thinking-block-stub" />' },
 			AgentSection: { template: '<div />' },
 			TimelineTextSegment: { template: '<div />' },
 			PreferenceCard: { template: '<div data-test-id="preference-card-stub" />' },

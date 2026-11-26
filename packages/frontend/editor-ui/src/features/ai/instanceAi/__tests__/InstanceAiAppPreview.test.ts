@@ -12,7 +12,13 @@ const { refresh, mounted } = vi.hoisted(() => ({ refresh: vi.fn(), mounted: vi.f
 vi.mock('@n8n/frontend-module-apps', () => ({
 	loadAppView: async () =>
 		defineComponent({
-			props: { projectId: String, appId: String, inspectable: Boolean, elementSelected: Boolean },
+			props: {
+				projectId: String,
+				appId: String,
+				inspectable: Boolean,
+				elementSelected: Boolean,
+				assistantWorking: Boolean,
+			},
 			emits: ['element-selected'],
 			setup(props, { expose, emit }) {
 				mounted(props.appId);
@@ -22,6 +28,7 @@ vi.mock('@n8n/frontend-module-apps', () => ({
 						props.appId,
 						h('span', { 'data-test-id': 'inspectable' }, String(props.inspectable)),
 						h('span', { 'data-test-id': 'element-selected' }, String(props.elementSelected)),
+						h('span', { 'data-test-id': 'assistant-working' }, String(props.assistantWorking)),
 						h('button', {
 							'data-test-id': 'pick',
 							onClick: () => emit('element-selected', { tagName: 'button', text: 'Save' }),
@@ -31,7 +38,14 @@ vi.mock('@n8n/frontend-module-apps', () => ({
 		}),
 }));
 
-const renderPreview = (props = { projectId: 'project-1', appId: 'app-1', refreshKey: 0 }) =>
+const renderPreview = (
+	props: {
+		projectId: string;
+		appId: string;
+		refreshKey: number;
+		assistantWorking?: boolean;
+	} = { projectId: 'project-1', appId: 'app-1', refreshKey: 0 },
+) =>
 	render(InstanceAiAppPreview, {
 		props,
 		global: { plugins: [createTestingPinia({ stubActions: false })] },
@@ -53,6 +67,21 @@ describe('InstanceAiAppPreview', () => {
 
 		expect(refresh).toHaveBeenCalledTimes(1);
 		expect(mounted).toHaveBeenCalledTimes(1);
+	});
+
+	it('tells the app view when the Assistant is working', async () => {
+		const { getByTestId, rerender } = renderPreview();
+		await flushPromises();
+		expect(getByTestId('assistant-working')).toHaveTextContent('false');
+
+		await rerender({
+			projectId: 'project-1',
+			appId: 'app-1',
+			refreshKey: 0,
+			assistantWorking: true,
+		});
+
+		expect(getByTestId('assistant-working')).toHaveTextContent('true');
 	});
 
 	it('mounts a new app view for another app', async () => {

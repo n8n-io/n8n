@@ -10,6 +10,11 @@ import {
 } from './browser-use-ws.constants';
 import { InstanceAiBrowserSessionService } from './instance-ai-browser-session.service';
 
+import { routedPath } from '@/utils/request-path';
+
+/** Session ids are `nanoid()` strings. */
+const BROWSER_USE_PATH = new RegExp(`^${BROWSER_USE_WS_NAMESPACE}/(extension|cdp)/[\\w-]+/?$`);
+
 /**
  * Serves the Browser Use relay WebSockets (`/browser-use/extension/:sessionId`
  * and `/browser-use/cdp/:sessionId`) over the main n8n server, so no extra port
@@ -23,8 +28,7 @@ export class BrowserUseServer {
 
 	setup(server: HttpServer, app: Application): void {
 		server.on('upgrade', (req: BrowserUseUpgradeRequest, socket, head) => {
-			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
-			if (!pathname?.startsWith(`${BROWSER_USE_WS_NAMESPACE}/`)) return;
+			if (!this.isWebSocketPath(routedPath(req))) return;
 			this.wsServer.handleUpgrade(req, socket, head, (ws) => {
 				req.ws = ws;
 				const res = new ServerResponse(req);
@@ -46,6 +50,10 @@ export class BrowserUseServer {
 			`${BROWSER_USE_WS_NAMESPACE}/cdp/:sessionId`,
 			this.onUpgrade((req) => this.sessionService.handleCdpUpgrade(req)),
 		);
+	}
+
+	isWebSocketPath(path: string | undefined): boolean {
+		return path !== undefined && BROWSER_USE_PATH.test(path);
 	}
 
 	/** Wraps a handler so plain (non-upgrade) HTTP hits get a 426 instead of crashing. */

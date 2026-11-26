@@ -41,6 +41,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -188,6 +189,7 @@ import {
 	UserError,
 } from '@n8n/errors';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -266,6 +268,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
+import { appNamespaceCandidates } from './app-namespace-candidates';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
 	isEngineV2ExecutionUnsettled,
@@ -1808,6 +1811,29 @@ export class InstanceAiAdapterService {
 				await notifyWorkflowUpdated(workflowId);
 
 				return { activeVersionId: wf.activeVersionId };
+			},
+
+			async getPublishReviewBlock(workflowId: string, versionId?: string) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+				if (!workflow) throw new WorkflowNotFoundError(workflowId);
+				// The publish refuses archived workflows with its own error, and they cannot go to review.
+				if (workflow.isArchived) return undefined;
+
+				const targetVersionId = versionId ?? workflow.versionId;
+				// Same as the publish: the live version goes live again without the review rules.
+				if (targetVersionId === workflow.activeVersionId) return undefined;
+
+				try {
+					await Container.get(WorkflowPublishGuardProxy).assertCanPublish(workflowId, {
+						versionId: targetVersionId,
+					});
+					return undefined;
+				} catch (error) {
+					if (error instanceof WorkflowPublishBlockedError) return error.details.reason;
+					throw error;
+				}
 			},
 
 			async unpublish(workflowId: string) {
@@ -3827,17 +3853,21 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				try {
-					return await apps.createApp(
-						projectId,
-						CreateAppDto.parse({ name, namespace, visibility }),
-						{ id, actor },
-					);
-				} catch (error) {
-					// The namespace is the only unique field that the user picks.
-					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
-					throw error;
+				// The user doesn't see the namespace on the plan card, so a taken
+				// namespace moves on to the next numbered one instead of failing.
+				for (const candidate of appNamespaceCandidates(namespace, apps.maxNamespaceLength())) {
+					try {
+						return await apps.createApp(
+							projectId,
+							CreateAppDto.parse({ name, namespace: candidate, visibility }),
+							{ id, actor },
+						);
+					} catch (error) {
+						// The namespace is the only unique field that the Assistant picks.
+						if (!(error instanceof ConflictError)) throw error;
+					}
 				}
+				throw new AppNamespaceTakenError(namespace);
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');

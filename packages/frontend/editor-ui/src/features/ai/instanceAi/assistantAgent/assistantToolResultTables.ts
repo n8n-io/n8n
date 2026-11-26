@@ -5,7 +5,10 @@ import { defineAsyncComponent } from 'vue';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
-import { extractTableRows, isTableToolCall } from '../toolResultTable';
+import {
+	extractTableRows,
+	isTableToolCall,
+} from '@/features/ai/shared/components/ToolResult/toolResultTable';
 
 /** Whether the call is an Assistant list tool whose output has rows for a table. */
 export function isAssistantTableToolCall(toolCall: ToolCall): boolean {

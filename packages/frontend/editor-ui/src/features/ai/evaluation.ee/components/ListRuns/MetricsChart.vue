@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '../../evaluation.api';
 import { computed, watchEffect } from 'vue';
-import { Line } from 'vue-chartjs';
+import { Line } from '@n8n/design-system/charts';
 import { useMetricsChart } from '../../composables/useMetricsChart';
 import { useI18n } from '@n8n/i18n';
 

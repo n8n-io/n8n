@@ -40,14 +40,8 @@ export default class PromotionSettingsUpdate extends BaseCommand {
 			this.error('Pass at least one of --who-can-promote, --who-can-approve, --who-can-apply');
 		}
 		await this.execute(async () => {
-			const client = this.getClient(flags);
-			// The API replaces the whole object, so keep the values of the flags left out.
-			const current = await client.getPromotionSettings();
-			const settings = { ...current };
-			for (const [key, value] of Object.entries(changes)) {
-				if (value !== undefined) settings[key] = value;
-			}
-			this.output(await client.updatePromotionSettings(settings), flags);
+			// The API keeps the value of a setting that the request leaves out.
+			this.output(await this.getClient(flags).updatePromotionSettings(changes), flags);
 		});
 	}
 }

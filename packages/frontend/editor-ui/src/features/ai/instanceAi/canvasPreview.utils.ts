@@ -498,6 +498,27 @@ export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | 
 	return { appId: id, name, projectId };
 }
 
+const APP_TARGET_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.OPEN_APP,
+	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
+	SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
+	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	SHARED_BUILDER_TOOL_NAMES.DISCARD_APP_CHANGES,
+]);
+
+/** Whether a turn that the agent still works on created the app or works on it with the app tools. */
+export function isAppInLiveTurn(turns: readonly ArtifactTurn[], appId: string): boolean {
+	return turns.some(
+		(turn) =>
+			turn.isLive &&
+			turn.toolCalls.some(
+				(tc) =>
+					getAppArtifactFromToolCall(tc)?.appId === appId ||
+					(APP_TARGET_TOOL_NAMES.has(tc.toolName) && tc.args.appId === appId),
+			),
+	);
+}
+
 /** The latest app that the assistant created or committed with the app tools. */
 export function getLatestAppArtifactResult(
 	turns: readonly ArtifactTurn[],
