@@ -50,7 +50,6 @@ const jsonValidateTypePending = [
 	'./nodes/Facebook/**',
 	'./nodes/Ghost/**',
 	'./nodes/Github/**',
-	'./nodes/Google/Chat/**',
 	'./nodes/Google/CloudStorage/**',
 	'./nodes/GraphQL/**',
 	'./nodes/HttpRequest/**',

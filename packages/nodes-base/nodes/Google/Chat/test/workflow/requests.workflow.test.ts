@@ -36,7 +36,12 @@ describe('Google Chat Node - request URLs', () => {
 			.query({ updateMask: 'text' })
 			.reply(200, { ...message, text: 'Weekly sync moved to 10:00' })
 			.delete(messagePath)
-			.reply(200, {});
+			.reply(200, {})
+			.post('/v1/spaces/AAAAx1y2z3/messages', { text: 'Sent from JSON' })
+			.reply(200, message)
+			.put(messagePath, { text: 'Updated from an expression' })
+			.query({ updateMask: 'text' })
+			.reply(200, message);
 	});
 
 	afterAll(() => {

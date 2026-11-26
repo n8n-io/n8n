@@ -42,7 +42,6 @@ import {
 	googleApiRequestAllItems,
 	resourceNamePath,
 	toResourcePath,
-	validateJSON,
 } from './GenericFunctions';
 import type { IMessage, IMessageUi } from './MessageInterface';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
@@ -447,23 +446,7 @@ export class GoogleChat implements INodeType {
 						let message: IMessage = {};
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						if (jsonParameters) {
-							const messageJson = this.getNodeParameter('messageJson', i);
-
-							if (messageJson instanceof Object) {
-								// if it is an object
-								message = messageJson as IMessage;
-							} else {
-								// if it is a string
-								if (validateJSON(messageJson as string) !== undefined) {
-									message = JSON.parse(messageJson as string) as IMessage;
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Message (JSON) must be a valid json',
-										{ itemIndex: i },
-									);
-								}
-							}
+							message = (this.getNodeParameter('messageJson', i) as IMessage | undefined) ?? {};
 						} else {
 							const messageUi = this.getNodeParameter('messageUi', i) as IMessageUi;
 							if (messageUi.text && messageUi.text !== '') {
@@ -527,23 +510,8 @@ export class GoogleChat implements INodeType {
 						let message: IMessage = {};
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						if (jsonParameters) {
-							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i);
-
-							if (updateFieldsJson instanceof Object) {
-								// if it is an object
-								message = updateFieldsJson as IMessage;
-							} else {
-								// if it is a string
-								if (validateJSON(updateFieldsJson as string) !== undefined) {
-									message = JSON.parse(updateFieldsJson as string) as IMessage;
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Update Fields (JSON) must be a valid json',
-										{ itemIndex: i },
-									);
-								}
-							}
+							message =
+								(this.getNodeParameter('updateFieldsJson', i) as IMessage | undefined) ?? {};
 						} else {
 							const updateFieldsUi = this.getNodeParameter('updateFieldsUi', i) as IDataObject;
 							if (updateFieldsUi.text) {
@@ -615,23 +583,7 @@ export class GoogleChat implements INodeType {
 						let message: IMessage = {};
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						if (jsonParameters) {
-							const messageJson = this.getNodeParameter('messageJson', i);
-
-							if (messageJson instanceof Object) {
-								// if it is an object
-								message = messageJson as IMessage;
-							} else {
-								// if it is a string
-								if (validateJSON(messageJson as string) !== undefined) {
-									message = JSON.parse(messageJson as string) as IMessage;
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Message (JSON) must be a valid json',
-										{ itemIndex: i },
-									);
-								}
-							}
+							message = (this.getNodeParameter('messageJson', i) as IMessage | undefined) ?? {};
 						} else {
 							const messageUi = this.getNodeParameter('messageUi', i) as IMessageUi;
 							if (messageUi.text && messageUi.text !== '') {
