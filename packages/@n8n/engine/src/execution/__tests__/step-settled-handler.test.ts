@@ -94,6 +94,7 @@ function makeExecutionStore(
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		findPrunableExecutions: vi.fn(),
+		findRetentionCountCutoff: vi.fn(),
 		deleteEndedExecutions: vi.fn(),
 		...storeOverrides,
 	};
@@ -543,6 +544,35 @@ describe('StepSettledHandler', () => {
 		},
 	);
 
+	it('does nothing when the execution is deleted after it is read and before its step is read', async () => {
+		const stepStore = makeStepStore(
+			{},
+			{ loadStep: vi.fn().mockRejectedValue(new StepNotFoundError('step-a')) },
+		);
+		const execution = await makeExecutionStore().loadExecution('exec-1');
+		const executionStore = makeExecutionStore(
+			{},
+			{
+				loadExecution: vi
+					.fn()
+					.mockResolvedValueOnce(execution)
+					.mockRejectedValueOnce(new ExecutionNotFoundError('exec-1')),
+			},
+		);
+		const { handler, stepQueue, orchestrationQueue, lifecycleEventPublisher, responseSender } =
+			makeHandler(stepStore, { executionStore });
+
+		await expect(handler.handle(event)).resolves.toBeUndefined();
+
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		expect(responseSender.send).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		{
 			reason: 'the missing execution is another one',
@@ -888,7 +918,10 @@ describe('StepSettledHandler sub-executions', () => {
 
 	it('resumes the awaiting parent with the error the moment a step fails, then cancels the sub-executions', async () => {
 		const error = { name: 'TypeError', message: 'boom' };
-		const stepStore = makeStepStore({ status: 'failed', error });
+		const stepStore = makeStepStore(
+			{ status: 'failed', error },
+			{ loadFailedSteps: vi.fn().mockResolvedValue([{ error }]) },
+		);
 		const { handler, stepQueue, subExecutionCanceller } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ parent }),
 		});
@@ -911,6 +944,32 @@ describe('StepSettledHandler sub-executions', () => {
 		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
 		);
+	});
+
+	it('resumes the awaiting parent with the error of the failed step that settled first, not of the step that ended the run', async () => {
+		const firstError = { name: 'TypeError', message: 'first boom' };
+		const stepStore = makeStepStore(
+			{ status: 'failed', error: { name: 'Error', message: 'later boom' } },
+			{
+				loadFailedSteps: vi.fn().mockResolvedValue([
+					{ ...row('a', 'failed', null), error: firstError },
+					{ ...row('b', 'failed', null), error: { name: 'Error', message: 'later boom' } },
+				]),
+			},
+		);
+		const { handler } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.loadFailedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
+			kind: 'subExecution',
+			executionId: 'exec-1',
+			status: 'failed',
+			error: firstError,
+		});
 	});
 
 	it('still cancels the sub-executions when the parent resume throws', async () => {

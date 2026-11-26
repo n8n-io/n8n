@@ -1,7 +1,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CHAIN, commitOf, isRefreshCommit, planPins, renderBody } from './base-image-chain-pr.mjs';
+import {
+	CHAIN,
+	commitOf,
+	fetchWithRetry,
+	isRefreshCommit,
+	planPins,
+	renderBody,
+} from './base-image-chain-pr.mjs';
 
 const digest = (char) => `sha256:${char.repeat(64)}`;
 const sha = 'f'.repeat(40);
@@ -114,5 +121,33 @@ describe('renderBody', () => {
 		);
 		assert.match(body, /\[publish run\]\(https:\/\/github\.com\/n8n-io\/n8n\/actions\/runs\/2\)/);
 		assert.match(body, /\| `RUNTIME_IMAGE` \| `n8nio\/base:26@a` \| `n8nio\/base:26-x@b` \|/);
+	});
+});
+
+describe('fetchWithRetry', () => {
+	it('sends the request again after a network error', async (t) => {
+		const ok = new Response('{}', { status: 200 });
+		const fetch = t.mock.method(globalThis, 'fetch', async () => {
+			if (fetch.mock.callCount() === 0) throw new TypeError('fetch failed');
+			return ok;
+		});
+		assert.equal(await fetchWithRetry('https://api.github.com/x', { method: 'POST' }), ok);
+		assert.equal(fetch.mock.callCount(), 2);
+	});
+
+	it('does not send the request again after another error', async (t) => {
+		const fetch = t.mock.method(globalThis, 'fetch', async () => {
+			throw new DOMException('The operation timed out.', 'TimeoutError');
+		});
+		await assert.rejects(fetchWithRetry('https://api.github.com/x'), { name: 'TimeoutError' });
+		assert.equal(fetch.mock.callCount(), 1);
+	});
+
+	it('fails when the second request also fails', async (t) => {
+		const fetch = t.mock.method(globalThis, 'fetch', async () => {
+			throw new TypeError('fetch failed');
+		});
+		await assert.rejects(fetchWithRetry('https://api.github.com/x'), TypeError);
+		assert.equal(fetch.mock.callCount(), 2);
 	});
 });

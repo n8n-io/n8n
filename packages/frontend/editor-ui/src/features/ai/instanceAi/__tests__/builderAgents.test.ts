@@ -86,6 +86,27 @@ describe('messageHasVisibleContent', () => {
 
 		expect(messageHasVisibleContent(message)).toBe(true);
 	});
+
+	test('keeps a streaming message with an empty agent tree, so its typing dots show', () => {
+		const message = {
+			...makeMessage(makeAgentNode({ status: 'active' })),
+			isStreaming: true,
+		};
+
+		expect(messageHasVisibleContent(message)).toBe(true);
+	});
+
+	test('keeps a streaming message that has no agent tree yet', () => {
+		const message = { ...makeMessage(makeAgentNode()), agentTree: undefined, isStreaming: true };
+
+		expect(messageHasVisibleContent(message)).toBe(true);
+	});
+
+	test('hides a settled message that has no agent tree and no content', () => {
+		const message = { ...makeMessage(makeAgentNode()), agentTree: undefined };
+
+		expect(messageHasVisibleContent(message)).toBe(false);
+	});
 });
 
 describe('getAgentSectionTitle', () => {

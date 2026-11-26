@@ -228,20 +228,31 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 
 	async findPrunableExecutions({
 		maxAgeMs,
+		countCutoff,
 		limit,
 		after,
 	}: PrunableExecutionQuery): Promise<PrunableExecution[]> {
+		const pastMaxAge = "execution.finished_at < now() - interval '1 millisecond' * :maxAgeMs";
 		// Served by the partial index on `(finished_at, id)` for ended rows.
 		const qb = this.repo
 			.createQueryBuilder('execution')
 			.select('execution.id', 'id')
 			.addSelect('execution.workflow_id', 'workflowId')
 			.addSelect('execution.finished_at', 'finishedAt')
-			.where('execution.finished_at IS NOT NULL')
-			.andWhere("execution.finished_at < now() - interval '1 millisecond' * :maxAgeMs", {
-				maxAgeMs,
-			})
-			.andWhere('execution.status IN (:...ended)', { ended: ENDED_EXECUTION_STATUSES })
+			.where('execution.finished_at IS NOT NULL');
+		if (countCutoff) {
+			qb.andWhere(
+				`(${pastMaxAge} OR (execution.finished_at, execution.id) <= (:cutoffFinishedAt, :cutoffId))`,
+				{ maxAgeMs, cutoffFinishedAt: countCutoff.finishedAt, cutoffId: countCutoff.id },
+			)
+				// Bounds the index scan, which the OR above cannot.
+				.andWhere(
+					"execution.finished_at <= GREATEST(now() - interval '1 millisecond' * :maxAgeMs, :cutoffFinishedAt)",
+				);
+		} else {
+			qb.andWhere(pastMaxAge, { maxAgeMs });
+		}
+		qb.andWhere('execution.status IN (:...ended)', { ended: ENDED_EXECUTION_STATUSES })
 			// A cancel does not stop a running step, and that step can still write.
 			.andWhere(
 				`NOT EXISTS (
@@ -271,6 +282,22 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addOrderBy('execution.id')
 			.limit(limit)
 			.getRawMany<PrunableExecution>();
+	}
+
+	async findRetentionCountCutoff(
+		maxCount: number,
+	): Promise<Pick<PrunableExecution, 'id' | 'finishedAt'> | undefined> {
+		return await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.finished_at', 'finishedAt')
+			// Only an ended execution has a finish time.
+			.where('execution.finished_at IS NOT NULL')
+			.orderBy('execution.finished_at', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.offset(maxCount)
+			.limit(1)
+			.getRawOne<Pick<PrunableExecution, 'id' | 'finishedAt'>>();
 	}
 
 	async deleteEndedExecutions(ids: string[]): Promise<number> {
