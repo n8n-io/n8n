@@ -226,6 +226,27 @@ export class DeploymentProbe {
 		return { id, versionId };
 	}
 
+	async createCredential(credential: {
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): Promise<{ id: string; name: string }> {
+		const response = await this.fetch('rest/credentials', {
+			method: 'POST',
+			data: credential,
+		});
+		const { body, text } = await parseJsonBody(response);
+		if (!response.ok()) {
+			throw new Error(`POST rest/credentials failed (${response.status()}): ${text.slice(0, 400)}`);
+		}
+		const data = unwrapData(body);
+		const id = toIdString(data.id);
+		if (!id) {
+			throw new Error(`POST rest/credentials returned no credential id: ${text.slice(0, 400)}`);
+		}
+		return { id, name: credential.name };
+	}
+
 	async activateWorkflow(workflowId: string, versionId: string): Promise<void> {
 		let response = await this.fetch(`rest/workflows/${workflowId}/activate`, {
 			method: 'POST',

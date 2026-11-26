@@ -86,7 +86,7 @@ export const createPublishWorkflowTool = (
 	name: 'publish_workflow',
 	config: {
 		description:
-			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft. If publicationStatus.status is in_progress, poll get_workflow_details and check workflow.publicationStatus before reporting that the workflow is live.',
+			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft. If publicationStatus.status is in_progress, poll get_workflow_details and check workflow.publicationStatus before reporting that the workflow is live. If the result has reason review_required, review_pending or changes_requested, do not retry. Ask the user to submit the workflow for review in the n8n editor, or to wait until the open review closes.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
