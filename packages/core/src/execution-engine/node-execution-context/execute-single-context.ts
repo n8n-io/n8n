@@ -64,7 +64,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 				runExecutionData,
 				connectionInputData,
 			),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 
 			assertBinaryData: (propertyName, inputIndex = 0) =>
 				assertBinaryData(
@@ -82,6 +82,9 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 					propertyName,
 					inputIndex,
 					workflow.settings.binaryMode,
+					additionalData,
+					workflow.id,
+					runExecutionData,
 				),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};

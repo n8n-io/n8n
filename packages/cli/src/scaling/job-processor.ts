@@ -348,6 +348,7 @@ export class JobProcessor {
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			const data: IWorkflowExecutionDataProcess = {
+				binaryDataAccess: execution.data.binaryDataAccess,
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
 				destinationNode: startData?.destinationNode,

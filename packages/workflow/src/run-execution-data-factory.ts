@@ -46,6 +46,7 @@ export interface CreateFullRunExecutionDataOptions {
 		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
+	binaryDataAccess?: string[];
 	subWorkflowOutput?: IRunExecutionData['subWorkflowOutput'];
 	parentAgentRun?: RelatedAgentRun;
 	resumeToken?: string;
@@ -97,6 +98,7 @@ export function createRunExecutionData(
 		resultData: buildResultData(options.resultData),
 		executionData: buildExecutionData(options.executionData),
 		parentExecution: options.parentExecution,
+		binaryDataAccess: options.binaryDataAccess,
 		subWorkflowOutput: options.subWorkflowOutput,
 		parentAgentRun: options.parentAgentRun,
 		resumeToken: options.resumeToken ?? generateSecureToken(),

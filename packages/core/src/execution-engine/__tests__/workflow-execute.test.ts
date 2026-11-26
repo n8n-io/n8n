@@ -765,6 +765,23 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	it('preserves binary data grants when it reconstructs a full execution', async () => {
+		const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+		const workflow = new DirectedGraph()
+			.addNodes(trigger)
+			.toWorkflow({ name: '', active: false, nodeTypes });
+		const workflowExecute = new WorkflowExecute(
+			Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+			'manual',
+			createRunExecutionData({ binaryDataAccess: ['binary-1'] }),
+		);
+		vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
+
+		await workflowExecute.run({ workflow, startNode: trigger });
+
+		expect(workflowExecute.getFullRunData(new Date()).data.binaryDataAccess).toEqual(['binary-1']);
+	});
+
 	describe('runPartialWorkflow2', () => {
 		//                Dirty         ►
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
@@ -807,6 +824,33 @@ describe('WorkflowExecute', () => {
 			const fullRunData = workflowExecute.getFullRunData(new Date());
 			expect(fullRunData.data.resultData.runData).toHaveProperty(trigger.name);
 			expect(fullRunData.data.resultData.runData).not.toHaveProperty(node1.name);
+		});
+
+		it('preserves binary data grants when it reconstructs a partial execution', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				'manual',
+				createRunExecutionData({ binaryDataAccess: ['binary-1'] }),
+			);
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
+
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				{ [trigger.name]: [toITaskData([{ data: { name: trigger.name } }])] },
+				{},
+				[],
+				{ nodeName: destination.name, mode: 'inclusive' },
+			);
+
+			expect(workflowExecute.getFullRunData(new Date()).data.binaryDataAccess).toEqual([
+				'binary-1',
+			]);
 		});
 
 		//

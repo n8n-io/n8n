@@ -102,7 +102,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
@@ -114,6 +114,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 					propertyName,
 					0,
 					workflow.settings.binaryMode,
+					additionalData,
+					workflow.id,
+					runExecutionData,
 				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
