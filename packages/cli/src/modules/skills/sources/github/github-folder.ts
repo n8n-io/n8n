@@ -1,3 +1,4 @@
+import { LRUCache } from 'lru-cache';
 import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { z } from 'zod';
@@ -14,6 +15,18 @@ import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 // GitHub limits recursive trees to 7 MB. Leave room for the response envelope.
 const MAX_TREE_BYTES = 8 * 1024 * 1024;
 const FILE_BATCH_SIZE = 4;
+
+type ChildFolders = ReadonlyMap<string, string>;
+
+export function createPublicFolderCache() {
+	return new LRUCache<string, ChildFolders, () => Promise<ChildFolders>>({
+		max: 128,
+		// Limit the total number of folder names across the cached listings.
+		maxSize: 8192,
+		sizeCalculation: (folders) => Math.max(1, folders.size),
+		fetchMethod: async (_key, _previous, { context: load }) => await load(),
+	});
+}
 
 const objectId = z.string().regex(/^[0-9a-f]{40,64}$/);
 const treeResponse = z.object({
@@ -40,6 +53,7 @@ export async function readRepositoryFolder(
 	getTree: (sha: string, recursive: boolean, maxBytes: number) => Promise<unknown>,
 	getFile: (path: string, sha: string) => Promise<Buffer>,
 	streamFile: (path: string, sha: string) => Promise<Readable>,
+	publicCache?: { repository: string; listings: ReturnType<typeof createPublicFolderCache> },
 ): Promise<RepositoryArchive> {
 	const result: RepositoryArchive = { paths: [], text: new Map(), oversized: new Map() };
 	if (!objectId.safeParse(revision).success) throw unreadable();
@@ -51,14 +65,27 @@ export async function readRepositoryFolder(
 		return body.data.tree;
 	};
 
+	const childFolders = async (parent: string) => {
+		const load = async () => {
+			const folders = new Map<string, string>();
+			for (const entry of await tree(parent)) {
+				if (entry.type === 'tree') folders.set(entry.path, entry.sha);
+			}
+			return folders;
+		};
+		return publicCache
+			? await publicCache.listings.forceFetch(`${publicCache.repository}@${parent}`, {
+					context: load,
+				})
+			: await load();
+	};
+
 	// Read only the immediate children of each ancestor. Recurse from the linked folder.
 	let sha = revision;
 	for (const segment of root.split('/')) {
-		const child = (await tree(sha)).find(
-			(entry) => entry.type === 'tree' && entry.path === segment,
-		);
+		const child = (await childFolders(sha)).get(segment);
 		if (!child) return result;
-		sha = child.sha;
+		sha = child;
 	}
 	const entries = await tree(sha, true);
 	if (entries.length > limits.maxEntries) throw archiveTooLarge(root);

@@ -189,6 +189,13 @@ describe('GitHubSkillSourceClient', () => {
 			).rejects.toThrow('The credential cannot read this repository');
 		});
 
+		it('keeps authenticated folder listings out of the public cache', async () => {
+			const locator = await client.parseLocator('https://github.com/acme/public/tree/main/docx');
+			await client.discover(locator, tokenAuth);
+			await client.discover(locator);
+			expect(github.requests.trees).toBe(4);
+		});
+
 		it.each(['', '/tree/main/pdf'])(
 			'keeps private content separate for each token (%s)',
 			async (suffix) => {
@@ -458,6 +465,31 @@ describe('GitHubSkillSourceClient', () => {
 	});
 
 	describe('folder reads', () => {
+		it('shares public parent listings between concurrent and later sibling reads', async () => {
+			github.push('acme/skills', {
+				'skills/pdf/SKILL.md': skillMd('pdf'),
+				'skills/docs/SKILL.md': skillMd('docs'),
+				'skills/slides/SKILL.md': skillMd('slides'),
+			});
+			const read = async (name: string) => {
+				const locator = await client.parseLocator(
+					`https://github.com/acme/skills/tree/main/skills/${name}`,
+				);
+				return await client.discover(locator);
+			};
+
+			const [pdf, docs] = await Promise.all([read('pdf'), read('docs')]);
+			expect(pdf.items).toEqual([{ path: 'skills/pdf' }]);
+			expect(docs.items).toEqual([{ path: 'skills/docs' }]);
+			expect(github.requests.trees).toBe(4);
+
+			expect((await read('slides')).items).toEqual([{ path: 'skills/slides' }]);
+			expect(github.requests.trees).toBe(5);
+
+			github.push('acme/skills', { 'skills/new/SKILL.md': skillMd('new') });
+			expect((await read('new')).items).toEqual([{ path: 'skills/new' }]);
+		});
+
 		it('reads only the linked folder at the selected commit when the repository archive is too large', async () => {
 			const files = {
 				'.agents/skill set/pdf/SKILL.md': skillMd('pdf'),
@@ -550,6 +582,10 @@ describe('GitHubSkillSourceClient', () => {
 				reason: 'rate_limited',
 				retryAfterSeconds: 120,
 			});
+			github.failWith = undefined;
+			expect((await client.discover(locator, undefined, undefined, revision)).items).toEqual([
+				{ path: 'pdf' },
+			]);
 		});
 	});
 

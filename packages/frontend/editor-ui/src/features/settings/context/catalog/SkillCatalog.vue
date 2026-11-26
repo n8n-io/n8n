@@ -285,6 +285,7 @@ function installs(entry: SkillCatalogEntry) {
 }
 .catalog {
 	gap: var(--spacing--lg);
+	padding-block-end: var(--spacing--lg);
 }
 .filters {
 	display: flex;

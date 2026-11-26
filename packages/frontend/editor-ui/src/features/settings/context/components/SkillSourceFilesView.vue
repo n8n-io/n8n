@@ -434,6 +434,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 .sidebar {
 	.fileIndex {
 		max-height: 30%;
+		padding: var(--spacing--sm);
 	}
 
 	@include breakpoints.breakpoint('md-and-up') {

@@ -1008,6 +1008,10 @@ function onInteractOutside(event: Event) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+
+	&:has(> .catalogSelection) {
+		--n8n-dialog-body--padding-block-end: var(--spacing--sm);
+	}
 }
 
 .field {

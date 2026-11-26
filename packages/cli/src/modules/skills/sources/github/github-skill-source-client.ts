@@ -25,7 +25,7 @@ import {
 	type ArchiveLimits,
 	type RepositoryArchive,
 } from './github-archive';
-import { readRepositoryFolder } from './github-folder';
+import { createPublicFolderCache, readRepositoryFolder } from './github-folder';
 import {
 	GITHUB_HOST,
 	gitHubTreeUrl,
@@ -127,6 +127,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	private readonly http: HttpRequestClient;
 
 	private readonly heads = new Map<string, Promise<string>>();
+	private readonly publicFolderCache = createPublicFolderCache();
 
 	/**
 	 * Archives by commit and folder. An expired entry is dropped on its own, so it frees its
@@ -485,6 +486,12 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 						limit(Math.max(this.archiveLimits.maxTextFileBytes, 1024)),
 					),
 				async (file, blob) => await this.sendStream(fileTarget(file, blob), auth, deadline.signal),
+				auth
+					? undefined
+					: {
+							repository: `${owner}/${repository}`.toLowerCase(),
+							listings: this.publicFolderCache,
+						},
 			);
 		} finally {
 			clearTimeout(timer);
