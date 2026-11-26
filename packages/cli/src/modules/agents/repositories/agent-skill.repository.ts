@@ -284,10 +284,12 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 				"publication.versionId = history.versionId AND publication.event = 'activated'",
 			)
 			.where('history.agentId = :agentId', { agentId })
-			.select('pin.skillId', 'skillId')
+			// Postgres folds an unquoted camelCase alias to lowercase, so a
+			// `skillId` alias would be returned as `skillid` by getRawMany().
+			.select('pin.skillId', 'skill_id')
 			.distinct(true)
-			.getRawMany<{ skillId: string }>();
-		return unique([...drafts, ...pins].map((row) => row.skillId));
+			.getRawMany<{ skill_id: string }>();
+		return unique([...drafts.map((row) => row.skillId), ...pins.map((row) => row.skill_id)]);
 	}
 
 	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
