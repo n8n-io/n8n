@@ -10,7 +10,7 @@ Guidance to design and implement web animations that feel natural and purposeful
 - Size duration to the element. Small elements should animate quickly. Larger ones more slowly.
 - Help elements appear from nowhere by animating from `scale(0.95)`, not `scale(0)`
 - Do animate on enter/exit transitions, state changes, or responses to user actions
-- Dont animate on keyboard interactions, hover effects for frequently used elements, anything user interacts with at high frequency
+- Do not animate focus or keypress feedback, hover effects on frequently used elements, or other high-frequency feedback. Keyboard-triggered state changes may use the same transition as pointer activation.
 - Prefer animating `transform` and `opacity`. These skip layout and paint stages, running entirely on the GPU.
 - Avoid animating `padding`, `margin`, `height`, `width`
 -

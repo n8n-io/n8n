@@ -9,7 +9,7 @@ Guidance for reviewing and fixing keyboard and focus behavior, ARIA, accessible 
 - Use native `disabled` when a control is genuinely unavailable. Reach for `aria-disabled="true"` only when it should stay focusable, then block pointer, keyboard and form behavior in code and style the state explicitly.
 - WCAG 2.5.8's Level AA baseline is a 24×24 CSS-pixel target, or one of its exceptions. Extend with a pseudo-element when the visible element should stay smaller.Never let extended hit areas overlap.
 - Explain unavailable actions with `N8nButton disabled focusableWhenDisabled` inside `N8nTooltip as-child`. Show the same explanation as nearby text and link it with `aria-describedby`. Do not use hover-only explanations on native disabled buttons
-- Focusable elements in a sequential list should be navigable with <kbd>↑</kbd> <kbd>↓</kbd>
+- Focusable elements in a composite widget such as a listbox, menu, grid, or tablist should follow that widget's arrow-key pattern
 - Icon only interactive elements should define an explicit `aria-label`
 - Tooltips triggered by hover should not contain interactive content
 - Images should always be rendered with `<img>` for screen readers and ease of copying from the right click menu
@@ -31,5 +31,5 @@ Guidance for reviewing and fixing keyboard and focus behavior, ARIA, accessible 
 | `<img` with no `alt` attribute | `alt=""` if decorative, otherwise describe the purpose |
 | `aria-label` whose text omits the visible label | Start the name with the visible text |
 | `aria-hidden` on an ancestor of a button, link or input | Remove it, or make the subtree inert |
-| Tooltip on a natively `disabled` control | use `focusWhenDisabled` prop if `N8nButton` |
+| Tooltip on a natively `disabled` control | Use the `focusableWhenDisabled` prop on `N8nButton` |
 | `onDragStart` or a drag library with no button alternative | Add a single-pointer path to the same result |
