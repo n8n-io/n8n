@@ -174,7 +174,7 @@ export class GymSimulationBackend implements SimulationBackend {
 			source: 'world_state',
 			evidence: [evidence],
 			status: response.statusCode,
-			headers: flattenHeaders(response.headers),
+			headers: response.headers,
 			body: response.body,
 		};
 	}
@@ -209,12 +209,4 @@ async function untilStopped<T>(work: Promise<T>, signal: AbortSignal | undefined
 		signal.addEventListener('abort', onAbort, { once: true });
 		work.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
 	});
-}
-
-function flattenHeaders(headers: GymResponse['headers']): Record<string, string> {
-	const result: Record<string, string> = {};
-	for (const [name, value] of Object.entries(headers)) {
-		result[name] = Array.isArray(value) ? value.join(', ') : value;
-	}
-	return result;
 }

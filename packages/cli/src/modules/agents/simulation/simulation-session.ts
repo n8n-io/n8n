@@ -377,7 +377,7 @@ export class SimulationSession {
 			const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
 			return new Response(NULL_BODY_STATUSES.has(reply.status) ? null : payload, {
 				status: reply.status,
-				headers: { 'content-type': 'application/json', ...(reply.headers ?? {}) },
+				headers: responseHeaders(reply.headers),
 			});
 		};
 	}
@@ -482,6 +482,16 @@ function stringHeaders(headers: IHttpRequestOptions['headers']): Record<string, 
 		else if (typeof value === 'number' || typeof value === 'boolean') result[name] = `${value}`;
 		else if (Array.isArray(value))
 			result[name] = value.filter((part) => typeof part === 'string').join(', ');
+	}
+	return result;
+}
+
+/** Appends each value of a list, so `set-cookie` stays one header for each cookie. */
+function responseHeaders(headers: Record<string, string | string[]> = {}): Headers {
+	const result = new Headers({ 'content-type': 'application/json' });
+	for (const [name, value] of Object.entries(headers)) {
+		result.delete(name);
+		for (const item of Array.isArray(value) ? value : [value]) result.append(name, item);
 	}
 	return result;
 }

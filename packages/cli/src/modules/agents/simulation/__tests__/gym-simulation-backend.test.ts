@@ -134,7 +134,7 @@ describe('GymSimulationBackend', () => {
 			source: 'world_state',
 			evidence: ['world_write'],
 			status: 200,
-			headers: { 'set-cookie': 'a=1, b=2' },
+			headers: { 'set-cookie': ['a=1', 'b=2'] },
 			body: { ok: true },
 		});
 		expect(read).toMatchObject({
@@ -142,6 +142,15 @@ describe('GymSimulationBackend', () => {
 			evidence: ['world_read'],
 			body: { messages: ['Deploy done'] },
 		});
+	});
+
+	it('keeps each set-cookie value apart instead of joining them into one cookie', async () => {
+		const { backend } = setup();
+		const world = await backend.openWorld(openInput);
+
+		const reply = await world.handleRequest(post('with cookies'), call);
+
+		expect(reply).toMatchObject({ headers: { 'set-cookie': ['a=1', 'b=2'] } });
 	});
 
 	it('gives each world its own tenant, so a new test chat starts empty', async () => {
