@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, watch, type Ref } from 'vue';
+import { computed, ref, useId, useTemplateRef, watch, type Ref } from 'vue';
 import {
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
@@ -8,7 +8,13 @@ import {
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nChatInput,
+	N8nText,
+	N8nTooltip,
+	N8nVisuallyHidden,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
@@ -74,6 +80,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const voiceReasonId = useId();
 const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
@@ -343,6 +350,7 @@ defineExpose({
 						variant="ghost"
 						:disabled="disabled || isStreaming"
 						:focusable-when-disabled="isStreaming"
+						:aria-describedby="isStreaming ? voiceReasonId : undefined"
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
@@ -353,6 +361,12 @@ defineExpose({
 				</N8nTooltip>
 			</template>
 		</N8nChatInput>
+		<!-- Screen readers do not always open the tooltip, e.g. swipe navigation on touch. -->
+		<N8nVisuallyHidden
+			v-if="showVoice && speechInput.isSupported && isStreaming"
+			:id="voiceReasonId"
+			>{{ i18n.baseText('chatInputBase.button.dictate.stopResponse') }}</N8nVisuallyHidden
+		>
 	</div>
 </template>
 

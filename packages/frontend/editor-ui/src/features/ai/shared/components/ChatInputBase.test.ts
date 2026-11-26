@@ -119,7 +119,7 @@ describe('ChatInputBase', () => {
 	});
 
 	it('switches Stop independently of composer tools when requested', async () => {
-		const { getByTestId, queryByTestId, queryByText, rerender, emitted } = renderComponent({
+		const { getByTestId, queryByTestId, getByText, rerender, emitted } = renderComponent({
 			props: makeProps({
 				isStreaming: true,
 				canSubmit: false,
@@ -134,8 +134,15 @@ describe('ChatInputBase', () => {
 		expect(getByTestId('chat-input-attach-button')).not.toBeDisabled();
 		expect(getByTestId('chat-input-attach-button')).toHaveAttribute('aria-disabled', 'true');
 		expect(getByTestId('chat-input-voice-button')).toHaveAttribute('aria-disabled', 'true');
-		// Only the mic tooltip explains the disabled state.
-		expect(queryByText('Stop the response to dictate')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-voice-button')).toHaveAccessibleDescription(
+			'Stop the response to dictate',
+		);
+		// Screen readers get the reason, but it does not show under the input.
+		expect(getByText('Stop the response to dictate')).toHaveStyle({
+			position: 'absolute',
+			width: '1px',
+			overflow: 'hidden',
+		});
 
 		await rerender({ isStreaming: false, showStopButton: true });
 		expect(getByTestId('instance-ai-stop-button')).toBeEnabled();
