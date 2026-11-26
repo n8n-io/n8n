@@ -13,13 +13,12 @@ import type {
 } from '@n8n/api-types';
 import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isDeepStrictEqual } from 'node:util';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
@@ -434,7 +433,7 @@ export class PromotionEnvironmentsService {
 	}
 
 	// Manage links only for projects the caller can edit, on top of the route's
-	// global `promotions:manageProjects` scope.
+	// global `promotions:manageEnvironments` scope.
 	private async assertProjectAccess(user: User, projectId: string) {
 		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
 		if (!allowed) throw new ForbiddenError('You do not have access to this project');

@@ -221,6 +221,55 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 	return result;
 }
 
+// A custom memory can return items that are not BaseMessage. Items without getType() stay as they are.
+function messageType(message: BaseMessage): string | undefined {
+	return typeof message?.getType === 'function' ? message.getType() : undefined;
+}
+
+function hasEmptyContent(message: BaseMessage): boolean {
+	const type = messageType(message);
+	if (type !== 'human' && type !== 'ai') return false;
+	// An AI message that only carries tool calls has no text by design
+	if ('tool_calls' in message && Array.isArray(message.tool_calls) && message.tool_calls.length > 0)
+		return false;
+
+	const { content } = message;
+	if (typeof content === 'string') return content.trim() === '';
+	if (!Array.isArray(content)) return true;
+	return !content.some(
+		(block) =>
+			block?.type !== 'text' || (typeof block.text === 'string' && block.text.trim() !== ''),
+	);
+}
+
+/**
+ * Removes every turn (a human message and all messages up to the next human message)
+ * that has a human or AI message without content. Providers such as Anthropic reject
+ * empty messages. A stored message has empty content when its row has a shape that the
+ * memory store does not expect, for example `{ type, data: { content } }` from another writer.
+ * Removing the full turn keeps the role order and the tool call pairs valid.
+ * System messages are not part of a turn and are always kept.
+ */
+export function removeEmptyTurns(chatHistory: BaseMessage[]): BaseMessage[] {
+	if (!chatHistory.some(hasEmptyContent)) return chatHistory;
+
+	const result: BaseMessage[] = [];
+	let turn: BaseMessage[] = [];
+	const flush = () => {
+		const keep = turn.some(hasEmptyContent)
+			? turn.filter((message) => messageType(message) === 'system')
+			: turn;
+		result.push(...keep);
+		turn = [];
+	};
+	for (const message of chatHistory) {
+		if (messageType(message) === 'human') flush();
+		turn.push(message);
+	}
+	flush();
+	return result;
+}
+
 /**
  * Loads chat history from memory and optionally trims it to fit within token limits.
  * Automatically cleans up orphaned tool messages that may result from memory trimming.
@@ -249,6 +298,8 @@ export async function loadMemory(
 	}
 	const memoryVariables = await memory.loadMemoryVariables({});
 	let chatHistory = (memoryVariables['chat_history'] as BaseMessage[]) || [];
+
+	chatHistory = removeEmptyTurns(chatHistory);
 
 	// Clean up any orphaned messages from previous trimming operations
 	chatHistory = cleanupOrphanedMessages(chatHistory);

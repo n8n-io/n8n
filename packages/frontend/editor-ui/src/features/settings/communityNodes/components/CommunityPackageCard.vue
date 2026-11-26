@@ -187,7 +187,11 @@ watch(
 							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
-					<N8nButton variant="outline" label="Update" @click="onUpdateClick" />
+					<N8nButton
+						variant="outline"
+						:label="i18n.baseText('generic.update')"
+						@click="onUpdateClick"
+					/>
 				</N8nTooltip>
 				<N8nTooltip v-else placement="top">
 					<template #content>

@@ -2,7 +2,9 @@ import {
 	CreateCredentialTypePolicyDocumentDto,
 	PutCredentialTypeInstancePolicyDto,
 	ReplaceAttachmentsDto,
+	SetInstanceTypeAccessDto,
 	UpdateCredentialTypePolicyDocumentDto,
+	type CredentialTypeUsageResponse,
 	type InstanceTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -26,6 +28,7 @@ import { NotFoundError } from '@n8n/errors';
 import { CredentialTypes } from '@/credential-types';
 
 import { CREDENTIAL_TYPES_KIND } from './constants';
+import { TypeUsageRepository } from './database/repositories/type-usage.repository';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
@@ -39,6 +42,7 @@ export class CredentialTypePolicyInstanceController {
 	constructor(
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly typeUsageRepository: TypeUsageRepository,
 	) {}
 
 	@Get('/instance')
@@ -63,6 +67,38 @@ export class CredentialTypePolicyInstanceController {
 			CREDENTIAL_TYPES_KIND,
 			Object.keys(this.credentialTypes.getKnownTypes()),
 		);
+	}
+
+	@Get('/usage')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('credentialTypePolicy:manage')
+	async getUsage(): Promise<CredentialTypeUsageResponse> {
+		return await this.typeUsageRepository.countCredentialTypeUsage(null, {});
+	}
+
+	@Patch('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('credentialTypePolicy:manage')
+	async setInstanceAccess(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: SetInstanceTypeAccessDto,
+	) {
+		const result = await this.service.setTypeAccess(
+			CREDENTIAL_TYPES_KIND,
+			null,
+			dto.changes,
+			dto.version,
+			req.user.id,
+		);
+
+		return {
+			scopeId: result.scopeId,
+			rules: result.rules,
+			defaultAction: result.defaultAction,
+			version: result.version,
+			warnings: result.warnings,
+		};
 	}
 
 	@Put('/instance')

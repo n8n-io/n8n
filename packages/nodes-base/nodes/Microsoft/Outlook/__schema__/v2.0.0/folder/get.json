@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
         "childFolderCount": {
             "type": "integer"
         },
@@ -29,5 +26,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

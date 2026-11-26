@@ -1,8 +1,10 @@
-import type { CredentialProvider, EmbeddingProviderOptions } from '@n8n/agents';
+import {
+	type CredentialProvider,
+	type EmbeddingProviderOptions,
+	mapCredentialForProvider,
+} from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
-
-import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 
 /** Re-exported so callers don't need to depend on `@n8n/agents` directly for this type. */
 export type { EmbeddingProviderOptions } from '@n8n/agents';

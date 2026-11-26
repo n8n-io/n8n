@@ -76,8 +76,8 @@ describe('buildCatalog', () => {
 				},
 			]),
 		);
-		expect(entry.properties).toHaveLength(34);
-		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(34);
+		expect(entry.properties).toHaveLength(35);
+		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(35);
 	});
 });
 

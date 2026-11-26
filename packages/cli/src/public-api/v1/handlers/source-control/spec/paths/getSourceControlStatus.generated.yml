@@ -110,6 +110,7 @@ responses:
                         enum:
                           - review_pending
                           - changes_requested
+                          - review_required
                           - insufficient_api_key_scope
                           - insufficient_permissions
                       workflowReviewRequestId:

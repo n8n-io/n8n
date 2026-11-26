@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "ai_preference" ("id" varchar PRIMARY KEY NOT NULL, "content" text NOT NULL, "userId" varchar, "projectId" varchar(36), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "source" varchar(16) NOT NULL, CONSTRAINT "CHK_ai_preference_single_target" CHECK ((("userId" IS NULL OR "projectId" IS NULL))), CONSTRAINT "CHK_ai_preference_source" CHECK ("source" IN ('ui', 'aia', 'mcp')), CONSTRAINT "FK_e9059770c01bfda6062d78d9f8e" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_4ea340a1847ad0e40a0b0360fe4" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_aeb2ce3354b55bd61c8d7e17169" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)
+CREATE TABLE "ai_preference" ("id" varchar PRIMARY KEY NOT NULL, "content" text NOT NULL, "userId" varchar, "projectId" varchar(36), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "source" varchar(16) NOT NULL, CONSTRAINT "CHK_ai_preference_single_target" CHECK ((((("userId" IS NULL OR "projectId" IS NULL))))), CONSTRAINT "CHK_ai_preference_source" CHECK ("source" IN ('ui', 'aia', 'mcp', 'api', 'import')), CONSTRAINT "FK_e9059770c01bfda6062d78d9f8e" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_4ea340a1847ad0e40a0b0360fe4" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_aeb2ce3354b55bd61c8d7e17169" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -28,8 +28,8 @@ CREATE TABLE "ai_preference" ("id" varchar PRIMARY KEY NOT NULL, "content" text 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ((("userId" IS NULL OR "projectId" IS NULL))) |
-| - | CHECK | CHECK ("source" IN ('ui', 'aia', 'mcp')) |
+| - | CHECK | CHECK ((((("userId" IS NULL OR "projectId" IS NULL))))) |
+| - | CHECK | CHECK ("source" IN ('ui', 'aia', 'mcp', 'api', 'import')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |

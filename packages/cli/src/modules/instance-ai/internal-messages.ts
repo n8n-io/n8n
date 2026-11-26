@@ -1,4 +1,5 @@
 import {
+	APP_TOOL_NAME_BY_ACTION,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	type InstanceAiAgentPreviewHandoffContext,
@@ -186,11 +187,11 @@ export function buildAppTargetsBlock(
 	if (apps.length === 0 && !hasPendingApp) return '';
 	return [
 		APP_TARGETS_OPEN_TAG,
-		'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the `apps` tool.',
+		`This conversation builds these n8n Apps. Load \`app-builder\` and pass the matching \`appId\` to the app tools, for example \`${APP_TOOL_NAME_BY_ACTION.open}\`.`,
 		...apps.map(({ id, name }) => `- App ${sanitisePromptText(name)} (appId: \`${id}\`)`),
 		...(hasPendingApp
 			? [
-					'- A new app that the user opened. It has no row yet. Create it with the `apps` tool action `create`.',
+					`- A new app that the user opened. It has no row yet. Create it with \`${APP_TOOL_NAME_BY_ACTION.create}\`.`,
 				]
 			: []),
 		APP_TARGETS_CLOSE_TAG,
@@ -625,7 +626,13 @@ export function buildThreadArtifactsBlock(
 			: '';
 	}
 
+	// The execution that each workflow tab shows. A handed-off execution replaces it.
 	const executionByWorkflowId = new Map<string, string>();
+	for (const artifact of previewArtifacts) {
+		if (artifact.type === 'workflow' && artifact.executionId) {
+			executionByWorkflowId.set(artifact.id, artifact.executionId);
+		}
+	}
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'workflow' && attachment.executionId) {
 			executionByWorkflowId.set(attachment.id, attachment.executionId);

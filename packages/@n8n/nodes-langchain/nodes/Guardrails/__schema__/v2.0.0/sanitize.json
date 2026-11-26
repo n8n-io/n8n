@@ -1,0 +1,42 @@
+{
+	"properties": {
+		"checks": {
+			"items": {
+				"properties": {
+					"info": {
+						"additionalProperties": true,
+						"properties": {
+							"analyzerResults": {
+								"items": {
+									"properties": {
+										"entityType": {
+											"type": "string"
+										},
+										"text": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							}
+						},
+						"type": "object"
+					},
+					"name": {
+						"type": "string"
+					},
+					"triggered": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"guardrailsInput": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -9,6 +9,8 @@ import type { InstanceSettings } from 'n8n-core';
 import { v4 as uuid, v7 as uuidv7 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent, createAgentIdentity } from '@test-integration/db/agents';
+
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@n8n/backend-services';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
@@ -20,6 +22,7 @@ import {
 	AgentBackgroundJobService,
 	EXPIRED_BACKGROUND_CHECKPOINT_ERROR,
 } from '@/modules/agents/background/agent-background-job.service';
+import { APPROVAL_EXPIRED_ERROR } from '@/modules/agents/approval/approval-expiry';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
 import {
 	AGENT_BACKGROUND_WAKE_CLOSE_TAG,
@@ -28,7 +31,6 @@ import {
 	REPLACED_PAUSE_GROUP_NOTICE,
 } from '@/modules/agents/background/background-job-messages';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
-import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -56,15 +58,14 @@ describe('AgentBackgroundJobRepository', () => {
 
 	beforeEach(async () => {
 		const project = await createTeamProject();
-		const agent = agentRepository.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId: project.id,
 			integrations: [],
 			tools: {},
 			skills: {},
-		} as Partial<ProjectAgent>);
-		await agentRepository.save(agent);
+		});
 		agentId = agent.id;
 	});
 
@@ -96,6 +97,82 @@ describe('AgentBackgroundJobRepository', () => {
 			...overrides,
 		});
 	}
+
+	it('keeps approval deadlines until the expired result is consumed', async () => {
+		const now = new Date();
+		const timeoutAt = new Date(now.getTime() - 60_000);
+		const request = {
+			id: uuid(),
+			kind: 'approval' as const,
+			parentAgentId: agentId,
+			parentThreadId: uuid(),
+			parentRunId: uuid(),
+			parentResourceId: 'draft-chat:user-1',
+			parentPrincipalHash: 'principal-hash',
+			title: 'Review',
+			workflowId: uuid(),
+			childExecutionId: uuid(),
+			timeoutAt,
+		};
+		await repository.insertWorkflowJobOrGetExisting(request);
+		const noExpiryId = uuid();
+		await repository.insertWorkflowJobOrGetExisting({
+			...request,
+			id: noExpiryId,
+			childExecutionId: uuid(),
+			timeoutAt: undefined,
+		});
+		expect((await repository.findById(noExpiryId))?.timeoutAt).toBeNull();
+		expect(
+			await repository.insertWorkflowJobOrGetExisting({
+				...request,
+				id: uuid(),
+				timeoutAt: new Date(now.getTime() + 60_000),
+			}),
+		).toMatchObject({ inserted: false, existing: { id: request.id, timeoutAt } });
+		await insertJob({
+			id: uuid(),
+			parentThreadId: request.parentThreadId,
+			kind: 'approval',
+			status: 'running',
+			settledAt: null,
+			timeoutAt: new Date(now.getTime() + 60_000),
+		});
+		await insertJob({
+			id: uuid(),
+			parentThreadId: request.parentThreadId,
+			kind: 'approval',
+			timeoutAt,
+		});
+		await insertJob({
+			id: uuid(),
+			parentThreadId: request.parentThreadId,
+			kind: 'approval',
+			status: 'failed',
+			error: 'The workflow failed',
+			timeoutAt,
+		});
+		await insertJob({
+			id: uuid(),
+			parentThreadId: request.parentThreadId,
+			kind: 'workflow',
+			status: 'running',
+			settledAt: null,
+			timeoutAt,
+		});
+		expect((await repository.findUnconsumedApprovalsPastTimeout(now)).map((job) => job.id)).toEqual(
+			[request.id],
+		);
+		await repository.settleIfActive(request.id, {
+			status: 'failed',
+			error: APPROVAL_EXPIRED_ERROR,
+		});
+		expect((await repository.findUnconsumedApprovalsPastTimeout(now)).map((job) => job.id)).toEqual(
+			[request.id],
+		);
+		await repository.consumeApprovalJob(request.childExecutionId);
+		expect(await repository.findUnconsumedApprovalsPastTimeout(now)).toEqual([]);
+	});
 
 	it.each([
 		['cancelled', null, 'Late result'],
@@ -443,6 +520,7 @@ describe('AgentBackgroundJobRepository', () => {
 			await agentRepository.findOneByOrFail({ id: agentId }),
 		);
 		otherAgent.id = uuid();
+		otherAgent.identityId = await createAgentIdentity();
 		await agentRepository.save(otherAgent);
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentAgentId: otherAgent.id });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
@@ -612,6 +690,9 @@ describe('AgentBackgroundJobRepository', () => {
 		);
 
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
+		expect(await repository.findRequestedStopIds('parent', 'draft-chat:user-1')).toEqual([
+			pauseRequestId,
+		]);
 		await repository.settleIfActive(cancelled, { status: 'cancelled' });
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
 		await repository.settleIfActive(completed, { status: 'completed', result: 'Done' });
@@ -621,6 +702,9 @@ describe('AgentBackgroundJobRepository', () => {
 		);
 		expect(await repository.markMailConsumed('parent', [cancelled, completed])).toBe(0);
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
+		expect(await repository.findRequestedStopIds('parent', 'draft-chat:user-1')).toEqual([
+			pauseRequestId,
+		]);
 		expect(await repository.markMailConsumed('parent', [cancelled, completed], true)).toBe(2);
 		const delivered = await repository.findById(cancelled);
 
@@ -629,8 +713,11 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(await repository.findById(cancelled)).toEqual(delivered);
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(false);
+		expect(await repository.findRequestedStopIds('parent', 'draft-chat:user-1')).toEqual([]);
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:other')).toBe(false);
+		expect(await repository.findRequestedStopIds('parent', 'draft-chat:other')).toEqual([]);
 		expect(await repository.hasRequestedStop('other', 'draft-chat:user-1')).toBe(false);
+		expect(await repository.findRequestedStopIds('other', 'draft-chat:user-1')).toEqual([]);
 	});
 
 	it.each([false, true])(

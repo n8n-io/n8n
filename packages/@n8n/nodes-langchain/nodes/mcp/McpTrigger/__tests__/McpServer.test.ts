@@ -13,9 +13,11 @@ import {
 } from './helpers';
 import type { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { z } from 'zod';
 
+import { createCallTool } from '../../McpClientTool/utils';
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
 import { McpServer } from '../McpServer';
 import { InMemorySessionStore } from '../session/InMemorySessionStore';
@@ -327,6 +329,21 @@ describe('McpServer', () => {
 			const handlerResult = await getHandlerResult();
 			expect(handlerResult?.isError).toBe(true);
 			expect(handlerResult?.content[0].text).toContain('boom');
+		});
+
+		it('should set isError when a proxied MCP Client tool returns an error result', async () => {
+			const content = [{ type: 'text', text: '{"error":"invalid_request","status":400}' }];
+			const client = {
+				callTool: vi.fn().mockResolvedValue({ isError: true, content }),
+			} as unknown as Client;
+			const callTool = createCallTool('fail_tool', client, 1000, vi.fn());
+			const tool = createMockTool('fail_tool', { metadata: { isFromToolkit: true } });
+			tool.invoke.mockImplementation(async (args) => JSON.stringify(await callTool(args)));
+			const { getHandlerResult } = await setupSseSession(tool);
+
+			await postToolCall(tool);
+
+			expect(await getHandlerResult()).toEqual({ isError: true, content });
 		});
 
 		it('should resolve an SSE tool call when the transport fails to handle the request', async () => {
@@ -799,6 +816,34 @@ describe('McpServer', () => {
 
 			// Should have attempted to send tools list via transport
 			expect(transport.send).toHaveBeenCalled();
+		});
+
+		it('should set isError on a proxied MCP Client tool error sent via SSE transport', async () => {
+			const sessionId = 'test-session';
+			const transport = createMockTransport(sessionId, 'sse');
+			const content = [{ type: 'text', text: 'Weather unknown at location' }];
+
+			await (
+				mcpServer as unknown as {
+					sessionManager: { registerSession: (...a: unknown[]) => Promise<void> };
+				}
+			).sessionManager.registerSession(sessionId, createMockServer(), transport, [
+				createMockTool('fail_tool', { metadata: { isFromToolkit: true } }),
+			]);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+
+			mcpServer.handleWorkerResponse(
+				sessionId,
+				'msg-1',
+				JSON.stringify({ isError: true, content }),
+				'fail_tool',
+			);
+
+			expect(transport.send).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'msg-1', result: { isError: true, content } }),
+			);
 		});
 	});
 

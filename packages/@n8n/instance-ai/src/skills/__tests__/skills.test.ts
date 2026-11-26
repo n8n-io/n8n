@@ -161,10 +161,25 @@ describe('Instance AI skills', () => {
 		expect(skill?.instructions).not.toContain('additionalInstructions');
 	});
 
+	it('recommends the app builder only for the apps tool group', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		// A broad group such as `tools` would suggest the skill for requests that are not about apps.
+		expect(skill?.recommendedToolGroups).toEqual(['apps']);
+	});
+
+	it('tells workflows where to read the app visitor', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain("$execution.customData.get('appVisitor')");
+		expect(skill?.instructions).toContain('Read `appVisitor` only in a Code node');
+		expect(skill?.instructions).toContain('By default, bind data tables to the app');
+	});
+
 	it('opens a newly created app before editing its files', async () => {
 		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
 
-		expect(skill?.instructions).toContain('`action: "open"` and the returned `app.id`');
+		expect(skill?.instructions).toContain('call `open_app` with the returned `app.id`');
 	});
 
 	it('builds the layout of a new app before it creates resources', async () => {
@@ -418,6 +433,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
+		expect(loaded?.instructions).toMatch(/prefer its app-specific trigger node/i);
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
@@ -436,7 +452,6 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
 		expect(loaded?.instructions).toContain('knowledge base');
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
 		// Eval-driven rules arrive as retrieved context cues, not in the skill body.
 		const builderCueText = WORKFLOW_BUILDER_CUES.cues.map(({ text }) => text).join('\n');

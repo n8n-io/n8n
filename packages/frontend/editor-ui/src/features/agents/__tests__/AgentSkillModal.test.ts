@@ -518,7 +518,7 @@ describe('AgentSkillModal', () => {
 
 		expect(
 			container.querySelector(
-				'[data-testid="agent-skill-reference-nav-item-references-reference-21-md"]',
+				`[data-testid="agent-skill-reference-nav-item-references-reference-${AGENT_SKILL_REFERENCE_MAX_COUNT + 1}-md"]`,
 			),
 		).not.toBeInTheDocument();
 		expect(
@@ -580,8 +580,6 @@ describe('AgentSkillModal', () => {
 		);
 		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
 		await fireEvent.click(getByTestId('agent-skill-add-reference'));
-		await fireEvent.click(getByTestId('agent-skill-create-save'));
-		expect(onConfirm).not.toHaveBeenCalled();
 
 		await fireEvent.update(
 			getByTestId('agent-skill-reference-name-input').querySelector('input')!,
@@ -603,7 +601,7 @@ describe('AgentSkillModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('opens the empty reference on a blocked save, marks it, and names it on SKILL.md', async () => {
+	it('saves a skill with an empty supporting file', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
@@ -622,22 +620,13 @@ describe('AgentSkillModal', () => {
 
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
-		// The save is blocked and the modal opens the file that blocks it.
-		expect(onConfirm).not.toHaveBeenCalled();
-		expect(getByTestId('agent-skill-reference-editor')).toBeInTheDocument();
-		expect(
-			getByTestId('agent-skill-reference-nav-item-references-reference-md-invalid'),
-		).toBeInTheDocument();
-
-		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
-		// The notice names the empty file instead of the general summary.
-		expect(getByTestId('agent-skill-references-error')).toHaveTextContent(
-			'agents.builder.skills.references.emptyFile references/reference.md',
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skill: expect.objectContaining({
+					references: [{ path: 'references/reference.md', content: '' }],
+				}),
+			}),
 		);
-		// Screen readers hear that the file blocks the save, not only its path.
-		expect(
-			getByTestId('agent-skill-reference-nav-item-references-reference-md'),
-		).toHaveAccessibleName('agents.builder.skills.references.invalidLabel references/reference.md');
 	});
 
 	it('opens a reference that is too long on a blocked save, marks it, and names it', async () => {
@@ -1495,6 +1484,7 @@ describe('AgentSkillModal', () => {
 				expect(showError).toHaveBeenCalledWith(error, 'agents.builder.skills.accessError'),
 			);
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+			expect(await findByTestId('agent-skill-instructions-text')).toHaveTextContent('Write SQL');
 		});
 
 		it('shows a skill that the user cannot edit as read-only', async () => {
@@ -1895,7 +1885,8 @@ describe('AgentSkillModal from Settings', () => {
 		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 	});
 
-	it('shows where a synced skill comes from and keeps its content read-only', () => {
+	it('keeps the repository link in the banner and opens GitHub from the menu', async () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
 			skill: SAVED_SKILL,
@@ -1920,13 +1911,16 @@ describe('AgentSkillModal from Settings', () => {
 			'https://github.com/acme/skills/tree/main/brand-voice',
 		);
 		expect(sourceLink).toHaveAttribute('target', '_blank');
-		expect(within(banner).getByTestId('agent-skill-open-in-github')).toBeInTheDocument();
+		expect(within(banner).queryByTestId('agent-skill-open-in-github')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-open-in-github').closest('footer')).toBeNull();
 		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
-		expect(getByTestId('agent-skill-open-in-github')).toHaveAttribute(
-			'href',
+		await userEvent.click(getByTestId('agent-skill-open-in-github'));
+		expect(open).toHaveBeenCalledWith(
 			'https://github.com/acme/skills/tree/main/brand-voice',
+			'_blank',
+			'noopener,noreferrer',
 		);
+		open.mockRestore();
 		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 	});
@@ -1950,9 +1944,10 @@ describe('AgentSkillModal from Settings', () => {
 			},
 		});
 
-		const button = within(getByTestId('agent-skill-synced-banner')).getByTestId(
-			'agent-skill-stop-syncing',
-		);
+		expect(
+			within(getByTestId('agent-skill-synced-banner')).queryByTestId('agent-skill-stop-syncing'),
+		).not.toBeInTheDocument();
+		const button = getByTestId('agent-skill-stop-syncing');
 		expect(button.closest('footer')).toBeNull();
 		expect(button).toHaveTextContent('settings.context.skills.stopSyncing.action');
 		await userEvent.click(button);
@@ -2248,8 +2243,12 @@ describe('AgentSkillModal from Settings', () => {
 		expect(badge.closest('button, [role="button"], [aria-haspopup]')).toBeNull();
 		await userEvent.click(badge);
 		expect(queryByRole('menu')).not.toBeInTheDocument();
-		// The skill changes scope through its source, so no "Change scope" item is left to show.
-		expect(queryByTestId('agent-skill-header-menu')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('agent-skill-header-menu'));
+		expect(queryByTestId('agent-skill-menu-change-scope')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-stop-syncing')).not.toBeInTheDocument();
+		expect(
+			queryByRole('menuitem', { name: 'settings.context.skills.synced.openInGithub' }),
+		).toBeInTheDocument();
 		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Global');
 		expect(onConfirm).not.toHaveBeenCalled();
 	});
@@ -3147,7 +3146,7 @@ describe('Versions in the agent builder', () => {
 	});
 
 	it('shows a pinned skill read-only and goes back to the latest version from the bar', async () => {
-		const { findByTestId, getByTestId, onUseLatestVersion } = renderBuilder({
+		const { findByTestId, getByTestId, queryByTestId, onUseLatestVersion } = renderBuilder({
 			draft: 1,
 			published: 1,
 			pinned: true,
@@ -3161,11 +3160,8 @@ describe('Versions in the agent builder', () => {
 		);
 		// The line over the form takes the color of the warning strip.
 		expect(getByTestId('agent-skill-modal')).toHaveAttribute('data-header-divider-tone', 'warning');
-		// The fields stay in the form, disabled, and Save skill is disabled.
-		expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
-		expect(
-			getByTestId('agent-skill-description-input').querySelector('input, textarea'),
-		).toBeDisabled();
+		expect(await findByTestId('agent-skill-instructions-text')).toHaveTextContent('Be brief.');
+		expect(queryByTestId('agent-skill-instructions-editor')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
 
 		await userEvent.click(await findByTestId('agent-skill-pinned-use-latest'));

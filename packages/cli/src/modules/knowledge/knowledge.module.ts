@@ -37,9 +37,7 @@ export class KnowledgeModule implements ModuleInterface {
 		// reached — so a live process in s3/az mode always has that location
 		// registered here.
 		const { KnowledgeFileStore } = await import('./files/knowledge-file-store.js');
-		const { ExecutionDataJsonStore } = await import(
-			'@/executions/execution-data/execution-data-json-store.js'
-		);
+		const { ExecutionDataJsonStore } = await import('@n8n/backend-services');
 		const { registerKnowledgeByteStores } = await import(
 			'./files/register-knowledge-byte-stores.js'
 		);
@@ -47,11 +45,29 @@ export class KnowledgeModule implements ModuleInterface {
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
 			knowledgeFileStore: Container.get(KnowledgeFileStore),
 		});
+
+		await import('./collections/knowledge-collections.controller.js');
+		await import('./collections/knowledge-collection-files.controller.js');
+		await import('./collections/knowledge-collection-list.controller.js');
 	}
 
 	async entities(): Promise<EntityClass[]> {
-		const { KnowledgeFile } = await import('./entities/knowledge-file.entity.js');
+		const {
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		} = await import('./entities/index.js');
 
-		return [KnowledgeFile];
+		return [
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		];
 	}
 }

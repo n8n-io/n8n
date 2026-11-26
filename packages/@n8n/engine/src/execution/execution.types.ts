@@ -23,6 +23,13 @@ export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
 	return (LIVE_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
 }
 
+/** Ended for good. Every other status is `queued` or live. */
+export const ENDED_EXECUTION_STATUSES = ['completed', 'failed', 'cancelled'] as const;
+
+export function isEndedExecutionStatus(status: ExecutionStatus): boolean {
+	return (ENDED_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
+}
+
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
 
@@ -94,14 +101,38 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 /**
  * A step's data on one side of a connection, indexed by slot: outputs by
  * output slot, inputs by input slot. An edge copies one output slot into one
- * input slot; the engine understands the slot structure and nothing below it —
- * a slot's contents are opaque and step-type-specific.
+ * input slot. A slot's contents are step-type-specific. Several live edges
+ * into one input slot must each deliver a list: the engine concatenates them.
  *
  * `null` marks a slot without data: on outputs, the step didn't fire the slot
  * (a branch not taken); on inputs, nothing arrived (a dead edge). `[]` is not
  * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];
+
+/**
+ * Where `itemCount` consecutive items came from: another step's output slot,
+ * read from `offset`. The v1 shim translates this into paired items.
+ */
+export interface ItemSource {
+	/** The node of the source step. */
+	nodeId: string;
+	/** The output slot of the source step. */
+	outputIndex: number;
+	/** The iteration of the source step. */
+	iteration: number;
+	/** The index of the first item in the source slot. */
+	offset: number;
+	/** How many consecutive items come from this source; 1 for a value that is not a list. */
+	itemCount: number;
+}
+
+/**
+ * Per output slot, in item order, the sources that fill it; `null` for a slot
+ * the step did not fill. A loop node emits items it did not make, so it states
+ * their origin in engine terms. Every other step type states nothing.
+ */
+export type StepOutputSources = Array<ItemSource[] | null>;
 
 /**
  * The trigger step's outputs, supplied by whoever starts the execution: one

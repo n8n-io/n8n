@@ -31,10 +31,13 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
+function createAgentCtx(
+	opts: { resumeData?: unknown; suspend?: Mock; suspendPayload?: unknown } = {},
+) {
 	const suspend = opts.suspend ?? vi.fn();
 	return {
 		resumeData: opts.resumeData,
+		suspendPayload: opts.suspendPayload,
 		suspend,
 	};
 }
@@ -943,6 +946,107 @@ describe('research tool', () => {
 				const message = (caught as Error).message;
 				expect(message).toMatch(/skip this URL/i);
 				expect(message).not.toMatch(/retry with the direct URL/i);
+			});
+
+			it('asks the user to approve a cross-domain redirect target, then follows it on resume', async () => {
+				// directus.io/docs/... redirects to directus.com/docs/... — a different
+				// registrable domain. The tool suspends for approval of the *target*
+				// host; on resume the decision applies to that host, not the original.
+				const inputUrl = 'https://directus.io/docs/guides/connect/relations';
+				const target = 'https://directus.com/docs/guides/connect/relations';
+				const allowed = new Set(['directus.io']);
+				const approveOnce = vi.fn((_runId: string, host: string) => allowed.add(host));
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((host: string) => allowed.has(host)),
+						approveOnce,
+					} as never,
+					permissions: {},
+					runId: 'run-1',
+				});
+				const page = {
+					url: inputUrl,
+					finalUrl: target,
+					title: 'Relations',
+					content: 'relations guide',
+					truncated: false,
+					contentLength: 15,
+				};
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!(target);
+						return page;
+					},
+				) as never;
+
+				const tool = createResearchTool(context);
+				const suspend = vi.fn().mockResolvedValue('suspended');
+				await tool.handler!(
+					{ action: 'fetch-url' as const, url: inputUrl },
+					createAgentCtx({ suspend }) as never,
+				);
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						domainAccess: { url: target, host: 'directus.com' },
+					}),
+				);
+
+				const result = (await tool.handler!(
+					{ action: 'fetch-url' as const, url: inputUrl },
+					createAgentCtx({
+						resumeData: { approved: true, domainAccessAction: 'allow_once' },
+						suspendPayload: suspend.mock.calls[0][0],
+					}) as never,
+				)) as { content: string; finalUrl: string };
+				expect(approveOnce).toHaveBeenCalledWith('run-1', 'directus.com');
+				expect(result.finalUrl).toBe(target);
+				expect(result.content).toContain('relations guide');
+			});
+
+			it('rethrows the redirect error when the tool cannot ask the user', async () => {
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((h: string) => h === 'directus.io'),
+					} as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!('https://directus.com/docs');
+						throw new Error('unreachable');
+					},
+				) as never;
+				const ctx = { ...createAgentCtx(), suspend: undefined };
+				await expect(
+					createResearchTool(context).handler!(
+						{ action: 'fetch-url' as const, url: 'https://directus.io/docs' },
+						ctx as never,
+					),
+				).rejects.toThrow(/skip this URL/i);
+			});
+
+			it('does not prompt for redirects to plain HTTP', async () => {
+				const inputUrl = 'https://directus.io/docs';
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((h: string) => h === 'directus.io'),
+					} as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!('http://directus.com/docs');
+						throw new Error('unreachable');
+					},
+				) as never;
+				const suspend = vi.fn();
+				await expect(
+					createResearchTool(context).handler!(
+						{ action: 'fetch-url' as const, url: inputUrl },
+						createAgentCtx({ suspend }) as never,
+					),
+				).rejects.toThrow(/redirect.*not allowed/i);
+				expect(suspend).not.toHaveBeenCalled();
 			});
 		});
 	});

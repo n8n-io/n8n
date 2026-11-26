@@ -1,8 +1,12 @@
+import { createAbortError } from '@n8n/agents';
 import { OperationalError } from '@n8n/errors';
 
 import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
+
+type WriteFile = NonNullable<WorkspaceFileTarget['filesystem']>['writeFile'];
+type WriteFiles = NonNullable<NonNullable<WorkspaceFileTarget['filesystem']>['writeFiles']>;
 
 class TransientWriteError extends Error {
 	statusCode = 524;
@@ -194,6 +198,84 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/a.txt')).toBe('alpha');
 		expect(writes.get('/tmp/b.txt')).toBe('beta');
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
+	});
+
+	it('writes a batch in one request when the filesystem supports it', async () => {
+		const writeFile = vi.fn(async () => {});
+		const writeFiles = vi.fn<WriteFiles>(async () => {});
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+
+		await writeWorkspaceFileMap(
+			target,
+			new Map([
+				['/tmp/b.txt', 'beta'],
+				['/tmp/c.txt', 'gamma'],
+			]),
+		);
+
+		expect(writeFiles).toHaveBeenCalledTimes(1);
+		expect(writeFiles.mock.calls[0][0]).toEqual([
+			{ path: '/tmp/b.txt', content: 'beta' },
+			{ path: '/tmp/c.txt', content: 'gamma' },
+		]);
+		expect(writeFile).not.toHaveBeenCalled();
+	});
+
+	it('writes the files one by one when the batch fails', async () => {
+		const writeFile = vi.fn<WriteFile>(async () => {});
+		const writeFiles = vi.fn<WriteFiles>(async () => await Promise.reject(new Error('not found')));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+
+		await writeWorkspaceFileMap(
+			target,
+			new Map([
+				['/tmp/b.txt', 'beta'],
+				['/tmp/c.txt', 'gamma'],
+			]),
+		);
+
+		expect(writeFiles).toHaveBeenCalledTimes(1);
+		const written = writeFile.mock.calls.map(([path, content]) => ({ path, content }));
+		expect(written).toHaveLength(2);
+		expect(written).toEqual(
+			expect.arrayContaining([
+				{ path: '/tmp/b.txt', content: 'beta' },
+				{ path: '/tmp/c.txt', content: 'gamma' },
+			]),
+		);
+	});
+
+	it('passes the abort signal to the batch and does not fall back when it aborts', async () => {
+		const writeFile = vi.fn<WriteFile>(async () => {});
+		const abortError = createAbortError();
+		const writeFiles = vi.fn<WriteFiles>(async () => await Promise.reject(abortError));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+		const abortSignal = new AbortController().signal;
+
+		await expect(
+			writeWorkspaceFileMap(
+				target,
+				new Map([
+					['/tmp/b.txt', 'beta'],
+					['/tmp/c.txt', 'gamma'],
+				]),
+				{ logger: createLogger(), abortSignal },
+			),
+		).rejects.toBe(abortError);
+
+		expect(writeFiles.mock.calls[0][1]).toEqual({ abortSignal });
+		expect(writeFile).not.toHaveBeenCalled();
+	});
+
+	it('does not batch a single file', async () => {
+		const writeFile = vi.fn(async () => {});
+		const writeFiles = vi.fn<WriteFiles>(async () => {});
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+
+		await writeWorkspaceFileMap(target, new Map([['/tmp/b.txt', 'beta']]));
+
+		expect(writeFiles).not.toHaveBeenCalled();
+		expect(writeFile).toHaveBeenCalledTimes(1);
 	});
 
 	it('logs each read with its transport and result', async () => {

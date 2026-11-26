@@ -1,5 +1,6 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
+import type { ExecutionLimitsEventMap } from '@n8n/backend-module-execution-limits';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -11,6 +12,7 @@ import type {
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	PromotionReviewType,
+	PromotionSettings,
 	PublicApiRateLimitSettings,
 	RedactionFloor,
 	ScimDeprovisioningPolicy,
@@ -25,6 +27,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowSettings,
 	JsonValue,
+	RelatedAgentRun,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
@@ -57,6 +60,7 @@ import type {
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
+import type { PolicySystemReason } from '@/policy/policy-enforcement-backend';
 import type { UserLike } from '@/types/user-like.types';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
@@ -101,7 +105,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
@@ -289,6 +293,8 @@ export type RelayEventMap = ModuleEventMap & {
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-post-execute': {
@@ -300,6 +306,8 @@ export type RelayEventMap = ModuleEventMap & {
 		projectName?: string;
 		source?: IWorkflowExecutionDataProcess['source'];
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-sharing-updated': {
@@ -1094,6 +1102,33 @@ export type RelayEventMap = ModuleEventMap & {
 		userId: string;
 	};
 
+	'sso-settings-updated': {
+		user: UserLike;
+		protocol: 'saml' | 'oidc';
+		loginEnabled: boolean;
+		/** Settings keys whose stored value changed. Names only, never values. */
+		fieldsChanged: string[];
+		publicApi: boolean;
+	};
+
+	/**
+	 * An admin saved the SSO user role provisioning settings. Reports the
+	 * state after the save, not what changed. The settings page saves the
+	 * settings before the rules, so the counts are those at the time of the
+	 * save. Rule changes emit the `role-mapping-rule-*` events.
+	 */
+	'provisioning-settings-updated': {
+		user: UserLike;
+		/** The sign-in method that is active at the time of the save. */
+		authenticationMethod: AuthProviderType;
+		/** Which roles SSO provisions. With rules in n8n, project roles count when project rules exist. */
+		assignmentMethod: 'disabled' | 'instance_role' | 'instance_and_project_roles';
+		/** `idp_rule_mapping`: the claims carry the roles. `n8n_rule_mapping`: rules in n8n map claims to roles. */
+		roleMappingMethod: 'idp_rule_mapping' | 'n8n_rule_mapping';
+		instanceRuleCount: number;
+		projectRuleCount: number;
+	};
+
 	/**
 	 * SCIM provisioning turned on or off, or its token changed. Emitted only
 	 * when the saved state changes.
@@ -1467,6 +1502,42 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	/** n8n created the service account of an agent. Sent after the transaction commits. */
+	'agent-service-account-created': {
+		/** The user who created the agent. `null` when n8n created the account. */
+		user: UserLike | null;
+		/** Why n8n created the account without a user. */
+		source?: PolicySystemReason | 'startup';
+		/** The run that created the agent, when `source` is `execution`. */
+		executionId?: string;
+		serviceAccountId: string;
+		agentId: string;
+		/** `null` for an instance agent. */
+		projectId: string | null;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	/** n8n deleted the service account of an agent. Sent after the transaction commits. */
+	'agent-service-account-deleted': {
+		/**
+		 * The user who deleted the agent, its project or the user who owns it.
+		 * `null` when n8n deleted the account.
+		 */
+		user: UserLike | null;
+		/**
+		 * `scim`: the identity provider deleted the user who owns the agent.
+		 * `project-deletion`: the agent went with its project, or with the user who owns it.
+		 */
+		source?: 'scim' | 'project-deletion';
+		serviceAccountId: string;
+		agentId: string;
+		/** `null` for an instance agent. */
+		projectId: string | null;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': {
@@ -1480,12 +1551,20 @@ export type RelayEventMap = ModuleEventMap & {
 					| 'workflow_publishing'
 					| 'workflow_sharing'
 					| 'workflow_reviews'
+					| 'workflow_reviews_approval_required'
 					| 'public_api_rate_limit';
 				value: boolean;
 		  }
 		| {
 				settingName: 'data_redaction_enforcement_floor';
 				value: RedactionFloor;
+		  }
+		| {
+				settingName:
+					| 'promotions_who_can_promote'
+					| 'promotions_who_can_approve'
+					| 'promotions_who_can_apply';
+				value: PromotionSettings[keyof PromotionSettings];
 		  }
 	);
 
@@ -1504,9 +1583,30 @@ export type RelayEventMap = ModuleEventMap & {
 		after: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
 	};
 
+	/** `before` and `after` hold only the promotion settings that changed. */
+	'promotion-settings-updated': {
+		user: UserLike;
+		before: Partial<PromotionSettings>;
+		after: Partial<PromotionSettings>;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	// #endregion
 
 	// #region Workflow Reviews
+
+	'project-workflow-review-settings-updated': {
+		user: UserLike;
+		projectId: string;
+		requiredByProject: boolean;
+	};
+
+	'project-workflow-review-required-by-instance-updated': {
+		user: UserLike;
+		projectId: string;
+		requiredByInstance: boolean;
+	};
 
 	'workflow-review-requested': {
 		user: UserLike;
@@ -1539,8 +1639,8 @@ export type RelayEventMap = ModuleEventMap & {
 	/**
 	 * Closed without a decision, by the workflow lifecycle hooks or the reconciliation
 	 * sweep. An approval closes the request too but emits 'workflow-review-decided'
-	 * instead, never both: every close path filters `state = 'open'` and `decide()`
-	 * closes in-line.
+	 * instead, and a user close emits 'workflow-review-closed-by-user', never both: every
+	 * close path filters `state = 'open'` and `decide()` closes in-line.
 	 */
 	'workflow-review-closed': {
 		workflowReviewRequestId: string;
@@ -1556,6 +1656,15 @@ export type RelayEventMap = ModuleEventMap & {
 			actorKind: 'user' | 'system';
 			userId: string | null;
 		};
+	};
+
+	/** Closed by a user without an approval. The decision keeps its last value. */
+	'workflow-review-closed-by-user': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		/** Null when the pinned version was pruned before the close. */
+		workflowVersionId: string | null;
 	};
 
 	'workflow-review-comment-created': {

@@ -42,6 +42,43 @@ export function isScriptFile(path: string): boolean {
 	return SCRIPT_FILE.test(path);
 }
 
+/** Extensions of text, markup, and configuration files. */
+const TEXT_EXTENSIONS = [
+	'md',
+	'mdx',
+	'markdown',
+	'txt',
+	'rst',
+	'html',
+	'htm',
+	'css',
+	'scss',
+	'json',
+	'jsonl',
+	'yaml',
+	'yml',
+	'toml',
+	'xml',
+	'csv',
+	'tsv',
+	'ini',
+	'cfg',
+	'conf',
+	'env',
+	'log',
+	'tf',
+	'proto',
+	'graphql',
+	'svg',
+] as const;
+
+const TEXT_FILE = new RegExp(`\\.(?:${TEXT_EXTENSIONS.join('|')})$`, 'i');
+
+/** Whether the name says that the file holds text for a reader, such as Markdown or JSON. */
+export function isTextFile(path: string): boolean {
+	return TEXT_FILE.test(path);
+}
+
 /**
  * The extensions that telemetry reports by name: scripts, and common file types that a skill
  * folder can hold. Any other suffix can hold part of a file name, so it goes to `other`.
@@ -49,6 +86,7 @@ export function isScriptFile(path: string): boolean {
 const KNOWN_EXTENSIONS: ReadonlySet<string> = new Set(
 	[
 		...SCRIPT_EXTENSIONS,
+		...TEXT_EXTENSIONS,
 		// Other code
 		'vue',
 		'svelte',
@@ -58,16 +96,7 @@ const KNOWN_EXTENSIONS: ReadonlySet<string> = new Set(
 		'sql',
 		'ipynb',
 		'wasm',
-		// Text and documents
-		'md',
-		'mdx',
-		'markdown',
-		'txt',
-		'rst',
-		'html',
-		'htm',
-		'css',
-		'scss',
+		// Documents
 		'pdf',
 		'doc',
 		'docx',
@@ -77,31 +106,14 @@ const KNOWN_EXTENSIONS: ReadonlySet<string> = new Set(
 		'pptx',
 		'odt',
 		'rtf',
-		// Data and configuration
-		'json',
-		'jsonl',
-		'yaml',
-		'yml',
-		'toml',
-		'xml',
-		'csv',
-		'tsv',
-		'ini',
-		'cfg',
-		'conf',
-		'env',
+		// Configuration
 		'lock',
-		'log',
-		'tf',
-		'proto',
-		'graphql',
 		// Images and media
 		'png',
 		'jpg',
 		'jpeg',
 		'gif',
 		'webp',
-		'svg',
 		'ico',
 		'bmp',
 		'mp3',

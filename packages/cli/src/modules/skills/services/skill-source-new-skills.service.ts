@@ -36,7 +36,7 @@ import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { isNameTaken, nextFreeName } from './skill.policy';
-import { SkillsTelemetry } from './skills-telemetry.service';
+import { flaggedCodes, SkillsTelemetry } from './skills-telemetry.service';
 
 type NewSkillRead = {
 	key: string;
@@ -151,13 +151,7 @@ export class SkillSourceNewSkillsService {
 						provider: source.type,
 						stage: 'import',
 						verdict: read.check.verdict,
-						rule_codes: [
-							...new Set(
-								read.check.findings
-									.filter(({ severity }) => severity !== 'info')
-									.map(({ rule }) => rule),
-							),
-						],
+						...flaggedCodes(read.check.findings),
 					},
 					userId,
 				);

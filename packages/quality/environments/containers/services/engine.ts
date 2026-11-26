@@ -33,14 +33,10 @@ export const ENGINE_PORT = 3000;
 export const ENGINE_CONTROL_PLANE_PORT = 3001;
 
 /**
- * The storage path of both planes in `container` mode, where binary data is
- * kept. The two containers share one store: the main stores a webhook upload
- * that the engine reads, and the engine stores a file that the main streams in
- * a response. The stack mounts one host dir here in both containers. The stack
- * owns the path: a caller's `N8N_STORAGE_PATH` or deprecated
- * `N8N_BINARY_DATA_STORAGE_PATH` would point the planes at different dirs, or
- * fail the start when the two differ. The mode is pinned too: in queue mode
- * n8n defaults to `database`, which the engine cannot reach.
+ * Mount target for the shared storage directory in n8n and engine containers.
+ * The stack owns this path: a caller's `N8N_STORAGE_PATH` or deprecated
+ * `N8N_BINARY_DATA_STORAGE_PATH` would point the containers at different
+ * directories, or stop n8n from starting when the two differ.
  */
 export const ENGINE_SHARED_STORAGE_PATH = '/data/storage';
 
@@ -61,11 +57,13 @@ export const ENGINE_TLS_ENV = {
  */
 export function createEngineTlsFiles(
 	projectName: string,
+	mains: number,
 ): Record<'main' | 'engine', FileToMount[]> {
 	const dir = mkdtempSync(join(tmpdir(), `${projectName}-engine-tls-`));
 	try {
 		const { caFile, leaves } = generateTlsCerts(dir, {
-			main: [`DNS:${mainHostname(projectName)}`],
+			// Every main gets the same certificate, so it names all of them.
+			main: mainHostnames(projectName, mains).map((host) => `DNS:${host}`),
 			engine: [`DNS:${engineHostname(projectName)}`],
 		});
 		const filesOf = (plane: 'main' | 'engine'): FileToMount[] => [
@@ -89,18 +87,27 @@ export function createEngineTlsFiles(
  * MockServer (the `proxy` capability) intercepts TLS and drops the client
  * certificate, so traffic between the planes must not go through it.
  */
-function bypassProxyBetweenPlanes(env: Record<string, string>, projectName: string): void {
+function bypassProxyBetweenPlanes(
+	env: Record<string, string>,
+	projectName: string,
+	mains: number,
+): void {
 	const hosts = (env.NO_PROXY ?? '').split(',').filter(Boolean);
-	for (const host of [engineHostname(projectName), mainHostname(projectName)]) {
+	for (const host of [engineHostname(projectName), ...mainHostnames(projectName, mains)]) {
 		if (!hosts.includes(host)) hosts.push(host);
 	}
 	env.NO_PROXY = hosts.join(',');
 }
 
-function applySharedStoragePath(env: Record<string, string>): void {
+export function applySharedStorageEnv(
+	env: Record<string, string>,
+	binaryDataMode = 'filesystem',
+): void {
 	env.N8N_STORAGE_PATH = ENGINE_SHARED_STORAGE_PATH;
-	env.N8N_DEFAULT_BINARY_DATA_MODE = 'filesystem';
+	env.N8N_DEFAULT_BINARY_DATA_MODE = binaryDataMode;
+	// n8n fails to start if the deprecated path differs from the storage path.
 	delete env.N8N_BINARY_DATA_STORAGE_PATH;
+	delete env.N8N_BINARY_DATA_STORAGE_PATH_FILE;
 }
 
 /** Every value the URL interpolates, so a missing one is named, not printed. */
@@ -128,18 +135,26 @@ interface EngineEnvOptions {
 	engine: EngineMode | undefined;
 	authSecret?: string;
 	mains: number;
-	isQueueMode: boolean;
+	workers: number;
+	webhooks: number;
 	/** Names the network aliases of the main and the engine. */
 	projectName: string;
 }
+
+type EngineTopology = Pick<EngineEnvOptions, 'engine' | 'mains' | 'workers' | 'webhooks'>;
 
 export function engineHostname(projectName: string): string {
 	return `${projectName}-n8n-engine`;
 }
 
-/** The single main's network alias. `assertEngineSupported` guarantees there is one. */
-function mainHostname(projectName: string): string {
-	return `${projectName}-n8n`;
+/**
+ * The network aliases of the mains, main 1 first. The engine dials the control
+ * plane server of main 1: every main runs one on the shared database, so one is
+ * enough.
+ */
+function mainHostnames(projectName: string, mains: number): string[] {
+	if (mains <= 1) return [`${projectName}-n8n`];
+	return Array.from({ length: mains }, (_, i) => `${projectName}-n8n-main-${i + 1}`);
 }
 
 /**
@@ -150,18 +165,29 @@ function mainHostname(projectName: string): string {
 export function assertEngineSupported({
 	engine,
 	mains,
-	isQueueMode,
+	workers,
+	webhooks,
 	usePostgres,
-}: Omit<EngineEnvOptions, 'projectName'> & { usePostgres: boolean }): void {
+}: EngineTopology & { usePostgres: boolean }): void {
 	if (!engine) return;
 
-	if (isQueueMode) {
-		throw new Error('Engine v2 does not support queue mode: use a single main and no workers');
+	// The `engine-v2` module runs on mains only, so a webhook process would not
+	// route a webhook to engine v2. A worker only runs the legacy engine.
+	if (webhooks > 0) {
+		throw new Error(`Engine v2 does not support webhook processes: got webhooks: ${webhooks}`);
 	}
 
 	// The engine reports to a main; without one it would be started as "main 1".
-	if (mains !== 1) {
-		throw new Error(`Engine v2 needs exactly one main: got mains: ${mains}`);
+	if (mains < 1) {
+		throw new Error(`Engine v2 needs at least one main: got mains: ${mains}`);
+	}
+
+	// More than one main or a worker runs queue mode, which the in-process engine
+	// cannot share.
+	if (engine === 'in-process' && (mains > 1 || workers > 0)) {
+		throw new Error(
+			`Engine v2 in-process mode needs exactly one main and no workers: got mains: ${mains}, workers: ${workers}. Use container mode.`,
+		);
 	}
 
 	if (!usePostgres) {
@@ -199,11 +225,17 @@ function resolveEngineDatabaseUrl(env: Record<string, string>): string {
  */
 export function applyEngineEnv(
 	env: Record<string, string>,
-	{ engine, authSecret, mains, isQueueMode, projectName }: EngineEnvOptions,
+	{ engine, authSecret, mains, workers, webhooks, projectName }: EngineEnvOptions,
 ): void {
 	if (!engine) return;
 
-	assertEngineSupported({ engine, mains, isQueueMode, usePostgres: env.DB_TYPE === 'postgresdb' });
+	assertEngineSupported({
+		engine,
+		mains,
+		workers,
+		webhooks,
+		usePostgres: env.DB_TYPE === 'postgresdb',
+	});
 
 	const modules = (env.N8N_ENABLED_MODULES ?? '').split(',').filter(Boolean);
 	if (!modules.includes(ENGINE_MODULE)) modules.push(ENGINE_MODULE);
@@ -220,8 +252,9 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
-		applySharedStoragePath(env);
-		bypassProxyBetweenPlanes(env, projectName);
+		// The engine cannot access the control plane database.
+		applySharedStorageEnv(env);
+		bypassProxyBetweenPlanes(env, projectName, mains);
 		// The main never touches the data plane database in this mode, and it
 		// refuses to start with the resume secret.
 		delete env.N8N_ENGINE_DATABASE_URL;
@@ -243,7 +276,11 @@ export function applyEngineEnv(
  */
 export function engineContainerEnv(
 	sharedEnv: Record<string, string>,
-	{ projectName, authSecret }: Pick<EngineEnvOptions, 'projectName'> & { authSecret: string },
+	{
+		projectName,
+		mains,
+		authSecret,
+	}: Pick<EngineEnvOptions, 'projectName' | 'mains'> & { authSecret: string },
 ): Record<string, string> {
 	if (!authSecret) throw new Error('Container engine mode needs a shared auth secret');
 	const databaseUrl = sharedEnv.N8N_ENGINE_DATABASE_URL;
@@ -257,8 +294,8 @@ export function engineContainerEnv(
 		),
 	);
 
-	applySharedStoragePath(env);
-	bypassProxyBetweenPlanes(env, projectName);
+	applySharedStorageEnv(env);
+	bypassProxyBetweenPlanes(env, projectName, mains);
 
 	return {
 		...env,
@@ -266,7 +303,7 @@ export function engineContainerEnv(
 		N8N_ENGINE_AUTH_SECRET: authSecret,
 		N8N_ENGINE_RESUME_SECRET: resumeSecret(projectName),
 		...ENGINE_TLS_ENV,
-		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `https://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
+		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `https://${mainHostnames(projectName, mains)[0]}:${ENGINE_CONTROL_PLANE_PORT}`,
 		// The main dials this address and the stack probes it, so a caller's `env`
 		// must not move it or bind it to loopback.
 		N8N_ENGINE_HOST: '0.0.0.0',

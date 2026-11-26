@@ -130,7 +130,7 @@ describe('WaitTracker', () => {
 		});
 
 		describe('if execution to start', () => {
-			let startExecutionSpy: MockInstance<(...args: [executionId: string]) => Promise<void>>;
+			let startExecutionSpy: MockInstance<WaitTracker['startExecution']>;
 
 			beforeEach(() => {
 				executionPersistence.findSingleExecution
@@ -141,7 +141,7 @@ describe('WaitTracker', () => {
 
 				startExecutionSpy = vi
 					.spyOn(waitTracker, 'startExecution')
-					.mockImplementation(async () => {});
+					.mockImplementation(async () => true);
 
 				waitTracker.init();
 			});
@@ -227,7 +227,7 @@ describe('WaitTracker', () => {
 		});
 
 		it('claims a resume attempt before reading the execution', async () => {
-			await waitTracker.startExecution(execution.id);
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBe(true);
 
 			expect(resumeAttemptService.claim).toHaveBeenCalledWith(execution.id, 'waiting');
 			const [claimOrder] = resumeAttemptService.claim.mock.invocationCallOrder;
@@ -238,7 +238,7 @@ describe('WaitTracker', () => {
 		it('does not read or run the execution when its resume attempts are used up', async () => {
 			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
 
-			await waitTracker.startExecution(execution.id);
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBe(false);
 
 			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
@@ -300,7 +300,7 @@ describe('WaitTracker', () => {
 
 			run.resolve(execution.id);
 			await first;
-			await expect(waitTracker.startExecution(execution.id)).resolves.toBeUndefined();
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBe(true);
 		});
 
 		// The acting user is not a stored field, so a resume has to derive it again.
@@ -1393,7 +1393,7 @@ describe('WaitTracker', () => {
 
 	describe('multi-main setup', () => {
 		it('should re-arm waiting executions after leader takeover', async () => {
-			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue();
+			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue(true);
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
 			waitTracker.init();

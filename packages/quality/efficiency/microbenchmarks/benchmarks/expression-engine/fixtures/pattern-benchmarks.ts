@@ -9,12 +9,14 @@
 import type { Workflow, INodeExecutionData } from 'n8n-workflow';
 
 import { defineBench } from '../../bench-options';
+import { makeLongTextItemsData, makeNumberRowsData } from './data';
 import {
 	SIMPLE_PROPERTY,
 	NESTED_PROPERTY,
 	EXTENSION_CALL,
 	ARRAY_ITERATION,
 	CONDITIONAL,
+	BATCHED_READ,
 } from './expressions';
 
 type EvalFn = (workflow: Workflow, expr: string, data: INodeExecutionData[]) => unknown;
@@ -88,5 +90,40 @@ export function definePatternBenchmarks(
 
 	defineBench(`${engine}: Conditional - ternary`, () => {
 		evalFn(workflow, CONDITIONAL[1], smallData);
+	});
+
+	// Batched Read
+	defineBench(`${engine}: Batched Read - stringify medium data`, () => {
+		evalFn(workflow, BATCHED_READ[0], mediumData);
+	});
+
+	defineBench(`${engine}: Batched Read - stringify large data`, () => {
+		evalFn(workflow, BATCHED_READ[0], largeData);
+	});
+
+	defineBench(`${engine}: Batched Read - return the item`, () => {
+		evalFn(workflow, BATCHED_READ[1], mediumData);
+	});
+
+	defineBench(`${engine}: Batched Read - slice 5 items`, () => {
+		evalFn(workflow, BATCHED_READ[2], mediumData);
+	});
+
+	defineBench(`${engine}: Batched Read - stringify each item`, () => {
+		evalFn(workflow, BATCHED_READ[3], mediumData);
+	});
+
+	defineBench(`${engine}: Batched Read - stringify a copy of the items`, () => {
+		evalFn(workflow, BATCHED_READ[4], mediumData);
+	});
+
+	const numberRows = makeNumberRowsData();
+	defineBench(`${engine}: Batched Read - two numbers of each long row`, () => {
+		evalFn(workflow, BATCHED_READ[5], numberRows);
+	});
+
+	const longTextItems = makeLongTextItemsData();
+	defineBench(`${engine}: Batched Read - ids of items with long texts`, () => {
+		evalFn(workflow, BATCHED_READ[6], longTextItems);
 	});
 }

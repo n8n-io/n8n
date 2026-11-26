@@ -42,6 +42,9 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
+		findPrunableExecutions: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 		...overrides,
 	};
 }
@@ -187,7 +190,7 @@ describe('ExecutionStartHandler', () => {
 		]);
 	});
 
-	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {
+	it('is a no-op when the execution cannot be claimed', async () => {
 		const executionStore = makeExecutionStore({
 			transitionStatus: vi.fn().mockResolvedValue(false),
 		});

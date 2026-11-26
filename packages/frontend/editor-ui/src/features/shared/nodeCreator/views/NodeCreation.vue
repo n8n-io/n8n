@@ -180,115 +180,119 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<N8nButtonList
-		v-if="!createNodeActive"
-		orientation="vertical"
-		variant="toolbar"
-		:class="$style.nodeButtonsWrapper"
-	>
-		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
+	<!-- The host can show content above the toolbar. It stays while the node creator is open. -->
+	<div :class="$style.toolbarColumn" data-test-id="canvas-toolbar-column">
+		<slot name="above-toolbar" />
+		<N8nButtonList
+			v-if="!createNodeActive"
+			orientation="vertical"
+			variant="toolbar"
+			:class="$style.nodeButtonsWrapper"
+		>
+			<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.openNodesPanel')"
+					:shortcut="{ keys: ['N'] }"
+					placement="left"
+				>
+					<N8nIconButton
+						variant="ghost"
+						size="large"
+						icon="plus"
+						:aria-label="i18n.baseText('nodeView.openNodesPanel')"
+						data-test-id="node-creator-plus-button"
+						@click="openNodeCreator"
+					/>
+				</KeyboardShortcutTooltip>
+			</NodeCreatorShortcutCoachmark>
 			<KeyboardShortcutTooltip
-				:label="i18n.baseText('nodeView.openNodesPanel')"
-				:shortcut="{ keys: ['N'] }"
+				v-if="!settingsStore.isCanvasOnly"
+				:label="i18n.baseText('nodeView.openCommandBar')"
+				:shortcut="{ keys: ['k'], metaKey: true }"
 				placement="left"
 			>
 				<N8nIconButton
 					variant="ghost"
 					size="large"
-					icon="plus"
-					:aria-label="i18n.baseText('nodeView.openNodesPanel')"
-					data-test-id="node-creator-plus-button"
-					@click="openNodeCreator"
+					icon="search"
+					:aria-label="i18n.baseText('nodeView.openCommandBar')"
+					data-test-id="command-bar-button"
+					@click="openCommandBar"
 				/>
 			</KeyboardShortcutTooltip>
-		</NodeCreatorShortcutCoachmark>
-		<KeyboardShortcutTooltip
-			v-if="!settingsStore.isCanvasOnly"
-			:label="i18n.baseText('nodeView.openCommandBar')"
-			:shortcut="{ keys: ['k'], metaKey: true }"
-			placement="left"
-		>
-			<N8nIconButton
-				variant="ghost"
-				size="large"
-				icon="search"
-				:aria-label="i18n.baseText('nodeView.openCommandBar')"
-				data-test-id="command-bar-button"
-				@click="openCommandBar"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			v-if="!nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE)"
-			:label="i18n.baseText('nodeView.addStickyHint')"
-			:shortcut="{ keys: ['s'], shiftKey: true }"
-			placement="left"
-		>
-			<N8nIconButton
-				variant="ghost"
-				size="large"
-				icon="sticky-note"
-				:aria-label="i18n.baseText('nodeView.addStickyHint')"
-				data-test-id="add-sticky-button"
-				@click="addStickyNote"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="sidePanelTooltip"
-			:shortcut="{ keys: ['f'], shiftKey: true }"
-			placement="left"
-		>
-			<N8nIconButton
-				variant="ghost"
-				size="large"
-				icon="panel-right"
-				:aria-label="sidePanelTooltip"
-				:active="focusPanelActive"
-				data-test-id="toggle-focus-panel-button"
-				@click="toggleFocusPanel"
-			/>
-		</KeyboardShortcutTooltip>
-		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
-		Instance AI feature is on and the host provides the workflow action.
-		Clicking hands the current workflow off to a new Instance AI thread. -->
-		<N8nTooltip
-			v-if="
-				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
-			"
-			placement="left"
-			:content="i18n.baseText('aiAssistant.openInAssistant')"
-		>
-			<N8nIconButton
-				variant="ghost"
-				size="large"
-				icon="n8n-assistant"
-				:aria-label="i18n.baseText('aiAssistant.openInAssistant')"
-				data-test-id="instance-ai-canvas-action-button"
-				@click="onInstanceAiCanvasActionClick"
-			/>
-		</N8nTooltip>
-		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
-		<N8nTooltip
-			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
-			placement="left"
-		>
-			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
-			<N8nButton
-				variant="ghost"
-				iconOnly
-				size="large"
-				:aria-label="i18n.baseText('aiAssistant.tooltip')"
-				:class="$style.icon"
-				data-test-id="ask-assistant-canvas-action-button"
-				@click="onAskAssistantButtonClick"
+			<KeyboardShortcutTooltip
+				v-if="!nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE)"
+				:label="i18n.baseText('nodeView.addStickyHint')"
+				:shortcut="{ keys: ['s'], shiftKey: true }"
+				placement="left"
 			>
-				<template #default>
-					<div>
-						<N8nIcon icon="n8n-assistant" :size="18" />
-					</div>
-				</template>
-			</N8nButton>
-		</N8nTooltip>
-	</N8nButtonList>
+				<N8nIconButton
+					variant="ghost"
+					size="large"
+					icon="sticky-note"
+					:aria-label="i18n.baseText('nodeView.addStickyHint')"
+					data-test-id="add-sticky-button"
+					@click="addStickyNote"
+				/>
+			</KeyboardShortcutTooltip>
+			<KeyboardShortcutTooltip
+				:label="sidePanelTooltip"
+				:shortcut="{ keys: ['f'], shiftKey: true }"
+				placement="left"
+			>
+				<N8nIconButton
+					variant="ghost"
+					size="large"
+					icon="panel-right"
+					:aria-label="sidePanelTooltip"
+					:active="focusPanelActive"
+					data-test-id="toggle-focus-panel-button"
+					@click="toggleFocusPanel"
+				/>
+			</KeyboardShortcutTooltip>
+			<!-- Instance AI hand-off (mimics the assistant button) — shown when the
+			Instance AI feature is on and the host provides the workflow action.
+			Clicking hands the current workflow off to a new Instance AI thread. -->
+			<N8nTooltip
+				v-if="
+					chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
+				"
+				placement="left"
+				:content="i18n.baseText('aiAssistant.openInAssistant')"
+			>
+				<N8nIconButton
+					variant="ghost"
+					size="large"
+					icon="n8n-assistant"
+					:aria-label="i18n.baseText('aiAssistant.openInAssistant')"
+					data-test-id="instance-ai-canvas-action-button"
+					@click="onInstanceAiCanvasActionClick"
+				/>
+			</N8nTooltip>
+			<!-- Legacy assistant/builder button — only while Instance AI is off. -->
+			<N8nTooltip
+				v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
+				placement="left"
+			>
+				<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
+				<N8nButton
+					variant="ghost"
+					iconOnly
+					size="large"
+					:aria-label="i18n.baseText('aiAssistant.tooltip')"
+					:class="$style.icon"
+					data-test-id="ask-assistant-canvas-action-button"
+					@click="onAskAssistantButtonClick"
+				>
+					<template #default>
+						<div>
+							<N8nIcon icon="n8n-assistant" :size="18" />
+						</div>
+					</template>
+				</N8nButton>
+			</N8nTooltip>
+		</N8nButtonList>
+	</div>
 	<Suspense>
 		<LazyNodeCreator
 			:active="createNodeActive"
@@ -300,10 +304,17 @@ function openCommandBar(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
-.nodeButtonsWrapper {
+.toolbarColumn {
 	position: absolute;
 	top: var(--spacing--sm);
 	right: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--spacing--2xs);
+}
+
+.nodeButtonsWrapper {
 	background: var(--background--surface);
 	border: var(--border);
 	box-shadow: var(--shadow--xs);

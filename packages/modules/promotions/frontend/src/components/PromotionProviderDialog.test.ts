@@ -55,9 +55,9 @@ const renderAddDialog = async (type: PromotionProvider['type']) => {
 	return rendered;
 };
 
-const renderEditDialog = async (provider: PromotionProvider) => {
+const renderEditDialog = async (provider: PromotionProvider, environmentId?: string) => {
 	api.fetchPromotionProvider.mockResolvedValue(provider);
-	const rendered = renderDialog({ props: { open: true, providerId: provider.id } });
+	const rendered = renderDialog({ props: { open: true, providerId: provider.id, environmentId } });
 	await screen.findByDisplayValue(provider.name);
 	return rendered;
 };
@@ -204,14 +204,46 @@ describe('PromotionProviderDialog', () => {
 		);
 	});
 
-	it('shows the stored key and the environments that use the provider', async () => {
+	it('shows the stored key and names the other environments that use the provider', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([
-			{ name: 'Production' } as PromotionEnvironmentSummary,
+			{ id: 'env-current', name: 'Development' } as PromotionEnvironmentSummary,
+			{ id: 'env-other', name: 'Production' } as PromotionEnvironmentSummary,
 		]);
-		await renderEditDialog(sshProvider());
+		await renderEditDialog(sshProvider(), 'env-current');
 
 		expect(await screen.findByDisplayValue('ssh-ed25519 STORED-KEY')).toBeInTheDocument();
-		expect(screen.getByTestId('promotion-provider-in-use')).toHaveTextContent('Production');
+		expect(screen.getByTestId('promotion-provider-in-use')).toHaveTextContent(
+			'Changes to this provider will also affect Production.',
+		);
+		expect(screen.getByTestId('promotion-provider-in-use')).not.toHaveTextContent('Development');
+	});
+
+	it('shows no shared-provider text when only the edited environment uses the provider', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([
+			{ id: 'env-current', name: 'Development' } as PromotionEnvironmentSummary,
+		]);
+		await renderEditDialog(sshProvider(), 'env-current');
+
+		expect(screen.queryByTestId('promotion-provider-in-use')).not.toBeInTheDocument();
+		expect(screen.queryByText(/will also affect/)).not.toBeInTheDocument();
+	});
+
+	it('shows a fixed-length mask for the saved token and no extra guidance when editing', async () => {
+		await renderEditDialog(gitlabProvider());
+
+		expect(screen.getByTestId('promotion-provider-password-input')).toHaveAttribute(
+			'placeholder',
+			'••••••••••••',
+		);
+		expect(screen.getByTestId('promotion-provider-password-input')).toHaveValue('');
+		expect(screen.queryByText(/Leave blank to keep/)).not.toBeInTheDocument();
+		expect(screen.queryByText(/api and write_repository scopes/)).not.toBeInTheDocument();
+	});
+
+	it('keeps the token scope hint when adding a GitLab provider', async () => {
+		await renderAddDialog('gitlab');
+
+		expect(screen.getByText(/api and write_repository scopes/)).toBeInTheDocument();
 	});
 
 	it('shows the new deploy key after regeneration', async () => {

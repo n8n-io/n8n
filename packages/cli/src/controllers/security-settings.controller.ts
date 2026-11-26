@@ -48,30 +48,31 @@ export class SecuritySettingsController {
 			);
 		}
 
-		if (dto.workflowReviews !== undefined) {
+		const { workflowReviews, ...otherFields } = dto;
+
+		if (workflowReviews !== undefined) {
 			this.assertWorkflowReviewsAvailable();
 		}
 
 		const updatedSettings: Partial<UpdateSecuritySettingsDto> =
-			await this.securitySettingsService.updateSecuritySettings(
-				{
-					personalSpacePublishing: dto.personalSpacePublishing,
-					personalSpaceSharing: dto.personalSpaceSharing,
-					redactionEnforcement: dto.redactionEnforcement,
-				},
-				req.user,
-			);
+			await this.securitySettingsService.updateSecuritySettings(otherFields, req.user);
 
-		if (dto.workflowReviews?.enabled !== undefined) {
-			const before = (await this.workflowReviewPolicyService.get()).enabled;
-			const after = dto.workflowReviews.enabled;
-			updatedSettings.workflowReviews = { enabled: after };
-			if (before !== after) {
-				const workflowReviews = await this.workflowReviewPolicyService.set(after);
-				updatedSettings.workflowReviews = workflowReviews;
+		if (workflowReviews !== undefined) {
+			const { before, after } = await this.workflowReviewPolicyService.update(workflowReviews);
+			updatedSettings.workflowReviews = after;
+
+			if (before.enabled !== after.enabled) {
 				this.securitySettingsService.emitInstancePolicyUpdated(req.user, {
 					settingName: 'workflow_reviews',
-					value: workflowReviews.enabled,
+					value: after.enabled,
+				});
+			}
+
+			const alwaysRequired = after.alwaysRequired === true;
+			if ((before.alwaysRequired === true) !== alwaysRequired) {
+				this.securitySettingsService.emitInstancePolicyUpdated(req.user, {
+					settingName: 'workflow_reviews_approval_required',
+					value: alwaysRequired,
 				});
 			}
 		}
