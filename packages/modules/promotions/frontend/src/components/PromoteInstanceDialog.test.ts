@@ -158,6 +158,9 @@ describe('PromoteInstanceDialog', () => {
 					.join('')
 					.trim(),
 			);
+		/** The workflows that cannot be published, each with the dependencies that it misses. */
+		const summaryRows = (getAllByTestId: (id: string) => HTMLElement[]) =>
+			getAllByTestId('promotion-unresolved-row').map((row) => row.textContent?.trim());
 		const statuses = (getAllByTestId: (id: string) => HTMLElement[]) =>
 			getAllByTestId('promotion-missing-dependency').map(
 				(row) => statusOf(row)?.textContent?.trim() ?? null,
@@ -175,7 +178,7 @@ describe('PromoteInstanceDialog', () => {
 			expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote$/);
 		});
 
-		it('asks the user to confirm the missing dependencies, and lists the warnings apart, above the commit message', async () => {
+		it('names the workflows that cannot be published, lists the warnings apart, and keeps the plain title and button', async () => {
 			api.fetchPromoteCheck.mockResolvedValue(
 				promoteCheck({
 					missingDependencies: [
@@ -195,31 +198,31 @@ describe('PromoteInstanceDialog', () => {
 			);
 			const { findByTestId, findByRole, getAllByTestId, getByTestId } = renderComponent();
 
-			const section = await findByTestId('promote-missing-dependencies');
-			// The title and the button count what the user confirms. A warning needs no confirmation.
-			expect(
-				await findByRole('heading', { name: 'Promote with 2 unresolved dependencies?' }),
-			).toBeVisible();
-			expect(getByTestId('promote-confirm-button')).toHaveTextContent(
-				/^Promote with 2 unresolved dependencies$/,
-			);
+			const summary = await findByTestId('promotion-unresolved-summary');
+			// The title and the button never mention the dependencies, as in the project dialog.
+			expect(await findByRole('heading', { name: 'Promote changes to Production' })).toBeVisible();
+			expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote$/);
 			expect(getByTestId('promote-confirm-button')).toBeEnabled();
-			expect(section).toHaveTextContent(
-				'These dependencies are not on the branch after this Promote. Workflows that use them cannot be published where this is applied until the dependencies exist there.',
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"4 workflows can't be published because their dependencies can't be promoted.",
 			);
+			expect(summaryRows(getAllByTestId)).toEqual([
+				'Invoice reconciliationMissing CRM key, Send audit log.',
+				'Payment remindersMissing Send audit log.',
+				'Weekly KPI reportMissing Send audit log.',
+				'Format currencyMissing Send audit log.',
+			]);
+			// A warning needs no confirmation. Its list is apart, and the summary is above the message.
+			const section = getByTestId('promote-missing-dependencies');
 			expect(section).toHaveTextContent(
 				'These dependencies do not exist on this instance. Workflows that use them fail where this is applied.',
 			);
-			const [unresolved, warnings] = getAllByTestId('promotion-missing-dependency-list');
-			expect(rows((id) => within(unresolved).getAllByTestId(id))).toEqual([
-				'CRM keyCredential · Used by Invoice reconciliation',
-				'Send audit logWorkflow · Used by Invoice reconciliation, Payment reminders +2',
-			]);
+			const [warnings] = getAllByTestId('promotion-missing-dependency-list');
 			expect(rows((id) => within(warnings).getAllByTestId(id))).toEqual([
 				'Archive invoicesWorkflow · Used by Invoice reconciliation',
 			]);
 			expect(
-				section.compareDocumentPosition(getByTestId('promote-commit-message')) &
+				summary.compareDocumentPosition(getByTestId('promote-commit-message')) &
 					Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
 			expect(section).not.toHaveTextContent('Promote stops');
@@ -290,7 +293,7 @@ describe('PromoteInstanceDialog', () => {
 				.mockResolvedValueOnce({ environmentId: 'environment-1', ...fields })
 				.mockResolvedValue(promoteResult('main'));
 			const { findByRole, findByTestId, getByTestId, queryByTestId, emitted } = renderComponent();
-			await findByRole('heading', { name: 'Promote with 1 unresolved dependency?' });
+			await findByTestId('promotion-unresolved-summary');
 
 			await userEvent.click(getByTestId('promote-confirm-button'));
 
@@ -302,11 +305,10 @@ describe('PromoteInstanceDialog', () => {
 			expect(emitted('update:open')).toBeUndefined();
 			expect(mockShowError).not.toHaveBeenCalled();
 			expect(api.fetchPromoteCheck).toHaveBeenCalledTimes(2);
+			expect(await findByTestId('promotion-unresolved-summary')).toBeVisible();
+			// Two workflows miss a dependency now: the new list is longer than the first one.
 			expect(
-				await findByRole('heading', { name: 'Promote with 2 unresolved dependencies?' }),
-			).toBeVisible();
-			expect(
-				rows((id) => within(getByTestId('promote-missing-dependencies')).getAllByTestId(id)),
+				summaryRows((id) => within(getByTestId('promote-missing-dependencies')).getAllByTestId(id)),
 			).toHaveLength(2);
 
 			await userEvent.click(getByTestId('promote-confirm-button'));
@@ -353,7 +355,7 @@ describe('PromoteInstanceDialog', () => {
 					expect(rendered.queryByTestId('promote-check-loading')).not.toBeInTheDocument(),
 				);
 				await userEvent.click(rendered.getByTestId('promote-confirm-button'));
-				await rendered.findByRole('heading', { name: 'Promote with 1 unresolved dependency?' });
+				await rendered.findByTestId('promotion-unresolved-summary');
 				return rendered;
 			}
 
@@ -363,8 +365,9 @@ describe('PromoteInstanceDialog', () => {
 				// The user confirmed nothing, because the dialog showed no list.
 				expect(api.promotePackage).toHaveBeenLastCalledWith(expect.anything(), 'environment-1', {});
 				expect(await findByTestId('promote-missing-changed')).toBeVisible();
+				expect(summaryRows(getAllByTestId)).toEqual(['Invoice reconciliationMissing CRM key.']);
+				// A warning has its own list, below the summary.
 				expect(rows(getAllByTestId)).toEqual([
-					'CRM keyCredential · Used by Invoice reconciliation',
 					'Archive invoicesWorkflow · Used by Invoice reconciliation',
 				]);
 				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
@@ -390,19 +393,18 @@ describe('PromoteInstanceDialog', () => {
 			});
 
 			it('does not promote and shows the new list when the check has a different list', async () => {
-				const { findByRole, getAllByTestId, getByTestId, queryByTestId } = await showListOfAnswer();
+				const { findByTestId, getAllByTestId, getByTestId, queryByTestId } =
+					await showListOfAnswer();
 				api.fetchPromoteCheck.mockResolvedValue(
 					promoteCheck({ missingDependencies: [otherProjectCredential, outsideAccessWorkflow] }),
 				);
 
 				await userEvent.click(getByTestId('promote-confirm-button'));
 
-				expect(
-					await findByRole('heading', { name: 'Promote with 2 unresolved dependencies?' }),
-				).toBeVisible();
+				expect(await findByTestId('promotion-unresolved-summary')).toBeVisible();
 				expect(api.promotePackage).toHaveBeenCalledTimes(1);
 				expect(getByTestId('promote-missing-changed')).toBeVisible();
-				expect(rows(getAllByTestId)).toHaveLength(2);
+				expect(summaryRows(getAllByTestId)).toHaveLength(2);
 				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
 				expect(mockShowError).not.toHaveBeenCalled();
 
@@ -427,7 +429,7 @@ describe('PromoteInstanceDialog', () => {
 					expect(mockShowError).toHaveBeenCalledWith(failure, expect.any(String)),
 				);
 				expect(api.promotePackage).toHaveBeenCalledTimes(1);
-				expect(rows(getAllByTestId)).toHaveLength(2);
+				expect(summaryRows(getAllByTestId)).toEqual(['Invoice reconciliationMissing CRM key.']);
 				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
 				expect(getByTestId('promote-confirm-button')).toBeEnabled();
 			});
@@ -444,12 +446,12 @@ describe('PromoteInstanceDialog', () => {
 			);
 			const { findByTestId } = renderComponent();
 
-			const list = await findByTestId('promotion-missing-dependency-list');
-			expect(within(list).getByText('CRM key')).toBeVisible();
+			const summary = await findByTestId('promotion-unresolved-summary');
+			expect(summary).toHaveTextContent('CRM key');
 			// "Billing" is the project of the workflows. "Finance" is the project of "CRM key".
-			expect(list).not.toHaveTextContent('Billing');
-			expect(list).not.toHaveTextContent('Finance');
-			expect(list).not.toHaveTextContent(/project|owner/i);
+			expect(summary).not.toHaveTextContent('Billing');
+			expect(summary).not.toHaveTextContent('Finance');
+			expect(summary).not.toHaveTextContent(/project|owner/i);
 		});
 
 		it('shows a loading row while the check runs, then the list in the same status region', async () => {
@@ -476,7 +478,7 @@ describe('PromoteInstanceDialog', () => {
 			expect(queryByTestId('promote-check-loading')).not.toBeInTheDocument();
 		});
 
-		it('says for each dependency if the user can access it, and when a personal project holds it', async () => {
+		it('names each workflow with all the dependencies that it misses, whoever owns them, and lists a warning apart', async () => {
 			api.fetchPromoteCheck.mockResolvedValue(
 				promoteCheck({
 					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
@@ -485,20 +487,13 @@ describe('PromoteInstanceDialog', () => {
 			);
 			const { findByTestId, getAllByTestId } = renderComponent();
 
-			await findByTestId('promote-missing-dependencies');
-			// A warning has no status.
-			expect(statuses(getAllByTestId)).toEqual([
-				'Not included',
-				'No access',
-				'Personal project',
-				null,
+			await findByTestId('promotion-unresolved-summary');
+			expect(summaryRows(getAllByTestId)).toEqual([
+				'Invoice reconciliationMissing CRM key, Send audit log.',
+				'Weekly KPI reportMissing Send audit log, Personal Gmail.',
 			]);
-			expect(rows(getAllByTestId)).toEqual([
-				'CRM keyCredential · Used by Invoice reconciliation',
-				'Send audit logWorkflow · Used by Invoice reconciliation, Weekly KPI report',
-				'Personal GmailCredential · Used by Weekly KPI report',
-				'Archive invoicesWorkflow · Used by Invoice reconciliation',
-			]);
+			// A warning has no status, and the dependencies have no list of their own.
+			expect(statuses(getAllByTestId)).toEqual([null]);
 		});
 
 		it.each([
