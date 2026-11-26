@@ -85,9 +85,9 @@ describe('AgentKnowledgeSandboxProvider', () => {
 	});
 
 	describe('sandbox identity', () => {
-		// The id of (instance-1, project-1, agent-1), pinned so a scope change cannot
-		// silently orphan existing knowledge sandboxes.
-		const knowledgeSandboxName = 'agent-kb-a54b9053-9f50-51e5-b971-e02942ff7b6b';
+		// The restricted (egress: 'none') sandbox id of (instance-1, project-1, agent-1), pinned so a
+		// scope change cannot silently orphan existing knowledge sandboxes.
+		const knowledgeSandboxName = 'agent-kb-2aad0203-68a6-5485-bb9b-dd4e05f00e09';
 
 		it('derives the same sandbox id from the scope as the runtime derives from the project and agent ids', async () => {
 			const agentRepository = mock<AgentRepository>();
@@ -119,6 +119,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 						sandboxSnapshot: '',
 						sandboxTimeout: 300_000,
 						sandboxEphemeral: false,
+						sandboxEgressPolicy: 'opt-out',
 					} as AgentsConfig,
 					mock<Logger>(),
 					mock<InstanceSettings>({ instanceId: 'instance-1' }),
@@ -132,6 +133,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 			expect(createSandboxMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					provider: 'daytona',
+					egress: 'none',
 					id: knowledgeSandboxName,
 					name: knowledgeSandboxName,
 					labels: {

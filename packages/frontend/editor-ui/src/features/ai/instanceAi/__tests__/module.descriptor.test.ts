@@ -378,6 +378,29 @@ describe('InstanceAiModule settings page access', () => {
 	});
 });
 
+describe('InstanceAiModule thread title push', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	it('gives the title to the Assistant agent threads store', async () => {
+		const handler = InstanceAiModule.pushHandlers?.agentThreadTitleUpdated;
+		if (!handler) throw new Error('No thread title push handler');
+		const data = {
+			projectId: 'project-1',
+			agentId: 'assistant',
+			threadId: 'thread-1',
+			title: 'Berlin rain alert',
+		};
+
+		await handler({ type: 'agentThreadTitleUpdated', data });
+
+		expect(mockedStore(useAssistantAgentThreadsStore).applyGeneratedTitle).toHaveBeenCalledWith(
+			data,
+		);
+	});
+});
+
 describe('InstanceAiModule credit push', () => {
 	const handle = async (creditsPerThread?: { threadId: string; totalCreditsUsed: number }) => {
 		const handler = InstanceAiModule.pushHandlers?.updateInstanceAiCredits;
