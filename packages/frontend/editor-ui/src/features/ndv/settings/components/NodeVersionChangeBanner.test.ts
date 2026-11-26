@@ -268,7 +268,7 @@ describe('NodeVersionChangeBanner', () => {
 		const { getByTestId } = renderBanner({
 			removedConnections: [
 				[main('Set'), main('Merge', 1)],
-				[main('Set'), main('Merge', 2)],
+				[main('Edit'), main('Merge', 2)],
 			],
 		});
 
@@ -276,7 +276,7 @@ describe('NodeVersionChangeBanner', () => {
 		expect(bucket.querySelector('summary')).toHaveTextContent('2 connections removed');
 		expect(rowTexts(bucket)).toEqual([
 			['Set', '→', 'Merge'],
-			['Set', '→', 'Merge'],
+			['Edit', '→', 'Merge'],
 		]);
 	});
 

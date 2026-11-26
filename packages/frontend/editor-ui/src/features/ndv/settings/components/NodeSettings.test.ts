@@ -1086,6 +1086,42 @@ describe('NodeSettings', () => {
 				expect(queryByTestId('node-version-change-connections')).not.toBeInTheDocument();
 			});
 
+			it('removes the connection into an input that the version does not have', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate({
+					nodeTypes: [{ ...typeV1, inputs: ['main', 'main'] }, typeV2],
+					nodes: [otherNode('A'), otherNode('B')],
+					connections: {
+						A: { main: [[main(httpNode.name, 0)]] },
+						B: { main: [[main(httpNode.name, 1)]] },
+					},
+				});
+
+				expect(workflowDocumentStore.connectionsBySourceNode).toEqual({
+					A: { main: [[main(httpNode.name, 0)]] },
+					B: { main: [[]] },
+				});
+			});
+
+			it('names the credential that the version does not use', async () => {
+				const { getByTestId } = await renderAndUpdate({
+					node: {
+						...nodeOnVersion(1),
+						credentials: { httpBasicAuth: { id: '1', name: 'My Basic Auth' } },
+					},
+					nodeTypes: [
+						{
+							...typeV1,
+							credentials: [{ name: 'httpBasicAuth', displayOptions: { show: { timeout: [10] } } }],
+						},
+						typeV2,
+					],
+				});
+
+				expect(getByTestId('node-version-change-unused-credential')).toHaveTextContent(
+					'The credential My Basic Auth is no longer used by this node.',
+				);
+			});
+
 			it('reports the required credential of that version', async () => {
 				const { workflowDocumentStore } = await renderAndUpdate({
 					nodeTypes: [typeV1, { ...typeV2, credentials: [{ name: 'testApi', required: true }] }],

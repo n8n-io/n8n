@@ -1350,7 +1350,7 @@ describe('carryOverNodeParameters', () => {
 		it('should not list a credential that a parameter of the target version selects', () => {
 			const result = carry(
 				node(
-					3,
+					2,
 					{
 						url: 'https://example.com',
 						authentication: 'genericCredentialType',
@@ -1358,9 +1358,10 @@ describe('carryOverNodeParameters', () => {
 					},
 					{ httpBasicAuth: basicAuth },
 				),
+				// The current version declares the type with no condition.
+				desc(2, [], [{ name: 'httpBasicAuth', required: true }]),
 				httpRequestV3,
-				httpRequestV3,
-				4,
+				3,
 			);
 
 			expect(result.droppedCredentials).toEqual([]);
@@ -1444,6 +1445,22 @@ describe('getUnfitNodeConnections', () => {
 		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main', 'main'])).toEqual([
 			[main('Node', 3), main('B')],
 		]);
+	});
+
+	it('should return a connection from the node to itself one time', () => {
+		const connections: IConnections = { Node: { main: [[], [main('Node', 1)]] } };
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main'])).toEqual([
+			[main('Node', 1), main('Node', 1)],
+		]);
+	});
+
+	it('should not return a connection with a key that is not a connection type', () => {
+		const connections: IConnections = {
+			Node: { unknown: [[], [main('A')]] },
+		};
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main'])).toEqual([]);
 	});
 
 	it('should return a copy of the target connection', () => {
