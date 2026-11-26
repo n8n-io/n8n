@@ -273,7 +273,6 @@ describe('NodeDetailsViewPage scope configuration', () => {
 				chooseOption(listId: string, value: string) {
 					return this.page.locator(\`[id="\${listId}"]\`).getByRole('option', {
 						name: value,
-						exact: true,
 						includeHidden: true,
 					});
 				}
@@ -288,6 +287,8 @@ describe('NodeDetailsViewPage scope configuration', () => {
 		'this.page.locator(`[id="${listId}"]`)',
 		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal source text for the generated file
 		'this.page.locator(`[id="${listId}"]`).getByRole(\'option\', { name: value, exact: true })',
+		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal source text for the generated file
+		'this.page.locator(`[id="${listId}"]`).getByRole(\'option\', { name: value, exact: true, includeHidden: true })',
 		"this.page.getByRole('option', { name: value, exact: true, includeHidden: true })",
 	])('reports a run selector locator that leaves the NDV: %s', (locator) => {
 		const project = new Project({ useInMemoryFileSystem: true });
@@ -316,7 +317,6 @@ describe('NodeDetailsViewPage scope configuration', () => {
 				chooseOption(listId: string, value: string) {
 					return this.page.locator(\`[id="\${listId}"]\`).getByRole('option', {
 						name: value,
-						exact: true,
 						includeHidden: true,
 					});
 				}
