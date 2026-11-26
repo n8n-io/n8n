@@ -76,6 +76,10 @@ function select(value: string) {
 	}
 }
 
+// Without a remote method, Element Plus filters the loaded options by label on every keystroke.
+// That hides them before the server answers. The discovery composable does the search instead.
+function skipLocalFilter() {}
+
 function onInput(event: Event) {
 	// Dropdown close events must not clear the search used by retry.
 	if (event.target instanceof HTMLInputElement) onSearch(event.target.value);
@@ -92,6 +96,7 @@ function onInput(event: Event) {
 			:popper-class="popperClass"
 			filterable
 			remote
+			:remote-method="skipLocalFilter"
 			remote-show-suffix
 			:placeholder="
 				i18n.baseText(

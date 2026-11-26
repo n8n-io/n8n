@@ -236,3 +236,29 @@ it('keeps the previous results in the list while a new search loads', async () =
 	expect(screen.getByRole('option', { name: 'team/other' })).toBeInTheDocument();
 	expect(screen.queryByRole('option', { name: 'team/workflows' })).not.toBeInTheDocument();
 });
+
+it('keeps loaded results visible while a search for a term outside them loads', async () => {
+	const user = setupSearchUser();
+	let finishSearch: (page: PromotionRepositoryListPublicDto) => void = () => {};
+	api.fetchPromotionRepositories
+		.mockResolvedValueOnce({ data: [repository], nextCursor: null })
+		.mockReturnValueOnce(
+			new Promise<PromotionRepositoryListPublicDto>((resolve) => {
+				finishSearch = resolve;
+			}),
+		);
+	renderSelect();
+	await flushPromises();
+
+	// The term matches none of the loaded labels, so a local filter would hide them.
+	await user.type(screen.getByRole('combobox'), 'sprint');
+	await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH);
+
+	expect(screen.getByRole('option', { name: 'team/workflows' })).toBeInTheDocument();
+	expect(screen.queryByText('No repositories found')).not.toBeInTheDocument();
+
+	finishSearch({ data: [otherRepository], nextCursor: null });
+	await flushPromises();
+
+	expect(screen.getByRole('option', { name: 'team/other' })).toBeInTheDocument();
+});
