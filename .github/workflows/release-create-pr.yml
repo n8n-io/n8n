@@ -14,12 +14,6 @@ on:
         required: true
         type: string
 
-      prerelease:
-        description: 'Publish without promoting release channels or running stable release maintenance.'
-        required: false
-        type: boolean
-        default: false
-
     outputs:
       pull-request-number:
         description: 'Number of the created pull request'
@@ -43,11 +37,6 @@ on:
           - major
           - experimental
           - premajor
-
-      prerelease:
-        description: 'Publish without promoting release channels or running stable release maintenance.'
-        type: boolean
-        default: false
 
 permissions: {}
 
@@ -86,24 +75,6 @@ jobs:
       pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
 
     steps:
-      - name: Validate release inputs
-        env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
-          PRERELEASE: ${{ inputs.prerelease }}
-          RELEASE_TYPE: ${{ inputs.release-type }}
-        run: |
-          if [ "$PRERELEASE" != "true" ]; then
-            exit 0
-          fi
-          if [ "$BASE_BRANCH" != "3.x" ]; then
-            echo "::error::Standalone prereleases must use the 3.x base branch."
-            exit 1
-          fi
-          if [[ ! "$RELEASE_TYPE" =~ ^(major|minor|patch)$ ]]; then
-            echo "::error::Standalone prereleases only support major, minor, or patch release types."
-            exit 1
-          fi
-
       - name: Generate GitHub App Token
         id: generate_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -156,8 +127,6 @@ jobs:
 
       - name: Generate PR body
         id: generate-body
-        env:
-          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           set -e
           CHANGELOG_FILE="CHANGELOG-${{ env.NEXT_RELEASE }}.md"
@@ -165,9 +134,6 @@ jobs:
 
           {
             echo "content<<${DELIMITER}"
-            if [ "$PRERELEASE" = "true" ]; then
-              echo '<!-- release-prerelease -->'
-            fi
             if [ -f "${CHANGELOG_FILE}" ]; then
               cat "${CHANGELOG_FILE}"
             else
@@ -186,7 +152,7 @@ jobs:
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
           labels: release,release:${{ inputs.release-type }},automation:release
-          title: "${{ inputs.prerelease && ':rocket: Pre-release' || ':rocket: Release' }} ${{ env.NEXT_RELEASE }}"
+          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
