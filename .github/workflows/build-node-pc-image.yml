@@ -42,6 +42,7 @@ jobs:
   # an image only when its own inputs (its bake target, the Dockerfile and the
   # files it copies in) changed. `images` lists the images to build.
   prepare:
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.images.outputs.changed }}
@@ -174,7 +175,7 @@ jobs:
   # A failed build for another image does not block publication.
   create-multi-arch-manifest:
     needs: [prepare, build]
-    if: always() && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

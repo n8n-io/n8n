@@ -441,7 +441,9 @@ export function createSkillsTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.' +
+				'Before creating a new skill or building an agent, list existing skills (pass ' +
+				'attachableToAgentId for an agent) and reuse a matching skill instead of creating a ' +
+				'duplicate. This tool does not attach a skill to an agent.' +
 				(sources
 					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
 					: ''),

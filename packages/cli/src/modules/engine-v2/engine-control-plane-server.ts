@@ -11,17 +11,17 @@ import { send } from '@/response-helper';
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineDataTablesController } from './engine-data-tables.controller';
-import { EngineSubWorkflowController } from './engine-workflow-resolve.controller';
 import { EngineMtls } from './engine-mtls';
 import {
 	CREDENTIALS_RESOLVE_PATH,
 	DATA_TABLES_CALL_PATH,
-	SUB_WORKFLOWS_RESOLVE_PATH,
+	WORKFLOWS_RESOLVE_PATH,
 } from './engine-v2.constants';
+import { EngineWorkflowResolveController } from './engine-workflow-resolve.controller';
 
 /**
  * Provides services for the engine in the data plane: credentials, data tables,
- * and sub-workflow resolution. It listens on its own host and port, separate
+ * and the resolution of sub-workflows and error workflows. It listens on its own host and port, separate
  * from the REST API server, so an operator can restrict these internal routes
  * to the network that the data plane uses without touching the editor's routes.
  */
@@ -39,7 +39,7 @@ export class EngineControlPlaneServer {
 		private readonly mtls: EngineMtls,
 		private readonly credentialsController: EngineCredentialsController,
 		private readonly dataTablesController: EngineDataTablesController,
-		private readonly subWorkflowController: EngineSubWorkflowController,
+		private readonly workflowResolveController: EngineWorkflowResolveController,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
@@ -120,15 +120,11 @@ export class EngineControlPlaneServer {
 		);
 
 		app.post(
-			SUB_WORKFLOWS_RESOLVE_PATH,
-			createEngineControlPlaneAuthMiddleware(
-				this.engineConfig,
-				this.logger,
-				'sub-workflows:resolve',
-			),
+			WORKFLOWS_RESOLVE_PATH,
+			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'workflows:resolve'),
 			rawBodyReader,
 			bodyParser,
-			send(async (req, res) => await this.subWorkflowController.resolveSubWorkflow(req, res)),
+			send(async (req, res) => await this.workflowResolveController.resolveWorkflow(req, res)),
 		);
 	}
 }

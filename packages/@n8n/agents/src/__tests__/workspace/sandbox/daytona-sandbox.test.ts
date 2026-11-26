@@ -248,6 +248,7 @@ describe('DaytonaSandbox (creation strategies)', () => {
 			image: 'node:20',
 			ephemeral: true,
 			logger,
+			networkBlockAll: true,
 			errorReporter,
 			createStrategyMode: 'direct',
 		});
@@ -258,6 +259,7 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(clientLog[0].create.mock.calls[0][0]).toEqual(
 			expect.objectContaining({
 				ephemeral: true,
+				networkBlockAll: true,
 				labels: {
 					'n8n-builder': 'builder-run',
 					run_id: 'run-1',
@@ -270,6 +272,7 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(clientLog[0].create.mock.calls[1][0]).toEqual(
 			expect.objectContaining({
 				ephemeral: true,
+				networkBlockAll: true,
 				image: 'node:20',
 				labels: {
 					'n8n-builder': 'builder-run',

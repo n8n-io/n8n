@@ -181,6 +181,7 @@ export {
 	projectIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionEnvironmentIdParamSchema,
+	promotionReviewIdParamSchema,
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,

@@ -4,6 +4,7 @@ import {
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	McpOAuth2CredentialTypeSchema,
+	resolveAgentSandboxEgressEnabled,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -348,6 +349,45 @@ describe('AgentJsonConfigSchema — config.promptCaching', () => {
 				anthropic: { ttl: '1h' },
 			});
 		}
+	});
+});
+
+describe('AgentJsonConfigSchema — config.sandboxEgress', () => {
+	it.each([true, false])('accepts boolean sandboxEgress=%s', (sandboxEgress) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { sandboxEgress },
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.config?.sandboxEgress).toBe(sandboxEgress);
+		}
+	});
+
+	it('rejects non-boolean sandboxEgress values', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { sandboxEgress: 'public' },
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('resolveAgentSandboxEgressEnabled', () => {
+	it.each([
+		['disabled', undefined, false],
+		['disabled', false, false],
+		['disabled', true, false],
+		['opt-in', undefined, false],
+		['opt-in', false, false],
+		['opt-in', true, true],
+		['opt-out', undefined, true],
+		['opt-out', false, false],
+		['opt-out', true, true],
+	] as const)('resolves policy=%s with agentSetting=%s to %s', (policy, agentSetting, expected) => {
+		expect(resolveAgentSandboxEgressEnabled(policy, agentSetting)).toBe(expected);
 	});
 });
 

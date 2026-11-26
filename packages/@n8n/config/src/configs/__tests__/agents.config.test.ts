@@ -18,6 +18,34 @@ describe('AgentsConfig plan tools', () => {
 		expect(Container.get(AgentsConfig).planToolsEnabled).toBe(expected);
 	});
 });
+describe('AgentsConfig sandbox egress policy', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		vi.restoreAllMocks();
+		Container.reset();
+	});
+
+	it.each([
+		[undefined, 'opt-in'],
+		['disabled', 'disabled'],
+		['opt-in', 'opt-in'],
+		['opt-out', 'opt-out'],
+	] as const)('parses N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY=%s as %s', (value, expected) => {
+		vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', value);
+		Container.reset();
+
+		expect(Container.get(AgentsConfig).sandboxEgressPolicy).toBe(expected);
+	});
+
+	it('falls back to opt-in on invalid policy values', () => {
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', 'public');
+		Container.reset();
+
+		expect(Container.get(AgentsConfig).sandboxEgressPolicy).toBe('opt-in');
+		expect(warnSpy).toHaveBeenCalled();
+	});
+});
 
 describe('AgentsConfig human review', () => {
 	afterEach(() => {
