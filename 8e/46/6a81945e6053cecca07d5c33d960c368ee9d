@@ -1,0 +1,20 @@
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  h_52a137d26d774c 224-225
+packages/testing/playwright/tests/ui/13-pinning.spec.ts
+  h_52a137d26d774c 187-190,196-197,212-214
+packages/testing/playwright/tests/ui/5-ndv.spec.ts
+  h_52a137d26d774c 42
+packages/testing/playwright/tests/ui/chat-session-id-reset.spec.ts
+  h_52a137d26d774c 21,23,39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e466a81945e6053cecca07d5c33d960c368ee9d",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
