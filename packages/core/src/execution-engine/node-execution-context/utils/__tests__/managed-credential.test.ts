@@ -56,6 +56,14 @@ describe('managed credential (spike)', () => {
 			expect(getManagedReferenceData(node(), 'platformManagedApi')).toEqual({});
 		});
 
+		it('reads no fields from a reference in the old string form', () => {
+			const legacy = {
+				...node(),
+				credentials: { platformManagedApi: 'Slack' },
+			} as unknown as INode;
+			expect(getManagedReferenceData(legacy, 'platformManagedApi')).toEqual({});
+		});
+
 		it('ignores fields on another credential type', () => {
 			const other = {
 				...node(),

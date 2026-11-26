@@ -176,26 +176,31 @@ export const getRequestHelperFunctions = (
 
 		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
 		request: async (uriOrObjectWithTarget, optionsWithTarget) => {
-			const uriOrObject =
+			const rawUriOrObject =
 				typeof uriOrObjectWithTarget === 'string'
 					? uriOrObjectWithTarget
-					: await withManagedAuthentication(toLegacyRequestOptions(uriOrObjectWithTarget));
-			const legacyOptions = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
-			const options =
-				typeof uriOrObject === 'string'
-					? await withManagedAuthentication(legacyOptions)
-					: legacyOptions;
+					: toLegacyRequestOptions(uriOrObjectWithTarget);
+			const rawOptions = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
 			if (evalLlmMock) {
-				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+				const wantsFull =
+					typeof rawUriOrObject !== 'string' && rawUriOrObject.resolveWithFullResponse;
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
-					normalizeLegacyRequest(uriOrObject, options),
+					normalizeLegacyRequest(rawUriOrObject, rawOptions),
 					node,
 					wantsFull,
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			const uriOrObject =
+				typeof rawUriOrObject === 'string'
+					? rawUriOrObject
+					: await withManagedAuthentication(rawUriOrObject);
+			const options =
+				typeof rawUriOrObject === 'string'
+					? await withManagedAuthentication(rawOptions)
+					: rawOptions;
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},

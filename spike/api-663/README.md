@@ -140,6 +140,7 @@ cd packages/cli && pnpm test src/__tests__/spike-managed-credential-types.test.t
 | Not HTTP (databases, SSH, email, about 7%) | Cannot go through the gateway |
 | Node uses a vendor SDK, not n8n's request helpers (AI model nodes) | `authenticate` is not applied. Not tested |
 | HTTP Request with an SSL client certificate | The certificate credential is not offered |
+| No credential test | Nothing is saved, so n8n never runs a credential `test`. The example files define none |
 | `n8n import:credentials`, and credentials stored before managed mode | Stay in the database. n8n never uses them in managed mode |
 | Approach A: the disabled field shows "Managed by platform" even when the node has no ORD ID | The node fails when it runs |
 

@@ -25,20 +25,22 @@ export function applyManagedCredentialToTypes(types: Types): void {
 /** Spike (API-663): the same change for one description that the editor fetches on its own. */
 export function applyManagedCredentialToDescription(
 	description: INodeTypeDescription,
+	nodeTypeName = description.name,
 ): INodeTypeDescription {
 	const managedType = process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-	return managedType ? withManagedCredential(description, managedType) : description;
+	return managedType ? withManagedCredential(description, managedType, nodeTypeName) : description;
 }
 
 function withManagedCredential(
 	description: INodeTypeDescription,
 	managedType: string,
+	nodeTypeName = description.name,
 ): INodeTypeDescription {
 	if (!description.credentials?.length) return description;
 
 	// HTTP Request picks its credential through its own parameter: keep its list and
 	// only drop the generic (secret-holding) auth types.
-	if (description.name === 'n8n-nodes-base.httpRequest') {
+	if (nodeTypeName === 'n8n-nodes-base.httpRequest') {
 		return {
 			...description,
 			properties: description.properties.map((property) =>
@@ -91,7 +93,7 @@ export function isManagedCredentialMode(): boolean {
 export function assertManagedCredentialType(_type: string): void {
 	if (isManagedCredentialMode()) {
 		throw new BadRequestError(
-			'Credentials cannot be created on this instance. An external gateway manages them',
+			'Credentials cannot be saved on this instance. An external gateway manages them',
 		);
 	}
 }

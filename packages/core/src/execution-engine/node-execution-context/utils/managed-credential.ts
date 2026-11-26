@@ -25,8 +25,8 @@ export function getManagedReferenceData(
 	node: INode,
 	managedType: string,
 ): ICredentialDataDecryptedObject {
-	const reference: object | undefined = node.credentials?.[managedType];
-	if (!reference) return {};
+	const reference: unknown = node.credentials?.[managedType];
+	if (!reference || typeof reference !== 'object') return {};
 	const data: ICredentialDataDecryptedObject = {};
 	for (const [key, value] of Object.entries(reference)) {
 		if (key === 'id' || key === 'name' || key === '__aiGatewayManaged') continue;

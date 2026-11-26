@@ -89,6 +89,27 @@ describe('request helpers in managed mode', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	it('lets the eval mock answer request() before the managed data is checked', async () => {
+		const node = freshdesk({});
+		const request = vi.fn();
+		Container.set(OutboundHttp, mock<OutboundHttp>({ requests: () => ({ request }) as never }));
+		const additionalData =
+			mockDeep<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
+		additionalData.otel = undefined;
+		additionalData.evalLlmMockHandler = vi.fn(async () => ({
+			statusCode: 200,
+			headers: {},
+			body: { mocked: true },
+		}));
+		additionalData.credentialsHelper.getCredentialsProperties = vi.fn(() => [ordIdField]);
+		const helpers = getRequestHelperFunctions(workflow, node, additionalData);
+
+		await expect(helpers.request({ uri: 'https://company.freshdesk.com' })).resolves.toEqual({
+			mocked: true,
+		});
+		expect(request).not.toHaveBeenCalled();
+	});
+
 	it('leaves requests of a node without a credential unchanged', async () => {
 		const { helpers, authenticate } = setup(freshdesk());
 

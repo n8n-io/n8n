@@ -363,7 +363,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const type = resolveManagedCredentialType(node, requestedType);
 
 		const managedType = getManagedCredentialType();
-		if (managedType) return this.getManagedCredentials<T>(managedType, requestedType);
+		if (managedType) {
+			this.assertCredentialUsableByNode(requestedType, node.type);
+			return this.getManagedCredentials<T>(managedType, requestedType);
+		}
 
 		// Eval bypass: only mock when the node is fully unconfigured, so nodes
 		// probing multiple auth types still get production's throw. Handler

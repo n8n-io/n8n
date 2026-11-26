@@ -146,6 +146,14 @@ describe('spike managed credential types', () => {
 				{ name: 'platformManagedApi', required: true },
 			]);
 		});
+
+		it('keeps HTTP Request credentials when the fetched description has the short node name', () => {
+			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+			const shortName = { ...http, name: 'httpRequest' };
+			expect(
+				applyManagedCredentialToDescription(shortName, 'n8n-nodes-base.httpRequest').credentials,
+			).toEqual(http.credentials);
+		});
 	});
 
 	describe('assertManagedCredentialType', () => {
@@ -157,7 +165,7 @@ describe('spike managed credential types', () => {
 			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
 			for (const type of ['platformManagedApi', 'slackApi']) {
 				expect(() => assertManagedCredentialType(type)).toThrow(
-					'Credentials cannot be created on this instance',
+					'Credentials cannot be saved on this instance',
 				);
 			}
 		});

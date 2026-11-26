@@ -1222,6 +1222,7 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
+		assertManagedCredentialType(newCredentialData.type);
 		// One flag lookup for the whole update, reused for the write payload and the response.
 		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
@@ -1326,6 +1327,7 @@ export class CredentialsService {
 		if (!credential) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
+		assertManagedCredentialType(credential.type);
 
 		const prepared = await this.prepareUpdateData(user, data, credential, {
 			operationContext: ctx,

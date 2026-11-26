@@ -92,7 +92,7 @@ export class NodeTypes implements INodeTypes {
 			}
 		}
 
-		return applyManagedCredentialToDescription(description);
+		return applyManagedCredentialToDescription(description, nodeTypeName);
 	}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
