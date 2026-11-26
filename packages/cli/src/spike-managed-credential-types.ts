@@ -22,6 +22,14 @@ export function applyManagedCredentialToTypes(types: Types): void {
 	types.credentials = types.credentials.filter(({ name }) => name === managedType);
 }
 
+/** Spike (API-663): the same change for one description that the editor fetches on its own. */
+export function applyManagedCredentialToDescription(
+	description: INodeTypeDescription,
+): INodeTypeDescription {
+	const managedType = process.env.N8N_MANAGED_CREDENTIAL_TYPE;
+	return managedType ? withManagedCredential(description, managedType) : description;
+}
+
 function withManagedCredential(
 	description: INodeTypeDescription,
 	managedType: string,
