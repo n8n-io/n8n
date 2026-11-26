@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 			rows: 4,
 		},
 		description:
-			'The text to write to the file. If an expression here returns null, the node stops with an error. To create an empty file, leave the field empty.',
+			'The text to write to the file. If an expression here returns null or undefined, for example because a field is missing, the node stops with an error. To create an empty file, leave the field empty.',
 	},
 	{
 		displayName: 'File Name',
