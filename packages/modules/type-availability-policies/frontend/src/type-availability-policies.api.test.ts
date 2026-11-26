@@ -2,11 +2,14 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
+	createProjectPolicy,
 	fetchCredentialTypeSummaries,
 	fetchCredentialTypeUsage,
 	fetchInstanceAccess,
 	fetchInstancePolicy,
 	fetchNodeTypeSummaries,
+	fetchNodeTypeUsage,
+	fetchProjectPolicies,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -55,6 +58,26 @@ describe('instance policy requests', () => {
 	});
 });
 
+describe('project policy requests', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('reads the team projects with their policy state', async () => {
+		await fetchProjectPolicies(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/project-policies');
+	});
+
+	it('adds a policy to one project', async () => {
+		await createProjectPolicy(context, 'project-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'POST', '/project-policies', {
+			projectId: 'project-1',
+		});
+	});
+});
+
 describe('instance access requests', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -78,6 +101,12 @@ describe('instance access requests', () => {
 			'GET',
 			'/credential-type-policies/usage',
 		);
+	});
+
+	it('reads the node type usage from the usage route', async () => {
+		await fetchNodeTypeUsage(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/node-type-policies/usage');
 	});
 
 	it('reads the name, icon and parents of each credential type and skips malformed entries', async () => {

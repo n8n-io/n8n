@@ -144,6 +144,7 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 	mergeTraceRunInputs: vi.fn(),
 	setTracePromptVersion: vi.fn(),
 	setTraceModelId: vi.fn(),
+	setTraceApprovalMode: vi.fn(),
 	modelIdTraceMetadata: (modelId: unknown) =>
 		typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 }));
@@ -158,7 +159,11 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/create-tools-from-mcp-server';
-import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
+import {
+	setTraceApprovalMode,
+	setTraceModelId,
+	setTracePromptVersion,
+} from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -459,6 +464,7 @@ describe('createInstanceAgent', () => {
 				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
+				approvalMode: 'auto',
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
@@ -472,6 +478,7 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 		expect(setTracePromptVersion).toHaveBeenCalledWith(tracing, 'default@1');
 		expect(setTraceModelId).toHaveBeenCalledWith(tracing, 'test-model');
+		expect(setTraceApprovalMode).toHaveBeenCalledWith(tracing, 'auto');
 		expect(tracing.getTelemetry).toHaveBeenCalledWith({
 			agentRole: 'orchestrator',
 			functionId: 'instance-ai.orchestrator',
@@ -649,6 +656,25 @@ describe('createInstanceAgent', () => {
 		expect(getSystemPrompt).toHaveBeenCalledWith(
 			expect.objectContaining({ projectId: 'project-1' }),
 		);
+	});
+
+	it('passes the engine setup to the prompt so the workflow engine section renders', async () => {
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' };
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'engine-prompt',
+				engineSetup,
+				browserUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'engine-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(expect.objectContaining({ engineSetup }));
 	});
 
 	it.each([

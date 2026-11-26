@@ -112,8 +112,15 @@ jobs:
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       # `janitor test-run` replays cached package results first, then runs the
       # rest with janitor scoping: skip, scoped (vitest related), or full.
-      - name: Test Unit (backend, except cli and nodes-base)
-        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+      # rig is excluded too: it is local dev tooling, so its tests run only in
+      # the next step, when its own files change or the changed-file list is
+      # unknown (empty).
+      - name: Test Unit (backend, except cli, nodes-base and rig)
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --filter='!@n8n/rig' --summarize
+
+      - name: Test Unit (rig)
+        if: ${{ !cancelled() && (inputs.changedFiles == '' || contains(inputs.changedFiles, 'scripts/experimental/rig/')) }}
+        run: pnpm --filter=@n8n/rig test:unit
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

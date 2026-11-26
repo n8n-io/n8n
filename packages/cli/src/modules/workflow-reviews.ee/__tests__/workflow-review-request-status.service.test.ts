@@ -16,6 +16,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestStatusService } from '../workflow-review-request-status.service';
+import type { WorkflowReviewRequirementService } from '../workflow-review-requirement.service';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -40,6 +41,7 @@ describe('WorkflowReviewRequestStatusService.list', () => {
 		requestRepository,
 		userRepository,
 		authorizationService,
+		mock<WorkflowReviewRequirementService>(),
 	);
 
 	const query = mock<ListWorkflowReviewRequestsQueryDto>({

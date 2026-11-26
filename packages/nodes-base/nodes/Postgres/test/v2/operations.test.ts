@@ -294,7 +294,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
 			query: "select '$1';",
-			options: {},
+			options: { nodeVersion: 2.8 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -317,6 +317,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			query: "select '$1';",
 			options: {
 				queryReplacement: 'my_table',
+				nodeVersion: 2.8,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -341,6 +342,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			options: {
 				queryReplacement: 'my_table',
 				treatQueryParametersInSingleQuotesAsText: true,
+				nodeVersion: 2.8,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -354,6 +356,31 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select $2;', values: ['my_table', '$1'], options: { partial: true } }],
+			nodeOptions,
+		);
+	});
+
+	it('should leave enclosed placeholders unchanged from v2.9', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {
+				queryReplacement: 'my_table',
+				treatQueryParametersInSingleQuotesAsText: true,
+				nodeVersion: 2.9,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: "select '$1';", values: ['my_table'], options: { partial: true } }],
 			nodeOptions,
 		);
 	});

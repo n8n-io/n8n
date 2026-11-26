@@ -26,14 +26,14 @@ pushes and does not open a review. This layer does not change the editor UI.
 ## Discovery
 
 Discovery uses a saved provider, not an environment. A client can pick a repository
-before it creates an environment. Both routes require the `promotions:discover`
+before it creates an environment. Both routes require the `promotions:manageProviders`
 API-key grant and global user scope:
 
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories`
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches`
 
-The `promotions:read` scope only grants access to saved configuration. It does
-not grant discovery access. Existing API keys need an explicit discovery grant.
+The `promotions:readProviders` scope only grants access to saved configuration. It does
+not grant discovery access.
 
 Both routes accept `search`, `limit`, and an opaque `cursor`. The public query
 uses the standard default of 100 and maximum of 250. The limit is an upper bound,

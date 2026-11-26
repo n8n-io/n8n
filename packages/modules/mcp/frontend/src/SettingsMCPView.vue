@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import {
+	capabilities,
+	capabilityRegistry,
+	type McpPreferencesEntryPoint,
+} from '@n8n/frontend-module-sdk';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -23,11 +27,13 @@ import {
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useToast } from '@n8n/composables/useToast';
 import MCPEmptyState from './components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from './components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from './components/McpConnectClientDialog.vue';
 import McpConnectedClientRow from './components/McpConnectedClientRow.vue';
+import McpPreferencesBanner from './components/McpPreferencesBanner.vue';
 import McpStatusControl from './components/McpStatusControl.vue';
 import OAuthClientDetailsModal from './components/OAuthClientDetailsModal.vue';
 import RevokeOAuthClientConfirmModal from './components/RevokeOAuthClientConfirmModal.vue';
@@ -80,6 +86,66 @@ const savingCallbackUrls = ref(false);
 const preferencesSaving = ref(false);
 const globalPreferencesEnabled = computed(
 	() => settingsStore.settings.aiPreferences?.enabled === true,
+);
+
+const preferencesEntryPoints = capabilityRegistry.tryUse(capabilities.mcpPreferencesEntryPoints);
+const preferencesEntryPoint = computed(() => preferencesEntryPoints?.entryPoint());
+const isPreferencesBannerDismissed = computed(
+	() => preferencesEntryPoints?.isBannerDismissed() ?? false,
+);
+const preferenceCount = ref<number>();
+
+const isBannerArmActive = computed(
+	() => preferencesEntryPoint.value === 'banner' && !isPreferencesBannerDismissed.value,
+);
+
+const needsPreferenceCount = computed(
+	() => preferencesEntryPoint.value === 'connection_row' || isBannerArmActive.value,
+);
+
+const showPreferencesBanner = computed(
+	() => isBannerArmActive.value && preferenceCount.value === 0,
+);
+
+const showPreferencesConnectionRow = computed(
+	() => preferencesEntryPoint.value === 'connection_row' && preferenceCount.value !== undefined,
+);
+
+const connectionRowDescription = computed(() =>
+	i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description', {
+		adjustToNumber: preferenceCount.value,
+		interpolate: { count: String(preferenceCount.value) },
+	}),
+);
+
+const connectionRowButtonLabel = computed(() =>
+	preferenceCount.value
+		? i18n.baseText('settings.mcp.preferencesEntry.connectionRow.button')
+		: i18n.baseText('settings.mcp.preferencesEntry.connectionRow.button.empty'),
+);
+
+const openPreferences = (source: McpPreferencesEntryPoint) => {
+	if (!preferencesEntryPoints) return;
+	preferencesEntryPoints.trackEntryPointClicked(source);
+	void router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
+};
+
+const loadPreferenceCount = async () => {
+	try {
+		preferenceCount.value = await preferencesEntryPoints?.fetchPreferenceCount();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.context.preferences.error.load'));
+	}
+};
+
+watchEffect(() => preferencesEntryPoints?.trackExposure());
+
+watch(
+	needsPreferenceCount,
+	(needed) => {
+		if (needed) void loadPreferenceCount();
+	},
+	{ immediate: true },
 );
 
 const onTogglePreferences = async (enabled: boolean) => {
@@ -341,6 +407,12 @@ onBeforeUnmount(() => {
 				:content="instanceCapacityNoticeContent"
 			/>
 
+			<McpPreferencesBanner
+				v-if="showPreferencesBanner"
+				@open="openPreferences('banner')"
+				@dismiss="preferencesEntryPoints?.dismissBanner()"
+			/>
+
 			<N8nSettingsSection
 				:title="i18n.baseText('settings.mcp.connectionDetails.title')"
 				data-test-id="mcp-enabled-section"
@@ -383,6 +455,24 @@ onBeforeUnmount(() => {
 									@click="onConnectClient"
 								/>
 							</component>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						v-if="showPreferencesConnectionRow"
+						:title="i18n.baseText('settings.mcp.preferencesEntry.connectionRow.title')"
+						:description="connectionRowDescription"
+						data-test-id="mcp-preferences-connection-row"
+					>
+						<template #action>
+							<N8nButton
+								variant="outline"
+								size="medium"
+								icon="sliders-horizontal"
+								:label="connectionRowButtonLabel"
+								data-test-id="mcp-preferences-connection-row-button"
+								data-attr="mcp-preferences-connection-row-button"
+								@click="openPreferences('connection_row')"
+							/>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>

@@ -1,9 +1,8 @@
-import { redactSecrets } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from '@n8n/errors';
 
-import { messageFromBody, truncateMessage } from './error-handling';
-import { oauth2BasicCredentials } from './headers';
+import { messageFromBody, truncateMessage, withoutSecrets } from './error-handling';
+import { formEncoded, oauth2BasicCredentials } from './headers';
 import type { OAuth2Login } from './types';
 
 const CLOCK_SKEW_MARGIN_MS = 30_000;
@@ -60,15 +59,27 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
  * credential-shaped strings this does not know the value of.
  */
 function withoutTheCredential(text: string, login: OAuth2Login): string {
-	const known = [login.clientSecret, oauth2BasicCredentials(login)].filter(
-		(secret) => secret.length > 0,
+	// Sent in the body the secret is form-encoded, so that spelling is what an echo returns
+	const spellings = [
+		login.clientSecret,
+		formEncoded(login.clientSecret),
+		oauth2BasicCredentials(login),
+	];
+
+	return withoutSecrets(
+		text,
+		[...new Set(spellings)].filter((secret) => secret.length > 0),
 	);
-	return redactSecrets(known.reduce((carried, secret) => carried.split(secret).join('***'), text));
 }
 
 function refusedToSignIn(text: string, status: number, login: OAuth2Login): UserError {
-	const stated = messageFromBody(withoutTheCredential(text.trim(), login));
-	const reason = stated ? truncateMessage(stated) : `the login server answered ${status}`;
+	// Filtered before trimming, as the gateway path is: `String.trim` takes a no-break space,
+	// and a client secret is stored untrimmed, so trimming first leaves that spelling unmatched.
+	// Filtered again after extraction, because that decodes the escapes a reader would see.
+	const stated = messageFromBody(withoutTheCredential(text, login).trim());
+	const reason = stated
+		? truncateMessage(withoutTheCredential(stated, login))
+		: `the login server answered ${status}`;
 
 	return new UserError(`Could not sign in to the gateway: ${reason}`, {
 		description: 'Check the token URL, client ID, client secret and scope on the credential.',

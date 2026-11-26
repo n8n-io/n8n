@@ -408,6 +408,80 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
+	describe('workflow drafts', () => {
+		const filePath = 'src/workflows/demo.workflow.ts';
+		const draftEvent = (revision: number) =>
+			makeSSEEvent({
+				type: 'workflow-draft',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					filePath,
+					revision,
+					workflow: { name: `Draft ${revision}`, nodes: [], connections: {} },
+				},
+			});
+		const buildResult = () =>
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-build',
+					result: { success: true, filePath, workflowId: 'wf-1' },
+				},
+			});
+
+		test('keeps the latest draft of each source file', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(2));
+			capturedOnMessage!(draftEvent(1));
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].workflow.name).toBe('Draft 2');
+		});
+
+		test('marks a draft saved when the build saves its file', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(buildResult());
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].savedWorkflowId).toBe('wf-1');
+		});
+
+		test('keeps the run that made a draft', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].runId).toBe('run-1');
+		});
+
+		test('sets the validation issues on the draft they blocked', () => {
+			const issues = [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad', nodeName: 'Set' }];
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(
+				makeSSEEvent({
+					type: 'workflow-draft-issues',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { filePath, revision: 1, issues },
+				}),
+			);
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].issues).toEqual(issues);
+		});
+
+		test('removes a saved draft once the saved workflow is on screen', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(buildResult());
+
+			activeRuntime(registry).dismissWorkflowDrafts('wf-1');
+
+			expect(activeRuntime(registry).workflowDrafts).toEqual({});
+		});
+	});
+
 	test('preferences-applied SSE events replace the applied payload, empty included', () => {
 		const runtime = activeRuntime(registry);
 		expect(runtime.appliedPreferences).toBeNull();
@@ -1320,7 +1394,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1337,7 +1411,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1418,7 +1492,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 					approval_mode: 'unavailable',
@@ -1471,13 +1545,14 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				workflow: 1,
 				node: 1,
 				group: 1,
+				agent: 0,
 			},
 		});
 
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
-				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1, agent: 0 },
 				attachment_count: 3,
 				selected_element_count: 1,
 			}),
@@ -1499,7 +1574,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
 				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
 			],
-			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0, agent: 0 },
 			mentionedWorkflowIds: ['workflow-mentioned'],
 		});
 		await nextTick();
@@ -1516,7 +1591,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const sent = await runtime.sendMessage('Look at this', {
 			authorship: USER_TYPED_MESSAGE,
 			attachments: [{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' }],
-			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0, agent: 0 },
 			mentionedWorkflowIds: ['workflow-mentioned'],
 		});
 		await nextTick();
@@ -1548,7 +1623,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1610,7 +1685,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1647,7 +1722,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1965,7 +2040,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 				},
@@ -1981,7 +2056,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 				},
@@ -2008,6 +2083,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				workflow: 1,
 				node: 1,
 				group: 1,
+				agent: 0,
 			},
 		});
 		finishRun('run-with-context', 'completed');
@@ -2015,7 +2091,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 
 		expect(responseMetricCalls()[0][1]).toMatchObject({
 			run_id: 'run-with-context',
-			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1, agent: 0 },
 			attachment_count: 3,
 			selected_element_count: 1,
 		});
@@ -3088,6 +3164,13 @@ describe('createThreadRuntime - session always-allow', () => {
 		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', {
 			filePath: 'src/workflows/main.workflow.ts',
 		});
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+	});
+
+	it('never offers or stores Always allow for publishing an agent', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		expect(runtime.canAlwaysAllow('agent_builder_publish_agent', {})).toBe(false);
+		runtime.addAlwaysAllowKey('agent_builder_publish_agent', {});
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 

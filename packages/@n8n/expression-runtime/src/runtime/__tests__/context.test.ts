@@ -24,6 +24,7 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
+			readBatch: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -36,6 +37,7 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
+			readBatch: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -52,6 +54,7 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
+			readBatch: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -65,6 +68,7 @@ describe('buildContext proxy', () => {
 			buildContext({
 				getValueAtPath: makeRef(() => undefined),
 				getArrayElement: makeRef(() => undefined),
+				readBatch: makeRef(() => undefined),
 				callHost: makeRef((args) => callHost(args[0])),
 			});
 		const callTypes = (messages: unknown[]) =>
@@ -117,6 +121,7 @@ describe('buildContext proxy', () => {
 				const ctx = buildContext({
 					getValueAtPath: makeRef((args) => ((args[0] as string[])[0] === '$runIndex' ? 2 : 3)),
 					getArrayElement: makeRef(() => undefined),
+					readBatch: makeRef(() => undefined),
 					callHost: makeRef((args) => messages.push(args[0])),
 				});
 				const $ = ctx.$ as (nodeSelector: unknown) => unknown;
@@ -137,6 +142,7 @@ describe('buildContext proxy', () => {
 			const ctx = buildContext({
 				getValueAtPath: makeRef(() => hostError),
 				getArrayElement: makeRef(() => undefined),
+				readBatch: makeRef(() => undefined),
 				callHost: makeRef(() => undefined),
 			});
 			const $ = ctx.$ as (nodeSelector: unknown) => unknown;
@@ -150,6 +156,7 @@ describe('buildContext timezone', () => {
 	const callbacks = {
 		getValueAtPath: makeRef(() => undefined),
 		getArrayElement: makeRef(() => undefined),
+		readBatch: makeRef(() => undefined),
 		callHost: makeRef(() => undefined),
 	};
 
@@ -176,6 +183,7 @@ describe('buildContext $now and $today', () => {
 	const callbacks = {
 		getValueAtPath: makeRef(() => undefined),
 		getArrayElement: makeRef(() => undefined),
+		readBatch: makeRef(() => undefined),
 		callHost: makeRef(() => undefined),
 	};
 

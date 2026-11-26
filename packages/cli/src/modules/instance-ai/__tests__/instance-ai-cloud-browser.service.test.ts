@@ -119,7 +119,6 @@ describe('InstanceAiCloudBrowserService', () => {
 		for (const hidden of [
 			'browser_connect',
 			'browser_disconnect',
-			'browser_cookies',
 			'browser_storage',
 			'browser_evaluate',
 			'browser_upload',

@@ -239,7 +239,8 @@ export class KnowledgeFileService {
 		);
 	}
 
-	private async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
+	/** The bytes to store for an upload. A PDF is stored as its extracted text. */
+	async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
 		if (!file.path) {
 			throw new BadRequestError('Uploaded file path is missing');
 		}
@@ -269,7 +270,8 @@ export class KnowledgeFileService {
 		}
 	}
 
-	private validateUploadMetadata(files: Express.Multer.File[]) {
+	/** Rejects a file name or a MIME type that is too long for its column. */
+	validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
 			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
 			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.

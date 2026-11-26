@@ -110,8 +110,8 @@ test.describe(
 );
 
 test.describe('CAT-1801: Parent receives correct data from child with wait node', () => {
-	// TODO(CET-584): engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
-	test('should return child final output to parent after wait completes @engine:v2-pending', async ({
+	// Engine v2 answers a `lastNode` webhook when the run ends, not when it starts to wait.
+	test('should return child final output to parent after wait completes @engine:v1-only', async ({
 		api,
 	}) => {
 		// Import child workflow (has Wait node with webhook)
@@ -176,8 +176,8 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 });
 
 test.describe('CAT-3263: Parent receives error from child with wait node', () => {
-	// TODO(CET-584): engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
-	test('should fail the Execute Workflow node when the child errors after wait completes @engine:v2-pending', async ({
+	// Engine v2 answers a `lastNode` webhook when the run ends, not when it starts to wait.
+	test('should fail the Execute Workflow node when the child errors after wait completes @engine:v1-only', async ({
 		api,
 	}) => {
 		// Child waits on a webhook, then errors (Stop and Error) once resumed.
@@ -222,8 +222,8 @@ test.describe('CAT-3263: Parent receives error from child with wait node', () =>
 });
 
 test.describe('CAT-1929: Parent should not resume until child with multiple waits completes', () => {
-	// TODO(CET-584): engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
-	test('should keep parent waiting after first wait node is resumed, only completing after second wait @engine:v2-pending', async ({
+	// Engine v2 answers a `lastNode` webhook when the run ends, not when it starts to wait.
+	test('should keep parent waiting after first wait node is resumed, only completing after second wait @engine:v1-only', async ({
 		api,
 	}) => {
 		// Import child workflow with two Wait nodes (auto-activated via "active": true in JSON)

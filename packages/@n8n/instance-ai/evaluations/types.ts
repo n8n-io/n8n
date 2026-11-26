@@ -360,6 +360,9 @@ export interface BuildExpectationResult {
 	/** Who owns a failed expectation. Stamped where the verdicts are attached to
 	 *  a row (the only place that also knows whether the build died on infra). */
 	attribution?: EvalAttribution;
+	/** What the trial produced, in the words of the eval, for a reader to set against
+	 *  the expectation. Absent when the trial was not graded. */
+	observed?: string;
 }
 
 export interface WorkflowTestCaseResult {
