@@ -3,8 +3,11 @@ import {
 	type ApprovePromotionReviewDto,
 	type InboxCounts,
 	type InboxPromotionReviewItem,
+	type ListPromotionReviewsQueryDto,
+	type PromotionReviewItem,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
+	promotionReviewTabSchema,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -22,6 +25,7 @@ import {
 } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
+import { z } from 'zod';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
@@ -98,6 +102,10 @@ export class PromotionReviewInboxService {
 		);
 	}
 
+	private assertEnabled() {
+		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+	}
+
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxPromotionReviewItem[]> {
 		if (!canRead(user)) return [];
 		// A sync during "Load more" could move a review above the cursor, where the user never sees it.
@@ -116,6 +124,47 @@ export class PromotionReviewInboxService {
 				synced.get(review.id) ?? read.get(review.id) ?? { mergeRequest: null, remoteError: null },
 			),
 		);
+	}
+
+	/**
+	 * One page of the reviews that the Inbox of the user shows, for the public API. Pages with
+	 * the order of the Inbox, so a sync on the first page does not skip or repeat a review.
+	 */
+	async listPage(
+		user: User,
+		{ state, limit, cursor }: ListPromotionReviewsQueryDto,
+	): Promise<{ data: PromotionReviewItem[]; nextCursor: string | null }> {
+		this.assertEnabled();
+		const after = cursor ? decodeCursor(cursor, state) : undefined;
+		const items = await this.listForInbox(user, {
+			state,
+			limit: limit + 1,
+			boundary: after && { mode: 'afterItem', updatedAt: new Date(after.updatedAt), id: after.id },
+		});
+		const data = items.slice(0, limit).map(withoutType);
+		const last = data.at(-1);
+		return {
+			data,
+			nextCursor:
+				items.length > limit && last
+					? encodeCursor({ state, updatedAt: last.updatedAt, id: last.id })
+					: null,
+		};
+	}
+
+	/** One review that the Inbox of the user shows. Reads the host now, as the Inbox sync does. */
+	async getForUser(user: User, reviewId: string): Promise<PromotionReviewItem> {
+		this.assertEnabled();
+		// A review that the Inbox hides reads as missing, as in the list.
+		const review = canRead(user)
+			? await this.reviewRepository.findByIdWithRelations(reviewId)
+			: null;
+		if (!review) throw new NotFoundError('Promotion review not found.');
+
+		const run = (await this.newestRuns([review])).get(review.id);
+		const view = await this.readOne(review, run, new Map());
+		if (view.mergeRequest) await this.applyHostState(review, view.mergeRequest);
+		return withoutType(toItem(review, run, view));
 	}
 
 	async countForInbox(user: User): Promise<InboxCounts> {
@@ -169,7 +218,7 @@ export class PromotionReviewInboxService {
 		reviewId: string,
 		{ headCommitSha }: ApprovePromotionReviewDto,
 	): Promise<InboxPromotionReviewItem> {
-		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+		this.assertEnabled();
 		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
 		if (!review) throw new NotFoundError('Promotion review not found.');
 
@@ -195,7 +244,7 @@ export class PromotionReviewInboxService {
 	 * absent. Refuses transient host failures.
 	 */
 	async close(user: User, reviewId: string): Promise<InboxPromotionReviewItem> {
-		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+		this.assertEnabled();
 		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
 		if (!review) throw new NotFoundError('Promotion review not found.');
 
@@ -476,6 +525,35 @@ export class PromotionReviewInboxService {
 }
 
 const canRead = (user: User) => hasGlobalScope(user, 'promotions:readReviews');
+
+const withoutType = ({ type: _, ...review }: InboxPromotionReviewItem): PromotionReviewItem =>
+	review;
+
+/** The last review of a page. The next page starts after it in the Inbox order. */
+const cursorSchema = z
+	.object({
+		state: promotionReviewTabSchema,
+		updatedAt: z.string().datetime(),
+		id: z.string().uuid(),
+	})
+	.strict();
+type ReviewCursor = z.infer<typeof cursorSchema>;
+
+const encodeCursor = (cursor: ReviewCursor) =>
+	Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+
+const decodeCursor = (cursor: string, state: ReviewCursor['state']): ReviewCursor => {
+	try {
+		const parsed = cursorSchema.parse(
+			JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')),
+		);
+		// A cursor of the other tab would start the page at a review of that tab.
+		if (parsed.state === state) return parsed;
+	} catch {
+		// Not a cursor that this list wrote. The error below answers it.
+	}
+	throw new BadRequestError('An invalid cursor was provided');
+};
 
 const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,
