@@ -44,6 +44,11 @@ import {
 	getEvaluationConcurrencyLimitSource,
 	resolveEvaluationConcurrencyLimit,
 } from '@/evaluation.ee/evaluation-concurrency.helper';
+import {
+	LangfuseExperimentReporter,
+	type ReportCaseParams,
+	type ReporterRun,
+} from '@/evaluation.ee/langfuse/langfuse-experiment-reporter.ee';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
@@ -99,10 +104,66 @@ export class TestRunnerService {
 		private readonly workflowCompiler: WorkflowCompilerService,
 		private readonly ownershipService: OwnershipService,
 		private readonly txRunner: TransactionRunner,
+		private readonly langfuseReporter: LangfuseExperimentReporter,
 	) {}
 
 	private findEvaluationTriggerNode(workflow: IWorkflowBase) {
 		return workflow.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+	}
+
+	private async startLangfuseReporting(
+		user: User,
+		workflow: IWorkflowBase,
+		testRun: TestRun,
+		testCases: INodeExecutionData[],
+	): Promise<ReporterRun | undefined> {
+		try {
+			const triggerNode = this.findEvaluationTriggerNode(workflow);
+			if (!triggerNode) return undefined;
+			return await this.langfuseReporter.startRun({
+				testRun,
+				workflow,
+				triggerNode,
+				testCases,
+				userId: user.id,
+			});
+		} catch (error) {
+			this.logger.warn('Failed to start Langfuse reporting', {
+				testRunId: testRun.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
+	private reportCaseToLangfuse(
+		reporterRun: ReporterRun | undefined,
+		params: ReportCaseParams,
+	): void {
+		if (!reporterRun) return;
+		try {
+			this.langfuseReporter.reportCase(reporterRun, params);
+		} catch (error) {
+			this.logger.warn('Failed to report test case to Langfuse', {
+				testRunId: reporterRun.testRunId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async finishLangfuseReporting(
+		reporterRun: ReporterRun | undefined,
+		params: Parameters<LangfuseExperimentReporter['finishRun']>[1],
+	): Promise<void> {
+		if (!reporterRun) return;
+		try {
+			await this.langfuseReporter.finishRun(reporterRun, params);
+		} catch (error) {
+			this.logger.warn('Failed to finish Langfuse reporting', {
+				testRunId: reporterRun.testRunId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/** Validates the evaluation trigger node is present and configured. */
@@ -122,9 +183,11 @@ export class TestRunnerService {
 		const isConfigured =
 			source === 'dataTable'
 				? checkNodeParameterNotEmpty(parameters?.dataTableId)
-				: !!credentials &&
-					checkNodeParameterNotEmpty(parameters?.documentId) &&
-					checkNodeParameterNotEmpty(parameters?.sheetName);
+				: source === 'langfuse'
+					? !!credentials?.langfuseApi && checkNodeParameterNotEmpty(parameters?.langfuseDataset)
+					: !!credentials &&
+						checkNodeParameterNotEmpty(parameters?.documentId) &&
+						checkNodeParameterNotEmpty(parameters?.sheetName);
 
 		if (!isConfigured) {
 			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_CONFIGURED, {
@@ -748,6 +811,10 @@ export class TestRunnerService {
 
 		const abortSignal = abortController.signal;
 
+		let reporterRun: ReporterRun | undefined;
+		let reportedAggregatedMetrics: Record<string, number> = {};
+		const langfuseCaseCounts = { total: 0, success: 0 };
+
 		try {
 			// Tag with instance ID for multi-main coordination.
 			await this.testRunRepository.markAsRunning(testRun.id, this.instanceSettings.hostId);
@@ -797,6 +864,8 @@ export class TestRunnerService {
 					inputs: this.datasetRowToJsonObject(testCases[position]),
 				})),
 			);
+
+			reporterRun = await this.startLangfuseReporting(user, workflow, testRun, testCases);
 
 			const metrics = new EvaluationMetrics();
 
@@ -917,6 +986,25 @@ export class TestRunnerService {
 								// Hoisted so the catch can link a failed case to its execution:
 								// metric-extraction errors happen after the execution ran.
 								let testCaseExecutionId: string | undefined;
+								let caseExecutionData: IRun | undefined;
+								const reportCase = (
+									params: Omit<
+										ReportCaseParams,
+										'testCase' | 'testCaseExecutionId' | 'executionId'
+									>,
+								) => {
+									langfuseCaseCounts.total++;
+									if (params.status === 'success') langfuseCaseCounts.success++;
+									this.reportCaseToLangfuse(reporterRun, {
+										testCase,
+										testCaseExecutionId: seededCase.id,
+										executionId: testCaseExecutionId,
+										inputs: this.datasetRowToJsonObject(testCase),
+										...params,
+									});
+								};
+								const isCancelledByAbort = (error: unknown) =>
+									abortSignal.aborted && error instanceof ExecutionCancelledError;
 								try {
 									const testCaseMetadata = { ...testRunMetadata };
 
@@ -940,6 +1028,7 @@ export class TestRunnerService {
 
 									const { executionData: testCaseExecution } = testCaseResult;
 									testCaseExecutionId = testCaseResult.executionId;
+									caseExecutionData = testCaseExecution;
 
 									assert(testCaseExecution);
 									assert(testCaseExecutionId);
@@ -947,14 +1036,25 @@ export class TestRunnerService {
 									this.logger.debug('Test case execution finished');
 
 									if (!testCaseExecution || testCaseExecution.data.resultData.error) {
+										const failedAt = new Date();
 										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
 											status: 'error',
 											errorCode: TestCaseExecutionErrorCode.FAILED_TO_EXECUTE_WORKFLOW,
 											metrics: {},
-											completedAt: new Date(),
+											completedAt: failedAt,
 										});
 										telemetryMeta.errored_test_case_count++;
+										if (!isCancelledByAbort(testCaseExecution?.data.resultData.error)) {
+											reportCase({
+												status: 'error',
+												errorCode: TestCaseExecutionErrorCode.FAILED_TO_EXECUTE_WORKFLOW,
+												metrics: {},
+												runAt,
+												completedAt: failedAt,
+												executionData: testCaseExecution,
+											});
+										}
 										return [];
 									}
 									const completedAt = new Date();
@@ -980,6 +1080,14 @@ export class TestRunnerService {
 											errorCode: TestCaseExecutionErrorCode.NO_METRICS_COLLECTED,
 										});
 										telemetryMeta.errored_test_case_count++;
+										reportCase({
+											status: 'error',
+											errorCode: TestCaseExecutionErrorCode.NO_METRICS_COLLECTED,
+											metrics: {},
+											runAt,
+											completedAt,
+											executionData: testCaseExecution,
+										});
 										// Predefined metrics still merge — the case ran, just had no user metrics.
 										return [predefinedContribution];
 									}
@@ -1011,6 +1119,15 @@ export class TestRunnerService {
 										inputs,
 										outputs,
 									});
+									reportCase({
+										status: 'success',
+										inputs,
+										outputs,
+										metrics: combinedMetrics,
+										runAt,
+										completedAt,
+										executionData: testCaseExecution,
+									});
 
 									return [predefinedContribution, userDefinedContribution];
 								} catch (e) {
@@ -1037,6 +1154,13 @@ export class TestRunnerService {
 											errorCode: e.code,
 											errorDetails: e.extra as IDataObject,
 										});
+										reportCase({
+											status: 'error',
+											errorCode: e.code,
+											runAt,
+											completedAt,
+											executionData: caseExecutionData,
+										});
 									} else {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
@@ -1045,6 +1169,15 @@ export class TestRunnerService {
 											status: 'error',
 											errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
 										});
+										if (!isCancelledByAbort(e)) {
+											reportCase({
+												status: 'error',
+												errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
+												runAt,
+												completedAt,
+												executionData: caseExecutionData,
+											});
+										}
 										this.errorReporter.error(e);
 									}
 									return [];
@@ -1075,6 +1208,8 @@ export class TestRunnerService {
 					metrics.mergeContribution(contribution);
 				}
 			}
+
+			reportedAggregatedMetrics = metrics.getAggregatedMetrics();
 
 			// Complete or cancel. The per-case DB poll can trigger the abort, and
 			// this is where cancellation telemetry status is set for both paths.
@@ -1142,32 +1277,41 @@ export class TestRunnerService {
 				throw e;
 			}
 		} finally {
-			telemetryMeta.duration = Date.now() - telemetryMeta.start;
+			try {
+				telemetryMeta.duration = Date.now() - telemetryMeta.start;
 
-			this.abortControllers.delete(testRun.id);
+				this.abortControllers.delete(testRun.id);
 
-			// Clear instance tracking fields (runningInstanceId, cancelRequested).
-			await this.testRunRepository.clearInstanceTracking(testRun.id);
+				// Clear instance tracking fields (runningInstanceId, cancelRequested).
+				await this.testRunRepository.clearInstanceTracking(testRun.id);
 
-			const telemetryPayload: Record<string, GenericValue> = {
-				...telemetryMeta,
-				// `collection_id` is null for legacy one-off runs so analytics can
-				// split cohorts cleanly.
-				collection_id: testRun.collectionId ?? null,
-				is_part_of_collection: testRun.collectionId !== null,
-			};
+				const telemetryPayload: Record<string, GenericValue> = {
+					...telemetryMeta,
+					// `collection_id` is null for legacy one-off runs so analytics can
+					// split cohorts cleanly.
+					collection_id: testRun.collectionId ?? null,
+					is_part_of_collection: testRun.collectionId !== null,
+				};
 
-			if (telemetryMeta.status === 'success') {
-				telemetryPayload.test_case_count = telemetryMeta.test_case_count;
-				telemetryPayload.errored_test_case_count = telemetryMeta.errored_test_case_count;
-				telemetryPayload.metric_count = telemetryMeta.metric_count;
+				if (telemetryMeta.status === 'success') {
+					telemetryPayload.test_case_count = telemetryMeta.test_case_count;
+					telemetryPayload.errored_test_case_count = telemetryMeta.errored_test_case_count;
+					telemetryPayload.metric_count = telemetryMeta.metric_count;
+				}
+
+				if (telemetryMeta.status === 'fail') {
+					telemetryPayload.error_message = telemetryMeta.error_message;
+				}
+
+				this.telemetry.track('Test run finished', telemetryPayload);
+			} finally {
+				await this.finishLangfuseReporting(reporterRun, {
+					status: telemetryMeta.status,
+					aggregatedMetrics: reportedAggregatedMetrics,
+					totalCases: langfuseCaseCounts.total,
+					successCases: langfuseCaseCounts.success,
+				});
 			}
-
-			if (telemetryMeta.status === 'fail') {
-				telemetryPayload.error_message = telemetryMeta.error_message;
-			}
-
-			this.telemetry.track('Test run finished', telemetryPayload);
 		}
 	}
 
