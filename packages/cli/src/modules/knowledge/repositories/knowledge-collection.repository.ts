@@ -66,7 +66,7 @@ export class KnowledgeCollectionRepository {
 	}
 
 	/** The ids of the collections that the agent uses. */
-	async findCollectionIds(agentId: string, ctx: OperationContext): Promise<string[]> {
+	async findAgentCollectionIds(agentId: string, ctx: OperationContext): Promise<string[]> {
 		const dependencies = await this.table.managerFor(ctx).find(AgentKnowledgeDependency, {
 			select: ['knowledgeCollectionId'],
 			where: { agentId },

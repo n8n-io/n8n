@@ -607,7 +607,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 				mock<KnowledgeCollection>({ id: 'c-2', name: 'Returns', description: 'Refunds' }),
 				mock<KnowledgeCollection>({ id: 'c-1', name: 'Pricing', description: null }),
 			]);
-			collectionRepository.findCollectionIds.mockResolvedValue(['c-2']);
+			collectionRepository.findAgentCollectionIds.mockResolvedValue(['c-2']);
 			collectionRepository.findFileTotals.mockResolvedValue(
 				new Map([['c-2', { fileCount: 3, totalFileSizeBytes: 300 }]]),
 			);
@@ -619,7 +619,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 			expect(collectionRepository.findFileTotals).toHaveBeenCalledOnce();
 			expect(collectionRepository.findFileTotals).toHaveBeenCalledWith(['c-2', 'c-1'], {});
 			expect(collectionRepository.findSharedByProjectId).toHaveBeenCalledWith(projectId, {});
-			expect(collectionRepository.findCollectionIds).toHaveBeenCalledWith('agent-1', {});
+			expect(collectionRepository.findAgentCollectionIds).toHaveBeenCalledWith('agent-1', {});
 		});
 
 		it('answers not found and reads nothing when collections are off', async () => {

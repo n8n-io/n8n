@@ -232,7 +232,7 @@ export class KnowledgeCollectionCatalogService {
 
 		const [collections, addedIds] = await Promise.all([
 			this.collectionRepository.findSharedByProjectId(projectId, {}),
-			this.collectionRepository.findCollectionIds(agentId, {}),
+			this.collectionRepository.findAgentCollectionIds(agentId, {}),
 		]);
 		const added = new Set(addedIds);
 		const fileTotals = await this.collectionRepository.findFileTotals(
