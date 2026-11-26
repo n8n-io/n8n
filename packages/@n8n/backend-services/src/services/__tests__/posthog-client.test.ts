@@ -2,6 +2,7 @@ import {
 	AGENT_SANDBOX_FILES_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	KNOWLEDGE_COLLECTIONS_FLAG,
@@ -101,6 +102,33 @@ describe('PostHog', () => {
 			await expect(
 				ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
 			).resolves.toBeUndefined();
+		});
+
+		it('keeps a failed instance fetch for a short time and shares parallel fetches', async () => {
+			vi.useFakeTimers();
+			try {
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('PostHog failed'));
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				await Promise.all([
+					ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+					ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+				]);
+				await ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG);
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true }),
+				);
+				vi.advanceTimersByTime(61_000);
+				await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+					true,
+				);
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it.each([true, false])(
@@ -275,8 +303,34 @@ describe('PostHog', () => {
 						INSTANCE_AI_CLOUD_BROWSER_FLAG,
 						KNOWLEDGE_COLLECTIONS_FLAG,
 						SELF_HEALING_FLAG,
+						CUSTOM_MCP_SERVERS_FLAG,
 					],
 				});
+			},
+		);
+
+		it.each([
+			['test', 'control', 'test'],
+			['control', 'test', 'control'],
+			[undefined, 'test', false],
+		])(
+			'gives the editor the instance variant %s of a multivariate instance flag, not the user variant %s',
+			async (instanceVariant, userVariant, expected) => {
+				(PostHog.prototype.evaluateFlags as Mock).mockImplementation(async (distinctId: string) =>
+					mockEvaluatedFlags(
+						distinctId === `company_${instanceId}`
+							? instanceVariant === undefined
+								? {}
+								: { [CUSTOM_MCP_SERVERS_FLAG]: instanceVariant }
+							: { [CUSTOM_MCP_SERVERS_FLAG]: userVariant },
+					),
+				);
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+				expect(flags[CUSTOM_MCP_SERVERS_FLAG]).toBe(expected);
+				expect(await ph.getFeatureFlagForInstance(CUSTOM_MCP_SERVERS_FLAG)).toBe(instanceVariant);
 			},
 		);
 
@@ -339,6 +393,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 				},
 				featureFlagPayloads: payloads,
 			};
@@ -370,6 +425,7 @@ describe('PostHog', () => {
 				[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 				[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 				[SELF_HEALING_FLAG]: false,
+				[CUSTOM_MCP_SERVERS_FLAG]: false,
 			});
 			expect(second).toEqual({
 				...flags,
@@ -379,6 +435,7 @@ describe('PostHog', () => {
 				[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 				[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 				[SELF_HEALING_FLAG]: false,
+				[CUSTOM_MCP_SERVERS_FLAG]: false,
 			});
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
@@ -404,7 +461,7 @@ describe('PostHog', () => {
 			spy.mockRestore();
 		});
 
-		it('does not cache empty results', async () => {
+		it('does not cache an empty user result, but keeps an empty instance result', async () => {
 			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -413,7 +470,8 @@ describe('PostHog', () => {
 			await ph.getFeatureFlags({ id: userId, createdAt });
 			await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(4);
+			// Two user evaluations, one instance evaluation.
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
 		});
 
 		describe('env-var overrides', () => {
@@ -540,6 +598,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'some-other-flag': true,
 					'multivariate-flag': 'variant',
 					'boolean-flag': true,
@@ -564,6 +623,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'contested-flag': 'variant',
 				});
 			});
@@ -604,6 +664,7 @@ describe('PostHog', () => {
 						[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 						[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 						[SELF_HEALING_FLAG]: false,
+						[CUSTOM_MCP_SERVERS_FLAG]: false,
 						'value-only-flag': 'variant',
 						'payload-flag': 'variant',
 						'untouched-flag': true,
@@ -635,6 +696,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'live-flag': false,
 				});
 			});
@@ -671,6 +733,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'some-other-flag': true,
 				});
 			});
@@ -691,6 +754,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'084_eval_collections': true,
 				});
 			});
@@ -723,6 +787,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'101_agent_evals': true,
 				});
 			});
@@ -759,6 +824,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'104_canvas_aia_node_context': true,
 				});
 			});
@@ -783,6 +849,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[CUSTOM_MCP_SERVERS_FLAG]: false,
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,

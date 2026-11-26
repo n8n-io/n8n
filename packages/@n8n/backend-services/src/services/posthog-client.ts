@@ -4,6 +4,7 @@ import {
 	ASSISTANT_SKILLS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -32,6 +33,12 @@ import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-n
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+/**
+ * Backend gates read instance flags on hot paths, for example on each MCP request. A failed or
+ * empty answer is kept this long, so that an unreachable PostHog does not cost a timeout on
+ * each read.
+ */
+const EMPTY_INSTANCE_FLAGS_CACHE_TTL_MS = 60 * 1000;
 const EDITOR_INSTANCE_FLAGS = [
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -40,6 +47,12 @@ const EDITOR_INSTANCE_FLAGS = [
 	KNOWLEDGE_COLLECTIONS_FLAG,
 	SELF_HEALING_FLAG,
 ];
+/**
+ * Multivariate flags that roll out by instance. The editor gets the instance variant as it is,
+ * so the editor and the backend read the same value.
+ */
+const EDITOR_INSTANCE_VARIANT_FLAGS = [CUSTOM_MCP_SERVERS_FLAG];
+const ALL_EDITOR_INSTANCE_FLAGS = [...EDITOR_INSTANCE_FLAGS, ...EDITOR_INSTANCE_VARIANT_FLAGS];
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -62,6 +75,9 @@ export class PostHogClient {
 	private postHog?: PostHog;
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
+
+	/** Instance fetches in flight, so that parallel reads share one request. */
+	private readonly instanceFetches = new Map<string, Promise<FeatureFlagData>>();
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -162,17 +178,34 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
-		const flagNames = EDITOR_INSTANCE_FLAGS.includes(flagName) ? EDITOR_INSTANCE_FLAGS : [flagName];
+		const flagNames = ALL_EDITOR_INSTANCE_FLAGS.includes(flagName)
+			? ALL_EDITOR_INSTANCE_FLAGS
+			: [flagName];
 		return (await this.getFeatureFlagsForInstance(flagNames))[flagName];
 	}
 
 	private async getFeatureFlagsForInstance(flagNames: string[]): Promise<FeatureFlags> {
 		const { instanceId } = this.instanceSettings;
+		const cacheKey = ['instance', instanceId, ...flagNames].join('#');
+
+		let fetch = this.instanceFetches.get(cacheKey);
+		if (!fetch) {
+			fetch = this.fetchInstanceFlags(cacheKey, flagNames).finally(() =>
+				this.instanceFetches.delete(cacheKey),
+			);
+			this.instanceFetches.set(cacheKey, fetch);
+		}
+
+		return this.applyEnvOverrides(await fetch).featureFlags;
+	}
+
+	private async fetchInstanceFlags(cacheKey: string, flagNames: string[]) {
+		const { instanceId } = this.instanceSettings;
 		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
 
 		try {
 			data = await this.fetchFlagsFromPostHog({
-				cacheKey: ['instance', instanceId, ...flagNames].join('#'),
+				cacheKey,
 				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 				options: {
 					flagKeys: flagNames,
@@ -183,7 +216,16 @@ export class PostHogClient {
 			// Apply local overrides when PostHog is not available.
 		}
 
-		return this.applyEnvOverrides(data).featureFlags;
+		// `fetchFlagsFromPostHog` caches only a non-empty answer.
+		const cached = this.flagsCache.get(cacheKey);
+		if (this.postHog && !(cached && cached.expiresAt > Date.now())) {
+			this.flagsCache.set(cacheKey, {
+				...data,
+				expiresAt: Date.now() + EMPTY_INSTANCE_FLAGS_CACHE_TTL_MS,
+			});
+		}
+
+		return data;
 	}
 
 	async getFeatureFlagsAndPayloads(
@@ -211,13 +253,16 @@ export class PostHogClient {
 		}
 		const overridden = this.applyEnvOverrides(data);
 		// The editor and backend must use the same instance result.
-		const instanceFlags = await this.getFeatureFlagsForInstance(EDITOR_INSTANCE_FLAGS);
+		const instanceFlags = await this.getFeatureFlagsForInstance(ALL_EDITOR_INSTANCE_FLAGS);
 		return {
 			...overridden,
 			featureFlags: {
 				...overridden.featureFlags,
 				...Object.fromEntries(
 					EDITOR_INSTANCE_FLAGS.map((flag) => [flag, instanceFlags[flag] === true]),
+				),
+				...Object.fromEntries(
+					EDITOR_INSTANCE_VARIANT_FLAGS.map((flag) => [flag, instanceFlags[flag] ?? false]),
 				),
 			},
 		};
