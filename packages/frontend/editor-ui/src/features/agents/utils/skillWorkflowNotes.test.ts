@@ -4,7 +4,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 
-import type { INodeUi, ProjectSharingData } from '@/Interface';
+import type { INodeUi } from '@/Interface';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getSkillWorkflowNotes, type SkillWorkflowNoteData } from './skillWorkflowNotes';
 
 const node = (type: string, disabled = false) => ({ type, name: type, disabled }) as INodeUi;
