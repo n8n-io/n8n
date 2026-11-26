@@ -2,6 +2,47 @@
 	"name": "Salesmate Request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"jsonParameters": true,
+				"filtersJson": "={{ { \"fields\": [\"title\"], \"query\": {} } }}"
+			},
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [300, 4600],
+			"id": "4fcc980f-db69-52fb-84c7-6789af56a30a",
+			"name": "Deal > Get Many Expression",
+			"credentials": {
+				"salesmateApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "getAll",
+				"returnAll": true,
+				"jsonParameters": true,
+				"filtersJson": "{\"fields\":[\"name\"],\"query\":{}}"
+			},
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "8c058678-81a7-507e-ba66-6660cc36c265",
+			"name": "Company > Get Many JSON",
+			"credentials": {
+				"salesmateApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -314,6 +355,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "Deal > Get Many Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Company > Get Many JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Company > Create",
 						"type": "main",

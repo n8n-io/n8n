@@ -19,7 +19,6 @@ import {
 	salesmateApiRequest,
 	salesmateApiRequestAllItems,
 	simplifySalesmateData,
-	validateJSON,
 } from './GenericFunctions';
 
 export class Salesmate implements INodeType {
@@ -370,8 +369,7 @@ export class Salesmate implements INodeType {
 							};
 						}
 					} else {
-						const json = validateJSON(this.getNodeParameter('filtersJson', i) as string);
-						body = json;
+						body = (this.getNodeParameter('filtersJson', i) as IDataObject | undefined) ?? body;
 					}
 					if (returnAll) {
 						responseData = await salesmateApiRequestAllItems.call(
@@ -568,8 +566,7 @@ export class Salesmate implements INodeType {
 							};
 						}
 					} else {
-						const json = validateJSON(this.getNodeParameter('filtersJson', i) as string);
-						body = json;
+						body = (this.getNodeParameter('filtersJson', i) as IDataObject | undefined) ?? body;
 					}
 					if (returnAll) {
 						responseData = await salesmateApiRequestAllItems.call(
@@ -785,8 +782,7 @@ export class Salesmate implements INodeType {
 							};
 						}
 					} else {
-						const json = validateJSON(this.getNodeParameter('filtersJson', i) as string);
-						body = json;
+						body = (this.getNodeParameter('filtersJson', i) as IDataObject | undefined) ?? body;
 					}
 					if (returnAll) {
 						responseData = await salesmateApiRequestAllItems.call(
