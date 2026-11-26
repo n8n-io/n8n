@@ -1,4 +1,9 @@
-import type { PromotionPreview, PromotionResource, PromotionResourceType } from '@n8n/api-types';
+import type {
+	PromotionMissingDependency,
+	PromotionPreview,
+	PromotionResource,
+	PromotionResourceType,
+} from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 
 import type { ResourceKey } from './promotionPreview.selection';
@@ -22,7 +27,24 @@ export type PreviewTreeItem = {
 	children?: PreviewTreeItem[];
 	/** A section counts these resources: workflows only in "Workflows", never projects or folders. */
 	memberKeys?: ResourceKey[];
+	/**
+	 * A dependency that users cannot select, because it is outside their access or in a personal
+	 * project. The row is locked: unchecked, disabled and muted, with the reason on a lock.
+	 */
+	locked?: LockedDependency;
 };
+
+export type LockedDependency = Pick<
+	PromotionMissingDependency,
+	'kind' | 'group' | 'accessible' | 'project'
+>;
+
+/** The groups of a dependency that a Promote does not carry, and that the tree shows as locked. */
+const LOCKED_GROUPS = new Set<PromotionMissingDependency['group']>([
+	'personal',
+	'outside-access',
+	'other-project',
+]);
 
 /**
  * Sub-workflows come first, next to the workflows. The others follow the project tabs:
@@ -81,13 +103,30 @@ function byFolderThenName(a: PromotionResource, b: PromotionResource) {
 	);
 }
 
-function toItem(resource: PromotionResource, children?: PreviewTreeItem[]): PreviewTreeItem {
+function toItem(
+	resource: PromotionResource,
+	children?: PreviewTreeItem[],
+	locked?: LockedDependency,
+): PreviewTreeItem {
 	return {
 		id: resource.key,
 		label: resource.name,
 		icon: resourceIcon(resource.type),
 		kind: 'resource',
 		...(children && children.length > 0 ? { children } : {}),
+		...(locked ? { locked } : {}),
+	};
+}
+
+/** A credential that the Promote cannot carry. It has no resource, so the tree adds a row for it. */
+function lockedCredentialItem(dependency: PromotionMissingDependency): PreviewTreeItem {
+	const { kind, group, accessible, project } = dependency;
+	return {
+		id: `locked:credential:${dependency.id ?? dependency.name}`,
+		label: dependency.name,
+		icon: resourceIcon('credential'),
+		kind: 'resource',
+		locked: { kind, group, accessible, ...(project ? { project } : {}) },
 	};
 }
 
@@ -113,7 +152,13 @@ function hierarchyItems(resources: PromotionResource[]): PreviewTreeItem[] {
 export function buildPreviewTree(
 	preview: Pick<PromotionPreview, 'resources'>,
 	labels: { workflows: string; group: (group: PreviewTreeGroup) => string },
+	dependencies: readonly PromotionMissingDependency[] = [],
 ): PreviewTreeItem[] {
+	const dependencyOf = new Map(
+		dependencies.flatMap((entry) =>
+			entry.id ? [[`${entry.kind}:${entry.id}`, entry] as const] : [],
+		),
+	);
 	const hierarchy: PromotionResource[] = [];
 	const groups = new Map<PreviewTreeGroup, PromotionResource[]>();
 	for (const resource of preview.resources) {
@@ -142,18 +187,51 @@ export function buildPreviewTree(
 		sections.push(...roots);
 	}
 
+	const known = new Set(preview.resources.map(({ key }) => key));
+	const lockedCredentials = dependencies
+		.filter(
+			(entry) =>
+				entry.kind === 'credential' &&
+				LOCKED_GROUPS.has(entry.group) &&
+				!(entry.id && known.has(`credential:${entry.id}`)),
+		)
+		.sort((a, b) => a.name.localeCompare(b.name))
+		.map(lockedCredentialItem);
+
 	for (const group of GROUP_ORDER) {
-		const members = groups.get(group);
-		if (!members) continue;
+		const members = groups.get(group) ?? [];
+		const locked = group === 'credential' ? lockedCredentials : [];
+		if (members.length === 0 && locked.length === 0) continue;
 		sections.push({
 			id: `group:${group}`,
 			label: labels.group(group),
 			kind: 'section',
-			children: [...members].sort(byFolderThenName).map((resource) => toItem(resource)),
+			// A locked row is the last item of its group.
+			children: [
+				...[...members]
+					.sort(byFolderThenName)
+					.map((resource) =>
+						toItem(resource, undefined, lockedSubWorkflow(group, resource, dependencyOf)),
+					),
+				...locked,
+			],
 			memberKeys: members.map(({ key }) => key),
 		});
 	}
 	return sections;
+}
+
+/** A sub-workflow of another project is outside the access of the user, so its row is locked. */
+function lockedSubWorkflow(
+	group: PreviewTreeGroup,
+	resource: PromotionResource,
+	dependencyOf: ReadonlyMap<string, PromotionMissingDependency>,
+): LockedDependency | undefined {
+	if (group !== 'subWorkflow') return undefined;
+	const entry = dependencyOf.get(resource.key);
+	return entry
+		? { kind: entry.kind, group: entry.group, accessible: entry.accessible, project: entry.project }
+		: { kind: 'workflow', group: 'outside-access', accessible: false };
 }
 
 /** The order of the change cards. It follows the tree, so the tree and the cards agree. */

@@ -1,3 +1,7 @@
+import {
+	otherProjectCredential,
+	personalCredential,
+} from './__tests__/missingDependencies.fixtures';
 import { billingPreview, resource } from './__tests__/preview.fixtures';
 import { buildSelectionGraph } from './promotionPreview.selection';
 import { buildPreviewTree, cardOrder, type PreviewTreeItem } from './promotionPreview.tree';
@@ -10,6 +14,42 @@ const outline = (items: PreviewTreeItem[]): Outline[] =>
 	items.map((item) => (item.children ? { [item.id]: outline(item.children) } : item.id));
 
 describe('promotion preview tree', () => {
+	it('should add a locked row, last in its group, for a credential that a Promote cannot carry', () => {
+		const locked = buildPreviewTree(billingPreview(), labels, [
+			personalCredential,
+			otherProjectCredential,
+		]);
+
+		const group = locked.find((item) => item.id === 'group:credential');
+		expect(group?.children?.map((item) => item.id)).toEqual([
+			'credential:c2',
+			'credential:c1',
+			'locked:credential:c7',
+			'locked:credential:c8',
+		]);
+		expect(group?.children?.slice(0, 2).every((item) => !item.locked)).toBe(true);
+		expect(group?.children?.[2].locked).toMatchObject({ group: 'other-project', accessible: true });
+		expect(group?.children?.[3].locked).toMatchObject({ group: 'personal', accessible: true });
+		// A locked row is not a resource, so the selection of the group does not count it.
+		expect(group?.memberKeys).toEqual(['credential:c1', 'credential:c2']);
+	});
+
+	it('should lock a sub-workflow of another project', () => {
+		const group = tree.find((item) => item.id === 'group:subWorkflow');
+
+		expect(group?.children?.[0].locked).toMatchObject({
+			kind: 'workflow',
+			group: 'outside-access',
+			accessible: false,
+		});
+	});
+
+	it('should not lock a credential that the project owns', () => {
+		const group = tree.find((item) => item.id === 'group:credential');
+
+		expect(group?.children?.every((item) => !item.locked)).toBe(true);
+	});
+
 	it('should place workflows in their project and folders, and each dependency once under its type', () => {
 		expect(outline(tree)).toEqual([
 			{

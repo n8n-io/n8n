@@ -3,11 +3,11 @@ import type {
 	PromotionMissingDependency,
 	PromotionResource,
 } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
 import type { ApplyCheckResult } from '../promotions.types';
-import { isContainer } from '../promotionPreview.tree';
+import { isContainer, type LockedDependency } from '../promotionPreview.tree';
 
 /** Apply keeps these resources as they are on the instance. It does not create them. */
 const KEPT_BY_APPLY = new Set<PromotionResource['type']>(['credential', 'variable']);
@@ -177,5 +177,28 @@ export function usePromotionPreviewLabels() {
 		});
 	}
 
-	return { changeLabel, blockerMessage, missingDependencyMarker, selectLabel, moveDetail };
+	/** Why users cannot select a locked row, on the lock of the row. */
+	function lockedReason({ kind, group, accessible, project }: LockedDependency): string {
+		const type = i18n.baseText(`promotions.preview.blockers.type.${kind}`).toLowerCase();
+		let key: BaseTextKey = 'promotions.preview.blockers.disabled.outside.promote';
+		if (group === 'personal') {
+			key = accessible
+				? 'promotions.preview.blockers.disabled.personal'
+				: 'promotions.preview.blockers.disabled.personal.noAccess';
+		} else if (group === 'other-project') {
+			key = project
+				? 'promotions.preview.blockers.disabled.otherProject.named'
+				: 'promotions.preview.blockers.disabled.otherProject';
+		}
+		return i18n.baseText(key, { interpolate: { type, project: project?.name ?? '' } });
+	}
+
+	return {
+		changeLabel,
+		blockerMessage,
+		missingDependencyMarker,
+		selectLabel,
+		moveDetail,
+		lockedReason,
+	};
 }

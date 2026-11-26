@@ -241,6 +241,82 @@ describe('PromotionResourceTree', () => {
 		);
 	});
 
+	describe('locked rows', () => {
+		const lockedTree = buildPreviewTree(
+			billingPreview(),
+			{ workflows: 'workflows', group: (id) => id },
+			[
+				personalCredential,
+				{ ...personalCredential, id: 'c10', name: 'Other personal', accessible: false },
+				otherProjectCredential,
+			],
+		);
+		const renderLocked = () => {
+			const selected = new Set<string>();
+			return renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					tree: lockedTree,
+					graph,
+					selected,
+					inclusion: resolveInclusion(graph, selected),
+					includedChanges: 0,
+					totalChanges: 0,
+					disabled: new Set(),
+					locked: false,
+					direction: 'promote',
+					blockers: indexBlockers([]),
+				},
+			});
+		};
+		const lockedRow = (getAllByTestId: (id: string) => HTMLElement[], id: string) => {
+			const match = getAllByTestId('promotion-preview-tree-locked-row').find(
+				(element) => element.dataset.lockedId === id,
+			);
+			if (!match) throw new Error(`No locked row ${id}`);
+			return within(match);
+		};
+
+		it('should show a credential that cannot be promoted as an unchecked, disabled row with a lock', () => {
+			const { getAllByTestId } = renderLocked();
+
+			const personal = lockedRow(getAllByTestId, 'locked:credential:c8');
+			expect(personal.getByRole('checkbox')).not.toBeChecked();
+			expect(personal.getByRole('checkbox')).toBeDisabled();
+			expect(personal.getByText('Personal Gmail').className).toContain('muted');
+			expect(personal.getByTestId('promotion-preview-tree-lock')).toHaveAccessibleName(
+				'This credential is in a personal project. Move it to a team project to promote it.',
+			);
+		});
+
+		it.each([
+			[
+				'locked:credential:c10',
+				'This credential is in a personal project that you do not have access to. Someone with access must move it to a team project to promote it.',
+			],
+			[
+				'locked:credential:c7',
+				'This dependency is in another project. Promote it from that project.',
+			],
+		])('should say why the row %s is locked', async (id, reason) => {
+			const { getAllByTestId, findByTestId } = renderLocked();
+
+			lockedRow(getAllByTestId, id).getByTestId('promotion-preview-tree-lock').focus();
+
+			expect(await findByTestId('tooltip-content')).toHaveTextContent(reason);
+		});
+
+		it('should lock a sub-workflow of another project and keep its checkbox off', () => {
+			const { getAllByTestId } = renderLocked();
+
+			const subWorkflow = row(getAllByTestId, 'workflow:w9');
+			expect(subWorkflow.getByRole('checkbox')).toBeDisabled();
+			expect(subWorkflow.getByTestId('promotion-preview-tree-lock')).toHaveAccessibleName(
+				'This workflow is in a project that you do not have access to, so you cannot include it.',
+			);
+		});
+	});
+
 	describe('missing dependencies', () => {
 		const renderWithMissing = (
 			dependencies = [
