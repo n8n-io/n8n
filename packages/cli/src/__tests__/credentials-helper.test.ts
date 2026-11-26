@@ -3680,6 +3680,8 @@ describe('CredentialsHelper', () => {
 				);
 			const getRuntimeData = () =>
 				vi.spyOn(Container.get(RuntimeCredentialProxyService), 'getRuntimeCredentialData');
+			const getAllowedDomainsSpy = () =>
+				vi.spyOn(Container.get(RuntimeCredentialProxyService), 'getAllowedDomainsForStub');
 
 			afterEach(() => vi.restoreAllMocks());
 
@@ -3706,6 +3708,33 @@ describe('CredentialsHelper', () => {
 				expect(runtimeData).toHaveBeenCalledWith(executionContext, 'cred-policy', 'testApi');
 				// A stub is not an end-user credential, so the run is not marked as using one.
 				expect(additionalData.currentNodeUsedDynamicCredentials).not.toBe(true);
+			});
+
+			test('keeps the request data out of the expression resolution', async () => {
+				useCredential(true);
+				getRuntimeData().mockResolvedValue({ apiKey: '={{ $secrets.vault.key }}' });
+				getAllowedDomainsSpy().mockReturnValue('api.example.com');
+				const resolve = vi
+					.spyOn(helper, 'applyDefaultsAndOverwrites')
+					.mockImplementation(async (_additionalData, data) => data);
+
+				const result = await helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1', executionContext }),
+					nodeCredentials,
+					'testApi',
+					'manual',
+					executeDataFor('n8n-nodes-base.slack'),
+					false,
+				);
+
+				// The defaults and expressions only see the stored placeholder data.
+				expect(resolve.mock.calls[0][1]).toEqual({ apiKey: 'test' });
+				// The request value reaches the node as it came in, and is not evaluated.
+				expect(result).toEqual({
+					apiKey: '={{ $secrets.vault.key }}',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'api.example.com',
+				});
 			});
 
 			describe('allowed domains of the rule', () => {

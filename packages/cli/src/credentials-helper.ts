@@ -662,6 +662,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			this.assertTriggerSupportsEndUserCredential(credentialsEntity, additionalData, executeData);
 		}
 
+		// Values from the request. Applied after expression resolution, so that a request value
+		// such as `={{ $secrets.x }}` is data and never an expression.
+		let runtimeOverlay: ICredentialDataDecryptedObject | undefined;
+
 		if (credentialsEntity.isRuntime) {
 			// Denied types fail before any request value is read.
 			const { RequestFedCredentialTypePolicy } = await import(
@@ -683,7 +687,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsEntity.id,
 				credentialsEntity.type,
 			);
-			decryptedDataOriginal = { ...decryptedDataOriginal, ...runtimeData };
+			runtimeOverlay = { ...runtimeData };
 
 			// The rule limits where the secret can go. It reuses the allowed domain fields that
 			// HTTP Request, GraphQL and other nodes already check. Set last, so that no request
@@ -692,8 +696,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsEntity.id,
 			);
 			if (allowedDomains) {
-				decryptedDataOriginal = {
-					...decryptedDataOriginal,
+				runtimeOverlay = {
+					...runtimeOverlay,
 					allowedHttpRequestDomains: 'domains',
 					allowedDomains,
 				};
@@ -747,7 +751,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (raw === true) {
-			return this.trackStoredData(decryptedDataOriginal, credentialsEntity);
+			return this.trackStoredData(
+				runtimeOverlay ? { ...decryptedDataOriginal, ...runtimeOverlay } : decryptedDataOriginal,
+				credentialsEntity,
+			);
 		}
 
 		if (
@@ -772,7 +779,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			expressionResolveValues,
 			options?.managedVersion,
 		);
-		return this.trackStoredData(decryptedData, credentialsEntity);
+		return this.trackStoredData(
+			runtimeOverlay ? { ...decryptedData, ...runtimeOverlay } : decryptedData,
+			credentialsEntity,
+		);
 	}
 
 	private trackStoredData<T extends ICredentialDataDecryptedObject>(
