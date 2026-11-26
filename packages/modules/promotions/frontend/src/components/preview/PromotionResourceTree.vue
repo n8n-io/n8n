@@ -59,7 +59,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { blockerMessage, missingDependencyMarker, selectLabel } = usePromotionPreviewLabels();
+const { blockerMessage, missingDependencyMarker, selectLabel, lockedReason } =
+	usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
@@ -189,6 +190,76 @@ function onToggle(resource: PromotionResource) {
 					</N8nText>
 				</li>
 				<li
+					v-else-if="item.plain"
+					:class="[$style.row, $style.resource]"
+					data-test-id="promotion-preview-tree-label-row"
+				>
+					<!-- The same checkbox as the project rows, so the names line up. Users cannot select this row. -->
+					<N8nCheckbox
+						v-if="selectable"
+						:model-value="false"
+						disabled
+						:aria-label="item.label"
+						data-test-id="promotion-preview-tree-checkbox"
+					/>
+					<span :class="[$style.name, $style.static]" :style="{ '--preview-tree--indent': indent }">
+						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
+						<span :class="$style.text">
+							<N8nText step="xs" color="text-dark" :class="[$style.label, $style.muted]">{{
+								item.label
+							}}</N8nText>
+						</span>
+					</span>
+					<N8nTooltip placement="right" as-child>
+						<template #content>{{
+							i18n.baseText('promotions.preview.tree.project.locked')
+						}}</template>
+						<span
+							role="img"
+							tabindex="0"
+							:aria-label="i18n.baseText('promotions.preview.tree.project.locked')"
+							:class="$style.lock"
+							data-test-id="promotion-preview-tree-lock"
+						>
+							<N8nIcon icon="lock" size="small" color="text-light" />
+						</span>
+					</N8nTooltip>
+				</li>
+				<li
+					v-else-if="item.locked && !resource"
+					:class="[$style.row, $style.resource]"
+					data-test-id="promotion-preview-tree-locked-row"
+					:data-locked-id="item.id"
+				>
+					<N8nCheckbox
+						v-if="selectable"
+						:model-value="false"
+						disabled
+						:aria-label="selectLabel({ name: item.label } as PromotionResource)"
+						data-test-id="promotion-preview-tree-checkbox"
+					/>
+					<span :class="[$style.name, $style.static]" :style="{ '--preview-tree--indent': indent }">
+						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
+						<span :class="$style.text">
+							<N8nText step="xs" color="text-dark" :class="[$style.label, $style.muted]">{{
+								item.label
+							}}</N8nText>
+						</span>
+					</span>
+					<N8nTooltip placement="right" as-child>
+						<template #content>{{ lockedReason(item.locked) }}</template>
+						<span
+							role="img"
+							tabindex="0"
+							:aria-label="lockedReason(item.locked)"
+							:class="$style.lock"
+							data-test-id="promotion-preview-tree-lock"
+						>
+							<N8nIcon icon="lock" size="small" color="text-light" />
+						</span>
+					</N8nTooltip>
+				</li>
+				<li
 					v-else-if="resource && check && marker"
 					:class="[$style.row, $style.resource, { [$style.inspected]: inspectedKey === item.id }]"
 					data-test-id="promotion-preview-tree-row"
@@ -198,7 +269,7 @@ function onToggle(resource: PromotionResource) {
 						v-if="selectable"
 						:model-value="check.checked"
 						:indeterminate="check.indeterminate"
-						:disabled="check.disabled"
+						:disabled="check.disabled || !!item.locked"
 						:aria-label="selectLabel(resource)"
 						data-test-id="promotion-preview-tree-checkbox"
 						@update:model-value="onToggle(resource)"
@@ -212,12 +283,29 @@ function onToggle(resource: PromotionResource) {
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
-							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText
+								step="xs"
+								color="text-dark"
+								:class="[$style.label, { [$style.muted]: item.locked }]"
+								>{{ item.label }}</N8nText
+							>
 							<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
 								{{ marker.meta }}
 							</N8nText>
 						</span>
 					</button>
+					<N8nTooltip v-if="item.locked" placement="right" as-child>
+						<template #content>{{ lockedReason(item.locked) }}</template>
+						<span
+							role="img"
+							tabindex="0"
+							:aria-label="lockedReason(item.locked)"
+							:class="$style.lock"
+							data-test-id="promotion-preview-tree-lock"
+						>
+							<N8nIcon icon="lock" size="small" color="text-light" />
+						</span>
+					</N8nTooltip>
 					<!-- Only the Issues tab of Apply lists these blockers, so Promote shows a plain marker. As
 					the trigger itself, each one opens the tooltip on keyboard focus. -->
 					<N8nTooltip v-if="marker.blocked" placement="right" as-child>
@@ -300,6 +388,11 @@ function onToggle(resource: PromotionResource) {
 	padding-left: calc(var(--spacing--2xs) + var(--spacing--xs));
 }
 
+/* The warning icon and the lock end the row. Both sit 4px closer to the right edge, in one column. */
+.resource > :last-child:not(.name) {
+	margin-right: calc(-1 * var(--spacing--4xs));
+}
+
 .resource:hover {
 	background-color: var(--background--hover);
 }
@@ -373,6 +466,30 @@ function onToggle(resource: PromotionResource) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* The checkbox mutes its own label when it is disabled. A locked row needs the same color. */
+/* A row that users cannot open is not a button, so it keeps the default cursor. */
+.static {
+	cursor: default;
+}
+
+.label.muted {
+	color: var(--checkbox--label--color--disabled);
+}
+
+.lock {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	/* The same box as the ghost button of the warning icon, so the icons line up in one column. */
+	flex-shrink: 0;
+	width: var(--height--xs);
+	height: var(--height--xs);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
 }
 
 .blockerMarker {

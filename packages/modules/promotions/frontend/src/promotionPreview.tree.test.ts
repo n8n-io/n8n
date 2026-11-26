@@ -1,8 +1,17 @@
+import {
+	otherProjectCredential,
+	outsideAccessWorkflow,
+	personalCredential,
+} from './__tests__/missingDependencies.fixtures';
 import { billingPreview, resource } from './__tests__/preview.fixtures';
 import { buildSelectionGraph } from './promotionPreview.selection';
 import { buildPreviewTree, cardOrder, type PreviewTreeItem } from './promotionPreview.tree';
 
-const labels = { workflows: 'workflows', group: (id: string) => id };
+const labels = {
+	workflows: 'workflows',
+	otherProjects: 'Other projects',
+	group: (id: string) => id,
+};
 const tree = buildPreviewTree(billingPreview(), labels);
 
 type Outline = string | { [id: string]: Outline[] };
@@ -10,6 +19,78 @@ const outline = (items: PreviewTreeItem[]): Outline[] =>
 	items.map((item) => (item.children ? { [item.id]: outline(item.children) } : item.id));
 
 describe('promotion preview tree', () => {
+	it('should add a locked row, last in its group, for a credential that a Promote cannot carry', () => {
+		const locked = buildPreviewTree(billingPreview(), labels, [
+			personalCredential,
+			otherProjectCredential,
+		]);
+
+		const group = locked.find((item) => item.id === 'group:credential');
+		expect(group?.children?.map((item) => item.id)).toEqual([
+			'credential:c2',
+			'credential:c1',
+			'locked:credential:c7',
+			'locked:credential:c8',
+		]);
+		expect(group?.children?.slice(0, 2).every((item) => !item.locked)).toBe(true);
+		expect(group?.children?.[2].locked).toMatchObject({ group: 'other-project', accessible: true });
+		expect(group?.children?.[3].locked).toMatchObject({ group: 'personal', accessible: true });
+		// A locked row is not a resource, so the selection of the group does not count it.
+		expect(group?.memberKeys).toEqual(['credential:c1', 'credential:c2']);
+	});
+
+	it('should lock a workflow of another project, under its project or under "Other projects"', () => {
+		const named = { id: 'p7', name: 'Finance' };
+		const withProjects = buildPreviewTree(
+			billingPreview(),
+			{ ...labels, otherProjects: 'Other projects' },
+			[
+				{
+					...outsideAccessWorkflow,
+					id: 'w20',
+					name: 'Close ledger',
+					group: 'other-project',
+					accessible: true,
+					project: named,
+				},
+				{ ...outsideAccessWorkflow, id: 'w21', name: 'Audit log' },
+				{ ...outsideAccessWorkflow, id: 'w9', name: 'Normalize contact data' },
+			],
+		);
+
+		const section = withProjects.find((item) => item.id === 'section:workflows');
+		const rows = section?.children?.slice(1);
+		expect(rows?.map((row) => [row.id, row.label, row.children?.map((child) => child.id)])).toEqual(
+			[
+				['locked-project:p7', 'Finance', ['locked:workflow:w20']],
+				['locked-project:other', 'Other projects', ['locked:workflow:w21', 'workflow:w9']],
+			],
+		);
+		expect(rows?.every((row) => row.plain)).toBe(true);
+		expect(withProjects.find((item) => item.id === 'group:subWorkflow')).toBeUndefined();
+		expect(rows?.[0].children?.[0].locked).toMatchObject({
+			group: 'other-project',
+			accessible: true,
+		});
+		expect(rows?.[1].children?.[1].locked).toMatchObject({
+			group: 'outside-access',
+			accessible: false,
+		});
+	});
+
+	it('should keep a sub-workflow that the check does not list in its group, without a lock', () => {
+		const group = tree.find((item) => item.id === 'group:subWorkflow');
+
+		expect(group?.children?.map((item) => item.id)).toEqual(['workflow:w9']);
+		expect(group?.children?.[0].locked).toBeUndefined();
+	});
+
+	it('should not lock a credential that the project owns', () => {
+		const group = tree.find((item) => item.id === 'group:credential');
+
+		expect(group?.children?.every((item) => !item.locked)).toBe(true);
+	});
+
 	it('should place workflows in their project and folders, and each dependency once under its type', () => {
 		expect(outline(tree)).toEqual([
 			{

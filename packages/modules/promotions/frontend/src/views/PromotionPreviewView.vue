@@ -210,10 +210,16 @@ watch(title, (value) => documentTitle.set(value), { immediate: true });
 
 const tree = computed(() =>
 	preview.value
-		? buildPreviewTree(preview.value, {
-				workflows: i18n.baseText('promotions.preview.tree.section.workflows'),
-				group: (group) => i18n.baseText(`promotions.preview.tree.group.${group}`),
-			})
+		? buildPreviewTree(
+				preview.value,
+				{
+					workflows: i18n.baseText('promotions.preview.tree.section.workflows'),
+					otherProjects: i18n.baseText('promotions.preview.tree.otherProjects'),
+					group: (group) => i18n.baseText(`promotions.preview.tree.group.${group}`),
+				},
+				// Promote lists every dependency that it cannot carry, not only those of the selection.
+				props.direction === 'promote' ? (preview.value.missingDependencies ?? []) : [],
+			)
 		: [],
 );
 const order = computed(() => (graph.value ? cardOrder(tree.value, graph.value.resources) : []));

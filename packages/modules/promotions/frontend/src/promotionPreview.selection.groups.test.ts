@@ -21,7 +21,11 @@ function graphOf({ selectableCredentials = false } = {}) {
 		),
 	};
 	const graph = buildSelectionGraph(withCredentials, 'promote');
-	const tree = buildPreviewTree(withCredentials, { workflows: 'Workflows', group: (id) => id });
+	const tree = buildPreviewTree(withCredentials, {
+		workflows: 'Workflows',
+		otherProjects: 'Other projects',
+		group: (id) => id,
+	});
 	const members = (id: string) => tree.find((item) => item.id === id)?.memberKeys ?? [];
 	return { graph, members };
 }

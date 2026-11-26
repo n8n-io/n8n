@@ -1446,13 +1446,14 @@ describe('PromotionPreviewView', () => {
 					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
 				}),
 			);
-			const { getAllByTestId, getByRole, queryByRole, queryByText } = await render();
+			const { getAllByTestId, getByRole, getByTestId, queryByRole } = await render();
 
 			// Only "Weekly KPI report" (w3) uses "Personal Gmail".
 			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
 			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*2$/);
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
-			expect(queryByText('Personal Gmail')).not.toBeInTheDocument();
+			// The tree still lists the credential as a locked row. The Issues tab does not.
+			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Personal Gmail');
 			expect(
 				cells(
 					section(getAllByTestId, 'Outside your access (1)').getByRole('row', {
