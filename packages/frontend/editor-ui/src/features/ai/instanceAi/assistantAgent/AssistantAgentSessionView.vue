@@ -10,6 +10,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import { SESSION_TIMELINE_SHOW_COST_KEY } from '@/features/agents/components/agentChatInjectionKeys';
@@ -25,6 +26,7 @@ import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallba
 import { formatDuration, threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
+import { firstMessageTitle } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
 
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { INSTANCE_AI_THREAD_SESSION_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
@@ -159,10 +161,24 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 	},
 ]);
 
-const sessionTitle = computed(() => {
-	const title = summary.value?.title ?? threadsStore.threadsById.get(props.threadId)?.title;
-	return truncate(title || i18n.baseText('agents.builder.chat.newChat.label'), 64);
+const threadTitle = computed(() => {
+	const title =
+		threadsStore.threadsById.get(props.threadId)?.title?.trim() ||
+		(summary.value?.id === props.threadId ? summary.value.title?.trim() : undefined) ||
+		(hasLoadedThread.value ? thread.value?.title?.trim() : undefined);
+	if (title) return title;
+	const firstMessage = hasLoadedThread.value ? thread.value?.firstMessage : undefined;
+	return firstMessage ? firstMessageTitle(firstMessage) || undefined : undefined;
 });
+
+const documentTitle = useDocumentTitle();
+watch(threadTitle, (title) => documentTitle.set(title ?? i18n.baseText('instanceAi.view.title')), {
+	immediate: true,
+});
+
+const sessionTitle = computed(() =>
+	truncate(threadTitle.value || i18n.baseText('agents.builder.chat.newChat.label'), 64),
+);
 
 const sessionOptions = computed<
 	Array<DropdownMenuItemProps<string, { date: string; active: boolean }>>

@@ -163,4 +163,37 @@ describe('InstanceAiThreadRouteView', () => {
 		expect(getByTestId('agent-thread-view')).toHaveTextContent('unreachable-thread:project-2');
 		expect(queryByTestId('instance-ai-thread-route-error')).not.toBeInTheDocument();
 	});
+
+	describe('browser tab title', () => {
+		it('resets a previous thread title while awaiting an async lookup and on lookup error', async () => {
+			setAssistantAgentEnabled(true);
+			document.title = 'Previous thread - n8n';
+			const deferred = Promise.withResolvers<{
+				id: string;
+				title: string | null;
+				updatedAt: string;
+				projectId: string;
+			}>();
+			vi.mocked(getSystemAgentThread).mockReturnValueOnce(deferred.promise);
+
+			renderView({ props: { threadId: 'unknown-thread' } });
+
+			expect(document.title).toBe('n8n Assistant - n8n');
+
+			deferred.reject(Object.assign(new Error('Bad gateway'), { httpStatusCode: 502 }));
+			await flushPromises();
+
+			expect(document.title).toBe('n8n Assistant - n8n');
+		});
+
+		it('leaves the tab title to the mounted child when the runtime is already known', () => {
+			setAssistantAgentEnabled(true);
+			store.threads = [{ id: 'known-thread' }] as typeof store.threads;
+			document.title = 'Existing title - n8n';
+
+			renderView({ props: { threadId: 'known-thread' } });
+
+			expect(document.title).toBe('Existing title - n8n');
+		});
+	});
 });

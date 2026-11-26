@@ -157,4 +157,60 @@ describe('AssistantAgentSessionView', () => {
 		expect(metadata?.totalCredits).toBeUndefined();
 		expect(metadata?.totalCost).toBeNull();
 	});
+
+	describe('browser tab title', () => {
+		it('resets a previous title while loading and names the tab after the thread once loaded', async () => {
+			document.title = 'Previous thread - n8n';
+			const deferred = Promise.withResolvers<SystemAgentThreadSummary>();
+			getSystemAgentThread.mockReturnValueOnce(deferred.promise);
+
+			renderView({ pinia: setUp({ quota: UNLIMITED_CREDITS }) });
+			expect(document.title).toBe('n8n Assistant - n8n');
+
+			deferred.resolve(summary);
+			await flushPromises();
+
+			expect(document.title).toBe('Build a workflow - n8n');
+		});
+
+		it('falls back to the feature title when the thread has no title and updates from first message', async () => {
+			getSystemAgentThread.mockResolvedValueOnce({ ...summary, title: null });
+			renderView({ pinia: setUp({ quota: UNLIMITED_CREDITS }) });
+			await flushPromises();
+
+			expect(document.title).toBe('n8n Assistant - n8n');
+
+			panel.emitLoaded?.({
+				...detail,
+				thread: { ...detail.thread, title: null, firstMessage: 'Help with webhooks' },
+			});
+			await flushPromises();
+
+			expect(document.title).toBe('Help with webhooks - n8n');
+		});
+
+		it('keeps the feature title when the thread lookup fails', async () => {
+			document.title = 'Previous thread - n8n';
+			getSystemAgentThread.mockRejectedValueOnce(new Error('Network error'));
+
+			renderView({ pinia: setUp({ quota: UNLIMITED_CREDITS }) });
+			await flushPromises();
+
+			expect(document.title).toBe('n8n Assistant - n8n');
+		});
+
+		it('updates the tab title when the thread is renamed in the store', async () => {
+			const pinia = setUp({ quota: UNLIMITED_CREDITS });
+			const threadsStore = useAssistantAgentThreadsStore();
+			threadsStore.openedThreads = [summary];
+
+			renderView({ pinia });
+			expect(document.title).toBe('Build a workflow - n8n');
+
+			threadsStore.renamedTitles.set('thread-1', 'Renamed workflow');
+			await flushPromises();
+
+			expect(document.title).toBe('Renamed workflow - n8n');
+		});
+	});
 });

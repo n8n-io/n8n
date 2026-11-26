@@ -1568,6 +1568,77 @@ describe('AssistantAgentThreadView', () => {
 		expect(getByTestId('header-title')).toHaveTextContent('Build a digest');
 	});
 
+	describe('browser tab title', () => {
+		it('names the tab after the stored thread title', () => {
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: 'Weekly digest',
+					updatedAt: '2026-10-26T10:00:00.000Z',
+					projectId: 'project-1',
+				},
+			];
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+
+			expect(document.title).toBe('Weekly digest - n8n');
+		});
+
+		it('falls back to the first user message when the thread has no stored title', async () => {
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
+			await flushPromises();
+
+			expect(document.title).toBe('Build a digest - n8n');
+		});
+
+		it('falls back to the feature title for an untitled empty thread', () => {
+			document.title = 'Previous thread - n8n';
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+
+			expect(document.title).toBe('n8n Assistant - n8n');
+		});
+
+		it('falls back to the feature title when the title and first message are blank', async () => {
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: '   ',
+					updatedAt: '2026-10-26T10:00:00.000Z',
+					projectId: 'project-1',
+				},
+			];
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			chatMessages.value = [{ id: 'u1', role: 'user', content: '   ' }];
+			await flushPromises();
+
+			expect(document.title).toBe('n8n Assistant - n8n');
+		});
+
+		it('updates the tab title when the thread gets a title or is renamed', async () => {
+			const threadsStore = useAssistantAgentThreadsStore();
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			expect(document.title).toBe('n8n Assistant - n8n');
+
+			threadsStore.recentThreads = [
+				{
+					id: 'thread-1',
+					title: 'Generated title',
+					updatedAt: '2026-10-26T10:00:00.000Z',
+					projectId: 'project-1',
+				},
+			];
+			await flushPromises();
+			expect(document.title).toBe('Generated title - n8n');
+
+			threadsStore.renamedTitles.set('thread-1', 'Renamed thread');
+			await flushPromises();
+			expect(document.title).toBe('Renamed thread - n8n');
+		});
+	});
+
 	it('opens a new Assistant thread from the header', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
