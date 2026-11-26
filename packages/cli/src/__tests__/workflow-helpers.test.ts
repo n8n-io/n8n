@@ -302,6 +302,41 @@ describe('replaceInvalidCredentials', () => {
 		});
 	});
 
+	it('should keep a reference that a package import leaves unresolved, without a name lookup', async () => {
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValue([
+			{ id: 'cred-same-name', name: 'My Cred' } as CredentialsEntity,
+		]);
+		const authored = { id: 'cred-unresolved', name: 'My Cred' };
+		const cache = new Map<string, INodeCredentialsDetails>();
+		const unresolvedIds = new Set(['cred-unresolved']);
+
+		const first = makeWorkflow({ httpHeaderAuth: { ...authored } });
+		const second = makeWorkflow({ httpHeaderAuth: { ...authored } });
+		await replaceInvalidCredentials(first, 'project-1', cache, unresolvedIds);
+		await replaceInvalidCredentials(second, 'project-1', cache, unresolvedIds);
+
+		expect(first.nodes[0].credentials!.httpHeaderAuth).toEqual(authored);
+		expect(second.nodes[0].credentials!.httpHeaderAuth).toEqual(authored);
+		expect(credentialsRepository.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should take the stored name of an unresolved id when a credential has the id', async () => {
+		credentialsRepository.findOneBy.mockResolvedValue({
+			id: 'cred-1',
+			name: 'Stored name',
+		} as CredentialsEntity);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: 'cred-1', name: 'My Cred' } });
+		await replaceInvalidCredentials(workflow, 'project-1', new Map(), new Set(['cred-1']));
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-1',
+			name: 'Stored name',
+		});
+	});
+
 	it('should reuse a shared credential cache across workflows', async () => {
 		const credential = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
 		credentialsRepository.findOneBy.mockResolvedValue(credential);

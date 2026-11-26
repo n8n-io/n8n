@@ -48,6 +48,11 @@ export interface WorkflowCreateBatchContext {
 	project: Project;
 	allowedCredentialIds: Set<string>;
 	checkedCredentialIds: Set<string>;
+	/**
+	 * Referenced ids that a package import leaves unresolved, and that no credential has. Each
+	 * create checks its own ids again and removes an id that a credential now has.
+	 */
+	missingCredentialIds: Set<string>;
 	credentialResolutionCache: WorkflowHelpers.ReplaceInvalidCredentialsCache;
 	redactionFloor: RedactionFloor;
 	autoExposeNewWorkflows: boolean;
@@ -89,6 +94,11 @@ export class WorkflowCreationService {
 		parentFolderIds: string[],
 		workflows: WorkflowEntity[],
 		credentialBindings: ReadonlyMap<string, string>,
+		/**
+		 * Credential ids that a package import leaves unresolved. A node can reference one of them
+		 * while this instance holds no credential with the id.
+		 */
+		allowMissingCredentialIds: ReadonlySet<string> = new Set(),
 	): Promise<WorkflowCreateBatchContext> {
 		const project = await this.projectService.getProjectWithScope(user, projectId, [
 			'workflow:create',
@@ -131,12 +141,24 @@ export class WorkflowCreationService {
 				'credential:read',
 			]),
 		]);
-		const allowedCredentialIds = new Set([...validatedCredentialIds, ...accessibleCredentialIds]);
+		const unresolvedCredentialIds = credentialIdsToCheck.filter((id) =>
+			allowMissingCredentialIds.has(id),
+		);
+		const missingCredentialIds =
+			unresolvedCredentialIds.length > 0
+				? await this.enterpriseWorkflowService.findMissingCredentialIds(unresolvedCredentialIds)
+				: [];
+		const allowedCredentialIds = new Set([
+			...validatedCredentialIds,
+			...accessibleCredentialIds,
+			...missingCredentialIds,
+		]);
 
 		return {
 			project,
 			allowedCredentialIds,
 			checkedCredentialIds: new Set([...validatedCredentialIds, ...referencedCredentialIds]),
+			missingCredentialIds: new Set(missingCredentialIds),
 			credentialResolutionCache: new Map(),
 			redactionFloor,
 			autoExposeNewWorkflows,
@@ -216,11 +238,21 @@ export class WorkflowCreationService {
 			throw new BadRequestError(message);
 		}
 
+		const absentCredentialIds = batchContext
+			? await this.refreshMissingCredentialIds(newWorkflow, batchContext)
+			: undefined;
+
 		await WorkflowHelpers.replaceInvalidCredentials(
 			newWorkflow,
 			effectiveProjectId,
 			batchContext?.credentialResolutionCache,
+			batchContext?.missingCredentialIds,
 		);
+
+		// The resolution can put an id on a reference that had none, so check the new ids too.
+		if (batchContext) {
+			await this.refreshMissingCredentialIds(newWorkflow, batchContext, absentCredentialIds);
+		}
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
@@ -437,6 +469,44 @@ export class WorkflowCreationService {
 		});
 
 		return savedWorkflow;
+	}
+
+	/**
+	 * Checks again that the allowed credential ids of this workflow are absent. The batch read
+	 * them once, before the first write. An id that a credential has now leaves the allowance, so
+	 * it gets the same resolution and access check as every other credential reference.
+	 *
+	 * @param absentIds the ids that an earlier call for this workflow found absent.
+	 * @returns the ids that this create found absent.
+	 */
+	private async refreshMissingCredentialIds(
+		workflow: WorkflowEntity,
+		batchContext: WorkflowCreateBatchContext,
+		absentIds: ReadonlySet<string> = new Set(),
+	): Promise<ReadonlySet<string>> {
+		const { missingCredentialIds } = batchContext;
+		if (missingCredentialIds.size === 0) return absentIds;
+
+		const { ids } = this.enterpriseWorkflowService.collectCredentialReferences(workflow);
+		const candidateIds = [...ids].filter(
+			(id) => missingCredentialIds.has(id) && !absentIds.has(id),
+		);
+		if (candidateIds.length === 0) return absentIds;
+
+		const stillMissingIds = new Set(
+			await this.enterpriseWorkflowService.findMissingCredentialIds(candidateIds),
+		);
+		const existingIds = candidateIds.filter((id) => !stillMissingIds.has(id));
+		for (const id of existingIds) {
+			missingCredentialIds.delete(id);
+			batchContext.allowedCredentialIds.delete(id);
+			// An unchecked id gets the access check of this create.
+			batchContext.checkedCredentialIds.delete(id);
+		}
+		// The cache holds these references as authored. Clear it so that they resolve again.
+		if (existingIds.length > 0) batchContext.credentialResolutionCache.clear();
+
+		return new Set([...absentIds, ...stillMissingIds]);
 	}
 
 	private async findParentFolderInProjectOrFail(

@@ -134,6 +134,24 @@ describe('ImportPackageRequestDto', () => {
 		).toBe(false);
 	});
 
+	it('rejects the promotion-only allowUnresolvedCredentialIds field', () => {
+		const result = ImportPackageRequestDto.safeParse(
+			withPackageFile({
+				conflictPolicy: 'skip',
+				allowUnresolvedCredentialIds: '["credential-1"]',
+			}),
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues).toEqual([
+			expect.objectContaining({
+				code: 'unrecognized_keys',
+				keys: ['allowUnresolvedCredentialIds'],
+			}),
+		]);
+		expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).not.toContain('allowUnresolvedCredentialIds');
+	});
+
 	it('requires conflictPolicy (no default)', () => {
 		expect(ImportPackageRequestDto.safeParse(withPackageFile({})).success).toBe(false);
 	});

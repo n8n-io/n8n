@@ -276,6 +276,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	workflow: T,
 	projectId: string,
 	cache: ReplaceInvalidCredentialsCache = new Map(),
+	/**
+	 * Credential ids that a package import leaves unresolved. A reference to one of them stays as
+	 * it is when no credential has the id: a credential with the same name is another credential.
+	 */
+	unresolvedIds: ReadonlySet<string> = new Set(),
 ): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
@@ -366,6 +371,10 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 					};
 					cache.set(idCacheKey, resolvedCredential);
 					node.credentials[nodeCredentialType] = { ...resolvedCredential };
+					continue;
+				}
+				if (unresolvedIds.has(nodeCredentials.id)) {
+					cache.set(idAndNameCacheKey, { ...nodeCredentials });
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name

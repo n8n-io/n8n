@@ -160,6 +160,8 @@ export interface CredentialBindingRequest {
 	/** Package credential files by credential id. Read only when the policy is not `keep-existing`. */
 	packageCredentials?: ReadonlyMap<string, SerializedCredential>;
 	updateScope: CredentialUpdateScope;
+	/** Source ids of the credentials that can stay unresolved. Omitted means none. */
+	allowUnresolvedIds?: ReadonlySet<string>;
 }
 
 export function createFailure(

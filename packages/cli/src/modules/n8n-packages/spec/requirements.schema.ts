@@ -5,11 +5,20 @@ const requirementUsage = {
 	usedBy: z.array(packageRequirementConsumerSchema).min(1),
 };
 
+/**
+ * Why the package does not hold a required credential or workflow. The exporter of a promotion
+ * sets it. Without it, a reader cannot tell why the entity is not in the package.
+ * - `confirmed-missing`: another project owns it, and the user confirmed the export without it.
+ * - `missing-on-source`: it does not exist on the source instance.
+ */
+export const packageRequirementReasonSchema = z.enum(['confirmed-missing', 'missing-on-source']);
+
 export const packageCredentialRequirementSchema = z
 	.object({
 		id: z.string().min(1),
 		name: z.string().min(1).optional(),
 		type: z.string().min(1).optional(),
+		reason: packageRequirementReasonSchema.optional(),
 		...requirementUsage,
 	})
 	.superRefine((credential, ctx) => {
@@ -37,6 +46,7 @@ export const packageDataTableRequirementSchema = z.object({
 export const packageWorkflowRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1).optional(),
+	reason: packageRequirementReasonSchema.optional(),
 	...requirementUsage,
 });
 
@@ -139,6 +149,7 @@ export const packageRequirementsSchema = z.object({
 });
 
 export type PackageRequirementConsumer = z.infer<typeof packageRequirementConsumerSchema>;
+export type PackageRequirementReason = z.infer<typeof packageRequirementReasonSchema>;
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
 export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;

@@ -243,6 +243,7 @@ export class WorkflowImporter {
 						}),
 						createItems.map(({ entity }) => entity),
 						resolvedBindings.credentials,
+						unresolvedCredentialIds(context),
 					);
 
 		const outcomes: PersistedWorkflowOutcome[] = [];
@@ -285,7 +286,7 @@ export class WorkflowImporter {
 			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
 
 		if (item.action === 'create') {
-			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
+			const entity = prepareEntityForPersist(item.entity, bindings, context, item.decidedId);
 			return await this.workflowCreationService.createWorkflow(
 				context.user,
 				entity,
@@ -302,7 +303,8 @@ export class WorkflowImporter {
 			);
 		}
 
-		const entity = prepareEntityForPersist(item.entity, bindings);
+		const entity = prepareEntityForPersist(item.entity, bindings, context);
+		const allowMissingCredentialIds = unresolvedCredentialIds(context);
 
 		const updated = await this.workflowService.update(
 			context.user,
@@ -320,6 +322,7 @@ export class WorkflowImporter {
 				// unpublished until the package-wide sweep, so the write-time check on that
 				// reference cannot apply here.
 				allowUnresolvedErrorWorkflow: true,
+				...(allowMissingCredentialIds ? { allowMissingCredentialIds } : {}),
 				...(tagIds !== undefined ? { tagIds } : {}),
 			},
 			context.ctx,
@@ -384,6 +387,7 @@ export function collectPlannedWorkflowBindings(items: WorkflowPlanItem[]): Impor
 function prepareEntityForPersist(
 	source: WorkflowEntity,
 	bindings: PackageImportBindings,
+	{ unresolvedCredentials }: Pick<WorkflowImportContext, 'unresolvedCredentials'>,
 	decidedId?: string,
 ): WorkflowEntity {
 	const entity = Object.assign(new WorkflowEntity(), source, {
@@ -391,21 +395,38 @@ function prepareEntityForPersist(
 		...(source.settings ? { settings: structuredClone(source.settings) } : {}),
 		...(decidedId !== undefined ? { id: decidedId } : {}),
 	});
-	applyCredentialBindingsInPlace(entity, bindings.credentials);
+	applyCredentialBindingsInPlace(entity, bindings.credentials, unresolvedCredentials);
 	for (const reference of workflowReferences) reference.apply(entity, bindings);
 	return entity;
 }
 
-/** Mutates node credential ids on `entity` using the resolved import binding map. */
+function unresolvedCredentialIds({
+	unresolvedCredentials,
+}: Pick<WorkflowImportContext, 'unresolvedCredentials'>): ReadonlySet<string> | undefined {
+	return unresolvedCredentials && new Set(unresolvedCredentials.keys());
+}
+
+/**
+ * Mutates node credential ids on `entity` using the resolved import binding map. A package
+ * workflow holds no credential name, and a reference that stays unresolved has no credential to
+ * read the name from, so it takes the name of its requirement row.
+ */
 function applyCredentialBindingsInPlace(
 	entity: WorkflowEntity,
 	credentialBindings: ImportBindingMap,
+	unresolvedCredentials: ReadonlyMap<string, string | undefined> = new Map(),
 ): void {
 	visitWorkflowCredentials(entity.nodes, (_credentialType, details) => {
 		if (!details.id) return false;
 
 		const targetId = credentialBindings.get(details.id);
-		if (!targetId || targetId === details.id) return false;
+		if (!targetId) {
+			const name = unresolvedCredentials.get(details.id);
+			if (name === undefined) return false;
+			details.name = name;
+			return true;
+		}
+		if (targetId === details.id) return false;
 
 		details.id = targetId;
 		return true;

@@ -13,6 +13,12 @@ import type { ImportContext } from '../../n8n-packages.types';
 export interface WorkflowImportContext extends ImportContext {
 	/** Tag ids the tag plan dropped; stripped from every workflow's `tagIds` before attaching. */
 	droppedTagIds: ReadonlySet<string>;
+	/**
+	 * The credentials that the import leaves unresolved: the source id, and the name on the
+	 * requirement row. A workflow keeps its reference to one of them while this instance holds no
+	 * credential with the id.
+	 */
+	unresolvedCredentials?: ReadonlyMap<string, string | undefined>;
 }
 
 export interface PreparedWorkflow {
