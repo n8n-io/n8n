@@ -137,10 +137,10 @@ export interface SmallJsonCopy {
 	 */
 	copy: unknown;
 	/**
-	 * The characters that the walk counted, at most the limit. See NODE_CHARS. For
-	 * a value that is not small JSON data, the count until the walk stopped. This
-	 * is the recorded use, not the work: the key list of one wide object is not
-	 * counted. A charge of it limits repeated walks, but does not bound the work.
+	 * The characters that the walk counted, at most `maxChars`. See NODE_CHARS.
+	 * For a value that is not small JSON data, the count until the walk stopped.
+	 * It leaves out the work to list the keys of an object, so a charge of it
+	 * limits repeated walks but does not bound the work.
 	 */
 	chars: number;
 }

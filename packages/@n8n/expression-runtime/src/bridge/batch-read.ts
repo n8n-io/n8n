@@ -102,10 +102,6 @@ function isDataKey(container: object, key: string): boolean {
 
 const NO_COPY: SmallJsonCopy = { copy: undefined, chars: 0 };
 
-/**
- * The walk of the value that a key reads as, in at most `maxChars` characters.
- * No walk for a key that is not a data property.
- */
 function wholeChild(
 	container: Record<string, unknown> | unknown[],
 	key: string,
@@ -207,8 +203,8 @@ function namedFieldsOfItemsFrom(
 
 /**
  * The fields of an object that go across whole, in at most `readChars`
- * characters for all of them. A field that does not is left out, and counts
- * its key and what its walk counted. No walk starts after the read is spent.
+ * characters for all of them. A field that does not is left out, but its
+ * walk still counts.
  */
 function wholeFieldsOf(
 	record: Record<string, unknown>,
