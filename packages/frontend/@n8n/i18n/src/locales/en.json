@@ -10078,7 +10078,7 @@
 	"agents.testRun.holdReplay.doneCount": "{count} action done | {count} actions done",
 	"agents.testRun.holdReplay.failedCount": "{count} action failed | {count} actions failed",
 	"agents.testRun.holdReplay.partialCount": "{done} of {total} actions done",
-	"agents.testRun.holdReplay.failedSummary": "Nothing was sent or saved. See why below.",
+	"agents.testRun.holdReplay.failedSummary": "No actions finished. See why below, and check your apps before you try again.",
 	"agents.testRun.holdReplay.partialSummary": "Some actions failed. The rest ran in your real apps at {time}.",
 	"agents.testRun.holdReplay.actionObjectFallback": "action",
 	"agents.testRun.holdReplay.previewInputKey": "Input",
