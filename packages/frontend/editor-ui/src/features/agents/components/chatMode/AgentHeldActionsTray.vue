@@ -61,12 +61,20 @@ const appIconActions = computed<AgentHeldAction[]>(() => {
 	});
 });
 
-// Fires once, when the reply has all its held actions and they have not run.
+// Fires once, when a reply that ran in this session gets all its held actions and they have
+// not run. A reply from history mounts complete, so a reload or remount does not track it again.
+let ranInSession = props.runDisabled;
 let shownTracked = false;
+watch(
+	() => props.runDisabled,
+	(disabled) => {
+		if (disabled) ranInSession = true;
+	},
+);
 watch(
 	() => props.actions.length > 0 && !props.runDisabled && !props.committed,
 	(shown) => {
-		if (!shown || shownTracked) return;
+		if (!shown || shownTracked || !ranInSession) return;
 		shownTracked = true;
 		agentTelemetry.trackHeldActionsShown({
 			agentId: props.agentId,

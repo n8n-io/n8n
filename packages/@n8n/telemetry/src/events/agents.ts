@@ -1444,7 +1444,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_HELD_ACTIONS_SHOWN: {
 		name: 'Agent held actions shown',
 		description:
-			'A finished test chat reply showed the "N actions on hold" tray for the first time. Fires once per reply while its actions have not run.',
+			'A finished test chat reply showed the "N actions on hold" tray for the first time. Fires once per reply that ran in this browser session, while its actions have not run. A reply loaded from history, for example after a reload, does not fire it.',
 		properties: z.object({
 			agent_id: z.string(),
 			action_count: z.number().int(),

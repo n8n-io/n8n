@@ -257,10 +257,6 @@ describe('AgentHeldActionsTray', () => {
 		await fireEvent.click(runBtn);
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
 
-		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
-			agentId: 'agent-1',
-			actionCount: 2,
-		});
 		expect(trackOpenedHeldActionPreviewMock).toHaveBeenCalledExactlyOnceWith({
 			agentId: 'agent-1',
 		});
@@ -282,10 +278,21 @@ describe('AgentHeldActionsTray', () => {
 		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
 
 		await rerender({ runDisabled: false });
-		expect(trackHeldActionsShownMock).toHaveBeenCalledOnce();
+		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
 		expect(getByTestId('agent-held-actions-run-btn')).toBeEnabled();
 		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+	});
+
+	it('does not track held actions of a reply that was complete when it mounted', async () => {
+		// A reload or remount renders the reply from history: complete and not run.
+		const { rerender } = renderTray({ props: { actions: sampleActions } });
+		await rerender({ actions: [...sampleActions] });
+
+		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
 	});
 
 	it('updates in place to the done count and done summary after commit', () => {
