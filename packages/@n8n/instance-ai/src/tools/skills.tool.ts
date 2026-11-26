@@ -4,6 +4,7 @@ import {
 	discoverPublicSkillSourceSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	SKILL_WORKFLOW_MENTION_HINT,
 	SKILLS_MAX_PAGE_SIZE,
 	skillScopeSchema,
 	type InstanceAiPermissionMode,
@@ -431,6 +432,9 @@ export function createSkillsTool(context: InstanceAiContext) {
 		.description(
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
 				'This tool does not attach a skill to an agent.' +
+				(context.skillService?.workflowsInSkillsEnabled === true
+					? ` ${SKILL_WORKFLOW_MENTION_HINT}`
+					: '') +
 				(sources
 					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
 					: ''),

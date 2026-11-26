@@ -4,6 +4,7 @@ import {
 	discoverPublicSkillSourceSchema,
 	ListSkillsQueryDto,
 	SaveSkillDto,
+	SKILL_WORKFLOW_MENTION_HINT,
 	SKILLS_MAX_PAGE_SIZE,
 	skillScopeSchema,
 	type SkillDetail,
@@ -21,6 +22,7 @@ import {
 	SkillSyncFlagGate,
 	skillSourceReasonOf,
 	toSkillToolRefusal,
+	WorkflowsInSkillsFlagGate,
 } from '@/modules/skills';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -75,6 +77,18 @@ const updateSkillInput = {
 		'Moves the skill. Refused if an Agent that uses the skill cannot use it in the new scope',
 	),
 } satisfies z.ZodRawShape;
+
+const createSkillInputWithWorkflowHint = {
+	...createSkillInput,
+	skill: createSkillInput.skill.extend({
+		instructions: createSkillInput.skill.shape.instructions.describe(SKILL_WORKFLOW_MENTION_HINT),
+	}),
+};
+
+const updateSkillInputWithWorkflowHint = {
+	...updateSkillInput,
+	instructions: updateSkillInput.instructions.describe(SKILL_WORKFLOW_MENTION_HINT),
+};
 
 type SearchSkillsInput = z.infer<z.ZodObject<typeof searchSkillsInput>>;
 type CreateSkillInput = z.infer<z.ZodObject<typeof createSkillInput>>;
@@ -131,6 +145,7 @@ export class McpSkillToolsService {
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly skillSourceService: SkillSourceService,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async registerTools(
@@ -138,10 +153,11 @@ export class McpSkillToolsService {
 		user: User,
 		mcpSkillsEnabled: boolean,
 	): Promise<void> {
-		const flags = {
-			assistantSkillsEnabled: await this.assistantSkillsFlagGate.isEnabled(),
-			mcpSkillsEnabled,
-		};
+		const [assistantSkillsEnabled, workflowsInSkillsEnabled] = await Promise.all([
+			this.assistantSkillsFlagGate.isEnabled(),
+			this.workflowsInSkillsFlagGate.isEnabled(),
+		]);
+		const flags = { assistantSkillsEnabled, mcpSkillsEnabled };
 		registerTool({
 			name: 'search_n8n_skills',
 			config: {
@@ -196,7 +212,10 @@ export class McpSkillToolsService {
 			name: 'create_skill',
 			config: {
 				description: 'Create a skill.',
-				inputSchema: withAvailabilityInputs(createSkillInput, flags),
+				inputSchema: withAvailabilityInputs(
+					workflowsInSkillsEnabled ? createSkillInputWithWorkflowHint : createSkillInput,
+					flags,
+				),
 				annotations: {
 					title: 'Create Skill',
 					readOnlyHint: false,
@@ -233,7 +252,10 @@ export class McpSkillToolsService {
 			config: {
 				description:
 					'Update a skill. Content changes create a new version. Pass only the fields to change.',
-				inputSchema: withAvailabilityInputs(updateSkillInput, flags),
+				inputSchema: withAvailabilityInputs(
+					workflowsInSkillsEnabled ? updateSkillInputWithWorkflowHint : updateSkillInput,
+					flags,
+				),
 				annotations: {
 					title: 'Update Skill',
 					readOnlyHint: false,

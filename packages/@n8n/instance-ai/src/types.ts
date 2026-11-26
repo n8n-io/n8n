@@ -1250,6 +1250,7 @@ export interface InstanceAiPreferenceService {
 
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	workflowsInSkillsEnabled?: boolean;
 	sources?: {
 		list(): Promise<SkillSourceListItem[]>;
 		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
