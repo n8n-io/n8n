@@ -2,8 +2,8 @@ import '@n8n/backend-services';
 
 /** Payloads hold only metric values, so only cli touches `prom-client`. */
 export interface ExecutionLimitsMetricsEventMap {
-	/** The usage held in memory was read again from the database. */
-	'execution-limit-usage-refreshed': { durationMs: number };
+	/** A refresh succeeded. `queried` is `false` when no scope has a limit, so nothing was read. */
+	'execution-limit-usage-refreshed': { durationMs: number; queried: boolean };
 	'execution-limit-usage-refresh-failed': Record<string, never>;
 }
 

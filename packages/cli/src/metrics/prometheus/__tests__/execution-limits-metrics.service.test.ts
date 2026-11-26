@@ -1,7 +1,7 @@
+import type { ExecutionUsageCache } from '@n8n/backend-module-execution-limits';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,11 +14,15 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 		prefix: 'n8n_',
 		includeExecutionLimitsMetrics: true,
 	});
-	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
+	const usageCache = mock<ExecutionUsageCache>({ isRunning: true });
 	const eventService = mock<EventService>();
 	const metrics = new Map<
 		string,
-		{ observe: ReturnType<typeof vi.fn>; inc: ReturnType<typeof vi.fn> }
+		{
+			observe: ReturnType<typeof vi.fn>;
+			inc: ReturnType<typeof vi.fn>;
+			set: ReturnType<typeof vi.fn>;
+		}
 	>();
 
 	let service: PrometheusExecutionLimitsMetricsService;
@@ -27,6 +31,7 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 		return class {
 			observe = vi.fn();
 			inc = vi.fn();
+			set = vi.fn();
 			constructor(opts: { name: string }) {
 				metrics.set(opts.name, this);
 			}
@@ -44,14 +49,13 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 		vi.clearAllMocks();
 		metrics.clear();
 		Object.assign(config, { prefix: 'n8n_', includeExecutionLimitsMetrics: true });
-		Object.assign(instanceSettings, { instanceType: 'main' });
-		Object.assign(promClient, { Counter: fake(), Histogram: fake() });
-		service = new PrometheusExecutionLimitsMetricsService(config, instanceSettings, eventService);
+		Object.assign(usageCache, { isRunning: true });
+		Object.assign(promClient, { Counter: fake(), Gauge: fake(), Histogram: fake() });
+		service = new PrometheusExecutionLimitsMetricsService(config, usageCache, eventService);
 	});
 
 	describe('enabled', () => {
-		it.each(['main', 'webhook'])('is true when opted in on %s', (instanceType) => {
-			Object.assign(instanceSettings, { instanceType });
+		it('is true when opted in and the cache runs', () => {
 			expect(service.enabled).toBe(true);
 		});
 
@@ -60,8 +64,8 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 			expect(service.enabled).toBe(false);
 		});
 
-		it('is false on a worker', () => {
-			Object.assign(instanceSettings, { instanceType: 'worker' });
+		it('is false when the module did not start the cache', () => {
+			Object.assign(usageCache, { isRunning: false });
 			expect(service.enabled).toBe(false);
 		});
 	});
@@ -69,11 +73,32 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 	it('observes the duration of a refresh in seconds', () => {
 		service.init();
 
-		emit('execution-limit-usage-refreshed', { durationMs: 250 });
+		emit('execution-limit-usage-refreshed', { durationMs: 250, queried: true });
 
 		expect(
 			metrics.get('n8n_execution_limit_usage_refresh_duration_seconds')?.observe,
 		).toHaveBeenCalledExactlyOnceWith(0.25);
+	});
+
+	it('does not observe the duration of a refresh that read nothing', () => {
+		service.init();
+
+		emit('execution-limit-usage-refreshed', { durationMs: 1, queried: false });
+
+		expect(
+			metrics.get('n8n_execution_limit_usage_refresh_duration_seconds')?.observe,
+		).not.toHaveBeenCalled();
+	});
+
+	it.each([true, false])('sets the last success time when queried is %s', (queried) => {
+		vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+		service.init();
+
+		emit('execution-limit-usage-refreshed', { durationMs: 1, queried });
+
+		expect(
+			metrics.get('n8n_execution_limit_usage_refresh_last_success_timestamp_seconds')?.set,
+		).toHaveBeenCalledExactlyOnceWith(1_700_000_000);
 	});
 
 	it('counts each failed refresh', () => {
