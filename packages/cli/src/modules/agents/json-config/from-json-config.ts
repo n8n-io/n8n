@@ -28,6 +28,7 @@ import {
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	type AgentModelCredentialConfig,
+	type AgentModelNodeConfig,
 	type AgentSkill,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -107,6 +108,11 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
 
+export type ModelNodeResolver<TModel extends ModelConfig = ModelConfig> = (
+	node: AgentModelNodeConfig,
+	credentialId: string | undefined,
+) => Promise<TModel>;
+
 export interface BuildFromJsonOptions {
 	/** Routes a gated tool through the configured approval destination. */
 	wrapApproval?: (tool: BuiltTool, ref: AgentJsonToolConfig) => BuiltTool;
@@ -129,6 +135,8 @@ export interface BuildFromJsonOptions {
 	buildMcpClient?: McpClientBuilder;
 	/** Resolves proxy-backed OpenAI embedding options for `credential: "managed"`. */
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
+	/** Builds the model that a chat model node in `config.modelNode` supplies. */
+	resolveModelNode?: ModelNodeResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
 	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
@@ -215,7 +223,7 @@ export async function buildFromJson(
 	const { Agent, createRuntimeSkillRegistry } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
-	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
+	const resolvedModelConfig = await resolveModelConfig(config, options);
 	agent.model(resolvedModelConfig);
 	if (options.modelFetch) {
 		agent.modelFetch(options.modelFetch);
@@ -728,8 +736,17 @@ async function resolveEpisodicMemoryJsonConfig(
 
 async function resolveModelConfig(
 	config: AgentJsonConfig,
-	credentialProvider: CredentialProvider,
+	{
+		credentialProvider,
+		resolveModelNode,
+	}: Pick<BuildFromJsonOptions, 'credentialProvider' | 'resolveModelNode'>,
 ): Promise<ModelConfig> {
+	if (config.modelNode) {
+		if (!resolveModelNode) {
+			throw new UserError('This agent runtime cannot run a model from a node');
+		}
+		return await resolveModelNode(config.modelNode, config.credential);
+	}
 	if (!config.credential) return config.model;
 
 	return await resolveCredentialAwareModelConfig(

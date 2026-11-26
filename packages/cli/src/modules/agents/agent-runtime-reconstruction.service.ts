@@ -37,6 +37,7 @@ import {
 	type AgentToolGuardrailKind,
 	type BudgetGuardrailConfig,
 	type AgentJsonConfig,
+	type AgentModelNodeConfig,
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
@@ -52,6 +53,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
+import { isNodeParameters, type INodeCredentialsDetails } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
@@ -100,6 +102,7 @@ import {
 	buildFromJson,
 	buildProviderToolsForModel,
 	type MemoryFactory,
+	type ModelNodeResolver,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { toAgentDocument } from './json-config/agent-document';
@@ -912,7 +915,14 @@ export class AgentRuntimeReconstructionService {
 			wrapApproval,
 		);
 		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
-		const guardrailModel = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
+		const resolveModelNode: ModelNodeResolver<LanguageModel> = async (node, credentialId) =>
+			await this.resolveModelNode(node, credentialId, projectId, credentialProvider);
+		const guardrailModel = await this.resolveGuardrailModel(
+			config,
+			credentialProvider,
+			modelFetch,
+			resolveModelNode,
+		);
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			wrapApproval: (tool, ref) => wrapApproval(tool, ref.approvalRoute),
 			toolExecutor,
@@ -927,6 +937,7 @@ export class AgentRuntimeReconstructionService {
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
+			resolveModelNode,
 			onVectorStoreSearch: (runId) =>
 				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
 			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
@@ -948,15 +959,66 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
+	/**
+	 * Builds the model that a chat model node supplies, such as a community node.
+	 * The node runs its `supplyData` outside a workflow with the agent's credential.
+	 */
+	private async resolveModelNode(
+		node: AgentModelNodeConfig,
+		credentialId: string | undefined,
+		projectId: string,
+		credentialProvider: AgentCredentialProvider,
+	): Promise<LanguageModel> {
+		if (!isNodeParameters(node.nodeParameters)) {
+			throw new UserError(`The parameters of the model node "${node.nodeType}" are not valid`);
+		}
+		const credentials = credentialId
+			? await this.findModelNodeCredential(node, credentialId, credentialProvider)
+			: {};
+
+		const { response, egressFilter } = await this.ephemeralNodeExecutor.supplyLanguageModel({
+			projectId,
+			nodeType: node.nodeType,
+			nodeTypeVersion: node.nodeTypeVersion,
+			nodeParameters: node.nodeParameters,
+			credentials,
+		});
+		const { getSuppliedModelOptions, isOpenAiModel } = await import('@n8n/ai-utilities');
+		const supplied = getSuppliedModelOptions(response);
+		if (!supplied || !isOpenAiModel(supplied)) {
+			throw new UserError(
+				`The node "${node.nodeType}" does not supply a model that the agent can run`,
+			);
+		}
+		const { createOpenAiConfigModel } = await import('@n8n/agents');
+		return await createOpenAiConfigModel(supplied, egressFilter);
+	}
+
+	private async findModelNodeCredential(
+		node: AgentModelNodeConfig,
+		credentialId: string,
+		credentialProvider: AgentCredentialProvider,
+	): Promise<Record<string, INodeCredentialsDetails>> {
+		const credential = (await credentialProvider.list()).find(({ id }) => id === credentialId);
+		if (!credential) {
+			throw new UserError(`The credential of the model node "${node.nodeType}" is not accessible`);
+		}
+		return { [credential.type]: { id: credential.id, name: credential.name } };
+	}
+
 	private async resolveGuardrailModel(
 		config: AgentJsonConfig,
 		credentialProvider: AgentCredentialProvider,
 		modelFetch: ReturnType<typeof createAiProxyFetch>,
+		resolveModelNode: ModelNodeResolver<LanguageModel>,
 	): Promise<LanguageModel | undefined> {
 		const guardrails = config.config?.guardrails?.tools;
 		if (!guardrails?.some(isModelBasedKind) || config.model.trim() === '') return undefined;
 
 		try {
+			if (config.modelNode) {
+				return await resolveModelNode(config.modelNode, config.credential);
+			}
 			const modelConfig = config.credential
 				? await resolveCredentialAwareModelConfig(
 						config.model,

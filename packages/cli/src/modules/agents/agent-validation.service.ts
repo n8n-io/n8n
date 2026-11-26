@@ -22,6 +22,7 @@ import {
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
 	type AgentJsonConfig,
+	type AgentModelNodeConfig,
 	type AgentJsonNodeToolConfig,
 	type AgentJsonWorkflowToolConfig,
 	type AgentSkill,
@@ -36,6 +37,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { suppliesLanguageModel } from '@/node-execution';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
 import { NodeTypesProxy } from '@n8n/backend-services';
@@ -478,6 +480,20 @@ export class AgentValidationService {
 		} else if (!AgentModelSchema.safeParse(config.model).success) {
 			issues.push(agentIssue('invalid_value', 'model'));
 		}
+
+		if (config.modelNode && !this.findModelNodeType(config.modelNode)) {
+			issues.push(agentIssue('missing_reference', 'modelNode.nodeType'));
+		}
+	}
+
+	/** The type of a model node, when it is installed and supplies a language model. */
+	private findModelNodeType(node: AgentModelNodeConfig) {
+		try {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion);
+			return suppliesLanguageModel(nodeType.description) ? nodeType : undefined;
+		} catch {
+			return undefined;
+		}
 	}
 
 	private async collectMainCredentialIssues(
@@ -517,7 +533,12 @@ export class AgentValidationService {
 		}
 
 		const model = config.model?.trim();
-		if (
+		if (config.modelNode) {
+			const declared = this.findModelNodeType(config.modelNode)?.description.credentials ?? [];
+			if (!declared.some(({ name }) => name === credential.type)) {
+				issues.push(agentIssue('incompatible_credential', 'credential'));
+			}
+		} else if (
 			model &&
 			AgentModelSchema.safeParse(model).success &&
 			!this.credentialSupportsModel(credential.type, model)

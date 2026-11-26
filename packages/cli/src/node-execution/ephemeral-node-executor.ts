@@ -11,8 +11,10 @@ import type {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
+	INodeTypeDescription,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	NodeEgressFilter,
 	NodeOutput,
 } from 'n8n-workflow';
 import {
@@ -130,6 +132,18 @@ export const AGENT_PROVIDER_NODE_WHITELIST = new Set<string>([...AI_VENDOR_NODE_
 
 export function isAgentProviderNode(nodeType: string): boolean {
 	return AGENT_PROVIDER_NODE_WHITELIST.has(nodeType);
+}
+
+/** Whether a node declares a language model as its output, like a chat model node. */
+export function suppliesLanguageModel({ outputs }: Pick<INodeTypeDescription, 'outputs'>): boolean {
+	return (
+		Array.isArray(outputs) &&
+		outputs.some((output) =>
+			typeof output === 'string'
+				? output === NodeConnectionTypes.AiLanguageModel
+				: output.type === NodeConnectionTypes.AiLanguageModel,
+		)
+	);
 }
 
 /**
@@ -361,6 +375,46 @@ export class EphemeralNodeExecutor {
 			executeData,
 			mode,
 		};
+	}
+
+	/**
+	 * Calls `supplyData` of a chat model node outside a workflow, so the agent can
+	 * use the model it supplies. Returns the egress filter of the node's context,
+	 * because the model must send its requests through it.
+	 */
+	async supplyLanguageModel(
+		tool: EphemeralWorkflowToolLike,
+	): Promise<{ response: unknown; egressFilter: NodeEgressFilter }> {
+		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+		const supplyData = nodeType.supplyData;
+		if (!suppliesLanguageModel(nodeType.description) || typeof supplyData !== 'function') {
+			throw new UserError(`Node "${tool.nodeType}" does not supply a language model`);
+		}
+
+		const credentials = await this.verifyCredentialDetailsForProject(
+			tool.projectId,
+			tool.credentials ?? {},
+		);
+		const parts = await this.buildEphemeralContextParts({ ...tool, credentials }, []);
+		await this.enforceRunPolicy(parts.node, tool.projectId);
+		const context = new SupplyDataContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			[],
+			parts.inputData,
+			NodeConnectionTypes.AiLanguageModel,
+			parts.executeData,
+			[],
+		);
+
+		return await withExpressionIsolate(parts.workflow, async () => {
+			const { response } = await supplyData.call(context, 0);
+			return { response, egressFilter: context.helpers.getSecureEgressFilter() };
+		});
 	}
 
 	/**

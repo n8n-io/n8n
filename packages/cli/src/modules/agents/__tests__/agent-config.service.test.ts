@@ -1087,6 +1087,37 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('description');
 		});
 
+		it('keeps a model node with its model and drops it when another model is picked', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const save = async (config: AgentJsonConfig) => {
+				await service.updateConfig(agentId, projectId, config, user, fencedOn(agent));
+				const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+				agent.schema = saved.schema;
+				// The next save changes the stored schema in place.
+				return structuredClone(saved.schema);
+			};
+			const modelNode = {
+				nodeType: 'n8n-nodes-eurouter.eUrouterChatModel',
+				nodeTypeVersion: 1,
+				nodeParameters: { model: 'mistral-small' },
+			};
+			const communityModel = 'community/n8n-nodes-eurouter.eUrouterChatModel/mistral-small';
+
+			const withNode = await save({ ...baseConfig, model: communityModel, modelNode });
+			const sameModel = await save({
+				...baseConfig,
+				model: communityModel,
+				instructions: 'Be brief',
+			});
+			const otherModel = await save({ ...baseConfig, model: 'anthropic/claude-sonnet-5-5' });
+
+			expect(withNode?.modelNode).toEqual(modelNode);
+			expect(sameModel?.modelNode, 'a write without a node keeps it').toEqual(modelNode);
+			expect(otherModel, 'another model drops the node').not.toHaveProperty('modelNode');
+		});
+
 		it('drops a legacy modelDeploymentName from a stored config and from the payload', async () => {
 			const { service, agentRepository } = makeService();
 			const legacySchema = { ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' };

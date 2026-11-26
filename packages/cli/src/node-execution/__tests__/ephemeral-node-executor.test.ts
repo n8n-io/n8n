@@ -1021,6 +1021,68 @@ describe('EphemeralNodeExecutor', () => {
 		});
 	});
 
+	describe('supplyLanguageModel', () => {
+		const chatModelDescription: INodeTypeDescription = {
+			...toolDescription,
+			name: 'eUrouterChatModel',
+			outputs: [NodeConnectionTypes.AiLanguageModel],
+			usableAsTool: undefined,
+		};
+		const request = {
+			projectId: 'p-1',
+			nodeType: 'n8n-nodes-eurouter.eUrouterChatModel',
+			nodeTypeVersion: 1,
+			nodeParameters: { model: 'mistral-small' },
+			credentials: { eUrouterApi: { id: 'c1', name: 'Old name' } },
+		};
+
+		it('returns the model and the egress filter of the node with the verified credential', async () => {
+			const model = { type: 'openai' };
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: model };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: chatModelDescription, supplyData }),
+			);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'c1', name: 'EUrouter', type: 'eUrouterApi' }),
+			]);
+
+			const result = await executor.supplyLanguageModel(request);
+
+			expect(result.response).toBe(model);
+			expect(result.egressFilter).toBeDefined();
+			expect(observedCredentials).toEqual({ eUrouterApi: { id: 'c1', name: 'EUrouter' } });
+			expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalled();
+		});
+
+		it('does not run a node that does not supply a language model', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+
+			await expect(executor.supplyLanguageModel(request)).rejects.toThrow(
+				'Node "n8n-nodes-eurouter.eUrouterChatModel" does not supply a language model',
+			);
+			expect(supplyData).not.toHaveBeenCalled();
+			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();
+		});
+
+		it('does not run the node when its credential is not usable in the project', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: chatModelDescription, supplyData }),
+			);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
+
+			await expect(executor.supplyLanguageModel(request)).rejects.toThrow('is not accessible');
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('introspectSupplyDataToolSchema', () => {
 		it('returns the schema a structured tool exposes', async () => {
 			const schema = { type: 'object', properties: { query: { type: 'string' } } };

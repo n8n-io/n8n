@@ -11,7 +11,11 @@ import type { JSONSchema7 } from 'json-schema';
 import { UserError } from '@n8n/errors';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
-import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
+import type {
+	BuildFromJsonOptions,
+	ModelNodeResolver,
+	ToolExecutor,
+} from '../json-config/from-json-config';
 import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
@@ -225,6 +229,56 @@ describe('buildFromJson()', () => {
 		expect(snap.model.name).toBe('claude-sonnet-5-5');
 		// AGENT-1663: The agent needs its name even if the authored instructions omit it.
 		expect(snap.instructions).toBe('Your name is "Prodigy".\n\nYou are a test agent.');
+	});
+
+	describe('model node', () => {
+		const modelNode = {
+			nodeType: 'n8n-nodes-eurouter.eUrouterChatModel',
+			nodeTypeVersion: 1,
+			nodeParameters: { model: 'mistral-small' },
+		};
+		const config = () =>
+			makeConfig({
+				model: 'community/n8n-nodes-eurouter.eUrouterChatModel/mistral-small',
+				credential: 'eurouter-main',
+				modelNode,
+			});
+
+		it('runs the model that the model node supplies', async () => {
+			const credentialProvider = makeMockCredentialProvider();
+			const resolveModelNode = vi
+				.fn<ModelNodeResolver>()
+				.mockResolvedValue({ id: 'eurouter/mistral-small', apiKey: 'from-the-node' });
+
+			const agent = await buildFromJson(
+				config(),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider,
+					memoryFactory: makeMockMemoryFactory(),
+					resolveModelNode,
+				},
+			);
+
+			expect(resolveModelNode).toHaveBeenCalledWith(modelNode, 'eurouter-main');
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+			expect(agent.snapshot.model).toMatchObject({ provider: 'eurouter', name: 'mistral-small' });
+		});
+
+		it('fails when the runtime cannot run a model node', async () => {
+			await expect(
+				buildFromJson(
+					config(),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toThrow('This agent runtime cannot run a model from a node');
+		});
 	});
 
 	it('appends the self-modification policy only for the preview chat', async () => {
