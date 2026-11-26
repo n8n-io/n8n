@@ -3903,8 +3903,8 @@ describe('useAgentChatStream — done executionId', () => {
 		expect(hook.sessionTestTaskId.value).toBeUndefined();
 		await hook.sendMessage('Summarize', undefined, undefined, undefined, 'task-1');
 		await flushPromises();
-		// The session is now a schedule test, so the host locks its composer.
-		expect(hook.sessionTestTaskId.value).toBe('task-1');
+		// The server refused the test, so the session stays open.
+		expect(hook.sessionTestTaskId.value).toBeUndefined();
 		newSession.value = false;
 		await hook.sendMessage('Summarize', undefined, undefined, undefined, 'task-1');
 		await flushPromises();
@@ -3914,6 +3914,30 @@ describe('useAgentChatStream — done executionId', () => {
 			taskId: 'task-1',
 		});
 		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).not.toHaveProperty('taskId');
+	});
+
+	it('marks a schedule test session once the server accepts the test', async () => {
+		getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+		const response = Promise.withResolvers<Response>();
+		globalThis.fetch = vi.fn(async () => await response.promise) as typeof fetch;
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+		const onAccepted = vi.fn(() => {
+			// The host consumes the pending prompt here, so the mark must be set too.
+			expect(hook.sessionTestTaskId.value).toBe('task-1');
+		});
+
+		await hook.loadHistory();
+		const sending = hook.sendMessage('Summarize', undefined, onAccepted, undefined, 'task-1');
+		await flushPromises();
+		// No notice yet: the user cannot start another session before the test is accepted.
+		expect(hook.sessionTestTaskId.value).toBeUndefined();
+
+		response.resolve(makeSseResponse([{ type: 'finish', finishReason: 'stop' } as AgentSseEvent]));
+		await sending;
+		await flushPromises();
+
+		expect(onAccepted).toHaveBeenCalledOnce();
+		expect(hook.sessionTestTaskId.value).toBe('task-1');
 	});
 
 	it('marks a reopened schedule test session from its history', async () => {

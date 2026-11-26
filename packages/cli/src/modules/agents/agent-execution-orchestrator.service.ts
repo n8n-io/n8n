@@ -693,7 +693,7 @@ export class AgentExecutionOrchestratorService {
 			...resume,
 			source: resume.source ?? checkpoint.scope.source,
 			simulationSession,
-			...((await this.isScheduleTest(resume, checkpoint.memoryScope.threadId))
+			...((await this.isScheduleTest(checkpoint.memoryScope.threadId))
 				? { allowBackgroundTasks: false }
 				: {}),
 		};
@@ -703,9 +703,11 @@ export class AgentExecutionOrchestratorService {
 		);
 	}
 
-	/** A schedule test in Preview resumes like a scheduled run, without background tasks. */
-	private async isScheduleTest(config: ResumeForChatConfig, threadId: string): Promise<boolean> {
-		if (config.chatSurface !== 'preview') return false;
+	/**
+	 * A schedule test resumes like a scheduled run, without background tasks.
+	 * The mark is on the thread, so every resume surface keeps it.
+	 */
+	private async isScheduleTest(threadId: string): Promise<boolean> {
 		const thread = await this.agentExecutionService.findThreadById(threadId);
 		return Boolean(thread?.testTaskId);
 	}
@@ -1291,6 +1293,10 @@ export class AgentExecutionOrchestratorService {
 
 	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
 		const { agentId, memory, identity, abortSignal } = config;
+		// A schedule test runs one turn, like the scheduled run. It takes no wake.
+		if (await this.isScheduleTest(memory.threadId)) {
+			throw new OperationalError('A schedule test session takes no background job wake');
+		}
 		const isDraft = identity.type === 'draft';
 		const productionUserId = isDraft
 			? undefined

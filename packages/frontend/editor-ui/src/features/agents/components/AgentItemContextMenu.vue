@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nContextMenu, type ContextMenuNode } from '@n8n/design-system';
+import { N8nContextMenu, N8nIcon, N8nTooltip, type ContextMenuNode } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { Slot } from 'reka-ui';
 import { computed, ref } from 'vue';
@@ -13,6 +13,8 @@ const props = withDefaults(
 		removeLabel?: string;
 		/** Shows `Test now` first when set. `false` shows it disabled. */
 		testable?: boolean;
+		/** Why `Test now` is disabled. Shown in a tooltip on the item. */
+		testDisabledReason?: string;
 	}>(),
 	{ enabled: undefined, testable: undefined },
 );
@@ -85,6 +87,20 @@ function preventEditWhileOpen(event: MouseEvent) {
 			<Slot v-bind="$attrs" :class="$style.trigger" @click.capture="preventEditWhileOpen">
 				<slot />
 			</Slot>
+		</template>
+		<template #item-trailing="{ item, ui }">
+			<N8nTooltip
+				v-if="item.id === 'test' && item.disabled && testDisabledReason"
+				:content="testDisabledReason"
+				placement="right"
+			>
+				<N8nIcon
+					icon="info"
+					:class="ui.class"
+					color="text-light"
+					data-test-id="agent-context-menu-test-disabled-reason"
+				/>
+			</N8nTooltip>
 		</template>
 	</N8nContextMenu>
 </template>

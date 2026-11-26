@@ -28,7 +28,7 @@ const locale = useI18n();
 			<N8nButton
 				variant="outline"
 				size="small"
-				icon="play"
+				icon="flask-conical"
 				:disabled="disabled"
 				data-testid="agent-schedule-test-run-again"
 				data-attr="agent-schedule-test-run-again"

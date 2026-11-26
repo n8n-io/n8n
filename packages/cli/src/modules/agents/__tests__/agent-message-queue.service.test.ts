@@ -578,6 +578,18 @@ describe('AgentMessageQueueService', () => {
 			expect(updates.notifyQueueUpdated).not.toHaveBeenCalled();
 		});
 
+		it('refuses a schedule test in an existing chat session', async () => {
+			executionService.prepareThread.mockResolvedValue({
+				created: false,
+				thread: makeThread(),
+			});
+
+			await expect(enqueue('new', 'task-1')).rejects.toThrow(
+				'A schedule test must start a new session',
+			);
+			expect(updates.notifyQueueUpdated).not.toHaveBeenCalled();
+		});
+
 		it('treats a re-sent first message as a duplicate', async () => {
 			executionService.prepareThread.mockResolvedValue({
 				created: false,

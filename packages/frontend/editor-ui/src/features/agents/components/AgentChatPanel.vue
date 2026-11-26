@@ -1020,15 +1020,15 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
-/**
- * The composer takes no input while the host disables it, a send starts, or a
- * queued message moves back into it.
- */
 /** A schedule test runs once, like the scheduled run, so its session takes no typed input. */
 const isInputLocked = computed(() => props.disabled || !!sessionTestTaskId.value);
 function runScheduleTestAgain() {
 	if (sessionTestTaskId.value) emit('schedule-test-run-again', sessionTestTaskId.value);
 }
+/**
+ * The composer takes no input while the host disables it, a send starts, or a
+ * queued message moves back into it.
+ */
 const isComposerBlocked = computed(
 	() => isInputLocked.value || isPreparingToSend.value || !!editingQueueId.value,
 );

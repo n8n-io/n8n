@@ -148,6 +148,10 @@ export class AgentMessageQueueService {
 						'A schedule test runs once. Start a new session to chat with the agent.',
 					);
 				}
+				// The client picks the session ID. A test must not land in an existing chat.
+				if (!created && testTaskId) {
+					throw new UserError('A schedule test must start a new session');
+				}
 				// Register delivery before another main can see the committed item.
 				onInserted?.(inserted.id);
 				return inserted;

@@ -1092,6 +1092,16 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		});
 
+		it('resumes a schedule test without background tasks on every surface', async () => {
+			const { stream, runtimeCacheService } = makeTurn({ scheduleTest: true });
+
+			await collect(stream);
+
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ allowBackgroundTasks: false }),
+			);
+		});
+
 		it('finishes an admitted turn when Agents is disabled', async () => {
 			const { stream, settingsService, onExecutionStarted, executionService } = makeTurn();
 			onExecutionStarted.mockImplementation(() => {
@@ -3726,6 +3736,26 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		},
 	);
+
+	it('rejects a wake on a schedule test session', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		executionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({ id: 'thread-1', testTaskId: 'task-1' }),
+		);
+
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal: { tasks: [] },
+				agentId,
+				projectId,
+				message: 'Results are ready.',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toThrow('A schedule test session takes no background job wake');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
 
 	it('blocks tools and rejects a pause report interrupted by its guardrail', async () => {
 		const { service, runtimeCacheService } = makeService();

@@ -780,6 +780,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return thread?.projectId ?? null;
 	}
 
+	/** A schedule test runs one turn, like the scheduled run, and no background work. */
+	async isScheduleTest(threadId: string): Promise<boolean> {
+		return await this.existsBy({ id: threadId, testTaskId: Not(IsNull()) });
+	}
+
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
 	async bumpUpdatedAt(threadId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });

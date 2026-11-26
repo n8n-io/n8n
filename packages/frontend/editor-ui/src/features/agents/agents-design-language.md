@@ -258,7 +258,8 @@ MCP, vector store, and memory menus. Schedules use this menu instead of a modal
 switch. Activation edits the draft and takes effect in production after publish.
 
 Schedules also show `Test now` with the `flask-conical` icon before
-`Activate` or `Deactivate`.
+`Activate` or `Deactivate`. When `Test now` is disabled, show an `info` icon on
+the item with the same tooltip as the Test button beside the Agent title.
 
 Keep deactivated items editable and removable. Use the same reduced opacity as
 a disabled Design System button. Apply it to the whole chip in both themes.
@@ -304,12 +305,15 @@ found, no supported trigger, not published) show behind a warning icon instead.
 
 ## Schedule tests
 
-Put an icon-only ghost `play` button after each schedule chip. Its tooltip is
-`Test in Preview`. The button, `Test now` in the chip menu, and `Preview` in the
-schedule modal start a new Preview session. The first message is the objective,
-in the format of a scheduled run. The modal sends the objective in the form, so
-users can test an edit before they save it. Disable these actions when the Test
-button beside the Agent title is disabled, and show the same tooltip. Deactivated
+Put an icon-only ghost `flask-conical` button after each schedule chip. Use
+`flask-conical` for every test action, so `play` only means `Activate`. The
+button's tooltip is `Test in Preview`. The button, `Test now` in the chip menu,
+and `Preview` in the schedule modal start a new Preview session. The first
+message is the objective, in the format of a scheduled run. The modal sends the
+objective in the form, so users can test an edit before they save it. A new
+schedule that is not saved yet has no task to test. Its `Preview` sends the
+objective as a normal chat message. Disable these actions when the Test button
+beside the Agent title is disabled, and show the same tooltip. Deactivated
 schedules stay testable.
 
 A schedule test runs once, like the scheduled run. Lock the composer of its

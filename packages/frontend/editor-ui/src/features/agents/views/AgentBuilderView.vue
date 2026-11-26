@@ -1322,6 +1322,8 @@ function viewPreviewTrace() {
 }
 
 function startNewPreviewSession() {
+	// A schedule test that was not sent yet must not move into the new chat.
+	taskPreviewPrompt.value = undefined;
 	onNewChat();
 }
 

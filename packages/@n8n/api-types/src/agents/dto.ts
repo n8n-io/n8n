@@ -923,6 +923,12 @@ const hasNewSessionForTaskId = {
 	check: (value: { taskId?: string; newSession?: true }) => !value.taskId || !!value.newSession,
 	options: { message: 'A task test must start a new session', path: ['newSession'] },
 };
+// A scheduled run sends only the objective, so a test does too.
+const hasOnlyObjectiveForTaskId = {
+	check: (value: { taskId?: string; message: string; attachments?: unknown[] }) =>
+		!value.taskId || (value.message.trim().length > 0 && (value.attachments?.length ?? 0) === 0),
+	options: { message: 'A task test sends only the schedule objective', path: ['message'] },
+};
 
 const projectAgentChatMessageShape = {
 	...agentChatMessageShape,
@@ -938,7 +944,8 @@ const agentChatMessageSchema = z
 	.object(projectAgentChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options)
-	.refine(hasNewSessionForTaskId.check, hasNewSessionForTaskId.options);
+	.refine(hasNewSessionForTaskId.check, hasNewSessionForTaskId.options)
+	.refine(hasOnlyObjectiveForTaskId.check, hasOnlyObjectiveForTaskId.options);
 
 const agentPreviewChatMessageSchema = z
 	.object(agentPreviewChatMessageShape)

@@ -50,6 +50,18 @@ describe('AgentChatMessageDto', () => {
 		).toBe(false);
 	});
 
+	it('accepts only the schedule objective with a task id', () => {
+		const test = { newSession: true, taskId: 'task-1' };
+		expect(AgentChatMessageDto.safeParse({ ...test, message: '  ' }).success).toBe(false);
+		expect(
+			AgentChatMessageDto.safeParse({ ...test, message: '', attachments: [attachment] }).success,
+		).toBe(false);
+		expect(
+			AgentChatMessageDto.safeParse({ ...test, message: 'Summarize', attachments: [attachment] })
+				.success,
+		).toBe(false);
+	});
+
 	it('rejects a payload with neither message text nor attachments', () => {
 		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
 		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);

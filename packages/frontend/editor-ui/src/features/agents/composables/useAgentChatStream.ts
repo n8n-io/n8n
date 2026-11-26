@@ -1867,6 +1867,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			channel.value === 'system' && (!sessionId || newSession)
 				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
 				: baseUrl;
+		let accepted = onAccepted;
 		if (sessionId) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;
@@ -1874,7 +1875,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			// The server accepts a task test only as the first message of a new session.
 			if (newSession && taskId) {
 				body.taskId = taskId;
-				sessionTestTaskId.value = taskId;
+				// Lock the session only once the server takes the test. The pending
+				// prompt is consumed at the same time, so it cannot move to a new session.
+				accepted = (queueId) => {
+					if (target === targetKey()) sessionTestTaskId.value = taskId;
+					onAccepted?.(queueId);
+				};
 			}
 		}
 		if (clientContext) body.clientContext = clientContext;
@@ -1893,7 +1899,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			);
 		}
 		if (disposed || target !== targetKey()) return { outcome: 'aborted' };
-		const result = await postAndConsume(url, body, onAccepted, userMessage);
+		const result = await postAndConsume(url, body, accepted, userMessage);
 		if (
 			newSession &&
 			params.newSession?.value === true &&

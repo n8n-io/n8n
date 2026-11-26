@@ -1,6 +1,6 @@
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -135,7 +135,7 @@ describe('AgentSchedulesRow', () => {
 	describe('testing a schedule', () => {
 		const testRequest = { objective: 'Do X', taskId: 'task-1', source: 'schedule' };
 
-		it('tests a deactivated schedule from its play button', async () => {
+		it('tests a deactivated schedule from its test button', async () => {
 			getAgentTasksSpy.mockResolvedValue([makeTask()]);
 			const wrapper = mountRow([taskRef('task-1', false)], { isRunnable: true });
 			await flushPromises();
@@ -184,6 +184,12 @@ describe('AgentSchedulesRow', () => {
 				name: 'agents.builder.contextMenu.testNow',
 			});
 			expect(testNow).toHaveAttribute('aria-disabled', 'true');
+			await user.hover(within(testNow).getByTestId('agent-context-menu-test-disabled-reason'));
+			await waitFor(() =>
+				expect(
+					screen.getAllByTestId('tooltip-content').map((tip) => tip.textContent?.trim()),
+				).toContain(tooltip),
+			);
 			await user.click(testNow);
 
 			expect(wrapper.emitted('preview-task')).toBeUndefined();

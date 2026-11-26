@@ -79,6 +79,7 @@ export class AgentWakeService {
 
 	async requestWake(threadId: string): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (await this.threadRepository.isScheduleTest(threadId)) return;
 
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({

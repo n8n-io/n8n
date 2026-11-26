@@ -419,6 +419,17 @@ describe('AgentWakeService', () => {
 		}
 	});
 
+	it('schedules no wake for a schedule test session', async () => {
+		const { service, publisher, lockService, cancellations } = setup({ worker: true });
+		cancellations.isScheduleTest.mockResolvedValue(true);
+
+		await service.requestWake('thread-1');
+
+		expect(cancellations.isScheduleTest).toHaveBeenCalledWith('thread-1');
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(lockService.withLease).not.toHaveBeenCalled();
+	});
+
 	it('routes worker wakes through pubsub', async () => {
 		const { service, publisher, lockService } = setup({ worker: true });
 

@@ -110,6 +110,7 @@ defineExpose({ openAddSchedule });
 					:disabled="props.disabled || removingTaskId !== null"
 					:enabled="task.enabled"
 					:testable="!testDisabled"
+					:test-disabled-reason="testDisabled ? testTooltip : undefined"
 					@update:enabled="toggleTask(task, $event)"
 					@remove="removeTask(task)"
 					@test="testTask(task)"
@@ -152,7 +153,7 @@ defineExpose({ openAddSchedule });
 						@click="testTask(task)"
 					>
 						<template #icon>
-							<N8nIcon icon="play" :size="16" color="text-light" />
+							<N8nIcon icon="flask-conical" :size="16" color="text-light" />
 						</template>
 					</N8nButton>
 				</AgentValidationTooltip>

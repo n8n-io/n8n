@@ -2996,6 +2996,26 @@ describe('AgentBuilderView — preview routing', () => {
 			expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
 			expect(preview.props('initialPrompt')).toBeUndefined();
 		});
+
+		it('drops a schedule test that was not sent when the user starts a chat', async () => {
+			const wrapper = await renderView();
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('preview-task', {
+				objective: 'Summarize the inbox',
+				taskId: 'task-1',
+				source: 'schedule',
+			});
+			await flushPromises();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(preview.props('initialPrompt')).toEqual({
+				text: 'Summarize the inbox',
+				taskId: 'task-1',
+			});
+
+			preview.vm.$emit('schedule-test-chat');
+			await flushPromises();
+
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
 	});
 
 	it('clears selected task instructions when the active agent changes', async () => {
