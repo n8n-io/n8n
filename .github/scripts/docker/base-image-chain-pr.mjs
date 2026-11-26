@@ -95,7 +95,8 @@ export function renderBody(changes, { runUrl }) {
 	].join('\n');
 }
 
-function resolveDigest(tag) {
+/** The digest of a tag, or null when the registry does not have the tag. */
+export function resolveDigest(tag) {
 	try {
 		const out = execFileSync(
 			'docker',
@@ -110,7 +111,8 @@ function resolveDigest(tag) {
 	}
 }
 
-async function github(path, accept) {
+/** A GET request to the GitHub REST API of this repository. */
+export async function github(path, accept) {
 	const {
 		GITHUB_API_URL = 'https://api.github.com',
 		GITHUB_REPOSITORY,
@@ -125,14 +127,14 @@ async function github(path, accept) {
 }
 
 /** Whether `newer` contains `older` on master, from the GitHub compare API. */
-async function contains(older, newer) {
+export async function contains(older, newer) {
 	const response = await github(`compare/${older}...${newer}`, 'application/vnd.github+json');
 	const { status } = await response.json();
 	return status === 'ahead' || status === 'identical';
 }
 
 /** The bake file at a commit. */
-async function bakeFileAt(sha) {
+export async function bakeFileAt(sha) {
 	const response = await github(
 		`contents/${BAKE_FILE}?ref=${sha}`,
 		'application/vnd.github.raw+json',

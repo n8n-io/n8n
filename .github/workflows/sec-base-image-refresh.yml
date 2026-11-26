@@ -52,9 +52,13 @@ jobs:
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The alerts read the state artifact, the refresh PRs and their checks.
     permissions:
       contents: read
       actions: read
+      pull-requests: read
+      checks: read
+      statuses: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -194,6 +198,7 @@ jobs:
       - name: Plan the alerts
         id: alerts
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           ACTOR: ${{ github.triggering_actor }}
         run: |
