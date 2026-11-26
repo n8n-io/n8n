@@ -250,6 +250,22 @@ describe('GymSimulationBackend', () => {
 			expect(gym.vendorForHost).not.toHaveBeenCalled();
 			expect(handle).not.toHaveBeenCalled();
 		});
+
+		it('does not ask the tenant when the run stops while the Gym finds the vendor', async () => {
+			const { backend, gym, tenants } = setup();
+			const world = await backend.openWorld(openInput);
+			const handle = vi.spyOn(tenants[0], 'handle').mockReturnValue(new Promise(() => {}));
+			const controller = new AbortController();
+			vi.mocked(gym.vendorForHost).mockImplementation(async () => {
+				controller.abort();
+				return 'slack';
+			});
+
+			await expect(
+				world.handleRequest(post('stopped mid-lookup'), { ...call, signal: controller.signal }),
+			).rejects.toThrow('The test run was stopped.');
+			expect(handle).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('before a module binds the Gym', () => {

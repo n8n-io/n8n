@@ -134,6 +134,7 @@ export class GymSimulationBackend implements SimulationBackend {
 			vendor = await untilStopped(gym.vendorForHost(host), signal);
 			if (!vendor)
 				return { outcome: 'unsupported', detail: `The test world does not have ${host}.` };
+			if (signal?.aborted) throw stoppedError();
 			response = await untilStopped(
 				tenant.handle(
 					vendor,
@@ -208,5 +209,7 @@ async function untilStopped<T>(work: Promise<T>, signal: AbortSignal | undefined
 		const onAbort = () => reject(stoppedError());
 		signal.addEventListener('abort', onAbort, { once: true });
 		work.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+		// The abort event does not fire again for a signal that is already aborted.
+		if (signal.aborted) onAbort();
 	});
 }
