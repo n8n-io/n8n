@@ -962,7 +962,7 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
-	getBinaryPath(binaryDataId: string): string;
+	getBinaryPath(binaryDataId: string): Promise<string>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
@@ -2924,6 +2924,36 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
+/** Result of `carryOverNodeParameters`. */
+export interface NodeParametersCarryOver {
+	/** Parameters to save on the node for the target version. Most default values are left out. */
+	parameters: INodeParameters;
+	/**
+	 * Values that the target version cannot keep.
+	 * `name` is a display label, for example `options.compression` or `rules.values[0].kind`.
+	 * Do not use it as a lodash path, because a saved key can contain a dot. Use `path`.
+	 * The values are raw user data. Do not log them.
+	 */
+	setAside: Array<{
+		name: string;
+		path: Array<string | number>;
+		displayName: string;
+		value: NodeParameterValueType;
+	}>;
+	/**
+	 * Untouched top-level parameters whose default is different in the target version.
+	 * `name` is the top-level parameter name.
+	 */
+	changedDefaults: Array<{
+		name: string;
+		displayName: string;
+		oldDefault: NodeParameterValueType;
+		newDefault: NodeParameterValueType;
+	}>;
+	/** Parameter issues of the node in the target version. */
+	issues: INodeIssues | null;
+}
+
 export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
@@ -3953,6 +3983,8 @@ export type ExecutionTracingContext = {
 };
 
 export interface IWorkflowExecutionDataProcess {
+	/** Binary IDs validated by a trusted execution entry point. */
+	binaryDataAccess?: string[];
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
@@ -4060,6 +4092,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface ExecuteWorkflowOptions {
+	binaryDataAccess?: string[];
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
@@ -4122,6 +4155,11 @@ export interface AiAgentRequest {
 }
 
 export interface IWorkflowExecuteAdditionalData {
+	binaryDataAccess?: {
+		grant(binaryDataId: string): void;
+		isGranted(binaryDataId: string): boolean;
+		isAllowed(binaryDataId: string, workflowId: string, grantedIds?: string[]): Promise<boolean>;
+	};
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,

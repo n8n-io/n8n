@@ -20,7 +20,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
-import { getResourcePermissions } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -33,10 +32,12 @@ import { useCollectionsStore } from '@/features/settings/context/collections.sto
 /**
  * Owned by the collections page: `open`, `saved` after every save, and `created` once the server
  * saved the collection of the current opening. With a `collection`, the dialog edits it.
+ * With `descriptionOnly` too, it edits only the description of that collection.
  */
 const props = defineProps<{
 	open: boolean;
 	collection?: KnowledgeCollectionDto | null;
+	descriptionOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -75,7 +76,7 @@ type ProjectOption = { id: string; label: string; icon: IconOrEmoji };
 
 // The server checks `agent:update` in the project of the URL, so only those projects are offered.
 function canCreateIn(scopes: Scope[] | undefined): boolean {
-	return getResourcePermissions(scopes).agent?.update === true;
+	return scopes?.includes('agent:update') === true;
 }
 
 const projectOptions = computed<ProjectOption[]>(() => {
@@ -123,10 +124,28 @@ watch(
 );
 
 const isEdit = computed(() => Boolean(props.collection));
+const isDescriptionOnly = computed(() => props.descriptionOnly === true);
 
-// A change cannot move a collection, so only a create needs a project.
+const header = computed(() => {
+	if (isDescriptionOnly.value) {
+		// The page can drop the collection while the dialog closes, so the header has a fallback.
+		return props.collection?.name ?? i18n.baseText('settings.context.collections.modal.edit.title');
+	}
+
+	return i18n.baseText(
+		isEdit.value
+			? 'settings.context.collections.modal.edit.title'
+			: 'settings.context.collections.modal.title',
+	);
+});
+
+// A change cannot move a collection, so only a create needs a project. Without its field, the
+// name keeps the saved value and needs no check.
 const isValid = computed(
-	() => nameValid.value && descriptionValid.value && (isEdit.value || form.projectId !== ''),
+	() =>
+		(isDescriptionOnly.value || nameValid.value) &&
+		descriptionValid.value &&
+		(isEdit.value || form.projectId !== ''),
 );
 
 const trimmedName = computed(() => form.name.trim());
@@ -272,19 +291,13 @@ watch(
 <template>
 	<N8nDialog
 		:open="open"
-		:header="
-			i18n.baseText(
-				isEdit
-					? 'settings.context.collections.modal.edit.title'
-					: 'settings.context.collections.modal.title',
-			)
-		"
+		:header="header"
 		:disable-outside-pointer-events="true"
 		data-test-id="collection-modal"
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody :class="$style.form">
-			<div>
+			<div v-if="!isDescriptionOnly">
 				<N8nFormInput
 					v-model="form.name"
 					name="collection-name"
@@ -317,6 +330,7 @@ watch(
 					v-model="form.description"
 					name="collection-description"
 					type="textarea"
+					:focus-initially="isDescriptionOnly"
 					required
 					:label="i18n.baseText('settings.context.collections.modal.description.label')"
 					:placeholder="i18n.baseText('settings.context.collections.modal.description.placeholder')"

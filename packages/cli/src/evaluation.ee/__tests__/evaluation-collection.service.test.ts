@@ -510,6 +510,7 @@ describe('EvaluationCollectionService', () => {
 			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValueOnce(null);
 
 			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
+			expect(evalConfigRepo.findByIdAndWorkflowId).toHaveBeenCalledWith('cfg-1', 'wf-1', {});
 			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
 		});
 

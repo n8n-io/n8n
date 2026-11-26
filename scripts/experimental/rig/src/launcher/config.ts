@@ -1,4 +1,4 @@
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import type { Language } from '../config/env-yaml';
@@ -130,5 +130,7 @@ export function buildLauncherConfig(options: {
 
 export function writeLauncherConfig(file: string, config: LauncherConfig): void {
 	mkdirSync(dirname(file), { recursive: true });
-	writeFileSync(file, `${JSON.stringify(config, null, '\t')}\n`);
+	// The launcher reads the runner env only from this file, so it can hold decrypted secrets.
+	writeFileSync(file, `${JSON.stringify(config, null, '\t')}\n`, { mode: 0o600 });
+	chmodSync(file, 0o600);
 }

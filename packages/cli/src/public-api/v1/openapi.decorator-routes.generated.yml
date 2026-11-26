@@ -18,6 +18,12 @@ paths:
       $ref: ./handlers/agents/spec/paths/updateAgent.generated.yml
     delete:
       $ref: ./handlers/agents/spec/paths/deleteAgent.generated.yml
+  /agents/{agentId}/publish:
+    post:
+      $ref: ./handlers/agents/spec/paths/publishAgent.generated.yml
+  /agents/{agentId}/unpublish:
+    post:
+      $ref: ./handlers/agents/spec/paths/unpublishAgent.generated.yml
   /agents/{agentId}/archive:
     post:
       $ref: ./handlers/agents/spec/paths/archiveAgent.generated.yml
@@ -288,7 +294,7 @@ paths:
   /promotions/settings:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionSettings.generated.yml
-    put:
+    patch:
       $ref: ./handlers/promotions/spec/paths/updatePromotionSettings.generated.yml
   /promotions/providers:
     post:

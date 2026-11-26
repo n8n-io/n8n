@@ -214,6 +214,9 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 
 export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
 
+/** Boolean flag. It gates the node version picker in the node settings. */
+export const NODE_VERSION_PICKER_EXPERIMENT = createExperiment('154_node_version_picker');
+
 export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
 	'150_mcp_preferences_entry_points',
 	{
@@ -254,9 +257,12 @@ export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
 );
 
 export const AGENT_SETUP_HEADER_EXPERIMENT = createExperiment('136_agent_setup_header');
+/** A/B test. The `variant` arm shows agent triggers first and restyles the trigger section. */
+export const AGENT_TRIGGER_REDESIGN_EXPERIMENT = createExperiment('143_agent_trigger_redesign');
 
 export const EXPERIMENTS_TO_TRACK = [
 	AGENT_SETUP_HEADER_EXPERIMENT.name,
+	AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)

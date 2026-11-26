@@ -76,6 +76,8 @@ $E: null;
 	background-size: $size $size;
 }
 
+// $edge is the viewport edge, or axis, that fades out.
+// $size is the fade depth. @default var(--spacing--sm)
 @mixin scroll-mask($edge, $size: var(--spacing--sm)) {
 	@if $edge == top {
 		mask-image: linear-gradient(to bottom, transparent 0, black $size, black 100%);
@@ -103,6 +105,27 @@ $E: null;
 		);
 	} @else {
 		@error "Unsupported scroll mask edge: #{$edge}";
+	}
+}
+
+// Top fade, bottom fade, or both, while the matching data attributes are set.
+// Bind `scrollMaskAttrs` from useScrollEdges on the scroller.
+// Each fade hides once that edge has no hidden content.
+// $size is the fade depth. @default var(--spacing--sm)
+@mixin scroll-mask-when-y($size: var(--spacing--sm)) {
+	scroll-padding-top: $size;
+	scroll-padding-bottom: $size;
+
+	&[data-scroll-mask-top][data-scroll-mask-bottom] {
+		@include scroll-mask(y, $size);
+	}
+
+	&[data-scroll-mask-top]:not([data-scroll-mask-bottom]) {
+		@include scroll-mask(top, $size);
+	}
+
+	&[data-scroll-mask-bottom]:not([data-scroll-mask-top]) {
+		@include scroll-mask(bottom, $size);
 	}
 }
 
