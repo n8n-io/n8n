@@ -1406,6 +1406,8 @@ describe('SkillService', () => {
 				row.skill.availableToMCP = true;
 				projectScope.getProjectIds.mockResolvedValue(['project-1']);
 				skills.findLatestSaved.mockResolvedValue(new Map([['skill-4', row]]));
+				skills.findLatestVersionIds.mockResolvedValue(new Map([['skill-4', row.version.id]]));
+				skills.findVersionsByIds.mockResolvedValue(new Map([[row.version.id, row]]));
 				skills.findVisiblePage.mockResolvedValue({ skills: [row.skill], count: 1 });
 			}
 
@@ -1415,7 +1417,9 @@ describe('SkillService', () => {
 				const expected = `${mentioning}\n\n${SKILL_WORKFLOW_MENTION_HINT}`;
 
 				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(expected);
-				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(expected);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
+					expected,
+				);
 			});
 
 			it('keeps the instructions when the flag is off', async () => {
@@ -1423,7 +1427,7 @@ describe('SkillService', () => {
 				useSkill(mentioning);
 
 				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(mentioning);
-				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
 					mentioning,
 				);
 			});
@@ -1432,10 +1436,10 @@ describe('SkillService', () => {
 				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
 				useSkill('Be brief.', [{ path: 'references/run.md', content: mentioning }]);
 
-				const { skill } = (await service.listForMcp(user, 0, 50)).skills[0];
+				const skill = (await service.listForMcp(user, 0, 50)).skills[0].content?.skill;
 
-				expect(skill.instructions).toBe(`Be brief.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
-				expect(skill.references).toEqual([{ path: 'references/run.md', content: mentioning }]);
+				expect(skill?.instructions).toBe(`Be brief.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
+				expect(skill?.references).toEqual([{ path: 'references/run.md', content: mentioning }]);
 			});
 		});
 
