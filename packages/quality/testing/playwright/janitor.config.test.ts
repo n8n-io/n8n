@@ -284,7 +284,9 @@ describe('NodeDetailsViewPage scope configuration', () => {
 	});
 
 	test.each([
+		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal source text for the generated file
 		'this.page.locator(`[id="${listId}"]`)',
+		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal source text for the generated file
 		'this.page.locator(`[id="${listId}"]`).getByRole(\'option\', { name: value, exact: true })',
 		"this.page.getByRole('option', { name: value, exact: true, includeHidden: true })",
 	])('reports a run selector locator that leaves the NDV: %s', (locator) => {
