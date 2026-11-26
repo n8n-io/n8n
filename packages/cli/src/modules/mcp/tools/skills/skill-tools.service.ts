@@ -2,9 +2,9 @@ import {
 	connectPublicSkillSourceSchema,
 	CreateSkillDto,
 	discoverPublicSkillSourceSchema,
-	getSkillWorkflowMentionUrl,
 	ListSkillsQueryDto,
 	SaveSkillDto,
+	SKILL_WORKFLOW_MENTION_HINT,
 	SKILLS_MAX_PAGE_SIZE,
 	skillScopeSchema,
 	type SkillDetail,
@@ -78,18 +78,16 @@ const updateSkillInput = {
 	),
 } satisfies z.ZodRawShape;
 
-const workflowMentionHint = `To make the skill run an n8n workflow, link it as [Workflow name](${getSkillWorkflowMentionUrl('<workflow-id>')}).`;
-
 const createSkillInputWithWorkflowHint = {
 	...createSkillInput,
 	skill: createSkillInput.skill.extend({
-		instructions: createSkillInput.skill.shape.instructions.describe(workflowMentionHint),
+		instructions: createSkillInput.skill.shape.instructions.describe(SKILL_WORKFLOW_MENTION_HINT),
 	}),
 };
 
 const updateSkillInputWithWorkflowHint = {
 	...updateSkillInput,
-	instructions: updateSkillInput.instructions.describe(workflowMentionHint),
+	instructions: updateSkillInput.instructions.describe(SKILL_WORKFLOW_MENTION_HINT),
 };
 
 type SearchSkillsInput = z.infer<z.ZodObject<typeof searchSkillsInput>>;
@@ -155,11 +153,11 @@ export class McpSkillToolsService {
 		user: User,
 		mcpSkillsEnabled: boolean,
 	): Promise<void> {
-		const flags = {
-			assistantSkillsEnabled: await this.assistantSkillsFlagGate.isEnabled(),
-			mcpSkillsEnabled,
-		};
-		const workflowsInSkillsEnabled = await this.workflowsInSkillsFlagGate.isEnabled();
+		const [assistantSkillsEnabled, workflowsInSkillsEnabled] = await Promise.all([
+			this.assistantSkillsFlagGate.isEnabled(),
+			this.workflowsInSkillsFlagGate.isEnabled(),
+		]);
+		const flags = { assistantSkillsEnabled, mcpSkillsEnabled };
 		registerTool({
 			name: 'search_n8n_skills',
 			config: {

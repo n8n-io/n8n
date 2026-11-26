@@ -3,6 +3,7 @@ import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
+import { ExecutionCancelledError } from 'n8n-workflow';
 
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 
@@ -32,7 +33,8 @@ function failureOf(error: unknown, aborted: boolean): RunOutcome {
 	if (error instanceof CallableWorkflowUnavailableError) {
 		return { status: 'failure', failure_reason: error.reason };
 	}
-	return { status: 'failure', failure_reason: aborted ? 'canceled' : 'unexpected' };
+	const canceled = aborted || error instanceof ExecutionCancelledError;
+	return { status: 'failure', failure_reason: canceled ? 'canceled' : 'unexpected' };
 }
 
 @Service()

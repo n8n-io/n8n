@@ -7,8 +7,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
-import { toAgentSkill } from '../utils/skill-content';
-import { addedWorkflowMentionIds } from '../utils/skill-workflow-mentions';
+import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
 /** Package imports report no skill telemetry. */
@@ -272,35 +271,47 @@ export class SkillsTelemetry {
 		});
 	}
 
-	private async createdMentionCounts(
-		skillIds: string[],
-	): Promise<Map<string, { workflow_mention_count: number }>> {
-		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return new Map();
-		const latest = await this.skillRepository.findLatestSaved(skillIds);
-		return new Map(
-			[...latest].map(([id, row]) => [
-				id,
-				{ workflow_mention_count: parseAgentSkillWorkflowMentions(toAgentSkill(row)).length },
-			]),
-		);
+	private async createdMentionCounts(skillIds: string[]) {
+		return await this.countMentions(async () => {
+			const latest = await this.skillRepository.findLatestSaved(skillIds);
+			return new Map(
+				[...latest].map(([id, row]) => [
+					id,
+					{ workflow_mention_count: mentionedWorkflowIds(row).size },
+				]),
+			);
+		}, new Map<string, { workflow_mention_count: number }>());
 	}
 
 	private async updatedMentionCounts(skillId: string, version: number) {
-		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return {};
-		const [saved, previous] = await Promise.all([
-			this.skillRepository.findVersionByNumber(skillId, version),
-			this.skillRepository.findVersionByNumber(skillId, version - 1),
-		]);
-		if (!saved) return {};
-		const next = toAgentSkill(saved);
-		const mentionCount = { workflow_mention_count: parseAgentSkillWorkflowMentions(next).length };
-		if (!previous) return mentionCount;
-		const before = toAgentSkill(previous);
-		return {
-			...mentionCount,
-			workflow_mentions_added: addedWorkflowMentionIds(next, before).length,
-			workflow_mentions_removed: addedWorkflowMentionIds(before, next).length,
-		};
+		return await this.countMentions(async () => {
+			const [saved, previous] = await Promise.all([
+				this.skillRepository.findVersionByNumber(skillId, version),
+				this.skillRepository.findVersionByNumber(skillId, version - 1),
+			]);
+			if (!saved) return {};
+			const next = mentionedWorkflowIds(saved);
+			const mentionCount = { workflow_mention_count: next.size };
+			if (!previous) return mentionCount;
+			const before = mentionedWorkflowIds(previous);
+			return {
+				...mentionCount,
+				workflow_mentions_added: [...next].filter((id) => !before.has(id)).length,
+				workflow_mentions_removed: [...before].filter((id) => !next.has(id)).length,
+			};
+		}, {});
+	}
+
+	private async countMentions<T>(count: () => Promise<T>, none: T): Promise<T> {
+		try {
+			if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return none;
+			return await count();
+		} catch (error) {
+			this.logger.warn('Could not count skill workflow mentions', {
+				error: ensureError(error).message,
+			});
+			return none;
+		}
 	}
 
 	/** Reads back only the refs that came as a bare id, in one query. */
@@ -317,6 +328,12 @@ export class SkillsTelemetry {
 			this.logger.warn('Could not send skills telemetry', { error: ensureError(error).message });
 		}
 	}
+}
+
+function mentionedWorkflowIds(row: ResolvedSkillRow): Set<string> {
+	return new Set(
+		parseAgentSkillWorkflowMentions(toAgentSkill(row)).map(({ workflowId }) => workflowId),
+	);
 }
 
 function placeOf(skill: SkillTelemetryTarget): SkillPlace {

@@ -372,11 +372,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			skill_ids: z
 				.array(z.string())
 				.describe('The attached skills of the agent that mention the workflow'),
-			execution_mode: z
-				.enum(['manual', 'integrated'])
-				.describe(
-					'`manual` is a test run of the agent, which runs the draft of the workflow. `integrated` is a production run, which runs the published version',
-				),
+			run_type: agentRunType,
 			status: z
 				.enum(['success', 'failure', 'pending'])
 				.describe(

@@ -127,7 +127,7 @@ import {
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
-import { findSkillWorkflowTools, withSkillWorkflowTools } from './utils/skill-workflow-tools';
+import { withSkillWorkflowTools } from './utils/skill-workflow-tools';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 import {
 	AgentSandboxFilesService,
@@ -273,6 +273,7 @@ interface ToolRunIdentity {
 	delegatingAgentId?: string;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
+	runType: AgentRunTelemetryType;
 	skillIdsByWorkflowId?: ReadonlyMap<string, string[]>;
 }
 
@@ -792,17 +793,13 @@ export class AgentRuntimeReconstructionService {
 			legacyRefs,
 			projectId,
 		);
+		const withTools = withSkillWorkflowTools(config, skills, legacyWorkflows);
 		return {
-			config: withSkillWorkflowTools(config, skills, legacyWorkflows),
+			config: withTools.config,
 			skills: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, withSkillWorkflowMentionHint(skill)]),
 			),
-			skillIdsByWorkflowId: new Map(
-				findSkillWorkflowTools(config, skills, legacyWorkflows).map(({ skillIds, tool }) => [
-					tool.workflowId,
-					skillIds,
-				]),
-			),
+			skillIdsByWorkflowId: withTools.skillIdsByWorkflowId,
 		};
 	}
 
@@ -1023,6 +1020,7 @@ export class AgentRuntimeReconstructionService {
 				// interactive turn to hand a receipt to. Everyone else handles waits
 				// the legacy way.
 				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
+				runType,
 				skillIdsByWorkflowId,
 			},
 			instrumentation,
@@ -1192,6 +1190,7 @@ export class AgentRuntimeReconstructionService {
 			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
+			runType,
 			skillIdsByWorkflowId,
 		} = runIdentity;
 		const { resolveWorkflowTool, buildUnavailableWorkflowTool } = await import(
@@ -1225,7 +1224,7 @@ export class AgentRuntimeReconstructionService {
 						...(userId ? { user_id: userId } : {}),
 						workflow_id: ref.workflowId,
 						skill_ids: skillIds,
-						execution_mode: workflowToolExecutionMode,
+						run_type: runType,
 					})
 				: tool;
 		try {

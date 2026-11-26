@@ -1143,10 +1143,6 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 			makeSkillAgentEntity([direct]),
 			mock<CredentialProvider>(),
 			'production',
-			undefined,
-			undefined,
-			undefined,
-			'integrated',
 		);
 
 		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledTimes(1);
@@ -1154,9 +1150,46 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 			agent_id: expect.any(String),
 			workflow_id: 'wf-mentioned',
 			skill_ids: ['skill-1'],
-			execution_mode: 'integrated',
+			run_type: 'production',
 		});
 		expect(resolved).toEqual([built, tracked]);
+	});
+
+	it('tracks the stub of a mentioned workflow that n8n cannot run, with the user of a sub-agent run', async () => {
+		const skillWorkflowTelemetry = mock<AgentSkillWorkflowTelemetry>();
+		skillWorkflowTelemetry.withRunTracking.mockImplementation((tool) => tool);
+		Container.set(AgentSkillWorkflowTelemetry, skillWorkflowTelemetry);
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		resolveWorkflowToolMock.mockRejectedValueOnce(
+			new CallableWorkflowUnavailableError('not_published', 'Workflow "Get code" is not published'),
+		);
+		buildFromJsonResolvingTools([]);
+		const { agent, skills } = makeSkillAgentEntity();
+
+		await service.reconstructFromResolvedSource({
+			config: { ...agent.schema!, skills: [{ type: 'skill', id: 'skill-1' }] },
+			memoryOwnerAgentId: 'agent-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills,
+			runtimeProfile: 'sub-agent',
+			runType: 'test',
+			attributionUserId: 'user-9',
+		});
+
+		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'workflow_wf-mentioned' }),
+			{
+				agent_id: 'agent-1',
+				user_id: 'user-9',
+				workflow_id: 'wf-mentioned',
+				skill_ids: ['skill-1'],
+				run_type: 'test',
+			},
+		);
 	});
 
 	it('builds a workflow tool for a mention in a resolved sub-agent source', async () => {

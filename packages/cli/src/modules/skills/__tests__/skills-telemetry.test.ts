@@ -174,6 +174,43 @@ describe('SkillsTelemetry', () => {
 
 			expect(repository.findLatestSaved).not.toHaveBeenCalled();
 			expect(repository.findVersionByNumber).not.toHaveBeenCalled();
+			expect(telemetry.track.mock.calls).toEqual([
+				[
+					TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL,
+					{
+						user_id: 'user-1',
+						skill_id: 'skill_instance',
+						scope: 'instance',
+						source: 'ui',
+						method: 'manual',
+					},
+				],
+				[
+					TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL,
+					{
+						user_id: 'user-1',
+						skill_id: 'skill_project',
+						scope: 'project',
+						project_id: 'project-1',
+						source: 'ui',
+						version: 2,
+						scope_changed: false,
+					},
+				],
+			]);
+		});
+
+		it('sends the events without mention properties when the count fails', async () => {
+			repository.findLatestSaved.mockRejectedValue(new Error('read failed'));
+			repository.findVersionByNumber.mockRejectedValue(new Error('read failed'));
+
+			await service.created('user-1', ['skill_instance'], 'ui', 'manual');
+			await service.updated('user-1', 'skill_project', 'ui', 2, false);
+
+			expect(telemetry.track.mock.calls.map(([event]) => event)).toEqual([
+				TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL,
+				TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL,
+			]);
 			for (const [, props] of telemetry.track.mock.calls) {
 				expect(props).not.toHaveProperty('workflow_mention_count');
 			}

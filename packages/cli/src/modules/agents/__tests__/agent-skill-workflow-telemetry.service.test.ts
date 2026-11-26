@@ -1,6 +1,7 @@
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import type { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { ManualExecutionCancelledError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
@@ -15,7 +16,7 @@ describe('AgentSkillWorkflowTelemetry', () => {
 		user_id: 'user-1',
 		workflow_id: 'wf-1',
 		skill_ids: ['skill-1', 'skill-2'],
-		execution_mode: 'integrated' as const,
+		run_type: 'production' as const,
 	};
 
 	function trackedTool(handler: BuiltTool['handler']) {
@@ -83,17 +84,24 @@ describe('AgentSkillWorkflowTelemetry', () => {
 		});
 	});
 
-	it('reports a stopped agent run as canceled and any other error as unexpected', async () => {
-		const tool = trackedTool(async () => {
-			throw new Error('boom');
-		});
+	it('reports a stopped agent run or execution as canceled and any other error as unexpected', async () => {
 		const controller = new AbortController();
 		controller.abort();
+		const failWith = (error: Error) =>
+			trackedTool(async () => {
+				throw error;
+			}).handler!;
 
-		await expect(tool.handler!({}, context({ abortSignal: controller.signal }))).rejects.toThrow();
-		await expect(tool.handler!({}, context())).rejects.toThrow();
+		await expect(
+			failWith(new Error('boom'))({}, context({ abortSignal: controller.signal })),
+		).rejects.toThrow();
+		await expect(
+			failWith(new ManualExecutionCancelledError('exec-1'))({}, context()),
+		).rejects.toThrow();
+		await expect(failWith(new Error('boom'))({}, context())).rejects.toThrow();
 
 		expect(telemetry.track.mock.calls.map(([, props]) => props)).toEqual([
+			{ ...run, status: 'failure', failure_reason: 'canceled' },
 			{ ...run, status: 'failure', failure_reason: 'canceled' },
 			{ ...run, status: 'failure', failure_reason: 'unexpected' },
 		]);

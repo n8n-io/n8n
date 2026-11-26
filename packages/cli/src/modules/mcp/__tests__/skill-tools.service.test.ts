@@ -208,7 +208,7 @@ describe('McpSkillToolsService', () => {
 
 	describe('workflow mention hint', () => {
 		const workflowMentionHint =
-			'To make the skill run an n8n workflow, link it as [Workflow name](n8n://workflow/<workflow-id>).';
+			'To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](n8n://workflow/<workflow-id>).';
 
 		async function instructionsDescriptions() {
 			const registered: Array<Parameters<RegisterToolFn>[0]> = [];

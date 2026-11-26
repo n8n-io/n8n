@@ -8,7 +8,6 @@ import {
 import { extractAgentWorkflowRefs } from './extract-agent-workflow-refs';
 
 export type SkillWorkflowTool = {
-	skillId: string;
 	skillIds: string[];
 	tool: AgentJsonWorkflowToolConfig & { workflowId: string };
 };
@@ -69,7 +68,6 @@ function toSkillWorkflowTools(
 	return [...mentioned]
 		.filter(([workflowId]) => !attached.has(workflowId))
 		.map(([workflowId, { name, skillIds, skillName }]) => ({
-			skillId: skillIds[0],
 			skillIds,
 			tool: {
 				type: 'workflow',
@@ -84,11 +82,10 @@ function toSkillWorkflowTools(
 export function findSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
-	workflowsByName: WorkflowsByName = new Map(),
 ): SkillWorkflowTool[] {
 	return toSkillWorkflowTools(
 		findMentionedWorkflows(config, skills),
-		directWorkflowIds(config, workflowsByName),
+		directWorkflowIds(config, new Map()),
 	);
 }
 
@@ -96,9 +93,9 @@ export function withSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
 	workflowsByName: WorkflowsByName = new Map(),
-): AgentJsonConfig {
+): { config: AgentJsonConfig; skillIdsByWorkflowId: Map<string, string[]> } {
 	const mentioned = findMentionedWorkflows(config, skills);
-	if (mentioned.size === 0) return config;
+	if (mentioned.size === 0) return { config, skillIdsByWorkflowId: new Map() };
 
 	const directTools = (config.tools ?? []).map((tool) => {
 		if (tool.type !== 'workflow') return tool;
@@ -109,9 +106,11 @@ export function withSkillWorkflowTools(
 			description: `${tool.description ?? `Execute the "${tool.workflow}" workflow.`} ${workflowIdSentence(workflowId)}`,
 		};
 	});
-	const skillTools = toSkillWorkflowTools(
-		mentioned,
-		directWorkflowIds(config, workflowsByName),
-	).map(({ tool }) => tool);
-	return { ...config, tools: [...directTools, ...skillTools] };
+	const skillTools = toSkillWorkflowTools(mentioned, directWorkflowIds(config, workflowsByName));
+	return {
+		config: { ...config, tools: [...directTools, ...skillTools.map(({ tool }) => tool)] },
+		skillIdsByWorkflowId: new Map(
+			skillTools.map(({ skillIds, tool }) => [tool.workflowId, skillIds]),
+		),
+	};
 }
