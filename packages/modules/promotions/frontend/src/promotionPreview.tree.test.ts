@@ -7,7 +7,11 @@ import { billingPreview, resource } from './__tests__/preview.fixtures';
 import { buildSelectionGraph } from './promotionPreview.selection';
 import { buildPreviewTree, cardOrder, type PreviewTreeItem } from './promotionPreview.tree';
 
-const labels = { workflows: 'workflows', group: (id: string) => id };
+const labels = {
+	workflows: 'workflows',
+	otherProjects: 'Other projects',
+	group: (id: string) => id,
+};
 const tree = buildPreviewTree(billingPreview(), labels);
 
 type Outline = string | { [id: string]: Outline[] };

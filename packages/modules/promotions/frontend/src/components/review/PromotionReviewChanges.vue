@@ -145,6 +145,7 @@ const tree = computed(() =>
 	changes.value
 		? buildPreviewTree(changes.value, {
 				workflows: i18n.baseText('promotions.preview.tree.section.workflows'),
+				otherProjects: i18n.baseText('promotions.preview.tree.otherProjects'),
 				group: (group) => i18n.baseText(`promotions.preview.tree.group.${group}`),
 			})
 		: [],

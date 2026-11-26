@@ -249,7 +249,7 @@ export function buildPreviewTree(
 	labels: {
 		workflows: string;
 		/** The row for outside workflows of projects that users may not know. */
-		otherProjects?: string;
+		otherProjects: string;
 		group: (group: PreviewTreeGroup) => string;
 	},
 	dependencies: readonly PromotionMissingDependency[] = [],
@@ -283,7 +283,7 @@ export function buildPreviewTree(
 		outsideResources,
 		dependencies,
 		known,
-		labels.otherProjects ?? 'Other projects',
+		labels.otherProjects,
 	);
 	if (hierarchy.some(({ type }) => type === 'workflow')) {
 		sections.push({

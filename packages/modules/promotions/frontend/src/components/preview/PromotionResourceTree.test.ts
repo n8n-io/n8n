@@ -25,7 +25,11 @@ import { buildPreviewTree } from '../../promotionPreview.tree';
 import PromotionResourceTree from './PromotionResourceTree.vue';
 
 const graph = buildSelectionGraph(billingPreview(), 'promote');
-const tree = buildPreviewTree(billingPreview(), { workflows: 'workflows', group: (id) => id });
+const tree = buildPreviewTree(billingPreview(), {
+	workflows: 'workflows',
+	otherProjects: 'Other projects',
+	group: (id) => id,
+});
 const renderComponent = createComponentRenderer(PromotionResourceTree);
 
 function render(selectedKeys: string[]) {
@@ -84,7 +88,11 @@ describe('PromotionResourceTree', () => {
 		const { getByTestId, findByTestId } = renderComponent({
 			pinia: createTestingPinia(),
 			props: {
-				tree: buildPreviewTree(preview, { workflows: 'workflows', group: (id) => id }),
+				tree: buildPreviewTree(preview, {
+					workflows: 'workflows',
+					otherProjects: 'Other projects',
+					group: (id) => id,
+				}),
 				graph: movedGraph,
 				selected: new Set<string>(),
 				inclusion: resolveInclusion(movedGraph, new Set()),
@@ -122,7 +130,11 @@ describe('PromotionResourceTree', () => {
 		const { getByTestId, findByTestId } = renderComponent({
 			pinia: createTestingPinia(),
 			props: {
-				tree: buildPreviewTree(preview, { workflows: 'workflows', group: (id) => id }),
+				tree: buildPreviewTree(preview, {
+					workflows: 'workflows',
+					otherProjects: 'Other projects',
+					group: (id) => id,
+				}),
 				graph: movedGraph,
 				selected: new Set<string>(),
 				inclusion: resolveInclusion(movedGraph, new Set()),
@@ -244,7 +256,7 @@ describe('PromotionResourceTree', () => {
 	describe('locked rows', () => {
 		const lockedTree = buildPreviewTree(
 			billingPreview(),
-			{ workflows: 'workflows', group: (id) => id },
+			{ workflows: 'workflows', otherProjects: 'Other projects', group: (id) => id },
 			[
 				personalCredential,
 				{ ...personalCredential, id: 'c10', name: 'Other personal', accessible: false },
@@ -439,7 +451,11 @@ describe('PromotionResourceTree', () => {
 					},
 				},
 				props: {
-					tree: buildPreviewTree(preview, { workflows: 'workflows', group: (id) => id }),
+					tree: buildPreviewTree(preview, {
+						workflows: 'workflows',
+						otherProjects: 'Other projects',
+						group: (id) => id,
+					}),
 					graph: movedGraph,
 					selected,
 					inclusion: resolveInclusion(movedGraph, selected),
