@@ -4,7 +4,6 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { i18nInstance } from '@n8n/i18n';
 import type { AgentChatListItem } from '@n8n/api-types';
 
-import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../../../constants';
 import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import N8nChatAgentCard from '../N8nChatAgentCard.vue';
@@ -23,7 +22,6 @@ const router = createRouter({
 			name: AGENT_N8N_CHAT_VIEW,
 			component: stub,
 		},
-		{ path: '/assistant', name: INSTANCE_AI_VIEW, component: stub },
 	],
 });
 
