@@ -396,6 +396,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

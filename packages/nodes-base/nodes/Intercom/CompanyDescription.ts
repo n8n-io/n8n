@@ -325,6 +325,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
+		validateType: 'object',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

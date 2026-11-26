@@ -10,6 +10,12 @@ describe('Intercom', () => {
 
 	beforeAll(() => {
 		const api = nock('https://api.intercom.io');
+		api
+			.post('/contacts', { email: 'json@n8n.io', custom_attributes: { plan: 'pro' } })
+			.reply(200, lead);
+		api
+			.post('/contacts', { email: 'expression@n8n.io', custom_attributes: { plan: 'team' } })
+			.reply(200, lead);
 		api.post('/contacts').reply(200, lead);
 		api.get('/contacts/5f1a2b3c4d5e6f7a8b9c0d1e').reply(200, lead);
 		api

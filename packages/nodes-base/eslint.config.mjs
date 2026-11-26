@@ -53,7 +53,6 @@ const jsonValidateTypePending = [
 	'./nodes/Google/CloudStorage/**',
 	'./nodes/GraphQL/**',
 	'./nodes/HttpRequest/**',
-	'./nodes/Intercom/**',
 	'./nodes/Jira/**',
 	'./nodes/Kafka/**',
 	'./nodes/KoBoToolbox/**',

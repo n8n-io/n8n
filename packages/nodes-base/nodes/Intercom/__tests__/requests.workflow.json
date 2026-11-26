@@ -2,6 +2,48 @@
 	"name": "Intercom request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "create",
+				"email": "expression@n8n.io",
+				"jsonParameters": true,
+				"customAttributesJson": "={{ { \"plan\": \"team\" } }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "4b3dccca-8096-5294-ab28-232452226cc2",
+			"name": "Create Lead Expression",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "create",
+				"email": "json@n8n.io",
+				"jsonParameters": true,
+				"customAttributesJson": "{\"plan\":\"pro\"}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "dc3e3aea-1d10-59be-baba-dc4ef9732982",
+			"name": "Create Lead JSON",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -336,6 +378,16 @@
 		"When clicking 'Execute workflow'": {
 			"main": [
 				[
+					{
+						"node": "Create Lead Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Lead JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Create Lead",
 						"type": "main",

@@ -12,7 +12,7 @@ import { NodeConnectionTypes, NodeApiError, NodeOperationError, requestPath } fr
 
 import { companyFields, companyOperations } from './CompanyDescription';
 import type { ICompany } from './CompanyInteface';
-import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { intercomApiRequest, intercomApiRequestAllItems } from './GenericFunctions';
 import { leadFields, leadOperations } from './LeadDescription';
 import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
@@ -182,9 +182,9 @@ export class Intercom implements INodeType {
 								body.custom_attributes = customAttributes;
 							}
 						} else {
-							const customAttributesJson = validateJSON(
-								this.getNodeParameter('customAttributesJson', i) as string,
-							);
+							const customAttributesJson = this.getNodeParameter('customAttributesJson', i) as
+								| IDataObject
+								| undefined;
 							if (customAttributesJson) {
 								body.custom_attributes = customAttributesJson;
 							}
@@ -386,9 +386,9 @@ export class Intercom implements INodeType {
 								body.custom_attributes = customAttributes;
 							}
 						} else {
-							const customAttributesJson = validateJSON(
-								this.getNodeParameter('customAttributesJson', i) as string,
-							);
+							const customAttributesJson = this.getNodeParameter('customAttributesJson', i) as
+								| IDataObject
+								| undefined;
 							if (customAttributesJson) {
 								body.custom_attributes = customAttributesJson;
 							}
@@ -536,9 +536,9 @@ export class Intercom implements INodeType {
 								body.custom_attributes = customAttributes;
 							}
 						} else {
-							const customAttributesJson = validateJSON(
-								this.getNodeParameter('customAttributesJson', i) as string,
-							);
+							const customAttributesJson = this.getNodeParameter('customAttributesJson', i) as
+								| IDataObject
+								| undefined;
 							if (customAttributesJson) {
 								body.custom_attributes = customAttributesJson;
 							}
