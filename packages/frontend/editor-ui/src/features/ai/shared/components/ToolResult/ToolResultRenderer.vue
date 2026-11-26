@@ -10,8 +10,8 @@ import ToolResultCode from './ToolResultCode.vue';
 import ToolResultImage from './ToolResultImage.vue';
 import ToolResultFile from './ToolResultFile.vue';
 import ToolResultText from './ToolResultText.vue';
-import { extractToolCallCode, isCodeToolCall } from '../toolResultCode';
-import { extractTableRows, isTableToolCall } from '../toolResultTable';
+import { extractToolCallCode, isCodeToolCall } from './toolResultCode';
+import { extractTableRows, isTableToolCall } from './toolResultTable';
 
 const props = defineProps<{
 	result: unknown;

@@ -216,7 +216,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-/* Same row as "Finished thinking" (AiThinkingBlock.vue): one muted line, an
+/* Same row as "Finished thinking" (AiActivityThinkingStep.vue): one muted line, an
    inline chevron, and no surface of its own. */
 .header {
 	display: inline-flex;
@@ -246,7 +246,7 @@ watch(
 	white-space: nowrap;
 }
 
-/* Same content rule as the thinking traces (AiThinkingBlock.vue): inline text with
+/* Same content rule as the thinking traces (AiActivityThinkingStep.vue): inline text with
    a left rule, and no surface of its own. */
 .card {
 	display: flex;
@@ -257,7 +257,7 @@ watch(
 	margin-left: var(--spacing--xs);
 }
 
-/* The same color the thinking trace above it uses for its text (ThinkingBlock.vue). */
+/* The same color the thinking trace above it uses for its text (AiActivityThinkingStep.vue). */
 .text {
 	color: var(--color--text--tint-1);
 }

@@ -1,5 +1,7 @@
 <template>
-	<span :class="$style.typing" data-test-id="agent-typing-indicator"><i></i><i></i><i></i></span>
+	<span :class="$style.typing" aria-hidden data-test-id="ai-typing-indicator"
+		><i></i><i></i><i></i
+	></span>
 </template>
 
 <style lang="scss" module>
@@ -14,7 +16,7 @@
 	width: var(--spacing--4xs);
 	height: var(--spacing--4xs);
 	border-radius: 50%;
-	background: currentColor;
+	background: var(--background--brand);
 	opacity: 0.35;
 	@include motion.typing-blink;
 }
