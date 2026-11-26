@@ -262,6 +262,43 @@ describe('AgentTestScenariosService', () => {
 		expect(result.scenarios).toEqual(['Retry 1', 'Retry 2']);
 	});
 
+	it('fails fast without retrying when agent.generate returns an error result', async () => {
+		const { service, agentConfigService } = makeService();
+		agentConfigService.getConfig.mockResolvedValue(makeConfig());
+		const providerError = new Error('Incorrect API key provided');
+		generateMock.mockResolvedValueOnce({
+			finishReason: 'error',
+			error: providerError,
+		});
+
+		let caught: unknown;
+		try {
+			await service.generateTestScenarios(user, 'project-1', 'agent-1');
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(OperationalError);
+		expect((caught as OperationalError).message).toBe(
+			'Failed to generate test scenarios: Incorrect API key provided',
+		);
+		expect((caught as OperationalError).cause).toBe(providerError);
+		expect(generateMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('fails fast with a fallback message when finishReason is error without an error object', async () => {
+		const { service, agentConfigService } = makeService();
+		agentConfigService.getConfig.mockResolvedValue(makeConfig());
+		generateMock.mockResolvedValueOnce({
+			finishReason: 'error',
+		});
+
+		await expect(service.generateTestScenarios(user, 'project-1', 'agent-1')).rejects.toThrow(
+			OperationalError,
+		);
+		expect(generateMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('throws OperationalError when retry still returns no valid scenarios', async () => {
 		const { service, agentConfigService } = makeService();
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());

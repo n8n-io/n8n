@@ -10,6 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, OperationalError, UserError } from '@n8n/errors';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -207,6 +208,24 @@ export class AgentTestScenariosService {
 			const result = await agent.generate(prompt, {
 				abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
 			});
+
+			if (
+				result.finishReason === 'error' ||
+				(result.error !== undefined && result.error !== null)
+			) {
+				const reason =
+					result.error !== undefined && result.error !== null
+						? getErrorMessage(result.error).trim()
+						: '';
+
+				throw new OperationalError(
+					reason
+						? `Failed to generate test scenarios: ${reason}`
+						: 'Failed to generate test scenarios',
+					{ cause: result.error },
+				);
+			}
+
 			const parsed = generatedTestScenariosSchema.safeParse(result.structuredOutput);
 			if (!parsed.success) return [];
 

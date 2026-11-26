@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { inject, ref, useTemplateRef, watch } from 'vue';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { computed, inject, ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '@/features/agents/composables/agentTelemetry.utils';
 import type {
@@ -62,6 +63,17 @@ const emit = defineEmits<{
 
 const inputDraft = ref('');
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+const canShowTestScenarios = computed(() => {
+	if (!props.showTestScenarios || !props.localConfig) return false;
+
+	return Boolean(
+		props.localConfig.instructions?.trim() &&
+			props.localConfig.model?.trim() &&
+			props.localConfig.credential?.trim() &&
+			props.localConfig.credential !== MANAGED_CREDENTIAL_TOKEN,
+	);
+});
 
 function onFirstUserMessage(text: string | undefined) {
 	if (text !== undefined) emit('message-sent');
@@ -133,7 +145,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@first-user-message="onFirstUserMessage"
 			>
-				<template v-if="showTestScenarios" #empty-state>
+				<template v-if="canShowTestScenarios" #empty-state>
 					<AgentTestScenariosEmptyState
 						:project-id="projectId"
 						:agent-id="agentId"

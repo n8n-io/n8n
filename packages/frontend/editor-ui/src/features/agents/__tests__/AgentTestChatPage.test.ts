@@ -1,8 +1,23 @@
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	MANAGED_CREDENTIAL_TOKEN,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { flushPromises, mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentTestChatPage from '@/features/agents/components/AgentTestChatPage.vue';
+
+function makeLocalConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
+	return {
+		name: 'Support Triage',
+		model: 'openai/gpt-4.1',
+		credential: 'cred-1',
+		instructions: 'Summarize incoming support tickets.',
+		...overrides,
+	};
+}
 
 const { sendMessageFromOutsideMock } = vi.hoisted(() => ({
 	sendMessageFromOutsideMock: vi.fn(),
@@ -72,12 +87,40 @@ describe('AgentTestChatPage', () => {
 	});
 
 	it('renders the suggested scenarios empty state and sends selected scenarios when enabled', async () => {
-		const wrapper = mountPage({ showTestScenarios: true });
+		const wrapper = mountPage({
+			showTestScenarios: true,
+			localConfig: makeLocalConfig(),
+		});
 
 		expect(wrapper.find('[data-testid="scenarios-empty-state-stub"]').exists()).toBe(true);
 
 		await wrapper.get('[data-testid="trigger-select"]').trigger('click');
 		expect(sendMessageFromOutsideMock).toHaveBeenCalledExactlyOnceWith('Run scenario 1');
+	});
+
+	it('renders the suggested scenarios empty state for Gateway credits credentials', () => {
+		const wrapper = mountPage({
+			showTestScenarios: true,
+			localConfig: makeLocalConfig({ credential: AI_GATEWAY_MANAGED_TAG }),
+		});
+
+		expect(wrapper.find('[data-testid="scenarios-empty-state-stub"]').exists()).toBe(true);
+	});
+
+	it.each([
+		['null config', null],
+		['missing instructions', makeLocalConfig({ instructions: '   ' })],
+		['missing model', makeLocalConfig({ model: '' })],
+		['missing credential', makeLocalConfig({ credential: '' })],
+		['legacy managed credential', makeLocalConfig({ credential: MANAGED_CREDENTIAL_TOKEN })],
+	])('falls back to the default empty state when config is not ready (%s)', (_, localConfig) => {
+		const wrapper = mountPage({
+			showTestScenarios: true,
+			localConfig,
+		});
+
+		expect(wrapper.find('[data-testid="default-empty-state-fallback"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="scenarios-empty-state-stub"]').exists()).toBe(false);
 	});
 
 	it('sends an explicit initialPrompt when provided', async () => {

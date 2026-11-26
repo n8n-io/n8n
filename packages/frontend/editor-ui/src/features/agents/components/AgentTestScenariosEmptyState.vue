@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref, watch } from 'vue';
 
@@ -31,6 +32,7 @@ const MAX_SEEN_SCENARIOS = 20;
 const state = ref<ScenarioState>('idle');
 const scenarios = ref<string[]>([]);
 const seenScenarios = ref<string[]>([]);
+const errorMessage = ref<string | null>(null);
 let requestVersion = 0;
 
 function resetState() {
@@ -38,6 +40,7 @@ function resetState() {
 	state.value = 'idle';
 	scenarios.value = [];
 	seenScenarios.value = [];
+	errorMessage.value = null;
 }
 
 async function generate(different: boolean) {
@@ -48,6 +51,7 @@ async function generate(different: boolean) {
 	const targetAgentId = props.agentId;
 	const previousScenarios = different ? [...seenScenarios.value] : [];
 
+	errorMessage.value = null;
 	state.value = 'loading';
 
 	try {
@@ -77,8 +81,13 @@ async function generate(different: boolean) {
 			]),
 		].slice(-MAX_SEEN_SCENARIOS);
 		state.value = 'ready';
-	} catch {
+	} catch (error) {
 		if (currentRequest !== requestVersion) return;
+
+		errorMessage.value =
+			error instanceof ResponseError && error.httpStatusCode === 400 && error.message.trim()
+				? error.message.trim()
+				: null;
 		state.value = 'error';
 	}
 }
@@ -142,7 +151,7 @@ watch(
 				role="status"
 				data-testid="agent-test-scenarios-loading"
 			>
-				<N8nSpinner size="medium" />
+				<N8nSpinner size="medium" aria-hidden="true" />
 				<N8nText step="sm" color="text-light">
 					{{ i18n.baseText('agents.chat.testScenarios.generating') }}
 				</N8nText>
@@ -158,7 +167,7 @@ watch(
 					:class="$style.errorText"
 					data-testid="agent-test-scenarios-error"
 				>
-					{{ i18n.baseText('agents.chat.testScenarios.error') }}
+					{{ errorMessage ?? i18n.baseText('agents.chat.testScenarios.error') }}
 				</N8nText>
 
 				<N8nButton

@@ -1,3 +1,4 @@
+import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,7 +41,7 @@ const stubs = {
 	},
 	N8nSpinner: {
 		props: ['size', 'type'],
-		template: '<span data-testid="n8n-spinner" :data-size="size" />',
+		template: '<span v-bind="$attrs" data-testid="n8n-spinner" :data-size="size" />',
 	},
 	N8nText: {
 		props: ['tag', 'step', 'color'],
@@ -90,7 +91,7 @@ describe('AgentTestScenariosEmptyState', () => {
 
 		expect(beforeGenerate).toHaveBeenCalledTimes(1);
 		expect(wrapper.find('[data-testid="agent-test-scenarios-loading"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="n8n-spinner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="n8n-spinner"]').attributes('aria-hidden')).toBe('true');
 		expect(wrapper.text()).toContain('agents.chat.testScenarios.generating');
 		expect(wrapper.find('[data-testid="agent-test-scenarios-write-btn"]').exists()).toBe(false);
 
@@ -142,7 +143,7 @@ describe('AgentTestScenariosEmptyState', () => {
 
 	it('shows an error message and allows retrying when generation fails', async () => {
 		generateAgentTestScenariosMock
-			.mockRejectedValueOnce(new Error('Model error'))
+			.mockRejectedValueOnce(new ResponseError('Server failure', { httpStatusCode: 500 }))
 			.mockResolvedValueOnce({ scenarios: ['Recovered scenario'] });
 
 		const wrapper = mountEmptyState();
@@ -150,8 +151,35 @@ describe('AgentTestScenariosEmptyState', () => {
 		await wrapper.get('[data-testid="agent-test-scenarios-write-btn"]').trigger('click');
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="agent-test-scenarios-error"]').exists()).toBe(true);
+		expect(wrapper.get('[data-testid="agent-test-scenarios-error"]').text()).toBe(
+			'agents.chat.testScenarios.error',
+		);
 		expect(wrapper.find('[data-testid="agent-test-scenarios-write-btn"]').exists()).toBe(true);
+
+		await wrapper.get('[data-testid="agent-test-scenarios-write-btn"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-test-scenarios-error"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="agent-test-scenario-row"]')).toHaveLength(1);
+	});
+
+	it('surfaces actionable backend messages for 400 errors and clears them on retry', async () => {
+		generateAgentTestScenariosMock
+			.mockRejectedValueOnce(
+				new ResponseError('Add instructions to this agent before generating test scenarios.', {
+					httpStatusCode: 400,
+				}),
+			)
+			.mockResolvedValueOnce({ scenarios: ['Recovered scenario'] });
+
+		const wrapper = mountEmptyState();
+
+		await wrapper.get('[data-testid="agent-test-scenarios-write-btn"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="agent-test-scenarios-error"]').text()).toBe(
+			'Add instructions to this agent before generating test scenarios.',
+		);
 
 		await wrapper.get('[data-testid="agent-test-scenarios-write-btn"]').trigger('click');
 		await flushPromises();
