@@ -20,6 +20,10 @@ A user can use their personal credential in any team project they are a member o
 
 **End-user credentials** allow a workflow to run with the account of the person who triggers it, instead of one fixed account. For example, a workflow that summarizes a Gmail inbox reads the inbox of the user who runs it. An admin creates the credential once, and each user connects their own Gmail account to it. The `dynamic-credentials` module implements end-user credentials.
 
+## Runtime credentials
+
+**Runtime credentials** let a caller bring a token in the request. n8n moves the token into the execution context and gives it to a node as the secret of a stub credential. n8n does not store or verify the token. See [Runtime credentials](runtime-credentials.md).
+
 ## Instance credentials
 
 **Instance credentials** hold secrets for n8n features, not for workflows. For example, an admin assigns instance credentials for the model, sandbox, and web search of the n8n Assistant. A workflow cannot use an instance credential.
