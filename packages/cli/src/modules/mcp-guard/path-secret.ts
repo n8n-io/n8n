@@ -44,3 +44,38 @@ export function fillPathSecret(
 	url.pathname = `${match[1]}${secret}${req.url.pathname.slice(match[0].length)}`;
 	return { ...req, url };
 }
+
+/**
+ * Some APIs take a secret in the query, such as `access_token=...` (Facebook Graph). A vendor profile
+ * names the parameters. They are removed before anything else sees the request, and `fillQuerySecrets`
+ * puts them back for a real read.
+ */
+export function redactQuerySecrets(
+	url: URL,
+	names: readonly string[] | undefined,
+): { url: URL; secrets: Record<string, string> } {
+	const secrets: Record<string, string> = {};
+	if (!names || names.length === 0 || !names.some((name) => url.searchParams.has(name))) {
+		return { url, secrets };
+	}
+	const redacted = new URL(url.href);
+	for (const name of names) {
+		const value = redacted.searchParams.get(name);
+		if (value === null) continue;
+		secrets[name] = value;
+		redacted.searchParams.delete(name);
+	}
+	return { url: redacted, secrets };
+}
+
+/** Puts the removed query secrets back, just before a request goes to the real service. */
+export function fillQuerySecrets(
+	req: CapturedRequest,
+	secrets: Readonly<Record<string, string>> | undefined,
+): CapturedRequest {
+	const entries = Object.entries(secrets ?? {});
+	if (entries.length === 0) return req;
+	const url = new URL(req.url.href);
+	for (const [name, value] of entries) url.searchParams.set(name, value);
+	return { ...req, url };
+}

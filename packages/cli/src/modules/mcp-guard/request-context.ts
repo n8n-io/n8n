@@ -8,6 +8,8 @@ export interface RequestContext {
 	origin: string;
 	// The secret that the profile took out of the path of this request.
 	pathSecret?: string;
+	// The secrets that the profile took out of the query of this request.
+	querySecrets?: Record<string, string>;
 	// Aborts when the guarded call takes too long. A model call of the hydration stops with it.
 	signal?: AbortSignal;
 }

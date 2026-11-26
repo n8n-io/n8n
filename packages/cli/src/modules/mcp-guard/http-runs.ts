@@ -1,3 +1,5 @@
+import { UnexpectedError } from '@n8n/errors';
+
 import type { GymAdmin } from './gym-admin';
 import { HttpGuardRouter } from './http-router';
 import type { HttpVendorProfile } from './http-profiles';
@@ -6,7 +8,7 @@ import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { sendToNetwork, type CapturedRequest } from './network';
 import type { TenantState } from './shared-tenants';
-import { fillPathSecret } from './path-secret';
+import { fillPathSecret, fillQuerySecrets } from './path-secret';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
 import { currentRequestContext, withRequestSignal } from './request-context';
@@ -34,6 +36,19 @@ export interface HttpRunConfig {
 
 // One request to the gym or to the real service.
 export const REQUEST_TIMEOUT_MS = 60_000;
+
+// A value of a nested object. A dot separates the keys.
+function valueAt(value: unknown, field: string): unknown {
+	return field
+		.split('.')
+		.reduce<unknown>(
+			(current, key) =>
+				typeof current === 'object' && current !== null
+					? (current as Record<string, unknown>)[key]
+					: undefined,
+			value,
+		);
+}
 
 const IDLE_MS = 6 * 60 * 60 * 1000;
 
@@ -79,12 +94,25 @@ export class HttpRunRegistry {
 		try {
 			// The gym issues a credential only for a tenant with an account. Seed one placeholder account.
 			await admin.seed(tenant, profile.placeholderSeed);
-			const token = await admin.issueMcpCredential(
-				tenant,
-				profile.gymService ?? profile.name,
-				profile.credentialKind,
-				profile.credentialField,
-			);
+			const service = profile.gymService ?? profile.name;
+			// A profile with `gymFacts` needs the whole credential, not only the token.
+			let credentialData: Record<string, unknown> | undefined;
+			let token: string;
+			if (profile.gymFacts) {
+				credentialData = await admin.issueCredentialData(tenant, service, profile.credentialKind);
+				const found = valueAt(credentialData, profile.credentialField);
+				if (typeof found !== 'string') {
+					throw new UnexpectedError(`gym credential has no ${profile.credentialField}`);
+				}
+				token = found;
+			} else {
+				token = await admin.issueMcpCredential(
+					tenant,
+					service,
+					profile.credentialKind,
+					profile.credentialField,
+				);
+			}
 
 			// The real reads use the credential of the request that is being answered.
 			const sendReal =
@@ -96,7 +124,10 @@ export class HttpRunRegistry {
 				// The path has a placeholder where the API wants a secret. Fill it only on the way out.
 				send: async (req) =>
 					await sendReal(
-						fillPathSecret(req, profile.pathSecret, currentRequestContext().pathSecret),
+						fillQuerySecrets(
+							fillPathSecret(req, profile.pathSecret, currentRequestContext().pathSecret),
+							currentRequestContext().querySecrets,
+						),
 					),
 				headers: () => {
 					const { authorization } = currentRequestContext();
@@ -135,12 +166,32 @@ export class HttpRunRegistry {
 				opaqueIds: profile.opaqueIds,
 				seeded: state?.seeded,
 			});
+			let facts: Promise<Record<string, string>> | undefined;
+			const gymFacts =
+				profile.gymFacts && credentialData
+					? async () => {
+							// The gym ids do not change in a tenant, so ask once. A failed ask is asked again.
+							facts ??= profile.gymFacts!(credentialData, async (path) => {
+								const res = await gym.callTool('read_get_object', { method: 'GET', path });
+								// An error body is JSON too. Throw, so the failed ask is not kept and asked again.
+								if (res.isError) throw new UnexpectedError(`gym could not answer ${path}`);
+								return JSON.parse(
+									res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join(''),
+								);
+							});
+							return await facts.catch((error: unknown) => {
+								facts = undefined;
+								throw error;
+							});
+						}
+					: undefined;
 			const router = new HttpGuardRouter({
 				upstream,
 				gym,
 				hydrator,
 				profile,
 				gymIds: state?.gymIds,
+				gymFacts,
 			});
 			const run: HttpRun = { tenant, epoch, lastUsed: Date.now(), router };
 			this.runs.set(runId, run);

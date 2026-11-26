@@ -50,6 +50,21 @@ export class GymAdmin {
 		}
 	}
 
+	// Issues a credential for one service of the gym and returns its data, such as the token and the ids of the tenant.
+	async issueCredentialData(
+		tenant: string,
+		service: string,
+		kind: string,
+	): Promise<Record<string, unknown>> {
+		const res = await this.call('POST', `/_sim/v1/tenants/${tenant}/credentials`, {
+			credential: kind,
+			service,
+		});
+		const data = dig(res, ['credential', 'data']);
+		if (!isRecord(data)) throw new UnexpectedError('gym credential has no data');
+		return data;
+	}
+
 	// Issues a bearer for the gym MCP of one service. The field names where the bearer sits. A dot separates nested keys.
 	async issueMcpCredential(
 		tenant: string,
@@ -57,11 +72,8 @@ export class GymAdmin {
 		kind: string,
 		field: string,
 	): Promise<string> {
-		const res = await this.call('POST', `/_sim/v1/tenants/${tenant}/credentials`, {
-			credential: kind,
-			service,
-		});
-		const token = dig(res, ['credential', 'data', ...field.split('.')]);
+		const data = await this.issueCredentialData(tenant, service, kind);
+		const token = dig(data, field.split('.'));
 		if (typeof token !== 'string') throw new UnexpectedError(`gym credential has no ${field}`);
 		return token;
 	}

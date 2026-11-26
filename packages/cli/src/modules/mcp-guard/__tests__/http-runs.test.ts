@@ -1,4 +1,8 @@
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+
 import { HttpRunRegistry } from '../http-runs';
+import { WHATSAPP_PROFILE } from '../whatsapp-profile';
 import { GMAIL_PROFILE } from '../http-profiles';
 import type { GymAdmin } from '../gym-admin';
 import type { HydrationModel } from '../hydration-llm';
@@ -215,5 +219,64 @@ describe('HttpRunRegistry', () => {
 		expect(b.tenant).toBe('guard-agent-a-chat-1');
 		expect(admin.seed).toHaveBeenCalledTimes(2);
 		expect(admin.issueMcpCredential).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('the gym facts of a run', () => {
+	it('asks the gym again after an error answer, and keeps the answer once it is good', async () => {
+		let phoneAsks = 0;
+		const gym = http.createServer((req, res) => {
+			res.setHeader('content-type', 'application/json');
+			if (req.url?.includes('/phone_numbers')) {
+				phoneAsks++;
+				if (phoneAsks === 1) {
+					res.statusCode = 500;
+					res.end('{"error":"boom"}');
+					return;
+				}
+				res.end('{"data":[{"id":"5550001111"}]}');
+				return;
+			}
+			res.end('{"messages":[{"id":"wamid.1"}]}');
+		});
+		await new Promise<void>((resolve) => gym.listen(0, '127.0.0.1', resolve));
+		const gymUrl = `http://127.0.0.1:${(gym.address() as AddressInfo).port}`;
+		const admin = {
+			tenantEpoch: vi.fn(() => 0),
+			forgetTenant: vi.fn(),
+			createTenant: vi.fn(async () => {}),
+			seed: vi.fn(async () => ({})),
+			issueCredentialData: vi.fn(async () => ({
+				accessToken: 'tenant-token',
+				businessAccountId: '6660002222',
+			})),
+			tenantExists: vi.fn(async () => true),
+			deleteTenant: vi.fn(async () => {}),
+		};
+		const registry = new HttpRunRegistry({
+			profile: WHATSAPP_PROFILE,
+			vendor: loadVendorKnowledge('whatsapp'),
+			admin: admin as unknown as GymAdmin,
+			gymUrl,
+		});
+		const run = await registry.getOrCreate('agent-chat', model);
+		const send = async () =>
+			await run.router.handle({
+				method: 'POST',
+				url: new URL('https://graph.facebook.com/v19.0/109876543210987/messages'),
+				headers: {},
+				body: Buffer.from('{"messaging_product":"whatsapp"}'),
+			});
+
+		const first = await send();
+		const second = await send();
+		const third = await send();
+		await new Promise((resolve) => gym.close(resolve));
+
+		expect(first.status).toBe(502);
+		expect(second.status).toBe(200);
+		expect(third.status).toBe(200);
+		// The error answer was not kept. The good answer was kept.
+		expect(phoneAsks).toBe(2);
 	});
 });

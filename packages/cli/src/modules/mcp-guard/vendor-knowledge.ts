@@ -105,7 +105,8 @@ export function matchesVendor(vendor: VendorKnowledge, host: string, pathname: s
 }
 
 // The vendors that have a file. Add a name here when a file is added.
-const VENDOR_NAMES = ['gmail'] as const;
+// WhatsApp comes before Facebook Graph: both use graph.facebook.com, and Graph takes the rest of the paths.
+const VENDOR_NAMES = ['gmail', 'whatsapp', 'facebookgraph'] as const;
 
 export function vendorForRequest(host: string, pathname: string): VendorKnowledge | undefined {
 	return VENDOR_NAMES.map(loadVendorKnowledge).find((vendor) =>
