@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { UrlService } from '@n8n/backend-services';
 import {
 	JwkSchema,
 	migrateToLatest,
@@ -110,6 +111,7 @@ function ok<T>(result: Result<T>): T {
 
 let store: MockProxy<TrustedSourceStore>;
 let localServer: MockProxy<LocalAuthorizationServer>;
+let urlService: MockProxy<UrlService>;
 let driver: Oauth2BearerDriver;
 
 beforeAll(async () => {
@@ -130,7 +132,8 @@ beforeEach(() => {
 	localServer.isAccessTokenActive.mockResolvedValue(true);
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
-	driver = new Oauth2BearerDriver(store, localServer, logger);
+	urlService = mock<UrlService>();
+	driver = new Oauth2BearerDriver(store, localServer, urlService, logger);
 });
 
 describe('Oauth2BearerDriver', () => {
@@ -387,6 +390,19 @@ describe('Oauth2BearerDriver', () => {
 			expect(advertised.authorizationServers).toEqual([ISSUER]);
 			expect(advertised.challenge).toBe(
 				'Bearer resource_metadata="https://n8n.example/.well-known/oauth-protected-resource/mcp"',
+			);
+		});
+
+		it('keeps the public base path before the well-known segment', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example/somepath');
+			const url = 'https://n8n.example/somepath/mcp-server/http';
+			const advertised = driver.advertise(
+				{ surface: SURFACE, resource: { url, acceptedAudiences: [url] } },
+				[source()],
+			);
+
+			expect(advertised.challenge).toBe(
+				'Bearer resource_metadata="https://n8n.example/somepath/.well-known/oauth-protected-resource/mcp-server/http"',
 			);
 		});
 

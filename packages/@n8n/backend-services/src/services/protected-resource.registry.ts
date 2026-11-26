@@ -3,6 +3,8 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ProtectedResource } from '@n8n/inbound-auth';
 
+import { UrlService } from './url.service';
+
 export type { ProtectedResource };
 
 /**
@@ -68,7 +70,10 @@ export class ProtectedResourceRegistry {
 	private readonly resources = new Map<string, ProtectedResource>();
 	private readonly resolvers = new Set<ProtectedResourceResolver>();
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly urlService?: UrlService,
+	) {}
 
 	register(resource: ProtectedResource): void {
 		this.resources.set(resource.id, resource);
@@ -111,10 +116,12 @@ export class ProtectedResourceRegistry {
 		// a match into a miss; only resolvers see the query.
 		const [rawPath, search] = splitQuery(pathname);
 		const normalized = trimTrailingSlash(rawPath);
+		const publicPath = this.getPublicPath();
 		for (const resource of this.resources.values()) {
 			for (const url of getResourceUrls(resource)) {
 				try {
-					if (trimTrailingSlash(new URL(url).pathname) === normalized) {
+					const paths = this.resourcePaths(url, publicPath).map(trimTrailingSlash);
+					if (paths.includes(normalized)) {
 						return resource;
 					}
 				} catch {
@@ -132,6 +139,37 @@ export class ProtectedResourceRegistry {
 			}
 		}
 		return undefined;
+	}
+
+	/**
+	 * The instance's public base path, from the URL clients reach it at. A reverse
+	 * proxy strips this path from requests, so a well-known discovery request
+	 * carries the path without it.
+	 */
+	private getPublicPath(): string {
+		try {
+			const baseUrl = this.urlService?.getInstanceBaseUrl();
+			if (!baseUrl) return '';
+			const { pathname } = new URL(baseUrl);
+			return pathname === '/' ? '' : trimTrailingSlash(pathname);
+		} catch {
+			return '';
+		}
+	}
+
+	/** The resource path as registered, plus the version a proxy-stripped request carries. */
+	private resourcePaths(resourceUrl: string, publicPath: string): string[] {
+		const { pathname } = new URL(resourceUrl);
+		if (publicPath === '') {
+			return [pathname];
+		}
+		if (pathname === publicPath) {
+			return [pathname, '/'];
+		}
+		if (pathname.startsWith(`${publicPath}/`)) {
+			return [pathname, pathname.slice(publicPath.length)];
+		}
+		return [pathname];
 	}
 
 	/**

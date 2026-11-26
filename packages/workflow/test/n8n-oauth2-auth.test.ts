@@ -16,6 +16,7 @@ const buildContext = (opts: {
 	otherHeaders?: Record<string, string>;
 	validation?: N8nOAuth2ValidationResult;
 	webhookUrl?: string | undefined;
+	instanceBaseUrl?: string;
 	method?: string;
 	originalUrl?: string;
 	query?: Record<string, string>;
@@ -32,6 +33,9 @@ const buildContext = (opts: {
 	context.getWebhookResourceUrl.mockReturnValue(
 		'webhookUrl' in opts ? opts.webhookUrl : WEBHOOK_URL,
 	);
+	if (opts.instanceBaseUrl !== undefined) {
+		context.getInstanceBaseUrl.mockReturnValue(opts.instanceBaseUrl);
+	}
 	context.getResponseObject.mockReturnValue(response);
 	const request = {
 		method: opts.method ?? 'GET',
@@ -94,6 +98,22 @@ describe('n8nOAuth2Auth', () => {
 		expect(response.writeHead).toHaveBeenCalledWith(401, {
 			'WWW-Authenticate': expect.stringContaining(
 				'/.well-known/oauth-protected-resource/webhook/protected-path?method=GET',
+			),
+		});
+	});
+
+	it('keeps the instance public path before the well-known segment', async () => {
+		const webhookUrl = 'https://n8n.example.com/somepath/webhook/protected-path';
+		const { context, response } = buildContext({
+			webhookUrl,
+			instanceBaseUrl: 'https://n8n.example.com/somepath',
+		});
+
+		await n8nOAuth2Auth(context, { realm: 'n8n Webhook' });
+
+		expect(response.writeHead).toHaveBeenCalledWith(401, {
+			'WWW-Authenticate': expect.stringContaining(
+				'https://n8n.example.com/somepath/.well-known/oauth-protected-resource/webhook/protected-path',
 			),
 		});
 	});

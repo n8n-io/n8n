@@ -3,6 +3,12 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ProtectedResource, ProtectedResourceResolver } from '../protected-resource.registry';
 import { ProtectedResourceRegistry } from '../protected-resource.registry';
+import type { UrlService } from '../url.service';
+
+const makeRegistry = (
+	logger = mock<Logger>(),
+	urlService = mock<UrlService>(),
+): ProtectedResourceRegistry => new ProtectedResourceRegistry(logger, urlService);
 
 const resourceA: ProtectedResource = {
 	id: 'instance-mcp',
@@ -27,7 +33,7 @@ describe('ProtectedResourceRegistry', () => {
 	let registry: ProtectedResourceRegistry;
 
 	beforeEach(() => {
-		registry = new ProtectedResourceRegistry(mock<Logger>());
+		registry = makeRegistry();
 		registry.register(resourceA);
 		registry.register(resourceB);
 	});
@@ -65,7 +71,7 @@ describe('ProtectedResourceRegistry', () => {
 				authorize: async () => true,
 				scopes: [],
 			};
-			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const multiRegistry = makeRegistry();
 			multiRegistry.register(multiUrlResource);
 
 			expect(
@@ -101,6 +107,22 @@ describe('ProtectedResourceRegistry', () => {
 			expect(await registry.getByResourcePath('/unknown')).toBeUndefined();
 		});
 
+		it('should resolve a static resource with or without the public base path', async () => {
+			const urlService = mock<UrlService>();
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com/somepath');
+			const prefixedRegistry = makeRegistry(mock<Logger>(), urlService);
+			const prefixedResource: ProtectedResource = {
+				...resourceA,
+				getResourceUrl: () => 'https://n8n.example.com/somepath/mcp-server/http',
+			};
+			prefixedRegistry.register(prefixedResource);
+
+			expect(await prefixedRegistry.getByResourcePath('/mcp-server/http')).toBe(prefixedResource);
+			expect(await prefixedRegistry.getByResourcePath('/somepath/mcp-server/http')).toBe(
+				prefixedResource,
+			);
+		});
+
 		it('should match a static resource on the path, ignoring a query component', async () => {
 			// a resource that doesn't use a query selector must not be missed because of one
 			expect(await registry.getByResourcePath('/mcp-server/http?method=GET')).toBe(resourceA);
@@ -112,7 +134,7 @@ describe('ProtectedResourceRegistry', () => {
 		});
 
 		it('should return undefined as default when no resource is marked default', () => {
-			const emptyDefault = new ProtectedResourceRegistry(mock<Logger>());
+			const emptyDefault = makeRegistry();
 			emptyDefault.register(resourceB);
 			expect(emptyDefault.getDefaultResource()).toBeUndefined();
 		});
@@ -153,7 +175,7 @@ describe('ProtectedResourceRegistry', () => {
 
 	describe('resolvers', () => {
 		it('should hand resolvers the path and the query component separately', async () => {
-			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const resolverRegistry = makeRegistry();
 			const resolver = mock<ProtectedResourceResolver>({ id: 'webhook', scopes: [] });
 			resolver.resolveByPath.mockResolvedValue(undefined);
 			resolverRegistry.registerResolver(resolver);
@@ -164,7 +186,7 @@ describe('ProtectedResourceRegistry', () => {
 		});
 
 		it('should pass an empty query when the path carries none', async () => {
-			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const resolverRegistry = makeRegistry();
 			const resolver = mock<ProtectedResourceResolver>({ id: 'webhook', scopes: [] });
 			resolver.resolveByPath.mockResolvedValue(undefined);
 			resolverRegistry.registerResolver(resolver);
@@ -178,7 +200,7 @@ describe('ProtectedResourceRegistry', () => {
 	describe('resolver failures', () => {
 		it('should treat a throwing resolver as a non-match and log a warning', async () => {
 			const logger = mock<Logger>();
-			const failingRegistry = new ProtectedResourceRegistry(logger);
+			const failingRegistry = makeRegistry(logger);
 			const resolver = mock<ProtectedResourceResolver>({ id: 'boom', scopes: [] });
 			resolver.resolveByUrl.mockRejectedValue(new Error('backing store unavailable'));
 			resolver.resolveByPath.mockRejectedValue(new Error('backing store unavailable'));

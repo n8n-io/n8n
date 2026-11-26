@@ -13,6 +13,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService, PostHogClient } from '@n8n/backend-services';
+import { buildProtectedResourceMetadataUrl } from '@n8n/utils/build-protected-resource-metadata-url';
 import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 
 import {
@@ -163,8 +164,10 @@ export class McpProtectedResource implements ProtectedResource {
 	 * discover the metadata directly instead of guessing the well-known path.
 	 */
 	getProtectedResourceMetadataUrl(): string {
-		const url = new URL(this.getResourceUrl());
-		return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
+		return buildProtectedResourceMetadataUrl(
+			this.getResourceUrl(),
+			this.urlService.getInstanceBaseUrl(),
+		);
 	}
 
 	/**
