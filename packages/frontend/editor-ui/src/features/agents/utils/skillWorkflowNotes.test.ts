@@ -4,22 +4,28 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, ProjectSharingData } from '@/Interface';
 import { getSkillWorkflowNotes, type SkillWorkflowNoteData } from './skillWorkflowNotes';
 
 const node = (type: string, disabled = false) => ({ type, name: type, disabled }) as INodeUi;
 
+const project = (id: string) => ({ id }) as ProjectSharingData;
+
 const workflow = (
 	nodes: INodeUi[],
-	{ published = true, availableInMCP = true } = {},
+	{ published = true, availableInMCP = true, archived = false, sharedWith = ['p1'] } = {},
 ): SkillWorkflowNoteData => ({
 	nodes,
 	activeVersionId: published ? 'v1' : null,
 	settings: { executionOrder: 'v1', availableInMCP },
+	isArchived: archived,
+	homeProject: project('home'),
+	sharedWithProjects: sharedWith.map(project),
 });
 
 const PROJECT_SKILL = { instanceSkill: false, availableToMCP: false };
 const MCP_SKILL = { instanceSkill: false, availableToMCP: true };
+const HUB_PROJECT_SKILL = { ...PROJECT_SKILL, projectId: 'p1' };
 
 describe('getSkillWorkflowNotes', () => {
 	it.each([
@@ -83,6 +89,31 @@ describe('getSkillWorkflowNotes', () => {
 			'a workflow that is not available in MCP, in a skill that MCP does not see',
 			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)], { availableInMCP: false }),
 			PROJECT_SKILL,
+			[],
+		],
+		['a workflow that the request does not return', null, MCP_SKILL, ['notFound']],
+		[
+			'an archived workflow, with only the restore note',
+			workflow([node(WEBHOOK_NODE_TYPE)], { published: false, archived: true }),
+			MCP_SKILL,
+			['archived'],
+		],
+		[
+			'a workflow outside the project of the skill',
+			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)], { sharedWith: [] }),
+			HUB_PROJECT_SKILL,
+			['outsideProject'],
+		],
+		[
+			'a workflow shared with the project of the skill',
+			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)]),
+			HUB_PROJECT_SKILL,
+			[],
+		],
+		[
+			'a workflow whose home project is the project of the skill',
+			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)], { sharedWith: [] }),
+			{ ...PROJECT_SKILL, projectId: 'home' },
 			[],
 		],
 	])('%s', (_case, data, options, expected) => {

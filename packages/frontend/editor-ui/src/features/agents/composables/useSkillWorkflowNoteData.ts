@@ -8,8 +8,22 @@ const MAX_IDS_PER_REQUEST = 50;
 
 export function useSkillWorkflowNoteData(workflowIds: Ref<string[]>, enabled: Ref<boolean>) {
 	const workflowsListStore = useWorkflowsListStore();
-	const noteData = ref(new Map<string, SkillWorkflowNoteData>());
+	const noteData = ref(new Map<string, SkillWorkflowNoteData | null>());
 	let latestRequest = 0;
+
+	async function loadPage(page: string[]): Promise<Array<[string, SkillWorkflowNoteData | null]>> {
+		try {
+			const workflows = await workflowsListStore.searchWorkflows({
+				ids: page,
+				select: ['id', 'nodes', 'activeVersionId', 'settings', 'isArchived', 'ownedBy'],
+				options: { take: page.length, includeScopes: false },
+			});
+			const found = new Map(workflows.map((workflow) => [workflow.id, workflow]));
+			return page.map((id) => [id, found.get(id) ?? null]);
+		} catch {
+			return [];
+		}
+	}
 
 	async function load(ids: string[]) {
 		const request = ++latestRequest;
@@ -17,20 +31,9 @@ export function useSkillWorkflowNoteData(workflowIds: Ref<string[]>, enabled: Re
 			noteData.value = new Map();
 			return;
 		}
-		const pages = await Promise.all(
-			chunk(ids, MAX_IDS_PER_REQUEST).map(
-				async (page) =>
-					await workflowsListStore
-						.searchWorkflows({
-							ids: page,
-							select: ['id', 'nodes', 'activeVersionId', 'settings'],
-							options: { take: page.length, includeScopes: false },
-						})
-						.catch(() => []),
-			),
-		);
+		const pages = await Promise.all(chunk(ids, MAX_IDS_PER_REQUEST).map(loadPage));
 		if (request !== latestRequest) return;
-		noteData.value = new Map(pages.flat().map((workflow) => [workflow.id, workflow]));
+		noteData.value = new Map(pages.flat());
 	}
 
 	watch(

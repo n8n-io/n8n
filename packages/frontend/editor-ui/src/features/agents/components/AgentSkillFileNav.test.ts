@@ -68,12 +68,14 @@ describe('AgentSkillFileNav', () => {
 				nodes: [{ type: SCHEDULE_TRIGGER_NODE_TYPE, name: 'Schedule' }],
 				activeVersionId: null,
 				settings: {},
+				homeProject: { id: 'p1' },
 			},
 			{
 				id: 'wf2',
 				nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
 				activeVersionId: 'v1',
 				settings: {},
+				homeProject: { id: 'p1' },
 			},
 		]);
 		const { container } = renderComponent({
@@ -88,7 +90,7 @@ describe('AgentSkillFileNav', () => {
 		expect(searchWorkflows).toHaveBeenCalledTimes(1);
 		expect(searchWorkflows).toHaveBeenCalledWith({
 			ids: ['wf1', 'wf2'],
-			select: ['id', 'nodes', 'activeVersionId', 'settings'],
+			select: ['id', 'nodes', 'activeVersionId', 'settings', 'isArchived', 'ownedBy'],
 			options: { take: 2, includeScopes: false },
 		});
 		const [weeklyRow, archiveRow] = container.querySelectorAll(
@@ -96,7 +98,7 @@ describe('AgentSkillFileNav', () => {
 		);
 		expect(byTestId(weeklyRow, 'agent-skill-workflow-notes')).toHaveAttribute(
 			'aria-label',
-			"To use this workflow in agents, add the 'When Executed by Another Workflow' trigger. To use this workflow in a published agent, publish the workflow.",
+			"To use this workflow in agents, add an 'Execute Workflow Trigger' (When Executed by Another Workflow). To use this workflow in a published agent, publish the workflow.",
 		);
 		expect(byTestId(archiveRow, 'agent-skill-workflow-notes')).toBeNull();
 		expect(
@@ -128,12 +130,12 @@ describe('AgentSkillFileNav', () => {
 		await waitFor(() =>
 			expect(byTestId(container, 'agent-skill-workflow-warnings')).toHaveAttribute(
 				'aria-label',
-				"To use this workflow in agents, add the 'When Executed by Another Workflow' trigger. To use this workflow in a published agent, publish the workflow.",
+				"To use this workflow in agents, add an 'Execute Workflow Trigger' (When Executed by Another Workflow). To use this workflow in a published agent, publish the workflow.",
 			),
 		);
 		expect(byTestId(container, 'agent-skill-workflow-notes')).toHaveAttribute(
 			'aria-label',
-			"Agents can use this workflow only in its own project. To use it in other projects, share it with them and set 'This workflow can be called by' to 'Any workflow'.",
+			"Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
 		);
 	});
 
@@ -172,7 +174,7 @@ describe('AgentSkillFileNav', () => {
 		await waitFor(() =>
 			expect(byTestId(container, 'agent-skill-workflow-notes')).toHaveAttribute(
 				'aria-label',
-				"To run this workflow from MCP, add a Schedule, Webhook, Form, or Chat trigger. To run this workflow from MCP, turn on 'Available in MCP' in the workflow settings. Agents can use this workflow only in its own project. To use it in other projects, share it with them and set 'This workflow can be called by' to 'Any workflow'.",
+				"To run this workflow from MCP, add a Schedule, Webhook, Form, or Chat trigger. To run this workflow from MCP, turn on 'Available in MCP' in the workflow settings. Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
 			),
 		);
 	});
@@ -202,6 +204,77 @@ describe('AgentSkillFileNav', () => {
 			),
 		);
 		expect(searchWorkflows.mock.calls.map(([{ ids: page }]) => page.length)).toEqual([50, 1]);
+	});
+
+	it('warns about a workflow that is archived or that the request does not return, in every context', async () => {
+		flag.enabled = true;
+		searchWorkflows.mockResolvedValue([
+			{ id: 'wf1', nodes: [], activeVersionId: null, settings: {}, isArchived: true },
+		]);
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' },
+		});
+
+		await waitFor(() =>
+			expect(
+				container.querySelectorAll('[data-testid="agent-skill-workflow-warnings"]'),
+			).toHaveLength(2),
+		);
+		const [archivedRow, missingRow] = container.querySelectorAll(
+			'[data-testid="agent-skill-workflow-item"]',
+		);
+		expect(byTestId(archivedRow, 'agent-skill-workflow-warnings')).toHaveAttribute(
+			'aria-label',
+			'This workflow is archived. Restore this workflow, then publish it.',
+		);
+		expect(byTestId(missingRow, 'agent-skill-workflow-warnings')).toHaveAttribute(
+			'aria-label',
+			"This workflow was deleted or you can't access it. Remove the mention or pick a different workflow.",
+		);
+		expect(container.querySelector('[data-testid="agent-skill-workflow-notes"]')).toBeNull();
+	});
+
+	it('notes a workflow outside the project of a project skill in the skills hub only', async () => {
+		flag.enabled = true;
+		const startNode = { type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' };
+		searchWorkflows.mockResolvedValue([
+			{
+				id: 'wf1',
+				nodes: [startNode],
+				activeVersionId: 'v1',
+				settings: {},
+				homeProject: { id: 'p2' },
+				sharedWithProjects: [],
+			},
+			{
+				id: 'wf2',
+				nodes: [startNode],
+				activeVersionId: 'v1',
+				settings: {},
+				homeProject: { id: 'p2' },
+				sharedWithProjects: [{ id: 'p1' }],
+			},
+		]);
+		const props = { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', mentionProjectId: 'p1' };
+		const { container } = renderComponent({ props });
+
+		await waitFor(() =>
+			expect(container.querySelectorAll('[data-testid="agent-skill-workflow-notes"]')).toHaveLength(
+				1,
+			),
+		);
+		const [outsideRow, sharedRow] = container.querySelectorAll(
+			'[data-testid="agent-skill-workflow-item"]',
+		);
+		expect(byTestId(outsideRow, 'agent-skill-workflow-notes')).toHaveAttribute(
+			'aria-label',
+			"Agents in this skill's project can't use this workflow. Share it with this project and set 'This workflow can be called by' to 'Any workflow'.",
+		);
+		expect(byTestId(sharedRow, 'agent-skill-workflow-notes')).toBeNull();
+
+		const agent = renderComponent({ props: { ...props, agentContext: true } });
+		await waitFor(() => expect(searchWorkflows).toHaveBeenCalledTimes(2));
+		expect(agent.container.querySelector('[data-testid="agent-skill-workflow-notes"]')).toBeNull();
 	});
 
 	it('sends no request for notes while the flag is off', () => {

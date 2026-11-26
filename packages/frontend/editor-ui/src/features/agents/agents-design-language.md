@@ -290,11 +290,14 @@ only once, as the direct tool. The skill chip then names it in an
 `Already attached as a tool` tooltip.
 
 In the skill editor, the Workflows section of the file list shows a note icon
-at the end of a mentioned workflow when a caller cannot run it, or when the
-skill is an instance skill. The icon opens a tooltip on hover and on keyboard
-focus, with one line for each note. Notes are information, not errors: they
-never block a save. When an agent opens the skill, the notes that block that
-agent (no supported trigger, not published) show behind a warning icon instead.
+at the end of a mentioned workflow when a caller cannot run it, when the
+workflow is outside the project of a project skill, or when the skill is an
+instance skill. The icon opens a tooltip on hover and on keyboard focus, with
+one line for each note. Notes are information, not errors: they never block a
+save. A workflow that is archived, deleted, or that the user cannot read shows a
+warning icon instead, with one note. The not found note does not say whether
+the workflow exists. When an agent opens the skill, the notes that block that
+agent (no supported trigger, not published) also show behind the warning icon.
 
 ## Modal patterns
 
