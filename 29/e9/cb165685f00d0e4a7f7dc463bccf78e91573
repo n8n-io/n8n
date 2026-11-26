@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_dfe3f914c8bb46::t_848f8eda8ab668 57-58,74-75,123-124,508,514-515,518,523,559
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_dfe3f914c8bb46::t_848f8eda8ab668 2,11-13,29,39,60,76
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_848f8eda8ab668 22,92,226,228-230,236-238,336,472,515
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_848f8eda8ab668 368-370
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_dfe3f914c8bb46::t_7e0d258231acd7 74,93-99,113,519-543
+  s_dfe3f914c8bb46::t_e6192b3760b86d 544-545
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_dfe3f914c8bb46::t_7e0d258231acd7 269-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29e9cb165685f00d0e4a7f7dc463bccf78e91573",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

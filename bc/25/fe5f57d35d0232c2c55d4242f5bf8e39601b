@@ -1,0 +1,22 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_23d60aac2fe72e 10319-10320
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentRegistryMcpConfigForm.removeConfirmation.test.ts
+  h_23d60aac2fe72e 55,179,191-195
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentRegistryMcpConfigForm.test.ts
+  h_23d60aac2fe72e 242-243,249-250
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  h_23d60aac2fe72e 10,70
+packages/frontend/editor-ui/src/features/agents/components/AgentRegistryMcpConfigForm.vue
+  h_23d60aac2fe72e 131-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc25fe5f57d35d0232c2c55d4242f5bf8e39601b",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

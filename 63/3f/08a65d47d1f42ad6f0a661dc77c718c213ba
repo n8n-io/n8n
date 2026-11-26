@@ -1,0 +1,14 @@
+packages/quality/testing/playwright/pages/NodeDetailsViewPage.ts
+  h_52a137d26d774c 614,619,623-634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "633f08a65d47d1f42ad6f0a661dc77c718c213ba",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

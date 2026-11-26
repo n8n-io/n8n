@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  h_8a472ace01776f 21,77-78,141
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  h_8a472ace01776f 58-63,270-285,317,321-338
+packages/cli/src/modules/instance-ai/eval/__tests__/web-search-mock.test.ts
+  h_8a472ace01776f 105-148
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  h_8a472ace01776f 19,23-47,82-84,87,93,97,103-110,120-128,165,198-201,255,259-274,305,320
+packages/cli/src/modules/instance-ai/eval/mock-utils.ts
+  h_8a472ace01776f 18-19,27,30,32,36
+packages/cli/src/modules/instance-ai/eval/web-search-mock.ts
+  h_8a472ace01776f 2,33-37,66-71,93-96,101-105,138,140-144,183-193,210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c8cd327fc6d19300956fdf890d98c67904e2271",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
