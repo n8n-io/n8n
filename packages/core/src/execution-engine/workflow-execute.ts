@@ -226,6 +226,7 @@ export class WorkflowExecute {
 		];
 
 		this.runExecutionData = createRunExecutionData({
+			binaryDataAccess: this.runExecutionData.binaryDataAccess,
 			startData: {
 				destinationNode,
 				runNodeFilter,
@@ -350,6 +351,7 @@ export class WorkflowExecute {
 
 		this.status = 'running';
 		this.runExecutionData = createRunExecutionData({
+			binaryDataAccess: this.runExecutionData.binaryDataAccess,
 			startData: {
 				destinationNode,
 				originalDestinationNode: originalDestination,
