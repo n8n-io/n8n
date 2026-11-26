@@ -48,12 +48,17 @@ const visibleLabel = computed(() => countText('labelWithoutCount'));
 		</template>
 		<span :class="$style.content" aria-hidden="true">
 			<span data-test-id="engine-v2-compatibility-button-label">{{ visibleLabel }}</span>
+			<!-- The leading slot takes the count without the badge's text wrapper, whose line
+			height puts a digit above the center. -->
 			<N8nBadge
 				:variant="badgeVariant"
-				size="xsmall"
+				size="xxsmall"
+				:class="$style.count"
 				data-test-id="engine-v2-compatibility-button-count"
 			>
-				{{ count }}
+				<template #leading>
+					<span :class="$style.countText">{{ count }}</span>
+				</template>
 			</N8nBadge>
 		</span>
 	</N8nButton>
@@ -69,5 +74,21 @@ const visibleLabel = computed(() => countText('labelWithoutCount'));
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+// A square for one digit, wider for more. Scoped under the button, so it wins over the
+// badge's own size class.
+.button .count {
+	--n8n-badge--padding-inline-start: var(--spacing--4xs);
+	--n8n-badge--padding-inline-end: var(--spacing--4xs);
+
+	justify-content: center;
+	min-width: var(--height--2xs);
+}
+
+.countText {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	line-height: 1;
 }
 </style>
