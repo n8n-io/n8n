@@ -403,6 +403,7 @@ async function removeFile(fileId: string) {
 							:max-length="KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH"
 							max-width="100%"
 							:placeholder="i18n.baseText('settings.context.collections.modal.name.label')"
+							:class="$style.titleEdit"
 							data-test-id="collection-name-inline-edit"
 							@update:model-value="onRename"
 							@focusin="renameError = ''"
@@ -562,6 +563,12 @@ async function removeFile(fileId: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+// Make sure the title does not move when the edit starts or ends.
+// At this font size, the small offset of the preview puts it lower than the input.
+.titleEdit :global([data-test-id='inline-edit-preview']) {
+	transform: none;
 }
 
 .filePill {
