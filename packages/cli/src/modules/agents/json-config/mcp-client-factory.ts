@@ -271,7 +271,11 @@ function toSdkServerConfig(
 	server: AgentJsonMcpServerConfig,
 	deps: Pick<
 		BuildMcpClientDeps,
-		'onConnectionFailed' | 'onToolCallSettled' | 'nonInterrupting' | 'wrapApproval' | 'callTimeoutMs'
+		| 'onConnectionFailed'
+		| 'onToolCallSettled'
+		| 'nonInterrupting'
+		| 'wrapApproval'
+		| 'callTimeoutMs'
 	>,
 	connection: Pick<McpServerConfig, 'url' | 'transport' | 'fetch'>,
 ): McpServerConfig {
