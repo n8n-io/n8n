@@ -3,8 +3,8 @@ import WorkerAccordion from './WorkerAccordion.vue';
 import { WORKER_HISTORY_LENGTH, useOrchestrationStore } from '../orchestration.store';
 import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
-import type { ChartComponentRef } from 'vue-chartjs';
-import { Chart } from 'vue-chartjs';
+import type { ChartComponentRef } from '@n8n/design-system/charts';
+import { Line } from '@n8n/design-system/charts';
 import { averageWorkerLoadFromLoads } from '../orchestration.utils';
 import { useI18n } from '@n8n/i18n';
 
@@ -53,13 +53,13 @@ const optionsMemory: Partial<ChartOptions<'line'>> = optionsBase();
 if (optionsMemory.scales?.y) optionsMemory.scales.y.suggestedMax = 100;
 
 // prefilled initial arrays
-const dataJobs = ref<ChartData>(
+const dataJobs = ref<ChartData<'line'>>(
 	blankDataSet('Job Count', 'rgb(255, 111, 92)', WORKER_HISTORY_LENGTH),
 );
-const dataCPU = ref<ChartData>(
+const dataCPU = ref<ChartData<'line'>>(
 	blankDataSet('Processor Usage', 'rgb(19, 205, 103)', WORKER_HISTORY_LENGTH),
 );
-const dataMemoryUsage = ref<ChartData>(
+const dataMemoryUsage = ref<ChartData<'line'>>(
 	blankDataSet('Memory Usage (%)', 'rgb(244, 216, 174)', WORKER_HISTORY_LENGTH),
 );
 
@@ -67,13 +67,17 @@ orchestrationStore.$onAction(({ name, store }) => {
 	if (name === 'updateWorkerStatus') {
 		const prefillCount =
 			WORKER_HISTORY_LENGTH - (store.workersHistory[props.workerId]?.length ?? 0);
-		const newDataJobs: ChartData = blankDataSet('Job Count', 'rgb(255, 111, 92)', prefillCount);
-		const newDataCPU: ChartData = blankDataSet(
+		const newDataJobs: ChartData<'line'> = blankDataSet(
+			'Job Count',
+			'rgb(255, 111, 92)',
+			prefillCount,
+		);
+		const newDataCPU: ChartData<'line'> = blankDataSet(
 			'Processor Usage',
 			'rgb(19, 205, 103)',
 			prefillCount,
 		);
-		const newDataMemoryUsage: ChartData = blankDataSet(
+		const newDataMemoryUsage: ChartData<'line'> = blankDataSet(
 			'Memory Usage (%)',
 			'rgb(244, 216, 174)',
 			prefillCount,
@@ -111,23 +115,10 @@ orchestrationStore.$onAction(({ name, store }) => {
 		</template>
 		<template #content>
 			<div :class="$style.charts">
-				<Chart
-					ref="chartRefJobs"
-					type="line"
-					:data="dataJobs"
-					:options="optionsJobs"
-					:class="$style.chart"
-				/>
-				<Chart
-					ref="chartRefCPU"
-					type="line"
-					:data="dataCPU"
-					:options="optionsCPU"
-					:class="$style.chart"
-				/>
-				<Chart
+				<Line ref="chartRefJobs" :data="dataJobs" :options="optionsJobs" :class="$style.chart" />
+				<Line ref="chartRefCPU" :data="dataCPU" :options="optionsCPU" :class="$style.chart" />
+				<Line
 					ref="chartRefMemoryUsage"
-					type="line"
 					:data="dataMemoryUsage"
 					:options="optionsMemory"
 					:class="$style.chart"

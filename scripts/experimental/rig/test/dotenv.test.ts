@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatValue, parseDotenv, setInDotenv, unsetInDotenv } from '../src/env/dotenv';
+import {
+	formatValue,
+	mapDotenvValues,
+	parseDotenv,
+	setInDotenv,
+	unsetInDotenv,
+} from '../src/env/dotenv';
 
 describe('parseDotenv', () => {
 	it('should parse plain, quoted, and exported values', () => {
@@ -75,5 +81,18 @@ describe('formatValue', () => {
 			const [entry] = parseDotenv(`K=${formatValue(value)}`);
 			expect(entry.value).toBe(value);
 		}
+	});
+});
+
+describe('mapDotenvValues', () => {
+	it('should keep an export prefix, a trailing comment, and the spaces around =', () => {
+		const text = 'export A=1 # work key\nB = "2" # quoted\nC=3\n# D=4\n';
+		expect(mapDotenvValues(text, (key) => (key === 'C' ? undefined : `new-${key}`))).toBe(
+			'export A=new-A # work key\nB = new-B # quoted\nC=3\n# D=4\n',
+		);
+	});
+
+	it('should rewrite CRLF lines and keep their line endings', () => {
+		expect(mapDotenvValues('A=1\r\nB=2\r\n', (key) => `x${key}`)).toBe('A=xA\r\nB=xB\r\n');
 	});
 });

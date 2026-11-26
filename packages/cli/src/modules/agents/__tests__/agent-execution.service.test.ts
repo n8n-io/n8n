@@ -2249,6 +2249,62 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('classifyExistingDraftThread', () => {
+		it('classifies a preview chat thread in a single thread lookup', async () => {
+			const thread = makeThread();
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([[thread.id, 'chat']]),
+			);
+
+			await expect(
+				service.classifyExistingDraftThread(thread.id, 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: true, previewChat: true });
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).toHaveBeenCalledWith([thread.id]);
+		});
+
+		it('classifies a non-preview top-level draft thread as usable with previewChat false', async () => {
+			const thread = makeThread();
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([[thread.id, 'mcp']]),
+			);
+
+			await expect(
+				service.classifyExistingDraftThread(thread.id, 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: true, previewChat: false });
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).toHaveBeenCalledWith([thread.id]);
+		});
+
+		it('skips the first-source query for task threads', async () => {
+			const thread = makeThread({ taskId: 'task-1' });
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+
+			await expect(
+				service.classifyExistingDraftThread(thread.id, 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: true, previewChat: false });
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).not.toHaveBeenCalled();
+		});
+
+		it.each<{ name: string; thread: AgentExecutionThread | null }>([
+			{ name: 'missing thread', thread: null },
+			{ name: 'other owner', thread: makeThread({ ownerId: 'other-user' }) },
+			{ name: 'shared session', thread: makeThread({ accessScope: 'project', ownerId: null }) },
+			{ name: 'sub-agent session', thread: makeThread({ parentThreadId: 'parent' }) },
+			{ name: 'other project', thread: makeThread({ projectId: 'other-project' }) },
+			{ name: 'other agent', thread: makeThread({ agentId: 'other-agent' }) },
+		])('returns unusable without querying first source for $name', async ({ thread }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+
+			await expect(
+				service.classifyExistingDraftThread('thread-1', 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: false, previewChat: false });
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('canUseProductionChatThread', () => {
 		it.each([
 			{ source: 'n8n_chat_production', allowed: true },

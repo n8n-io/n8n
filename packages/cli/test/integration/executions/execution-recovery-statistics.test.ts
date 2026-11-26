@@ -85,18 +85,25 @@ describe('ExecutionRecoveryService auto-deactivation', () => {
 	});
 
 	describe('crash sweep', () => {
-		it('does not count a crashed execution that never started in `rootCount`', async () => {
-			const { id } = await createExecution(
+		it('does not count a crashed execution that never started', async () => {
+			const neverStarted = await createExecution(
 				{ status: 'new', finished: false, stoppedAt: null, mode: 'trigger', startedAt: null },
 				workflow,
 			);
+			const started = await createExecution(
+				{ status: 'running', finished: false, stoppedAt: null, mode: 'trigger' },
+				workflow,
+			);
+			const crashService = Container.get(ExecutionCrashService);
 
-			await Container.get(ExecutionCrashService).markAsCrashed(id, 'queue-recovery');
+			await crashService.markAsCrashed(neverStarted.id, 'queue-recovery');
+			// The started run gives the wait a counter to look for.
+			await crashService.markAsCrashed(started.id, 'queue-recovery');
 
 			await vi.waitFor(async () => {
 				expect(
 					await findWorkflowStatistic(workflow.id, StatisticsNames.productionError),
-				).toMatchObject({ count: 1, rootCount: 0 });
+				).toMatchObject({ count: 1, rootCount: 1 });
 			});
 		});
 
