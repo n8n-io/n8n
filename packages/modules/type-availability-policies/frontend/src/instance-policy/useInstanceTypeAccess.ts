@@ -1,6 +1,7 @@
 import type { PolicyAction } from '@n8n/api-types';
 import { computed, onMounted, shallowReactive, watch } from 'vue';
 
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { isTypeAccessEditable } from './typeAccessRule';
 import { useInstancePolicy } from './useInstancePolicy';
 import type { RestrictedTypeKind } from '../type-availability-policies.constants';
@@ -12,6 +13,8 @@ export type InstanceTypeAccessRow = {
 	matchedRuleId: string | null;
 	/** See `isTypeAccessEditable`. */
 	editable: boolean;
+	/** A restriction of the type waits for its usage counts before it applies or asks. */
+	checking: boolean;
 };
 
 type PendingChange = { access: PolicyAction; savedVersion?: number };
@@ -19,6 +22,7 @@ type PendingChange = { access: PolicyAction; savedVersion?: number };
 /** The access of every type of one kind under the instance policy, for a tab of the admin page. */
 export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 	const instancePolicy = useInstancePolicy();
+	const restrictReview = useRestrictReviewStore();
 
 	// A save that does not apply drops its entry, so the row goes back to the server value.
 	const pending = shallowReactive(new Map<string, PendingChange>());
@@ -29,6 +33,7 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 			access: pending.get(type.name)?.access ?? type.access,
 			matchedRuleId: type.matchedRuleId,
 			editable: isTypeAccessEditable(type),
+			checking: restrictReview.isChecking(kind, type.name),
 		})),
 	);
 
@@ -54,7 +59,12 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 		void instancePolicy.loadAccess();
 	});
 
-	async function changeAccess(typeName: string, access: PolicyAction) {
+	/** `label` names the type in the review that asks before a type in use is restricted. */
+	async function changeAccess(typeName: string, access: PolicyAction, label: string) {
+		// A refused review leaves no pending entry, so the row keeps its access.
+		const approved = restrictReview.reviewChange(kind, typeName, access, label);
+		if (approved !== true && !(await approved)) return;
+
 		const change: PendingChange = { access };
 		pending.set(typeName, change);
 		const result = await instancePolicy.setAccess(kind, typeName, access);

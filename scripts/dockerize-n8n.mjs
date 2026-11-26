@@ -210,8 +210,9 @@ async function buildWithPodman(platform) {
 			dockerfile: 'docker/images/n8n/Dockerfile',
 			tag: `${imageBaseName}:${imageTag}`,
 			args: [
-				['BUILDER_IMAGE', builderImage],
+				['BUILDER_IMAGE', await bakeVariable('N8N_BUILDER_IMAGE')],
 				['RUNTIME_IMAGE', await bakeVariable('RUNTIME_IMAGE')],
+				['ENABLE_POINTER_COMPRESSION', 'false'],
 			],
 		},
 		{

@@ -297,6 +297,8 @@ export const useInboxStore = defineStore('inbox', () => {
 				: 'reviewsAndSelfHealing';
 		}
 		const status = selfHealingStatus.value;
+		// No new investigation starts, so do not promise a fix.
+		if (status?.enabled === false) return 'reviews';
 		return activeTab.value === 'open' && status?.isReviewer === false && status.setupProjectId
 			? 'selfHealingSetup'
 			: 'selfHealing';

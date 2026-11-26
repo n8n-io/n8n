@@ -31,8 +31,10 @@ import {
 	PromotionResourceDetailsDto,
 	PromotionResourceDetailsRequestDto,
 	PromotionBranchListPublicDto,
+	PromotionSettingsPublicDto,
 	UpdatePromotionEnvironmentDto,
 	UpdatePromotionProviderDto,
+	UpdatePromotionSettingsDto,
 	projectIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionEnvironmentIdParamSchema,
@@ -64,7 +66,6 @@ import {
 	RateLimitAccess,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import {
@@ -92,12 +93,50 @@ const BETA_NOTE = '**Beta** — breaking changes may still occur without major v
 export class PromotionsPublicController {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
 
+	// -- Settings ------------------------------------------------------------
+
+	@Get('/settings')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('securitySettings:manage')
+	@GlobalScope('securitySettings:manage')
+	@ApiSummary('Beta: Get the promotion settings')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns who can promote, approve, and apply in their own projects. Instance owners and admins can always do all three.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionSettingsPublicDto)
+	@ApiErrorResponse(503)
+	async getPromotionSettings(): Promise<PromotionSettingsPublicDto> {
+		return await (await this.settingsService()).get();
+	}
+
+	@Put('/settings')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('securitySettings:manage')
+	@GlobalScope('securitySettings:manage')
+	@ApiSummary('Beta: Update the promotion settings')
+	@ApiDescription(
+		BETA_NOTE +
+			'Replaces who can promote, approve, and apply in their own projects. Send every setting. A `GET` response can be sent back as the body. Each setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionSettingsPublicDto)
+	@ApiErrorResponse(503)
+	async updatePromotionSettings(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: UpdatePromotionSettingsDto,
+	): Promise<PromotionSettingsPublicDto> {
+		return await (await this.settingsService()).update(req.user, body, req.ctx);
+	}
+
 	// -- Providers -----------------------------------------------------------
 
 	@Post('/providers')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:create')
-	@GlobalScope('promotions:create')
+	@ApiKeyScope('promotions:manageProviders')
+	@GlobalScope('promotions:manageProviders')
 	@ApiSummary('Beta: Create a promotion provider')
 	@ApiDescription(
 		BETA_NOTE +
@@ -116,8 +155,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:list')
-	@GlobalScope('promotions:list')
+	@ApiKeyScope('promotions:readProviders')
+	@GlobalScope('promotions:readProviders')
 	@ApiSummary('Beta: List promotion providers')
 	@ApiDescription(
 		BETA_NOTE + 'Returns a cursor-paginated list of providers, without their public configuration.',
@@ -141,8 +180,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:read')
-	@GlobalScope('promotions:read')
+	@ApiKeyScope('promotions:readProviders')
+	@GlobalScope('promotions:readProviders')
 	@ApiSummary('Beta: Retrieve a promotion provider')
 	@ApiDescription(
 		BETA_NOTE + 'Returns the provider with its public configuration. Secrets are never returned.',
@@ -162,8 +201,8 @@ export class PromotionsPublicController {
 
 	@Put('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:update')
-	@GlobalScope('promotions:update')
+	@ApiKeyScope('promotions:manageProviders')
+	@GlobalScope('promotions:manageProviders')
 	@ApiSummary('Beta: Update a promotion provider')
 	@ApiDescription(
 		BETA_NOTE +
@@ -192,8 +231,8 @@ export class PromotionsPublicController {
 
 	@Delete('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:delete')
-	@GlobalScope('promotions:delete')
+	@ApiKeyScope('promotions:manageProviders')
+	@GlobalScope('promotions:manageProviders')
 	@ApiSummary('Beta: Delete a promotion provider')
 	@ApiDescription(BETA_NOTE + 'A provider used by an environment cannot be deleted.')
 	@ApiTags(tags)
@@ -212,8 +251,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId/repositories')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:discover')
-	@GlobalScope('promotions:discover')
+	@ApiKeyScope('promotions:manageProviders')
+	@GlobalScope('promotions:manageProviders')
 	@ApiSummary('Beta: List repositories of a promotion provider')
 	@ApiDescription(
 		BETA_NOTE +
@@ -244,8 +283,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:discover')
-	@GlobalScope('promotions:discover')
+	@ApiKeyScope('promotions:manageProviders')
+	@GlobalScope('promotions:manageProviders')
 	@ApiSummary('Beta: List branches of a promotion repository')
 	@ApiDescription(
 		BETA_NOTE +
@@ -280,8 +319,8 @@ export class PromotionsPublicController {
 
 	@Post('/environments')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:create')
-	@GlobalScope('promotions:create')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary('Beta: Create a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
@@ -302,8 +341,8 @@ export class PromotionsPublicController {
 
 	@Get('/environments')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:list')
-	@GlobalScope('promotions:list')
+	@ApiKeyScope('promotions:readEnvironments')
+	@GlobalScope('promotions:readEnvironments')
 	@ApiSummary('Beta: List promotion environments')
 	@ApiDescription(
 		BETA_NOTE +
@@ -332,8 +371,8 @@ export class PromotionsPublicController {
 
 	@Get('/environments/:promotionEnvironmentId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:read')
-	@GlobalScope('promotions:read')
+	@ApiKeyScope('promotions:readEnvironments')
+	@GlobalScope('promotions:readEnvironments')
 	@ApiSummary('Beta: Retrieve a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
@@ -354,8 +393,8 @@ export class PromotionsPublicController {
 
 	@Put('/environments/:promotionEnvironmentId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:update')
-	@GlobalScope('promotions:update')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary('Beta: Update a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
@@ -384,8 +423,8 @@ export class PromotionsPublicController {
 
 	@Delete('/environments/:promotionEnvironmentId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:delete')
-	@GlobalScope('promotions:delete')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary('Beta: Delete a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
@@ -409,8 +448,8 @@ export class PromotionsPublicController {
 
 	@Post('/environments/:promotionEnvironmentId/connect')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:connect')
-	@GlobalScope('promotions:connect')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary('Beta: Connect an environment')
 	@ApiDescription(
 		BETA_NOTE +
@@ -433,8 +472,8 @@ export class PromotionsPublicController {
 
 	@Post('/environments/:promotionEnvironmentId/disconnect')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:connect')
-	@GlobalScope('promotions:connect')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary("Beta: Remove an environment's local checkout")
 	@ApiDescription(
 		BETA_NOTE +
@@ -458,8 +497,8 @@ export class PromotionsPublicController {
 
 	@Get('/environments/:promotionEnvironmentId/projects')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:read')
-	@GlobalScope('promotions:read')
+	@ApiKeyScope('promotions:readEnvironments')
+	@GlobalScope('promotions:readEnvironments')
 	@ApiSummary('Beta: List projects linked to a promotion environment')
 	@ApiDescription(BETA_NOTE.trim())
 	@ApiTags(tags)
@@ -478,8 +517,8 @@ export class PromotionsPublicController {
 	// No pagination. The list comes from one read of the Apply branch, so there is no second page to fetch.
 	@Get('/environments/:promotionEnvironmentId/missing-projects')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:read')
-	@GlobalScope('promotions:read')
+	@ApiKeyScope('promotions:readEnvironments')
+	@GlobalScope('promotions:readEnvironments')
 	@ApiSummary('Beta: List package projects that are missing on this instance')
 	@ApiDescription(
 		BETA_NOTE +
@@ -502,8 +541,8 @@ export class PromotionsPublicController {
 
 	@Post('/environments/:promotionEnvironmentId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:manageProjects')
-	@GlobalScope('promotions:manageProjects')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary('Beta: Link a project to a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
@@ -532,8 +571,8 @@ export class PromotionsPublicController {
 
 	@Delete('/environments/:promotionEnvironmentId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	@ApiKeyScope('promotions:manageProjects')
-	@GlobalScope('promotions:manageProjects')
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
 	@ApiSummary('Beta: Unlink a project from a promotion environment')
 	@ApiDescription(BETA_NOTE.trim())
 	@ApiTags(tags)
@@ -565,7 +604,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Promote all team projects')
 	@ApiDescription(
 		BETA_NOTE +
-			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.",
+			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
@@ -580,10 +619,7 @@ export class PromotionsPublicController {
 		promotionEnvironmentId: string,
 		@Body input: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
-		return await (await this.promotionsService()).promote(promotionEnvironmentId, req.user, {
-			...input,
-			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
-		});
+		return await (await this.promotionsService()).promote(promotionEnvironmentId, req.user, input);
 	}
 
 	@Post('/environments/:promotionEnvironmentId/apply')
@@ -688,7 +724,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Read the content of resources in the whole-instance Apply preview')
 	@ApiDescription(
 		BETA_NOTE +
-			'Returns the content before and after the change for up to 50 resources of the whole-instance Apply preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. A data table that a deleted project owns but no workflow uses has its current content as `before`. `missingKeys` lists requested resources that neither side holds anymore, and such credentials and variables, which have no content to show. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the API key and the user have the variable:list scope.',
+			'Returns the content before and after the change for up to 50 resources of the whole-instance Apply preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. A data table that a deleted project owns but no workflow uses has its current content as `before`. `missingKeys` lists requested resources that neither side holds anymore, and such credentials and variables, which have no content to show. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the user has the variable:list scope.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionResourceDetailsDto)
@@ -707,11 +743,6 @@ export class PromotionsPublicController {
 			req.user,
 			promotionEnvironmentId,
 			input,
-			{
-				canSeeVariableValues:
-					hasGlobalScope(req.user, 'variable:list') &&
-					(req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false),
-			},
 		);
 	}
 
@@ -747,7 +778,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Read the content of changed resources')
 	@ApiDescription(
 		BETA_NOTE +
-			'Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the API key and the user have the variable:list scope. The key needs the same scope as the preview for that direction.',
+			'Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the role of the user has the variable:list scope. The key needs the same scope as the preview for that direction.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionResourceDetailsDto)
@@ -769,11 +800,6 @@ export class PromotionsPublicController {
 			projectId,
 			parsedDirection,
 			input,
-			{
-				canSeeVariableValues:
-					hasGlobalScope(req.user, 'variable:list') &&
-					(req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false),
-			},
 		);
 	}
 
@@ -786,7 +812,7 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment). The API key also needs variable:list when the workflows reference variables. Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Another operation on the same environment returns 423.",
+			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment). Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromoteSelectionResultDto)
@@ -801,11 +827,11 @@ export class PromotionsPublicController {
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: PromoteSelectionRequestDto,
 	): Promise<PromoteSelectionResultDto> {
-		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
-			...input,
-			// Variable values only travel when the key may list them.
-			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
-		});
+		return await (await this.promotionsService()).promoteProjectSelection(
+			projectId,
+			req.user,
+			input,
+		);
 	}
 
 	// -- Selective apply -----------------------------------------------------
@@ -890,6 +916,14 @@ export class PromotionsPublicController {
 		if (!this.moduleRegistry.isActive('promotions')) {
 			throw new ServiceUnavailableError('Promotions module is not enabled');
 		}
+	}
+
+	private async settingsService() {
+		this.assertModuleActive();
+		const { PromotionSettingsService } = await import(
+			'@/modules/promotions.ee/promotion-settings.service.js'
+		);
+		return Container.get(PromotionSettingsService);
 	}
 
 	private async providersService() {

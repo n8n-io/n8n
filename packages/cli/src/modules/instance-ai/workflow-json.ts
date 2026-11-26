@@ -6,7 +6,7 @@ export function toWorkflowJSON(
 		Partial<Pick<WorkflowEntity, 'nodeGroups'>>,
 	options?: {
 		redactParameters?: boolean;
-		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
+		/** Substitute a history version's graph; id/name/settings stay from the given workflow, so pass the version's settings with it. */
 		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
 	},
 ): WorkflowJSON {

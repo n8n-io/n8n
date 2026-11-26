@@ -205,6 +205,14 @@ describe('Baserow > GenericFunctions', () => {
 		it('should leave non-date operators unchanged', () => {
 			expect(formatBaserowFilterValue('equal', 'foo')).toBe('foo');
 		});
+
+		it('should treat a missing value as empty', () => {
+			expect(formatBaserowFilterValue('equal', undefined)).toBe('');
+		});
+
+		it('should stringify non-string values', () => {
+			expect(formatBaserowFilterValue('equal', 2026)).toBe('2026');
+		});
 	});
 
 	describe('normalizeFilterFieldId', () => {

@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
-import { GenericContainer } from 'testcontainers';
+import { GenericContainer, getContainerRuntimeClient } from 'testcontainers';
 
 import { DockerImageNotFoundError } from '../docker-image-not-found-error';
 import {
@@ -21,7 +21,7 @@ import {
 	engineHostname,
 	type EngineMode,
 } from './engine';
-import type { FileToMount } from './types';
+import type { FileToMount, StackConfig } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
 
@@ -125,6 +125,7 @@ export interface N8NInstancesOptions {
 	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
+	n8nContainer?: StackConfig['n8nContainer'];
 	/** Readiness timeout override; an old release migrating a fresh DB can exceed the default. */
 	startupTimeoutMs?: number;
 }
@@ -172,10 +173,17 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	// Before `applyEngineEnv`: it removes the dedicated engine URL from the main.
 	const engineEnvironment =
 		engine === 'container'
-			? engineContainerEnv(env, { projectName, authSecret: engineAuthSecret ?? '' })
+			? engineContainerEnv(env, { projectName, mains, authSecret: engineAuthSecret ?? '' })
 			: undefined;
 
-	applyEngineEnv(env, { engine, authSecret: engineAuthSecret, mains, isQueueMode, projectName });
+	applyEngineEnv(env, {
+		engine,
+		authSecret: engineAuthSecret,
+		mains,
+		workers,
+		webhooks,
+		projectName,
+	});
 
 	if (binaryDataHostDir && engine !== 'container') {
 		applySharedStorageEnv(env, env.N8N_DEFAULT_BINARY_DATA_MODE);
@@ -237,6 +245,7 @@ interface SharedConfig {
 	userHomeHostDir?: string;
 	binaryDataHostDir?: string;
 	user?: string;
+	n8nContainer?: StackConfig['n8nContainer'];
 	startupTimeoutMs?: number;
 }
 
@@ -252,6 +261,38 @@ const SERVICE_LABEL: Record<InstanceRole, string> = {
 	worker: 'n8n-worker',
 	engine: 'n8n-engine',
 };
+
+class N8NContainer extends GenericContainer {
+	withReadOnlyRootfs(readOnly: boolean): this {
+		this.hostConfig.ReadonlyRootfs = readOnly;
+		return this;
+	}
+
+	override async start(): Promise<StartedTestContainer> {
+		const { platform } = this.createOpts;
+		if (platform) {
+			// Testcontainers pulls missing images. A platform-specific pull can change a shared tag.
+			const { image } = await getContainerRuntimeClient();
+			if (!(await image.exists(this.imageName))) {
+				throw new Error(
+					`Docker image '${this.imageName.string}' must be present locally for n8nContainer.platform '${platform}'. ` +
+						'Build or pull a platform-specific image and set the stack image to that reference.',
+				);
+			}
+		}
+		return await super.start();
+	}
+}
+
+function isAtOrBelow(path: string, directory: string): boolean {
+	const relative = posix.relative(directory, path);
+	return relative !== '..' && !relative.startsWith('../');
+}
+
+function resolveRunAlias(path: string): string {
+	// n8n images link /var/run to /run.
+	return path.replace(/^\/var\/run(?=\/|$)/, '/run');
+}
 
 async function createContainer(
 	instance: InstanceConfig,
@@ -273,8 +314,30 @@ async function createContainer(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer: { readOnlyRootfs, tmpfs, platform } = {},
 		startupTimeoutMs,
 	} = shared;
+	const filesToCopy = [...stackFiles, ...filesToMount];
+	if (filesToCopy.length > 0) {
+		if (readOnlyRootfs) {
+			throw new Error(
+				`Container "${name}" cannot copy "${filesToCopy[0].target}" with n8nContainer.readOnlyRootfs enabled. Use a writable root filesystem to copy files.`,
+			);
+		}
+		for (const mountPath of Object.keys(tmpfs ?? {})) {
+			const mount = posix.resolve('/', mountPath);
+			const resolvedMount = resolveRunAlias(mount);
+			const hidden = filesToCopy.find(({ target }) => {
+				const file = posix.resolve('/', target);
+				return isAtOrBelow(file, mount) || isAtOrBelow(resolveRunAlias(file), resolvedMount);
+			});
+			if (hidden) {
+				throw new Error(
+					`Container "${name}" cannot copy "${hidden.target}": the tmpfs mount at "${mountPath}" hides this path.`,
+				);
+			}
+		}
+	}
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	// The engine serves no REST API; its health route lives on the engine port,
 	// over TLS in `container` mode.
@@ -296,7 +359,7 @@ async function createContainer(
 	);
 
 	const containerImage = image ?? N8N_IMAGE;
-	let container = new GenericContainer(containerImage)
+	let container = new N8NContainer(containerImage)
 		.withEnvironment(environment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
@@ -310,6 +373,15 @@ async function createContainer(
 
 	if (user) {
 		container = container.withUser(user);
+	}
+	if (readOnlyRootfs !== undefined) {
+		container = container.withReadOnlyRootfs(readOnlyRootfs);
+	}
+	if (tmpfs) {
+		container = container.withTmpFs(tmpfs);
+	}
+	if (platform) {
+		container = container.withPlatform(platform);
 	}
 
 	// withBindMounts REPLACES the mount list, so all mounts go in one call.
@@ -353,13 +425,20 @@ async function createContainer(
 	// Reuse stays off for a container with a host dir mounted: the process must
 	// exit to flush coverage, cycle data belongs to the cycle, and a reused
 	// container would keep the binary data dir of an earlier stack.
-	// Reuse also stays off for stack files because Testcontainers does not hash their contents.
-	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir && stackFiles.length === 0) {
+	// Testcontainers does not hash stack file contents or filesystem settings in HostConfig.
+	if (
+		!coverageHostDir &&
+		!userHomeHostDir &&
+		!binaryDataHostDir &&
+		stackFiles.length === 0 &&
+		!readOnlyRootfs &&
+		!tmpfs
+	) {
 		container = container.withReuse();
 	}
 
-	if (stackFiles.length || filesToMount.length) {
-		container = container.withCopyContentToContainer([...stackFiles, ...filesToMount]);
+	if (filesToCopy.length > 0) {
+		container = container.withCopyContentToContainer(filesToCopy);
 	}
 
 	if (resourceQuota) {
@@ -396,11 +475,8 @@ async function createContainer(
 		diagnostics.logs[name] = getLogs();
 		diagnostics.readinessPayloads[name] = getLastReadinessBody();
 
-		if (error instanceof Error && 'statusCode' in error) {
-			const statusCode = (error as Error & { statusCode: number }).statusCode;
-			if (statusCode === 404) {
-				throw new DockerImageNotFoundError(name, error);
-			}
+		if (!platform && error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
+			throw new DockerImageNotFoundError(name, error);
 		}
 		console.error(`Container "${name}" failed to start:`, error);
 		return throwWithLogs(error);
@@ -431,6 +507,7 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 		engine,
 		engineTlsFiles,
@@ -461,6 +538,7 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
@@ -477,6 +555,7 @@ export async function createN8NInstances(
 		image,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
@@ -492,6 +571,7 @@ export async function createN8NInstances(
 		image,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 

@@ -9,6 +9,8 @@ import type {
 	NodeTypeUsageResponse,
 	PolicyEffectivePublicDto,
 	PolicyEffectiveWriteResultPublicDto,
+	ProjectPoliciesResponse,
+	ProjectPolicySummary,
 	SubWorkflowPolicyCheckResponse,
 	WorkflowTransferPreview,
 } from '@n8n/api-types';
@@ -70,6 +72,20 @@ export async function fetchInstanceAccess(
 	kind: RestrictedTypeKind,
 ): Promise<InstanceTypeAccessResponse> {
 	return await makeRestApiRequest(context, 'GET', `${INSTANCE_POLICY_ENDPOINT[kind]}/access`);
+}
+
+export async function fetchProjectPolicies(
+	context: IRestApiContext,
+): Promise<ProjectPoliciesResponse> {
+	return await makeRestApiRequest(context, 'GET', '/project-policies');
+}
+
+/** Fails with 409 when the project already has a policy for both kinds. */
+export async function createProjectPolicy(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectPolicySummary> {
+	return await makeRestApiRequest(context, 'POST', '/project-policies', { projectId });
 }
 
 export async function fetchCredentialTypeUsage(

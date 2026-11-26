@@ -147,6 +147,7 @@ describe('PreferencesTable', () => {
 			preference({ id: 'a', source: 'ui', createdBy: jane }),
 			preference({ id: 'b', source: 'aia', createdBy: jane }),
 			preference({ id: 'c', source: 'mcp', createdBy: jane }),
+			preference({ id: 'd', source: 'import', createdBy: jane }),
 		]);
 
 		const authors = getAllByTestId('preference-created-by');
@@ -158,6 +159,7 @@ describe('PreferencesTable', () => {
 		expect(within(authors[0]).queryByTestId('preference-source')).not.toBeInTheDocument();
 		expect(within(authors[1]).getByTestId('preference-source')).toHaveTextContent('n8n assistant');
 		expect(within(authors[2]).getByTestId('preference-source')).toHaveTextContent('MCP');
+		expect(within(authors[3]).getByTestId('preference-source')).toHaveTextContent('Imported');
 	});
 
 	it('names only the surface when the author no longer exists', () => {
@@ -165,12 +167,14 @@ describe('PreferencesTable', () => {
 			preference({ id: 'a', source: 'ui', createdBy: null }),
 			preference({ id: 'b', source: 'aia', createdBy: null }),
 			preference({ id: 'c', source: 'mcp', createdBy: null }),
+			preference({ id: 'd', source: 'import', createdBy: null }),
 		]);
 
 		const authors = getAllByTestId('preference-created-by');
 		expect(authors[0]).toHaveTextContent('Settings');
 		expect(authors[1]).toHaveTextContent('n8n assistant');
 		expect(authors[2]).toHaveTextContent('MCP');
+		expect(authors[3]).toHaveTextContent('Imported');
 	});
 
 	it('shows when each row was last updated', () => {

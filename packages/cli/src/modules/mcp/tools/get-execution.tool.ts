@@ -58,6 +58,12 @@ const outputSchema = {
 		.unknown()
 		.optional()
 		.describe('Execution result data (only present when includeData is true)'),
+	dataTooLargeToDisplay: z
+		.boolean()
+		.optional()
+		.describe(
+			'True when the execution data is larger than the display size limit of the instance. The data is then not loaded and `data` is null',
+		),
 	error: z.string().optional().describe('Error message if the request failed'),
 } satisfies z.ZodRawShape;
 
@@ -67,6 +73,8 @@ export const createGetExecutionTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: TelemetryProxy,
 	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+	/** `EXECUTIONS_DATA_MAX_DISPLAY_SIZE`: larger execution data is not loaded. `0` disables the limit. */
+	maxDataSizeBytes: number,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',
 	config: {
@@ -110,6 +118,7 @@ export const createGetExecutionTool = (
 			const execution = await executionService.findOneAcrossEngines(executionId, [workflowId], {
 				includeData: withData,
 				includeAnnotation: false,
+				...(withData && { maxDataSizeBytes }),
 			});
 
 			if (!execution) {
@@ -121,8 +130,11 @@ export const createGetExecutionTool = (
 
 			// `undefined` omits `data` from the output; `null` reports it as empty.
 			let executionData: IRunExecutionData | null | undefined;
+			// The loader skips data above `maxDataSizeBytes` and returns empty run data.
+			const dataTooLargeToDisplay =
+				'dataTooLargeToDisplay' in execution && execution.dataTooLargeToDisplay === true;
 			if (withData) {
-				if ('data' in execution) {
+				if ('data' in execution && !dataTooLargeToDisplay) {
 					// Redacts in place, modifying execution internally
 					await executionRedactionServiceProxy.processExecution(execution, { user });
 					executionData = execution.data;
@@ -155,7 +167,11 @@ export const createGetExecutionTool = (
 
 			const output =
 				filteredData !== undefined
-					? { execution: executionMeta, data: filteredData }
+					? {
+							execution: executionMeta,
+							data: filteredData,
+							...(dataTooLargeToDisplay && { dataTooLargeToDisplay }),
+						}
 					: { execution: executionMeta };
 
 			telemetryPayload.results = {
