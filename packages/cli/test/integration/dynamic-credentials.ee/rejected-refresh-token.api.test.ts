@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { createWorkflow, getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsEntity, Person } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type {
@@ -54,15 +54,15 @@ const resolverHandle = {
 	resolverName: SYSTEM_RESOLVER_NAME,
 };
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let credential: CredentialsEntity;
 let workflowId: string;
 
 /** The caller identity that an editor run carries: the user's own auth cookie. */
-const credentialContextFor = (user: User): ICredentialContext => ({
+const credentialContextFor = (person: Person): ICredentialContext => ({
 	version: 1,
-	identity: Container.get(AuthService).issueJWT(user, user.mfaEnabled, 'browser-1'),
+	identity: Container.get(AuthService).issueJWT(person, person.mfaEnabled, 'browser-1'),
 	metadata: { source: 'manual-execution' },
 });
 
