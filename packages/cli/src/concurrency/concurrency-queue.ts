@@ -47,9 +47,9 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		if (index > -1) {
 			this.queue.splice(index, 1);
 
+			// The removed execution was only queued, so this returns the place
+			// it reserved. It does not free a running slot; only dequeue() does.
 			this.capacity++;
-
-			this.resolveNext();
 		}
 	}
 
