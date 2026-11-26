@@ -10,6 +10,8 @@ export type SkillWorkflowNote =
 	| 'unpublished'
 	| 'instanceAccess';
 
+export const AGENT_BLOCKING_NOTES: readonly SkillWorkflowNote[] = ['agentTrigger', 'unpublished'];
+
 export type SkillWorkflowNoteData = Pick<IWorkflowDb, 'nodes' | 'activeVersionId' | 'settings'>;
 
 const MCP_TRIGGER_TYPES = new Set(Object.keys(SUPPORTED_PRODUCTION_MCP_TRIGGERS));

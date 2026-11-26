@@ -11,6 +11,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '../types';
 import { useSkillWorkflowNoteData } from '@/features/agents/composables/useSkillWorkflowNoteData';
 import {
+	AGENT_BLOCKING_NOTES,
 	getSkillWorkflowNotes,
 	type SkillWorkflowNote,
 } from '@/features/agents/utils/skillWorkflowNotes';
@@ -35,6 +36,7 @@ const props = withDefaults(
 		instanceSkill?: boolean;
 		availableToMcp?: boolean;
 		outsideProjectWorkflowIds?: string[];
+		agentContext?: boolean;
 	}>(),
 	{
 		addReferenceDisabled: false,
@@ -45,6 +47,7 @@ const props = withDefaults(
 		instanceSkill: false,
 		availableToMcp: false,
 		outsideProjectWorkflowIds: () => [],
+		agentContext: false,
 	},
 );
 
@@ -81,18 +84,27 @@ const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
 const workflowRows = computed(() =>
 	mentionedWorkflows.value.map((workflow) => {
 		const data = noteData.value.get(workflow.workflowId);
-		const notes = data
+		const allNotes = data
 			? getSkillWorkflowNotes(data, {
 					instanceSkill: props.instanceSkill,
 					availableToMCP: props.availableToMcp,
-				}).map((note) => i18n.baseText(NOTE_TEXT_KEYS[note]))
-			: [];
-		const outsideProjectWarning = props.outsideProjectWorkflowIds.includes(workflow.workflowId)
-			? i18n.baseText('agents.builder.validation.issue.tool.workflow.notInProject', {
-					interpolate: { id: workflow.name || workflow.workflowId },
 				})
-			: undefined;
-		return { ...workflow, notes, outsideProjectWarning };
+			: [];
+		const outsideProjectWarnings = props.outsideProjectWorkflowIds.includes(workflow.workflowId)
+			? [
+					i18n.baseText('agents.builder.validation.issue.tool.workflow.notInProject', {
+						interpolate: { id: workflow.name || workflow.workflowId },
+					}),
+				]
+			: [];
+		const isWarning = (note: SkillWorkflowNote) =>
+			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
+		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
+		return {
+			...workflow,
+			warnings: [...outsideProjectWarnings, ...allNotes.filter(isWarning).map(toText)],
+			notes: allNotes.filter((note) => !isWarning(note)).map(toText),
+		};
 	}),
 );
 
@@ -286,17 +298,19 @@ function testIdForPath(path: string) {
 						<N8nIcon icon="info" :size="16" />
 					</span>
 				</N8nTooltip>
-				<N8nTooltip v-if="workflow.outsideProjectWarning" as-child placement="right">
+				<N8nTooltip v-if="workflow.warnings.length > 0" as-child placement="right">
 					<template #content>
-						<p :class="$style.note">{{ workflow.outsideProjectWarning }}</p>
+						<p v-for="warning in workflow.warnings" :key="warning" :class="$style.note">
+							{{ warning }}
+						</p>
 					</template>
 					<span
 						:class="[$style.noteIcon, $style.invalidIcon]"
 						tabindex="0"
 						role="img"
-						:aria-label="workflow.outsideProjectWarning"
-						data-testid="agent-skill-workflow-not-in-project"
-						data-attr="agent-skill-workflow-not-in-project"
+						:aria-label="workflow.warnings.join(' ')"
+						data-testid="agent-skill-workflow-warnings"
+						data-attr="agent-skill-workflow-warnings"
 					>
 						<N8nIcon icon="triangle-alert" :size="16" />
 					</span>

@@ -289,7 +289,8 @@ In the skill editor, the Workflows section of the file list shows a note icon
 at the end of a mentioned workflow when a caller cannot run it, or when the
 skill is an instance skill. The icon opens a tooltip on hover and on keyboard
 focus, with one line for each note. Notes are information, not errors: they
-never block a save.
+never block a save. When an agent opens the skill, the notes that block that
+agent (no supported trigger, not published) show behind a warning icon instead.
 
 ## Modal patterns
 

@@ -461,7 +461,10 @@ export class AgentValidationService {
 			};
 			const workflow = workflowsByReference.get(tool.workflowId);
 			if (workflow) {
-				if (!workflow.activeVersionId) {
+				const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+				if (incompatibility) {
+					issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
+				} else if (!workflow.activeVersionId) {
 					issues.push(issue('incompatible_reference', path, capability, 'not_published'));
 				}
 			} else if (outsideProjectIds.has(tool.workflowId)) {
