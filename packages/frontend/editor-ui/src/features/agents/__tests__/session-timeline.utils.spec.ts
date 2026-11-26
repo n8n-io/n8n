@@ -14,6 +14,7 @@ import {
 	timelineItemErrorMessage,
 	executionErrorLabel,
 	executionErrorMessage,
+	threadTokenBreakdownOf,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -215,6 +216,120 @@ function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionT
 		...overrides,
 	};
 }
+
+describe('turn usage', () => {
+	const usage = {
+		model: 'claude-sonnet-4-5',
+		promptTokens: 1000,
+		cacheReadTokens: 750,
+		cacheWriteTokens: 200,
+		completionTokens: 50,
+		totalTokens: 1050,
+		cost: 0.01,
+		stoppedAt: '2026-04-24T10:00:09Z',
+	};
+
+	it('puts the usage of a turn on its last agent message only', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', timestamp: 100, content: 'Working on it' },
+					toolCallEvent({ endTime: 200, success: true }),
+					{ type: 'text', timestamp: 300, content: 'Done' },
+				],
+				{ userMessage: 'Build it', ...usage },
+			),
+		]);
+
+		const withUsage = items.filter((item) => item.turnUsage);
+		expect(withUsage).toHaveLength(1);
+		expect(withUsage[0].content).toBe('Done');
+		expect(withUsage[0].turnUsage).toEqual({
+			inputTokens: 1000,
+			cacheReadTokens: 750,
+			cacheWriteTokens: 200,
+			outputTokens: 50,
+			totalTokens: 1050,
+			cost: 0.01,
+			startedAt: new Date('2026-04-24T10:00:00Z').getTime(),
+			stoppedAt: new Date('2026-04-24T10:00:09Z').getTime(),
+		});
+	});
+
+	it('keeps each turn on its own message', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', timestamp: 100, content: 'First' }], {
+				id: 'e-1',
+				...usage,
+			}),
+			withTimeline([{ type: 'text', timestamp: 500, content: 'Second' }], {
+				id: 'e-2',
+				...usage,
+				totalTokens: 20,
+			}),
+		]);
+
+		expect(items.map((item) => item.turnUsage?.totalTokens)).toEqual([1050, 20]);
+	});
+
+	it('adds no usage to a turn without tokens or without an agent message', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', timestamp: 100, content: 'No usage' }], { id: 'e-1' }),
+			withTimeline([toolCallEvent({ endTime: 200, success: true })], { id: 'e-2', ...usage }),
+		]);
+
+		expect(items.some((item) => item.turnUsage)).toBe(false);
+	});
+
+	it('sums the turns of a thread, also turns without an agent message', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([{ type: 'text', timestamp: 100, content: 'First' }], { id: 'e-1', ...usage }),
+			withTimeline([toolCallEvent({ endTime: 200, success: true })], { id: 'e-2', ...usage }),
+			withTimeline([{ type: 'text', timestamp: 300, content: 'No usage' }], { id: 'e-3' }),
+		]);
+
+		expect(breakdown).toEqual({
+			inputTokens: 2000,
+			cacheReadTokens: 1500,
+			cacheWriteTokens: 400,
+			outputTokens: 100,
+			totalTokens: 2100,
+			turns: 2,
+		});
+	});
+
+	it('has no cache counts when no turn reported cache data', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([], {
+				...usage,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			}),
+		]);
+
+		expect(breakdown.cacheReadTokens).toBeNull();
+		expect(breakdown.cacheWriteTokens).toBeNull();
+	});
+
+	it('has no cache counts when one turn reported no cache data', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([], { id: 'e-1', ...usage }),
+			withTimeline([], {
+				id: 'e-2',
+				...usage,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			}),
+		]);
+
+		expect(breakdown).toMatchObject({
+			inputTokens: 2000,
+			cacheReadTokens: null,
+			cacheWriteTokens: null,
+			turns: 2,
+		});
+	});
+});
 
 describe('timeline identity', () => {
 	it('distinguishes events with the same kind and timestamp across refreshes', () => {
@@ -738,6 +853,51 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(suspension).toMatchObject({ hitlRequestType: 'approval' });
 	});
 
+	it('keeps each review request and response for one tool call in sequence', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent(),
+				suspensionEvent({
+					timestamp: 110,
+					suspendPayload: {
+						type: 'approval',
+						workflowId: 'first',
+						workflowExecutionId: 'first-run',
+					},
+				}),
+				hitlResponseEvent({ timestamp: 120, response: { approved: true } }),
+				suspensionEvent({
+					timestamp: 130,
+					suspendPayload: {
+						type: 'approval',
+						workflowId: 'second',
+						workflowExecutionId: 'second-run',
+					},
+				}),
+				hitlResponseEvent({ timestamp: 140, response: { approved: false } }),
+			]),
+		]);
+		expect(items.map(({ kind }) => kind)).toEqual([
+			'tool',
+			'suspension',
+			'hitl-response',
+			'suspension',
+			'hitl-response',
+		]);
+		expect(
+			items
+				.filter(({ kind }) => kind === 'hitl-response')
+				.map(({ approvalWorkflowExecutionId, hitlResponseStatus }) => ({
+					approvalWorkflowExecutionId,
+					hitlResponseStatus,
+				})),
+		).toEqual([
+			{ approvalWorkflowExecutionId: 'first-run', hitlResponseStatus: 'approved' },
+			{ approvalWorkflowExecutionId: 'second-run', hitlResponseStatus: 'declined' },
+		]);
+		expect(new Set(items.map(({ id }) => id)).size).toBe(items.length);
+	});
+
 	it('uses the persisted approval request and maps its result to an approved response', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline(
@@ -794,6 +954,68 @@ describe('flattenExecutionsToTimelineItems', () => {
 			hitlResponseStatus: 'approved',
 			hitlResponse: { approved: true },
 			hitlToolDisplayName: 'Protected action',
+		});
+	});
+
+	it.each([true, false])(
+		'maps an immediate external decision of %s to approval rows with its execution link',
+		(approved) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline([
+					toolCallEvent({
+						toolCallId: 'external',
+						kind: 'workflow',
+						endTime: 200,
+						success: true,
+						workflowId: 'tool',
+						workflowExecutionId: '99',
+					}),
+					suspensionEvent({
+						toolCallId: 'external',
+						suspendPayload: {
+							type: 'approval',
+							displayName: 'Protected action',
+							workflowId: 'decision',
+							workflowExecutionId: '42',
+						},
+					}),
+					hitlResponseEvent({ toolCallId: 'external', response: { approved } }),
+				]),
+			]);
+			expect(items.map((item) => item.kind)).toEqual(['workflow', 'suspension', 'hitl-response']);
+			expect(items[0]).toMatchObject({
+				workflowId: 'tool',
+				workflowExecutionId: '99',
+				activityStatus: 'completed',
+			});
+			for (const item of items.slice(1))
+				expect(item).toMatchObject({
+					hitlRequestType: 'approval',
+					approvalWorkflowId: 'decision',
+					approvalWorkflowExecutionId: '42',
+				});
+			expect(items[2].hitlResponseStatus).toBe(approved ? 'approved' : 'declined');
+		},
+	);
+
+	it('keeps a restored external workflow wait classified as an approval', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent(),
+				suspensionEvent({
+					suspendPayload: {
+						type: 'workflow_wait',
+						approval: true,
+						workflowId: 'decision',
+						workflowExecutionId: '42',
+					},
+				}),
+			]),
+		]);
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'approval',
+			approvalWorkflowId: 'decision',
+			approvalWorkflowExecutionId: '42',
 		});
 	});
 

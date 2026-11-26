@@ -97,11 +97,11 @@ async function handleRemove() {
  * this modal with the same tool, so the form returns with live guardrail chips.
  */
 function handleOpenGuardrail(request: OpenGuardrailRequest) {
-	const wiring =
-		props.data.kind !== 'mcpServer' && props.data.kind !== 'registryMcpServer'
-			? props.data.guardrails
-			: undefined;
+	const data = props.data;
+	if (data.kind === 'mcpServer' || data.kind === 'registryMcpServer') return;
+	const wiring = data.guardrails;
 	if (!wiring) return;
+	const draftToolRef = content.value?.getToolDraft();
 	closeDialog();
 	uiStore.openModalWithData({
 		name: AGENT_GUARDRAIL_MODAL_KEY,
@@ -112,8 +112,15 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			getTools: wiring.getTools,
 			getReviewConfigurations: wiring.getReviewConfigurations,
 			getProjectId: wiring.getProjectId,
+			disabled: wiring.disabled,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
-			onExit: () => uiStore.openModal(props.modalName),
+			onExit: () => {
+				uiStore.setModalData({
+					name: props.modalName,
+					data: { ...data, draftToolRef, initialTab: 'guardrails' },
+				});
+				uiStore.openModal(props.modalName);
+			},
 		},
 	});
 }
@@ -126,7 +133,6 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 		:title="formTitle"
 		:title-error="content?.titleError"
 		:editable-title="!isCustomTool && !isRestricted"
-		stable-height
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		data-testid="agent-tool-config-modal"

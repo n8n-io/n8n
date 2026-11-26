@@ -5,6 +5,7 @@ import {
 	INSTANCE_POLICY_VIEW,
 	POLICIES_LANDING_VIEW,
 	POLICY_MANAGE_SCOPE,
+	PROJECT_POLICY_VIEW,
 	TYPE_AVAILABILITY_POLICIES_MODULE_ID,
 } from './type-availability-policies.constants';
 
@@ -14,6 +15,8 @@ import {
 const PoliciesLandingView = async () => await import('./policies-landing/PoliciesLandingView.vue');
 // eslint-disable-next-line @typescript-eslint/no-unsafe-return
 const InstancePolicyView = async () => await import('./instance-policy/InstancePolicyView.vue');
+// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+const ProjectPolicyView = async () => await import('./project-policy/ProjectPolicyView.vue');
 
 const policyPageMeta = {
 	layout: 'settings',
@@ -38,7 +41,7 @@ export const TypeAvailabilityPoliciesModule = defineFrontendModule({
 	description: 'Reports which node types a project can use, and why a type is unavailable',
 	icon: 'shield',
 	// No `projects` segment in these paths: the rbac middleware reads the segment after it as a
-	// project id.
+	// project id. No `projectId` param either: the shell loads that project as the current one.
 	routes: [
 		{
 			path: 'security/node-and-credential-policies',
@@ -50,6 +53,12 @@ export const TypeAvailabilityPoliciesModule = defineFrontendModule({
 			path: 'security/node-and-credential-policies/instance',
 			name: INSTANCE_POLICY_VIEW,
 			component: InstancePolicyView,
+			meta: policyPageMeta,
+		},
+		{
+			path: 'security/node-and-credential-policies/project/:teamProjectId',
+			name: PROJECT_POLICY_VIEW,
+			component: ProjectPolicyView,
 			meta: policyPageMeta,
 		},
 	],

@@ -1,8 +1,10 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { markRaw, type Component } from 'vue';
+import { computed, markRaw, ref, type Component } from 'vue';
 
 import N8nEmptyState from './EmptyState.vue';
+import N8nDataTableServer, { type TableHeader } from '../N8nDataTableServer';
+import N8nInput from '../N8nInput';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 
@@ -140,4 +142,78 @@ EmptyStateWithAdditionalContent.args = {
 	description:
 		'Get started with your project by clicking the button below. Additional content is included.',
 	buttonText: 'Get Started',
+};
+
+export const SmallEmptyState = DefaultTemplate.bind({});
+SmallEmptyState.args = {
+	size: 'small',
+	description: 'No items match the search and filter.',
+	buttonText: 'Clear search and filter',
+};
+SmallEmptyState.parameters = {
+	docs: {
+		description: {
+			story:
+				'`size: small` fits inside a table or a list. It has no border, medium body text and a small outline button. Put the message in `description`.',
+		},
+	},
+};
+
+type Member = { id: string; name: string; role: string };
+
+const members: Member[] = [
+	{ id: '1', name: 'Ada Lovelace', role: 'Admin' },
+	{ id: '2', name: 'Alan Turing', role: 'Member' },
+	{ id: '3', name: 'Grace Hopper', role: 'Viewer' },
+];
+
+const memberHeaders: Array<TableHeader<Member>> = [
+	{ title: 'Name', key: 'name' },
+	{ title: 'Role', key: 'role' },
+];
+
+export const SmallInDataTable: StoryFn = () => ({
+	// The generic table is not assignable to Storybook's component type.
+	components: {
+		N8nDataTableServer: N8nDataTableServer as unknown as Component,
+		N8nEmptyState,
+		N8nInput,
+	},
+	setup() {
+		const search = ref('zzz');
+		const rows = computed(() =>
+			members.filter((member) =>
+				member.name.toLowerCase().includes(search.value.trim().toLowerCase()),
+			),
+		);
+		return { search, rows, headers: memberHeaders };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); max-width: 640px;">
+			<N8nInput v-model="search" placeholder="Search by name" clearable />
+			<N8nDataTableServer
+				:headers="headers"
+				:items="rows"
+				:items-length="rows.length"
+				:pagination="false"
+			>
+				<template v-if="rows.length === 0" #cover>
+					<N8nEmptyState
+						size="small"
+						description="No members match the search and filter."
+						button-text="Clear search and filter"
+						@click:button="search = ''"
+					/>
+				</template>
+			</N8nDataTableServer>
+		</div>
+	`,
+});
+SmallInDataTable.parameters = {
+	docs: {
+		description: {
+			story:
+				'The small size in the `#cover` slot of `N8nDataTableServer`, when the search or the filter removes all rows. The button clears the search.',
+		},
+	},
 };

@@ -5,7 +5,7 @@
  * Shared by the setup stepper and the channel settings, because these are
  * manifest fields: changing one produces a new app package either way.
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nActionDropdown,
 	N8nButton,
@@ -61,6 +61,14 @@ const i18n = useI18n();
 // Local, because `startCollapsed` is only where the panel begins: bound
 // straight to the row, the open state it emits has nothing to apply it.
 const open = ref(!props.startCollapsed);
+
+watch(
+	() => value.value.teamChannels || value.value.groupChats,
+	(configured) => {
+		if (configured) open.value = true;
+	},
+	{ immediate: true },
+);
 
 function set(patch: Partial<TeamsAvailability>) {
 	const next = { ...value.value, ...patch };

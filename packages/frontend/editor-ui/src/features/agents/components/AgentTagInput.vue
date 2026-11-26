@@ -65,6 +65,7 @@ function removeLabel(value: string) {
 				<template #tag>
 					<span :class="$style.tagText" :title="value">{{ value }}</span>
 					<N8nIconButton
+						:class="$style.remove"
 						icon="x"
 						variant="ghost"
 						size="xsmall"
@@ -95,7 +96,13 @@ function removeLabel(value: string) {
 
 /* Space the remove button from the tag text. */
 .tag {
+	--tag--min-width: 0;
+	--tag--max-width: 100%;
 	gap: var(--spacing--3xs);
+}
+
+.remove {
+	flex-shrink: 0;
 }
 
 /* Mirrors the line-height reset of N8nTag's own .text span. The tag root sets

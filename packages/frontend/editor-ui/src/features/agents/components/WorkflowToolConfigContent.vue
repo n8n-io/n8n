@@ -185,6 +185,15 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	() =>
+		props.initialRef.allOutputs === true || Object.keys(props.initialRef.inputs ?? {}).length > 0,
+	(configured) => {
+		if (configured) advancedExpanded.value = true;
+	},
+	{ immediate: true },
+);
+
 watch([() => props.submitCount, hasInputErrors], ([submitCount, hasErrors]) => {
 	if (submitCount && hasErrors) advancedExpanded.value = true;
 });
@@ -438,9 +447,7 @@ defineExpose({
 			</N8nText>
 		</div>
 
-		<slot name="commonSettings" />
-
-		<div :class="$style.field">
+		<div :class="$style.advanced">
 			<button
 				type="button"
 				:class="$style.advancedTrigger"
@@ -449,7 +456,7 @@ defineExpose({
 				data-test-id="agent-workflow-tool-advanced"
 				@click="advancedExpanded = !advancedExpanded"
 			>
-				<N8nText size="small" bold>{{
+				<N8nText size="medium" bold>{{
 					i18n.baseText('agents.toolConfig.workflow.advanced')
 				}}</N8nText>
 				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
@@ -469,7 +476,7 @@ defineExpose({
 					/>
 				</AgentFormSettingRow>
 
-				<N8nText size="small" bold>{{
+				<N8nText size="medium" bold>{{
 					i18n.baseText('agents.toolConfig.workflow.inputs')
 				}}</N8nText>
 				<N8nText v-if="isLoadingWorkflows" size="small" color="text-light" role="status">
@@ -574,19 +581,31 @@ defineExpose({
 	text-overflow: ellipsis;
 }
 
+.advanced {
+	display: flex;
+	flex-direction: column;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
 .advancedTrigger {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
+	padding: var(--spacing--sm) var(--spacing--md);
+	border: none;
+	border-radius: inherit;
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--background--hover);
+	}
+
+	&[aria-expanded='true'] {
+		border-end-start-radius: 0;
+		border-end-end-radius: 0;
 	}
 
 	&:focus-visible {
@@ -595,6 +614,8 @@ defineExpose({
 }
 
 .advancedContent {
+	padding: var(--spacing--sm) var(--spacing--md);
+	border-top: var(--border);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

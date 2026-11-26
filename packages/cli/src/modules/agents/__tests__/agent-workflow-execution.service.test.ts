@@ -54,6 +54,7 @@ import {
 } from '../agent-sandbox-principal';
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { AgentSpendLedger } from '../budget-guardrail';
+import * as toolGuardrails from '../tool-guardrails';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
@@ -997,6 +998,33 @@ describe('AgentWorkflowExecutionService', () => {
 			action: 'stop',
 			code: 'guardrail.keywords.block_secrets',
 		});
+	});
+
+	it('passes the run budget and model ID to workflow-invoked guardrails', async () => {
+		const ledger = mock<AgentSpendLedger>();
+		Container.set(AgentSpendLedger, ledger);
+		const attach = vi.spyOn(toolGuardrails, 'withToolGuardrails');
+		const { service, agentRepository, reconstructionService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			budget: { enabled: true, monthlyBudgetUsd: 20 },
+			guardrailModelId: 'openai/gpt-4o-mini',
+			toolGuardrails: [{ kind: 'jailbreak', id: 'check' }],
+		});
+
+		try {
+			await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+			expect(attach).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					guardrailModelId: 'openai/gpt-4o-mini',
+					budget: expect.objectContaining({ ledger, agentId, monthlyBudgetUsd: 20 }),
+				}),
+			);
+		} finally {
+			attach.mockRestore();
+		}
 	});
 
 	it('attaches no tool-guardrail hook when the agent has none configured', async () => {

@@ -225,6 +225,7 @@ function actionIssueMessage(
 	specificIssueKeys: Record<string, BaseTextKey>,
 ): string {
 	const { kind, toolType } = issue.capability;
+	if (kind === 'humanReview') return issueMessage(issue);
 	const pathKey = previewPathKey(issue);
 	const key =
 		(issue.reason ? reasonSpecificKeys[issue.reason] : undefined) ??
@@ -274,7 +275,12 @@ const overflowLabel = computed(() =>
 </script>
 
 <template>
-	<N8nTooltip :disabled="props.disabled" :content="props.fallback" :content-class="$style.tooltip">
+	<N8nTooltip
+		as-child
+		:disabled="props.disabled"
+		:content="props.fallback"
+		:content-class="$style.tooltip"
+	>
 		<template #content>
 			<div v-if="details.length > 0" :class="$style.content">
 				<div :class="$style.heading">{{ props.fallback }}</div>

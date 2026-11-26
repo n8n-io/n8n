@@ -1,5 +1,8 @@
 import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
+	AgentHitlChannelDescriptor,
+	AgentHitlOptionsPage,
+	AgentHitlOptionsQuery,
 	AgentPlanSnapshotDto,
 	AgentApproval,
 	AgentBudgetSpend,
@@ -24,6 +27,7 @@ import type {
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentIntegrationAccountResponse,
 	AgentWebhookUrlResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
@@ -200,7 +204,7 @@ export const listN8nChatAgents = async (
 	});
 };
 
-/** Options for {@link listN8nChatThreads}. `cursor` is a thread's `updatedAt` ISO string. */
+/** Options for {@link listN8nChatThreads}. Pass the previous page's `nextCursor` unchanged. */
 export type ListN8nChatThreadsOptions = {
 	limit: number;
 	cursor?: string;
@@ -497,6 +501,19 @@ export const getIntegrationStatus = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
+	);
+};
+
+export const getIntegrationAccount = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	type: string,
+): Promise<AgentIntegrationAccountResponse> => {
+	return await makeRestApiRequest<AgentIntegrationAccountResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/${encodeURIComponent(type)}/account`,
 	);
 };
 
@@ -1251,6 +1268,31 @@ export const getAgentWriteLock = async (
 		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
 	);
 };
+
+export async function getAgentHitlChannels(
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentHitlChannelDescriptor[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/hitl/channels`,
+	);
+}
+export async function getAgentHitlChannelOptions(
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	query: AgentHitlOptionsQuery,
+): Promise<AgentHitlOptionsPage> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/hitl/channel-options`,
+		query,
+	);
+}
 
 export const getAgentTaskCancellation = async (
 	context: IRestApiContext,

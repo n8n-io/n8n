@@ -17,6 +17,8 @@ import type {
 	MemoryAction,
 	TimelineItem,
 	TimelineStatusFilterKey,
+	TimelineTokenBreakdown,
+	TimelineTurnUsage,
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
@@ -405,7 +407,7 @@ export function builtinToolLabelKey(
 }
 
 export function formatDuration(ms: number): string {
-	if (!ms || ms <= 0) return '';
+	if (!Number.isFinite(ms) || ms <= 0) return '';
 	if (ms < 1000) return `${ms}ms`;
 	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
 	const minutes = Math.floor(ms / 60_000);
@@ -509,7 +511,11 @@ function isDeclinedToolOutput(output: unknown): boolean {
 }
 
 function isApprovalRequest(value: unknown): boolean {
-	return isRecord(value) && value.type === 'approval';
+	return (
+		isRecord(value) &&
+		(value.type === 'approval' ||
+			(value.type === WORKFLOW_WAIT_SUSPEND_TYPE && value.approval === true))
+	);
 }
 
 function isIntegrationActionRequest(value: unknown): boolean {
@@ -593,6 +599,8 @@ interface HitlContext {
 	toolCall?: RawToolCallEvent;
 	toolItem?: TimelineItem;
 	toolDisplayName?: string;
+	approvalWorkflowId?: string;
+	approvalWorkflowExecutionId?: string;
 	hasExplicitResponse: boolean;
 }
 
@@ -695,6 +703,8 @@ function hitlResponseItem(
 		hitlResponse: response,
 		hitlResponseStatus: hitlResponseStatus(context.requestType, response, isLegacyResponse),
 		hitlToolDisplayName: context.toolDisplayName,
+		approvalWorkflowId: context.approvalWorkflowId,
+		approvalWorkflowExecutionId: context.approvalWorkflowExecutionId,
 		timestamp,
 		endTimestamp: timestamp,
 		workflowName: context.toolCall?.workflowName,
@@ -722,6 +732,84 @@ function inputTimelineItem(
 	};
 }
 
+function toEpoch(date: string | null): number | null {
+	return date ? new Date(date).getTime() : null;
+}
+
+/** The usage of a turn, or `undefined` when the turn recorded no tokens. */
+export function turnUsageOf(exec: AgentExecution): TimelineTurnUsage | undefined {
+	const inputTokens = exec.promptTokens ?? 0;
+	const outputTokens = exec.completionTokens ?? 0;
+	const totalTokens = exec.totalTokens ?? inputTokens + outputTokens;
+	if (totalTokens <= 0) return undefined;
+	return {
+		inputTokens,
+		cacheReadTokens: exec.cacheReadTokens ?? null,
+		cacheWriteTokens: exec.cacheWriteTokens ?? null,
+		outputTokens,
+		totalTokens,
+		cost: exec.cost,
+		startedAt: toEpoch(exec.startedAt),
+		stoppedAt: toEpoch(exec.stoppedAt),
+	};
+}
+
+/**
+ * The token breakdown of a whole thread: the sum of its turns. The cache counts
+ * are `null` unless every turn reported cache data: the input of a turn without
+ * it would otherwise show as uncached.
+ */
+export function threadTokenBreakdownOf(
+	executions: AgentExecution[],
+): TimelineTokenBreakdown & { turns: number } {
+	const sum: TimelineTokenBreakdown & { turns: number } = {
+		inputTokens: 0,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
+		outputTokens: 0,
+		totalTokens: 0,
+		turns: 0,
+	};
+	let cacheRead = 0;
+	let cacheWrite = 0;
+	let everyTurnHasCacheData = true;
+	for (const exec of executions) {
+		const usage = turnUsageOf(exec);
+		if (!usage) continue;
+		sum.turns++;
+		sum.inputTokens += usage.inputTokens;
+		sum.outputTokens += usage.outputTokens;
+		sum.totalTokens += usage.totalTokens;
+		if (usage.cacheReadTokens === null && usage.cacheWriteTokens === null) {
+			everyTurnHasCacheData = false;
+		}
+		cacheRead += usage.cacheReadTokens ?? 0;
+		cacheWrite += usage.cacheWriteTokens ?? 0;
+	}
+	if (sum.turns > 0 && everyTurnHasCacheData) {
+		sum.cacheReadTokens = cacheRead;
+		sum.cacheWriteTokens = cacheWrite;
+	}
+	return sum;
+}
+
+/**
+ * Puts the usage of a turn on its last agent message, the reply that closes the
+ * turn. A turn without an agent message, such as one that waits for an approval,
+ * shows no usage row. The header total still counts it.
+ */
+function attachTurnUsage(items: TimelineItem[], execStart: number, exec: AgentExecution): void {
+	const usage = turnUsageOf(exec);
+	if (!usage) return;
+	for (let index = items.length - 1; index >= execStart; index--) {
+		const item = items[index];
+		if (item.kind === 'agent' && item.executionId === exec.id) {
+			item.turnUsage = usage;
+			return;
+		}
+	}
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
 	const initialToolCalls = new Map<string, RawToolCallEvent>();
@@ -729,6 +817,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 	const hitlContexts = new Map<string, HitlContext>();
 	const legacyApprovalToolCallIds = collectLegacyApprovalToolCallIds(executions);
 	for (const exec of executions) {
+		const execStart = items.length;
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
@@ -864,9 +953,19 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const requestType = inferHitlRequestType(suspension, toolCall, legacyApprovalToolCallIds);
 				const request = hitlRequestPayload(suspension, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
+				const approvalWorkflowId =
+					requestType === 'approval' && isRecord(request) && typeof request.workflowId === 'string'
+						? request.workflowId
+						: undefined;
+				const approvalWorkflowExecutionId =
+					requestType === 'approval' &&
+					isRecord(request) &&
+					typeof request.workflowExecutionId === 'string'
+						? request.workflowExecutionId
+						: undefined;
 				if (event.toolCallId) {
 					const toolItem = initialToolItems.get(event.toolCallId);
-					if (toolItem) {
+					if (toolItem && !toolCall?.endTime) {
 						toolItem.activityStatus =
 							exec.status === 'error' ||
 							exec.status === 'cancelled' ||
@@ -881,6 +980,8 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 						toolCall,
 						toolItem: initialToolItems.get(event.toolCallId),
 						toolDisplayName,
+						approvalWorkflowId,
+						approvalWorkflowExecutionId,
 						hasExplicitResponse: false,
 					});
 				}
@@ -893,6 +994,8 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					hitlRequestType: requestType,
 					hitlRequest: request,
 					hitlToolDisplayName: toolDisplayName,
+					approvalWorkflowId,
+					approvalWorkflowExecutionId,
 					workflowName: toolCall?.workflowName,
 					nodeDisplayName: toolCall?.nodeDisplayName,
 				});
@@ -900,7 +1003,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (!hitlContext) continue;
 				hitlContext.hasExplicitResponse = true;
-				if (hitlContext.toolItem) {
+				if (hitlContext.toolItem && !hitlContext.toolCall?.endTime) {
 					const responseStatus = hitlResponseStatus(hitlContext.requestType, event.response);
 					if (responseStatus === 'declined') {
 						hitlContext.toolItem.activityStatus = 'completed';
@@ -930,6 +1033,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				timestamp: terminalTimestamp ? new Date(terminalTimestamp).getTime() : 0,
 			});
 		}
+		attachTurnUsage(items, execStart, exec);
 	}
 	/** Count equal identities before task merging and sorting. Content can change during streaming. */
 	const occurrences = new Map<string, number>();

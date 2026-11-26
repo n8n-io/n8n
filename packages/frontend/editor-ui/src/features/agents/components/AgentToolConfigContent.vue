@@ -61,6 +61,7 @@ function selectCredential(authType: string, credentialId: string) {
 }
 
 defineExpose({
+	getToolDraft: () => genericForm.value?.getToolDraft(),
 	changeTitle,
 	confirm,
 	credentialAdapter,

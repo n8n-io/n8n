@@ -141,11 +141,28 @@ describe('AgentRuntimeCacheService', () => {
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
 			...makeRuntime(),
 			guardrailModel,
+			guardrailModelId: 'openai/gpt-4o-mini',
 		});
 
 		const runtime = await service.getRuntime({ agentId, projectId });
 
 		expect(runtime.guardrailModel).toBe(guardrailModel);
+		expect(runtime.guardrailModelId).toBe('openai/gpt-4o-mini');
+	});
+
+	it('carries the guardrail workflow context from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailWorkflowContext = { projectId: 'project-1' } as unknown as WorkflowToolContext;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailWorkflowContext,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailWorkflowContext).toBe(guardrailWorkflowContext);
 	});
 
 	it('carries the guardrail workflow context from the reconstruction onto the cached runtime', async () => {

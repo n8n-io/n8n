@@ -19,7 +19,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.title': 'Guardrails',
 				'agents.builder.guardrails.description': 'Checks on what tools receive and return.',
 				'agents.builder.guardrails.add': 'Add guardrail',
-				'agents.builder.guardrails.chip.allTools': 'All tools',
+				'agents.builder.guardrails.chip.allToolsSuffix': '· All tools',
 				'agents.builder.guardrails.kind.keywords': 'Blocked keywords',
 				'agents.builder.guardrails.kind.nsfw': 'NSFW detection',
 				'agents.builder.guardrails.kind.jailbreak': 'Jailbreak detection',
@@ -104,6 +104,7 @@ function mountSection(
 		toolRef: AgentJsonToolRef;
 		guardrails: Array<Record<string, unknown>>;
 		validationIssues: AgentConfigValidationIssue[];
+		disabled: boolean;
 	}> = {},
 ) {
 	const guardrails = overrides.guardrails ?? guardrailsFor();
@@ -121,6 +122,7 @@ function mountSection(
 			getTools: () => agentTools(),
 			onUpdateGuardrails: onUpdateGuardrails as never,
 			...(issueList ? { validationIssues: () => issueList } : {}),
+			disabled: () => overrides.disabled ?? false,
 		},
 	});
 	mountedSections.push(wrapper);
@@ -185,12 +187,21 @@ describe('AgentToolGuardrailsSection', () => {
 	});
 
 	it('matches a workflow tool by its workflow id', () => {
-		const { wrapper } = mountSection({ toolRef: WORKFLOW_TOOL });
+		const { wrapper } = mountSection({
+			toolRef: WORKFLOW_TOOL,
+			guardrails: [
+				...guardrailsFor(),
+				{
+					...NAMED_GUARDRAIL,
+					id: 'workflow-match',
+					name: 'Workflow match',
+					tools: [{ type: 'workflow', workflowId: WORKFLOW_TOOL.workflowId }],
+				},
+			],
+		});
 
 		const named = wrapper.findAll('[data-testid="agent-tool-guardrails-chip"]');
-		expect(named).toHaveLength(0);
-		// The workflow-targeting guardrail targets wf-9, not wf-1: only the wildcard remains.
-		expect(wrapper.findAll('[data-testid="agent-tool-guardrails-wildcard-chip"]')).toHaveLength(1);
+		expect(named.map((chip) => chip.text())).toEqual(['Workflow match']);
 	});
 
 	it('renders the heading copy', () => {
@@ -216,6 +227,22 @@ describe('AgentToolGuardrailsSection', () => {
 
 		await wrapper.get('[data-testid="agent-tool-guardrails-wildcard-chip"]').trigger('click');
 		expect(wrapper.emitted('open-guardrail')?.at(-1)).toEqual([{ guardrail: WILDCARD_GUARDRAIL }]);
+	});
+
+	it('disables the chips and the add menu when the user has no write access', async () => {
+		const { wrapper } = mountSection({ disabled: true });
+
+		const chips = wrapper.findAllComponents({ name: 'AgentChipButton' });
+		expect(chips[0].props('disabled')).toBe(true);
+		expect(chips[1].props('disabled')).toBe(true);
+		expect(wrapper.get('[data-testid="agent-tool-guardrails-add"]').attributes('disabled')).toBe(
+			'',
+		);
+
+		// jsdom fires listeners on disabled buttons, so the handlers must guard too.
+		await wrapper.get('[data-testid="agent-tool-guardrails-chip"]').trigger('click');
+		await wrapper.get('[data-testid="agent-tool-guardrails-wildcard-chip"]').trigger('click');
+		expect(wrapper.emitted('open-guardrail')).toBeUndefined();
 	});
 
 	it('emits a create request with the picked kind and no guardrail', async () => {

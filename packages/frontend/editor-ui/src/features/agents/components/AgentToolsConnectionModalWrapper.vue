@@ -36,6 +36,7 @@ import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -113,6 +114,7 @@ import {
 import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { toToolIconSource } from '../utils/toolIconSource';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
+import type { ToolConfigTab } from './AgentToolConfigForm.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
 import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -130,6 +132,8 @@ const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 // binding via mergeProps — pinning the dialog open.
 defineOptions({ inheritAttrs: false });
 
+import type { AgentHitlContext } from './agent-hitl.types';
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -139,6 +143,7 @@ const props = defineProps<{
 		projectId: string;
 		agentId?: string;
 		supportsToolApproval?: boolean;
+		approvalContext?: AgentHitlContext;
 		/** Agent-level guardrails wiring, threaded into the config step for existing tools. */
 		guardrails?: ToolGuardrailsWiring;
 		/**
@@ -146,9 +151,11 @@ const props = defineProps<{
 		 * jumps back to the config step of this tool instead of the list.
 		 */
 		resumeToolRef?: AgentJsonToolRef;
+		resumeToolDraft?: AgentJsonToolRef;
 		onConfirm: (payload: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
+			renamedTool?: { from: string; to: string };
 		}) => void;
 	};
 }>();
@@ -338,7 +345,11 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 	if (!wiring || !entry) return;
 	uiStore.setModalData({
 		name: props.modalName,
-		data: { ...props.data, resumeToolRef: entry.ref },
+		data: {
+			...props.data,
+			resumeToolRef: entry.ref,
+			resumeToolDraft: configContent.value?.getToolDraft(),
+		},
 	});
 	closeModal();
 	uiStore.openModalWithData({
@@ -350,6 +361,7 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			getTools: wiring.getTools,
 			getReviewConfigurations: wiring.getReviewConfigurations,
 			getProjectId: wiring.getProjectId,
+			disabled: wiring.disabled,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
 			onExit: () => uiStore.openModal(props.modalName),
 		},
@@ -358,15 +370,15 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 
 /** Consume the stashed ref from a guardrail edit: reopen on that tool's config step. */
 function resumeToolConfigStep() {
-	const { resumeToolRef } = props.data;
+	const { resumeToolRef, resumeToolDraft } = props.data;
 	if (!resumeToolRef) return;
 	// Consume once, so a later manual open starts at the picker.
 	uiStore.setModalData({
 		name: props.modalName,
-		data: { ...props.data, resumeToolRef: undefined },
+		data: { ...props.data, resumeToolRef: undefined, resumeToolDraft: undefined },
 	});
 	const entry = workingToolEntries.value.find((candidate) => candidate.ref === resumeToolRef);
-	if (entry) openConfigForToolEntry(entry);
+	if (entry) openConfigForToolEntry(entry, 'guardrails', resumeToolDraft);
 }
 
 function updateConfigTitle(value: string) {
@@ -387,6 +399,8 @@ function handleInteractOutside(event: Event) {
 }
 
 const isLoadingCredentials = ref(false);
+// The tool list shows the built-in tools from the node types.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 
 /**
  * Block until the project's credentials are in the store, so rows do not show as
@@ -469,10 +483,11 @@ function getExistingMcpServerNames(
 	return servers.filter((server) => server !== exclude).map((server) => server.name);
 }
 
-function commit() {
+function commit(renamedTool?: { from: string; to: string }) {
 	props.data.onConfirm({
 		tools: workingTools.value,
 		mcpServers: workingMcpServers.value,
+		...(renamedTool ? { renamedTool } : {}),
 	});
 }
 
@@ -498,6 +513,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingToolNames(workingTools.value),
 		onConfirm: (savedRef: AgentJsonToolRef) => {
 			addToolRef(savedRef);
@@ -516,6 +532,7 @@ function openConfigForNewMcpServer(
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
 		onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
 			addMcpServer(savedServer);
@@ -719,14 +736,21 @@ async function handleCreateWorkflow() {
 	}
 }
 
-function openConfigForToolEntry(entry: WorkingToolEntry) {
+function openConfigForToolEntry(
+	entry: WorkingToolEntry,
+	initialTab?: ToolConfigTab,
+	draftToolRef?: AgentJsonToolRef,
+) {
 	const toolRef = entry.ref;
 	activeConfigEntry = entry;
 	openConfigModal({
 		toolRef,
+		initialTab,
+		draftToolRef,
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 		...(toolRef.type !== 'custom' &&
 			props.data.guardrails && { guardrails: props.data.guardrails }),
@@ -735,7 +759,11 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 				e.localId === entry.localId ? { ...e, ref: updatedRef } : e,
 			);
 			toolTelemetry.trackEdited(updatedRef);
-			commit();
+			commit(
+				toolRef.type === 'node' && updatedRef.type === 'node' && toolRef.name !== updatedRef.name
+					? { from: toolRef.name, to: updatedRef.name }
+					: undefined,
+			);
 		},
 		onRemove: () => {
 			workingToolEntries.value = workingToolEntries.value.filter(
@@ -762,6 +790,7 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
 		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.map((e) =>
@@ -784,6 +813,7 @@ function openConfigForRegistryEntry(entry: WorkingMcpServerEntry) {
 		mcpServer: entry.server,
 		projectId: props.data.projectId,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
 		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.map((candidate) =>
@@ -998,6 +1028,7 @@ function connectRegistryItem(
 		projectId: props.data.projectId,
 		isNew: true,
 		supportsToolApproval: props.data.supportsToolApproval,
+		approvalContext: props.data.approvalContext,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
 		onConfirm: addMcpServer,
 	});
@@ -1282,7 +1313,6 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:title="modalTitle"
 		:title-error="configContent?.titleError"
 		:editable-title="Boolean(configData) && !configIsCustom && !configIsRestricted"
-		stable-height
 		:show-back="Boolean(configData)"
 		:show-footer="Boolean(configData)"
 		:busy="isCredentialModalOpen || isCreatingWorkflow"
@@ -1328,7 +1358,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
-			:loading="isLoadingCredentials"
+			:loading="isLoadingCredentials || (!isWorkflow && nodeTypesLoading)"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

@@ -16,6 +16,7 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -28,7 +29,7 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
@@ -54,6 +55,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 
+export type ToolSettingsTab = 'params' | 'settings';
+
 const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
@@ -69,6 +72,8 @@ const props = defineProps<{
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
 	syncNodeToNdv?: boolean;
 	readOnly?: boolean;
+	/** The host renders the tab bar when it supplies the active tab. */
+	activeTab?: ToolSettingsTab;
 }>();
 
 const emit = defineEmits<{
@@ -86,6 +91,8 @@ const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);
+// The defaults come from the node type. Fill them one time, after the node types load.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
@@ -116,8 +123,8 @@ const nodeTypeDescription = computed(() => {
 	};
 });
 
-type ToolSettingsTab = 'params' | 'settings';
-const activeTab = ref<ToolSettingsTab>('params');
+const localTab = ref<ToolSettingsTab>('params');
+const selectedTab = computed(() => props.activeTab ?? localTab.value);
 
 const parametersByTab = computed(() =>
 	collectParametersByTab(nodeTypeDescription.value?.properties ?? [], false),
@@ -186,7 +193,8 @@ const hasCredentialIssues = computed(() => {
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+// The tool document has a local key and no saved workflow ID.
+const toolWorkflowDocumentId = createWorkflowDocumentId('', 'node-tool-workflow');
 const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
 const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);
@@ -227,7 +235,9 @@ const hasUnavailableAgentCredential = computed(() => {
 });
 
 const isValid = computed(() => {
+	// Without the node type, the parameters can't be checked and have no defaults yet.
 	return (
+		!nodeTypesLoading.value &&
 		node.value?.name &&
 		!hasParameterIssues.value &&
 		!hasCredentialIssues.value &&
@@ -350,8 +360,9 @@ function handleChangeName(name: string) {
 }
 
 watch(
-	() => props.initialNode,
-	(initialNode) => {
+	() => [props.initialNode, nodeTypesLoading.value] as const,
+	([initialNode, loading]) => {
+		if (loading) return;
 		if (initialNode) {
 			const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
 			let nodeData =
@@ -500,22 +511,25 @@ onBeforeUnmount(() => {
 	disposeWorkflowDocumentStore(documentStore);
 });
 
-defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
+defineExpose({ node, isValid, nodeTypeDescription, handleChangeName, tabOptions });
 </script>
 
 <template>
 	<div :class="$style.container">
 		<N8nTabs
-			v-if="tabOptions.length > 1"
-			:model-value="activeTab"
+			v-if="props.activeTab === undefined && tabOptions.length > 1"
+			:model-value="localTab"
 			:options="tabOptions"
 			:class="$style.tabs"
-			@update:model-value="activeTab = $event"
+			@update:model-value="localTab = $event"
 		/>
 
-		<div :class="$style.tabContent">
+		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
+			<N8nIcon icon="loader-circle" size="large" spin />
+		</div>
+		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->
-			<div v-show="activeTab === 'params'">
+			<div v-show="selectedTab === 'params'">
 				<ParameterInputList
 					v-if="node"
 					:parameters="parametersByTab.params"
@@ -551,7 +565,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			</div>
 
 			<!-- Settings Tab -->
-			<div v-show="activeTab === 'settings'">
+			<div v-show="selectedTab === 'settings'">
 				<ParameterInputList
 					v-if="node && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"
@@ -597,6 +611,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 	overflow-y: auto;
 	min-height: 0;
 	padding-right: var(--spacing--lg);
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 
 .noParameters {

@@ -1,3 +1,4 @@
+import { useUIStore } from '@/app/stores/ui.store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
@@ -117,6 +118,7 @@ describe('AgentGuardrailModalHost', () => {
 		// Save, cancel, and Escape all arrive as update:open false.
 		wrapper.getComponent({ name: 'AgentGuardrailModal' }).vm.$emit('update:open', false);
 
+		expect(useUIStore().closeModal).toHaveBeenCalledWith('agentGuardrailModal');
 		expect(onExit).toHaveBeenCalledTimes(1);
 	});
 });

@@ -156,7 +156,7 @@ onMounted(async () => {
 			data-test-id="chat-scroll-area-viewport"
 		>
 			<div ref="topSentinel" :class="$style.sentinel" aria-hidden="true" />
-			<div ref="content">
+			<div ref="content" :class="$style.content">
 				<slot />
 			</div>
 			<div :class="$style.spacer" aria-hidden="true" />
@@ -197,6 +197,8 @@ onMounted(async () => {
 }
 
 .viewport {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	width: 100%;
 	overflow-y: auto;
@@ -220,12 +222,20 @@ onMounted(async () => {
 	);
 }
 
+/* Fills the free height, so slot content with `height: 100%` (an empty state) can center. */
+.content {
+	flex-grow: 1;
+}
+
+/* `flex-shrink: 0` keeps the sentinels and the spacer at full height when the content overflows. */
 .sentinel {
+	flex-shrink: 0;
 	height: 1px;
 	overflow-anchor: auto;
 }
 
 .spacer {
+	flex-shrink: 0;
 	height: var(--chat--input--height, 0);
 }
 

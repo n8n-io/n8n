@@ -34,20 +34,25 @@ type FinishedRun = {
 
 export type ExecutionLedgerEndedFacts = RunFacts & (BlockedRun | FinishedRun);
 
-/**
- * Implemented by the `execution-ledger` module. Core code calls `ExecutionLedger` instead.
- * A write resolves to `false` when the workflow has no owner project. It does not throw
- * for that case, because a failed insert would abort a Postgres transaction.
- */
+/** `hasOwnerProject` is false when the row was written with no project. */
+export type ExecutionLedgerWriteResult = { hasOwnerProject: boolean };
+
 export type ExecutionLedgerBacklogStats = {
 	/** Upper bound from the id range: each rolled-back append leaves a gap that counts. */
 	rows: number;
 	oldestOccurredAt: Date | null;
 };
 
+/** Implemented by the `execution-ledger` module. Core code calls `ExecutionLedger` instead. */
 export interface ExecutionLedgerWriter {
-	writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean>;
-	writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean>;
+	writeStarted(
+		facts: ExecutionLedgerStartedFacts,
+		ctx: OperationContext,
+	): Promise<ExecutionLedgerWriteResult>;
+	writeEnded(
+		facts: ExecutionLedgerEndedFacts,
+		ctx: OperationContext,
+	): Promise<ExecutionLedgerWriteResult>;
 	/** For monitoring. The writer owns the table, so it also reads its backlog. */
 	getBacklogStats(): Promise<ExecutionLedgerBacklogStats>;
 }

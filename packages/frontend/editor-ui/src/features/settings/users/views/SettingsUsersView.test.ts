@@ -233,7 +233,7 @@ describe('SettingsUsersView', () => {
 		renderComponent();
 
 		const inviteButton = screen.getByTestId('settings-users-invite-button');
-		expect(inviteButton).toBeDisabled();
+		expect(inviteButton).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('should disable invite button when OIDC SSO is enabled', () => {
@@ -242,7 +242,7 @@ describe('SettingsUsersView', () => {
 		renderComponent();
 
 		const inviteButton = screen.getByTestId('settings-users-invite-button');
-		expect(inviteButton).toBeDisabled();
+		expect(inviteButton).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('should disable invite button when users limit is reached', () => {

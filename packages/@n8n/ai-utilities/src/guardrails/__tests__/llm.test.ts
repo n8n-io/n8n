@@ -1,12 +1,21 @@
 import { runLLMValidation } from '../llm';
 
 const runWith = (output: string) => ({
-	run: vi.fn().mockResolvedValue(output),
+	run: vi.fn().mockResolvedValue({ text: output }),
 	prompt: 'Test prompt',
 	threshold: 0.7,
 });
 
 describe('runLLMValidation', () => {
+	it('supports adapters that return only model text', async () => {
+		const result = await runLLMValidation('test-guardrail', 'input', {
+			run: async () => '{"confidenceScore":0.9,"flagged":true}',
+			prompt: 'check',
+			threshold: 0.5,
+		});
+		expect(result).toMatchObject({ tripwireTriggered: true, executionFailed: false });
+	});
+
 	describe('output format validation', () => {
 		it('should validate output contains only expected fields', async () => {
 			const result = await runLLMValidation(

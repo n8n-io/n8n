@@ -37,11 +37,13 @@ export class AgentsModule implements ModuleInterface {
 
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
+		await import('./agent-attention-flags.controller.js');
 		await import('./agents.controller.js');
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./knowledge-collection-agents.controller.js');
 		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
@@ -299,6 +301,7 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-execution-message-link.entity.js'
 		);
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
+		const { AgentAttentionFlagEntity } = await import('./entities/agent-attention-flag.entity.js');
 		const { AgentThreadGrant } = await import('./entities/agent-thread-grant.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
@@ -354,6 +357,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionMessageLink,
 			AgentExecutionThread,
+			AgentAttentionFlagEntity,
 			AgentThreadGrant,
 			AgentExecution,
 			AgentMessageQueue,

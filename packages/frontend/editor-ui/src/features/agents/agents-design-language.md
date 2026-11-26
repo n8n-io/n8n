@@ -234,7 +234,9 @@ Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
 ## Setup checklist
 
-Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+In the setup header experiment, show `Finish setup` beside `Test Agent` in the
+Agent identity header. Otherwise, keep it in the top navigation bar.
+Show it after the Agent exists and the Assistant finishes building it.
 Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
 Use this behavior in Agent artifacts and the standalone Agent Builder.
@@ -272,6 +274,28 @@ when the user selects an action. Configuration errors must not block removal
 or deactivation.
 
 ## Modal patterns
+
+### Fixed mode choices
+
+Use `N8nSwitch` for two fixed options in an Agent modal. Show both option labels
+beside the switch. The left option is off and the right option is on. Keep the
+selected mode clear. Use `N8nSegmentControl` for three fixed options.
+Use selects for longer lists and dynamic resources, regardless of result count.
+
+### Pill fields
+
+Use `AgentPillField` for named selections in tool and review modals. Keep the
+label inside the border on the left. Use the same medium label size as modal fields. Put an optional subtitle below
+the label with the section subtitle size and colour. Align the selected pills to the right when the field renders its own label.
+Keep a ghost plus button at the far right. Centre labels vertically beside their controls, including when pills wrap. Centre the plus
+vertically with the pills. Use the large border radius and
+standard spacing tokens. Let pills wrap without clipping their shadows or controls.
+Truncate long names and keep their full name in the title. Keep the removable pill end padding compact; the remove button already supplies its hit area.
+
+The plus opens the options menu directly. Do not nest a select or input inside it. Exclude selected items. Show the item's icon
+and name in the menu and pill. The remove button detaches only that item.
+Keep selection order. Disable adding, editing, and removing under edit locks.
+Label the approval attachment field Which tools require this. Show it when the Agent has attached tools or MCP servers. When the surrounding row supplies the label, show the pills in the full-width area below it. Keep changes local until Save.
 
 ### Channel behavior settings
 
@@ -336,10 +360,21 @@ Use `full` only when the user explicitly asks for the extra workspace.
 Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
 when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
-scrollbars on MCP, node, or workflow configuration content. In tool modals, set
-`stable-height` on `AgentModal` or `AgentModalMultiStep` to keep the body at a
-stable height, so expanding content scrolls without shifting the dialog. Do not
-set it on short modals, such as confirmations, descriptions, and budgets.
+scrollbars on MCP, node, or workflow configuration content. Let configuration
+modals grow with their content. The shared Agent shell limits the dialog height
+to the viewport with `--spacing--3xl` (64px) above and below.
+On narrow screens, use `--spacing--md` for these gaps. The body scrolls only when
+the dialog reaches this limit. Keep short modals sized to their content.
+Picker steps can keep a minimum height for their result list.
+
+Use one tab bar in tool forms that support either guardrails or approval. Open
+Parameters by default and keep Advanced settings in that tab. Include tabs
+provided by the tool, such as Settings. Put Guardrails last.
+Use the localized guardrail type as the default pill label. Keep custom names.
+Anchor the add guardrail menu to the button when it has a tooltip.
+Put guardrails above approval in the Guardrails tab. Keep the approval toggle
+and its destination selector together. Keep form edits when users switch tabs.
+Return to Guardrails after a guardrail edit. Keep MCP configuration on one page.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
@@ -606,10 +641,11 @@ for the Assistant and Agent Preview. Pass the app catalog labels through
 Use the description slot to show the Agent name and the requested tool name.
 Show a node icon only when configured tool metadata identifies its node type.
 Use the localized Agent label when no name is available.
-Pass the sanitized display arguments from the backend to the shared card.
-For node tools, include the resolved node parameters and any model input.
-The card formats and shows these values inline for both surfaces. Leave space
-for the card's outline and shadow inside scrollable containers.
+Show the Agent's short approval description above the available tool arguments
+in the shared card. Show the arguments supplied for display by the backend.
+Respect redacted requests. Use the same description in connected channel
+approvals. Offer only approve-once and deny there. Leave space for the
+card's outline and shadow inside scrollable containers.
 Keep approval policy and response payloads in the caller. Show the session
 option only when the backend supports it. Replace the Preview composer with
 pending tool approvals, including background child approvals. Restore the
@@ -619,6 +655,50 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+Use one card on the Build tab for Guardrails, Approval, and Monthly usage.
+Use full-width dividers between sections and budget rows. Each section expands independently.
+Open Guardrails by default. Open Approval when the Agent has an approval.
+Open Monthly usage when a monthly budget or session cap is set. Let users
+collapse configured sections. Open other configuration disclosures when they
+contain saved settings, such as workflow inputs, vector stores, or individual
+MCP tool permissions.
+Show Approval when the module is enabled. Use pills to show the configured
+destinations. Each pill opens its settings.
+
+Use a shared destination menu. For a tool, list existing approvals first. Add a
+divider before the options to create an approval. List Workflow before the
+connected channels.
+Open the destination pane on pointer hover or keyboard activation. Include search
+in that pane and fetch more results as the user scrolls. Group people and channels.
+Anchor the source menu to its trigger. Position the destination pane separately
+so that loading or resizing results does not move the source menu. Render the
+Build tab menu outside the editor column so it stays anchored beside either
+chat panel. Keep menus inside their settings dialogs.
+Create the approval when the user selects a destination. Use workflow or recipient
+names by default and show the platform as an icon. Preserve explicit name overrides.
+
+Show Send to below Require approval while the toggle is on. Use a full-width
+divider between these rows. In workflow tool settings, put Advanced in its own
+section after the other settings. In MCP settings,
+include Send approval to after the tool permissions in the same bordered group.
+Open these sections when an approver is attached. Start them collapsed when
+empty. When expanded, show the ordered approvers and an Add approver action. Allow attaching an existing approval from the same menu.
+Every selected approver must approve, in the order shown.
+
+In a conversation, ask the requester before contacting configured reviewers.
+Explain in that request that their confirmation starts external review. Rejecting
+stops the sequence without contacting reviewers. Do not offer session approval
+for this first step when external review is configured. Workflow and scheduled
+runs skip this step because there is no chat requester. During external review,
+show a fixed waiting message with no approval actions in the requester's conversation. Name the tool that is
+waiting and include its approval description. The configured workflow or channel
+owns approver access.
+
+Use the same destination menu in the approval settings modal. Display the current
+destination in its trigger. Put tool attachments and expiry in a separate section.
+Update the automatic name when the destination changes. Expiry defaults to Never
+expires. Offer one hour, one day, and one week. Apply modal edits on Save.
 
 Attach the plan card directly above the approval card. Keep both in one stack
 without a gap. Use the standard approval header with the Agent and tool names.
@@ -638,7 +718,7 @@ composer has no text or attachments. Otherwise, show Send. Keep file and voice
 input available during a turn.
 Stack the background task card above the composer. Attach pending messages to
 the top of the composer. Use `--background--subtle` for the queue background.
-Use `--color--neutral-600` for queue text and the Steer label in light mode.
+Use `--color--neutral-600` for queue text and the Send now label in light mode.
 Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
 icons. Use `--border-color--subtle` for the dividers.
 Use `xs` text and `medium` icons. Keep the action targets at least 24 by 24 pixels.
@@ -653,7 +733,7 @@ Edit removes the pending message from the queue and restores its text and attach
 
 Show drag handles only when the queue has two or more messages. Put a six-dot drag handle on the left of each pending message in that queue. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
 
-Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Send now label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
 
 ## Preview retries
 

@@ -31,6 +31,17 @@ export class TestEntryComposer {
 	}
 
 	/**
+	 * Create a new member and a browser context that is logged in as that member.
+	 * The member cannot see credentials that other tests create, so credential
+	 * auto-selection does not depend on tests that run in parallel.
+	 * @returns n8nPage of the new member
+	 */
+	async withNewUser(): Promise<n8nPage> {
+		const user = await this.n8n.api.publicApi.createUser();
+		return await this.withUser(user);
+	}
+
+	/**
 	 * Start UI test from a workflow in a new project on a new canvas
 	 */
 	async fromNewProjectBlankCanvas() {

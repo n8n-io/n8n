@@ -565,6 +565,42 @@ export function isLifecycleNotification(item: unknown): item is LifecycleNotific
 	return isRecord(item) && typeof item.lifecycleEvent === 'string';
 }
 
+const SEGMENT = "(\\w+)\\('((?:[^']|'')+)'\\)";
+// Graph sends the instance path in OData key form, for example teams('t')/channels('c').
+// A key can contain '/', so the path is checked as a whole and not split on '/'.
+const RESOURCE_PATH = new RegExp(`^\\/?${SEGMENT}(?:\\/${SEGMENT})*$`);
+const RESOURCE_SEGMENT = new RegExp(SEGMENT, 'g');
+// Graph paths are short. A very long string makes the regex throw a RangeError.
+const MAX_RESOURCE_LENGTH = 2048;
+// The item key for the id in each segment of a known path. A shorter list drops the ids
+// at the end. A Map, so names such as `constructor` do not resolve to prototype members.
+const RESOURCE_ID_KEYS = new Map<string, string[]>([
+	['chats', ['chatId']],
+	['chats/messages', ['chatId', 'messageId']],
+	['teams/channels', ['teamId', 'channelId']],
+	['teams/channels/messages', ['teamId', 'channelId', 'messageId']],
+	['teams/channels/messages/replies', ['teamId', 'channelId', 'parentMessageId', 'messageId']],
+	['teams/members', ['teamId']],
+]);
+
+/** Returns the ids in a notification `resource` path. An unknown path gives no ids. */
+export function parseResourceIds(resource: unknown): IDataObject {
+	if (
+		typeof resource !== 'string' ||
+		resource.length > MAX_RESOURCE_LENGTH ||
+		!RESOURCE_PATH.test(resource)
+	)
+		return {};
+	const segments = [...resource.matchAll(RESOURCE_SEGMENT)];
+	const keys = RESOURCE_ID_KEYS.get(segments.map(([, name]) => name.toLowerCase()).join('/'));
+	if (!keys) return {};
+	const ids: IDataObject = {};
+	keys.forEach((key, index) => {
+		ids[key] = segments[index][2].replace(/''/g, "'");
+	});
+	return ids;
+}
+
 /** A PATCH answer that can stand in for a listing entry. */
 export function isSubscriptionResponse(value: unknown): value is SubscriptionResponse {
 	return (

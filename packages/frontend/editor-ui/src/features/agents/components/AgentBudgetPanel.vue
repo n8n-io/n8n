@@ -13,6 +13,7 @@ import { formatBudgetUsd, parseBudgetAmount } from '../utils/budget-config';
 import AgentBudgetMonthlyModal from './AgentBudgetMonthlyModal.vue';
 import AgentBudgetSessionModal from './AgentBudgetSessionModal.vue';
 import AgentPanel from './AgentPanel.vue';
+import AgentPanelDisclosure from './AgentPanelDisclosure.vue';
 import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
@@ -108,6 +109,12 @@ const monthlyValue = computed(() => {
 	});
 });
 
+const usageDescription = computed(() => {
+	if (monthlyBudget.value === undefined) return i18n.baseText('agents.builder.budget.usage.none');
+	if (spendState.value === 'error') return i18n.baseText('agents.builder.budget.usage.unavailable');
+	return monthlyValue.value;
+});
+
 const sessionValue = computed(() => {
 	const amount = sessionCap.value;
 	if (amount === undefined) return i18n.baseText('agents.builder.budget.notSet');
@@ -117,15 +124,29 @@ const sessionValue = computed(() => {
 
 <template>
 	<component
-		:is="embedded ? 'div' : AgentPanel"
-		v-bind="embedded ? {} : { header: i18n.baseText('agents.builder.budget.title') }"
-		:header-visibility="embedded ? undefined : 'visually-hidden'"
+		:is="embedded ? AgentPanelDisclosure : AgentPanel"
+		v-bind="
+			embedded
+				? {
+						title: i18n.baseText('agents.builder.budget.usage.label'),
+						description: usageDescription,
+						defaultOpen: monthlyBudget !== undefined || sessionCap !== undefined,
+					}
+				: {
+						header: i18n.baseText('agents.builder.budget.title'),
+						headerVisibility: 'visually-hidden',
+					}
+		"
 		:class="embedded ? $style.embedded : undefined"
 		data-testid="agent-budget-panel"
 	>
 		<div :class="[disabled && shared.disabled, $style.body]">
-			<div data-testid="agent-budget-usage" :class="$style.usageSection">
-				<div :class="$style.usageHeader">
+			<div
+				v-if="!embedded || (monthlyBudget !== undefined && spendState === 'ready')"
+				data-testid="agent-budget-usage"
+				:class="$style.usageSection"
+			>
+				<div v-if="!embedded" :class="$style.usageHeader">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">
 						{{ i18n.baseText('agents.builder.budget.usage.label') }}
 					</N8nText>
@@ -273,10 +294,16 @@ const sessionValue = computed(() => {
 	</component>
 </template>
 <style lang="scss" module>
-.embedded {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
+.embedded .row {
+	align-items: center;
+}
+
+.embedded .row:not(:last-child) {
+	width: auto;
+	margin-inline: calc(-1 * var(--agent-panel-padding-inline, var(--spacing--sm)));
+	padding-inline: var(--agent-panel-padding-inline, var(--spacing--sm));
+	border-block-end: var(--border-width) var(--border-style) var(--border-color--subtle);
+	padding-block-end: var(--spacing--sm);
 }
 
 .body {

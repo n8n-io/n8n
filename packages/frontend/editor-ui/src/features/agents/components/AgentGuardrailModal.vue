@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TOOL_GUARDRAIL_PII_ENTITIES } from '@n8n/api-types';
 import type {
 	AgentHitlConfiguration,
 	AgentToolGuardrailConfig,
@@ -21,7 +22,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import type { AgentJsonToolRef } from '../types';
 import {
@@ -29,7 +30,7 @@ import {
 	guardrailDefaultResponse,
 	guardrailKindLabelKey,
 	guardrailResponseLabelKey,
-	PII_ENTITY_LABELS,
+	piiEntityLabelKey,
 	slugifyGuardrailId,
 	TOOL_GUARDRAIL_KINDS,
 } from '../utils/guardrails';
@@ -156,7 +157,11 @@ watch(
 		reviewConfigurationId.value = guardrail?.reviewConfigurationId ?? '';
 		toolScope.value = guardrail?.tools ? 'selected' : 'all';
 		selectedToolKeys.value = (guardrail?.tools ?? []).map(toolRefKey);
-		initializing = false;
+		// The kind watcher runs as a queued job after this one; clearing the
+		// flag only after that tick keeps a loaded entry's fields intact.
+		nextTick(() => {
+			initializing = false;
+		});
 	},
 	{ immediate: true },
 );
@@ -213,9 +218,7 @@ const kindMenuItems = computed(() =>
 	})),
 );
 
-const selectedKindLabel = computed(
-	() => kindOptions.value.find((option) => option.value === selectedKind.value)?.label ?? '',
-);
+const selectedKindLabel = computed(() => i18n.baseText(guardrailKindLabelKey(selectedKind.value)));
 
 function onKindMenuSelect(kind: string) {
 	selectedKind.value = kind as AgentToolGuardrailKind;
@@ -243,9 +246,10 @@ const reviewConfigurationOptions = computed(() =>
 );
 
 const piiEntityOptions = computed(() =>
-	(Object.entries(PII_ENTITY_LABELS) as Array<[ToolGuardrailPiiEntity, string]>).map(
-		([value, label]) => ({ value, label }),
-	),
+	TOOL_GUARDRAIL_PII_ENTITIES.map((value: ToolGuardrailPiiEntity) => ({
+		value,
+		label: i18n.baseText(piiEntityLabelKey(value)),
+	})),
 );
 
 /** Light client checks; the backend schema stays the authority on save. */
@@ -352,7 +356,7 @@ function onRemove() {
 		size="medium"
 		:title="name"
 		:title-placeholder="i18n.baseText('agents.builder.guardrails.name.placeholder')"
-		editable-title
+		:editable-title="!disabled"
 		data-testid="agent-guardrail-modal"
 		@update:open="emit('update:open', $event)"
 		@update:title="name = $event"

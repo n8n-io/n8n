@@ -71,6 +71,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			'parameterIssues',
 			'fromAiDisabledParameters',
 			'readOnly',
+			'activeTab',
 		],
 		emits: ['update:valid', 'update:node-name', 'update:node'],
 		setup(props, { emit, expose }) {
@@ -89,6 +90,13 @@ function createToolSettingsStub(emitValid: boolean) {
 				getNode: () => node,
 				handleChangeName: vi.fn(),
 				getNodeTypeDescription: () => ({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+				tabOptions:
+					node.type === 'n8n-nodes-base.httpRequestTool'
+						? [
+								{ value: 'params', label: 'nodeSettings.parameters' },
+								{ value: 'settings', label: 'nodeSettings.settings' },
+							]
+						: undefined,
 			});
 			onMounted(() => {
 				emit('update:valid', emitValid);
@@ -102,6 +110,7 @@ function createToolSettingsStub(emitValid: boolean) {
 				data-test-id="node-tool-settings-content"
 				:data-project-id="projectId"
 				:data-read-only="readOnly"
+				:data-active-tab="activeTab"
 			>
 				<button
 					v-if="!fromAiDisabledParameters?.includes('url')"
@@ -117,8 +126,8 @@ function createToolSettingsStub(emitValid: boolean) {
 
 function createWorkflowToolConfigStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialRef', 'projectId', 'showApprovalSetting', 'approvalRequired'],
-		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
+		props: ['initialRef', 'projectId'],
+		emits: ['update:valid', 'update:node-name'],
 		setup(props, { emit, expose }) {
 			expose({
 				getName: () => props.initialRef?.name ?? '',
@@ -135,16 +144,7 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 			});
 			return {};
 		},
-		template: `
-			<div data-test-id="workflow-tool-config-content">
-				<button
-					v-if="showApprovalSetting"
-					data-test-id="agent-tool-approval-toggle"
-					:data-checked="approvalRequired"
-					@click="$emit('update:approvalRequired', !approvalRequired)"
-				/>
-			</div>
-		`,
+		template: '<div data-test-id="workflow-tool-config-content" />',
 	});
 }
 
@@ -253,7 +253,7 @@ describe('AgentToolConfigModal', () => {
 		vi.spyOn(useNodeTypesStore(), 'loadNodeTypesIfNotLoaded').mockResolvedValue(undefined);
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
-		uiStore.closeModal = vi.fn();
+		vi.spyOn(uiStore, 'closeModal').mockImplementation(() => {});
 	});
 
 	it('renders the shared node-tool settings content', () => {
@@ -516,9 +516,44 @@ describe('AgentToolConfigModal', () => {
 		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
 	});
 
+	it('places HTTP Request Settings in the main tab bar before Guardrails', async () => {
+		const { getAllByRole, getByRole, getByTestId } = renderModal({
+			ref: toolRef({ nodeType: 'n8n-nodes-base.httpRequestTool' }),
+		});
+		await nextTick();
+
+		expect(getAllByRole('tablist')).toHaveLength(1);
+		expect(getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
+			'nodeSettings.parameters',
+			'nodeSettings.settings',
+			'agents.builder.guardrails.title',
+		]);
+
+		const content = getByTestId('node-tool-settings-content');
+		const settings = getByRole('tab', { name: 'nodeSettings.settings' });
+		const guardrails = getByRole('tab', { name: 'agents.builder.guardrails.title' });
+		expect(content).toHaveAttribute('data-active-tab', 'params');
+		await fireEvent.keyDown(settings, { key: 'Enter' });
+		expect(content).toBeVisible();
+		expect(content).toHaveAttribute('data-active-tab', 'settings');
+		await fireEvent.keyDown(guardrails, { key: 'Enter' });
+		expect(content).not.toBeVisible();
+		await fireEvent.keyDown(settings, { key: 'Enter' });
+		expect(getByTestId('node-tool-settings-content')).toBe(content);
+		expect(content).toHaveAttribute('data-active-tab', 'settings');
+	});
+
 	it('saves the approval requirement on node tool refs', async () => {
 		const onConfirm = vi.fn();
-		const { container, getByTestId } = renderModal({ valid: true, onConfirm, ref: toolRef() });
+		const { container, getByRole, getByTestId } = renderModal({
+			valid: true,
+			onConfirm,
+			ref: toolRef(),
+		});
+
+		await fireEvent.keyDown(getByRole('tab', { name: 'agents.builder.guardrails.title' }), {
+			key: 'Enter',
+		});
 
 		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
 		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
@@ -526,18 +561,6 @@ describe('AgentToolConfigModal', () => {
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [updated] = onConfirm.mock.calls[0];
 		expect(updated).toMatchObject({ type: 'node', requireApproval: true });
-	});
-
-	it('renders the approval setting after the tool configuration content', () => {
-		const { getByTestId } = renderModal();
-
-		const settings = getByTestId('node-tool-settings-content');
-		const approvalToggle = getByTestId('agent-tool-approval-toggle');
-
-		expect(settings.contains(approvalToggle)).toBe(false);
-		expect(
-			settings.compareDocumentPosition(approvalToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 	});
 
 	it('closes the modal from the header without calling onConfirm', async () => {
@@ -594,13 +617,16 @@ describe('AgentToolConfigModal', () => {
 				providerOptions: null,
 			},
 		};
-		const { container, getByTestId } = renderModal({
+		const { container, getByRole, getByTestId } = renderModal({
 			valid: true,
 			onConfirm,
 			ref: { type: 'custom', id: 'custom-tool-1' },
 			customTool,
 		});
 
+		await fireEvent.keyDown(getByRole('tab', { name: 'agents.builder.guardrails.title' }), {
+			key: 'Enter',
+		});
 		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
 		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
 
@@ -674,7 +700,11 @@ describe('AgentToolConfigModal', () => {
 			onUpdateGuardrails: vi.fn(),
 		};
 
-		const { container } = renderModal({ onRemove: vi.fn(), guardrails });
+		uiStore.closeModal.mockRestore();
+		const { container, getByRole } = renderModal({ onRemove: vi.fn(), guardrails });
+		await fireEvent.keyDown(getByRole('tab', { name: 'agents.builder.guardrails.title' }), {
+			key: 'Enter',
+		});
 
 		// The section chip is live: it carries the guardrails wiring and opens an edit.
 		const chip = container.querySelector('[data-testid="agent-tool-guardrails-chip"]');
@@ -684,7 +714,7 @@ describe('AgentToolConfigModal', () => {
 
 		// The tool modal closes and hands over to the guardrail modal with the
 		// wiring and an exit callback.
-		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		expect(uiStore.modalStateById[MODAL_NAME].open).toBe(false);
 		const guardrailState = uiStore.modalStateById[AGENT_GUARDRAIL_MODAL_KEY];
 		expect(guardrailState?.open).toBe(true);
 		const guardrailData = guardrailState?.data as unknown as AgentGuardrailModalData;
@@ -696,6 +726,10 @@ describe('AgentToolConfigModal', () => {
 		// The exit callback reopens the tool modal.
 		guardrailData.onExit();
 		expect(uiStore.modalStateById[MODAL_NAME].open).toBe(true);
+		expect(uiStore.modalStateById[MODAL_NAME].data).toMatchObject({
+			initialTab: 'guardrails',
+			draftToolRef: { node: { nodeParameters: { edited: true } } },
+		});
 	});
 
 	describe('restricted node types', () => {

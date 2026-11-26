@@ -1,20 +1,33 @@
 import { GlobalConfig } from '@n8n/config';
+import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import assert from 'node:assert';
 
 import { TokenExchangeJti } from '../entities/token-exchange-jti.entity';
 
+class TokenExchangeJtiTable extends BaseRepository<TokenExchangeJti> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(TokenExchangeJti, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
+export class TokenExchangeJtiRepository {
+	private readonly table: TokenExchangeJtiTable;
+
 	private readonly dbType: 'postgresdb' | 'sqlite';
 
 	private readonly escapedTableName: string;
 
-	constructor(dataSource: DataSource, globalConfig: GlobalConfig) {
-		super(TokenExchangeJti, dataSource.manager);
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		globalConfig: GlobalConfig,
+	) {
+		this.table = new TokenExchangeJtiTable(dataSource, transactionRunner);
 		this.dbType = globalConfig.database.type;
-		const { schema, tableName } = this.metadata;
+		const { schema, tableName } = this.table.metadata;
 		const esc = (name: string) => dataSource.driver.escape(name);
 		this.escapedTableName = schema ? `${esc(schema)}.${esc(tableName)}` : esc(tableName);
 	}
@@ -28,12 +41,12 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 	 * changes()) because the sqlite-pooled driver dispatches WITH-prefixed
 	 * queries via `.all()` instead of `.run()`, which breaks DML execution.
 	 */
-	async atomicConsume(jti: string, expiresAt: Date): Promise<boolean> {
-		const esc = (name: string) => this.manager.connection.driver.escape(name);
+	async atomicConsume(jti: string, expiresAt: Date, ctx: OperationContext): Promise<boolean> {
+		const esc = (name: string) => this.table.managerFor(ctx).connection.driver.escape(name);
 		const tableName = this.escapedTableName;
 
 		if (this.dbType === 'postgresdb') {
-			const [row] = (await this.query(
+			const [row] = await this.table.managerFor(ctx).query<Array<{ inserted: boolean }>>(
 				`WITH ins AS (
 					INSERT INTO ${tableName} (${esc('jti')}, ${esc('expiresAt')}, ${esc('createdAt')})
 					VALUES ($1, $2, NOW())
@@ -42,11 +55,11 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 				)
 				SELECT EXISTS (SELECT 1 FROM ins) AS inserted`,
 				[jti, expiresAt],
-			)) as Array<{ inserted: boolean }>;
+			);
 
 			return row.inserted;
 		} else if (this.dbType === 'sqlite') {
-			const qr = this.manager.connection.createQueryRunner();
+			const qr = this.table.managerFor(ctx).connection.createQueryRunner();
 			await qr.startTransaction();
 			try {
 				await qr.query(
@@ -77,12 +90,12 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 	 * disjoint rows. SQLite uses a transactional 2-query approach (DELETE +
 	 * SELECT changes()) for the same reason as atomicConsume (see above).
 	 */
-	async deleteExpiredBatch(batchSize: number): Promise<number> {
-		const esc = (name: string) => this.manager.connection.driver.escape(name);
+	async deleteExpiredBatch(batchSize: number, ctx: OperationContext): Promise<number> {
+		const esc = (name: string) => this.table.managerFor(ctx).connection.driver.escape(name);
 		const tableName = this.escapedTableName;
 
 		if (this.dbType === 'postgresdb') {
-			const [row] = (await this.query(
+			const [row] = await this.table.managerFor(ctx).query<Array<{ count: string | number }>>(
 				`WITH deleted AS (
 					DELETE FROM ${tableName}
 					WHERE ${esc('jti')} IN (
@@ -95,11 +108,11 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 				)
 				SELECT COUNT(*) AS ${esc('count')} FROM deleted`,
 				[batchSize],
-			)) as Array<{ count: string | number }>;
+			);
 
 			return Number(row.count);
 		} else if (this.dbType === 'sqlite') {
-			const qr = this.manager.connection.createQueryRunner();
+			const qr = this.table.managerFor(ctx).connection.createQueryRunner();
 			await qr.startTransaction();
 			try {
 				await qr.query(

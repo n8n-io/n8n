@@ -2,7 +2,9 @@
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
+import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
 	ref,
 	computed,
@@ -35,6 +37,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
+	isDraftIntegration,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -1027,9 +1030,18 @@ let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
+const agentsInvocationStepExperiment = useAgentsInvocationStepExperiment();
 const connectedTriggers = ref<string[]>([]);
 const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
+	const connectedChannelIds = (localConfig.value?.integrations ?? [])
+		.filter((integration) => !isDraftIntegration(integration))
+		.map((integration) => integration.type);
+
+	const enabledScheduleCount = (localConfig.value?.tasks ?? []).filter(
+		(task) => task.enabled,
+	).length;
+
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
@@ -1040,10 +1052,11 @@ const setupChecklistContext = computed(() => {
 				(localConfig.value?.tools?.length ?? 0) +
 				(localConfig.value?.mcpServers?.length ?? 0) +
 				(localConfig.value?.subAgents?.agents?.length ?? 0),
+			scheduleCount: enabledScheduleCount,
 		},
 		channels: {
-			loaded: initialized.value,
-			ids: connectedTriggers.value,
+			loaded: initialized.value && localConfig.value !== null,
+			ids: connectedChannelIds,
 		},
 		publication: {
 			loaded: initialized.value,
@@ -1058,10 +1071,12 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && previewSessionsLoaded.value,
 			count: sessionsStore.previewThreads.length,
 		},
+		showTriggerStep: agentsInvocationStepExperiment.isEnabled.value,
 	};
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const { isEnabled: isSetupHeaderEnabled } = useAgentSetupHeaderExperiment();
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
@@ -2147,6 +2162,7 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	const unpublishedWorkflows = unpublishedWorkflowTools(
 		configValidation.value.issues,
 		localConfig.value?.tools ?? [],
+		localConfig.value?.hitlConfigurations ?? [],
 	);
 
 	if (unpublishedWorkflows.length > 0) {
@@ -2225,6 +2241,7 @@ const caps = useAgentCapabilitiesActions({
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
+	canEditAgent: effectiveCanEditAgent,
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.
@@ -2877,7 +2894,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 
@@ -3504,7 +3521,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			:tasks="areSetupTasksVisible && !isSetupHeaderEnabled ? setupTasks : undefined"
+			@setup-task-action="onSetupTaskAction"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3512,7 +3530,6 @@ useKeybindings({
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3730,6 +3747,11 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="
+						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived
+							? setupTasks
+							: undefined
+					"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3769,6 +3791,7 @@ useKeybindings({
 					@open-preview="onOpenPreview"
 					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
+					@setup-task-action="onSetupTaskAction"
 				/>
 
 				<AgentVersionHistoryPanel

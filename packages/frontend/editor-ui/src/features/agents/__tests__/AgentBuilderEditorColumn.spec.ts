@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -7,10 +8,22 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentResource } from '../types';
+import type {
+	SetupTask,
+	SetupTaskId,
+} from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 
 const track = vi.fn();
+const triggerRedesignEnabled = vi.hoisted(() => ({ value: false }));
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
+}));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isFeatureEnabled: () => triggerRedesignEnabled.value,
+		isVariantEnabled: () => triggerRedesignEnabled.value,
+	}),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'session-xyz' }),
@@ -142,6 +155,15 @@ vi.mock('../components/AgentPanelHeader.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentHitlPanel.vue', () => ({
+	default: {
+		name: 'AgentHitlPanel',
+		template: '<div data-testid="agent-hitl-panel" />',
+		props: ['config', 'disabled', 'projectId', 'agentId', 'agentUnsaved'],
+		emits: ['update:config'],
+	},
+}));
+
 vi.mock('../components/AgentBudgetPanel.vue', () => ({
 	default: {
 		name: 'AgentBudgetPanel',
@@ -154,7 +176,7 @@ vi.mock('../components/AgentBudgetPanel.vue', () => ({
 vi.mock('../components/AgentGuardrailsSection.vue', () => ({
 	default: {
 		name: 'AgentGuardrailsSection',
-		template: '<div data-testid="agent-guardrails-section-stub" />',
+		template: '<div data-testid="agent-guardrails-section-stub"><slot name="approval" /></div>',
 		props: ['config', 'tools', 'projectId', 'agentId', 'disabled', 'validationIssues'],
 		emits: ['update:config', 'update:budget-config'],
 	},
@@ -207,12 +229,19 @@ async function mountColumn(
 		canEditAgent: boolean;
 		isPreviewOpen: boolean;
 		agent: AgentResource | null;
+		agentUnsaved: boolean;
+		humanReviewEnabled: boolean;
+		tasks: Array<SetupTask<SetupTaskId>>;
+		hidePreviewButton: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
 	const pinia = createPiniaWithEvalStore();
+	vi.mocked(useSettingsStore().isAgentModuleActive).mockReturnValue(
+		overrides.humanReviewEnabled ?? false,
+	);
 
 	return mount(AgentBuilderEditorColumn, {
 		props: {
@@ -232,6 +261,7 @@ async function mountColumn(
 			agent: overrides.agent ?? null,
 			projectId: 'project-1',
 			agentId: 'agent-1',
+			agentUnsaved: overrides.agentUnsaved,
 			agentFiles: [],
 			agentFilesLoading: false,
 			agentFilesUploading: false,
@@ -240,6 +270,8 @@ async function mountColumn(
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
 			isPreviewOpen: overrides.isPreviewOpen,
+			tasks: overrides.tasks,
+			hidePreviewButton: overrides.hidePreviewButton,
 			executionsDescription: '',
 		},
 		global: {
@@ -254,8 +286,10 @@ async function mountColumn(
 					props: ['showModel', 'showInstructions'],
 					emits: ['update:config'],
 				},
+				AgentSetupTasks: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
+				AgentVectorStoresPanel: true,
 			},
 		},
 	});
@@ -264,6 +298,35 @@ async function mountColumn(
 describe('AgentBuilderEditorColumn', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		triggerRedesignEnabled.value = false;
+	});
+
+	it('places setup tasks beside Test Agent and forwards task actions', async () => {
+		const task: SetupTask<SetupTaskId> = {
+			id: 'add-tool',
+			titleKey: 'agents.builder.setupTasks.addTool',
+			required: false,
+			state: 'todo',
+			visible: true,
+			action: { labelKey: 'agents.builder.setupTasks.addTool', target: { kind: 'tool' } },
+		};
+		const wrapper = await mountColumn({ tasks: [task] });
+		const actions = wrapper.get('[data-testid="agent-identity-actions"]');
+		const setupTasks = actions.getComponent(AgentSetupTasks);
+		expect(setupTasks.props('tasks')).toEqual([task]);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
+
+		setupTasks.vm.$emit('action', task);
+		expect(wrapper.emitted('setup-task-action')).toEqual([[task]]);
+
+		await wrapper.setProps({ hidePreviewButton: true });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(true);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(false);
+
+		await wrapper.setProps({ tasks: undefined });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
+		await wrapper.setProps({ tasks: [] });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
 	});
 
 	it.each([
@@ -539,6 +602,29 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
 	});
 
+	it('opens Knowledge Advanced when configured vector stores load', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge' });
+		await wrapper.setProps({
+			localConfig: {
+				...wrapper.props('localConfig')!,
+				vectorStores: [
+					{
+						provider: 'pinecone',
+						name: 'product_docs',
+						credential: 'pinecone-cred',
+						useWhen: 'Search for product documentation.',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+						indexName: 'product-docs',
+					},
+				],
+			},
+		});
+		expect(
+			wrapper.get('[data-testid="agent-knowledge-advanced-trigger"]').attributes('aria-expanded'),
+		).toBe('true');
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
+	});
+
 	it('renders tabs inside the constrained rule container that aligns with content cards', async () => {
 		const wrapper = await mountColumn();
 
@@ -547,22 +633,36 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('renders named Agent tab cards', async function rendersNamedCards() {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
+	it.each([false, true])(
+		'renders named Agent tab cards with trigger redesign %s',
+		async (enabled) => {
+			triggerRedesignEnabled.value = enabled;
+			const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+			const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
 
-		expect(
-			panels.map(function getPanelHeader(panel) {
-				return panel.props('header');
-			}),
-		).toEqual([
-			'agents.builder.skills.title',
-			'agents.builder.triggers.title',
-			'agents.builder.capabilities.title',
-			'agents.builder.guardrails.title',
-			'agents.builder.memory.title',
-		]);
-	});
+			expect(
+				panels.map(function getPanelHeader(panel) {
+					return panel.props('header');
+				}),
+			).toEqual(
+				enabled
+					? [
+							'agents.builder.triggers.title',
+							'agents.builder.skills.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.guardrails.title',
+							'agents.builder.memory.title',
+						]
+					: [
+							'agents.builder.skills.title',
+							'agents.builder.triggers.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.guardrails.title',
+							'agents.builder.memory.title',
+						],
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'handles preview clicks from the Triggers card when runnable is %s',
@@ -581,6 +681,41 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.text()).toContain('Episodic Memory');
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
+	});
+
+	it('passes the save state to the Approval panel on a new Agent', async () => {
+		const wrapper = await mountColumn({
+			agentUnsaved: true,
+			humanReviewEnabled: true,
+		});
+		const panel = wrapper
+			.getComponent({ name: 'AgentGuardrailsSection' })
+			.getComponent({ name: 'AgentHitlPanel' });
+		expect(panel.props('agentId')).toBe('agent-1');
+		expect(panel.props('agentUnsaved')).toBe(true);
+		expect(panel.props('disabled')).toBe(false);
+		const changes = {
+			hitlConfigurations: [{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' }],
+		};
+		panel.vm.$emit('update:config', changes);
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
+		await wrapper.setProps({ agentUnsaved: false });
+		expect(panel.props('agentUnsaved')).toBe(false);
+		expect(panel.props('agentId')).toBe('agent-1');
+	});
+
+	it('keeps Approval hidden for new Agents when the module is disabled', async () => {
+		const wrapper = await mountColumn({ agentUnsaved: true });
+		expect(wrapper.findComponent({ name: 'AgentHitlPanel' }).exists()).toBe(false);
+	});
+
+	it('keeps Approval read-only on a new Agent without edit permission', async () => {
+		const wrapper = await mountColumn({
+			agentUnsaved: true,
+			humanReviewEnabled: true,
+			canEditAgent: false,
+		});
+		expect(wrapper.getComponent({ name: 'AgentHitlPanel' }).props('disabled')).toBe(true);
 	});
 
 	it('renders runtime settings only on the Settings tab', async () => {
@@ -604,11 +739,12 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
-	it('does not render the guardrails section on the Settings tab', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+	it('does not render Guardrails or Approval on the Settings tab', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings', humanReviewEnabled: true });
 		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'AgentGuardrailsSection' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentHitlPanel' }).exists()).toBe(false);
 	});
 
 	it('forwards a budget panel config update to the host as a budget save', async () => {
@@ -696,7 +832,7 @@ describe('AgentBuilderEditorColumn', () => {
 		const guardrailsPanel = wrapper
 			.findAllComponents({ name: 'AgentPanel' })
 			.find((panel) => panel.props('header') === 'agents.builder.guardrails.title');
-		expect(guardrailsPanel?.props('description')).toBe('agents.builder.guardrails.description');
+		expect(guardrailsPanel?.props('headerVisibility')).toBe('visually-hidden');
 		expect(
 			guardrailsPanel?.element.compareDocumentPosition(guardrails.element) &
 				Node.DOCUMENT_POSITION_CONTAINED_BY,

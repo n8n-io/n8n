@@ -63,10 +63,14 @@ export type FetchedSkill = {
 	/** Opaque. Equal revisions mean equal content. The core compares content hashes, not these. */
 	revision: string;
 	fidelity: SkillSourceFidelityWarning[];
-	/** Paths of the remote files that the content leaves out, such as scripts. */
+	/** Paths of the remote files that the content leaves out. */
 	skippedFiles: string[];
 	/** The files in `skippedFiles` that n8n left out because it cannot store them. */
 	unstorableFiles?: string[];
+	/** The skipped files that exceed the source's per-file download limit. */
+	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 };
 
 /**

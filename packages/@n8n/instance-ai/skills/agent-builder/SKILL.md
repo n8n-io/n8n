@@ -37,7 +37,8 @@ sessions. Do not call `agent_builder_select_agent` for these requests.
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
 request. Target that Agent and build it. Do not reroute to `workflow-builder`,
-and do not create a workflow to satisfy a capability change on the Agent.
+and do not create a workflow to satisfy a capability change on the Agent,
+except a review workflow when the Human review guidance below calls for one.
 
 ## Targeting
 
@@ -193,6 +194,33 @@ goal, write real instructions from it and fill gaps with sensible assumptions
 that you state in your summary. Ask first only when the overall goal itself is
 missing.
 
+## Human review
+
+Infer the review method from the user's goal. The user does not need to name
+Human review or ask for a configuration. Load `agent-builder-human-review`
+before configuring approval rules or review destinations. In a conversation,
+the Agent asks the requester first and explains any further review required.
+Only after the requester agrees does it contact the configured reviewers.
+
+- Use standard conversation approval when the user only wants to confirm a
+  tool call in chat and gives no separate reviewer or review process.
+- Use a connected-channel review when the user wants a person, team, or channel
+  to approve a tool call in Slack, Telegram, or Discord. For example, “Ask
+  finance in #spend-approvals before issuing a refund” calls for this method.
+  It uses the Agent's connected channel and native approve/reject actions.
+- Use a review workflow when the user needs a custom form, conditional
+  routing, validation, or other review logic. For example, “Collect a reason
+  and route large refunds to a second reviewer” calls for a workflow.
+  Build the review workflow as a prerequisite and attach it as a review
+  destination, not as an ordinary Agent tool.
+- Workflow calls and scheduled tasks have no live requester who can approve
+  in chat. When their tools need approval, configure a channel or workflow
+  review. Keep the requested tool action behind the review.
+
+Choose from the request and existing configuration. Ask only for missing
+reviewers, destinations, or policy details that change the result. Do not ask
+users to choose between internal implementation names.
+
 ## Initial build
 
 "Initial build" means the first build pass on a fresh Agent. Everything after
@@ -319,7 +347,12 @@ confirm those selections before you finish the build.
     test, and say that the Agent can run after that setup is complete.
 11. When the user asks to publish, activate, or make the Agent live or usable,
     run `agent_builder_publish_agent` through `call_tool`. Never tell them to click Publish in the
-    editor. Do not publish without that intent. Use
+    editor. Do not publish without that intent. The tool never publishes without
+    the user's confirmation on a go live card, which lists what the live Agent
+    might really send. A version that is already live needs no card, and a
+    permission or lock error returns before any card. If the result says the user
+    cancelled, nothing was published: say so, and do not publish again unless
+    they ask. Use
     `agent_builder_unpublish_agent` when they ask to unpublish.
 
 ## Config freshness

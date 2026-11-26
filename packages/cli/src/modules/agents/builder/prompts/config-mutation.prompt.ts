@@ -35,13 +35,18 @@ ${getSchemaReferenceSection()}
 
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
+- Load \`agent-builder-human-review\` before changing \`hitlConfigurations\`,
+  \`approvalRoute\`, or tool approval rules. It explains when to use conversation,
+  connected-channel, and custom workflow review.
 - Preserve unrelated existing config unless the user asked to change it.
 - When removing or renaming a field, inspect the main instructions, tool
   definitions, and every skill attached in the latest config. Read every
   attached skill body and its reference files; do not rely on descriptions to
   find field references. Use \`agent-context({ type: "config" })\` for the attached
   refs, then read each skill with \`agent-context({ type: "skill", skillId })\`.
-  Pass every listed path in \`referencePaths\` so you can search its content.
+  Read the listed text paths in batches of up to 20 in \`referencePaths\`.
+  When the result has \`omittedReferencePaths\`, read the skill again with those paths.
+  When a file has \`nextOffset\`, read that path alone with \`referenceOffset\` set to that value.
   Update every match to fit the new schema.
 - Before updating any affected skill, use \`ask_user\` to ask
   the user to confirm the skill changes. Builder context does not show who

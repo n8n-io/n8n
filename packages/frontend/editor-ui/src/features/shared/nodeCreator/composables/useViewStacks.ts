@@ -39,6 +39,7 @@ import {
 	getHumanInTheLoopActions,
 	getNodeCreatorSearchItems,
 	isNodeItemRestricted,
+	keepsFullTriggerName,
 	sinkRestrictedNodesLast,
 	withoutRestrictedNodes,
 	groupItemsInSections,
@@ -309,7 +310,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		};
 	});
 
-	const TOOL_SUBCATEGORY_ORDER = [
+	const TOOL_SUBCATEGORY_ORDER: string[] = [
 		AI_CATEGORY_OTHER_TOOLS,
 		AI_CATEGORY_MCP_NODES,
 		AI_CATEGORY_VECTOR_STORES,
@@ -586,7 +587,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const hasTriggerGroup = item.properties.group.includes('trigger');
 		const hasActions = getFilteredActions(stack, item, nodeCreatorStore.actions).length > 0;
 
-		if (!hasTriggerGroup || !hasActions) return item;
+		if (!hasTriggerGroup || !hasActions || keepsFullTriggerName(item.key)) return item;
 
 		// Items are cached and share `codex` with the node types, so copy before changing them
 		const { properties } = item;

@@ -44,6 +44,7 @@ import {
 enableAutoUnmount(afterEach);
 
 type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+type FocusVm = { focusOpenInteraction: () => void; isAwaitingUserApproval: boolean };
 const isMacOsMock = ref(false);
 const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -3960,6 +3961,52 @@ describe('AgentChatPanel', () => {
 		},
 	);
 
+	it('focuses the open approval card on request, and reports it as an approval', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [
+				{
+					...openInteractiveMessage(),
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: { type: 'approval', toolName: 'send_message', args: {} },
+					},
+				},
+			];
+			await flushPromises();
+			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(true);
+			expect(document.activeElement).toBe(
+				wrapper.get('[data-testid="agent-chat-approvals"] button').element,
+			);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('focuses the composer for an open question on request', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [openInteractiveMessage()];
+			await flushPromises();
+			focusInputMock.mockClear();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(false);
+			expect(focusInputMock).toHaveBeenCalled();
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
 	it.each(['resolved', 'stale', 'previous turn'] as const)(
 		'keeps the composer available for a %s approval',
 		(state) => {
@@ -5116,7 +5163,7 @@ describe('AgentChatPanel', () => {
 			getInputElement: () => HTMLTextAreaElement | undefined;
 			insertText: (text: string) => Promise<void>;
 			addComposerAttachment: (
-				chip: { id: string; label: string; icon?: string },
+				chip: { id: string; label: string; icon?: string; hostRendered?: boolean },
 				clientContextPatch?: Record<string, unknown>,
 			) => void;
 			removeComposerAttachment: (id: string) => void;
@@ -5213,25 +5260,68 @@ describe('AgentChatPanel', () => {
 			);
 			expect(chip.text()).toContain('Invoices');
 
-			await wrapper.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+			await chip.find('[data-test-id="attachment-remove"]').trigger('click');
 
 			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(composerVm(wrapper).composerAttachments).toEqual([]);
+			expect(wrapper.emitted('composer-attachment-removed')).toEqual([['wf-1']]);
 		});
 
-		it('passes the chips to a host composer-attachments slot instead of the default chips', async () => {
-			const slot = vi.fn((props: Record<string, unknown>) =>
-				h('span', { 'data-testid': 'host-chips' }, JSON.stringify(props.chips)),
-			);
-			const wrapper = mountPanel({}, undefined, { 'composer-attachments': slot });
+		it('shows chips as cards before the files in one group, except chips that the host draws', async () => {
+			const wrapper = mountPanel({}, undefined, {
+				'composer-attachments': '<span data-testid="host-chip" />',
+			});
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'nodes-1', label: '2 nodes', hostRendered: true });
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			composer(wrapper).vm.$emit('files-selected', [
+				new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+			]);
+			await flushPromises();
 
+			const cards = wrapper.findAll('[data-testid="chat-input"] .n8n-attachment');
+			expect(cards.map((card) => card.text())).toEqual([
+				expect.stringContaining('Invoices'),
+				expect.stringContaining('notes.txt'),
+			]);
+			expect(cards[0].element.parentElement?.parentElement).toBe(
+				cards[1].element.parentElement?.parentElement,
+			);
+			expect(wrapper.find('[data-testid="host-chip"]').exists()).toBe(true);
+		});
+
+		it('blocks the send while a chip card plays its remove animation', async () => {
+			const wrapper = mountPanel();
 			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			composer(wrapper).vm.$emit('update:modelValue', 'Use it');
 			await nextTick();
+			const card = wrapper.findComponent('[data-test-id="agent-chat-composer-chip"]') as VueWrapper;
 
-			expect(wrapper.find('[data-testid="host-chips"]').text()).toContain('Invoices');
-			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
-			expect(slot).toHaveBeenLastCalledWith(
-				expect.objectContaining({ removeChip: expect.any(Function) }),
-			);
+			card.vm.$emit('remove-start');
+			await nextTick();
+			expect(composer(wrapper).props('canSubmit')).toBe(false);
+
+			card.vm.$emit('remove-end');
+			await nextTick();
+			expect(composer(wrapper).props('canSubmit')).toBe(true);
+		});
+
+		it('focuses a chip card with Up when the draft is empty', async () => {
+			const wrapper = mountPanel({}, document.body);
+			try {
+				composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+				await flushPromises();
+				const textbox = wrapper.get('textarea');
+				textbox.element.focus();
+
+				await textbox.trigger('keydown', { key: 'ArrowUp' });
+
+				expect(document.activeElement).toBe(
+					wrapper.get('[data-test-id="agent-chat-composer-chip"] .n8n-attachment').element,
+				);
+			} finally {
+				wrapper.unmount();
+			}
 		});
 
 		it('sends the merged clientContext patches with the next message and then clears the chips', async () => {

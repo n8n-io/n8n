@@ -152,7 +152,10 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
-		args: value.args,
+		...(typeof value.description === 'string' && value.description.trim()
+			? { description: value.description.trim() }
+			: {}),
+		args: value.argumentsRedacted === true ? undefined : value.args,
 		...(askReason.success && { askReason: askReason.data }),
 	};
 }
@@ -246,14 +249,23 @@ export function rebuildInteractiveFromHistory(
 	return undefined;
 }
 
+function stoppedMessageId(executionId: string): string {
+	return `${executionId}:stopped`;
+}
+
 export function createStoppedMessage(executionId: string): ChatMessage {
 	return {
-		id: `${executionId}:stopped`,
+		id: stoppedMessageId(executionId),
 		role: CHAT_MESSAGE_ROLE.ASSISTANT,
 		content: useI18n().baseText('agentSessions.stopped'),
 		status: CHAT_MESSAGE_STATUS.SUCCESS,
 		executionId,
 	};
+}
+
+/** Whether the message is the notice that `createStoppedMessage` adds after a stopped turn. */
+export function isStoppedMessage(message: Pick<ChatMessage, 'id' | 'executionId'>): boolean {
+	return message.executionId !== undefined && message.id === stoppedMessageId(message.executionId);
 }
 
 /**
@@ -422,6 +434,9 @@ export function convertDbMessages(
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.USER && msg.references?.length
+				? { references: msg.references }
+				: {}),
 			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),

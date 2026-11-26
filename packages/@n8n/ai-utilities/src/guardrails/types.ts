@@ -18,11 +18,40 @@ export interface GuardrailResult<TInfo extends Record<string, unknown> = Record<
 }
 
 /**
- * Model-agnostic seam for LLM guardrails: the full system prompt goes in,
- * the raw model text comes out. Adapters wrap a concrete model client
- * (LangChain in the Guardrails node, AI SDK in the agent runtime).
+ * Token counts from one guardrail model call. The shape matches the AI SDK
+ * usage object that the agent runtime prices, so a host can charge the call
+ * without depending on a model client.
  */
-export type GuardrailModelRunner = (systemPrompt: string, input: string) => Promise<string>;
+export type GuardrailModelUsage = {
+	inputTokens?: number;
+	outputTokens?: number;
+	totalTokens?: number;
+	inputTokenDetails?: {
+		noCacheTokens?: number;
+		cacheReadTokens?: number;
+		cacheWriteTokens?: number;
+	};
+	outputTokenDetails?: {
+		reasoningTokens?: number;
+	};
+};
+
+/** Text the check parses, plus the token counts of the model call when known. */
+export type GuardrailModelRun = {
+	text: string;
+	usage?: GuardrailModelUsage;
+};
+
+/**
+ * Model-agnostic seam for LLM guardrails: the full system prompt goes in,
+ * the raw model text and its token usage come out. Adapters wrap a concrete
+ * model client (LangChain in the Guardrails node, AI SDK in the agent runtime).
+ * An adapter that cannot read usage returns the text only.
+ */
+export type GuardrailModelRunner = (
+	systemPrompt: string,
+	input: string,
+) => Promise<string | GuardrailModelRun>;
 
 export type LlmGuardrailConfig = {
 	run: GuardrailModelRunner;

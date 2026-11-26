@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nCallout, N8nText } from '@n8n/design-system';
+import type { AgentApprovalRoute, AgentConfigValidationIssue } from '@n8n/api-types';
+import { createReusableTemplate } from '@vueuse/core';
+import { N8nCallout, N8nSettingsRowGroup, N8nTabs, N8nText } from '@n8n/design-system';
 import {
 	RestrictedTypeCallout,
 	useNodeTypeRestriction,
@@ -18,6 +19,7 @@ import {
 } from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import type { ToolSettingsTab } from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	listenForCredentialChanges,
@@ -30,12 +32,15 @@ import {
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import { isRestrictedByInlineTool } from '../utils/validationIssues';
+import { hitlMcpServerKey, hitlToolKey } from '../utils/hitlConfiguration';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
 	CustomToolEntry,
 	WorkflowToolRef,
 } from '../types';
+import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
@@ -56,9 +61,12 @@ interface ToolModalData {
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
+	initialTab?: ToolConfigTab;
+	draftToolRef?: AgentJsonToolRef;
 	/**
 	 * Tool-guardrails wiring. Present only on hosts whose agent supports
 	 * guardrails, and only for existing node/workflow tools; commits are
@@ -76,11 +84,13 @@ interface McpServerModalData {
 	agentId?: string;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
 
 export type AgentToolConfigModalData = ToolModalData | McpServerModalData;
+export type ToolConfigTab = ToolSettingsTab | 'guardrails';
 
 const props = defineProps<{
 	data: AgentToolConfigModalData;
@@ -116,6 +126,9 @@ function containsFromAiCall(value: unknown): boolean {
 const isMcpTool = computed(() => isMcpServerModalData(props.data));
 const mcpModalData = computed(() => (isMcpServerModalData(props.data) ? props.data : null));
 const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : props.data));
+const initialToolRef = computed(
+	() => toolModalData.value?.draftToolRef ?? toolModalData.value?.toolRef,
+);
 const toolValidationIssues = computed(() => toValue(toolModalData.value?.validationIssues) ?? []);
 const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
@@ -139,6 +152,16 @@ const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowConten
 const isValid = ref(false);
 const submitCount = ref(0);
 const approvalRequired = ref(false);
+const approvalRoute = ref<AgentApprovalRoute>();
+watch(
+	() => props.data,
+	(data) => {
+		approvalRoute.value = isMcpServerModalData(data)
+			? data.mcpServer.approvalRoute
+			: (data.draftToolRef ?? data.toolRef).approvalRoute;
+	},
+	{ immediate: true },
+);
 const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
@@ -148,8 +171,8 @@ const initialNode = computed<INode | null>(() =>
 		? (mcpModalData.value?.initialNode ?? null)
 		: isWorkflowTool.value || isCustomTool.value
 			? null
-			: toolModalData.value
-				? toolRefToNode(toolModalData.value.toolRef)
+			: initialToolRef.value
+				? toolRefToNode(initialToolRef.value)
 				: null,
 );
 
@@ -163,15 +186,12 @@ const restrictedToolName = computed(() =>
 watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
 
 const workflowInitialRef = computed<WorkflowToolRef | null>(() =>
-	isWorkflowTool.value && toolModalData.value?.toolRef.type === 'workflow'
-		? toolModalData.value.toolRef
-		: null,
+	initialToolRef.value?.type === 'workflow' ? initialToolRef.value : null,
 );
 
 const initialName = computed(() => {
 	if (isMcpTool.value) return mcpModalData.value?.mcpServer.name ?? '';
-	const toolName =
-		toolModalData.value?.toolRef.type === 'node' ? toolModalData.value.toolRef.name : undefined;
+	const toolName = initialToolRef.value?.type === 'node' ? initialToolRef.value.name : undefined;
 	return toolName ?? initialNode.value?.name ?? '';
 });
 const nodeName = ref(initialName.value);
@@ -195,12 +215,31 @@ const customToolTitle = computed(() => {
 const title = computed(() => (isCustomTool.value ? customToolTitle.value : nodeName.value));
 
 const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
-const showApprovalSetting = computed(
-	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
+const approvalToolKey = computed(() =>
+	isMcpServerModalData(props.data)
+		? hitlMcpServerKey(props.data.mcpServer.name)
+		: hitlToolKey(props.data.toolRef),
+);
+const hasReviewContext = computed(
+	() => supportsApproval.value && !!props.data.approvalContext && !!props.data.projectId,
+);
+const [DefineParameters, ReuseParameters] = createReusableTemplate();
+const activeTab = ref<ToolConfigTab>(toolModalData.value?.initialTab ?? 'params');
+const tabs = computed(() => [
+	...(nodeContentRef.value?.tabOptions ?? [
+		{ value: 'params' as const, label: i18n.baseText('nodeSettings.parameters') },
+	]),
+	{ value: 'guardrails' as const, label: i18n.baseText('agents.builder.guardrails.title') },
+]);
+const showTabs = computed(
+	() => !isMcpTool.value && (supportsApproval.value || guardrailsSection.value),
+);
+const nodeActiveTab = computed(() =>
+	showTabs.value ? (activeTab.value === 'guardrails' ? 'params' : activeTab.value) : undefined,
 );
 
 watch(
-	() => toolModalData.value?.toolRef,
+	initialToolRef,
 	(toolRef) => {
 		approvalRequired.value = Boolean(toolRef?.requireApproval);
 	},
@@ -283,7 +322,10 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 		const { requireApproval: _requireApproval, ...rest } = ref;
 		return rest;
 	}
-	const updatedRef = { ...ref };
+	const updatedRef = {
+		...ref,
+		approvalRoute: approvalRequired.value ? approvalRoute.value : undefined,
+	};
 	if (approvalRequired.value) updatedRef.requireApproval = true;
 	else delete updatedRef.requireApproval;
 	return updatedRef;
@@ -291,13 +333,9 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 
 function confirm(): boolean {
 	submitCount.value += 1;
-	if (!canSave.value) return false;
-
-	if (isCustomTool.value) {
-		const toolData = toolModalData.value;
-		if (!toolData) return false;
-		toolData.onConfirm(withApprovalRequirement(toolData.toolRef));
-		return true;
+	if (!canSave.value) {
+		if (activeTab.value === 'guardrails') activeTab.value = 'params';
+		return false;
 	}
 
 	if (isMcpTool.value) {
@@ -307,6 +345,7 @@ function confirm(): boolean {
 		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
 		mcpData.onConfirm({
 			...updatedServer,
+			approvalRoute: supportsApproval.value ? approvalRoute.value : undefined,
 			toolPermissions: supportsApproval.value
 				? mcpPermissions.value
 				: {
@@ -319,12 +358,22 @@ function confirm(): boolean {
 		return true;
 	}
 
-	if (isWorkflowTool.value) {
+	const toolData = toolModalData.value;
+	const updatedTool = getEditedTool();
+	if (!toolData || !updatedTool) return false;
+	toolData.onConfirm(withApprovalRequirement(updatedTool));
+	return true;
+}
+
+function getEditedTool(): AgentJsonToolRef | undefined {
+	const tool = toolModalData.value?.toolRef;
+	if (!tool || tool.type === 'custom') return tool;
+
+	if (tool.type === 'workflow') {
 		const content = workflowContentRef.value;
-		const toolData = toolModalData.value;
-		if (!toolData || !content) return false;
+		if (!content) return;
 		const workflowId = content.getWorkflowId();
-		const updatedRef = updateWorkflowToolRef(toolData.toolRef, {
+		return updateWorkflowToolRef(tool, {
 			name: content.getName(),
 			description: content.getDescription(),
 			allOutputs: content.getAllOutputs(),
@@ -332,16 +381,20 @@ function confirm(): boolean {
 			...(workflowId !== undefined ? { workflowId } : {}),
 			inputs: content.getInputs(),
 		});
-		toolData.onConfirm(withApprovalRequirement(updatedRef));
-		return true;
 	}
 
-	const currentToolNode = nodeContentRef.value?.getNode();
-	const toolData = toolModalData.value;
-	if (!currentToolNode || !toolData) return false;
-	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentToolNode);
-	toolData.onConfirm(withApprovalRequirement(updatedRef));
-	return true;
+	const node = nodeContentRef.value?.getNode();
+	return node ? updateToolRefFromNode(tool, node) : undefined;
+}
+
+function getToolDraft(): AgentJsonToolRef | undefined {
+	const tool = getEditedTool();
+	return (
+		tool && {
+			...withApprovalRequirement(tool),
+			approvalRoute: approvalRoute.value,
+		}
+	);
 }
 
 function remove() {
@@ -373,11 +426,11 @@ credentialListeners.run(() => {
 });
 onBeforeUnmount(() => credentialListeners.stop());
 
-defineExpose({ canSave, confirm, remove, changeTitle });
+defineExpose({ canSave, confirm, getToolDraft, remove, changeTitle });
 </script>
 
 <template>
-	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
+	<div :class="$style.contentWrapper">
 		<RestrictedTypeCallout
 			v-if="isRestricted"
 			surface="tool"
@@ -399,43 +452,23 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		>
 			{{ i18n.baseText('agents.toolConfig.validation.fixFields' as BaseTextKey) }}
 		</N8nText>
-		<AgentToolConfigCustomContent
-			v-if="isCustomTool"
-			:code="customToolCode"
-			:class="$style.customToolViewer"
-		/>
-		<AgentToolConfigApprovalSetting
-			v-if="isCustomTool && showApprovalSetting"
-			v-model="approvalRequired"
-		/>
-		<div v-else :class="$style.configureTab">
+		<DefineParameters>
+			<AgentToolConfigCustomContent
+				v-if="isCustomTool"
+				:code="customToolCode"
+				:class="$style.customToolViewer"
+			/>
 			<AgentToolConfigWorkflowContent
-				v-if="workflowInitialRef"
+				v-else-if="workflowInitialRef"
 				ref="workflowContentRef"
 				:initial-ref="workflowInitialRef"
 				:submit-count="submitCount"
 				:project-id="data.projectId"
-				:show-approval-setting="showApprovalSetting"
-				:approval-required="approvalRequired"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
-				@update:approval-required="approvalRequired = $event"
 			/>
 			<AgentToolConfigNodeContent
-				v-else-if="isMcpTool && initialNode"
-				ref="mcpContentRef"
-				:initial-node="initialNode"
-				:existing-tool-names="data.existingToolNames"
-				:project-id="data.projectId"
-				:hidden-parameters="['include', 'includeTools', 'excludeTools']"
-				:read-only="isRestricted"
-				content-test-id="agent-tool-config-mcp-content"
-				@update:valid="isValid = $event"
-				@update:node-name="handleNodeNameUpdate"
-				@update:node="draftNode = $event"
-			/>
-			<AgentToolConfigNodeContent
-				v-else-if="initialNode"
+				v-else-if="initialNode && !isMcpTool"
 				ref="nodeContentRef"
 				:initial-node="initialNode"
 				:existing-tool-names="data.existingToolNames"
@@ -444,30 +477,78 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				:parameter-issues="nodeParameterIssues"
 				:read-only="isRestricted"
 				content-test-id="node-tool-settings-content"
+				:active-tab="nodeActiveTab"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
 				@update:node="draftNode = $event"
 			/>
-			<AgentToolConfigApprovalSetting
-				v-if="!isMcpTool && initialNode && showApprovalSetting"
-				v-model="approvalRequired"
-				:disabled="isRestricted"
-			/>
-			<AgentToolConfigMcpApprovalSetting
-				v-if="isMcpTool && mcpPermissions && supportsApproval && currentNode"
-				v-model="mcpPermissions"
-				:node="currentNode"
-				:disabled="isRestricted"
+		</DefineParameters>
+
+		<template v-if="isMcpTool">
+			<div :class="$style.contentWrapper">
+				<AgentToolConfigNodeContent
+					v-if="initialNode"
+					ref="mcpContentRef"
+					:initial-node="initialNode"
+					:existing-tool-names="data.existingToolNames"
+					:project-id="data.projectId"
+					:hidden-parameters="['include', 'includeTools', 'excludeTools']"
+					:read-only="isRestricted"
+					content-test-id="agent-tool-config-mcp-content"
+					@update:valid="isValid = $event"
+					@update:node-name="handleNodeNameUpdate"
+					@update:node="draftNode = $event"
+				/>
+				<AgentToolConfigMcpApprovalSetting
+					v-if="mcpPermissions && supportsApproval && currentNode"
+					v-model="mcpPermissions"
+					:node="currentNode"
+					:disabled="isRestricted"
+					:project-id="data.projectId"
+					@update:valid="mcpApprovalValid = $event"
+				/>
+			</div>
+			<AgentApprovalRouteSelect
+				v-if="hasReviewContext && data.approvalContext && data.projectId"
+				v-model="approvalRoute"
+				:tool-key="approvalToolKey"
+				:label="i18n.baseText('agents.hitl.mcpRoute')"
+				:context="data.approvalContext"
 				:project-id="data.projectId"
-				@update:valid="mcpApprovalValid = $event"
+				:disabled="isRestricted"
 			/>
-		</div>
-		<AgentToolGuardrailsSection
-			v-if="guardrailsSection"
-			:tool-ref="guardrailsSection.toolRef"
-			v-bind="guardrailsSection.wiring"
-			@open-guardrail="emit('open-guardrail', $event)"
-		/>
+		</template>
+		<N8nTabs v-else-if="showTabs" v-model="activeTab" :options="tabs">
+			<template #content>
+				<div v-show="activeTab !== 'guardrails'" :class="$style.tabContent">
+					<ReuseParameters />
+				</div>
+				<div
+					v-show="activeTab === 'guardrails'"
+					:class="[$style.contentWrapper, $style.tabContent]"
+				>
+					<AgentToolGuardrailsSection
+						v-if="guardrailsSection"
+						:tool-ref="guardrailsSection.toolRef"
+						v-bind="guardrailsSection.wiring"
+						@open-guardrail="emit('open-guardrail', $event)"
+					/>
+					<AgentApprovalRouteSelect
+						v-if="hasReviewContext && data.approvalContext && data.projectId"
+						v-model="approvalRoute"
+						v-model:approval-required="approvalRequired"
+						:tool-key="approvalToolKey"
+						:context="data.approvalContext"
+						:project-id="data.projectId"
+						:disabled="isRestricted"
+					/>
+					<N8nSettingsRowGroup v-else-if="supportsApproval" :class="$style.approvalFallback">
+						<AgentToolConfigApprovalSetting v-model="approvalRequired" :disabled="isRestricted" />
+					</N8nSettingsRowGroup>
+				</div>
+			</template>
+		</N8nTabs>
+		<ReuseParameters v-else />
 	</div>
 </template>
 
@@ -476,27 +557,23 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	overflow-x: hidden;
+	overflow-x: clip;
 
 	:global(.ndv-connection-hint-notice) {
 		display: none;
 	}
 }
 
-.codeContentWrapper {
-	height: min(calc(var(--spacing--5xl) * 2), calc(70dvh - var(--spacing--5xl)));
-	overflow: hidden;
+.tabContent {
+	margin-block-start: var(--spacing--md);
 }
 
-.configureTab {
-	display: flex;
-	min-height: 0;
-	flex-direction: column;
-	gap: var(--spacing--md);
+.approvalFallback {
+	background: transparent;
 }
 
 .customToolViewer {
-	flex: 1;
+	height: min(calc(var(--spacing--5xl) * 2), calc(70dvh - var(--spacing--5xl)));
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;

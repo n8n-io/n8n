@@ -73,12 +73,13 @@ export const promotionResourceSchema = z
 				'How the operation changes the resource. `unchanged` resources give context, such as a parent folder or a workflow that uses a changed credential.',
 		}),
 		/**
-		 * Whether the user can select the resource directly: a workflow, or a project or folder that
-		 * is added or modified. Dependencies come with the workflows that use them.
+		 * Whether the user can select the resource directly: a workflow, a project or folder that is
+		 * added or modified, or on Promote a credential that the project owns and that is added or
+		 * modified. Other dependencies come with the workflows that use them.
 		 */
 		selectable: z.boolean().openapi({
 			description:
-				'Whether the resource can be selected for Promote or Apply: a workflow, or a project or folder that is added or modified. Credentials, data tables, variables and tags come with the workflows that use them.',
+				'Whether the resource can be selected for Promote or Apply: a workflow, a project or folder that is added or modified, or on Promote a credential that the project owns and that is added or modified. Other credentials, data tables, variables and tags come with the workflows that use them.',
 		}),
 		/**
 		 * Only for deleted workflows on Promote: the project that owns the workflow on this instance now.

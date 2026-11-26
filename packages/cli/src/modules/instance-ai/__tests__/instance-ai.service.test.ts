@@ -25,6 +25,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
 		setTraceModelId: vi.fn(),
+		setTraceApprovalMode: vi.fn(),
 		modelIdTraceMetadata: (modelId: unknown) =>
 			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 		modelConfigId: (config: unknown) =>
@@ -265,6 +266,7 @@ import {
 	isQuotaExhaustedError,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
+	setTraceApprovalMode,
 	emitAgentSnapshotTraceEvent,
 	carryAgentBuildRunState,
 	threadProvenanceMetadata,
@@ -702,7 +704,10 @@ type TerminalGuardOrderServiceInternals = {
 			signal: AbortSignal;
 			abortController: AbortController;
 			tracing?: InstanceAiTraceContext;
-			orchestrationContext?: { tracing?: unknown };
+			orchestrationContext?: {
+				tracing?: unknown;
+				domainContext?: Pick<InstanceAiContext, 'approvalMode'>;
+			};
 			resumeExecutionToken?: symbol;
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
@@ -997,6 +1002,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
@@ -1349,6 +1355,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
 				nodeContextEnabled: false,
@@ -3463,6 +3470,41 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			user_id: 'user-1',
 			model_id: 'anthropic/claude-sonnet-4-6',
 		});
+	});
+
+	it('records the approval mode of the suspended run in the trace of its resume', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeTracing = {
+			actorRun: { id: 'resume-actor' },
+			withActiveSpan: vi.fn(
+				async (_run: unknown, callback: () => Promise<unknown>) => await callback(),
+			),
+		} as unknown as InstanceAiTraceContext;
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				tracing: resumeTracing,
+				orchestrationContext: { domainContext: { approvalMode: 'auto' } },
+			},
+		);
+
+		expect(setTraceApprovalMode).toHaveBeenCalledWith(resumeTracing, 'auto');
 	});
 
 	it('terminates the run visibly when a resume fails before the claim', async () => {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { N8nDropdownMenu } from '@n8n/design-system';
 
 import AgentGuardrailsSection from '../components/AgentGuardrailsSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
@@ -162,8 +163,10 @@ function mountSection(
 		disabled: boolean;
 		validationIssues: AgentConfigValidationIssue[];
 	}> = {},
+	approval?: string,
 ) {
 	const wrapper = mount(AgentGuardrailsSection, {
+		slots: approval ? { approval } : undefined,
 		attachTo: document.body,
 		props: {
 			config: config([KEYWORDS_GUARDRAIL, PII_GUARDRAIL]),
@@ -300,13 +303,31 @@ describe('AgentGuardrailsSection', () => {
 		expect(addMenuItem('customRegex')).toBeNull();
 	});
 
-	it('opens the add menu from the tooltip-wrapped button beside the chips', async () => {
+	it('anchors the add menu to the tooltip-wrapped button beside the chips', async () => {
 		const wrapper = mountSection();
 
+		const button = wrapper.get('[data-testid="agent-guardrails-add"]').element;
 		await openAddMenu(wrapper);
 
+		expect(wrapper.getComponent(N8nDropdownMenu).props('reference')).toBe(button);
 		expect(document.querySelector('[role="menu"]')).not.toBeNull();
 	});
+
+	it.each([undefined, 'pii_39rkvx'])(
+		'uses the guardrail type when the stored name is %s',
+		(name) => {
+			const wrapper = mountSection({
+				config: config([{ ...PII_GUARDRAIL, id: 'pii_39rkvx', name }]),
+			});
+
+			expect(wrapper.get('[data-testid="agent-guardrails-chip"]').text()).toContain(
+				'PII detection',
+			);
+			expect(wrapper.get('[data-testid="agent-guardrails-chip"]').text()).not.toContain(
+				'pii_39rkvx',
+			);
+		},
+	);
 
 	it('opens the modal in create mode with the picked kind', async () => {
 		const wrapper = mountSection();
@@ -400,20 +421,39 @@ describe('AgentGuardrailsSection', () => {
 		expect(updates.config?.guardrails?.tools).toEqual([KEYWORDS_GUARDRAIL]);
 	});
 
-	it('renders the budget panel embedded below the divider', () => {
-		const wrapper = mountSection();
+	it('opens Guardrails by default and opens Approval when an approval loads', async () => {
+		const wrapper = mountSection({}, '<div data-testid="approval-content">Approval content</div>');
+		const guardrails = wrapper.get('[data-testid="agent-guardrails-disclosure"] button');
+		const approval = wrapper.get('[data-testid="agent-approval-disclosure"] button');
+		const approvalContent = wrapper.get('[data-testid="approval-content"]');
 
-		const divider = wrapper.find(
-			'[data-testid="agent-guardrails-section"] > div[aria-hidden="true"]',
-		);
-		expect(divider.exists()).toBe(true);
+		expect(guardrails.attributes('aria-expanded')).toBe('true');
+		expect(approval.attributes('aria-expanded')).toBe('false');
+		expect(approvalContent.isVisible()).toBe(false);
+
+		await wrapper.setProps({
+			config: {
+				...wrapper.props('config')!,
+				hitlConfigurations: [
+					{ id: 'approval', name: 'Finance check', method: 'workflow', workflowId: 'wf' },
+				],
+			},
+		});
+		expect(approval.attributes('aria-expanded')).toBe('true');
+		expect(approvalContent.isVisible()).toBe(true);
+		expect(guardrails.attributes('aria-expanded')).toBe('true');
+
+		await guardrails.trigger('click');
+		expect(wrapper.get('[data-testid="agent-guardrails-add"]').isVisible()).toBe(false);
+		expect(approvalContent.isVisible()).toBe(true);
+
 		const budget = wrapper.getComponent({ name: 'AgentBudgetPanel' });
 		expect(budget.props('embedded')).toBe(true);
 		expect(budget.props('projectId')).toBe('project-1');
 		expect(budget.props('agentId')).toBe('agent-1');
 		expect(budget.props('disabled')).toBe(false);
 		expect(
-			divider.element.compareDocumentPosition(budget.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+			approval.element.compareDocumentPosition(budget.element) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});
 

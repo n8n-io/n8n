@@ -208,6 +208,7 @@ const AgentToolConfigFormStub = defineComponent({
 			}
 		});
 		expose({
+			getToolDraft: () => ('toolRef' in props.data ? props.data.toolRef : undefined),
 			confirm: () => {
 				const data = props.data as AgentToolConfigData;
 				const result =
@@ -347,6 +348,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isNodeTypeVersionSupported = vi.fn().mockReturnValue(true);
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
+		// The node types are in the store by default. The node types tests below empty it.
+		nodeTypesStore.hasNodeTypes = true;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
@@ -515,6 +519,33 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			projectId: PROJECT_ID,
 		});
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('shows the loading screen until the node types are loaded', async () => {
+		nodeTypesStore.hasNodeTypes = false;
+		const { promise, resolve } = Promise.withResolvers<void>();
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+		render();
+		await flushPromises();
+
+		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+		expect(modalAttrs.loading).toBe(true);
+
+		resolve();
+		await flushPromises();
+
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('stops loading when the node types fail to load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		nodeTypesStore.hasNodeTypes = false;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+		render();
+
+		await flushPromises();
+
 		expect(modalAttrs.loading).toBe(false);
 	});
 
@@ -1734,7 +1765,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(openModalSpy).toHaveBeenCalledWith(MODAL_NAME);
 		});
 
-		it('reopens on the config step of the stashed tool after a guardrail edit', async () => {
+		it('reopens on the Guardrails tab of the stashed tool after a guardrail edit', async () => {
 			const guardrails: ToolGuardrailsWiring = {
 				getGuardrails: () => [],
 				getTools: () => [],
@@ -1747,9 +1778,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			// The resume lands directly on the tool's config step, not the picker.
 			const data = getConfigData();
-			expect(
-				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer' ? data.toolRef : undefined,
-			).toEqual(ref);
+			expect(data).toMatchObject({ toolRef: ref, initialTab: 'guardrails' });
 			// The stash is consumed, so a later manual open starts at the picker.
 			const stored = uiStore.modalStateById[MODAL_NAME].data as {
 				resumeToolRef?: AgentJsonToolRef;

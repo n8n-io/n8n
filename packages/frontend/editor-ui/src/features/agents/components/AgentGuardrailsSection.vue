@@ -4,7 +4,7 @@ import type {
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
@@ -18,15 +18,16 @@ import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import {
 	configuredToolGuardrails,
-	guardrailKindLabelKey,
+	guardrailDisplayName,
 	guardrailRefMatchesTool,
-	TOOL_GUARDRAIL_KINDS,
 	withToolGuardrails,
 } from '../utils/guardrails';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentGuardrailAddMenu from './AgentGuardrailAddMenu.vue';
 import AgentGuardrailModal from './AgentGuardrailModal.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
+import AgentPanelDisclosure from './AgentPanelDisclosure.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -64,16 +65,6 @@ const modalOpen = ref(false);
 /** The entry being edited, or null in create mode. */
 const editingGuardrail = ref<AgentToolGuardrailConfig | null>(null);
 const createKind = ref<AgentToolGuardrailKind>('keywords');
-
-const addItems = computed(() =>
-	TOOL_GUARDRAIL_KINDS.map((kind) => ({
-		id: kind,
-		label: i18n.baseText(guardrailKindLabelKey(kind)),
-		testId: `agent-guardrails-add-${kind}`,
-	})),
-);
-
-const addLabel = computed(() => i18n.baseText('agents.builder.guardrails.add'));
 
 /** One icon per covered-tool kind on a guardrail chip. */
 interface GuardrailToolIconGroup {
@@ -138,9 +129,9 @@ function toolIconGroups(guardrail: AgentToolGuardrailConfig): GuardrailToolIconG
 	return [...groups.values()];
 }
 
-function onAddSelect(kind: string) {
+function onAddSelect(kind: AgentToolGuardrailKind) {
 	if (props.disabled) return;
-	createKind.value = kind as AgentToolGuardrailKind;
+	createKind.value = kind;
 	editingGuardrail.value = null;
 	modalOpen.value = true;
 }
@@ -176,97 +167,83 @@ function onModalRemove() {
 
 <template>
 	<div :class="$style.section" data-testid="agent-guardrails-section">
-		<div :class="$style.chips">
-			<div v-for="guardrail in guardrails" :key="guardrail.id" :class="$style.chipGroup">
-				<AgentItemContextMenu :disabled="disabled" @remove="removeGuardrail(guardrail.id)">
-					<AgentChipButton
-						:invalid="(guardrailIssueMessages.get(guardrail.id) ?? []).length > 0"
-						:invalid-reasons="guardrailIssueMessages.get(guardrail.id) ?? []"
-						:disabled="disabled"
-						data-testid="agent-guardrails-chip"
-						@click="onOpenGuardrail(guardrail)"
-					>
-						<span :class="$style.chipLabel">
-							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
-							<span :class="$style.chipMeta">
-								<span aria-hidden="true">·</span>
-								<template v-if="guardrail.tools">
-									<span
-										v-for="group in toolIconGroups(guardrail)"
-										:key="group.key"
-										:class="$style.toolIcon"
-										:title="group.title"
-										data-testid="guardrail-chip-tool-group"
-									>
-										<NodeIcon
-											v-if="group.nodeType"
-											:node-type="group.nodeType"
-											:size="14"
-											data-testid="guardrail-chip-tool-icon"
-										/>
-										<N8nIcon
-											v-else
-											:icon="group.fallbackIcon"
-											:size="14"
-											data-testid="guardrail-chip-tool-fallback-icon"
-										/>
-										<span v-if="group.count > 1" :class="$style.toolIconCount">
-											{{ group.count }}
-										</span>
-									</span>
-								</template>
-								<template v-else>
-									{{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
-								</template>
-							</span>
-						</span>
-					</AgentChipButton>
-				</AgentItemContextMenu>
-			</div>
-
-			<N8nDropdownMenu
-				:items="addItems"
-				placement="bottom-start"
-				data-testid="agent-guardrails-add-menu"
-				@select="onAddSelect"
-			>
-				<template #trigger>
-					<N8nTooltip v-if="guardrails.length > 0" as-child :content="addLabel" placement="top">
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							icon-only
-							:aria-label="addLabel"
+		<AgentPanelDisclosure
+			:title="i18n.baseText('agents.builder.guardrails.title')"
+			:description="i18n.baseText('agents.builder.guardrails.description')"
+			default-open
+			data-testid="agent-guardrails-disclosure"
+		>
+			<div :class="$style.chips">
+				<div v-for="guardrail in guardrails" :key="guardrail.id" :class="$style.chipGroup">
+					<AgentItemContextMenu :disabled="disabled" @remove="removeGuardrail(guardrail.id)">
+						<AgentChipButton
+							:invalid="(guardrailIssueMessages.get(guardrail.id) ?? []).length > 0"
+							:invalid-reasons="guardrailIssueMessages.get(guardrail.id) ?? []"
 							:disabled="disabled"
-							data-testid="agent-guardrails-add"
+							data-testid="agent-guardrails-chip"
+							@click="onOpenGuardrail(guardrail)"
 						>
-							<template #icon>
-								<N8nIcon icon="plus" :size="16" color="text-light" />
-							</template>
-						</N8nButton>
-					</N8nTooltip>
-					<N8nButton
-						v-else
-						:class="$style.emptyAddButton"
-						variant="ghost"
-						size="medium"
-						:aria-label="addLabel"
-						:disabled="disabled"
-						data-testid="agent-guardrails-add"
-					>
-						<template #icon>
-							<N8nIcon icon="plus" :size="16" />
-						</template>
-						{{ addLabel }}
-					</N8nButton>
-				</template>
-			</N8nDropdownMenu>
-		</div>
+							<span :class="$style.chipLabel">
+								<span :class="$style.chipName">{{ guardrailDisplayName(guardrail, i18n) }}</span>
+								<span :class="$style.chipMeta">
+									<span aria-hidden="true">·</span>
+									<template v-if="guardrail.tools">
+										<span
+											v-for="group in toolIconGroups(guardrail)"
+											:key="group.key"
+											:class="$style.toolIcon"
+											:title="group.title"
+											data-testid="guardrail-chip-tool-group"
+										>
+											<NodeIcon
+												v-if="group.nodeType"
+												:node-type="group.nodeType"
+												:size="14"
+												data-testid="guardrail-chip-tool-icon"
+											/>
+											<N8nIcon
+												v-else
+												:icon="group.fallbackIcon"
+												:size="14"
+												data-testid="guardrail-chip-tool-fallback-icon"
+											/>
+											<span v-if="group.count > 1" :class="$style.toolIconCount">
+												{{ group.count }}
+											</span>
+										</span>
+									</template>
+									<template v-else>
+										{{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
+									</template>
+								</span>
+							</span>
+						</AgentChipButton>
+					</AgentItemContextMenu>
+				</div>
 
-		<div :class="$style.divider" aria-hidden="true" />
+				<AgentGuardrailAddMenu
+					test-id="agent-guardrails-add"
+					:icon-only="guardrails.length > 0"
+					:disabled="disabled"
+					@select="onAddSelect"
+				/>
+			</div>
+		</AgentPanelDisclosure>
+
+		<AgentPanelDisclosure
+			v-if="$slots.approval"
+			:title="i18n.baseText('agents.hitl.title')"
+			:description="i18n.baseText('agents.hitl.description')"
+			:default-open="!!config?.hitlConfigurations?.length"
+			:class="$style.divided"
+			data-testid="agent-approval-disclosure"
+		>
+			<slot name="approval" />
+		</AgentPanelDisclosure>
 
 		<AgentBudgetPanel
 			embedded
+			:class="$style.divided"
 			:config="config"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -359,20 +336,10 @@ function onModalRemove() {
 	line-height: 1;
 }
 
-.emptyAddButton {
-	--button--color: var(--text-color--subtler);
-	margin-left: calc(-1 * var(--spacing--xs));
-	margin-top: calc(-1 * var(--spacing--4xs));
-
-	&:hover {
-		--button--color: var(--text-color);
-		background-color: transparent;
-	}
-}
-
-.divider {
-	flex: initial;
-	height: 1px;
-	background-color: var(--border-color--subtle);
+.divided {
+	margin-inline: calc(-1 * var(--agent-panel-padding-inline, var(--spacing--sm)));
+	padding-inline: var(--agent-panel-padding-inline, var(--spacing--sm));
+	border-block-start: var(--border-width) var(--border-style) var(--border-color--subtle);
+	padding-block-start: var(--spacing--sm);
 }
 </style>

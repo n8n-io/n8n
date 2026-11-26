@@ -130,7 +130,7 @@ export const wrappedComponentBans = [
 		library: 'reka-ui',
 		prefixes: ['Tabs'],
 		allowedFolders: ['components/N8nTabs'],
-		replacement: ['N8nTabsRoot', 'N8nTabsList', 'N8nTabsTrigger', 'N8nTabsContent'],
+		replacement: ['N8nTabs', 'N8nTabsRoot', 'N8nTabsList', 'N8nTabsTrigger', 'N8nTabsContent'],
 	},
 	{
 		library: 'reka-ui',
@@ -178,6 +178,14 @@ export const wrappedComponentBans = [
 		templateNames: ['el-switch', 'ElSwitch'],
 		allowedFolders: ['components/N8nSwitch'],
 		replacement: 'N8nSwitch',
+	},
+	{
+		library: 'element-plus',
+		names: ['ElTabs', 'ElTabPane'],
+		componentPaths: ['tabs', 'tab-pane'],
+		templateNames: ['el-tabs', 'ElTabs', 'el-tab-pane', 'ElTabPane'],
+		allowedFolders: ['components/N8nTabs'],
+		replacement: 'N8nTabs',
 	},
 ] as const satisfies readonly WrappedComponentBan[];
 

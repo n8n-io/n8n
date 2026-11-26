@@ -19,6 +19,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
+	AgentExecutionStatisticsRepository,
 	TransactionRunner,
 	Person,
 	UserRepository,
@@ -346,6 +347,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentsSettingsService>(),
 			skillRefs,
 			mock<UserRepository>(),
+			mock<AgentExecutionStatisticsRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -455,7 +457,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			'attaches eager conversation tools with n8n Chat=%s',
 			async (n8nChat) => {
 				const registry = new ChatIntegrationRegistry();
-				registry.register(new SlackIntegration(mock<AgentRepository>()));
+				registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 				registry.register(new N8nChatIntegration(mock()));
 				Container.set(ChatIntegrationRegistry, registry);
 				Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());

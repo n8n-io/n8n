@@ -188,7 +188,11 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
-export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
+export {
+	budgetMonthKey,
+	chargeModelSpend,
+	createBudgetGuardrail,
+} from './runtime/guardrails/budget-guardrail';
 export type {
 	BudgetGuardrailOptions,
 	SpendEntry,
