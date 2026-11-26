@@ -23,7 +23,12 @@ defineProps<{
 				role="listitem"
 				:data-test-id="`app-publish-connection-${resource.key}`"
 			>
-				<N8nIcon :icon="BINDING_KINDS[resource.kind].icon" :size="14" :class="$style.icon" />
+				<N8nIcon
+					:icon="BINDING_KINDS[resource.kind].icon"
+					:size="14"
+					:class="$style.icon"
+					:data-test-id="`app-publish-connection-${resource.key}-icon`"
+				/>
 				<span :class="$style.name">{{ resource.name }}</span>
 			</span>
 		</span>

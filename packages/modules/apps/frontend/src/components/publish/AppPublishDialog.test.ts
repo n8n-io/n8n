@@ -159,6 +159,8 @@ describe('AppPublishDialog', () => {
 			);
 			expect(screen.getByTestId('app-publish-connection-sales')).toHaveTextContent('Sales');
 			expect(screen.getByTestId('app-publish-connection-support')).toHaveTextContent('Support');
+			expect(screen.getByTestId('app-publish-connection-sales-icon')).toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-connection-support-icon')).toBeInTheDocument();
 			expect(screen.queryByTestId('app-publish-connections-skipped')).not.toBeInTheDocument();
 			expect(getAppPublishPreview).toHaveBeenCalledWith(
 				expect.anything(),
