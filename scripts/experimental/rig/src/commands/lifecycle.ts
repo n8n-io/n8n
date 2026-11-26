@@ -20,7 +20,8 @@ import {
 	selectEnvName,
 	setCurrentEnv,
 } from '../environment';
-import { setInDotenv, setInDotenvFile } from '../env/dotenv';
+import { setInDotenv } from '../env/dotenv';
+import { setEnvValue } from '../env/secret-store';
 import { ensureSecrets } from '../env/secrets';
 import { RigError } from '../errors';
 import { servicesDown } from '../services/compose';
@@ -49,7 +50,7 @@ export function layerHeader(layer: string): string {
 	const target = LAYER_HEADERS[layer] ?? `the component "${layer}"`;
 	return (
 		`# Env vars for ${target}.\n` +
-		'# Order, later wins: managed by rig < profiles < shared.env < <role>.env < <component>.env < secrets\n' +
+		'# Order, later wins: managed by rig < global secrets < profiles < secrets.env < shared.env < <role>.env < <component>.env\n' +
 		`# Edit this file or use \`${RIG} env set KEY=value --on <role|component>\`.\n` +
 		'# Running components show drift and restart on request.\n\n'
 	);
@@ -169,7 +170,7 @@ export function createEnvironment(
 	}
 	ensureSecrets(paths.secrets);
 	for (const [key, value] of Object.entries(options.secrets ?? {})) {
-		setInDotenvFile(paths.secrets, key, value);
+		setEnvValue(paths.secrets, key, value);
 	}
 	setCurrentEnv(name);
 

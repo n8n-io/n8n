@@ -61,14 +61,14 @@ describe('useAgentApi', () => {
 			};
 			vi.mocked(makeRestApiRequest).mockResolvedValue(response);
 
-			await expect(getAgentTestRunTools(restApiContext, 'project-1', 'agent-1')).resolves.toEqual(
+			await expect(getAgentTestRunTools(restApiContext, 'project/1', 'agent/1')).resolves.toEqual(
 				response,
 			);
 
 			expect(makeRestApiRequest).toHaveBeenCalledExactlyOnceWith(
 				restApiContext,
 				'GET',
-				'/projects/project-1/agents/v2/agent-1/test-run/tools',
+				'/projects/project%2F1/agents/v2/agent%2F1/test-run/tools',
 			);
 		});
 
@@ -76,13 +76,13 @@ describe('useAgentApi', () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValue({ reset: true });
 
 			await expect(
-				resetAgentTestRun(restApiContext, 'project-1', 'agent-1', 'session-1'),
+				resetAgentTestRun(restApiContext, 'project/1', 'agent/1', 'session-1'),
 			).resolves.toEqual({ reset: true });
 
 			expect(makeRestApiRequest).toHaveBeenCalledExactlyOnceWith(
 				restApiContext,
 				'POST',
-				'/projects/project-1/agents/v2/agent-1/test-run/reset',
+				'/projects/project%2F1/agents/v2/agent%2F1/test-run/reset',
 				{ sessionId: 'session-1' },
 			);
 		});

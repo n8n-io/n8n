@@ -29,6 +29,21 @@ describe('BinaryDataAccessService', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('assertIsAllowed', () => {
+		it('allows an explicitly granted binary', async () => {
+			await expect(
+				service.assertIsAllowed('binary-id', undefined, ['binary-id']),
+			).resolves.toBeUndefined();
+			expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('rejects a binary without a grant or workflow owner', async () => {
+			await expect(service.assertIsAllowed('binary-id', undefined)).rejects.toThrow(
+				'This binary data is not available to the current workflow.',
+			);
+		});
+	});
+
 	describe('hasReadAccess', () => {
 		describe('resolves the execution from a path-format id', () => {
 			test.each(['filesystem', 'filesystem-v2', 's3', 'azure'])('for mode %s', async (mode) => {
@@ -54,6 +69,17 @@ describe('BinaryDataAccessService', () => {
 
 			const id = `filesystem-v2:workflows/wf1/executions/1/binary_data/${uuid}`;
 			expect(await service.hasReadAccess(user, id)).toBe(false);
+		});
+
+		test('denies when the path workflow does not own the execution', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1', 'wf2']);
+			executionRepository.existsForAccessibleWorkflows.mockImplementation(
+				async (_executionId, workflowIds) => workflowIds.includes('wf1'),
+			);
+
+			const id = `filesystem-v2:workflows/wf2/executions/1/binary_data/${uuid}`;
+			expect(await service.hasReadAccess(user, id)).toBe(false);
+			expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('1', ['wf2']);
 		});
 
 		test('resolves the execution from a database row', async () => {
@@ -262,6 +288,80 @@ describe('BinaryDataAccessService', () => {
 		test('denies a malformed id without a mode separator', async () => {
 			expect(await service.hasReadAccess(user, 'no-separator')).toBe(false);
 			expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isOwnedByWorkflow', () => {
+		describe('for a path-format id', () => {
+			test.each([
+				['both the path and execution belong to the workflow', 'wf1', true, true],
+				['the path names another workflow', 'wf2', true, false],
+				['the execution belongs to another workflow', 'wf1', false, false],
+			] as const)('%s', async (_, pathWorkflowId, executionBelongsToWorkflow, expected) => {
+				executionRepository.existsForAccessibleWorkflows.mockResolvedValue(
+					executionBelongsToWorkflow,
+				);
+				const id = `filesystem-v2:workflows/${pathWorkflowId}/executions/1/binary_data/${uuid}`;
+
+				expect(await service.isOwnedByWorkflow('wf1', id)).toBe(expected);
+			});
+
+			test.each([
+				['temporary binary', 'temp'],
+				['engine v2 binary', v2ExecutionId],
+			] as const)('binds a %s to the workflow in its path', async (_, executionId) => {
+				if (executionId === v2ExecutionId) {
+					dataPlane.getExecution.mockResolvedValue(mock<ExecutionSnapshot>({ workflowId: 'wf1' }));
+				}
+				const id = `filesystem-v2:workflows/wf1/executions/${executionId}/binary_data/${uuid}`;
+
+				expect(await service.isOwnedByWorkflow('wf1', id)).toBe(true);
+				expect(await service.isOwnedByWorkflow('wf2', id)).toBe(false);
+			});
+		});
+
+		describe('for a database id', () => {
+			test.each([
+				['the execution belongs to the workflow', true, true],
+				['the execution belongs to another workflow', false, false],
+			] as const)(
+				'%s for an execution v1 binary',
+				async (_, executionBelongsToWorkflow, expected) => {
+					binaryDataRepository.findSourceByFileId.mockResolvedValue({
+						sourceType: 'execution',
+						sourceId: '1',
+					});
+					executionRepository.existsForAccessibleWorkflows.mockResolvedValue(
+						executionBelongsToWorkflow,
+					);
+
+					expect(await service.isOwnedByWorkflow('wf1', `database:${uuid}`)).toBe(expected);
+				},
+			);
+
+			test.each([
+				['the data plane binds the execution to the workflow', 'wf1', true],
+				['the data plane binds the execution to another workflow', 'wf2', false],
+			] as const)('%s for an execution v2 binary', async (_, executionWorkflowId, expected) => {
+				binaryDataRepository.findSourceByFileId.mockResolvedValue({
+					sourceType: 'execution',
+					sourceId: v2ExecutionId,
+				});
+				dataPlane.getExecution.mockResolvedValue(
+					mock<ExecutionSnapshot>({ workflowId: executionWorkflowId }),
+				);
+
+				expect(await service.isOwnedByWorkflow('wf1', `database:${uuid}`)).toBe(expected);
+			});
+
+			it('does not assign a custom-source binary to a workflow', async () => {
+				binaryDataRepository.findSourceByFileId.mockResolvedValue({
+					sourceType: 'chat_message_attachment',
+					sourceId: 'message-1',
+				});
+
+				expect(await service.isOwnedByWorkflow('wf1', `database:${uuid}`)).toBe(false);
+			});
 		});
 	});
 });

@@ -108,6 +108,7 @@ export const requestHeaderFields: INodeProperties[] = [
 	},
 ];
 
+/** Shared so a change to a gateway option reaches both nodes. */
 const sharedOptions: INodeProperties[] = [
 	{
 		displayName: 'Frequency Penalty',
@@ -230,6 +231,14 @@ const sharedOptions: INodeProperties[] = [
 			'What to do when the conversation outgrows the context window. Auto drops items from the middle, Disabled fails the request.',
 	},
 ];
+
+/**
+ * For a node that sends Chat Completions alone. The Responses options are shown on
+ * `/apiFormat`, which only the sub-node offers, so anywhere else they are dead weight.
+ */
+export const chatCompletionsOptions: INodeProperties[] = sharedOptions.filter(
+	(option) => !option.displayOptions?.show?.['/apiFormat']?.includes(RESPONSES_FORMAT),
+);
 
 export const chatModelOptions: INodeProperties = {
 	displayName: 'Options',

@@ -16,8 +16,8 @@ export class InvalidLeaseKindError extends Error {
 }
 
 export class InvalidLeaseKindOptionsError extends Error {
-	constructor(name: string, option: string, value: unknown) {
-		super(`Invalid lease kind option ${option} for ${name}: ${String(value)}`);
+	constructor(name: string, option: string, value: unknown, options?: ErrorOptions) {
+		super(`Invalid lease kind option ${option} for ${name}: ${String(value)}`, options);
 		this.name = 'InvalidLeaseKindOptionsError';
 	}
 }

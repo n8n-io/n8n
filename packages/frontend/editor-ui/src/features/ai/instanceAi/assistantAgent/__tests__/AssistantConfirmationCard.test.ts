@@ -184,7 +184,7 @@ describe('AssistantConfirmationCard', () => {
 		});
 	});
 
-	it('opens the app blueprint again with its field errors when the tool asks again', async () => {
+	it('shows the app blueprint card', () => {
 		const appBlueprint = {
 			name: 'Planner',
 			namespace: 'planner',
@@ -192,22 +192,14 @@ describe('AssistantConfirmationCard', () => {
 			description: 'Plan weekly tasks.',
 			theme: 'both' as const,
 		};
-		const { getByTestId, queryByTestId, rerender } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { input: { requestId: 'req-app-1', message: 'Review', appBlueprint } },
 		});
-		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
 
-		await rerender({
-			input: {
-				requestId: 'req-app-2',
-				message: 'Review',
-				appBlueprint: { ...appBlueprint, namespace: 'taken-planner' },
-				appBlueprintErrors: { namespace: 'taken' },
-			},
-		});
-
-		expect(getByTestId('instance-ai-app-blueprint-namespace')).toHaveValue('taken-planner');
-		expect(getByTestId('instance-ai-app-blueprint-namespace-error')).toBeVisible();
+		expect(getByTestId('instance-ai-app-blueprint-name')).toHaveValue('Planner');
+		expect(getByTestId('instance-ai-app-blueprint-description')).toHaveTextContent(
+			'Plan weekly tasks.',
+		);
 	});
 
 	it('submits the typed answer of a text card', async () => {

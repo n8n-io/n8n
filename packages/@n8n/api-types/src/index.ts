@@ -467,7 +467,6 @@ export {
 	confirmationInputTypeSchema,
 	appBlueprintSchema,
 	appBlueprintResumeSchema,
-	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -641,7 +640,6 @@ export type {
 	InstanceAiRunLimitMeta,
 	AppBlueprint,
 	AppBlueprintResume,
-	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -1169,6 +1167,7 @@ export {
 	type AgentChatMode,
 	toolTestKindSchema,
 	toolTestCapabilitySchema,
+	AGENT_TEST_RUN_MAX_HELD_ACTIONS,
 	agentTestRunCommitRequestSchema,
 	agentTestRunCommitActionStatusSchema,
 	agentTestRunCommitActionResultSchema,

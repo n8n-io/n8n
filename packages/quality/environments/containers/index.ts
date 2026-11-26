@@ -33,3 +33,10 @@ export * from './performance-plans';
 export { type LogEntry, type MetricsHelper } from './services/observability';
 export { type GiteaHelper } from './services/gitea';
 export { KafkaHelper } from './services/kafka';
+export {
+	LocalStackHelper,
+	S3Client,
+	type LocalStackCredentials,
+	type LocalStackS3Config,
+	type S3ObjectSummary,
+} from './services/localstack';

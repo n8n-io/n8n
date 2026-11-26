@@ -8,6 +8,7 @@ import {
 	type ToolCallInterceptor,
 } from '@n8n/agents';
 import {
+	AGENT_TEST_RUN_MAX_HELD_ACTIONS,
 	toolCallEvidenceSchema,
 	type ToolCallEvidence,
 	type ToolCallReason,
@@ -76,7 +77,7 @@ const WEB_SEARCH_TOOL_NAME = 'web_search';
 const MAX_PENDING_DECISIONS = 500;
 
 /** Held write actions kept per test chat for later replay, dropped oldest first past this. */
-const MAX_HELD_ACTIONS = 500;
+const MAX_HELD_ACTIONS = AGENT_TEST_RUN_MAX_HELD_ACTIONS;
 
 /** Statuses that `new Response()` rejects with a body. */
 const NULL_BODY_STATUSES: ReadonlySet<number> = new Set([204, 205, 304]);

@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionLedger } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
@@ -268,7 +268,7 @@ describe('WorkflowStatisticsService', () => {
 			);
 		});
 
-		test('should count a run that failed before start as a production error, but not in `rootCount`', async () => {
+		test('should not count a run that failed before start', async () => {
 			// ARRANGE
 			const data = createEmptyRunExecutionData();
 			data.resultData.failedBeforeStart = 'startFailed';
@@ -285,14 +285,7 @@ describe('WorkflowStatisticsService', () => {
 			await completeAndFlush(workflowStatisticsService, workflow, runData);
 
 			// ASSERT
-			const statistics = await workflowStatisticsRepository.find();
-			expect(statistics).toHaveLength(1);
-			expect(statistics[0]).toMatchObject({
-				count: 1,
-				rootCount: 0,
-				name: 'production_error',
-				workflowId: workflow.id,
-			});
+			expect(await workflowStatisticsRepository.find()).toEqual([]);
 		});
 
 		test('should count user-sourced executions as production', async () => {
@@ -480,6 +473,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -523,6 +517,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 
 			// First failure - this will set the instance.firstProductionFailure setting
@@ -564,6 +559,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryWithErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -682,6 +678,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -718,6 +715,7 @@ describe('WorkflowStatisticsService', () => {
 					Container.get(SettingsRepository),
 					workflowRepositoryNoErrorWorkflows,
 					Container.get(DatabaseConfig),
+					Container.get(ExecutionLedger),
 				);
 			};
 
@@ -1040,6 +1038,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepository,
 				databaseConfig,
+				Container.get(ExecutionLedger),
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';

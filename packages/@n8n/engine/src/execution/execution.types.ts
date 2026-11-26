@@ -99,6 +99,18 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 }
 
 /**
+ * The settled statuses that have a `step:settled` message on the orchestration
+ * queue. A `cancelled` step has no message, because its execution already ended.
+ */
+export const ANNOUNCED_STEP_STATUSES = ['completed', 'failed', 'skipped'] as const;
+
+export type AnnouncedStepStatus = (typeof ANNOUNCED_STEP_STATUSES)[number];
+
+export function isAnnouncedStatus(status: StepStatus): status is AnnouncedStepStatus {
+	return (ANNOUNCED_STEP_STATUSES as readonly StepStatus[]).includes(status);
+}
+
+/**
  * A step's data on one side of a connection, indexed by slot: outputs by
  * output slot, inputs by input slot. An edge copies one output slot into one
  * input slot. A slot's contents are step-type-specific. Several live edges

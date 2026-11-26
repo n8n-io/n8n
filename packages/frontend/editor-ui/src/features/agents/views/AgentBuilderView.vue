@@ -2030,6 +2030,15 @@ async function flushAutosaveIgnoringResult(): Promise<void> {
 	await flushAutosave();
 }
 
+/** A failed save must not block a message to the embedded assistant, which can help fix the config. */
+async function flushAutosaveBeforeAssistantSend(): Promise<void> {
+	try {
+		await flushAutosave();
+	} catch {
+		// The autosave already showed its own error toast.
+	}
+}
+
 /** The embedded assistant waits to mint its thread until a list-view starter is applied. */
 async function beforeAiNewThread(): Promise<void> {
 	const gate = starterReady;
@@ -2350,11 +2359,7 @@ async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
 	// sync — the template's draft entries plus a default n8n Chat it kept.
 	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
-	// Persist the agent and flush the config autosave before sending the chat
-	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
-	// send first, a failed save (e.g. invalid tool fields in draft mode)
-	// rejects `beforeSend` and the chat message is never sent. Flushing here
-	// drains the queue so `beforeSend` resolves immediately.
+	// Persist the template config before the task writes and the chat message.
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	try {
@@ -2918,7 +2923,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 
@@ -3681,7 +3686,7 @@ useKeybindings({
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
 						:before-new-thread="beforeAiNewThread"
-						:before-send="flushAutosaveIgnoringResult"
+						:before-send="flushAutosaveBeforeAssistantSend"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
@@ -3746,6 +3751,7 @@ useKeybindings({
 					:chat-mode="panelChatMode"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
+					@new-session="startNewPreviewSession"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
 					@initial-consumed="taskPreviewPrompt = undefined"
@@ -3762,7 +3768,7 @@ useKeybindings({
 							:actions="extractHeldActions(toolCalls)"
 							:committed="heldActionsState.committedByReply.value[groupId]"
 							:busy="heldActionsState.committingReplyId.value === groupId"
-							:run-disabled="!complete"
+							:run-disabled="!complete || !effectiveSessionId"
 							@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
 						/>
 					</template>
@@ -3942,7 +3948,7 @@ useKeybindings({
 									:actions="extractHeldActions(toolCalls)"
 									:committed="heldActionsState.committedByReply.value[groupId]"
 									:busy="heldActionsState.committingReplyId.value === groupId"
-									:run-disabled="!complete"
+									:run-disabled="!complete || !effectiveSessionId"
 									@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
 								/>
 							</template>
