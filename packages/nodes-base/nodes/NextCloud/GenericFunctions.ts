@@ -3,6 +3,7 @@ import { escapeXmlText } from '@n8n/utils/string/escape-xml';
 import {
 	NodeOperationError,
 	decodePathValue,
+	getCredentialAllowedDomains,
 	jsonParse,
 	requestPath,
 	requestUrl,
@@ -161,6 +162,17 @@ export async function nextCloudApiRequest(
 
 	if (encoding === null) {
 		options.encoding = null;
+	}
+
+	const allowedDomains = getCredentialAllowedDomains({
+		node: this.getNode(),
+		credentialData: credentials,
+		credentialOwnedSurface: true,
+		nodeEndpointUrl: webDavUrl,
+	});
+
+	if (allowedDomains) {
+		options.allowedDomains = allowedDomains;
 	}
 
 	const root = nextCloudRootUrl(webDavUrl);

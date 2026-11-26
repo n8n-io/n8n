@@ -672,4 +672,32 @@ describe('NextCloud GenericFunctions', () => {
 			});
 		});
 	});
+
+	describe('Allowed HTTP Request Domains', () => {
+		it('does not block the request when the credential is set to None', async () => {
+			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+			getCredentials.mockResolvedValue({ webDavUrl, allowedHttpRequestDomains: 'none' });
+			requestWithAuthentication.mockResolvedValue('ok');
+
+			await nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
+
+			expect(requestOptions(requestWithAuthentication).allowedDomains).toBeUndefined();
+		});
+
+		it('adds the Nextcloud host to a list that leaves it out', async () => {
+			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+			getCredentials.mockResolvedValue({
+				webDavUrl,
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'example.org',
+			});
+			requestWithAuthentication.mockResolvedValue('ok');
+
+			await nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
+
+			expect(requestOptions(requestWithAuthentication).allowedDomains).toBe(
+				'nextcloud.example.com, example.org',
+			);
+		});
+	});
 });
