@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { realpathSync } from 'fs';
 import fsPromises from 'fs/promises';
 import type { WorkflowTestData } from 'n8n-workflow';
 import path from 'path';
@@ -10,7 +11,9 @@ describe('Test Write Binary File Node', () => {
 	readFileNode.parameters.filePath = path.join(__dirname, 'image.jpg');
 
 	const writeFileNode = workflowData.nodes.find((n) => n.name === 'Write Binary File')!;
-	const writeFilePath = path.join(testHarness.temporaryDir, 'image-written.jpg');
+	// `realpath` is stubbed below, so resolve the temp dir here: on macOS it sits under
+	// `/var`, a symlink, and the node refuses to write through a symlinked path.
+	const writeFilePath = path.join(realpathSync(testHarness.temporaryDir), 'image-written.jpg');
 	writeFileNode.parameters.fileName = writeFilePath;
 
 	beforeEach(() => {
