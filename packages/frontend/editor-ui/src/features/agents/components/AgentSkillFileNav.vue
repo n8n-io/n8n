@@ -277,7 +277,9 @@ function testIdForPath(path: string) {
 					data-attr="agent-skill-workflow-link"
 				>
 					<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
-					<N8nText size="medium" :class="$style.path">{{ workflow.name }}</N8nText>
+					<N8nText size="medium" :class="$style.path">{{
+						workflow.name || workflow.workflowId
+					}}</N8nText>
 				</a>
 				<N8nTooltip v-if="workflow.notes.length > 0" as-child placement="right">
 					<template #content>

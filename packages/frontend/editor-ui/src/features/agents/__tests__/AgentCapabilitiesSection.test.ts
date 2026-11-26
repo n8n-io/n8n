@@ -1973,6 +1973,19 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		]);
 	});
 
+	it('shows a workflow that a name-only direct tool attaches only once, as the direct tool', async () => {
+		searchWorkflowsSpy.mockResolvedValue([{ id: 'wf-1', name: 'Get code' }]);
+
+		const wrapper = mountWithSkills([{ type: 'workflow', workflow: 'Get code' }]);
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]')).toHaveLength(1);
+		const skillChips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(skillChips.map((chip) => chip.text().replace(/\s+/g, ' '))).toEqual([
+			'Notify Weekly ops agents.builder.tools.workflow.fromSkill',
+		]);
+	});
+
 	it('shows the not published note on a workflow from a skill', () => {
 		const wrapper = mountWithSkills([], {
 			validationIssues: [

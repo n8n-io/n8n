@@ -31,6 +31,7 @@ function useWorkflowNameLookup(workflowIds: () => string[], cache: WorkflowNameC
 				options: { take: ids.length, includeScopes: false },
 			});
 		} catch {
+			for (const id of ids) cache.requested.delete(id);
 			return [];
 		}
 	}

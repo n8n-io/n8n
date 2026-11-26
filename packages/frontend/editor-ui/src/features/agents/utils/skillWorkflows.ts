@@ -9,6 +9,8 @@ export type SkillWorkflow = SkillWorkflowMention & {
 
 type AppliedSkill = { id: string; skill: AgentSkill };
 
+type WorkflowName = (workflowId: string) => string | undefined;
+
 function skillMentions(skill: AgentSkill): SkillWorkflowMention[] {
 	return parseAgentSkillWorkflowMentions({
 		instructions: skill.instructions,
@@ -22,15 +24,27 @@ function directWorkflowIds(tools: AgentJsonToolRef[]): Set<string> {
 	);
 }
 
+function nameOnlyWorkflowNames(tools: AgentJsonToolRef[]): Set<string> {
+	return new Set(
+		tools.flatMap((tool) => (tool.type === 'workflow' && !tool.workflowId ? [tool.workflow] : [])),
+	);
+}
+
 export function findSkillWorkflows(
 	skills: AppliedSkill[],
 	tools: AgentJsonToolRef[],
+	workflowName: WorkflowName = () => undefined,
 ): SkillWorkflow[] {
-	const attached = directWorkflowIds(tools);
+	const attachedIds = directWorkflowIds(tools);
+	const attachedNames = nameOnlyWorkflowNames(tools);
+	const isAttached = (workflowId: string) => {
+		const name = workflowName(workflowId);
+		return attachedIds.has(workflowId) || (name !== undefined && attachedNames.has(name));
+	};
 	const workflows = new Map<string, SkillWorkflow>();
 	for (const { id, skill } of skills) {
 		for (const mention of skillMentions(skill)) {
-			if (attached.has(mention.workflowId) || workflows.has(mention.workflowId)) continue;
+			if (isAttached(mention.workflowId) || workflows.has(mention.workflowId)) continue;
 			workflows.set(mention.workflowId, { ...mention, skillId: id, skillName: skill.name || id });
 		}
 	}
