@@ -137,6 +137,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 */
 		const pendingExecution = shallowRef<IExecutionResponse | null>(null);
 		const executionWaitingForWebhook = ref(false);
+		const pendingFormPopupUrl = ref<string | undefined>();
 		const isInDebugMode = ref(false);
 		const chatMessages = ref<string[]>([]);
 		const chatPartialExecutionDestinationNode = ref<string | null>(null);
@@ -647,7 +648,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		// --- Write API ---
 
 		function setActiveExecutionId(value: string | null | undefined) {
-			if (activeExecutionId.value !== value) clearAgentProgress();
+			if (activeExecutionId.value !== value) {
+				clearAgentProgress();
+				pendingFormPopupUrl.value = undefined;
+			}
 			// When transitioning to a real execution id while a pending scaffold
 			// is staged (e.g. REST response arrives before executionStarted push),
 			// migrate the scaffold into the id-keyed executionData store so the
@@ -785,6 +789,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		function setExecutionWaitingForWebhook(value: boolean) {
 			executionWaitingForWebhook.value = value;
 			fireChange(CHANGE_ACTION.UPDATE, 'executionWaitingForWebhook');
+		}
+
+		function setPendingFormPopupUrl(value: string | undefined) {
+			pendingFormPopupUrl.value = value;
 		}
 
 		function setIsInDebugMode(value: boolean) {
@@ -988,6 +996,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			previousExecutionId.value = undefined;
 			pendingExecution.value = null;
 			executionWaitingForWebhook.value = false;
+			pendingFormPopupUrl.value = undefined;
 			isInDebugMode.value = false;
 			chatMessages.value = [];
 			chatPartialExecutionDestinationNode.value = null;
@@ -1061,6 +1070,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			previousExecutionId: readonly(previousExecutionId),
 			pendingExecution: shallowReadonly(pendingExecution),
 			executionWaitingForWebhook: readonly(executionWaitingForWebhook),
+			pendingFormPopupUrl: readonly(pendingFormPopupUrl),
 			isInDebugMode: readonly(isInDebugMode),
 			chatMessages: readonly(chatMessages),
 			chatPartialExecutionDestinationNode: readonly(chatPartialExecutionDestinationNode),
@@ -1104,6 +1114,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			promotePendingExecution,
 			clearActiveNodeExecutionData,
 			setExecutionWaitingForWebhook,
+			setPendingFormPopupUrl,
 			setIsInDebugMode,
 			setChatPartialExecutionDestinationNode,
 			setLastSuccessfulExecution,
