@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { h, defineComponent } from 'vue';
 
 import { useTelemetry } from './useTelemetry';
-import { useToast, setNotify } from './useToast';
+import { useToast, setNotify, isDroppedNotification } from './useToast';
 
 vi.mock('./useTelemetry');
 
@@ -302,6 +302,16 @@ describe('useToast', () => {
 			const handle = toast.showMessage({ message: 'Dropped' });
 
 			expect(() => handle.close()).not.toThrow();
+		});
+
+		it('marks the handle as dropped, unlike a rendered one', () => {
+			setNotify(dropAll);
+			const dropped = toast.showMessage({ message: 'Dropped' });
+			setNotify(createNotifySpy());
+			const rendered = toast.showMessage({ message: 'Rendered' });
+
+			expect(isDroppedNotification(dropped)).toBe(true);
+			expect(isDroppedNotification(rendered)).toBe(false);
 		});
 	});
 

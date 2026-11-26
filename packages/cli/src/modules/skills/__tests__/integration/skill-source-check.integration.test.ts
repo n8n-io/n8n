@@ -186,6 +186,55 @@ describe('Skill source checks', () => {
 		const sources = async (): Promise<SkillSourceListItem[]> =>
 			(await editor.get('/skill-sources').expect(200)).body.data;
 
+		it.each([false, true])(
+			'keeps sibling source updates within each folder (legacy source: %s)',
+			async (legacy) => {
+				const first = await importAll(['docx'], `${FOLDER}/docx`);
+				if (legacy) {
+					await db().update(
+						SkillSourceConnection,
+						{ id: first.sourceId },
+						{ identityKey: 'github:github.com/acme/skills' },
+					);
+				}
+				const second = await importAll(['xlsx'], `${FOLDER}/xlsx`);
+				pushChange({
+					'skills/docx/SKILL.md': skillMd('docx', 'Updated document instructions.'),
+					'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated spreadsheet instructions.'),
+					'skills/pdf/SKILL.md': skillMd('pdf'),
+				});
+				for (const [sourceId, skillId, instructions] of [
+					[first.sourceId, first.docx, 'Updated document instructions.'],
+					[second.sourceId, second.xlsx, 'Updated spreadsheet instructions.'],
+				]) {
+					await age(sourceId);
+					const checked = await checkNow(editor, skillId);
+					expect(checked.data.newSkillsFound).toBe(0);
+					const link = await linkOf(skillId);
+					expect(link).toMatchObject({
+						sourceId,
+						state: 'update_available',
+						pendingContent: { instructions },
+					});
+					const reviewed = await review(sourceId);
+					expect(reviewed.newSkills).toEqual([]);
+					expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
+					await editor
+						.post(`/skill-sources/${sourceId}/updates/accept`)
+						.send({
+							updates: reviewed.updates.map(({ skillId, contentHash, baseVersionId }) => ({
+								skillId,
+								contentHash,
+								baseVersionId,
+							})),
+						})
+						.expect(200);
+					expect((await findLatestSkillVersion(skillId))?.instructions).toBe(instructions);
+					expect((await linkOf(skillId)).state).toBe('up_to_date');
+				}
+			},
+		);
+
 		it('checks new skills, stores metadata only, and imports them into the source scope with links', async () => {
 			const { sourceId } = await importAll();
 			pushChange({ 'skills/pdf/SKILL.md': skillMd('pdf') });

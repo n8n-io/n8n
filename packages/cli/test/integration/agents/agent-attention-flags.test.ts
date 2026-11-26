@@ -71,27 +71,26 @@ describe('Agent attention flags', () => {
 
 	it('reverts and reapplies the attention flag schema', async () => {
 		const dataSource = Container.get(DataSource);
-		const allMigrations = [...sqliteMigrations, ...postgresMigrations];
-		const names = dataSource.migrations.map((instance) => instance.constructor.name);
-		const index = names.indexOf('CreateAgentAttentionFlags1795546358454');
-		expect(index).toBeGreaterThanOrEqual(0);
-		// Later migrations are undone first, so the attention flag migration is the last undone.
-		const toUndo = names.slice(index);
-		for (const name of toUndo) {
-			const migration = allMigrations.find((candidate) => candidate.name === name);
-			if (!migration) throw new Error(`Migration ${name} not found`);
-			// Template databases skip startup migration wrapping in this worker.
-			wrapMigration(migration);
-		}
+		const migration = [...sqliteMigrations, ...postgresMigrations].find(
+			(candidate) => candidate.name === 'CreateAgentAttentionFlags1795546358454',
+		);
+		if (!migration) throw new Error('Attention flag migration not found');
+		// Template databases skip startup migration wrapping in this worker.
+		wrapMigration(migration);
+		// Runs this migration directly, so a newer migration does not change what the test reverts.
+		const applied = dataSource.migrations.find(
+			(candidate) => candidate.constructor.name === migration.name,
+		);
+		if (!applied?.down) throw new Error('Attention flag migration is not registered');
+		const tablePath = dataSource.getMetadata(AgentAttentionFlagEntity).tablePath;
 		const runner = dataSource.createQueryRunner();
 		try {
-			for (let i = 0; i < toUndo.length; i++) await dataSource.undoLastMigration();
-			expect(
-				await runner.hasTable(dataSource.getMetadata(AgentAttentionFlagEntity).tablePath),
-			).toBe(false);
+			await applied.down(runner);
+			const tableExists = await runner.hasTable(tablePath);
+			if (!tableExists) await applied.up(runner);
+			expect(tableExists).toBe(false);
 		} finally {
 			await runner.release();
-			await dataSource.runMigrations();
 		}
 		expect(await dataSource.getRepository(AgentAttentionFlagEntity).count()).toBe(0);
 	});

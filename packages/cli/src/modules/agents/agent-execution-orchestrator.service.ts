@@ -1880,25 +1880,18 @@ export class AgentExecutionOrchestratorService {
 			throw new UserError('Session not found');
 		}
 
-		const isPreviewThread = await this.agentExecutionService.canUseDraftThread(
+		const { usable, previewChat } = await this.agentExecutionService.classifyExistingDraftThread(
 			threadId,
 			projectId,
 			agentId,
 			user.id,
-			{ previewChat: true, sessionMode: 'existing' },
 		);
-		if (
-			!isPreviewThread &&
-			!(await this.agentExecutionService.canUseDraftThread(threadId, projectId, agentId, user.id, {
-				previewChat: false,
-				sessionMode: 'existing',
-			}))
-		) {
+		if (!usable) {
 			throw new UserError('Session not found');
 		}
 
 		return {
-			surface: isPreviewThread ? 'preview' : undefined,
+			surface: previewChat ? 'preview' : undefined,
 			access: { accessScope: 'user', ownerId: user.id },
 			sandboxPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
 			alwaysSandboxed: false,
@@ -1906,7 +1899,7 @@ export class AgentExecutionOrchestratorService {
 				usePublishedVersion: false,
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				user,
-				...(isPreviewThread ? { previewChat: true } : {}),
+				...(previewChat ? { previewChat: true } : {}),
 			},
 		};
 	}

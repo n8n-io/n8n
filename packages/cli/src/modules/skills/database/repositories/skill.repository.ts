@@ -26,7 +26,6 @@ import type {
 	SkillTarget,
 } from '../../utils/skill-content';
 import { SkillFile } from '../entities/skill-file.entity';
-import { SkillSourceConnection } from '../entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../entities/skill-source-link.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
 import { Skill, type SkillSource } from '../entities/skill.entity';
@@ -169,7 +168,7 @@ export class SkillRepository {
 		return skills;
 	}
 
-	/** Matching group sizes in table order. Local skills have `sourceId` null and come last. */
+	/** Matching group sizes. Local skills have `sourceId` null. The service orders the groups. */
 	async findSourceGroupSizes(
 		visibility: SkillVisibility,
 		filter: SkillMatchFilter,
@@ -179,15 +178,9 @@ export class SkillRepository {
 		if (!query) return [];
 		const rows = await query
 			.leftJoin(SkillSourceLink, 'groupLink', 'groupLink.skillId = skill.id')
-			.leftJoin(SkillSourceConnection, 'groupSource', 'groupSource.id = groupLink.sourceId')
 			.select('groupLink.sourceId', 'sourceId')
 			.addSelect('COUNT(*)', 'count')
 			.groupBy('groupLink.sourceId')
-			.addGroupBy('groupSource.identityKey')
-			.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 1 ELSE 0 END', 'ASC')
-			.addOrderBy('groupSource.identityKey', 'ASC')
-			// Two sources of one repository in two scopes stay apart.
-			.addOrderBy('groupLink.sourceId', 'ASC')
 			.getRawMany<{ sourceId: string | null; count: string | number }>();
 		return rows.map((row) => ({ sourceId: row.sourceId ?? null, count: Number(row.count) }));
 	}

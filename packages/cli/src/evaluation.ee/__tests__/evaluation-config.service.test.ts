@@ -61,7 +61,7 @@ describe('EvaluationConfigService', () => {
 			const rows = [{ id: 'c1' }] as EvaluationConfig[];
 			repository.listByWorkflowId.mockResolvedValueOnce(rows);
 			expect(await service.list('wf-1')).toBe(rows);
-			expect(repository.listByWorkflowId).toHaveBeenCalledWith('wf-1');
+			expect(repository.listByWorkflowId).toHaveBeenCalledWith('wf-1', {});
 		});
 	});
 
@@ -91,6 +91,7 @@ describe('EvaluationConfigService', () => {
 				expect.any(String),
 				'wf-1',
 				payload,
+				{},
 			);
 			expect(result).toBe(persisted);
 		});
@@ -144,7 +145,7 @@ describe('EvaluationConfigService', () => {
 			const result = await service.update('wf-1', 'cfg-1', workflow, makeUser(), payload);
 
 			expect(validator.validate).toHaveBeenCalledTimes(1);
-			expect(repository.updateForWorkflow).toHaveBeenCalledWith('cfg-1', 'wf-1', payload);
+			expect(repository.updateForWorkflow).toHaveBeenCalledWith('cfg-1', 'wf-1', payload, {});
 			expect(result).toBe(persisted);
 		});
 
@@ -170,14 +171,14 @@ describe('EvaluationConfigService', () => {
 		it('passes through to repository.deleteByIdAndWorkflowId', async () => {
 			repository.deleteByIdAndWorkflowId.mockResolvedValueOnce(1);
 			await service.delete('wf-1', 'cfg-1');
-			expect(repository.deleteByIdAndWorkflowId).toHaveBeenCalledWith('cfg-1', 'wf-1');
+			expect(repository.deleteByIdAndWorkflowId).toHaveBeenCalledWith('cfg-1', 'wf-1', {});
 		});
 	});
 
 	describe('markInvalid', () => {
 		it('passes through to repository.markInvalid', async () => {
 			await service.markInvalid('cfg-1', 'END_NODE_DELETED');
-			expect(repository.markInvalid).toHaveBeenCalledWith('cfg-1', 'END_NODE_DELETED');
+			expect(repository.markInvalid).toHaveBeenCalledWith('cfg-1', 'END_NODE_DELETED', {});
 		});
 	});
 });

@@ -69,6 +69,11 @@ export class AppsService {
 		return toResponse(app, this.hosts);
 	}
 
+	/** The longest namespace that forms valid app URLs on this instance. */
+	maxNamespaceLength(): number {
+		return this.hosts.maxNamespaceLength();
+	}
+
 	async getApp(projectId: string, appId: string): Promise<AppResponse> {
 		this.assertValidAppId(appId);
 		const app = await this.appRepository.findInProject(projectId, appId);
