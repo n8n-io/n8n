@@ -13,6 +13,7 @@ packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
   s_4a494bfdece475::t_b514447f9b0be0 1-158
 packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
   s_4a494bfdece475::t_2a78fa1b1ac72c 658,725,872
+  s_6331fd5a9f20b4::t_3da856ec9fd838 781
 packages/cli/src/modules/promotions.ee/apply-preview.service.ts
   s_4a494bfdece475::t_7fd217d9eb13ad 46,56,150,189,226,341-343,345,350,359,365,367-373,507
 packages/cli/src/modules/promotions.ee/promotions.service.ts
@@ -35,6 +36,7 @@ packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.
   s_4a494bfdece475::t_03c5baefc4b8e1 1-214
 packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
   s_4a494bfdece475::t_a67dea93c74611 21,84-87,103,526-527,2588-3196
+  s_6331fd5a9f20b4::t_3da856ec9fd838 77-81
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
   s_4a494bfdece475::t_0f961733a7a347 8
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
@@ -65,6 +67,14 @@ packages/cli/test/integration/public-api/promotions.test.ts
         "tool": "claude",
         "id": "agent-a38a2c5b125073c09",
         "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_6331fd5a9f20b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bebece5-55c2-4079-9ffd-cadd7628fb13",
+        "model": "claude-opus-5-5"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     }
