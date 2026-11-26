@@ -241,11 +241,12 @@ export function getProjects(): Project[] {
 		}
 
 		// Engine v2 parity: the same e2e specs against a main that routes every
-		// workflow to the new engine, which runs in its own container with no
-		// control plane database access. Opt-in by tag while the engine matures:
-		// any `@engine:*` tag selects the spec, and the parity fixture then runs,
-		// skips or expects failure by bucket. Drop the grep once the suite is
-		// triaged. The CI job e2e-engine blocks merges, so a spec this grep selects
+		// workflow to the new engine. The engine runs as one container per role
+		// (api, orchestrator, step-worker) with no control plane database access,
+		// so the roles also prove they work together over Redis. Opt-in by tag
+		// while the engine matures: any `@engine:*` tag selects the spec, and the
+		// parity fixture then runs, skips or expects failure by bucket. Drop the
+		// grep once the suite is triaged. The CI job e2e-engine blocks merges, so a spec this grep selects
 		// fails the PR when it misses the outcome its bucket asks for.
 		projects.push({
 			name: 'engine-v2:e2e',
@@ -258,17 +259,6 @@ export function getProjects(): Project[] {
 			// Two mains, so the execution channel runs over Redis in multi-main as
 			// it does in production. The worker runs what stays on the legacy
 			// engine: in multi-main the mains send manual runs to workers.
-			use: { containerConfig: { postgres: true, engine: 'container', mains: 2, workers: 1 } },
-		});
-
-		// The same suite with one engine container per role (api, orchestrator,
-		// step-worker), so the roles prove they work together over Redis.
-		projects.push({
-			name: 'engine-v2-split-roles:e2e',
-			testDir: './tests/e2e',
-			grep: new RegExp(ENGINE_TAG_PREFIX),
-			timeout: 180000,
-			workers: 1,
 			use: {
 				containerConfig: {
 					postgres: true,
