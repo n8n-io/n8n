@@ -59,6 +59,7 @@ import type {
 	ChatIntegrationRegistry,
 } from '../integrations/agent-chat-integration';
 import type { BuilderCredentialService } from '../builder/builder-session';
+import type { SafeTestingFlagGate } from '../simulation/safe-testing-flag-gate';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const ctx = {
@@ -131,6 +132,9 @@ function makeService() {
 		(type) => ({ displayLabel: type === 'slack' ? 'Slack' : type }) as AgentChatIntegration,
 	);
 
+	const safeTestingFlagGate = mock<SafeTestingFlagGate>();
+	safeTestingFlagGate.isEnabled.mockResolvedValue(true);
+
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
 		agentConfigService as unknown as AgentConfigService,
@@ -156,10 +160,12 @@ function makeService() {
 		credentialsFinderService,
 		credentialsPermissionChecker,
 		chatIntegrationRegistry,
+		safeTestingFlagGate,
 	);
 
 	return {
 		service,
+		safeTestingFlagGate,
 		credentialsFinderService,
 		agentWriteLockService,
 		credentialsPermissionChecker,
@@ -3237,6 +3243,7 @@ describe('AgentsBuilderToolsService', () => {
 				response: 'Welcome back.',
 				sessionId: 'session-1',
 				executionId: 'execution-2',
+				simulation: { toolCalls: [] },
 			});
 
 			const result = await getCallAgentTool(service).handler!(
@@ -3267,7 +3274,7 @@ describe('AgentsBuilderToolsService', () => {
 			const tool = getCallAgentTool(service);
 
 			expect(tool.description).toContain('simulated test run');
-			expect(tool.description).toContain('no real emails, messages, or writes are sent');
+			expect(tool.description).toContain('no real emails, messages, or writes were sent');
 			expect(tool.description).toContain('in the test run it would have sent an email');
 		});
 
@@ -3403,6 +3410,46 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('runs live with the plain result when the safe testing flag is off', async () => {
+			const { service, agentTestRunService, safeTestingFlagGate } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			safeTestingFlagGate.isEnabled.mockResolvedValue(false);
+			const completed = {
+				status: 'completed' as const,
+				response: 'Sent.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+			};
+			agentTestRunService.executeDraftRun.mockResolvedValue(completed);
+
+			const result = await getCallAgentTool(service).handler!({ message: 'Send an email' }, ctx);
+
+			expect(agentTestRunService.executeDraftRun.mock.calls[0][0]).not.toHaveProperty('chatMode');
+			expect(result).toEqual(completed);
+		});
+
+		it('resumes an approval live when the safe testing flag is off', async () => {
+			const { service, agentTestRunService, safeTestingFlagGate } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			safeTestingFlagGate.isEnabled.mockResolvedValue(false);
+			agentTestRunService.resumeDraftApproval.mockResolvedValue({
+				status: 'completed',
+				response: 'Deleted.',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+			});
+
+			const result = await getCallAgentTool(service).handler!(
+				{ message: 'Delete it' },
+				{ ...ctx, resumeData: { approved: true }, continuation: { runId: 'run-1' } },
+			);
+
+			expect(agentTestRunService.resumeDraftApproval.mock.calls[0][0]).not.toHaveProperty(
+				'chatMode',
+			);
+			expect(result).not.toHaveProperty('simulated');
+		});
+
 		it('treats a blank sessionId as a new session', async () => {
 			const { service, agentTestRunService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -3433,6 +3480,7 @@ describe('AgentsBuilderToolsService', () => {
 				sessionId: 'session-1',
 				executionId: 'execution-1',
 				maxIterations: true,
+				simulation: { toolCalls: [] },
 			});
 
 			const result = await getCallAgentTool(service).handler!({ message: 'Find my events' }, ctx);

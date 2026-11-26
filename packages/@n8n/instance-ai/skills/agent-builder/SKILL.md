@@ -172,8 +172,10 @@ continue one, pass the exact `sessionId` from an earlier
 
 Do not call `agent_builder_call_agent` by default after a build. Run it through `call_tool` when
 the user asks to test the Agent or reports a problem with it: use it to reproduce the problem, and
-again to confirm your fix. It runs a simulated test run where external writes are simulated or
-blocked, so no real emails, messages, or writes are sent. Describe simulated actions honestly as
+again to confirm your fix. When its result has `simulated: true`, external writes were simulated or
+blocked, so no real emails, messages, or writes were sent. Without it, the test used the real
+configured tools and can have external side effects, so do not call it twice for the same check.
+Describe simulated actions honestly as
 what the Agent would have done in the test run (for example, "in the test run it would have sent an
 email"), never as completed real actions.
 

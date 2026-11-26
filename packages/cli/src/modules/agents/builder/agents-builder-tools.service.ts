@@ -76,8 +76,10 @@ import {
 	collectStandardApprovals,
 	InvalidAgentTestRunCheckpointError,
 	type AgentTestRunResult,
+	type DraftRunSimulation,
 } from '../agent-test-run.service';
 import { AgentsService } from '../agents.service';
+import { SafeTestingFlagGate } from '../simulation/safe-testing-flag-gate';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentTestPath } from './agent-builder-test-path';
 import {
@@ -572,6 +574,7 @@ export class AgentsBuilderToolsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly safeTestingFlagGate: SafeTestingFlagGate,
 	) {}
 
 	/**
@@ -927,9 +930,10 @@ export class AgentsBuilderToolsService {
 				'Call this tool only when the user asks to test the agent or reports a problem with it, ' +
 					'not by default after a build. It runs the draft agent in a simulated test run in ' +
 					'Preview chat, not channel integrations (triggers, platform context, delivery, or ' +
-					'replies). External tool calls are simulated or blocked, so no real emails, messages, ' +
-					'or writes are sent. The result reports how each tool call ran (simulated, blocked, or ' +
-					'local) and includes preview details for simulated actions. Always describe simulated ' +
+					'replies). When the result has simulated: true, external tool calls were simulated or ' +
+					'blocked, so no real emails, messages, or writes were sent, and the result reports how ' +
+					'each tool call ran (simulated, blocked, or local). Without it, the run used the real ' +
+					'configured tools and credentials, so external side effects are possible. Always describe simulated ' +
 					'actions honestly as what the agent would have done in the test run (for example, ' +
 					'"in the test run it would have sent an email"), never as completed real actions. ' +
 					'Omit sessionId to start a new test conversation. To continue one, pass the exact ' +
@@ -961,6 +965,8 @@ export class AgentsBuilderToolsService {
 
 					const previewPath = buildAgentTestPath(projectId, agentId);
 					try {
+						// A test run needs the safe testing flag. Without it the test runs live, as before.
+						const testRun = await this.safeTestingFlagGate.isEnabled(user);
 						const { result, sessionNote } = await this.runDraftTest(
 							ctx,
 							agentId,
@@ -969,6 +975,7 @@ export class AgentsBuilderToolsService {
 							sessionId || undefined,
 							credentialProvider,
 							user,
+							testRun,
 						);
 
 						return await this.formatDraftTestResult(
@@ -1007,7 +1014,9 @@ export class AgentsBuilderToolsService {
 		sessionId: string | undefined,
 		credentialProvider: CredentialProvider,
 		user: User,
+		testRun: boolean,
 	): Promise<{ result: AgentTestRunResult; sessionNote?: string }> {
+		const chatMode = testRun ? { chatMode: 'test' as const } : {};
 		if (ctx.resumeData === undefined) {
 			const execute = async (id: string | undefined) =>
 				await this.agentTestRunService.executeDraftRun({
@@ -1018,7 +1027,7 @@ export class AgentsBuilderToolsService {
 					credentialProvider,
 					user,
 					source: 'instance-ai',
-					chatMode: 'test',
+					...chatMode,
 					...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 				});
 			const result = await execute(sessionId);
@@ -1041,7 +1050,7 @@ export class AgentsBuilderToolsService {
 				approved: ctx.resumeData.approved,
 				user,
 				source: 'instance-ai',
-				chatMode: 'test',
+				...chatMode,
 				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 			}),
 			...(noted.success ? { sessionNote: noted.data.sessionNote } : {}),
@@ -1994,6 +2003,22 @@ export class AgentsBuilderToolsService {
 		}
 	}
 
+	private async describeSimulatedRun(
+		simulation: DraftRunSimulation,
+		agentId: string,
+		projectId: string,
+	) {
+		const agentName = await this.resolveAgentDisplayName(agentId, projectId);
+		return {
+			simulated: true as const,
+			agentId,
+			projectId,
+			...(agentName ? { agentName } : {}),
+			simulation: formatAssistantTestRunSimulation(simulation),
+			simulationNote: SIMULATED_TEST_RUN_NOTE,
+		};
+	}
+
 	private async formatDraftTestResult(
 		result: AgentTestRunResult,
 		ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
@@ -2023,14 +2048,13 @@ export class AgentsBuilderToolsService {
 		// A run that stopped on the iteration cap did not finish its work. Without
 		// this the builder reads `completed` plus apologetic prose and retries.
 		if (result.status === 'completed' && result.maxIterations) {
-			const agentName = await this.resolveAgentDisplayName(agentId, projectId);
+			// The calls before the cap were simulated too, so the builder must not report them as real.
+			const simulated = result.simulation
+				? await this.describeSimulatedRun(result.simulation, agentId, projectId)
+				: {};
 			return {
 				status: 'error',
 				code: 'max_iterations',
-				simulated: true as const,
-				agentId,
-				projectId,
-				...(agentName ? { agentName } : {}),
 				message:
 					'The agent stopped on its iteration cap before it answered. It did not complete the task. ' +
 					'A repeat of the same test gives the same result. Common causes: a tool that returns too much data, ' +
@@ -2039,27 +2063,19 @@ export class AgentsBuilderToolsService {
 				sessionId: result.sessionId,
 				response: result.response,
 				...(result.executionId ? { executionId: result.executionId } : {}),
-				...(result.simulation
-					? { simulation: formatAssistantTestRunSimulation(result.simulation) }
-					: {}),
-				// The calls before the cap were simulated too, so the builder must not report them as real.
-				simulationNote: SIMULATED_TEST_RUN_NOTE,
+				...simulated,
 				...note,
 			};
 		}
 		if (result.status === 'completed') {
-			const agentName = await this.resolveAgentDisplayName(agentId, projectId);
+			// A live run (safe testing flag off) keeps the plain result.
+			if (!result.simulation) return { ...result, ...note };
 			return {
 				status: 'completed' as const,
-				simulated: true as const,
-				agentId,
-				projectId,
-				...(agentName ? { agentName } : {}),
 				response: result.response,
 				sessionId: result.sessionId,
 				executionId: result.executionId,
-				simulation: formatAssistantTestRunSimulation(result.simulation),
-				simulationNote: SIMULATED_TEST_RUN_NOTE,
+				...(await this.describeSimulatedRun(result.simulation, agentId, projectId)),
 				...note,
 			};
 		}
