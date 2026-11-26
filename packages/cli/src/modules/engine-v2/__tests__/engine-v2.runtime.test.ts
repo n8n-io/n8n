@@ -22,7 +22,7 @@ import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineSubWorkflowClient } from '../engine-workflow-resolve-client';
+import type { EngineWorkflowResolveClient } from '../engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
@@ -143,7 +143,7 @@ describe('EngineV2Runtime', () => {
 	let credentialsClient: EngineCredentialsClient;
 	let transport: EngineControlPlaneTransport;
 	let dataTablesHttp: HttpRequestClient;
-	let subWorkflowClient: EngineSubWorkflowClient;
+	let workflowResolveClient: EngineWorkflowResolveClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
@@ -164,13 +164,18 @@ describe('EngineV2Runtime', () => {
 	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
-			mock<ExecutionsConfig>({ pruneData: true, pruneDataMaxAge: 336, ...executions }),
+			mock<ExecutionsConfig>({
+				pruneData: true,
+				pruneDataMaxAge: 336,
+				pruneDataMaxCount: 10_000,
+				...executions,
+			}),
 			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
 			logger,
 			credentialsClient,
 			transport,
-			subWorkflowClient,
+			workflowResolveClient,
 			credentialsHelper,
 			credentialTypes,
 			additionalDataBuilder,
@@ -206,7 +211,7 @@ describe('EngineV2Runtime', () => {
 		credentialsClient = mock<EngineCredentialsClient>();
 		dataTablesHttp = mock<HttpRequestClient>();
 		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => dataTablesHttp) });
-		subWorkflowClient = mock<EngineSubWorkflowClient>();
+		workflowResolveClient = mock<EngineWorkflowResolveClient>();
 		additionalDataBuilder.build.mockImplementation(
 			(_context, helper, dataTableProxyProvider) =>
 				({
@@ -305,11 +310,15 @@ describe('EngineV2Runtime', () => {
 			},
 		);
 
-		it('maps EXECUTIONS_DATA_MAX_AGE to the retention policy', async () => {
-			await newRuntime('postgres://engine', {}, { pruneDataMaxAge: 24 }).init(initOptions());
+		it('maps EXECUTIONS_DATA_MAX_AGE and EXECUTIONS_DATA_PRUNE_MAX_COUNT to the retention policy', async () => {
+			await newRuntime(
+				'postgres://engine',
+				{},
+				{ pruneDataMaxAge: 24, pruneDataMaxCount: 500 },
+			).init(initOptions());
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
-				expect.objectContaining({ retention: { maxAgeMs: 86_400_000 } }),
+				expect.objectContaining({ retention: { maxAgeMs: 86_400_000, maxCount: 500 } }),
 			);
 		});
 
@@ -442,15 +451,15 @@ describe('EngineV2Runtime', () => {
 			await newRuntime().init(initOptions());
 			externalDependencies({ executionStore: {}, stepStore: {} });
 			const request = { workflowId: 'sub-execution' };
-			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({
+			vi.mocked(workflowResolveClient.resolve).mockResolvedValue({
 				workflowId: 'sub-execution',
 			} as never);
 
 			const resolved = await mocks.V1StepExecutor.mock.calls[0][0].resolveSubWorkflow(request);
 
 			expect(resolved).toEqual({ workflowId: 'sub-execution' });
-			expect(subWorkflowClient.resolve).toHaveBeenCalledExactlyOnceWith(
-				request,
+			expect(workflowResolveClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				{ kind: 'sub-workflow', ...request },
 				expect.any(AbortSignal),
 			);
 		});

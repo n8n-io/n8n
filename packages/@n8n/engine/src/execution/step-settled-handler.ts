@@ -73,7 +73,17 @@ export class StepSettledHandler {
 			}
 			throw executionLoad.reason;
 		}
-		if (stepLoad.status === 'rejected') throw stepLoad.reason;
+		if (stepLoad.status === 'rejected') {
+			// A deletion that commits between the two reads removes the step row after the
+			// execution was read.
+			if (
+				stepLoad.reason instanceof StepNotFoundError &&
+				(await this.executionIsGone(event.executionId))
+			) {
+				return;
+			}
+			throw stepLoad.reason;
+		}
 		const step = stepLoad.value;
 		const execution = executionLoad.value;
 		const node = validateStepContext(step, execution);
@@ -129,6 +139,13 @@ export class StepSettledHandler {
 		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 
+	private async executionIsGone(executionId: string): Promise<boolean> {
+		return await this.executionStore.loadExecution(executionId).then(
+			() => false,
+			(error: unknown) => isMissingExecution(error, executionId),
+		);
+	}
+
 	private async failExecution(
 		execution: ExecutionRecord,
 		step: StepRecord,
@@ -149,19 +166,20 @@ export class StepSettledHandler {
 				const { executionStore, stepStore, stepQueue } = this;
 				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
 					status: 'failed',
-					error: await this.failureOf(execution, step),
+					error: await this.failureOf(execution),
 				});
 			}
 			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 
-	/** The error to report for a failed execution. */
-	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
-		if (step.status === 'failed' && step.error) return step.error;
-		// If a different step failed, find it. Note: it's possible multiple steps
-		// may have failed - we choose any for now.
-		const failed = (await this.stepStore.loadFailedSteps(execution.id)).find((row) => row.error);
+	/**
+	 * The error to report for a failed execution: the failed step that settled
+	 * first, as the read path reports it. Not the step that ended the run,
+	 * because parallel branches can fail in any order.
+	 */
+	private async failureOf(execution: ExecutionRecord): Promise<StepError> {
+		const [failed] = await this.stepStore.loadFailedSteps(execution.id);
 		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
@@ -285,7 +303,7 @@ export class StepSettledHandler {
 					{ executionStore, stepStore, stepQueue },
 					execution,
 					failed
-						? { status: 'failed', error: await this.failureOf(execution, step) }
+						? { status: 'failed', error: await this.failureOf(execution) }
 						: {
 								status: 'completed',
 								result: collectSubExecutionResult(

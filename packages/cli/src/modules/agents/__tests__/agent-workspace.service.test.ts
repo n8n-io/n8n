@@ -15,7 +15,7 @@ const projectId = 'project-1';
 const agentId = 'agent-1';
 const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
-function makeService() {
+function makeService(egressEnabled = false) {
 	const filesystem = mock<WorkspaceFilesystem>();
 	const sandbox = mock<WorkspaceSandbox>({
 		id: 'sandbox-id',
@@ -34,6 +34,7 @@ function makeService() {
 		filesystem,
 		workspaceRoot: '/home/daytona/workspace',
 		cacheKey: 'daytona:agent:sandbox-id',
+		egressEnabled,
 	};
 	runtimeService.acquireWorkspaceSandbox.mockResolvedValue(runtime);
 
@@ -63,6 +64,39 @@ function getFilesystemInitHook(
 }
 
 describe('AgentWorkspaceService', () => {
+	it.each([false, true])(
+		'includes the network restriction in parent and delegated instructions only when egress is disabled (enabled=%s)',
+		async (egressEnabled) => {
+			const { service, sandbox, runtime } = makeService(egressEnabled);
+			sandbox.getInstructions = () => 'Use the sandbox to run commands.';
+
+			const { workspace } = await service.getAgentWorkspace(projectId, agentId, principalHash);
+			const delegatedWorkspace = service.getDelegatedAgentWorkspace(runtime, 'thread-9');
+
+			for (const current of [workspace, delegatedWorkspace]) {
+				const instructions = current.getInstructions();
+				expect(instructions).toContain('Use the sandbox to run commands.');
+				expect(instructions).toContain(`Run commands from ${current.filesystem?.basePath}.`);
+				expect(
+					instructions.includes('Outbound network access from this sandbox is disabled.'),
+				).toBe(!egressEnabled);
+			}
+		},
+	);
+
+	it('forwards the per-agent sandboxEgress setting to acquireWorkspaceSandbox', async () => {
+		const { service, runtimeService } = makeService(true);
+
+		await service.getAgentWorkspace(projectId, agentId, principalHash, { sandboxEgress: true });
+
+		expect(runtimeService.acquireWorkspaceSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			principalHash,
+			expect.objectContaining({ sandboxEgress: true }),
+		);
+	});
+
 	it('creates a scoped workspace with only the core workspace tools without touching the filesystem', async () => {
 		const { service, filesystem, runtime, runtimeService, checkpointStorage } = makeService();
 

@@ -6,6 +6,7 @@ import type {
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
+	ThreadTitleUpdate,
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
@@ -789,6 +790,17 @@ export class AgentTurnExecutionService {
 		turn.options.onSideCallUsage = async (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
 			await callerOnSideCallUsage?.(report);
+		};
+		// The SDK stores a generated title beside the turn. Copy it to the thread
+		// list as soon as it exists, so open lists do not wait for the turn to end.
+		const callerOnThreadTitle = turn.options.onThreadTitle;
+		turn.options.onThreadTitle = async (update: ThreadTitleUpdate) => {
+			await this.agentExecutionService.applyGeneratedTitle(
+				config.context,
+				update.title,
+				update.emoji ?? null,
+			);
+			await callerOnThreadTitle?.(update);
 		};
 		return await this.startTurn(turn, config, recorder, state);
 	}

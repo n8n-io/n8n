@@ -20,6 +20,7 @@ import {
 	DISPLAY_GROUP_KIND,
 	isAssistantGroup,
 	type DisplayGroup,
+	type TurnDisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import {
 	getMessageInteractives,
@@ -45,18 +46,16 @@ import type {
 	InteractivePayload,
 	ToolCall,
 } from '@/features/ai/shared/agentsChat/types';
-import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
-import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
-import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatActivity from './AgentChatActivity.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
-import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AiTypingIndicator from '@/features/ai/shared/components/AiTypingIndicator.vue';
 import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
@@ -513,6 +512,21 @@ function isThinkingActive(message: ChatMessage): boolean {
 	);
 }
 
+/** The thinking of a run sits on its head group but is live while the last group of the run is. */
+function getThinkingLiveState(group: TurnDisplayGroup): {
+	active: boolean;
+	awaitingInput: boolean;
+} {
+	const tail = group.runTail ?? group;
+	if (tail.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
+		return { active: tail.active || tail.awaitingInput, awaitingInput: tail.awaitingInput };
+	}
+	return {
+		active: isThinkingActive(tail.message),
+		awaitingInput: tail.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+	};
+}
+
 function getAssistantGroupContent(group: DisplayGroup): string {
 	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return '';
 	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
@@ -709,9 +723,16 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			>
 				<N8nChatMessage role="assistant">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
-					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
+					<AgentChatActivity
+						v-if="getGroupToolCalls(group.id).steps.length || group.thinkingSegments.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
+						:thinking="{
+							segments: group.thinkingSegments,
+							...getThinkingLiveState(group),
+							durationSec: getThinkingDurationSec(group.thinkingSegments),
+							idleLabel: props.thinkingLabel,
+							hostEvents: getGroupHostEventItems(group.id).thinking,
+						}"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:can-fix-with-assistant="canSendToAssistant"
@@ -777,13 +798,11 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						v-else-if="group.finalMessage?.content"
 						:class="{ [$style.chatMessageError]: group.finalMessage.status === 'error' }"
 					>
-						<div :class="$style.markdownContent">
-							<AgentMarkdownChunk
-								:source="group.finalMessage.content"
-								:can-open-build="standaloneBuilder && canSendToAssistant"
-								@open-build="onBuildLink($event, group.finalMessage)"
-							/>
-						</div>
+						<AgentMarkdownChunk
+							:source="group.finalMessage.content"
+							:can-open-build="standaloneBuilder && canSendToAssistant"
+							@open-build="onBuildLink($event, group.finalMessage)"
+						/>
 					</div>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.budgetNotices"
@@ -794,29 +813,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						@increase="emit('increase-budget', $event)"
 					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
-					<template #after-actions>
-						<AiThinkingBlock
-							:idle-label="props.thinkingLabel"
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="group.active || group.awaitingInput"
-							:awaiting-input="group.awaitingInput"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							:class="[
-								$style.thinkingBlock,
-								{ [$style.thinkingBlockLive]: group.active || group.awaitingInput },
-							]"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="group.active && segment.endTime === undefined"
-							/>
-						</AiThinkingBlock>
-					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
 							<AgentChatMemoryUsed
@@ -839,7 +835,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</AgentChatMessageActions>
 						</div>
 					</template>
-					<AgentTypingIndicator
+					<AiTypingIndicator
 						v-if="
 							group.id === streamingGroupId &&
 							!taskSummaryGroupIds.has(group.id) &&
@@ -885,9 +881,16 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 				</N8nText>
 				<N8nChatMessage :role="group.message.role">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
-					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
+					<AgentChatActivity
+						v-if="getGroupToolCalls(group.id).steps.length || group.thinkingSegments.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
+						:thinking="{
+							segments: group.thinkingSegments,
+							...getThinkingLiveState(group),
+							durationSec: getThinkingDurationSec(group.thinkingSegments),
+							idleLabel: props.thinkingLabel,
+							hostEvents: getGroupHostEventItems(group.id).thinking,
+						}"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:can-fix-with-assistant="canSendToAssistant"
@@ -951,7 +954,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								group.message.status !== CHAT_MESSAGE_STATUS.STREAMING
 							"
 						>
-							<div :class="[$style.chatMessage, $style.markdownContent, $style.stopReplyText]">
+							<div :class="[$style.chatMessage, $style.stopReplyText]">
 								<AgentMarkdownChunk
 									v-if="group.message.content.trim()"
 									:source="group.message.content"
@@ -992,13 +995,11 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								v-if="item.type === 'text'"
 								:class="{ [$style.chatMessageError]: group.message.status === 'error' }"
 							>
-								<div :class="$style.markdownContent">
-									<AgentMarkdownChunk
-										:source="item.text"
-										:can-open-build="standaloneBuilder && canSendToAssistant"
-										@open-build="onBuildLink($event, group.message)"
-									/>
-								</div>
+								<AgentMarkdownChunk
+									:source="item.text"
+									:can-open-build="standaloneBuilder && canSendToAssistant"
+									@open-build="onBuildLink($event, group.message)"
+								/>
 							</div>
 							<div v-else :class="$style.interactives">
 								<InteractiveCard
@@ -1055,31 +1056,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								</N8nButton>
 							</template>
 						</N8nCallout>
-
-						<AiThinkingBlock
-							:idle-label="props.thinkingLabel"
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="isThinkingActive(group.message)"
-							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							:class="[
-								$style.thinkingBlock,
-								{ [$style.thinkingBlockLive]: isThinkingActive(group.message) },
-							]"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="
-									group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
-									segment.endTime === undefined
-								"
-							/>
-						</AiThinkingBlock>
 					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
@@ -1103,7 +1079,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							/>
 						</div>
 					</template>
-					<AgentTypingIndicator
+					<AiTypingIndicator
 						v-if="
 							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 							!taskSummaryGroupIds.has(group.id) &&
@@ -1126,7 +1102,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			:class="$style.message"
 		>
 			<div :class="$style.content">
-				<AgentTypingIndicator :class="$style.typingIndicator" />
+				<AiTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
 		<div v-if="$slots.status" :class="$style.message">
@@ -1301,25 +1277,5 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	align-items: center;
 	height: calc(var(--font-size--sm) * var(--line-height--lg));
 	margin-block: var(--spacing--4xs);
-}
-
-/* The space to the next step (the list gap and the message's top padding), so
-   the line has the same space above and below. */
-.thinkingBlock {
-	margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
-	/* Lines up with the message text, which has the same inline padding. */
-	padding-inline: var(--spacing--sm);
-}
-
-/* A live step can end with the actions row (its margin and its small buttons)
-   above the thinking line. Keep that space, so the line does not move then. */
-.thinkingBlockLive {
-	margin-top: calc(var(--spacing--xs) + var(--height--sm));
-}
-
-/* With the actions row above, or no content above, the space is already there. */
-:has(> .messageFooter) + .thinkingBlock,
-:empty + .thinkingBlock {
-	margin-top: 0;
 }
 </style>
