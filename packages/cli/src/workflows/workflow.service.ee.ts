@@ -46,6 +46,7 @@ import {
 	WorkflowActivationError,
 } from 'n8n-workflow';
 
+import { isManagedCredentialReference } from '@/spike-managed-credential-types';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -675,11 +676,14 @@ export class EnterpriseWorkflowService {
 			const current = stack.pop()!;
 
 			if (current.credentials) {
-				for (const nodeCred of Object.values(current.credentials)) {
+				for (const [credType, nodeCred] of Object.entries(current.credentials)) {
 					const id = nodeCred.id?.toString();
 					if (id) {
 						ids.push(id);
-					} else if (nodeCred.__aiGatewayManaged && nodeCred.id === null) {
+					} else if (
+						(nodeCred.__aiGatewayManaged || isManagedCredentialReference(credType)) &&
+						nodeCred.id === null
+					) {
 						// Managed credential, resolved at execution — exempt.
 					} else if (nodeCred.id === null || nodeCred.id === '') {
 						hasUnresolved = true;

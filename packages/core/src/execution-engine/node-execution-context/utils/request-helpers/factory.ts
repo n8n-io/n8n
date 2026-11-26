@@ -22,6 +22,7 @@ import type {
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
+import { addManagedOrdId, resolveManagedCredentialType } from '../managed-credential';
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
@@ -86,7 +87,7 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			return await sendHttpRequest(requestOptions, additionalData, node);
+			return await sendHttpRequest(addManagedOrdId(node, requestOptions), additionalData, node);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -121,8 +122,8 @@ export const getRequestHelperFunctions = (
 		): Promise<any> {
 			return await httpRequestWithAuthentication.call(
 				this,
-				credentialsType,
-				requestOptions,
+				resolveManagedCredentialType(node, credentialsType),
+				addManagedOrdId(node, requestOptions),
 				workflow,
 				node,
 				additionalData,
@@ -148,8 +149,10 @@ export const getRequestHelperFunctions = (
 			const uriOrObject =
 				typeof uriOrObjectWithTarget === 'string'
 					? uriOrObjectWithTarget
-					: toLegacyRequestOptions(uriOrObjectWithTarget);
-			const options = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
+					: addManagedOrdId(node, toLegacyRequestOptions(uriOrObjectWithTarget));
+			const legacyOptions = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
+			const options =
+				typeof uriOrObject === 'string' ? addManagedOrdId(node, legacyOptions) : legacyOptions;
 			if (evalLlmMock) {
 				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
 				const evalMockResponse = await callEvalMockHandler(
@@ -177,8 +180,8 @@ export const getRequestHelperFunctions = (
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestWithAuthentication.call(
 				this,
-				credentialsType,
-				requestOptions,
+				resolveManagedCredentialType(node, credentialsType),
+				addManagedOrdId(node, requestOptions),
 				workflow,
 				node,
 				additionalData,
@@ -205,6 +208,18 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			const resolvedOAuth1Type = resolveManagedCredentialType(node, credentialsType);
+			if (resolvedOAuth1Type !== credentialsType) {
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await requestWithAuthentication.call(
+					this,
+					resolvedOAuth1Type,
+					addManagedOrdId(node, requestOptions),
+					workflow,
+					node,
+					additionalData,
+				);
+			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
@@ -227,6 +242,18 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			const resolvedOAuth2Type = resolveManagedCredentialType(node, credentialsType);
+			if (resolvedOAuth2Type !== credentialsType) {
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await requestWithAuthentication.call(
+					this,
+					resolvedOAuth2Type,
+					addManagedOrdId(node, requestOptions),
+					workflow,
+					node,
+					additionalData,
+				);
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
