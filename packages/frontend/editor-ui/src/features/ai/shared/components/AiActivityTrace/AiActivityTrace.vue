@@ -118,6 +118,7 @@ function toolArgs(tool: AiActivityToolItem<TTool>): Record<string, unknown> | un
 							<AiActivityTrace
 								v-if="tool.children?.length"
 								:items="tool.children"
+								:group-single-tool="groupSingleTool"
 								:class="$style.children"
 								data-test-id="ai-activity-tool-children"
 							/>

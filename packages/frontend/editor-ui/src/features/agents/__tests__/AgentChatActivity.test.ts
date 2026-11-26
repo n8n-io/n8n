@@ -948,7 +948,7 @@ describe('AgentChatActivity', () => {
 		);
 
 		await wrapper.find('button').trigger('click');
-		const childProgress = wrapper.get('[data-test-id="agent-chat-delegate-child-progress"]');
+		const childProgress = wrapper.get('[data-test-id="ai-activity-tool-children"]');
 		expect(childProgress.find('[data-test-id="n8n-ai-activity-step-group"]').exists()).toBe(true);
 		expect(childProgress.text()).toContain('Web search');
 	});
