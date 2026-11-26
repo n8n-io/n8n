@@ -260,8 +260,28 @@ describe('GET /projects/:projectId/node-type-policies/project/access', () => {
 			}));
 		});
 
-		test('a project rule does not add a row for a generated tool variant', async () => {
+		test('a project rule keeps the row of a generated tool variant', async () => {
 			await putProjectPolicy(NODE_KIND_ROUTE, [rule('deny-gmail-tool', 'deny', GMAIL_TOOL)]);
+
+			const response = await readAccess(NODE_KIND_ROUTE);
+
+			expect(response.body.data.types).toContainEqual({
+				name: GMAIL_TOOL,
+				access: 'deny',
+				scope: 'project',
+				matchedRuleId: 'deny-gmail-tool',
+				optInAvailable: false,
+			});
+		});
+
+		test('a project rule that decides a tool variant and its base adds no row for the variant', async () => {
+			await putProjectPolicy(NODE_KIND_ROUTE, [
+				{
+					id: 'deny-base-nodes',
+					action: 'deny',
+					selector: { kind: 'package', value: 'n8n-nodes-base' },
+				},
+			]);
 
 			expect(names(await readAccess(NODE_KIND_ROUTE))).toEqual([SLACK, NOTION, GMAIL]);
 		});
@@ -280,11 +300,33 @@ describe('GET /projects/:projectId/node-type-policies/project/access', () => {
 			});
 		});
 
-		test('a project rule does not add a row for a hidden type', async () => {
+		test('a project name rule keeps the row of a hidden type', async () => {
 			hiddenNodeTypes.get.mockResolvedValue(new Set([GMAIL]));
 			await putProjectPolicy(NODE_KIND_ROUTE, [rule('deny-gmail', 'deny', GMAIL)]);
 
-			expect(names(await readAccess(NODE_KIND_ROUTE))).not.toContain(GMAIL);
+			const response = await readAccess(NODE_KIND_ROUTE);
+
+			expect(response.body.data.types).toContainEqual({
+				name: GMAIL,
+				access: 'deny',
+				scope: 'project',
+				matchedRuleId: 'deny-gmail',
+				optInAvailable: false,
+			});
+		});
+
+		test('a project name rule with the id of an instance rule adds no row for a hidden type', async () => {
+			hiddenNodeTypes.get.mockResolvedValue(new Set([GMAIL]));
+			await putInstancePolicy(NODE_KIND_ROUTE, [
+				{
+					id: 'shared-id',
+					action: 'allow',
+					selector: { kind: 'package', value: 'n8n-nodes-base' },
+				},
+			]);
+			await putProjectPolicy(NODE_KIND_ROUTE, [rule('shared-id', 'allow', SLACK)]);
+
+			expect(names(await readAccess(NODE_KIND_ROUTE))).toEqual([SLACK, NOTION]);
 		});
 
 		test('an instance name rule keeps the row of a hidden type', async () => {

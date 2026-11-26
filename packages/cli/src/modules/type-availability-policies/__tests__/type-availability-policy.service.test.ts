@@ -2016,24 +2016,61 @@ describe('TypeAvailabilityPolicyService', () => {
 			);
 		});
 
-		it('picks the rows from the instance policy alone, so a project rule cannot add a row', async () => {
-			givenScopes(
-				{ rules: [] },
-				{
-					rules: [
-						{
-							id: 'deny-gmail-tool',
-							action: 'deny',
-							selector: { kind: 'name', value: GMAIL_TOOL },
-						},
-					],
-				},
-			);
-			const listTypesCalls: Array<[unknown[], readonly PolicyRule[]]> = [];
-			const listTypes: ListTypes = (types, instanceRules) => {
-				listTypesCalls.push([[...types], instanceRules]);
-				return types.filter((type) => type.name !== GMAIL_TOOL);
+		it('lists each scope against its own rules, and keeps a row that either scope lists', async () => {
+			const denyGmailTool: PolicyRule = {
+				id: 'deny-gmail-tool',
+				action: 'deny',
+				selector: { kind: 'name', value: GMAIL_TOOL },
 			};
+			givenScopes({ rules: [delegateNotion] }, { rules: [denyGmailTool] });
+			const listTypesCalls: Array<[unknown[], readonly PolicyRule[]]> = [];
+			// Lists a tool variant only when a rule decides it, as `listedNodeTypes` does.
+			const listTypes: ListTypes = (types, rules) => {
+				listTypesCalls.push([[...types], rules]);
+				return types.filter((type) => type.name !== GMAIL_TOOL || type.matchedRuleId !== null);
+			};
+
+			const result = await service.getProjectAccess(
+				KIND,
+				PROJECT_ID,
+				[NOTION, GMAIL, GMAIL_TOOL],
+				listTypes,
+			);
+
+			expect(listTypesCalls).toEqual([
+				[
+					[
+						expect.objectContaining({ name: NOTION, matchedRuleId: 'delegate-notion' }),
+						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: null }),
+					],
+					[delegateNotion],
+				],
+				[
+					[
+						expect.objectContaining({ name: NOTION, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: 'deny-gmail-tool' }),
+					],
+					[denyGmailTool],
+				],
+			]);
+			expect(result.types).toEqual([
+				expect.objectContaining({ name: NOTION, scope: 'instance' }),
+				expect.objectContaining({ name: GMAIL, scope: 'instance' }),
+				{
+					name: GMAIL_TOOL,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: 'deny-gmail-tool',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('adds no row when neither scope lists the type', async () => {
+			givenScopes({ rules: [] }, { rules: [] });
+			const listTypes: ListTypes = (types) => types.filter((type) => type.name !== GMAIL_TOOL);
 
 			const result = await service.getProjectAccess(
 				KIND,
@@ -2042,15 +2079,6 @@ describe('TypeAvailabilityPolicyService', () => {
 				listTypes,
 			);
 
-			expect(listTypesCalls).toEqual([
-				[
-					[
-						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
-						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: null }),
-					],
-					[],
-				],
-			]);
 			expect(result.types.map((type) => type.name)).toEqual([GMAIL]);
 		});
 	});

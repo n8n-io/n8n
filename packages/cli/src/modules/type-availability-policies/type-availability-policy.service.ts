@@ -957,8 +957,9 @@ export class TypeAvailabilityPolicyService {
 	 * which scope decides it, evaluated against one read of each scope so that the versions match
 	 * the verdicts. Uncached for the reason on `getEffectivePolicy`.
 	 *
-	 * `listTypes` picks the rows from the instance policy alone, as `summarizeProjectPolicies`
-	 * does, so the rows match the counts on the project list.
+	 * A type has a row when `listTypes` lists it for the instance policy alone or for the project
+	 * policy alone, so a project rule on a hidden type or a tool variant keeps a row to undo it.
+	 * Each scope is listed with its own rules, because rule ids are unique only in one scope.
 	 */
 	async getProjectAccess(
 		kind: string,
@@ -971,13 +972,15 @@ export class TypeAvailabilityPolicyService {
 			this.getEffectivePolicy(kind, projectId),
 		]);
 
-		const listed = listTypes(
-			this.verdictComposer(kind, typeNames)(instance, unconfiguredScope(kind, null)),
-			instance.rules,
-		);
+		const composeVerdicts = this.verdictComposer(kind, typeNames);
+		const listedFor = (scope: EffectivePolicy) =>
+			listTypes(composeVerdicts(scope, unconfiguredScope(kind, null)), scope.rules).map(
+				(verdict) => verdict.name,
+			);
+		const listed = new Set([...listedFor(instance), ...listedFor(project)]);
 		const verdicts = this.verdictComposer(
 			kind,
-			listed.map((verdict) => verdict.name),
+			typeNames.filter((name) => listed.has(name)),
 		)(instance, project);
 
 		return {

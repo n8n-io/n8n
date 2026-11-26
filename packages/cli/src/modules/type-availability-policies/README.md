@@ -323,8 +323,11 @@ uses them for its "Set by" column, and sends `projectVersion` back with a write.
 
 - The routes read both scopes through `getEffectivePolicy`, not the snapshot, for the reason given
   for the instance access route.
-- The rows are the types that the instance access route lists, as for the counts below. A project
-  rule on a hidden type, or on a tool variant that follows its base, adds no row.
+- The rows are the types that the instance access route lists, plus the types that the same rule
+  lists for the project policy alone. So a project `name` rule on a hidden type, or a project rule
+  that decides a tool variant and not its base, keeps a row, and the project admin can undo it.
+  Each scope is listed with its own rules, because a rule id is unique only in one scope.
+- These extra rows are not in the counts below, so the page can show more rows than the counts.
 - A user with the global scope passes the project check for any id, so the routes return 404 for a
   project id that does not exist. Other users get 403 from the project check first.
 
@@ -352,7 +355,7 @@ Each project's verdicts are compared with the verdicts of a project that has no 
 - `optedIn` counts the types that the instance delegates and the project allows.
 
 A project rule on a hidden type, or on a tool variant that follows its base, adds nothing to the
-counts.
+counts. The counts compare each project with the same list of types, type by type.
 
 ### Setting the access of a type
 
