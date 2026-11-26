@@ -397,7 +397,19 @@ function extractUrl(value: string) {
 	if (!matched) {
 		return undefined;
 	}
-	return matched[0];
+	let url = matched[0];
+	// Trim sentence-final punctuation and unbalanced closing brackets that
+	// belong to the surrounding prose, not to the URL itself.
+	while (/[.,;:!?)\]}>"']$/.test(url)) {
+		if (
+			url.endsWith(')') &&
+			(url.match(/\(/g)?.length ?? 0) >= (url.match(/\)/g)?.length ?? 0)
+		) {
+			break;
+		}
+		url = url.slice(0, -1);
+	}
+	return url;
 }
 
 function extractUrlPath(value: string) {

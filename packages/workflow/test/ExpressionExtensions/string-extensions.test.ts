@@ -224,6 +224,24 @@ describe('Data Transformation Functions', () => {
 			).toEqual('http://192.168.1.1:8000/path?q=value#frag');
 		});
 
+		test('.extractUrl should trim trailing sentence punctuation', () => {
+			expect(evaluate('={{ "Docs: https://docs.n8n.io.".extractUrl() }}')).toEqual(
+				'https://docs.n8n.io',
+			);
+			expect(evaluate('={{ "See (https://example.com) for details".extractUrl() }}')).toEqual(
+				'https://example.com',
+			);
+			expect(evaluate('={{ "Visit https://example.com, then come back".extractUrl() }}')).toEqual(
+				'https://example.com',
+			);
+			expect(evaluate('={{ "Wiki (https://example.com/C_(lang))".extractUrl() }}')).toEqual(
+				'https://example.com/C_(lang)',
+			);
+			expect(evaluate('={{ "Search https://example.com/search?q=n8n!".extractUrl() }}')).toEqual(
+				'https://example.com/search?q=n8n',
+			);
+		});
+
 		test('.extractDomain should work on a string', () => {
 			expect(evaluate('={{ "test@example.org".extractDomain() }}')).toEqual('example.org');
 			expect(evaluate('={{ "https://example.org/".extractDomain() }}')).toEqual('example.org');
