@@ -20,6 +20,7 @@ export class AgentToolV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2.2],
+			// Keeps the restrictive default: connected AI tools and memory can cause arbitrary side effects.
 			defaults: {
 				name: 'AI Agent Tool',
 				color: '#404040',
