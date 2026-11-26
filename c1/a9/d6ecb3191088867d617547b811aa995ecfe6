@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  h_23d60aac2fe72e 70-72,99-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1a9d6ecb3191088867d617547b811aa995ecfe6",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

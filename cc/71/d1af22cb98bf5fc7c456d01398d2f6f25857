@@ -1,0 +1,112 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlPanel.vue
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 66-68
+  s_dfe3f914c8bb46::t_68c42da6cc193e 32,35,50-53,71
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_c08fcea13ea6bd 64,354,418,535,554-562,592,603-604,855,871,1007,1095,1156,1265
+  s_dfe3f914c8bb46::t_5e73c0330bca74 131
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 318,391
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentGuardrailModal.test.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 401-409,413-416
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 410-412
+packages/@n8n/ai-utilities/src/guardrails/llm.ts
+  s_dfe3f914c8bb46::t_68c42da6cc193e 94-95
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_68c42da6cc193e 10404,10435,10505
+  s_dfe3f914c8bb46::t_6c6d8447df937c 4
+packages/@n8n/ai-utilities/src/guardrails/__tests__/llm.test.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 10-18
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentRegistryMcpConfigForm.test.ts
+  s_dfe3f914c8bb46::t_a73cb3d3ac0caf 146
+  s_dfe3f914c8bb46::t_9ba9bb05b5f7d3 154
+  s_dfe3f914c8bb46::t_c71053311b8c71 273-274,277
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_5e73c0330bca74 69,161,174-175,189,242,361-372,374,376,386-391,429
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 129-131,194,392-397
+  s_dfe3f914c8bb46::t_68c42da6cc193e 337
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_68c42da6cc193e 298
+  s_dfe3f914c8bb46::t_fc74bc42cfd324 289
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 256,703,717
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 729-732
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigContent.vue
+  s_dfe3f914c8bb46::t_5e73c0330bca74 64
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 55
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolApprovalCard.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 111
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_c71053311b8c71 351
+  s_dfe3f914c8bb46::t_6c6d8447df937c 269
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailModalHost.vue
+  s_dfe3f914c8bb46::t_5e73c0330bca74 3,22,41,51,61
+packages/@n8n/ai-utilities/src/guardrails/types.ts
+  s_dfe3f914c8bb46::t_68c42da6cc193e 54
+packages/cli/src/modules/agents/approval/__tests__/channel-hitl-options.test.ts
+  s_dfe3f914c8bb46::t_cab27a75f8a2c7 38-44
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 17-20
+  s_dfe3f914c8bb46::t_9ba9bb05b5f7d3 5-16,21-37,45-56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_dfe3f914c8bb46::t_c71053311b8c71 211
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_dfe3f914c8bb46::t_ae4827315890b9 1004-1007,1010,1012,1014-1015,1020
+  s_dfe3f914c8bb46::t_5939f9977d5406 57,1003,1008-1009,1011,1013,1016-1019,1021-1029
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailModal.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 78,136,214,245
+packages/frontend/editor-ui/src/features/agents/components/AgentToolGuardrailsSection.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 128
+packages/frontend/editor-ui/src/features/agents/components/AgentTagInput.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 99-100
+  s_dfe3f914c8bb46::t_fc74bc42cfd324 68,104-105
+  s_dfe3f914c8bb46::t_0f45c94387c528 106-107
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 150-151,159
+  s_dfe3f914c8bb46::t_fc74bc42cfd324 122
+packages/frontend/editor-ui/src/features/agents/components/AgentRegistryMcpConfigForm.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 195,199
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpToolPermissionsEditor.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 275
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolApprovalCard.test.ts
+  s_dfe3f914c8bb46::t_c71053311b8c71 131,134,141
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_dfe3f914c8bb46::t_c08fcea13ea6bd 158,484,488,760-764
+  s_dfe3f914c8bb46::t_5e73c0330bca74 154,362,371,376,379,747
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 348-352,737-741
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_dfe3f914c8bb46::t_c08fcea13ea6bd 183-184,190,197,274-275,295,297,302-304,311-313,357,367
+  s_dfe3f914c8bb46::t_8805064acea499 234-238,261-262,332
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 186-188,282,285
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 124,511
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 500-508
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentGuardrailModalHost.test.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 1,121
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_dfe3f914c8bb46::t_5e73c0330bca74 104,113,118
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalDestinationMenu.vue
+  s_dfe3f914c8bb46::t_6c6d8447df937c 2
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 91-93
+  s_dfe3f914c8bb46::t_68c42da6cc193e 4,50,299-300,303,307
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailAddMenu.vue
+  s_dfe3f914c8bb46::t_68c42da6cc193e 39
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolGuardrailsSection.test.ts
+  s_dfe3f914c8bb46::t_6c6d8447df937c 190-193,200-201,204
+  s_dfe3f914c8bb46::t_68c42da6cc193e 22
+  s_dfe3f914c8bb46::t_dd25aecf0bd4f5 194-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc71d1af22cb98bf5fc7c456d01398d2f6f25857",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/@n8n/backend-services/src/pubsub/pubsub.constants.ts
+  h_8a472ace01776f 57-58
+packages/@n8n/backend-services/src/pubsub/pubsub.types.ts
+  h_8a472ace01776f 76,140
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  h_8a472ace01776f 218-225
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  h_8a472ace01776f 4,32-33,52-53,70-71,89-90,161-162,200,202,207-208,211,216-224,228-256,266,273-274,287
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  h_8a472ace01776f 8-9,26-27,80-90
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  h_8a472ace01776f 5-6,556-572
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  h_8a472ace01776f 8,303-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0128ddfccabe8ebf900387bac926c6c484a6567f",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

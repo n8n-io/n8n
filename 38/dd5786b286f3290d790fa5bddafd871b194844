@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_dfe3f914c8bb46::t_37d69754fcb956 100-102,113-119
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_dfe3f914c8bb46::t_5d6e520570883e 162,164,176-177,182-188,193-196
+  s_dfe3f914c8bb46::t_d6c0de2d223581 189
+  s_dfe3f914c8bb46::t_0d322b2823911d 190
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_dfe3f914c8bb46::t_b2d498c8dd6bbb 1737,1750
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_37d69754fcb956 3-4,67,91,224-231,329-332,419,441-446,448,457,470-501,503,505-534
+  s_dfe3f914c8bb46::t_813ee4c258ec98 535-536,552-553,556-557,561
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigForm.test.ts
+  s_dfe3f914c8bb46::t_5d6e520570883e 173,277
+  s_dfe3f914c8bb46::t_d6c0de2d223581 278-280
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_dfe3f914c8bb46::t_5d6e520570883e 584,667,692
+  s_dfe3f914c8bb46::t_b2d498c8dd6bbb 120-121,138,512-520,591-593,668-670
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_1317991926b897 368-372
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_dfe3f914c8bb46::t_1317991926b897 116,726,731
+  s_dfe3f914c8bb46::t_37d69754fcb956 371
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_dfe3f914c8bb46::t_37068a173c3d73 67
+packages/frontend/editor-ui/src/features/agents/components/AgentToolGuardrailsSection.vue
+  s_dfe3f914c8bb46::t_324369830ef51e 193-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38dd5786b286f3290d790fa5bddafd871b194844",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
