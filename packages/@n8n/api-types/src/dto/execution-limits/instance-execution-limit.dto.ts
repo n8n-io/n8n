@@ -4,6 +4,7 @@ import {
 	executionLimitMaxExecutionsSchema,
 	executionLimitPeriodUnitSchema,
 	executionLimitVersionSchema,
+	type ExecutionLimitSettings,
 } from '../../schemas/execution-limit-settings.schema';
 import { Z } from '../../zod-class';
 
@@ -34,3 +35,14 @@ export class InstanceExecutionLimitDto extends Z.class(instanceExecutionLimitSha
 export class PutInstanceExecutionLimitDto extends Z.class(instanceExecutionLimitShape, {
 	strict: true,
 }) {}
+
+export function toInstanceExecutionLimit(
+	settings: ExecutionLimitSettings,
+): InstanceExecutionLimitDto {
+	return {
+		periodUnit: settings.periodUnit,
+		maxExecutions: settings.instanceMaxExecutions,
+		defaultProjectMaxExecutions: settings.defaultProjectMaxExecutions,
+		version: settings.version,
+	};
+}

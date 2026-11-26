@@ -1,12 +1,10 @@
-import type { ExecutionLimitSettings } from '@n8n/api-types';
+import { executionLimitSettingsSchema, type ExecutionLimitSettings } from '@n8n/api-types';
 
 import type { ExecutionLimitChange, ProjectLimit } from './execution-limits.types';
 
-const AUDITED_SETTINGS_FIELDS = [
-	'periodUnit',
-	'instanceMaxExecutions',
-	'defaultProjectMaxExecutions',
-] as const;
+const AUDITED_SETTINGS_FIELDS = executionLimitSettingsSchema
+	.omit({ version: true })
+	.keyof().options;
 
 /** The project ids that occur more than one time in `limits`. */
 export function findDuplicateProjectIds(limits: ProjectLimit[]): string[] {

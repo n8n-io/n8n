@@ -101,6 +101,18 @@ describe('groupScopes', () => {
 		expect(groups.map((group) => group.key)).toEqual(['workflowsAndExecutions', 'members']);
 	});
 
+	it('puts executionLimit scopes under instanceOperations', () => {
+		const groups = groupScopes(['executionLimit:read', 'executionLimit:update']);
+
+		expect(groups).toEqual([
+			{
+				key: 'instanceOperations',
+				isFallback: false,
+				scopes: ['executionLimit:read', 'executionLimit:update'],
+			},
+		]);
+	});
+
 	it('puts unknown resources into fallback groups', () => {
 		const groups = groupScopes(['workflow:read', 'newResource:read'] as ApiKeyScope[]);
 

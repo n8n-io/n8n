@@ -19,7 +19,8 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		// Loaded before the licence check so an unlicensed instance returns 403 instead of 404.
 		await import('./execution-limits.controller.js');
 
-		// Registered without a licence: a limit set under an earlier licence still exists.
+		// Registered without a licence: a limit set under an earlier licence still exists,
+		// and the licence can change while n8n runs.
 		const hooks = Container.get(ProjectMutationHooksProxy);
 		hooks.registerProvider({
 			beforeProjectDeleted: async ({ projectId, userId, loginId }, ctx) => {
@@ -31,6 +32,12 @@ export class ExecutionLimitsModule implements ModuleInterface {
 					ctx,
 				);
 			},
+			// The licence can change while n8n runs, so check it on each call.
+			afterTeamProjectCreated: async (projectId) => {
+				if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
+				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
+				await Container.get(ExecutionLimitsService).applyDefaultLimitToNewProject(projectId);
+			},
 		});
 
 		if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
@@ -38,13 +45,6 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		// Loaded before the process takes work, so the first read already has the limits.
 		const { ExecutionLimitsSnapshot } = await import('./execution-limits-snapshot.js');
 		await Container.get(ExecutionLimitsSnapshot).start();
-
-		hooks.registerProvider({
-			afterTeamProjectCreated: async (projectId) => {
-				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
-				await Container.get(ExecutionLimitsService).applyDefaultLimitToNewProject(projectId);
-			},
-		});
 	}
 
 	async entities() {

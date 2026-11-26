@@ -2,6 +2,7 @@ import { EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING } from '../../../schemas/executi
 import {
 	InstanceExecutionLimitDto,
 	PutInstanceExecutionLimitDto,
+	toInstanceExecutionLimit,
 } from '../instance-execution-limit.dto';
 
 describe('InstanceExecutionLimitDto and PutInstanceExecutionLimitDto', () => {
@@ -63,5 +64,16 @@ describe('InstanceExecutionLimitDto and PutInstanceExecutionLimitDto', () => {
 		['unknown extra field', { ...valid, extra: true }],
 	])('PutInstanceExecutionLimitDto rejects %s', (_, payload) => {
 		expect(PutInstanceExecutionLimitDto.safeParse(payload).success).toBe(false);
+	});
+
+	test('toInstanceExecutionLimit maps instanceMaxExecutions to maxExecutions', () => {
+		expect(
+			toInstanceExecutionLimit({
+				periodUnit: 'month',
+				instanceMaxExecutions: 100_000,
+				defaultProjectMaxExecutions: 10_000,
+				version: 3,
+			}),
+		).toEqual(valid);
 	});
 });

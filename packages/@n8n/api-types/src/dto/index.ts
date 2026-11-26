@@ -944,6 +944,7 @@ export {
 export {
 	InstanceExecutionLimitDto,
 	PutInstanceExecutionLimitDto,
+	toInstanceExecutionLimit,
 } from './execution-limits/instance-execution-limit.dto';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

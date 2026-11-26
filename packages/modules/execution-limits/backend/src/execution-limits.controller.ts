@@ -1,6 +1,6 @@
 import {
 	PutInstanceExecutionLimitDto,
-	type ExecutionLimitSettings,
+	toInstanceExecutionLimit,
 	type InstanceExecutionLimitDto,
 } from '@n8n/api-types';
 import { loginIdOf } from '@n8n/backend-services';
@@ -9,15 +9,6 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Put, RestController } from '@n8n/decorators';
 
 import { ExecutionLimitsService } from './execution-limits.service';
-
-function toInstanceExecutionLimit(settings: ExecutionLimitSettings): InstanceExecutionLimitDto {
-	return {
-		periodUnit: settings.periodUnit,
-		maxExecutions: settings.instanceMaxExecutions,
-		defaultProjectMaxExecutions: settings.defaultProjectMaxExecutions,
-		version: settings.version,
-	};
-}
 
 @RestController('/execution-limits')
 export class ExecutionLimitsController {

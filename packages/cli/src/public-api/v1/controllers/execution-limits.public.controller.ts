@@ -1,7 +1,7 @@
 import {
 	InstanceExecutionLimitDto,
 	PutInstanceExecutionLimitDto,
-	type ExecutionLimitSettings,
+	toInstanceExecutionLimit,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { loginIdOf } from '@n8n/backend-services';
@@ -27,15 +27,6 @@ import type { Response } from 'express';
 
 const tags = ['ExecutionLimits'];
 
-function toInstanceExecutionLimit(settings: ExecutionLimitSettings): InstanceExecutionLimitDto {
-	return {
-		periodUnit: settings.periodUnit,
-		maxExecutions: settings.instanceMaxExecutions,
-		defaultProjectMaxExecutions: settings.defaultProjectMaxExecutions,
-		version: settings.version,
-	};
-}
-
 /**
  * Public API surface for execution limits. Delegates to the same `ExecutionLimitsService`
  * methods and DTOs as the internal `/rest/execution-limits` controller.
@@ -58,7 +49,7 @@ export class ExecutionLimitsPublicController {
 	@GlobalScope('executionLimit:read')
 	@ApiSummary('Preview: Retrieve the instance execution limit')
 	@ApiDescription(
-		'**Preview** — breaking changes may still occur without major version bump.\n\nReturns the instance execution limit, the period unit, the default limit for new team projects, and the current version. A fresh instance returns `periodUnit: month`, `maxExecutions: null`, `defaultProjectMaxExecutions: null`, and `version: 0`. Each new team project gets this limit when it is created. Existing projects keep their limits.',
+		'**Preview** — breaking changes may still occur without major version bump.\n\nReturns the instance execution limit, the period unit, the default limit for new team projects, and the current version. A fresh instance returns `periodUnit: month`, `maxExecutions: null`, `defaultProjectMaxExecutions: null`, and `version: 0`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, InstanceExecutionLimitDto)
@@ -75,7 +66,7 @@ export class ExecutionLimitsPublicController {
 	@GlobalScope('executionLimit:update')
 	@ApiSummary('Preview: Replace the instance execution limit')
 	@ApiDescription(
-		'**Preview** — breaking changes may still occur without major version bump.\n\nReplaces the instance execution limit settings. All four fields are required, and a `GET` response is a valid `PUT` body. `defaultProjectMaxExecutions` cannot be above `maxExecutions`. Each new team project gets this limit when it is created. Existing projects keep their limits. `version` must equal the version from the last read; a stale version is rejected with 409 without changes.',
+		'**Preview** — breaking changes may still occur without major version bump.\n\nReplaces the instance execution limit settings. All four fields are required, and a `GET` response is a valid `PUT` body. `defaultProjectMaxExecutions` cannot be above `maxExecutions`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits. `version` must equal the version from the last read; a stale version is rejected with 409 without changes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, InstanceExecutionLimitDto)

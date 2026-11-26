@@ -30,7 +30,9 @@ let readOnlyOwner: User;
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
 	admin = await createAdminWithApiKey();
-	member = await createMemberWithApiKey();
+	member = await createMemberWithApiKey({
+		scopes: ['executionLimit:read', 'executionLimit:update'],
+	});
 	unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
 	readOnlyOwner = await createOwnerWithApiKey({ scopes: ['executionLimit:read'] });
 });

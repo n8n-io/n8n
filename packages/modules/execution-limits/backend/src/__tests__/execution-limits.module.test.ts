@@ -1,25 +1,31 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, type Logger } from '@n8n/backend-common';
+import { ProjectMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FoldStepRegistry } from '@n8n/db';
 import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitsModule } from '../execution-limits.module';
+import { ExecutionLimitsService } from '../execution-limits.service';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
 
 describe('ExecutionLimitsModule', () => {
 	let registry: FoldStepRegistry;
+	let hooks: ProjectMutationHooksProxy;
 	let licenseState: ReturnType<typeof mockInstance<LicenseState>>;
 
 	beforeEach(() => {
 		licenseState = mockInstance(LicenseState);
 		registry = new FoldStepRegistry();
 		Container.set(FoldStepRegistry, registry);
+		hooks = new ProjectMutationHooksProxy(mock<Logger>());
+		Container.set(ProjectMutationHooksProxy, hooks);
 		// The repository of the step reads the manager when it is built.
 		Container.set(DataSource, { manager: {} } as unknown as DataSource);
 	});
@@ -70,6 +76,32 @@ describe('ExecutionLimitsModule', () => {
 		finishStart();
 		await init;
 		expect(onInitDone).toHaveBeenCalledTimes(1);
+	});
+
+	it('applies the default limit to a new team project when the license turns on after boot', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+		const service = mockInstance(ExecutionLimitsService);
+
+		await new ExecutionLimitsModule().init();
+
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+		await hooks.afterTeamProjectCreated('project-1');
+
+		expect(service.applyDefaultLimitToNewProject).toHaveBeenCalledWith('project-1');
+	});
+
+	it('does not apply the default limit to a new team project when the license turns off after boot', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+		const snapshot = mockInstance(ExecutionLimitsSnapshot);
+		snapshot.start.mockResolvedValue();
+		const service = mockInstance(ExecutionLimitsService);
+
+		await new ExecutionLimitsModule().init();
+
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+		await hooks.afterTeamProjectCreated('project-1');
+
+		expect(service.applyDefaultLimitToNewProject).not.toHaveBeenCalled();
 	});
 
 	it('owns the project limit entity, the two usage entities and the audit entity', async () => {

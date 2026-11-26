@@ -5,7 +5,7 @@ summary: 'Preview: Retrieve the instance execution limit'
 description: |-
   **Preview** — breaking changes may still occur without major version bump.
 
-  Returns the instance execution limit, the period unit, the default limit for new team projects, and the current version. A fresh instance returns `periodUnit: month`, `maxExecutions: null`, `defaultProjectMaxExecutions: null`, and `version: 0`. Each new team project gets this limit when it is created. Existing projects keep their limits.
+  Returns the instance execution limit, the period unit, the default limit for new team projects, and the current version. A fresh instance returns `periodUnit: month`, `maxExecutions: null`, `defaultProjectMaxExecutions: null`, and `version: 0`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits.
 
   Requires the `executionLimit:read` API key scope.
 x-required-scope: executionLimit:read
