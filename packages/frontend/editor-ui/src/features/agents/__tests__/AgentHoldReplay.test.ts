@@ -1,3 +1,4 @@
+import { ResponseError } from '@n8n/rest-api-client/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -452,5 +453,95 @@ describe('useAgentHeldActions', () => {
 		expect(await secondCommit).toBe(true);
 		expect(state.committingReplyId.value).toBeNull();
 		expect(state.committedByReply.value).toEqual({ 'reply-2': response });
+	});
+
+	it('shows an error and keeps the modal open when there is no test chat session', async () => {
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref(undefined),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+
+		expect(commitAgentTestRunActionsMock).not.toHaveBeenCalled();
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(state.commitError.value).toBe(
+			'This test chat is no longer available. Start a new test to run these actions.',
+		);
+	});
+
+	it('shows localized text instead of the server message, and clears it on a retry', async () => {
+		commitAgentTestRunActionsMock.mockRejectedValueOnce(
+			new ResponseError('Request failed with status code 500', { httpStatusCode: 500 }),
+		);
+		const response = { committedAt: new Date().toISOString(), results: [] };
+		commitAgentTestRunActionsMock.mockResolvedValueOnce(response);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+		expect(state.commitError.value).toBe('Could not run these actions. Try again.');
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(state.committingReplyId.value).toBeNull();
+
+		expect(await state.confirmCommit()).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledTimes(2);
+		expect(state.commitError.value).toBeNull();
+		expect(state.confirmModalOpen.value).toBe(false);
+		expect(state.committedByReply.value).toEqual({ 'reply-1': response });
+	});
+
+	it('says the test chat is gone when the server cannot find the session', async () => {
+		commitAgentTestRunActionsMock.mockRejectedValueOnce(
+			new ResponseError('Test chat session not found.', { httpStatusCode: 404 }),
+		);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+		expect(state.commitError.value).toBe(
+			'This test chat is no longer available. Start a new test to run these actions.',
+		);
+	});
+
+	it('ignores a second confirm and a cancel while a commit is in progress', async () => {
+		let resolveCommit: (value: unknown) => void = () => {};
+		commitAgentTestRunActionsMock.mockImplementationOnce(
+			async () =>
+				await new Promise((resolve) => {
+					resolveCommit = resolve;
+				}),
+		);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		const firstCommit = state.confirmCommit();
+
+		expect(await state.confirmCommit()).toBe(false);
+		state.cancelConfirmModal();
+		state.confirmModalOpen.value = false;
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledTimes(1);
+
+		resolveCommit({ committedAt: new Date().toISOString(), results: [] });
+		expect(await firstCommit).toBe(true);
+		expect(state.confirmModalOpen.value).toBe(false);
 	});
 });
