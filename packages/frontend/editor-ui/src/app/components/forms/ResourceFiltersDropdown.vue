@@ -126,7 +126,7 @@ watch(filtersLength, (value) => {
 </script>
 
 <template>
-	<N8nPopover width="304px" :content-class="$style['popover-content']" align="end">
+	<N8nPopover width="304px" align="end">
 		<template #trigger>
 			<span :class="$style['trigger-wrapper']">
 				<N8nTooltip>
@@ -216,7 +216,9 @@ watch(filtersLength, (value) => {
 	align-items: center;
 }
 
-.popover-content {
+// The popover scroll area clips its content, so keep the padding inside it. This leaves room
+// for the focus rings of the full-width controls.
+.filters-dropdown {
 	padding: var(--spacing--sm);
 }
 

@@ -85,6 +85,7 @@ describe('execution start (integration)', () => {
 				lifecycleEventPublisherFactory,
 				noopExecutionResponseSender,
 				{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
+				{ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 			),
 		);
 		worker.start();

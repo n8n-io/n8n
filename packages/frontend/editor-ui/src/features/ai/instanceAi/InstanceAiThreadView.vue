@@ -1213,6 +1213,7 @@ function handleNewThreadClick() {
 								:project-id="preview.activeApp.value.projectId"
 								:app-id="preview.activeApp.value.id"
 								:refresh-key="preview.appRefreshKey.value"
+								:assistant-working="preview.isActiveAppInLiveTurn.value"
 								@deleted="preview.closeTab"
 							/>
 						</div>

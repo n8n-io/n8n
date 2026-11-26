@@ -73,11 +73,12 @@ async function save(setting: PromotionProjectAccessSetting, selected: SelectValu
 	if (!values.value || !parsed.success || parsed.data === values.value[setting]) return;
 
 	const previous = values.value;
-	const next: PromotionSettings = { ...previous, [setting]: parsed.data };
-	values.value = next;
+	values.value = { ...previous, [setting]: parsed.data };
 	saving.value = true;
 	try {
-		values.value = await updatePromotionSettings(rootStore.publicApiContext, next);
+		values.value = await updatePromotionSettings(rootStore.publicApiContext, {
+			[setting]: parsed.data,
+		});
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.projectAccess.toast.saved'),
 			type: 'success',

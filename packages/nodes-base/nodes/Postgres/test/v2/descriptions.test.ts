@@ -14,6 +14,20 @@ const visibleQueryParameterOptions = (typeVersion: number) =>
 			}),
 	);
 
+const isLegacyQuotedParameterOptionVisible = (typeVersion: number) => {
+	const option = (optionsCollection.options as INodeProperties[]).find(
+		({ name }) => name === 'treatQueryParametersInSingleQuotesAsText',
+	);
+	if (!option) return false;
+
+	return NodeHelpers.displayParameter(
+		{ queryReplacement: 'value' },
+		option,
+		{ typeVersion },
+		versionDescription,
+	);
+};
+
 describe('PostgresV2, Query Parameters option', () => {
 	it.each(versionDescription.version as number[])(
 		'should show exactly one Query Parameters option at v%s',
@@ -25,6 +39,7 @@ describe('PostgresV2, Query Parameters option', () => {
 	it.each([
 		{ typeVersion: 2.7, mentionsOneValue: false },
 		{ typeVersion: 2.8, mentionsOneValue: true },
+		{ typeVersion: 2.9, mentionsOneValue: true },
 	])(
 		'should tell that an expression gives one value only from v2.8 (v$typeVersion)',
 		({ typeVersion, mentionsOneValue }) => {
@@ -33,6 +48,11 @@ describe('PostgresV2, Query Parameters option', () => {
 			expect(option.hint?.includes('An expression always gives one value')).toBe(mentionsOneValue);
 		},
 	);
+
+	it('should hide the legacy quoted parameter option from v2.9', () => {
+		expect(isLegacyQuotedParameterOptionVisible(2.8)).toBe(true);
+		expect(isLegacyQuotedParameterOptionVisible(2.9)).toBe(false);
+	});
 });
 
 describe('PostgresV2, annotations', () => {

@@ -1,6 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	EngineRole,
@@ -17,6 +17,8 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	retentionPolicyFromHours,
+	runMigrations,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -34,7 +36,7 @@ import { NodeTypesProxy } from '@n8n/backend-services';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
-import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
+import { EngineSubWorkflowClient } from './engine-workflow-resolve-client';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
@@ -79,6 +81,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
+		private readonly executionsConfig: ExecutionsConfig,
 		private readonly mtls: EngineMtls,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
@@ -127,7 +130,10 @@ export class EngineV2Runtime {
 			connectTimeoutMS: databaseConnectionTimeoutMs,
 		});
 		await this.dataSource.initialize();
-		await this.dataSource.runMigrations();
+		this.logger.info(
+			'Running the engine migrations. This waits while another engine process holds the migration lock.',
+		);
+		await runMigrations(this.dataSource);
 	}
 
 	private initEngine({
@@ -142,6 +148,11 @@ export class EngineV2Runtime {
 		this.stopping = stopping;
 		const runsApi = (roles ?? ENGINE_ROLES).includes('api');
 
+		const retention = retentionPolicyFromHours({
+			enabled: this.executionsConfig.pruneData,
+			maxAgeHours: this.executionsConfig.pruneDataMaxAge,
+		});
+
 		this.engine = createEngineRuntime({
 			roles,
 			dataSource: this.dataSource,
@@ -155,6 +166,7 @@ export class EngineV2Runtime {
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
 			queues,
+			retention,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)
