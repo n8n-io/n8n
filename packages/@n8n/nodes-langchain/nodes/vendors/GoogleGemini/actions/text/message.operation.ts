@@ -487,19 +487,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			if (fileSearchOptions) {
 				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames;
 				const metadataFilter = fileSearchOptions.metadataFilter;
-				let fileSearchStoreNames: string[] | undefined;
-				if (fileSearchStoreNamesRaw) {
-					// Core does not validate this nested field, so parse it like the editor check does
-					const validation = validateFieldType(
-						'File Search Store Names',
-						fileSearchStoreNamesRaw,
-						'array',
-					);
-					if (!validation.valid) {
-						throw new NodeOperationError(this.getNode(), validation.errorMessage, { itemIndex: i });
-					}
-					fileSearchStoreNames = validation.newValue?.map(String);
+				// Core does not validate this nested field, so parse it like the editor check does
+				const validation = validateFieldType(
+					'File Search Store Names',
+					fileSearchStoreNamesRaw,
+					'array',
+					{ blankStringAsNull: true },
+				);
+				if (!validation.valid) {
+					throw new NodeOperationError(this.getNode(), validation.errorMessage, { itemIndex: i });
 				}
+				const fileSearchStoreNames = validation.newValue?.map(String);
 
 				tools.push({
 					fileSearch: {
