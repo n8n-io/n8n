@@ -1,0 +1,29 @@
+packages/modules/promotions/frontend/src/promotionDependencyStatus.ts
+  s_4a494bfdece475::t_a7798ef6bafc6c 1-38
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.test.ts
+  s_4a494bfdece475::t_aec47a89199fd3 11,158-160,162-172,292-316
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.vue
+  s_4a494bfdece475::t_ea2909992c876d 184
+packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.test.ts
+  s_4a494bfdece475::t_e2dc11b635714b 1-79
+packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.vue
+  s_4a494bfdece475::t_3253dbc9b142ce 5,7,16-23,27-40,60,70-78,116-133
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_fe2873b9e730ba 24-28,126,244,250,256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e17edd82138185355fd82ed694adf506d134c02",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
