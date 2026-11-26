@@ -1,5 +1,6 @@
 import {
 	parseSkillWorkflowMentions,
+	sanitizeAgentToolName,
 	type AgentJsonConfig,
 	type AgentJsonWorkflowToolConfig,
 	type AgentSkill,
@@ -57,12 +58,24 @@ function findMentionedWorkflows(
 	return mentioned;
 }
 
+function configuredToolNames(config: AgentJsonConfig): Set<string> {
+	return new Set(
+		(config.tools ?? []).map((tool) => {
+			if (tool.type === 'workflow') return sanitizeAgentToolName(tool.name ?? tool.workflow);
+			if (tool.type === 'node') return sanitizeAgentToolName(tool.name);
+			return tool.id;
+		}),
+	);
+}
+
 function toSkillWorkflowTools(
 	mentioned: MentionedWorkflows,
 	attached: Set<string>,
+	takenNames: Set<string>,
 ): SkillWorkflowTool[] {
 	return [...mentioned]
 		.filter(([workflowId]) => !attached.has(workflowId))
+		.filter(([workflowId]) => !takenNames.has(`workflow_${workflowId}`))
 		.map(([workflowId, { name, skillId, skillName }]) => ({
 			skillId,
 			tool: {
@@ -82,6 +95,7 @@ export function findSkillWorkflowTools(
 	return toSkillWorkflowTools(
 		findMentionedWorkflows(config, skills),
 		directWorkflowIds(config, new Map()),
+		configuredToolNames(config),
 	);
 }
 
@@ -105,6 +119,7 @@ export function withSkillWorkflowTools(
 	const skillTools = toSkillWorkflowTools(
 		mentioned,
 		directWorkflowIds(config, workflowsByName),
+		configuredToolNames(config),
 	).map(({ tool }) => tool);
 	return { ...config, tools: [...directTools, ...skillTools] };
 }
