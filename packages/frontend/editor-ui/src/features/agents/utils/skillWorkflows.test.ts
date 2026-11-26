@@ -62,6 +62,22 @@ describe('findSkillWorkflows', () => {
 		]);
 	});
 
+	it('leaves out a workflow that a name-only direct tool attaches by its current name', () => {
+		const skills = [
+			{
+				id: 'skill-1',
+				skill: skill('Skill', '[Old name](n8n://workflow/wf1) [Two](n8n://workflow/wf2)'),
+			},
+		];
+		const nameOnlyTool: AgentJsonToolRef = { type: 'workflow', workflow: 'Get code' };
+		const workflowName = (workflowId: string) => (workflowId === 'wf1' ? 'Get code' : undefined);
+
+		expect(findSkillWorkflows(skills, [nameOnlyTool])).toHaveLength(2);
+		expect(findSkillWorkflows(skills, [nameOnlyTool], workflowName)).toEqual([
+			expect.objectContaining({ workflowId: 'wf2' }),
+		]);
+	});
+
 	it('skips skill text that is not a string', () => {
 		const malformed = {
 			name: 'Malformed',

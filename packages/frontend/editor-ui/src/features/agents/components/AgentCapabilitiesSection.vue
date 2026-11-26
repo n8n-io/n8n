@@ -423,18 +423,23 @@ const workflowRows = computed<SingleToolRow[]>(() =>
 	).filter((row): row is SingleToolRow => !row.isGrouped),
 );
 
-const skillWorkflows = computed(() =>
-	props.showSkillWorkflows &&
-	posthogStore.isVariantEnabled(
-		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
-		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
-	)
-		? findSkillWorkflows(props.skills, props.tools)
-		: [],
+const skillWorkflowsEnabled = computed(
+	() =>
+		props.showSkillWorkflows &&
+		posthogStore.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		),
 );
 
 const { workflowName } = useSkillWorkflowNames(() =>
-	skillWorkflows.value.map(({ workflowId }) => workflowId),
+	skillWorkflowsEnabled.value
+		? findSkillWorkflows(props.skills, props.tools).map(({ workflowId }) => workflowId)
+		: [],
+);
+
+const skillWorkflows = computed(() =>
+	skillWorkflowsEnabled.value ? findSkillWorkflows(props.skills, props.tools, workflowName) : [],
 );
 
 const skillWorkflowRows = computed(() =>

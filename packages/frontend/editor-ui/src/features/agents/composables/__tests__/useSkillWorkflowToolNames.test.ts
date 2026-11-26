@@ -68,17 +68,21 @@ describe('useSkillWorkflowToolNames', () => {
 		expect(skillWorkflowName('workflow_wf2')).toBe('Notify team');
 	});
 
-	it('keeps the tool name when the workflow cannot be read', async () => {
-		searchWorkflows.mockRejectedValue(new Error('Forbidden'));
+	it('keeps the tool name when the workflow cannot be read, and requests it again later', async () => {
+		searchWorkflows.mockRejectedValueOnce(new Error('Network error'));
+		searchWorkflows.mockResolvedValueOnce([{ id: 'wf3', name: 'Lookup order' }]);
 		const toolNames = ref(['workflow_wf3']);
 
 		const { skillWorkflowName } = useInScope(() => toolNames.value);
 		await flushPromises();
+
+		expect(skillWorkflowName('workflow_wf3')).toBeUndefined();
+
 		toolNames.value = ['workflow_wf3', 'send_report'];
 		await flushPromises();
 
-		expect(searchWorkflows).toHaveBeenCalledTimes(1);
-		expect(skillWorkflowName('workflow_wf3')).toBeUndefined();
+		expect(searchWorkflows).toHaveBeenCalledTimes(2);
+		expect(skillWorkflowName('workflow_wf3')).toBe('Lookup order');
 	});
 
 	it('requests the names of many workflows in batches of 50', async () => {
