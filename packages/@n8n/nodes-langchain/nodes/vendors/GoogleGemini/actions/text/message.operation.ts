@@ -166,6 +166,7 @@ const properties: INodeProperties[] = [
 						description:
 							'The file search store names to use for the file search. File search stores are managed via Google AI Studio.',
 						type: 'json',
+						validateType: 'array',
 						default: '[]',
 						required: true,
 					},
@@ -488,9 +489,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				const metadataFilter = fileSearchOptions.metadataFilter;
 				let fileSearchStoreNames: string[] | undefined;
 				if (fileSearchStoreNamesRaw) {
-					const parsed = jsonParse(fileSearchStoreNamesRaw, {
-						errorMessage: 'Failed to parse file search store names',
-					});
+					// Core does not validate this nested field, so an expression can return an array
+					const parsed =
+						typeof fileSearchStoreNamesRaw === 'string'
+							? jsonParse(fileSearchStoreNamesRaw, {
+									errorMessage: 'Failed to parse file search store names',
+								})
+							: fileSearchStoreNamesRaw;
 					if (Array.isArray(parsed)) {
 						fileSearchStoreNames = parsed;
 					}

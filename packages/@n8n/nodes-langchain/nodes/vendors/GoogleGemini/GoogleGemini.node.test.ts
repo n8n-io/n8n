@@ -609,7 +609,7 @@ describe('GoogleGemini Node', () => {
 						case 'builtInTools':
 							return {
 								fileSearch: {
-									fileSearchStoreNames: '["store1"]',
+									fileSearchStoreNames: ['store1'],
 									metadataFilter: 'author="Robert Graves"',
 								},
 							};

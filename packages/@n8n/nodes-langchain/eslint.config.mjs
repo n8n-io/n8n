@@ -38,7 +38,6 @@ const jsonValidateTypePending = [
 	'./nodes/output_parser/OutputParserStructured/**',
 	'./nodes/vector_store/VectorStoreMongoDBAtlas/**',
 	'./nodes/vector_store/VectorStoreQdrant/**',
-	'./nodes/vendors/GoogleGemini/**',
 	'./nodes/vendors/OpenAi/**',
 ];
 
