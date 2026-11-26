@@ -269,7 +269,7 @@ describe('AgentHeldActionsTray', () => {
 
 	it('does not emit run-actions while the run is disabled', async () => {
 		const { getByTestId, emitted, rerender } = renderTray({
-			props: { actions: sampleActions, runDisabled: true },
+			props: { actions: sampleActions, complete: false, runDisabled: true },
 		});
 
 		await fireEvent.click(getByTestId('agent-held-actions-toggle'));
@@ -278,7 +278,7 @@ describe('AgentHeldActionsTray', () => {
 		expect(emitted('run-actions')).toBeUndefined();
 		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
 
-		await rerender({ runDisabled: false });
+		await rerender({ complete: true, runDisabled: false });
 		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
 			agentId: 'agent-1',
 			actionCount: 2,
@@ -294,6 +294,30 @@ describe('AgentHeldActionsTray', () => {
 		await rerender({ actions: [...sampleActions] });
 
 		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
+	});
+
+	it('does not track a reply from history that waits for the test chat session', async () => {
+		// Run stays disabled until the session id arrives, but the reply was already complete.
+		const { getByTestId, rerender } = renderTray({
+			props: { actions: sampleActions, complete: true, runDisabled: true },
+		});
+		await rerender({ complete: true, runDisabled: false });
+
+		expect(getByTestId('agent-held-actions-count')).toHaveTextContent('2 actions on hold');
+		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
+	});
+
+	it('tracks a streamed reply once when it completes, even before the session arrives', async () => {
+		const { rerender } = renderTray({
+			props: { actions: sampleActions, complete: false, runDisabled: true },
+		});
+		await rerender({ complete: true, runDisabled: true });
+		await rerender({ complete: true, runDisabled: false });
+
+		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
 	});
 
 	it('updates in place to the done count and done summary after commit', () => {

@@ -31,12 +31,15 @@ const props = withDefaults(
 		actions: AgentHeldAction[];
 		committed?: AgentTestRunCommitResponse;
 		busy?: boolean;
-		/** True while the reply can still get more held actions. The run must wait for all of them. */
+		/** False while the reply streams and can still get more held actions. */
+		complete?: boolean;
+		/** Disables the Run button only, e.g. while the reply streams or the chat has no session. */
 		runDisabled?: boolean;
 	}>(),
 	{
 		committed: undefined,
 		busy: false,
+		complete: true,
 		runDisabled: false,
 	},
 );
@@ -63,16 +66,16 @@ const appIconActions = computed<AgentHeldAction[]>(() => {
 
 // Fires once, when a reply that ran in this session gets all its held actions and they have
 // not run. A reply from history mounts complete, so a reload or remount does not track it again.
-let ranInSession = props.runDisabled;
+let ranInSession = !props.complete;
 let shownTracked = false;
 watch(
-	() => props.runDisabled,
-	(disabled) => {
-		if (disabled) ranInSession = true;
+	() => props.complete,
+	(complete) => {
+		if (!complete) ranInSession = true;
 	},
 );
 watch(
-	() => props.actions.length > 0 && !props.runDisabled && !props.committed,
+	() => props.actions.length > 0 && props.complete && !props.committed,
 	(shown) => {
 		if (!shown || shownTracked || !ranInSession) return;
 		shownTracked = true;

@@ -3769,6 +3769,7 @@ useKeybindings({
 							:actions="extractHeldActions(toolCalls)"
 							:committed="heldActionsState.committedByReply.value[groupId]"
 							:busy="heldActionsState.committingReplyId.value === groupId"
+							:complete="complete"
 							:run-disabled="!complete || !effectiveSessionId"
 							@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
 						/>
@@ -3950,6 +3951,7 @@ useKeybindings({
 									:actions="extractHeldActions(toolCalls)"
 									:committed="heldActionsState.committedByReply.value[groupId]"
 									:busy="heldActionsState.committingReplyId.value === groupId"
+									:complete="complete"
 									:run-disabled="!complete || !effectiveSessionId"
 									@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
 								/>
