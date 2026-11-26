@@ -595,6 +595,8 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 						</DropdownMenuItems>
 						<slot v-if="slots.footer" name="footer" />
 					</div>
+					<!-- A searchable list scrolls inside its own content, so the footer stays below it. -->
+					<slot v-if="searchable && slots.footer" name="footer" />
 				</template>
 			</DropdownMenuContent>
 		</DropdownMenuPortal>

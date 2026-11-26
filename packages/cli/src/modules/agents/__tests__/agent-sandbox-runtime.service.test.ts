@@ -40,9 +40,11 @@ const otherPrincipalHash = hashAgentSandboxPrincipal({
 	type: 'n8n-user',
 	userId: 'user/123:raw',
 });
-const workspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
-const otherWorkspaceSandboxId = '4197eecc-3092-54b8-9196-a4fecccea156';
-const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
+const publicWorkspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
+const publicKnowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
+const workspaceSandboxId = '1e99acd3-e09d-5d6a-90dd-6767c2865bac';
+const otherWorkspaceSandboxId = '627f3230-e7ec-5b27-83f3-15958c492912';
+const knowledgeSandboxId = '2aad0203-68a6-5485-bb9b-dd4e05f00e09';
 
 type TestWorkspaceSandbox = WorkspaceSandbox &
 	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'deleteRemote' | 'executeCommand'>>;
@@ -95,6 +97,7 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
+			sandboxEgressPolicy: 'opt-in',
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -127,6 +130,129 @@ describe('AgentSandboxRuntimeService', () => {
 		sandbox = makeSandbox();
 		createSandboxMock.mockResolvedValue(sandbox);
 		createFilesystemMock.mockReturnValue(mock<WorkspaceFilesystem>());
+	});
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under disabled policy, blocks %s egress for workspace and knowledge sandboxes even if an agent requests it',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'disabled' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const workspace = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash, {
+				sandboxEgress: true,
+			});
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(workspace.egressEnabled).toBe(false);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'none',
+				'none',
+			]);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under opt-in policy, keeps %s workspace egress off by default and enables it only when the agent opts in',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'opt-in' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const defaultWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+			);
+			const optedInWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+				{ sandboxEgress: true },
+			);
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(defaultWorkspace.egressEnabled).toBe(false);
+			expect(optedInWorkspace.egressEnabled).toBe(true);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'none',
+				'public',
+				'none',
+			]);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
+				provider === 'daytona'
+					? [
+							`agent-ws-${workspaceSandboxId}`,
+							`agent-ws-${publicWorkspaceSandboxId}`,
+							`agent-kb-${knowledgeSandboxId}`,
+						]
+					: [workspaceSandboxId, publicWorkspaceSandboxId, knowledgeSandboxId],
+			);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under opt-out policy, keeps %s public workspace identity by default, lets an agent disable egress, and keeps knowledge egress disabled',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'opt-out' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const defaultWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+			);
+			const optedOutWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+				{ sandboxEgress: false },
+			);
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(defaultWorkspace.egressEnabled).toBe(true);
+			expect(optedOutWorkspace.egressEnabled).toBe(false);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'public',
+				'none',
+				'none',
+			]);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
+				provider === 'daytona'
+					? [
+							`agent-ws-${publicWorkspaceSandboxId}`,
+							`agent-ws-${workspaceSandboxId}`,
+							`agent-kb-${knowledgeSandboxId}`,
+						]
+					: [publicWorkspaceSandboxId, workspaceSandboxId, knowledgeSandboxId],
+			);
+		},
+	);
+
+	it('uses the same restricted sandbox identities across service instances', async () => {
+		const first = makeService();
+		const second = makeService();
+
+		const firstWorkspace = await first.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const secondWorkspace = await second.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const firstKnowledge = await first.acquireKnowledgeSandbox(projectId, agentId);
+		const secondKnowledge = await second.acquireKnowledgeSandbox(projectId, agentId);
+
+		expect(firstWorkspace.cacheKey).toBe(secondWorkspace.cacheKey);
+		expect(firstKnowledge.cacheKey).toBe(secondKnowledge.cacheKey);
+		expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual([
+			`agent-ws-${workspaceSandboxId}`,
+			`agent-ws-${workspaceSandboxId}`,
+			`agent-kb-${knowledgeSandboxId}`,
+			`agent-kb-${knowledgeSandboxId}`,
+		]);
 	});
 
 	it('creates and starts the deterministic direct-mode Daytona knowledge sandbox', async () => {
@@ -351,8 +477,12 @@ describe('AgentSandboxRuntimeService', () => {
 		await service.destroyKnowledgeSandbox(projectId, agentId);
 
 		expect(destroyedIds).toEqual([
+			`agent-ws-${publicWorkspaceSandboxId}`,
+			publicWorkspaceSandboxId,
 			`agent-ws-${workspaceSandboxId}`,
 			workspaceSandboxId,
+			`agent-kb-${publicKnowledgeSandboxId}`,
+			publicKnowledgeSandboxId,
 			`agent-kb-${knowledgeSandboxId}`,
 			knowledgeSandboxId,
 		]);

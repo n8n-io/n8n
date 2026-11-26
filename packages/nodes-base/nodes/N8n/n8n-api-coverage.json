@@ -377,6 +377,12 @@
 		"POST /promotions/environments/{promotionEnvironmentId}/changes/details": {
 			"status": "gap"
 		},
+		"GET /promotions/reviews": {
+			"status": "gap"
+		},
+		"GET /promotions/reviews/{promotionReviewId}": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},

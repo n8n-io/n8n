@@ -318,6 +318,15 @@ export const InstanceAiModule = defineFrontendModule({
 			useAssistantAgentThreadsStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
 			useInstanceAiStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
 		},
+		// Title generation stores the title of a new thread while its first turn
+		// runs. The push lets the lists show it at once. The store ignores
+		// threads of other agents.
+		agentThreadTitleUpdated: async (event) => {
+			const { useAssistantAgentThreadsStore } = await import(
+				'./assistantAgent/assistantAgentThreads.store'
+			);
+			useAssistantAgentThreadsStore().applyGeneratedTitle(event.data);
+		},
 		instanceAiMcpToolCallFailed: async (event) => {
 			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
 			useInstanceAiMcpStore().handleToolCallFailed(event.data.connectionId);

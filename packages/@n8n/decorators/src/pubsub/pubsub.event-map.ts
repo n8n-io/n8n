@@ -189,6 +189,11 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'relay-agent-thread-title-update': {
+		data: PushPayload<'agentThreadTitleUpdated'>;
+		userIds: string[];
+	};
+
 	'relay-agent-update': {
 		data: PushPayload<'agentUpdated'>;
 		userIds: string[];

@@ -34,6 +34,7 @@ const backgroundStateSchema = z.object({
 	runtimeSnapshot: z.string().optional(),
 	difficulty: z.enum(SUB_AGENT_TASK_DIFFICULTIES).optional(),
 	sharedWorkspace: z.boolean(),
+	sharedWorkspaceEgress: z.boolean().optional(),
 	messageContext: z.custom<IntegrationMessageContext>(isIntegrationMessageContext).nullable(),
 });
 
