@@ -33,6 +33,7 @@ import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimen
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/app/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
@@ -45,6 +46,7 @@ import {
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { useNodeVersionPickerFlag } from '@/features/ndv/settings/composables/useNodeVersionPickerFlag';
 import { getNodeVersionChoices } from '@/features/ndv/settings/nodeVersionPicker.utils';
+import { mapLegacyConnectionToCanvasConnection } from '@/features/workflows/canvas/canvas.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -151,6 +153,7 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const route = useRoute();
 const nodeSettingsParameters = useNodeSettingsParameters();
+const canvasOperations = useCanvasOperations();
 const isVersionPickerEnabled = useNodeVersionPickerFlag();
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
@@ -694,6 +697,7 @@ const applyNodeVersion = (targetVersion: number) => {
 		parameters: carriedParameters,
 		setAside,
 		changedDefaults,
+		droppedCredentials,
 	} = NodeHelpers.carryOverNodeParameters(
 		{ ...currentNode, parameters: savedParameters ?? {} },
 		currentType,
@@ -710,18 +714,56 @@ const applyNodeVersion = (targetVersion: number) => {
 		targetType,
 	);
 
-	if (ndvStore.value.activeNodeName === currentNode.name) {
-		ndvStore.value.setNodeVersionChange(currentNode.id, {
-			setAside,
-			changedDefaults,
-			fromVersion: currentNode.typeVersion,
-		});
-	}
+	const fromVersion = currentNode.typeVersion;
 	workflowDocumentStore.value.setNodeTypeVersion(
 		currentNode.name,
 		targetVersion,
 		targetParameters ?? carriedParameters,
 	);
+
+	// The ports can depend on the parameters of the node, so read them after the write.
+	const updatedNode = workflowDocumentStore.value.getNodeByName(currentNode.name) ?? currentNode;
+	const workflow = { expression: workflowDocumentStore.value.getExpressionHandler() };
+	// A port expression that gives no list did not resolve. Keep every connection then.
+	const arePortsKnown = [targetType.inputs, targetType.outputs].every((ports) => {
+		if (Array.isArray(ports)) return true;
+		try {
+			return Array.isArray(
+				workflow.expression.getSimpleParameterValue(updatedNode, ports, 'internal', {}),
+			);
+		} catch {
+			return false;
+		}
+	});
+	const unfitConnections = arePortsKnown
+		? NodeHelpers.getUnfitNodeConnections(
+				currentNode.name,
+				workflowDocumentStore.value.connectionsBySourceNode,
+				NodeHelpers.getNodeInputs(workflow, updatedNode, targetType),
+				NodeHelpers.getNodeOutputs(workflow, updatedNode, targetType),
+			)
+		: [];
+	const removedConnections: typeof unfitConnections = [];
+	for (const connection of unfitConnections) {
+		const sourceNode = workflowDocumentStore.value.getNodeByName(connection[0].node);
+		const targetNode = workflowDocumentStore.value.getNodeByName(connection[1].node);
+		if (!sourceNode || !targetNode) continue;
+		canvasOperations.deleteConnection(
+			mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection),
+			{ validateNodeGroups: false },
+		);
+		removedConnections.push(connection);
+	}
+
+	if (ndvStore.value.activeNodeName === currentNode.name) {
+		ndvStore.value.setNodeVersionChange(currentNode.id, {
+			setAside,
+			changedDefaults,
+			removedConnections,
+			droppedCredentials,
+			fromVersion,
+		});
+	}
 
 	// The node object keeps its identity, so the node watcher does not run.
 	setNodeValues();

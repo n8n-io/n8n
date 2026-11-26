@@ -59,7 +59,13 @@ describe('ndv.store', () => {
 	});
 
 	describe('node version changes', () => {
-		const change = { setAside: [], changedDefaults: [], fromVersion: 1 };
+		const change = {
+			setAside: [],
+			changedDefaults: [],
+			removedConnections: [],
+			droppedCredentials: [],
+			fromVersion: 1,
+		};
 
 		const createStores = () => {
 			const id = createWorkflowDocumentId('wf-version-change');

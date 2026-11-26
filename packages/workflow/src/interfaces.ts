@@ -2952,6 +2952,15 @@ export interface NodeParametersCarryOver {
 	}>;
 	/** Parameter issues of the node in the target version. */
 	issues: INodeIssues | null;
+	/**
+	 * Credential types on the node that the current version uses and the target version does not use.
+	 * These are keys of `node.credentials`.
+	 * If the types that the current version uses are not known, every key that the target version does not use is listed.
+	 * If the types that the target version uses are not known, the list is empty.
+	 * The list holds no credential id, name or data.
+	 * The entries stay on the node. A consumer must check them against the current node state.
+	 */
+	droppedCredentials: string[];
 }
 
 export interface IWorkflowIssues {

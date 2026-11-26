@@ -1,4 +1,4 @@
-import type { NodeParametersCarryOver } from 'n8n-workflow';
+import type { IConnection, NodeParametersCarryOver } from 'n8n-workflow';
 
 export type InputPanel = {
 	nodeName?: string;
@@ -37,4 +37,6 @@ export type MainPanelDimensions = Record<
 /** What a node version update set aside or changed, kept to show in the node settings. */
 export type NodeVersionChange = Omit<NodeParametersCarryOver, 'parameters' | 'issues'> & {
 	fromVersion: number;
+	/** The `[source, target]` pairs that the update removed. */
+	removedConnections: Array<[IConnection, IConnection]>;
 };

@@ -1,6 +1,6 @@
 import { within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -65,7 +65,20 @@ const typeV2 = describeVersion(2, [
 	},
 	{ displayName: 'Verbose', name: 'verbose', type: 'boolean', default: true },
 	{ displayName: 'Token', name: 'token', type: 'string', default: '', required: true },
+	{
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		default: 'none',
+		options: [
+			{ name: 'None', value: 'none' },
+			{ name: 'Basic Auth', value: 'basicAuth' },
+		],
+	},
 ]);
+typeV2.credentials = [
+	{ name: 'httpBasicAuth', displayOptions: { show: { authentication: ['basicAuth'] } } },
+];
 
 const setAside: NodeVersionChange['setAside'] = [
 	{ name: 'legacyField', path: ['legacyField'], displayName: 'Legacy Field', value: 'abc' },
@@ -89,8 +102,15 @@ const changedDefaults: NodeVersionChange['changedDefaults'] = [
 ];
 
 const RED_HEADLINE = 'Updated to version 2. Set the highlighted parameters below.';
+const AUTHENTICATION_HEADLINE = 'Updated to version 2. Set the authentication again.';
 const GREEN_HEADLINE = 'Updated to version 2. All parameters are set.';
 const CLOSING_LINE = 'This version can also change how the node behaves.';
+
+const main = (node: string, index = 0) => ({ node, type: NodeConnectionTypes.Main, index });
+
+const basicAuth = { httpBasicAuth: { id: '1', name: 'My Basic Auth' } };
+const droppedCredentials = ['httpBasicAuth'];
+const CREDENTIAL_HINT = 'The credential My Basic Auth is no longer used by this node.';
 
 const renderComponent = createComponentRenderer(NodeVersionChangeBanner);
 
@@ -111,7 +131,14 @@ const renderBanner = (
 				...nodeOverrides,
 			}),
 			nodeType: typeV2,
-			change: { setAside: [], changedDefaults: [], fromVersion: 1, ...change },
+			change: {
+				setAside: [],
+				changedDefaults: [],
+				removedConnections: [],
+				droppedCredentials: [],
+				fromVersion: 1,
+				...change,
+			},
 		},
 	});
 };
@@ -225,5 +252,80 @@ describe('NodeVersionChangeBanner', () => {
 			['rules.values[1].kind', MASK],
 		]);
 		expect(queryByText('abc')).not.toBeInTheDocument();
+	});
+
+	it('lists a removed connection on the output side', () => {
+		const { getByTestId } = renderBanner({
+			removedConnections: [[main('Switch', 1), main('Slack')]],
+		});
+
+		const bucket = getByTestId('node-version-change-connections');
+		expect(bucket.querySelector('summary')).toHaveTextContent('1 connection removed');
+		expect(rowTexts(bucket)).toEqual([['Switch', '→', 'Slack']]);
+	});
+
+	it('lists a removed connection on the input side', () => {
+		const { getByTestId } = renderBanner({
+			removedConnections: [
+				[main('Set'), main('Merge', 1)],
+				[main('Edit'), main('Merge', 2)],
+			],
+		});
+
+		const bucket = getByTestId('node-version-change-connections');
+		expect(bucket.querySelector('summary')).toHaveTextContent('2 connections removed');
+		expect(rowTexts(bucket)).toEqual([
+			['Set', '→', 'Merge'],
+			['Edit', '→', 'Merge'],
+		]);
+	});
+
+	it('keeps the headline when only connections were removed', () => {
+		const { getByTestId } = renderBanner({
+			removedConnections: [[main('Switch', 1), main('Slack')]],
+		});
+
+		expect(getByTestId('node-version-change-banner')).toHaveTextContent(GREEN_HEADLINE);
+		expect(getByTestId('node-version-change-connections')).toBeInTheDocument();
+	});
+
+	it('names a credential that the node no longer uses until the node uses it again', async () => {
+		const { getByTestId, queryByTestId, rerender } = renderBanner(
+			{ droppedCredentials },
+			{ credentials: basicAuth },
+		);
+
+		const banner = getByTestId('node-version-change-banner');
+		expect(getByTestId('node-version-change-unused-credential')).toHaveTextContent(CREDENTIAL_HINT);
+		expect(banner).toHaveTextContent(AUTHENTICATION_HEADLINE);
+
+		await rerender({
+			node: createTestNode({
+				type: NODE_TYPE,
+				typeVersion: 2,
+				parameters: { token: 'set', authentication: 'basicAuth' },
+				credentials: basicAuth,
+			}),
+		});
+
+		expect(queryByTestId('node-version-change-unused-credential')).not.toBeInTheDocument();
+		expect(banner).toHaveTextContent(GREEN_HEADLINE);
+	});
+
+	it('shows no credential line when the credential is not on the node', () => {
+		const { getByTestId, queryByTestId } = renderBanner({ droppedCredentials });
+
+		expect(queryByTestId('node-version-change-unused-credential')).not.toBeInTheDocument();
+		expect(getByTestId('node-version-change-banner')).toHaveTextContent(GREEN_HEADLINE);
+	});
+
+	it('asks for the highlighted parameters first when a credential is also unused', () => {
+		const { getByTestId } = renderBanner(
+			{ droppedCredentials },
+			{ parameters: { token: '' }, credentials: basicAuth },
+		);
+
+		expect(getByTestId('node-version-change-banner')).toHaveTextContent(RED_HEADLINE);
+		expect(getByTestId('node-version-change-unused-credential')).toHaveTextContent(CREDENTIAL_HINT);
 	});
 });
