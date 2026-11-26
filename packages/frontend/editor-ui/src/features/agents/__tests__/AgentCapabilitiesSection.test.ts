@@ -2032,6 +2032,14 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		);
 	});
 
+	it('shows no workflows from skills when the host turns them off', () => {
+		const wrapper = mountWithSkills([], { showSkillWorkflows: false });
+
+		expect(wrapper.find('[data-testid="agent-capabilities-skill-workflow-row"]').exists()).toBe(
+			false,
+		);
+	});
+
 	it('shows no workflows from skills when the feature flag is off', () => {
 		workflowsInSkillsEnabled.value = false;
 
