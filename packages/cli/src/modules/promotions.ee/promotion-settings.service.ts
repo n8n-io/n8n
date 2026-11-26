@@ -77,13 +77,22 @@ export class PromotionSettingsService {
 		enabled: boolean,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const before = await this.isProjectEnvironmentsEnabled(ctx);
-		await this.settingsRepository.upsertByKey(
-			PROJECT_ENVIRONMENTS_KEY,
-			String(enabled),
-			false,
-			ctx,
-		);
+		// The lock makes the read and the write one step, so two parallel writes emit the right events.
+		const before = await this.txRunner.run(ctx, async (trxCtx) => {
+			const row = await this.settingsRepository.getOrCreateWithWriteLock(
+				PROJECT_ENVIRONMENTS_KEY,
+				'false',
+				false,
+				trxCtx,
+			);
+			await this.settingsRepository.upsertByKey(
+				PROJECT_ENVIRONMENTS_KEY,
+				String(enabled),
+				false,
+				trxCtx,
+			);
+			return row.value === 'true';
+		});
 
 		if (before !== enabled) {
 			const { id, email, firstName, lastName, role } = actor;
