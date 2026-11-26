@@ -557,26 +557,24 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('keeps an execution alive until finalization and then synchronizes its title', async () => {
+		it('keeps an execution alive until finalization starts', async () => {
 			vi.useFakeTimers();
-			const titleLookupStarted = createDeferredPromise();
-			const titleLookup =
-				createDeferredPromise<Awaited<ReturnType<N8nMemoryImplementation['getThread']>>>();
+			const terminalWriteStarted = createDeferredPromise();
+			const terminalWrite = createDeferredPromise<boolean>();
 			try {
 				agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 					thread: makeThread(),
 					created: false,
-				});
-				memoryBackend.getThread.mockImplementation(async () => {
-					titleLookupStarted.resolve();
-					return await titleLookup.promise;
 				});
 				agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 				agentExecutionRepository.saveInContext.mockResolvedValue({
 					id: 'execution-1',
 				} as AgentExecution);
 				agentExecutionRepository.touchRunning.mockResolvedValue(true);
-				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+				agentExecutionRepository.updateIfRunning.mockImplementation(async () => {
+					terminalWriteStarted.resolve();
+					return await terminalWrite.promise;
+				});
 
 				const recording = service.startExecutionRecording(
 					{
@@ -591,7 +589,6 @@ describe('AgentExecutionService', () => {
 					new Date(),
 				);
 				const { executionId } = await recording;
-				expect(memoryBackend.getThread).not.toHaveBeenCalled();
 				await vi.advanceTimersByTimeAsync(30_000);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
 
@@ -614,13 +611,13 @@ describe('AgentExecutionService', () => {
 					userMessage: 'Run',
 					record: makeMessageRecord(),
 				});
-				await titleLookupStarted.promise;
+				await terminalWriteStarted.promise;
 				await vi.advanceTimersByTimeAsync(30_000);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
-				titleLookup.resolve(null);
+				terminalWrite.resolve(true);
 				await finalization;
 			} finally {
-				titleLookup.resolve(null);
+				terminalWrite.resolve(true);
 				vi.useRealTimers();
 			}
 		});
@@ -1346,10 +1343,11 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('syncs a generated title from memory on later messages when the thread has no title yet', async () => {
+		it('does not copy the memory title when the execution ends', async () => {
+			// Every recorded run passes `onThreadTitle`, which stores the title while the run is live.
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread({ title: null }),
-				created: false,
+				created: true,
 			});
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.saveInContext.mockResolvedValue({
@@ -1362,78 +1360,13 @@ describe('AgentExecutionService', () => {
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			});
-			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(true);
 
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
 				projectId: 'project-1',
-				userMessage: 'Follow up',
-				record: makeMessageRecord(),
-			});
-
-			// The repository writes only to a thread without a title, so a rename during the turn stays.
-			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalledWith(
-				'thread-1',
-				'Workflow builder chat',
-				null,
-			);
-			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).toHaveBeenCalledWith({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				threadId: 'thread-1',
-				title: 'Workflow builder chat',
-			});
-		});
-
-		it('sends no title push from the fallback when the title was already stored during the turn', async () => {
-			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
-				thread: makeThread({ title: null }),
-				created: false,
-			});
-			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.saveInContext.mockResolvedValue({
-				id: 'execution-1',
-			} as AgentExecution);
-			memoryBackend.getThread.mockResolvedValue({
-				id: 'thread-1',
-				resourceId: 'user-1',
-				title: 'Workflow builder chat',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(false);
-
-			await recordExecution({
-				threadId: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				projectId: 'project-1',
-				userMessage: 'Follow up',
-				record: makeMessageRecord(),
-			});
-
-			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalled();
-			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
-		});
-
-		it('does not sync title from memory when the thread already has a title', async () => {
-			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
-				thread: makeThread({ title: 'Existing title' }),
-				created: false,
-			});
-			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
-			agentExecutionRepository.saveInContext.mockResolvedValue({
-				id: 'execution-1',
-			} as AgentExecution);
-
-			await recordExecution({
-				threadId: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				projectId: 'project-1',
-				userMessage: 'Follow up',
+				userMessage: 'Hello',
 				record: makeMessageRecord(),
 			});
 

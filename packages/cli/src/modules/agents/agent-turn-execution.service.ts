@@ -791,18 +791,31 @@ export class AgentTurnExecutionService {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
 			await callerOnSideCallUsage?.(report);
 		};
-		// The SDK stores a generated title beside the turn. Copy it to the thread
-		// list as soon as it exists, so open lists do not wait for the turn to end.
-		const callerOnThreadTitle = turn.options.onThreadTitle;
-		turn.options.onThreadTitle = async (update: ThreadTitleUpdate) => {
+		turn.options.onThreadTitle = this.threadTitleHandler(
+			config.context,
+			turn.options.onThreadTitle,
+		);
+		return await this.startTurn(turn, config, recorder, state);
+	}
+
+	/**
+	 * The `onThreadTitle` callback of a recorded run. The SDK stores a generated
+	 * title beside the run. This copies it to the thread list as soon as it
+	 * exists, so open lists do not wait for the run to end. Every recorded run
+	 * must pass it: no other path copies the title to the thread list.
+	 */
+	threadTitleHandler(
+		context: { projectId: string; agentId: string; threadId: string },
+		callerOnThreadTitle?: (update: ThreadTitleUpdate) => void | Promise<void>,
+	): (update: ThreadTitleUpdate) => Promise<void> {
+		return async (update) => {
 			await this.agentExecutionService.applyGeneratedTitle(
-				config.context,
+				context,
 				update.title,
 				update.emoji ?? null,
 			);
 			await callerOnThreadTitle?.(update);
 		};
-		return await this.startTurn(turn, config, recorder, state);
 	}
 
 	private *streamStartTurnNotices(

@@ -966,6 +966,23 @@ describe('AgentWorkflowExecutionService', () => {
 		});
 	});
 
+	it('stores the generated title on the thread list while the run is live', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		await options.onThreadTitle?.({ threadId: 'thread-1', title: 'Rain alert', emoji: '🌧️' });
+		expect(executionService.applyGeneratedTitle).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId, agentId, threadId: 'thread-1' }),
+			'Rain alert',
+			'🌧️',
+		);
+	});
+
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
 		const { service, agentRepository, reconstructionService, agentRunTracingService } =
 			makeService();

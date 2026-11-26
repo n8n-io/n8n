@@ -1,4 +1,3 @@
-import type { Thread } from '@n8n/agents';
 import type {
 	AgentExecutionStatus,
 	AgentMessageAuthor,
@@ -138,7 +137,6 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 
 export interface AgentExecutionReservation {
 	execution: AgentExecution;
-	needsTitleSync: boolean;
 	inputMessageIds: string[];
 }
 
@@ -190,8 +188,6 @@ export class AgentExecutionService {
 
 	private readonly timelineSnapshotWrites = new Map<string, Promise<void>>();
 	private readonly pausedTimelineSnapshots = new Set<string>();
-
-	private readonly executionsNeedingTitleSync = new Set<string>();
 
 	/**
 	 * Side-call cost report ids with an in-flight transaction. Concurrent
@@ -325,7 +321,6 @@ export class AgentExecutionService {
 		}
 		return {
 			execution: inserted,
-			needsTitleSync: prepared.created || !prepared.thread.title,
 			inputMessageIds,
 		};
 	}
@@ -410,14 +405,10 @@ export class AgentExecutionService {
 	}
 
 	/** Activate only after the reservation transaction commits. */
-	activateExecution(
-		{ execution, needsTitleSync }: AgentExecutionReservation,
-		params: StartExecutionParams,
-	): void {
+	activateExecution({ execution }: AgentExecutionReservation, params: StartExecutionParams): void {
 		this.executionControllers.set(execution.id, new AbortController());
 		this.startHeartbeat(execution.id);
 		this.metrics.started(execution.id, metricsSubjectOf(params));
-		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -516,8 +507,6 @@ export class AgentExecutionService {
 		} catch (error) {
 			this.errorReporter.error(error);
 			throw error;
-		} finally {
-			this.executionsNeedingTitleSync.delete(executionId);
 		}
 	}
 
@@ -706,9 +695,6 @@ export class AgentExecutionService {
 			status,
 			duration: record.duration,
 		});
-		if (this.executionsNeedingTitleSync.has(executionId)) {
-			await this.syncTitleFromMemory(params);
-		}
 	}
 
 	/**
@@ -764,29 +750,6 @@ export class AgentExecutionService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
-	}
-
-	/**
-	 * Copy the title from the SDK memory thread to the execution thread when the
-	 * execution ends. Workflow-invoked and sub-agent runs do not report titles
-	 * through `onThreadTitle`, so this is their only path to the thread list. For
-	 * chat turns, it retries a live title write that failed.
-	 */
-	private async syncTitleFromMemory(params: RecordMessageParams): Promise<void> {
-		const { projectId, agentId, threadId } = params;
-		let memoryThread: Thread | null;
-		try {
-			memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
-		} catch {
-			// Memory thread may not exist (agent without memory configured) — ignore
-			return;
-		}
-		if (!memoryThread?.title) return;
-		const emoji =
-			memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
-				? memoryThread.metadata.emoji
-				: null;
-		await this.applyGeneratedTitle({ projectId, agentId, threadId }, memoryThread.title, emoji);
 	}
 
 	/**

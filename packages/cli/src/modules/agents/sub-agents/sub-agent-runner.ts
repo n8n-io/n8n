@@ -414,6 +414,7 @@ export class SubAgentRunner {
 					...modelStreamStallOptions(this.aiConfig),
 					executionCounter: context.executionCounter,
 					shouldPause: context.shouldPause,
+					onThreadTitle: this.turnExecutionService.threadTitleHandler(recording),
 					...(executionLinks !== undefined
 						? {
 								onSideCallUsage: (report: SideCallUsageReport) =>

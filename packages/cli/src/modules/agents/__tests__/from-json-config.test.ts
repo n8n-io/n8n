@@ -1418,7 +1418,7 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
 	});
 
-	it('uses synchronous title generation so the first message can sync the title', async () => {
+	it('generates titles without making the run wait for them', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
 		});
@@ -1433,7 +1433,7 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
+		expect(getMemoryConfig(agent)?.titleGeneration).toEqual({});
 	});
 
 	it('configures agent and memory worker models with their own credentials and projects', async () => {
