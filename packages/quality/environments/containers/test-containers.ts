@@ -25,7 +25,7 @@ import postgresVersions from './postgres-versions.json';
 /** Default images - override via TEST_IMAGE_<KEY> env vars */
 const DEFAULT_IMAGES = {
 	postgres: postgresVersions.primary,
-	redis: 'redis:alpine',
+	redis: 'redis:7.4.12-alpine',
 	caddy: 'caddy:alpine',
 	n8n: 'n8nio/n8n:local',
 	taskRunner: 'n8nio/runners:local',
@@ -97,7 +97,9 @@ function getImage<K extends keyof typeof DEFAULT_IMAGES>(key: K): string {
 		return buildRunnersImage(parseImage(resolvedN8nImage));
 	}
 
-	value = value ?? DEFAULT_IMAGES[key];
+	if (!value) {
+		value = DEFAULT_IMAGES[key];
+	}
 
 	if (key === 'n8n') {
 		resolvedN8nImage = normalizeN8nImage(value);
