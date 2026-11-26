@@ -398,12 +398,11 @@ const blockerCount = computed(() =>
 				.length
 		: missingDependencies.value.length,
 );
-// Apply always has the tab. Promote has it only when the selection has issues.
+// Both directions always have the tab, so it does not appear and disappear when the selection
+// changes. The count says how many issues there are, also when there is none.
 const showBlockersTab = computed(() => {
 	if (state.value !== 'ready') return false;
-	return props.direction === 'apply'
-		? !!scopedCheck.value
-		: missingDependencies.value.length + dependencyWarnings.value.length > 0;
+	return props.direction === 'apply' ? !!scopedCheck.value : true;
 });
 watch(showBlockersTab, (show) => {
 	if (!show) activeTab.value = 'changes';
@@ -419,7 +418,7 @@ const tabs = computed(() => [
 				{
 					value: 'blockers' as const,
 					label: i18n.baseText('promotions.preview.tab.blockers'),
-					tag: blockerCount.value > 0 ? String(blockerCount.value) : undefined,
+					tag: String(blockerCount.value),
 				},
 			]
 		: []),

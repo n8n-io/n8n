@@ -11808,6 +11808,7 @@
 	"promotions.preview.blockers.missingOnSource.apply.variable": "This variable did not exist on the source instance. Workflows that use it fail until it exists here.",
 	"promotions.preview.blockers.unresolved": "{count} issue to resolve | {count} issues to resolve",
 	"promotions.preview.blockers.none": "No issues. You can apply the selected changes.",
+	"promotions.preview.blockers.none.promote": "No issues. You can promote the selected changes.",
 	"promotions.preview.confirmInstance.title": "Apply all changes?",
 	"promotions.preview.confirmInstance.message": "This applies every change in this preview to the instance.",
 	"promotions.preview.confirmDestructive.title": "Apply data table changes?",
