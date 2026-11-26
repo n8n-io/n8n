@@ -49,7 +49,9 @@
 			"parameters": {
 				"resource": "contact",
 				"operation": "getAll",
-				"limit": 2
+				"limit": 2,
+				"filterType": "json",
+				"filterJson": "={{ { \"rules\": [{ \"LHS\": \"tags\", \"CONDITION\": \"EQUALS\", \"RHS\": \"lead\" }] } }}"
 			},
 			"id": "agilecrm-2",
 			"name": "Contact Get Many",
@@ -204,7 +206,7 @@
 				"operation": "update",
 				"dealId": "5649050225344512",
 				"jsonParameters": true,
-				"additionalFieldsJson": "{\"id\":5649050225344512,\"probability\":50}"
+				"additionalFieldsJson": "={{ { \"id\": 5649050225344512, \"probability\": 50 } }}"
 			},
 			"id": "agilecrm-10",
 			"name": "Deal Update",

@@ -169,16 +169,6 @@ export async function agileCrmApiRequestUpdate(
 	}
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
-
 export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject {
 	const rules = [];
 
