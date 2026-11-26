@@ -36,13 +36,11 @@ TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
 TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine \
 pnpm --filter n8n-playwright test:deployment tests/deployment/valkey.spec.ts
 
-# PLT-04: standalone SQLite upgrade from 2.x stable to 3.x nightly (3.x channel only)
+# PLT-04: local standalone SQLite upgrade from pinned 2.x stable to 3.x nightly
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:v3-nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:v3-nightly \
 pnpm --filter n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.spec.ts
 ```
-
-To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v3-nightly-pc`, `v3-nightly-distroless`).
 
 ## Cells
 
@@ -53,7 +51,7 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | `CRT-01` (`amd64`), `CRT-01`/`IMG-04`/`IMG-08` (`arm64`) | `cloud-image-pair.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), distroless runner, image architecture, V8 pointer compression enabled |
 | `DEP-05` | `redis-7.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`), `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `redis` and major version `7`, Bull job counter advances |
 | `DEP-06` | `valkey.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`) with `TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine`, `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `valkey` and major version `9`, Bull job counter advances |
-| `PLT-04` (`3.x` channel) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
+| `PLT-04` (local only) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
 
 ## Parameters
 
@@ -61,9 +59,9 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | --- | --- | --- |
 | `TEST_IMAGE_N8N` | `n8nio/n8n:local` | Published n8n image reference (tag or `@sha256:` digest) |
 | `TEST_IMAGE_TASK_RUNNER` | Derived from `TEST_IMAGE_N8N` | Published task-runner image reference (set explicitly for distroless or digest-pinned images) |
-| `TEST_IMAGE_N8N_UPGRADE_FROM` | `ghcr.io/n8n-io/n8n@sha256:17a3e5a8c5e2a7440cc757f5392d57b50eefdfd46eac4532a7dea9bf2735d9ae` (`2.49.7`) | Pinned 2.x source n8n image reference for `PLT-04` upgrade cell (CI resolves 2.x stable by digest) |
+| `TEST_IMAGE_N8N_UPGRADE_FROM` | `ghcr.io/n8n-io/n8n@sha256:17a3e5a8c5e2a7440cc757f5392d57b50eefdfd46eac4532a7dea9bf2735d9ae` (`2.49.7`) | Pinned 2.x source n8n image reference for the `PLT-04` upgrade cell |
 | `TEST_IMAGE_REDIS` | `redis:7.4.12-alpine` | Redis or Valkey image reference for queue-mode cells |
-| `DEPLOYMENT_CHANNEL` | `local` | Channel annotation (`master` or `3.x` in CI) |
+| `DEPLOYMENT_CHANNEL` | `local` | Channel annotation (`master` in CI) |
 | `DEPLOYMENT_ARCH` | Host arch (`amd64` on `x64`, `arm64` on `arm64`) | Expected container image architecture, annotation, and Currents group suffix |
 
 ## Layout
@@ -80,4 +78,4 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 
 ## CI
 
-`.github/workflows/test-deployment-cells.yml` ("Test: Deployment cells") runs nightly after `Docker: Build and Push` (`master`) and `Build: v3 Nightly Docker Images` (`3.x`), and supports manual `workflow_dispatch`. It resolves and pins the GHCR image digests, runs each matrix group with 0 retries, and reports to the `n8n-nightly-compatibility` Currents project (`tlfUav`).
+`.github/workflows/test-deployment-cells.yml` ("Test: Deployment cells") runs after a successful scheduled `Docker: Build and Push` run on `master`. A manual run also tests the published `master` nightly. The workflow pins the GHCR images by digest, runs each matrix group with 0 retries, and reports to the `n8n-nightly-compatibility` Currents project (`tlfUav`).

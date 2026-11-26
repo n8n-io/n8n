@@ -765,10 +765,9 @@ claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floatin
 and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
 is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
 
-`test-deployment-cells.yml` ("Test: Deployment cells") runs via `workflow_run` after
-scheduled `Docker: Build and Push` runs (`master`) and after `Build: v3 Nightly Docker Images`
-runs (`3.x`), and supports manual `workflow_dispatch` with a `channel` selector. It resolves
-and pins the published GHCR image digests, runs API-only Playwright deployment cells in
+`test-deployment-cells.yml` ("Test: Deployment cells") runs after a successful scheduled
+`Docker: Build and Push` run on `master`. Manual runs also test the published `master`
+nightly. The workflow pins the GHCR images by digest, runs API-only Playwright cells in
 `packages/quality/testing/playwright/tests/deployment/` with 0 retries, and reports to the
 separate `n8n-nightly-compatibility` Currents project (`tlfUav`).
 
