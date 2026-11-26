@@ -208,10 +208,14 @@ test.describe('Data pinning', () => {
 		}) => {
 			await setupRequirements(webhookTestRequirements);
 			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-			await n8n.canvas.activateWorkflow();
 			await n8n.canvas.openNode(NODES.WEBHOOK);
-			await n8n.ndv.getContainer().getByText('Production URL', { exact: true }).click();
+			const productionUrl = n8n.ndv.getContainer().getByRole('radio', { name: 'Production URL' });
+			await productionUrl.click();
+			await expect(productionUrl).toBeChecked();
 			const webhookUrl = await n8n.ndv.getWebhookUrl();
+			await n8n.ndv.close();
+
+			await n8n.canvas.activateWorkflow();
 			const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
 			expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);
 
