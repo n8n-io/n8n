@@ -79,9 +79,11 @@ const props = withDefaults(
 		/** Capability sections to render. */
 
 		sections?: AgentCapabilitySection[];
+		showSkillWorkflows?: boolean;
 	}>(),
 	{
 		disabled: false,
+		showSkillWorkflows: true,
 		supportsActivation: false,
 		taskRefs: () => [],
 
@@ -422,6 +424,7 @@ const workflowRows = computed<SingleToolRow[]>(() =>
 );
 
 const skillWorkflows = computed(() =>
+	props.showSkillWorkflows &&
 	posthogStore.isVariantEnabled(
 		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
 		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
