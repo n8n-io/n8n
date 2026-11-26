@@ -66,6 +66,21 @@ describe('useSkillWorkflowToolNames', () => {
 		expect(skillWorkflowName('workflow_wf3')).toBeUndefined();
 	});
 
+	it('requests the names of many workflows in batches of 50', async () => {
+		const workflowIds = Array.from({ length: 120 }, (_, index) => `batch${index}`);
+		searchWorkflows.mockImplementation(async ({ ids }: { ids: string[] }) =>
+			ids.map((id) => ({ id, name: `Workflow ${id}` })),
+		);
+
+		const { skillWorkflowName } = useInScope(() => workflowIds.map((id) => `workflow_${id}`));
+		await flushPromises();
+
+		expect(searchWorkflows.mock.calls.map(([{ ids }]) => ids.length)).toEqual([50, 50, 20]);
+		expect(searchWorkflows.mock.calls.map(([{ options }]) => options.take)).toEqual([50, 50, 20]);
+		expect(skillWorkflowName('workflow_batch0')).toBe('Workflow batch0');
+		expect(skillWorkflowName('workflow_batch119')).toBe('Workflow batch119');
+	});
+
 	it('requests nothing when the feature flag is off', async () => {
 		workflowsInSkillsEnabled.value = false;
 
