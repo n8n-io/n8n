@@ -240,7 +240,7 @@ function extractFromSkillsResult(tc: ArtifactToolCall, col: Collections): void {
 	});
 }
 
-/** Apps results: a successful `apps` create or commit. Reads and opens do not count. */
+/** App results: a successful `create_app` or `commit_app`. Reads and opens do not count. */
 function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
 	const app = getAppArtifactFromToolCall(tc);
 	if (!app) return;

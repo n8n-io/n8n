@@ -1,9 +1,22 @@
 import { CacheService } from './cache/cache.service';
-import { Project, SharedWorkflowRepository } from '@n8n/db';
+import { isEntityNotFoundError, Project, SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 @Service()
 export class WorkflowProjectService {
+	private readonly privateOwners = new Map<
+		string,
+		(workflowId: string) => Promise<Project | undefined>
+	>();
+
+	/** Resolve module-owned execution graphs without granting access through workflow shares. */
+	registerPrivateOwner(
+		name: string,
+		resolve: (workflowId: string) => Promise<Project | undefined>,
+	): void {
+		this.privateOwners.set(name, resolve);
+	}
+
 	constructor(
 		private readonly cacheService: CacheService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -27,16 +40,22 @@ export class WorkflowProjectService {
 			if (project) return project;
 		}
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: { workflowId, role: 'workflow:owner' },
-			relations: ['project'],
-		});
-
-		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: { ...sharedWorkflow.project },
-		});
-
-		return sharedWorkflow.project;
+		try {
+			const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
+				where: { workflowId, role: 'workflow:owner' },
+				relations: ['project'],
+			});
+			return await this.setWorkflowProjectCacheEntry(workflowId, sharedWorkflow.project);
+		} catch (error) {
+			if (!isEntityNotFoundError(error)) throw error;
+			for (const resolve of this.privateOwners.values()) {
+				const owner = await resolve(workflowId);
+				// Private owners follow their module's current scope. Do not cache them as shared workflows.
+				if (owner) return owner;
+			}
+			// Callers detect a workflow without an owner by this error.
+			throw error;
+		}
 	}
 
 	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {

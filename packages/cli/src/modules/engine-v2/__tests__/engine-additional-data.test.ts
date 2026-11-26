@@ -142,18 +142,19 @@ describe('EngineAdditionalDataBuilder', () => {
 	});
 
 	describe('code tasks', () => {
-		it('fails to construct when no code execution backend is set', () => {
-			expect(
-				() =>
-					new EngineAdditionalDataBuilder(
-						urlService,
-						globalConfig,
-						eventService,
-						mock<SsrfProtectionConfig>(),
-						ssrfProtectionService,
-						undefined as unknown as CodeExecutionBackend,
-					),
-			).toThrow('Code execution backend is not set');
+		it('constructs without a code execution backend, but refuses to build the data of a step', () => {
+			const builder = new EngineAdditionalDataBuilder(
+				urlService,
+				globalConfig,
+				eventService,
+				mock<SsrfProtectionConfig>(),
+				ssrfProtectionService,
+				undefined as unknown as CodeExecutionBackend,
+			);
+
+			expect(() => builder.build(context, credentialsHelper, dataTableProxyProvider)).toThrow(
+				'Code execution backend is not set',
+			);
 		});
 
 		it('asks the code execution backend whether it can run the task type', () => {

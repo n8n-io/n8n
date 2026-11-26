@@ -1,7 +1,7 @@
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { UserError } from '@n8n/errors';
 
-import { formatAndValidatePem, type KafkaCredentials } from '../../utils';
+import { formatAndValidatePem, readTlsMaterial, type KafkaCredentials } from '../../utils';
 
 /**
  * Builds the flat, dotted-key TLS/mTLS properties the library expects at the
@@ -11,18 +11,7 @@ import { formatAndValidatePem, type KafkaCredentials } from '../../utils';
 function toTlsProperties(credentials: KafkaCredentials): Partial<KafkaJS.CommonConstructorConfig> {
 	if (!credentials.ssl) return {};
 
-	const cert = credentials.cert?.trim() ? credentials.cert : undefined;
-	const key = credentials.key?.trim() ? credentials.key : undefined;
-	const ca = credentials.ca?.trim() ? credentials.ca : undefined;
-
-	// A client certificate and its private key are only meaningful together.
-	if (Boolean(cert) !== Boolean(key)) {
-		throw new UserError('Kafka mTLS needs both a client certificate and a client private key', {
-			level: 'warning',
-			description:
-				'Set both the "Client Certificate" and "Client Private Key" credential fields, or clear both.',
-		});
-	}
+	const { ca, cert, key } = readTlsMaterial(credentials, 'Kafka');
 
 	return {
 		...(ca ? { 'ssl.ca.pem': formatAndValidatePem(ca, 'CA certificate') } : {}),

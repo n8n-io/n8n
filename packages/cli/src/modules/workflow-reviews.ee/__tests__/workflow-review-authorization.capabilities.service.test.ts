@@ -76,6 +76,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 			canDecide: true,
 			decisionIneligibilityReason: null,
 			canComment: true,
+			canClose: true,
 		});
 	});
 
@@ -88,6 +89,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 			canDecide: false,
 			decisionIneligibilityReason: 'missing_reviewer_permission',
 			canComment: false,
+			canClose: false,
 		});
 	});
 
@@ -103,6 +105,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 			canDecide: false,
 			decisionIneligibilityReason: 'author',
 			canComment: true,
+			canClose: false,
 		});
 	});
 
@@ -123,6 +126,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 			canDecide: true,
 			decisionIneligibilityReason: null,
 			canComment: true,
+			canClose: true,
 		});
 	});
 
@@ -137,6 +141,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
+				canClose: false,
 			});
 			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
@@ -154,6 +159,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
+				canClose: false,
 			});
 		});
 
@@ -171,6 +177,7 @@ describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
+				canClose: false,
 			});
 		});
 	});

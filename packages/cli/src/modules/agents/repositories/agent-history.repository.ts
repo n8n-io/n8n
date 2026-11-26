@@ -142,6 +142,7 @@ export class AgentHistoryRepository {
 		});
 	}
 
+	/** One version's metadata plus its `schema`, which tells whether it carries n8n Chat. */
 	async findSummary(
 		agentId: string,
 		versionId: string,
@@ -149,7 +150,7 @@ export class AgentHistoryRepository {
 	): Promise<AgentHistory | null> {
 		return await this.table.managerFor(ctx).findOne(AgentHistory, {
 			where: { agentId, versionId },
-			select: [...versionSummaryFields],
+			select: [...versionSummaryFields, 'schema'],
 		});
 	}
 

@@ -15,6 +15,8 @@ import type { IBinaryData, IBinaryKeyData, IDataObject, INodeExecutionData } fro
 import { posix } from 'node:path';
 import { z } from 'zod';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
+
 import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
 import { AgentSandboxFilesService } from './agent-sandbox-files.service';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
@@ -35,6 +37,10 @@ export interface AgentFileScope {
 	projectId: string;
 	/** Thread of the run that called the tool. The root thread of its tree owns the file. */
 	threadId: string;
+	/** Workflow that produced the file, when the tool runs a persisted workflow. */
+	workflowId?: string;
+	/** Binary IDs that the tool execution received or created. */
+	binaryDataAccess?: string[];
 }
 
 /** A tool output item with each binary entry replaced by its file ID. */
@@ -53,6 +59,7 @@ export class AgentFileBridge {
 	constructor(
 		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly binaryDataAccessService: BinaryDataAccessService,
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
@@ -143,6 +150,21 @@ export class AgentFileBridge {
 				let file = binary.id ? stored.get(binary.id) : undefined;
 				if (!file) {
 					if (binary.id && skipped.has(binary.id)) continue;
+					if (binary.id) {
+						try {
+							await this.binaryDataAccessService.assertIsAllowed(
+								binary.id,
+								scope.workflowId,
+								scope.binaryDataAccess,
+							);
+						} catch (error) {
+							this.logger.warn('Skipped an inaccessible agent tool output file', {
+								fileName: binary.fileName ?? key,
+								error,
+							});
+							continue;
+						}
+					}
 					if (await this.isTooLarge(binary)) {
 						if (binary.id) skipped.add(binary.id);
 						skippedFiles.push({

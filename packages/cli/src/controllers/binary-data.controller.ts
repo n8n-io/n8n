@@ -43,8 +43,14 @@ export class BinaryDataController {
 	@Get('/signed', { skipAuth: true })
 	async getSigned(_: Request, res: Response, @Query { token }: BinaryDataSignedQueryDto) {
 		try {
-			const binaryDataId = this.binaryDataService.validateSignedToken(token);
+			const { id: binaryDataId, workflowId } = this.binaryDataService.validateSignedToken(token);
 			this.validateBinaryDataId(binaryDataId);
+			if (
+				workflowId &&
+				!(await this.binaryDataAccessService.isOwnedByWorkflow(workflowId, binaryDataId))
+			) {
+				return res.status(404).end();
+			}
 			await this.setContentHeaders(binaryDataId, 'download', res);
 			return await this.binaryDataService.getAsStream(binaryDataId);
 		} catch (error) {

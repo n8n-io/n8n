@@ -28,6 +28,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ensureInstanceAgent } from '@test-integration/db/agents';
 
+import { AgentApprovalCleanupService } from '@/modules/agents/approval/agent-approval-cleanup.service';
 import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -104,6 +105,46 @@ describe('Agent service accounts', () => {
 		const agent = await agentsService.create(project.id, 'Support Agent', { actor });
 
 		await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+	});
+
+	it('sends an audit event with the user who created the agent', async () => {
+		const project = await createTeamProject();
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		const agent = await agentsService.create(project.id, 'Support Agent', { actor });
+
+		const { identityId } = await agentRepo.findOneByOrFail({ id: agent.id });
+		expect(emit).toHaveBeenCalledWith('agent-service-account-created', {
+			user: actor.user,
+			serviceAccountId: identityId,
+			agentId: agent.id,
+			projectId: project.id,
+		});
+	});
+
+	it('sends an audit event with the login that created the agent', async () => {
+		const project = await createTeamProject();
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+		const agent = await agentsService.create(project.id, 'Support Agent', { actor, ctx });
+
+		expect(emit).toHaveBeenCalledWith(
+			'agent-service-account-created',
+			expect.objectContaining({ user: actor.user, loginId: 'login-1', agentId: agent.id }),
+		);
+	});
+
+	it('sends no audit event when the agent insert fails', async () => {
+		const project = await createTeamProject();
+		const existing = await agentsService.create(project.id, 'First', { actor });
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		await expect(
+			agentsService.create(project.id, 'Second', { actor, id: existing.id }),
+		).rejects.toThrow(ConflictError);
+
+		expect(emit).not.toHaveBeenCalledWith('agent-service-account-created', expect.anything());
 	});
 
 	it('gives an agent created from a complete definition a service account', async () => {
@@ -255,9 +296,26 @@ describe('Agent service accounts', () => {
 			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
 		});
 
+		it('sends an audit event that names the system', async () => {
+			const agentId = nanoid();
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+			await ensureInstanceAgent(agentId, 'Assistant');
+
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agentId });
+			expect(emit).toHaveBeenCalledWith('agent-service-account-created', {
+				user: null,
+				source: 'startup',
+				serviceAccountId: identityId,
+				agentId,
+				projectId: null,
+			});
+		});
+
 		it('creates one service account when two mains start together', async () => {
 			const agentId = nanoid();
 			const before = await countServiceAccounts();
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 			await Promise.all([
 				ensureInstanceAgent(agentId, 'Assistant'),
@@ -266,6 +324,13 @@ describe('Agent service accounts', () => {
 
 			expect(await countServiceAccounts()).toBe(before + 1);
 			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+			// The main that lost the race rolled back, so it sends no event.
+			const created = emit.mock.calls.filter(([name]) => name === 'agent-service-account-created');
+			expect(created).toHaveLength(1);
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agentId });
+			expect(created[0][1]).toEqual(
+				expect.objectContaining({ serviceAccountId: identityId, agentId }),
+			);
 		});
 
 		it('keeps the service account when the instance agent registers again', async () => {
@@ -382,6 +447,46 @@ describe('Agent service accounts', () => {
 			);
 		});
 
+		it('sends an audit event with the user and the login that deleted the agent', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+			await agentsService.delete(agent.id, owner, project.id, {}, ctx);
+
+			expect(emit).toHaveBeenCalledWith('agent-service-account-deleted', {
+				user: owner,
+				loginId: 'login-1',
+				serviceAccountId: identityId,
+				agentId: agent.id,
+				projectId: project.id,
+			});
+		});
+
+		it('sends an audit event that names the system for a SCIM deletion', async () => {
+			const project = await createTeamProject();
+			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+			await Container.get(AgentServiceAccountService).deleteForAgent(
+				await agentRepo.findOneByOrFail({ id: agent.id }),
+				{ kind: 'system', reason: 'scim' },
+				undefined,
+				{},
+				async () => {},
+			);
+
+			expect(emit).toHaveBeenCalledWith('agent-service-account-deleted', {
+				user: null,
+				source: 'scim',
+				serviceAccountId: identityId,
+				agentId: agent.id,
+				projectId: project.id,
+			});
+		});
+
 		it('keeps the agent and its service account when the removal fails', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject(undefined, owner);
@@ -398,6 +503,25 @@ describe('Agent service accounts', () => {
 			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
 		});
 
+		it('keeps the agent and its account when an approval reference remains after cleanup', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId, personalProject } = await createAgentWithServiceAccount(
+				project.id,
+			);
+			const workflow = await createWorkflow({}, project);
+			await agentRepo.update(agent.id, { approvalWorkflowId: workflow.id });
+			vi.spyOn(Container.get(AgentApprovalCleanupService), 'cleanupAgent').mockResolvedValueOnce();
+
+			await expect(agentsService.delete(agent.id, owner, project.id)).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(await agentRepo.existsBy({ id: agent.id })).toBe(true);
+			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+			expect(await dataSource().existsBy(Project, { id: personalProject.id })).toBe(true);
+		});
+
 		it('keeps the agent row when the account row cannot be deleted', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject(undefined, owner);
@@ -405,6 +529,7 @@ describe('Agent service accounts', () => {
 			vi.spyOn(Container.get(UserRepository), 'deleteAccount').mockRejectedValueOnce(
 				new Error('account delete failed'),
 			);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 			await expect(agentsService.delete(agent.id, owner, project.id)).rejects.toThrow(
 				'account delete failed',
@@ -413,6 +538,7 @@ describe('Agent service accounts', () => {
 			// Both rows go in one transaction, so a retry still finds the agent.
 			expect(await agentRepo.findOneBy({ id: agent.id })).not.toBeNull();
 			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+			expect(emit).not.toHaveBeenCalledWith('agent-service-account-deleted', expect.anything());
 		});
 
 		it('removes the service accounts of the agents of a deleted project', async () => {
@@ -420,9 +546,19 @@ describe('Agent service accounts', () => {
 			const project = await createTeamProject(undefined, owner);
 			const { identityId, personalProject } = await createAgentWithServiceAccount(project.id);
 
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+
 			await Container.get(ProjectService).deleteProject(owner, project.id);
 
 			await expectRemoved(identityId, personalProject.id);
+			expect(emit).toHaveBeenCalledWith('agent-service-account-deleted', {
+				user: owner,
+				loginId: undefined,
+				source: 'project-deletion',
+				serviceAccountId: identityId,
+				agentId: expect.any(String),
+				projectId: project.id,
+			});
 		});
 
 		it('moves the work of the service account to the target of a project deletion', async () => {
@@ -465,6 +601,15 @@ describe('Agent service accounts', () => {
 			expect(emit).toHaveBeenCalledWith(
 				'user-deleted',
 				expect.objectContaining({ user: owner, targetUserId: identityId, loginId: 'login-1' }),
+			);
+			expect(emit).toHaveBeenCalledWith(
+				'agent-service-account-deleted',
+				expect.objectContaining({
+					user: owner,
+					loginId: 'login-1',
+					source: 'project-deletion',
+					serviceAccountId: identityId,
+				}),
 			);
 		});
 
