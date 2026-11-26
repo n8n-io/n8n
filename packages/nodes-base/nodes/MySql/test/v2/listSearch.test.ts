@@ -119,6 +119,18 @@ describe('MySQL v2 / listSearch / searchTables', () => {
 		expect(mockQuery).toHaveBeenCalledWith('SHOW TABLES FROM `my.db`');
 	});
 
+	it.each([
+		['the credential database', {}, [{ TABLE_NAME: 'my.tbl' }]],
+		['the chosen database', { database: locator('other_db') }, [{ Tables_in_other_db: 'my.tbl' }]],
+	])('should return a table name with a dot as one quoted name for %s', async (_, params, rows) => {
+		const { pool } = createMockPool(rows);
+		(createPool as Mock).mockResolvedValue(pool);
+
+		const result = await searchTables.call(mockLoadOptionsFunctions('test_db', params));
+
+		expect(result).toEqual({ results: [{ name: 'my.tbl', value: '`my.tbl`' }] });
+	});
+
 	it('should return empty results when no tables match filter', async () => {
 		const { pool } = createMockPool([]);
 		(createPool as Mock).mockResolvedValue(pool);

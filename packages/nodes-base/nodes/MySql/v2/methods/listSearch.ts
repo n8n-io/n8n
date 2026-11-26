@@ -21,6 +21,12 @@ async function showNames(
 	return { results };
 }
 
+// A raw name with a dot or a backtick is split into parts when it is escaped, so it is returned quoted.
+const tableOption = (name: string) => ({
+	name,
+	value: /[.`]/.test(name) ? quoteSqlIdentifier(name) : name,
+});
+
 export async function searchTables(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -43,7 +49,7 @@ export async function searchTables(
 				filter,
 			);
 			connection.release();
-			return result;
+			return { results: result.results.map(({ name }) => tableOption(name)) };
 		}
 
 		let query = 'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ?';
@@ -60,10 +66,9 @@ export async function searchTables(
 
 		connection.release();
 
-		const results = (response as IDataObject[]).map((table) => ({
-			name: (table.table_name as string) || (table.TABLE_NAME as string),
-			value: (table.table_name as string) || (table.TABLE_NAME as string),
-		}));
+		const results = (response as IDataObject[]).map((table) =>
+			tableOption((table.table_name as string) || (table.TABLE_NAME as string)),
+		);
 
 		return { results };
 	} finally {
