@@ -49,6 +49,20 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 		});
 	}
 
+	/** Reads no remote, settings or credentials, so callers can show the result to any project reader. */
+	async findInstanceEnvironmentsForDisplay() {
+		const rows = await this.find({
+			select: { id: true, name: true, direction: true, provider: { id: true, type: true } },
+			where: { scope: 'instance' },
+			relations: { provider: true },
+		});
+		return rows.map(({ direction, name, provider }) => ({
+			direction,
+			name,
+			providerType: provider.type,
+		}));
+	}
+
 	/**
 	 * Only one instance environment may exist for each direction, so a second one
 	 * loses to the partial unique index rather than to a count check.
