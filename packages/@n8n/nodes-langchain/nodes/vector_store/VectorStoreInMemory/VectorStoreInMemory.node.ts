@@ -189,11 +189,24 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 
 		return await vectorStoreSingleton.getVectorStore(memoryKey);
 	},
+	async beforeInsert(context, embeddings, itemIndex) {
+		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
+		if (!clearStore) return;
+
+		const memoryKey = getMemoryKey(context, itemIndex);
+		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
+		// Clearing with no documents drops the buffer without inserting anything.
+		await vectorStoreInstance.addDocuments(memoryKey, [], true);
+	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const memoryKey = getMemoryKey(context, itemIndex);
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
 		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
-		await vectorStoreInstance.addDocuments(memoryKey, documents, clearStore);
+		await vectorStoreInstance.addDocuments(
+			memoryKey,
+			documents,
+			clearStore && context.getNode().typeVersion < 1.1,
+		);
 	},
 }) {}

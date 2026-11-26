@@ -107,6 +107,25 @@ export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 			},
 		);
 	},
+	async beforeInsert(context, _embeddings, itemIndex) {
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			pineconeNamespace?: string;
+			clearNamespace?: boolean;
+		};
+		if (!options.pineconeNamespace || !options.clearNamespace) return;
+
+		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+		const credentials = await context.getCredentials('pineconeApi');
+		const client = new Pinecone({ apiKey: credentials.apiKey as string });
+		const namespace = client.Index(index).namespace(options.pineconeNamespace);
+		try {
+			await namespace.deleteAll();
+		} catch (error) {
+			context.logger.info(`Namespace ${options.pineconeNamespace} does not exist yet`);
+		}
+	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
 			extractValue: true,
@@ -136,7 +155,11 @@ export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 		);
 		const pineconeIndex = client.Index(index);
 
-		if (options.pineconeNamespace && options.clearNamespace) {
+		if (
+			options.pineconeNamespace &&
+			options.clearNamespace &&
+			context.getNode().typeVersion < 1.1
+		) {
 			const namespace = pineconeIndex.namespace(options.pineconeNamespace);
 			try {
 				await namespace.deleteAll();
