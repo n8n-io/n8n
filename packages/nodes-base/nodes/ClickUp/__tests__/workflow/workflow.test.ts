@@ -6,6 +6,18 @@ describe('ClickUp > Workflows', () => {
 
 	beforeAll(() => {
 		nock('https://api.clickup.com')
+			.post('/api/v2/list/901200000003/task', {
+				name: 'JSON task',
+				custom_fields: [{ id: 'field-1', value: 'Ada' }],
+			})
+			.reply(200, { id: '86a1b2c3e' })
+			.post('/api/v2/list/901200000003/task', {
+				name: 'Expression task',
+				custom_fields: [{ id: 'field-2', value: 'Grace' }],
+			})
+			.reply(200, { id: '86a1b2c3f' });
+
+		nock('https://api.clickup.com')
 			.post('/api/v2/task/86a1b2c3d/checklist')
 			.reply(200, { checklist: { id: 'b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f' } })
 			.delete('/api/v2/checklist/b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f')

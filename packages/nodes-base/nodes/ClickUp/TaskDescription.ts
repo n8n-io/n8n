@@ -216,6 +216,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Custom Fields JSON',
 				name: 'customFieldsJson',
 				type: 'json',
+				validateType: 'array',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
