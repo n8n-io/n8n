@@ -1251,6 +1251,20 @@ describe('PromotionPreviewView', () => {
 			},
 		);
 
+		it('should say in the Apply confirmation that projects with their own Apply environment are left out', async () => {
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(instancePreview({}));
+			confirm.mockResolvedValue('cancel');
+			const { getByTestId } = await renderInstance();
+
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('left out'),
+				'Apply all changes?',
+				expect.anything(),
+			);
+		});
+
 		it('should list a deleted project with its workflows, confirm the deletion and apply the reviewed state', async () => {
 			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
 				instancePreview({
@@ -1270,6 +1284,7 @@ describe('PromotionPreviewView', () => {
 				'Apply and delete projects?',
 				expect.anything(),
 			);
+			expect(confirm.mock.calls[0][0]).toContain('Check this before you confirm the deletion');
 			expect(settingsApi.continueApplyPromotion).toHaveBeenCalledWith(
 				expect.anything(),
 				expectedSource.environmentId,

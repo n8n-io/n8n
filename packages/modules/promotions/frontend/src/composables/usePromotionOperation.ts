@@ -94,9 +94,14 @@ export function usePromotionOperation(
 				interpolate: { projects: deletedProjects.map((name) => `"${name}"`).join(', ') },
 			});
 			const answer = await message.confirm(
-				confirmDestructiveChanges
-					? `${deletion} ${i18n.baseText('promotions.preview.confirmProjectDeletion.dataTables')}`
-					: deletion,
+				[
+					deletion,
+					confirmDestructiveChanges &&
+						i18n.baseText('promotions.preview.confirmProjectDeletion.dataTables'),
+					i18n.baseText('promotions.preview.confirmProjectDeletion.ownEnvironments'),
+				]
+					.filter(Boolean)
+					.join(' '),
 				i18n.baseText('promotions.preview.confirmProjectDeletion.title'),
 				{
 					type: 'warning',
