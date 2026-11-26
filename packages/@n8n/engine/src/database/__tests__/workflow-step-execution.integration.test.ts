@@ -927,6 +927,35 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(steps[0].error).toEqual({ name: 'Error', message: 'z failed' });
 	});
 
+	it('TypeOrmStepStore.loadFailedSteps breaks a settle time tie by creation, as the view does', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const seeded = [
+			await seedStep({ executionId, nodeId: 'a', status: 'running' }),
+			await seedStep({ executionId, nodeId: 'z', status: 'running' }),
+		];
+		for (const { id } of seeded) await store.failStep(id, { name: 'Error', message: id });
+		// The same settle time for both, and the creation order opposite to the id
+		// order, so that an order by id gives the other answer.
+		const [lowerId, higherId] = seeded.map(({ id }) => id).sort();
+		const table = dataSource.getRepository(WorkflowStepExecution).metadata.tableName;
+		const setTimes = async (id: string, createdAt: string) =>
+			await dataSource.query(
+				`UPDATE ${table} SET created_at = $1, updated_at = '2026-01-01T00:00:01.000Z' WHERE id = $2`,
+				[createdAt, id],
+			);
+		await setTimes(higherId, '2026-01-01T00:00:00.100Z');
+		await setTimes(lowerId, '2026-01-01T00:00:00.300Z');
+
+		const steps = await store.loadFailedSteps(executionId);
+		const view = await viewStore().loadExecutionWithStepsView(executionId);
+
+		expect(steps.map(({ id }) => id)).toEqual([higherId, lowerId]);
+		expect(steps.map(({ id }) => id)).toEqual(
+			view.steps.filter(({ status }) => status === 'failed').map(({ id }) => id),
+		);
+	});
+
 	it('TypeOrmStepStore.loadFailedSteps returns no steps when no step failed', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

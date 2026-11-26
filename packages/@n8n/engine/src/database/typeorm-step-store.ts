@@ -565,10 +565,12 @@ export class TypeOrmStepStore implements StepStore {
 
 	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
 		// A step row is written for the last time when it settles, so `updated_at`
-		// is its settle time, as the read path takes it.
+		// is the start of the settling transaction. The order must match the read
+		// path: the view lists steps by creation, then sorts them stably by
+		// `updated_at`, so ties keep the creation order.
 		return await this.repo.find({
 			where: { executionId, status: 'failed' },
-			order: { updatedAt: 'ASC', id: 'ASC' },
+			order: { updatedAt: 'ASC', createdAt: 'ASC', nodeId: 'ASC', iteration: 'ASC' },
 		});
 	}
 }
