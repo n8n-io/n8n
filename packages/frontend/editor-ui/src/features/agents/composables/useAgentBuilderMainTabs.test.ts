@@ -39,21 +39,21 @@ describe('useAgentBuilderMainTabs', () => {
 	});
 
 	it('updates the sessions warning icon when the failure state changes', () => {
-		const hasFailedSession = ref(false);
+		const failedSessionCount = ref(0);
 		const { mainTabOptions } = useAgentBuilderMainTabs({
 			executionsCount: computed(() => 0),
-			hasFailedSession: computed(() => hasFailedSession.value),
+			failedSessionCount: computed(() => failedSessionCount.value),
 		});
 
 		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.icon).toBeUndefined();
 
-		hasFailedSession.value = true;
+		failedSessionCount.value = 2;
 		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.icon).toBe('circle-alert');
 		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.tooltip).toBe(
-			'mocked-agents.builder.executions.hasFailedSession',
+			'mocked-agentSessions.flagCard.title',
 		);
 
-		hasFailedSession.value = false;
+		failedSessionCount.value = 0;
 		expect(mainTabOptions.value.find((tab) => tab.value === 'sessions')?.icon).toBeUndefined();
 	});
 

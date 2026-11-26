@@ -45,11 +45,11 @@ function getSectionFromTab(tab: AgentBuilderMainTab['value']): AgentBuilderSecti
 
 export function useAgentBuilderMainTabs({
 	executionsCount,
-	hasFailedSession = computed(() => false),
+	failedSessionCount = computed(() => 0),
 	routeBacked = computed(() => true),
 }: {
 	executionsCount: ComputedRef<number>;
-	hasFailedSession?: ComputedRef<boolean>;
+	failedSessionCount?: ComputedRef<number>;
 	routeBacked?: ComputedRef<boolean>;
 }) {
 	const route = useRoute();
@@ -88,10 +88,14 @@ export function useAgentBuilderMainTabs({
 		{
 			label: i18n.baseText('agents.builder.header.tab.executions'),
 			value: 'sessions',
-			icon: hasFailedSession.value ? 'circle-alert' : undefined,
-			tooltip: hasFailedSession.value
-				? i18n.baseText('agents.builder.executions.hasFailedSession')
-				: undefined,
+			icon: failedSessionCount.value > 0 ? 'circle-alert' : undefined,
+			tooltip:
+				failedSessionCount.value > 0
+					? i18n.baseText('agentSessions.flagCard.title', {
+							adjustToNumber: failedSessionCount.value,
+							interpolate: { count: String(failedSessionCount.value) },
+						})
+					: undefined,
 		},
 		{
 			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),

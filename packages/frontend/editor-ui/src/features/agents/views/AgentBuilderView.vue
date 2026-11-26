@@ -1118,10 +1118,10 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
-const { hasFlags: hasSessionErrors } = useAgentAttentionFlags(projectId, agentId);
+const { count: sessionErrorCount } = useAgentAttentionFlags(projectId, agentId);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
-	hasFailedSession: hasSessionErrors,
+	failedSessionCount: sessionErrorCount,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
