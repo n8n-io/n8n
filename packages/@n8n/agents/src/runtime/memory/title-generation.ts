@@ -233,7 +233,7 @@ function firstUserText(turnDelta: AgentDbMessage[]): string | undefined {
 /**
  * Generate a title and emoji for a thread if it doesn't already have one.
  *
- * Designed to run fire-and-forget after the agent response is complete.
+ * Designed to run in the background, beside the agent loop of the run.
  * All errors are caught and logged — title generation failures never
  * block or break the agent response.
  */

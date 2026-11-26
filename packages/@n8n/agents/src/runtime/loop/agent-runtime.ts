@@ -224,6 +224,9 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
+	/** The title call that this run started. Never rejects. */
+	private titleTask?: Promise<void>;
+
 	private toolCatalog: ToolCatalog | undefined;
 
 	private runId: string;
@@ -749,7 +752,9 @@ export class AgentRuntime {
 		await this.ensureModelCost();
 		const normalizedInput = normalizeInput(input);
 		incrementMessageCount(options?.executionCounter);
-		return await this.buildMessageList(normalizedInput, options);
+		const list = await this.buildMessageList(normalizedInput, options);
+		this.startTitleGeneration(list, options);
+		return list;
 	}
 
 	/**
@@ -811,7 +816,7 @@ export class AgentRuntime {
 			modelId: this.modelIdString,
 			applyCost: (usage) => this.applyCost(usage),
 			saveToMemory: async (list, options) => await this.memory.saveToMemory(list, options),
-			maybeGenerateTitle: async (list, options) => await this.maybeGenerateTitle(list, options),
+			settleTitle: async () => await this.settleTitle(),
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (patch) => this.updateState(patch),
@@ -820,11 +825,15 @@ export class AgentRuntime {
 		};
 	}
 
-	/** Fire-and-forget (or sync, if configured) thread-title generation at end of turn. */
-	private async maybeGenerateTitle(
+	/**
+	 * Starts the thread-title call when the run starts, beside the agent loop. The
+	 * title then does not depend on how the turn ends, and a long turn shows its
+	 * title while it runs. The input is already stored, so the thread exists.
+	 */
+	private startTitleGeneration(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
-	): Promise<void> {
+	): void {
 		if (!this.config.titleGeneration || !options?.persistence?.threadId || !this.config.memory) {
 			return;
 		}
@@ -844,9 +853,12 @@ export class AgentRuntime {
 			promptCaching: this.config.promptCaching,
 		});
 		this.backgroundTasks.track(titlePromise);
-		if (this.config.titleGeneration.sync) {
-			await titlePromise;
-		}
+		this.titleTask = titlePromise;
+	}
+
+	/** With `titleGeneration.sync`, waits for the title call of this run to settle. */
+	private async settleTitle(): Promise<void> {
+		if (this.config.titleGeneration?.sync && this.titleTask) await this.titleTask;
 	}
 
 	/**
@@ -1581,6 +1593,8 @@ export class AgentRuntime {
 			finishReason,
 		});
 		await this.memory.persistTurnDelta(list, options);
+		// A suspended turn ends the run for the host, so a sync title must be stored by then too.
+		await this.settleTitle();
 	}
 
 	/**
