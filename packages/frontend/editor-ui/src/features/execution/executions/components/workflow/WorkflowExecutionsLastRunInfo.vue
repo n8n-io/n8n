@@ -32,8 +32,7 @@ function isSavingAll(
 }
 
 const isSavingAllProductionExecutions = computed(() => {
-	const { saveDataSuccessExecution, saveDataErrorExecution } =
-		workflowDocumentStore?.value?.getSettingsSnapshot() ?? {};
+	const { saveDataSuccessExecution, saveDataErrorExecution } = workflowDocumentStore.value.settings;
 	return (
 		isSavingAll(saveDataSuccessExecution, settingsStore.saveDataSuccessExecution) &&
 		isSavingAll(saveDataErrorExecution, settingsStore.saveDataErrorExecution)
@@ -44,8 +43,11 @@ const isSavingAllProductionExecutions = computed(() => {
 const HOVER_REFRESH_INTERVAL = 30 * TIME.SECOND;
 
 let lastLoadStartedAt = 0;
+// Only the latest request can write the times, so an older response cannot overwrite newer data.
+let loadSequence = 0;
 
 async function loadLastExecutionTimes() {
+	const sequence = ++loadSequence;
 	const id = workflowId.value;
 	if (!id || !workflowsStore.isWorkflowSaved[id]) return;
 
@@ -53,7 +55,7 @@ async function loadLastExecutionTimes() {
 
 	try {
 		const times = await getWorkflowStatisticsTimes(rootStore.restApiContext, id);
-		if (id !== workflowId.value) return;
+		if (sequence !== loadSequence) return;
 		lastSucceededAt.value = times.productionSuccess;
 		lastFailedAt.value = times.productionError;
 	} catch {
@@ -61,13 +63,16 @@ async function loadLastExecutionTimes() {
 	}
 }
 
+// The refresh runs only on hover. If the first load fails or finds no production execution,
+// the icon stays hidden until the workflow changes or the sidebar mounts again.
 function onIconHover() {
 	if (Date.now() - lastLoadStartedAt < HOVER_REFRESH_INTERVAL) return;
 	void loadLastExecutionTimes();
 }
 
+// Each source is compared on its own, so writes to the workflows cache do not trigger a reload.
 watch(
-	() => [workflowId.value, workflowsStore.isWorkflowSaved[workflowId.value]],
+	[() => workflowId.value, () => workflowsStore.isWorkflowSaved[workflowId.value] === true],
 	async () => {
 		lastSucceededAt.value = null;
 		lastFailedAt.value = null;

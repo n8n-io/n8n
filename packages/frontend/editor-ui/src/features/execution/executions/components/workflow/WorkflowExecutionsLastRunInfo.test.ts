@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { getWorkflowStatisticsTimes } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -106,10 +106,10 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => 'wf-1'),
 					[WorkflowDocumentStoreKey as unknown as string]: shallowRef({
-						getSettingsSnapshot: () => ({
+						settings: {
 							saveDataSuccessExecution: 'DEFAULT',
 							saveDataErrorExecution: 'DEFAULT',
-						}),
+						},
 					}),
 				},
 			},
@@ -143,5 +143,62 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 			expect(queryByTestId('last-production-execution-icon')).not.toBeInTheDocument(),
 		);
 		expect(getWorkflowStatisticsTimes).not.toHaveBeenCalled();
+	});
+
+	it('keeps the icon hidden when the request fails', async () => {
+		vi.mocked(getWorkflowStatisticsTimes).mockRejectedValue(new Error('Request failed'));
+		const { queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(getWorkflowStatisticsTimes).toHaveBeenCalled());
+		await flushPromises();
+		expect(queryByTestId('last-production-execution-icon')).not.toBeInTheDocument();
+	});
+
+	it('ignores a response that arrives after a newer request', async () => {
+		const workflowId = ref('wf-1');
+		workflowsStore.isWorkflowSaved = { 'wf-1': true, 'wf-2': true };
+		let resolveFirst: (value: Awaited<ReturnType<typeof getWorkflowStatisticsTimes>>) => void =
+			() => {};
+		vi.mocked(getWorkflowStatisticsTimes)
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+			.mockResolvedValue({
+				productionSuccess: '2026-10-25T08:00:00.000Z',
+				productionError: null,
+				manualSuccess: null,
+				manualError: null,
+			});
+		const { findByTestId, queryByTestId } = renderComponent({
+			global: { provide: { [WorkflowIdKey as unknown as string]: workflowId } },
+		});
+
+		workflowId.value = 'wf-2';
+		await flushPromises();
+		workflowId.value = 'wf-1';
+		await waitFor(() => expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(3));
+		await flushPromises();
+		resolveFirst({
+			productionSuccess: '2026-10-20T10:00:00.000Z',
+			productionError: '2026-10-21T10:00:00.000Z',
+			manualSuccess: null,
+			manualError: null,
+		});
+		await flushPromises();
+
+		await userEvent.hover(await findByTestId('last-production-execution-icon'));
+		expect(await findByTestId('last-production-success')).toHaveTextContent(
+			'Succeeded 2 hours ago',
+		);
+		expect(queryByTestId('last-production-error')).not.toBeInTheDocument();
+	});
+
+	it('does not load the times again when another workflow is added to the cache', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('last-production-execution-icon');
+
+		workflowsStore.isWorkflowSaved = { 'wf-1': true, 'wf-2': true };
+		await flushPromises();
+
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1);
+		expect(await findByTestId('last-production-execution-icon')).toBeInTheDocument();
 	});
 });
