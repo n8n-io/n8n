@@ -150,6 +150,19 @@ describe('N8nClient', () => {
 					path: 'apply/continue',
 					body: { expectedSource, confirmDestructiveChanges: true, expectedPreviewRevision },
 				},
+				{
+					title: 'posts continue with the confirmation of the missing dependencies',
+					send: async () =>
+						await client.continueApplyPackage(
+							'env-1',
+							expectedSource,
+							undefined,
+							expectedPreviewRevision,
+							true,
+						),
+					path: 'apply/continue',
+					body: { expectedSource, expectedPreviewRevision, confirmMissingDependencies: true },
+				},
 			])('$title', async ({ send, path, body }) => {
 				fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
 
@@ -201,6 +214,45 @@ describe('N8nClient', () => {
 					path: 'apply/continue',
 					body: { workflowIds: ['wf-1'], expectedSource, confirmDestructiveChanges: true },
 				},
+				{
+					title: 'continues a selection apply with the confirmation of the missing dependencies',
+					send: async () =>
+						await client.continueApplyProjectSelection(
+							'proj-1',
+							{ workflowIds: ['wf-1'] },
+							expectedSource,
+							undefined,
+							undefined,
+							true,
+						),
+					path: 'apply/continue',
+					body: { workflowIds: ['wf-1'], expectedSource, confirmMissingDependencies: true },
+				},
+				{
+					title: 'promotes a selection with the reviewed revision and the confirmation',
+					send: async () =>
+						await client.promoteProjectSelection(
+							'proj-1',
+							{ workflowIds: ['wf-1'] },
+							'promote checkout flow',
+							expectedPreviewRevision,
+							true,
+						),
+					path: 'promote',
+					body: {
+						workflowIds: ['wf-1'],
+						commitMessage: 'promote checkout flow',
+						expectedPreviewRevision,
+						confirmMissingDependencies: true,
+					},
+				},
+				{
+					title: 'promotes a selection without a confirmation by default',
+					send: async () =>
+						await client.promoteProjectSelection('proj-1', { workflowIds: ['wf-1'] }),
+					path: 'promote',
+					body: { workflowIds: ['wf-1'] },
+				},
 			])('$title', async ({ send, path, body }) => {
 				fetchMock.mockResolvedValue(jsonResponse(200, { status: 'source-changed' }));
 
@@ -211,6 +263,24 @@ describe('N8nClient', () => {
 				]);
 				const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 				expect(JSON.parse(init.body as string)).toEqual(body);
+			});
+
+			it('promotes the instance with the reviewed revision and the confirmation', async () => {
+				const refused = { status: 'missing-dependencies', environmentId: 'env-1' };
+				fetchMock.mockResolvedValue(jsonResponse(200, refused));
+
+				await expect(
+					client.promotePackage('env-1', {
+						expectedPreviewRevision,
+						confirmMissingDependencies: true,
+					}),
+				).resolves.toEqual(refused);
+
+				const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+				expect(JSON.parse(init.body as string)).toEqual({
+					expectedPreviewRevision,
+					confirmMissingDependencies: true,
+				});
 			});
 
 			it('reads the check of an instance Promote', async () => {

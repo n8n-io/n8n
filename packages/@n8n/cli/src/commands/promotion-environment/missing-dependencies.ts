@@ -1,11 +1,59 @@
-import type { PromotionDependencyWarning, PromotionMissingDependency } from '../../client';
+import { Flags } from '@oclif/core';
+
+import type {
+	PromotionBindingWarning,
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
+} from '../../client';
 
 type Operation = 'Promote' | 'Apply';
+
+const CONFIRM_DESCRIPTIONS: Record<Operation, string> = {
+	Promote:
+		'Promote without the missing dependencies of the workflows. The branch does not hold them after the Promote. Workflows that use them cannot be published where the branch is applied, until the dependencies exist there.',
+	Apply:
+		'Apply without the missing dependencies that do not stop the Apply. They stay missing on this instance. Apply does not create them. Workflows that use them cannot be published until the dependencies exist here.',
+};
+
+/** Confirms the missing dependencies, so the operation continues without them. */
+export function confirmMissingDependenciesFlag(operation: Operation) {
+	return {
+		confirmMissingDependencies: Flags.boolean({
+			description: CONFIRM_DESCRIPTIONS[operation],
+			aliases: ['confirm-missing-dependencies'],
+		}),
+	};
+}
 
 interface Section {
 	title: string;
 	description?: string;
 	entries: Array<PromotionMissingDependency | PromotionDependencyWarning>;
+}
+
+interface ListOptions {
+	/**
+	 * `false` for a list that is printed after the operation. The group descriptions tell what to
+	 * do before it, so they read wrong there.
+	 */
+	descriptions?: boolean;
+}
+
+/** The C0 and C1 control characters, DEL, and the two Unicode line separators. */
+const CONTROL_CHARACTERS = /[\p{Cc}\u2028\u2029]/gu;
+
+/**
+ * A name can hold any character, and the output has one line for each entry. Each control
+ * character shows as its escape, so a name stays on its line.
+ */
+export function escapeControlCharacters(value: string): string {
+	return value.replace(CONTROL_CHARACTERS, (character) => {
+		const escaped = JSON.stringify(character).slice(1, -1);
+		// JSON keeps DEL, the C1 characters and the line separators as they are.
+		return escaped === character
+			? `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`
+			: escaped;
+	});
 }
 
 /** A line cuts a long list, so it names a few workflows and counts the rest. */
@@ -61,9 +109,10 @@ const APPLY_CONDITIONS: Record<NonNullable<PromotionMissingDependency['condition
 export function promoteDependencyLines(
 	missingDependencies: PromotionMissingDependency[] = [],
 	warnings: PromotionDependencyWarning[] = [],
+	options: ListOptions = {},
 ): string[] {
 	const personal = inGroup(missingDependencies, 'personal');
-	return sectionLines('Promote', missingDependencies, [
+	const groups: Section[] = [
 		{
 			title: 'In another project',
 			description:
@@ -79,20 +128,20 @@ export function promoteDependencyLines(
 				: 'These dependencies are in a personal project. Move them to a team project to promote them.',
 			entries: personal,
 		},
-		{
-			title: 'Warnings',
-			description:
-				'These references point to something that does not exist on the source instance.',
-			entries: warnings,
-		},
-	]);
+	];
+	return sectionLines('Promote', missingDependencies, groups, warningsSection(warnings), options);
 }
 
-/** The list of an Apply, with the groups and the titles of the UI. Empty when nothing is missing. */
+/**
+ * The lists of an Apply, with the groups and the titles of the UI. Empty when nothing is missing.
+ * Of the Apply warnings, only `missing-on-source` is about a dependency, so the others are left out.
+ */
 export function applyDependencyLines(
 	missingDependencies: PromotionMissingDependency[] = [],
+	warnings: PromotionBindingWarning[] = [],
+	options: ListOptions = {},
 ): string[] {
-	return sectionLines('Apply', missingDependencies, [
+	const groups: Section[] = [
 		{
 			title: 'Needs your action',
 			description:
@@ -103,7 +152,14 @@ export function applyDependencyLines(
 			missingDependencies,
 			'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
 		),
-	]);
+	];
+	return sectionLines(
+		'Apply',
+		missingDependencies,
+		groups,
+		warningsSection(warnings.filter((warning) => warning.code === 'missing-on-source')),
+		options,
+	);
 }
 
 /** How many entries stop the Apply, of those that only someone with more access can resolve. */
@@ -111,6 +167,12 @@ export function countBlockingOutsideAccess(
 	missingDependencies: PromotionMissingDependency[] = [],
 ): number {
 	return inGroup(missingDependencies, 'outside-access').filter(({ blocking }) => blocking).length;
+}
+
+/** How many entries stop the operation, and how many only need a confirmation. */
+export function countByBlocking(missingDependencies: PromotionMissingDependency[] = []) {
+	const blocking = missingDependencies.filter((dependency) => dependency.blocking).length;
+	return { blocking, confirmable: missingDependencies.length - blocking };
 }
 
 function inGroup(
@@ -131,16 +193,31 @@ function outsideAccessSection(
 	};
 }
 
+function warningsSection(warnings: PromotionDependencyWarning[]): Section {
+	return {
+		title: 'Warnings',
+		description: 'These references point to something that does not exist on the source instance.',
+		entries: warnings,
+	};
+}
+
 /**
  * One block for each section that has entries, with an empty line between two blocks.
  * A newer server can send a group that this version does not know. The output must show every
  * entry, so the entries that are in no section go in a last block.
+ * The warnings always keep their description: no other text says what a warning is.
  */
 function sectionLines(
 	operation: Operation,
 	missingDependencies: PromotionMissingDependency[],
-	sections: Section[],
+	groups: Section[],
+	warnings: Section,
+	{ descriptions = true }: ListOptions,
 ): string[] {
+	const sections = [
+		...(descriptions ? groups : groups.map((group) => ({ ...group, description: undefined }))),
+		warnings,
+	];
 	const listed = new Set(sections.flatMap(({ entries }) => entries));
 	const other = missingDependencies.filter((dependency) => !listed.has(dependency));
 	return [...sections, { title: 'Other', entries: other }]
@@ -163,25 +240,30 @@ function entryLine(
 	operation: Operation,
 ): string {
 	const credentialType =
-		'credentialType' in entry && entry.credentialType ? ` (${entry.credentialType})` : '';
+		'credentialType' in entry && entry.credentialType
+			? ` (${escapeControlCharacters(entry.credentialType)})`
+			: '';
 	const dependency = operation === 'Apply' && 'reason' in entry ? entry : undefined;
 	const condition = dependency?.condition ? APPLY_CONDITIONS[dependency.condition] : undefined;
 	// The condition names the workflow by its id, so the line shows that id next to the name.
-	const id = condition && entry.id ? ` (id ${entry.id})` : '';
+	const entryId = entry.id ? escapeControlCharacters(entry.id) : undefined;
+	const id = condition && entryId ? ` (id ${entryId})` : '';
 	const workflowNames = entry.consumers.flatMap(({ workflows }) =>
-		workflows.map(({ name }) => name),
+		workflows.map(({ name }) => escapeControlCharacters(name)),
 	);
 	const facts = [
-		'project' in entry && entry.project ? `in project "${entry.project.name}"` : undefined,
+		'project' in entry && entry.project
+			? `in project "${escapeControlCharacters(entry.project.name)}"`
+			: undefined,
 		dependency ? applyReason(dependency) : undefined,
-		// A warning has no `blocking`. Only an older server sends it.
-		'blocking' in entry && entry.blocking ? `stops the ${operation}` : undefined,
+		// Nothing stops a Promote, and nothing stops on a warning.
+		dependency?.blocking ? 'stops the Apply' : undefined,
 		`used by ${listNames(workflowNames)}`,
-		condition ? `${condition} ${entry.id ?? 'this workflow'}` : undefined,
+		condition ? `${condition} ${entryId ?? 'this workflow'}` : undefined,
 	].filter((fact) => fact !== undefined);
-	const kind = KINDS[entry.kind] ?? entry.kind;
+	const kind = KINDS[entry.kind] ?? escapeControlCharacters(entry.kind);
 
-	return `  ${kind} "${entry.name}"${id}${credentialType}: ${facts.join('; ')}`;
+	return `  ${kind} "${escapeControlCharacters(entry.name)}"${id}${credentialType}: ${facts.join('; ')}`;
 }
 
 function applyReason({ reason, condition }: PromotionMissingDependency): string | undefined {
