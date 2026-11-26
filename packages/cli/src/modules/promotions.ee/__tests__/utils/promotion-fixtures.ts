@@ -13,6 +13,7 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 
 import { PromotionProviderRepository } from '../../database/repositories/promotion-provider.repository';
 import { instancePromotionExportRequest } from '../../instance-package';
+import { PromotionCredentialSelectionService } from '../../promotion-credential-selection.service';
 
 /** Stores a token provider as the providers API does, without the checks against the host. */
 export async function insertTokenProvider({
@@ -46,10 +47,14 @@ export async function insertTokenProvider({
 /** Writes the package that an instance Promote exports, without the Git work of Promote. */
 export async function writeInstancePromotionPackage(user: User, targetDir: string) {
 	await rm(targetDir, { recursive: true, force: true });
+	const projectIds = await Container.get(ProjectRepository).findTeamProjectIds();
 	await Container.get(N8nPackagesService).exportPackageToDirectory(
 		instancePromotionExportRequest({
 			user,
-			projectIds: await Container.get(ProjectRepository).findTeamProjectIds(),
+			projectIds,
+			credentialIds: await Container.get(
+				PromotionCredentialSelectionService,
+			).findSelectableIdsInProjects(user, projectIds),
 		}),
 		{ targetDir },
 	);

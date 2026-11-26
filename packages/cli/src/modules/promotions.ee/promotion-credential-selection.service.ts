@@ -18,7 +18,13 @@ export class PromotionCredentialSelectionService {
 
 	/** The ids of the credentials that the user can select in this project, in a stable order. */
 	async findSelectableIds(user: User, projectId: string): Promise<string[]> {
-		const owned = await this.findOwned(projectId);
+		return await this.findSelectableIdsInProjects(user, [projectId]);
+	}
+
+	/** The ids of the credentials that the user can select in any of these projects, sorted. */
+	async findSelectableIdsInProjects(user: User, projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+		const owned = await this.findOwned(projectIds);
 		const readable = await this.credentialsFinder.findCredentialIdsWithScopeForUser(
 			owned.map(({ id }) => id),
 			user,
@@ -37,7 +43,7 @@ export class PromotionCredentialSelectionService {
 	async assertSelectable(user: User, projectId: string, credentialIds: string[]): Promise<void> {
 		if (credentialIds.length === 0) return;
 
-		const owned = new Set((await this.findOwned(projectId)).map(({ id }) => id));
+		const owned = new Set((await this.findOwned([projectId])).map(({ id }) => id));
 		const notOwned = credentialIds.filter((id) => !owned.has(id));
 		if (notOwned.length > 0) {
 			throw new BadRequestError(
@@ -60,18 +66,16 @@ export class PromotionCredentialSelectionService {
 	 * preview shows no name or type of a credential the user cannot see, and refuses to select them.
 	 */
 	async findUnreadableOwnedIds(user: User, projectId: string): Promise<Set<string>> {
-		const ids = (await this.findOwned(projectId)).map(({ id }) => id);
+		const ids = (await this.findOwned([projectId])).map(({ id }) => id);
 		const readable = await this.credentialsFinder.findCredentialIdsWithScopeForUser(ids, user, [
 			'credential:read',
 		]);
 		return new Set(ids.filter((id) => !readable.has(id)));
 	}
 
-	/** Credentials that this project owns and that only this project can use. */
-	private async findOwned(projectId: string): Promise<CredentialsEntity[]> {
-		const owned = await this.sharedCredentialsRepository.findOwnedCredentialsByProjects([
-			projectId,
-		]);
+	/** Credentials that these projects own and that only their owner project can use. */
+	private async findOwned(projectIds: string[]): Promise<CredentialsEntity[]> {
+		const owned = await this.sharedCredentialsRepository.findOwnedCredentialsByProjects(projectIds);
 		return owned.filter(({ usageScope }) => usageScope !== 'instance');
 	}
 }

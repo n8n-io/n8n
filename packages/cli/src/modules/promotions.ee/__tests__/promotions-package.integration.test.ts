@@ -3251,6 +3251,29 @@ describe('Promote a project selection — branch effects', () => {
 		expect(after.resources.find(({ type }) => type === 'credential')).toBeUndefined();
 	});
 
+	it('promotes a project credential that no workflow uses with the whole instance', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: '={{ $vars.HEADER }}' } },
+			{ project, role: 'credential:owner' },
+		);
+
+		await service.promote(environments.promote.id, owner, { commitMessage: 'Promote all' });
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const [onBranch] = await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.credentials.fileName);
+		expect(onBranch).toMatchObject({ id: credential.id });
+		const file = jsonParse<{ data?: Record<string, string> }>(
+			await readFile(path.join(dir, 'n8n', onBranch.target, 'credential.json'), 'utf-8'),
+		);
+		expect(file.data).toEqual({ name: '={{ $vars.HEADER }}' });
+		const preview = await changeService().getPreview(owner, project.id, 'promote');
+		expect(preview.resources.find(({ type }) => type === 'credential')).toBeUndefined();
+	});
+
 	it('lists a changed expression of a promoted credential, but not a changed secret', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);

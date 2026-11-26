@@ -288,7 +288,14 @@ export class PromotionsService {
 		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				instancePromotionExportRequest({ user: actor, projectIds }),
+				instancePromotionExportRequest({
+					user: actor,
+					projectIds,
+					credentialIds: await this.credentialSelection.findSelectableIdsInProjects(
+						actor,
+						projectIds,
+					),
+				}),
 				{ targetDir: stagingFolder },
 			);
 

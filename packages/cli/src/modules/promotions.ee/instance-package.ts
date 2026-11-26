@@ -24,13 +24,20 @@ export type InstancePackage = {
 export function instancePromotionExportRequest({
 	user,
 	projectIds,
+	credentialIds,
 }: {
 	user: User;
 	projectIds: string[];
+	/**
+	 * Credentials of the projects to write although no workflow uses them. A project Promote sends
+	 * these too, so the whole-instance Promote must write them, or the project preview keeps them.
+	 */
+	credentialIds: string[];
 }): ExportPackageRequest {
 	return {
 		user,
 		projectIds,
+		projectCredentialIds: credentialIds,
 		includeAgents: false,
 		includeVariableValues: true,
 		includeTags: true,
