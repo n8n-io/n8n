@@ -143,7 +143,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, realSlack);
 		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, realGmail);
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
@@ -189,7 +189,7 @@ describe('HeldActionCommitService', () => {
 		const realSlack = vi.fn().mockResolvedValue({ ok: true });
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, realSlack);
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
