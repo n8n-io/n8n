@@ -107,7 +107,7 @@ describe('InstancePolicyTable', () => {
 	it('sorts on the Access column', async () => {
 		const { getByTestId, getByRole } = setup();
 
-		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+		await userEvent.click(getByRole('button', { name: 'Access' }));
 
 		await waitFor(() =>
 			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
@@ -121,8 +121,8 @@ describe('InstancePolicyTable', () => {
 	it('keeps the names A to Z inside each access group when the Access sort is reversed', async () => {
 		const { getByTestId, getByRole } = setup([...ROWS, row('zoomApi', 'Zoom API', 'deny')]);
 
-		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
-		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+		await userEvent.click(getByRole('button', { name: 'Access' }));
+		await userEvent.click(getByRole('button', { name: 'Access' }));
 
 		await waitFor(() =>
 			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
@@ -131,6 +131,53 @@ describe('InstancePolicyTable', () => {
 				'Airtable API',
 				'Notion API',
 			]),
+		);
+	});
+
+	it('sorts from the keyboard, from the column headers that follow the access filter', async () => {
+		const { container, getByTestId, getByRole } = setup();
+		const filter = getByRole('combobox', { name: 'Filter by access' });
+		const firstRow = getByTestId('instance-policy-open-airtableApi');
+		const follows = (a: Node, b: Node) =>
+			Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+		// The tab order is the DOM order. jsdom cannot tab from the filter: the select sets a disabled
+		// attribute on its trigger, which user-event skips. So the test lists what Tab reaches between.
+		const reachedBetween = Array.from(
+			container.querySelectorAll<HTMLElement>(
+				'button, input, select, textarea, a[href], [tabindex]',
+			),
+		).filter(
+			(element) => element.tabIndex >= 0 && follows(filter, element) && follows(element, firstRow),
+		);
+		const headers = ['Name', 'Access', 'Projects', 'Uses', 'Workflows', 'Active workflows'];
+		expect(reachedBetween).toEqual(headers.map((name) => getByRole('button', { name })));
+
+		getByRole('button', { name: 'Name' }).focus();
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'Access' })).toHaveFocus();
+
+		await userEvent.keyboard('{Enter}');
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Airtable API',
+				'Notion API',
+				'Bitly API',
+			]),
+		);
+		expect(getByRole('columnheader', { name: 'Access' })).toHaveAttribute('aria-sort', 'ascending');
+
+		await userEvent.keyboard(' ');
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Bitly API',
+				'Airtable API',
+				'Notion API',
+			]),
+		);
+		expect(getByRole('columnheader', { name: 'Access' })).toHaveAttribute(
+			'aria-sort',
+			'descending',
 		);
 	});
 
@@ -146,7 +193,7 @@ describe('InstancePolicyTable', () => {
 		];
 
 		const clickWorkflows = async (getByRole: (role: string, options?: object) => HTMLElement) =>
-			await userEvent.click(getByRole('columnheader', { name: /^Workflows/ }));
+			await userEvent.click(getByRole('button', { name: 'Workflows' }));
 
 		it('sorts the counts from low to high, with names A to Z for equal counts and unknown usage last', async () => {
 			const { getByTestId, getByRole } = setup(USAGE_ROWS);
@@ -386,7 +433,7 @@ describe('InstancePolicyTable', () => {
 		it('keeps the focus on a row that moves when the table is sorted by access', async () => {
 			const rows = [...ROWS, row('zoomApi', 'Zoom API')];
 			const { getByTestId, getByRole, rerender } = setup(rows);
-			await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+			await userEvent.click(getByRole('button', { name: 'Access' }));
 			getByTestId('instance-policy-open-airtableApi').focus();
 
 			await rerender({

@@ -291,6 +291,172 @@ describe('toV1RunExecutionData', () => {
 		});
 	});
 
+	describe('a slot that several edges feed', () => {
+		// Trigger ──► If ─true──► A ─┐
+		//               └false──► B ─┴──► C
+		const converging: WorkflowGraph = {
+			nodes: [
+				{ id: 't', name: 'Trigger', type: 'trigger' },
+				{ id: 'i', name: 'If', type: 'v1-node' },
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+				{ id: 'c', name: 'C', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 't', to: 'i', outputIndex: 0, inputIndex: 0 },
+				{ from: 'i', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'i', to: 'b', outputIndex: 1, inputIndex: 0 },
+				{ from: 'a', to: 'c', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'c', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const at = (id: string, nodeId: string, overrides: Partial<StepDetail> = {}) =>
+			step({ id, nodeId, ...overrides });
+
+		it('names the first live edge as the source when the first edge is dead', () => {
+			const data = toV1RunExecutionData(converging, [
+				at('s-t', 't'),
+				at('s-i', 'i', { outputs: [null, [{ json: { n: 2 } }]] }),
+				at('s-a', 'a', { status: 'skipped', outputs: null }),
+				at('s-b', 'b'),
+				at('s-c', 'c'),
+			]);
+
+			expect(data.resultData.runData.C[0].source).toEqual([
+				{ previousNode: 'B', previousNodeOutput: 0 },
+			]);
+		});
+
+		it('counts an edge dead when its source completed but left that output empty', () => {
+			// Trigger ──► If ─o0──► A ──► C
+			//               └─o1─────────► C
+			const ifToC: WorkflowGraph = {
+				nodes: converging.nodes.filter((node) => node.id !== 'b'),
+				edges: [
+					{ from: 't', to: 'i', outputIndex: 0, inputIndex: 0 },
+					{ from: 'i', to: 'a', outputIndex: 0, inputIndex: 0 },
+					{ from: 'i', to: 'c', outputIndex: 1, inputIndex: 0 },
+					{ from: 'a', to: 'c', outputIndex: 0, inputIndex: 0 },
+				],
+			};
+
+			const data = toV1RunExecutionData(ifToC, [
+				at('s-t', 't'),
+				at('s-i', 'i', { outputs: [[{ json: { n: 1 } }], null] }),
+				at('s-a', 'a'),
+				at('s-c', 'c'),
+			]);
+
+			expect(data.resultData.runData.C[0].source).toEqual([
+				{ previousNode: 'A', previousNodeOutput: 0 },
+			]);
+		});
+
+		it('names the first edge in concatenation order when every edge is live', () => {
+			const data = toV1RunExecutionData(converging, [
+				at('s-t', 't'),
+				at('s-i', 'i', { outputs: [[{ json: { n: 1 } }], [{ json: { n: 2 } }]] }),
+				at('s-a', 'a'),
+				at('s-b', 'b'),
+				at('s-c', 'c'),
+			]);
+
+			expect(data.resultData.runData.C[0].source).toEqual([
+				{ previousNode: 'A', previousNodeOutput: 0 },
+			]);
+		});
+	});
+
+	describe('a slot that several edges feed, around a loop', () => {
+		const pass = (
+			id: string,
+			nodeId: string,
+			iteration: number,
+			overrides: Partial<StepDetail> = {},
+		) => step({ id, nodeId, iteration, ...overrides });
+
+		it("reads the loop's done edge at the loop's last pass", () => {
+			// Trigger ──► Loop ─o1─► Body ─(back)─► Loop
+			//    │          └─o0──────────────────────► Done
+			//    └──► Side ────────────────────────────► Done
+			const afterLoop: WorkflowGraph = {
+				nodes: [
+					{ id: 't', name: 'Trigger', type: 'trigger' },
+					{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+					{ id: 'body', name: 'Body', type: 'v1-node' },
+					{ id: 'side', name: 'Side', type: 'v1-node' },
+					{ id: 'done', name: 'Done', type: 'v1-node' },
+				],
+				edges: [
+					{ from: 't', to: 'loop', outputIndex: 0, inputIndex: 0 },
+					{ from: 'loop', to: 'body', outputIndex: 1, inputIndex: 0 },
+					{ from: 'body', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+					{ from: 'loop', to: 'done', outputIndex: 0, inputIndex: 0 },
+					{ from: 't', to: 'side', outputIndex: 0, inputIndex: 0 },
+					{ from: 'side', to: 'done', outputIndex: 0, inputIndex: 0 },
+				],
+			};
+
+			const data = toV1RunExecutionData(afterLoop, [
+				pass('s-t', 't', 0),
+				pass('s-l0', 'loop', 0, { outputs: [null, [{ json: {} }]] }),
+				pass('s-b0', 'body', 0),
+				pass('s-l1', 'loop', 1, { outputs: [[{ json: {} }], null] }),
+				pass('s-side', 'side', 0),
+				pass('s-done', 'done', 0),
+			]);
+
+			expect(data.resultData.runData.Done[0].source).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 1 },
+			]);
+		});
+
+		it('reads each edge inside a loop body at the same pass', () => {
+			// Trigger ──► Loop ─o1─► If ─o0─► A ─┐
+			//                          └─o1─► B ─┴─► Join ─(back)─► Loop
+			const bodyJoin: WorkflowGraph = {
+				nodes: [
+					{ id: 't', name: 'Trigger', type: 'trigger' },
+					{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+					{ id: 'i', name: 'If', type: 'v1-node' },
+					{ id: 'a', name: 'A', type: 'v1-node' },
+					{ id: 'b', name: 'B', type: 'v1-node' },
+					{ id: 'j', name: 'Join', type: 'v1-node' },
+				],
+				edges: [
+					{ from: 't', to: 'loop', outputIndex: 0, inputIndex: 0 },
+					{ from: 'loop', to: 'i', outputIndex: 1, inputIndex: 0 },
+					{ from: 'i', to: 'a', outputIndex: 0, inputIndex: 0 },
+					{ from: 'i', to: 'b', outputIndex: 1, inputIndex: 0 },
+					{ from: 'a', to: 'j', outputIndex: 0, inputIndex: 0 },
+					{ from: 'b', to: 'j', outputIndex: 0, inputIndex: 0 },
+					{ from: 'j', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				],
+			};
+			const toB = [null, [{ json: {} }]];
+			const toA = [[{ json: {} }], null];
+			const skipped = { status: 'skipped' as const, outputs: null };
+
+			// B fires on passes 0 and 1, A on pass 2.
+			const data = toV1RunExecutionData(bodyJoin, [
+				pass('s-t', 't', 0),
+				...[0, 1, 2].flatMap((p) => [
+					pass(`s-l${p}`, 'loop', p, { outputs: [null, [{ json: {} }]] }),
+					pass(`s-i${p}`, 'i', p, { outputs: p === 2 ? toA : toB }),
+					pass(`s-a${p}`, 'a', p, p === 2 ? {} : skipped),
+					pass(`s-b${p}`, 'b', p, p === 2 ? skipped : {}),
+					pass(`s-j${p}`, 'j', p),
+				]),
+			]);
+
+			expect(data.resultData.runData.Join.map((run) => run.source)).toEqual([
+				[{ previousNode: 'B', previousNodeOutput: 0 }],
+				[{ previousNode: 'B', previousNodeOutput: 0, previousNodeRun: 1 }],
+				[{ previousNode: 'A', previousNodeOutput: 0, previousNodeRun: 2 }],
+			]);
+		});
+	});
+
 	describe('parallel branches', () => {
 		// Two branches off the trigger. Row creation order says nothing about
 		// which branch settled first.

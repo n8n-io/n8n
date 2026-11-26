@@ -8,6 +8,7 @@ import {
 	type TokenUsage,
 	type Tool,
 	type ToolCall,
+	type FinishReason,
 	type ChatModelConfig,
 	type GenerateResult,
 	type Message,
@@ -312,6 +313,11 @@ function parseTokenUsage(
 		: undefined;
 }
 
+function toFinishReason(response: OpenAIResponsesResponse): FinishReason {
+	if (response.status !== 'completed') return 'other';
+	return response.output?.some((item) => item.type === 'function_call') ? 'tool-calls' : 'stop';
+}
+
 interface OpenAIChatModelConfig extends ChatModelConfig {
 	apiKey?: string;
 	baseURL?: string;
@@ -423,7 +429,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 		return {
 			id: body.id,
-			finishReason: body.status === 'completed' ? 'stop' : 'other',
+			finishReason: toFinishReason(body),
 			usage,
 			message,
 			rawResponse: body,
@@ -527,7 +533,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 					(event as unknown as OpenAIResponsesResponse);
 				yield {
 					type: 'finish',
-					finishReason: 'stop',
+					finishReason: toFinishReason(responseData),
 					usage: parseTokenUsage(responseData.usage),
 				};
 			}
