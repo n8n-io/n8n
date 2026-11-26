@@ -11634,6 +11634,7 @@
 	"promotions.preview.tree.selectedOfTotal": "{selected} of {total} selected",
 	"promotions.preview.tree.section.workflows": "Workflows",
 	"promotions.preview.tree.otherProjects": "Other projects",
+	"promotions.preview.tree.project.locked": "You don't have permission to promote dependencies from this project.",
 	"promotions.preview.tree.group.select": "Select {group}",
 	"promotions.preview.tree.group.credential": "Credentials",
 	"promotions.preview.tree.group.dataTable": "Data tables",

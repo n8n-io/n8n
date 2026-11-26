@@ -314,6 +314,10 @@ describe('PromotionResourceTree', () => {
 			expect(within(label).getByText('Other projects')).toBeInTheDocument();
 			expect(within(label).getByRole('checkbox')).toBeDisabled();
 			expect(within(label).getByRole('checkbox')).not.toBeChecked();
+			expect(within(label).getByText('Other projects').className).toContain('muted');
+			expect(within(label).getByTestId('promotion-preview-tree-lock')).toHaveAccessibleName(
+				"You don't have permission to promote dependencies from this project.",
+			);
 		});
 
 		it('should lock a sub-workflow of another project and keep its checkbox off', () => {

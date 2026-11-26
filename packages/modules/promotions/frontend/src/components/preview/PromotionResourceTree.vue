@@ -205,9 +205,25 @@ function onToggle(resource: PromotionResource) {
 					<span :class="[$style.name, $style.static]" :style="{ '--preview-tree--indent': indent }">
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
-							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText step="xs" color="text-dark" :class="[$style.label, $style.muted]">{{
+								item.label
+							}}</N8nText>
 						</span>
 					</span>
+					<N8nTooltip placement="right" as-child>
+						<template #content>{{
+							i18n.baseText('promotions.preview.tree.project.locked')
+						}}</template>
+						<span
+							role="img"
+							tabindex="0"
+							:aria-label="i18n.baseText('promotions.preview.tree.project.locked')"
+							:class="$style.lock"
+							data-test-id="promotion-preview-tree-lock"
+						>
+							<N8nIcon icon="lock" size="small" color="text-light" />
+						</span>
+					</N8nTooltip>
 				</li>
 				<li
 					v-else-if="item.locked && !resource"
