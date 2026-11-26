@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
+import type { AgentAttentionFlagRepository } from '../repositories/agent-attention-flag.repository';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentExecutionMetrics } from '../agent-execution-metrics';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
@@ -120,6 +121,7 @@ describe('AgentExecutionService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const queueRepository = mock<AgentMessageQueueRepository>();
 	const messageRepository = mock<AgentMessageRepository>();
+	const attentionFlags = mock<AgentAttentionFlagRepository>();
 	let systemAgentRegistry: SystemAgentRegistry;
 
 	beforeEach(() => {
@@ -169,6 +171,7 @@ describe('AgentExecutionService', () => {
 			messageRepository,
 			systemAgentRegistry,
 			projectDeletion,
+			attentionFlags,
 			integrationMessageContext,
 			executionMetrics,
 		);
@@ -968,6 +971,43 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('execution lifecycle', () => {
+		it.each([
+			['Provider failed', true],
+			[null, false],
+		] as const)('flags only error completions (%s)', async (error, shouldFlag) => {
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: null,
+				record: makeMessageRecord({ error }),
+			});
+			if (shouldFlag) {
+				expect(attentionFlags.flagSession).toHaveBeenCalledWith(
+					'thread-1',
+					'session-error',
+					expect.any(Object),
+				);
+			} else {
+				expect(attentionFlags.flagSession).not.toHaveBeenCalled();
+			}
+		});
+
+		it('does not flag an execution that another writer already finalized', async () => {
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(false);
+			await expect(
+				service.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: null,
+					record: makeMessageRecord({ error: 'Failed' }),
+				}),
+			).rejects.toThrow('Agent execution is no longer running');
+			expect(attentionFlags.flagSession).not.toHaveBeenCalled();
+		});
 		it('writes the timeline to blob storage in non-db mode', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
@@ -987,6 +1027,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				attentionFlags,
 				integrationMessageContext,
 				executionMetrics,
 			);
@@ -1096,6 +1137,7 @@ describe('AgentExecutionService', () => {
 					messageRepository,
 					new SystemAgentRegistry(),
 					projectDeletion,
+					attentionFlags,
 					integrationMessageContext,
 					executionMetrics,
 				);
@@ -1870,6 +1912,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				attentionFlags,
 				integrationMessageContext,
 				executionMetrics,
 			);
@@ -2203,6 +2246,62 @@ describe('AgentExecutionService', () => {
 			await expect(
 				service.canUseDraftThread('new-thread', 'project-1', 'agent-1', 'user-1'),
 			).resolves.toBe(allowed);
+		});
+	});
+
+	describe('classifyExistingDraftThread', () => {
+		it('classifies a preview chat thread in a single thread lookup', async () => {
+			const thread = makeThread();
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([[thread.id, 'chat']]),
+			);
+
+			await expect(
+				service.classifyExistingDraftThread(thread.id, 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: true, previewChat: true });
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).toHaveBeenCalledWith([thread.id]);
+		});
+
+		it('classifies a non-preview top-level draft thread as usable with previewChat false', async () => {
+			const thread = makeThread();
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([[thread.id, 'mcp']]),
+			);
+
+			await expect(
+				service.classifyExistingDraftThread(thread.id, 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: true, previewChat: false });
+			expect(agentExecutionThreadRepository.findOneBy).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).toHaveBeenCalledWith([thread.id]);
+		});
+
+		it('skips the first-source query for task threads', async () => {
+			const thread = makeThread({ taskId: 'task-1' });
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+
+			await expect(
+				service.classifyExistingDraftThread(thread.id, 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: true, previewChat: false });
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).not.toHaveBeenCalled();
+		});
+
+		it.each<{ name: string; thread: AgentExecutionThread | null }>([
+			{ name: 'missing thread', thread: null },
+			{ name: 'other owner', thread: makeThread({ ownerId: 'other-user' }) },
+			{ name: 'shared session', thread: makeThread({ accessScope: 'project', ownerId: null }) },
+			{ name: 'sub-agent session', thread: makeThread({ parentThreadId: 'parent' }) },
+			{ name: 'other project', thread: makeThread({ projectId: 'other-project' }) },
+			{ name: 'other agent', thread: makeThread({ agentId: 'other-agent' }) },
+		])('returns unusable without querying first source for $name', async ({ thread }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
+
+			await expect(
+				service.classifyExistingDraftThread('thread-1', 'project-1', 'agent-1', 'user-1'),
+			).resolves.toEqual({ usable: false, previewChat: false });
+			expect(agentExecutionRepository.findFirstSourceByThreadIds).not.toHaveBeenCalled();
 		});
 	});
 

@@ -177,11 +177,22 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
+	/** Comma-separated session IDs, or repeated query parameters. An empty list matches nothing. */
+	sessionIds: z.preprocess(
+		(value) =>
+			typeof value === 'string'
+				? value
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: value,
+		z.array(z.string().min(1).max(128)).max(500).optional(),
+	),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly' | 'sessionIds'
 >;
 
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
@@ -193,10 +204,22 @@ export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	sourceFacetId: z.string().min(1).max(255).optional(),
 }) {}
 
-/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+const threadCursorTimestamp = z.string().datetime();
+
+/** Cross-agent n8n Chat thread list: no status, origin, or scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
-	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
-	cursor: z.string().datetime().optional(),
+	// New cursors add the thread ID to break ties at the same update time.
+	cursor: z
+		.string()
+		.refine((cursor) => {
+			const [timestamp, ...idParts] = cursor.split('|');
+			return (
+				threadCursorTimestamp.safeParse(timestamp).success &&
+				(idParts.length === 0 || idParts.join('|') !== '') &&
+				!cursor.includes('\0')
+			);
+		}, 'Invalid session cursor')
+		.optional(),
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
@@ -344,6 +367,15 @@ export class CreateAgentPublicDto extends Z.class(
 		}).optional(),
 		tools: z.record(createAgentToolEntrySchema).optional(),
 		availableInMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class PublishAgentPublicDto extends Z.class(
+	{
+		versionId: z.string().min(1).optional().openapi({
+			description: 'The saved version to publish. Omit this field to publish the current draft.',
+		}),
 	},
 	{ strict: true },
 ) {}

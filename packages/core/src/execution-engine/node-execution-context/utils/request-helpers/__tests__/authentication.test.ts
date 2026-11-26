@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import nock from 'nock';
+import { text } from 'node:stream/consumers';
 import { Readable } from 'stream';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -550,6 +551,79 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		).rejects.toBe(refusal);
 
 		expect(proxyRequestToAxiosMock).not.toHaveBeenCalled();
+	});
+
+	describe('resolved response streams', () => {
+		beforeEach(() => proxyRequestToAxiosMock.mockReset());
+
+		test.each([true, false])(
+			'releases the original stream before resending with full response set to %s',
+			async (fullResponse) => {
+				const originalBody = Readable.from(['Original response']);
+				const retryBody = Readable.from(['Retry response']);
+				const retryResponse = { statusCode: 200, body: retryBody };
+				mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValueOnce(undefined);
+				proxyRequestToAxiosMock
+					.mockResolvedValueOnce({ statusCode: 401, body: originalBody })
+					.mockImplementationOnce(async () => {
+						expect(originalBody.destroyed).toBe(true);
+						return fullResponse ? retryResponse : retryBody;
+					});
+
+				const result = await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					{
+						method: 'GET',
+						uri: 'https://api.example.com/items',
+						simple: false,
+						resolveWithFullResponse: fullResponse,
+					},
+					mockWorkflow,
+					mockNode,
+					mockAdditionalData,
+				);
+
+				expect(result).toBe(fullResponse ? retryResponse : retryBody);
+				expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+				expect(retryBody.destroyed).toBe(false);
+				expect(await text(retryBody)).toBe('Retry response');
+			},
+		);
+
+		test.each([
+			{ reason: 'no token was refreshed', status: 401, refresh: false, singleUseBody: false },
+			{ reason: 'the request body is consumed', status: 401, refresh: true, singleUseBody: true },
+			{ reason: 'the response succeeded', status: 200, refresh: true, singleUseBody: false },
+			{ reason: 'the status does not refresh', status: 403, refresh: true, singleUseBody: false },
+		])('keeps the original stream readable when $reason', async (testCase) => {
+			const originalBody = Readable.from(['Original response']);
+			const response = { statusCode: testCase.status, body: originalBody };
+			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue(
+				testCase.refresh ? { accessToken: 'fresh' } : undefined,
+			);
+			proxyRequestToAxiosMock.mockResolvedValueOnce(response);
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				{
+					method: testCase.singleUseBody ? 'POST' : 'GET',
+					uri: 'https://api.example.com/items',
+					body: testCase.singleUseBody ? Readable.from(['Request body']) : undefined,
+					simple: false,
+					resolveWithFullResponse: true,
+				},
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toBe(response);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+			expect(originalBody.destroyed).toBe(false);
+			expect(await text(originalBody)).toBe('Original response');
+		});
 	});
 });
 

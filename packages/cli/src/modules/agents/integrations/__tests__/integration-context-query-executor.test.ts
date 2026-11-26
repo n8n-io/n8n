@@ -24,7 +24,7 @@ const linear: AgentIntegrationConfig = {
 
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new SlackIntegration(mock<AgentRepository>()));
+	registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }

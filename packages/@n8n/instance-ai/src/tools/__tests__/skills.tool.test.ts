@@ -283,7 +283,7 @@ describe('skills tool', () => {
 			revision: 'commit',
 		};
 		const check = {
-			source: { label: 'acme/skills', ref: 'main', path: 'skills' },
+			source: { label: 'acme/skills / skills', ref: 'main', path: 'skills' },
 			importable: [{ key: 'brand-voice', name: 'Brand voice' }],
 			failed: [],
 		};
@@ -351,7 +351,7 @@ describe('skills tool', () => {
 			});
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
-					resourceName: 'acme/skills · main · skills',
+					resourceName: 'acme/skills / skills · main',
 					message:
 						'Connect this source and import 1 synced skill for every project on this instance: Brand voice.',
 				}),

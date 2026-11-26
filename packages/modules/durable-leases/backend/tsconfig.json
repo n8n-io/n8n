@@ -7,11 +7,11 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"lib": ["es2023", "dom"],
-		"types": ["node"],
+		"types": ["node", "vitest/globals"],
 		"strict": true,
 		"strictFunctionTypes": false,
 		"strictPropertyInitialization": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config*.ts"]
 }

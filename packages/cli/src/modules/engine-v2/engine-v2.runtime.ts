@@ -17,6 +17,7 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	runMigrations,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -34,7 +35,7 @@ import { NodeTypesProxy } from '@n8n/backend-services';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
-import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
+import { EngineSubWorkflowClient } from './engine-workflow-resolve-client';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
@@ -127,7 +128,10 @@ export class EngineV2Runtime {
 			connectTimeoutMS: databaseConnectionTimeoutMs,
 		});
 		await this.dataSource.initialize();
-		await this.dataSource.runMigrations();
+		this.logger.info(
+			'Running the engine migrations. This waits while another engine process holds the migration lock.',
+		);
+		await runMigrations(this.dataSource);
 	}
 
 	private initEngine({

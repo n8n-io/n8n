@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DynamicTool } from '@langchain/core/tools';
 import { CredentialAccessRepository, CredentialsRepository, type CredentialsEntity } from '@n8n/db';
-import { StructuredToolkit } from 'n8n-core';
+import { Container } from '@n8n/di';
+import { BinaryDataService, StructuredToolkit } from 'n8n-core';
 import {
 	Expression,
 	NodeConnectionTypes,
@@ -725,6 +726,104 @@ describe('EphemeralNodeExecutor', () => {
 
 			expect(execute).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({ status: 'success', data: [{ json: { ok: true, count: 3 } }] });
+		});
+
+		it('lets a node read an explicitly granted input file', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('file contents'));
+			Container.set(BinaryDataService, binaryDataService);
+			mockGetBase.mockResolvedValue({
+				binaryDataAccess: {
+					grant: vi.fn(),
+					isGranted: vi.fn().mockReturnValue(false),
+					isAllowed: vi.fn(
+						async (id: string, _workflowId: string, grantedIds?: string[]) =>
+							grantedIds?.includes(id) === true,
+					),
+				},
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn(async function (this: IExecuteFunctions) {
+					const contents = await this.helpers.getBinaryDataBuffer(0, 'data');
+					return [[{ json: { contents: contents.toString() } }]];
+				}),
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.fileTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				binaryDataAccess: ['filesystem-v2:file-1'],
+				inputData: [
+					{
+						json: {},
+						binary: {
+							data: {
+								id: 'filesystem-v2:file-1',
+								data: 'filesystem-v2',
+								mimeType: 'text/plain',
+							},
+						},
+					},
+				],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				data: [{ json: { contents: 'file contents' } }],
+				binaryDataAccess: ['filesystem-v2:file-1'],
+			});
+		});
+
+		it('rejects reading an input file that was not granted', async () => {
+			const binaryDataService = mock<BinaryDataService>();
+			Container.set(BinaryDataService, binaryDataService);
+			mockGetBase.mockResolvedValue({
+				binaryDataAccess: {
+					grant: vi.fn(),
+					isGranted: vi.fn().mockReturnValue(false),
+					isAllowed: vi.fn(
+						async (id: string, _workflowId: string, grantedIds?: string[]) =>
+							grantedIds?.includes(id) === true,
+					),
+				},
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn(async function (this: IExecuteFunctions) {
+					await this.helpers.getBinaryDataBuffer(0, 'data');
+					return [[{ json: { ok: true } }]];
+				}),
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.fileTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				binaryDataAccess: [],
+				inputData: [
+					{
+						json: {},
+						binary: {
+							data: {
+								id: 'filesystem-v2:file-1',
+								data: 'filesystem-v2',
+								mimeType: 'text/plain',
+							},
+						},
+					},
+				],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'error',
+				data: [],
+				error: 'This binary data is not available to the current workflow.',
+			});
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
 		});
 
 		it.each([new Error('upstream 500'), 'upstream 500'])(

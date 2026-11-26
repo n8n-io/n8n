@@ -54,6 +54,7 @@ export type {
 	NewStepRecord,
 	StaleQueuedStep,
 	StaleRunningStep,
+	StaleSettledStep,
 	StepRecord,
 	StepStore,
 	StepSummary,

@@ -83,6 +83,7 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	type AppResponse,
 } from '@n8n/api-types';
 
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -10161,17 +10162,52 @@ describe('createContext: appService', () => {
 		);
 	});
 
-	it('reports a namespace conflict as a taken namespace', async () => {
+	it('creates the app with the next numbered namespace when the namespace is taken', async () => {
 		const { apps } = mockAppsModule(true);
-		apps.createApp.mockRejectedValue(
-			new ConflictError('An app already uses this namespace. Choose another namespace.'),
-		);
+		const created = mock<AppResponse>({ id: APP_ID, namespace: 'todos-3' });
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(created);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(
+			context.appService?.createApp({ name: 'Todos', namespace: 'todos' }),
+		).resolves.toBe(created);
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todos',
+			'todos-2',
+			'todos-3',
+		]);
+	});
+
+	it('keeps numbered namespaces within the namespace length limit of the instance', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.maxNamespaceLength.mockReturnValue(9);
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(mock<AppResponse>({ id: APP_ID }));
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await context.appService?.createApp({ name: 'Todo list', namespace: 'todo-list' });
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todo-list',
+			'todo-li-2',
+		]);
+	});
+
+	it('reports a taken namespace when every numbered namespace is taken too', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.createApp.mockRejectedValue(new ConflictError('An app already uses this namespace.'));
 		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
 
 		const created = context.appService?.createApp({ name: 'Todos', namespace: 'todos' });
 
 		await expect(created).rejects.toBeInstanceOf(AppNamespaceTakenError);
 		await expect(created).rejects.toThrow('An app already uses the namespace "todos".');
+		expect(apps.createApp).toHaveBeenCalledTimes(21);
 	});
 
 	it('passes other create failures through unchanged', async () => {
