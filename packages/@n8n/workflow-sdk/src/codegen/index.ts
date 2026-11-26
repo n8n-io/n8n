@@ -51,7 +51,9 @@ export interface GenerateWorkflowCodeOptions {
 	/**
 	 * Emit each node's saved `id` into its config so a rebuild of the generated code
 	 * preserves node identity. Off by default — opt in only where the generated code is
-	 * edited and built back into the same saved workflow.
+	 * edited and built back into the same saved workflow. Direct `ai_tool` nodes
+	 * referenced by AI Agent `toolAvailability` rules still emit their `id` when this
+	 * option is off.
 	 */
 	includeNodeIds?: boolean;
 	/**

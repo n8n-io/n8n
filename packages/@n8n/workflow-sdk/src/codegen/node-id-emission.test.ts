@@ -1,5 +1,5 @@
 import { generateWorkflowCode } from './index';
-import { parseWorkflowCodeToBuilder } from './parse-workflow-code';
+import { parseWorkflowCode, parseWorkflowCodeToBuilder } from './parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
 /**
@@ -250,6 +250,143 @@ describe('node id emission', () => {
 			expect(rebuilt.nodes.find((n) => n.name === 'Process')?.id).toBe('saved-set');
 			const ids = rebuilt.nodes.map((n) => n.id);
 			expect(new Set(ids).size).toBe(ids.length);
+		});
+	});
+
+	describe('toolAvailability source references', () => {
+		const createToolAvailabilityWorkflow = (version: 3 | 3.1): WorkflowJSON => ({
+			id: 'wf-tool-availability',
+			name: 'Tool Availability',
+			nodes: [
+				{
+					id: 'trigger-id',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: version,
+					position: [200, 0],
+					parameters: {
+						promptType: 'define',
+						text: 'Use the available tools',
+						toolAvailability: {
+							rules: [{ sourceNodeId: 'calculator-id', available: '={{ $json.allowTool }}' }],
+						},
+					},
+				},
+				{
+					id: 'model-id',
+					name: 'Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [200, 200],
+					parameters: { model: 'gpt-4o-mini' },
+				},
+				{
+					id: 'calculator-id',
+					name: 'Calculator',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					typeVersion: 1,
+					position: [400, 200],
+					parameters: {},
+				},
+				{
+					id: 'wikipedia-id',
+					name: 'Wikipedia',
+					type: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					typeVersion: 1,
+					position: [600, 200],
+					parameters: {},
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+				'Chat Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				Calculator: { ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]] },
+				Wikipedia: { ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]] },
+			},
+		});
+
+		it.each([3, 3.1] as const)(
+			'preserves referenced tool source IDs in a default round trip for Agent V%s',
+			(version) => {
+				const original = createToolAvailabilityWorkflow(version);
+				const code = generateWorkflowCode(original);
+
+				expect(code).toContain("id: 'calculator-id'");
+				expect(code).not.toContain('trigger-id');
+				expect(code).not.toContain('agent-id');
+				expect(code).not.toContain('model-id');
+				expect(code).not.toContain('wikipedia-id');
+
+				const rebuilt = parseWorkflowCode(code);
+				const agent = rebuilt.nodes.find(({ name }) => name === 'AI Agent');
+				const calculator = rebuilt.nodes.find(({ name }) => name === 'Calculator');
+
+				expect(agent?.typeVersion).toBe(version);
+				expect(calculator?.id).toBe('calculator-id');
+				expect(agent?.parameters?.toolAvailability).toEqual({
+					rules: [{ sourceNodeId: calculator?.id, available: '={{ $json.allowTool }}' }],
+				});
+				expect(rebuilt.connections).toEqual(original.connections);
+
+				const builder = parseWorkflowCodeToBuilder(code);
+				expect(builder.validate().errors).toEqual([]);
+				builder.regenerateNodeIds();
+				const regenerated = builder.toJSON();
+				expect(regenerated.nodes.find(({ name }) => name === 'Calculator')?.id).toBe(
+					'calculator-id',
+				);
+			},
+		);
+
+		it('still emits referenced tool source IDs when includeNodeIds is false', () => {
+			const code = generateWorkflowCode({
+				workflow: createToolAvailabilityWorkflow(3.1),
+				includeNodeIds: false,
+			});
+
+			expect(code).toContain("id: 'calculator-id'");
+			expect(code).not.toContain('wikipedia-id');
+		});
+
+		it('does not emit IDs for non-tool nodes referenced by a stale rule', () => {
+			const workflow = createToolAvailabilityWorkflow(3);
+			workflow.nodes[1] = {
+				...workflow.nodes[1],
+				parameters: {
+					...workflow.nodes[1].parameters,
+					toolAvailability: {
+						rules: [
+							{ sourceNodeId: 'calculator-id', available: true },
+							{ sourceNodeId: 'trigger-id', available: false },
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(workflow);
+
+			expect(code).toContain("id: 'calculator-id'");
+			expect(code).not.toContain("id: 'trigger-id'");
+		});
+
+		it('emits a duplicated referenced tool ID only once', () => {
+			const workflow = createToolAvailabilityWorkflow(3);
+			workflow.nodes[4] = { ...workflow.nodes[4], id: 'calculator-id' };
+
+			const code = generateWorkflowCode(workflow);
+
+			expect(code.match(/id: 'calculator-id'/g)).toHaveLength(1);
+			expect(parseWorkflowCodeToBuilder(code).validate().errors).toEqual([]);
 		});
 	});
 });
