@@ -15,7 +15,7 @@ Guidance on proper sized, set, and scaled type.
 - Create contrast by using `text-light` or `--text-color--subtler`
 - Apply `font-variant-numeric: tabular-nums` to timers, counters, prices and numeric table columns, so every digit keeps one width and nothing shifts. Leave figures in prose proportional.
 - Use `utils.utils-ellipsis` mixin to truncate text
-- Inputs must use 16px font size to avoid zoom on Safari
+- On mobile, use `--font-size--md` for inputs to avoid zoom on Safari.
 
 ## Common fixes
 
@@ -27,6 +27,6 @@ Guidance on proper sized, set, and scaled type.
 | `text-align: justify` in application UI | `text-align: start` |
 | A timer, counter, price or numeric column without `tabular-nums` | `font-variant-numeric: tabular-nums` |
 | `...`, `--` or a hyphenated range in rendered strings | `…`, an em dash or an en dash |
-| `text-decoration-skip-ink: none` | Remove it; set `text-underline-offset` or `from-font` instead |
-| `<input>` with `text-sm` or `14px` and no mobile override | One of the **Inputs at 16px on mobile** fixes |
+| `text-decoration-skip-ink: none` | Remove it. Use `text-underline-position: from-font` or set `text-underline-offset` as needed. |
+| `<input>` with `text-sm` or `14px` and no mobile override | Set its font size to `--font-size--md` on mobile |
 | Mixed-direction value such as a name, number or URL without `<bdi>` or `dir` | Wrap it in `<bdi>` |

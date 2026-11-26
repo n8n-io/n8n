@@ -5,7 +5,7 @@ Guidance on visual polish across surfaces and icons.
 ## Rules
 
 - When nesting elements share visible borders, the outer radius should be `inner radius + (padding + border width)`. Beyond `--radius--2xl` or where padding is asymmetric, treat layers as separate surfaces.
-- Where geometric centering looks off, nudge by eye. Use `transform()` to nudge elements.
+- Where geometric centering looks off, nudge by eye. Use the `transform` property with `translate()` to nudge elements.
 - Use shadows sparingly. Only use `--shadow--xs` unless surface is deliberately floating (e.g popover, dialog).
 - When using borders with shadows, add `background-clip:padding-box` to element to tidy up murky edges.
 - Give content images a `1px` box-shadow or outline inset. Use `--color--white-alpha-100` in dark mode and `--color--black-alpha-100` in light.

@@ -12,7 +12,7 @@ Guidance for reviewing and fixing keyboard and focus behavior, ARIA, accessible 
 - Focusable elements in a composite widget such as a listbox, menu, grid, or tablist should follow that widget's arrow-key pattern
 - Icon only interactive elements should define an explicit `aria-label`
 - Tooltips triggered by hover should not contain interactive content
-- Images should always be rendered with `<img>` for screen readers and ease of copying from the right click menu
+- Use `<img>` with appropriate `alt` text for content images that need an accessible name. Use `alt=""` for decorative images. Decorative graphics may use inline SVG or CSS and should be hidden from assistive technology.
 - Pair colour with second cue such as icon or label
 - Moving, blinking or scrolling content needs a visible pause control once it lasts more than 5 seconds. Auto-updating content needs one however long it runs, and a frequency control counts (2.2.2). Toasts carrying an action or an error stay until dismissed.
 - Three mechanisms, three jobs. `aria-describedby` carries field-specific validation. A polite live region (`role="status"`) carries non-urgent updates not tied to a control, such as toasts and result counts. `role="alert"` carries urgent untied errors and nothing else.
