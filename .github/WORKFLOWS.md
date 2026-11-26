@@ -293,11 +293,15 @@ when the tree is not clean, so a PR is merged only when its files are the exact
 output of the CLI version in its lockfile. `automerge-scaffold.yml` approves
 the bot PR through the shared `approve-and-set-automerge` workflow and enables
 squash auto-merge, except when the PR changes workflow files, which a human
-merges. `notify-scaffold-failure.yml` posts to `#alerts-developer-platforms`
+merges. `notify-scaffold-failure.yml` posts to `#alerts-community-engineering`
 when a check fails on the `refresh-scaffold` branch or the PR stays open for
 more than a day. The `notify-on-failure` job in this workflow covers failures
-before a PR exists. Those four starter workflows are in the script's
-`PROTECTED` list and are never touched by a refresh.
+before a PR exists. `close-external-prs.yml` closes every PR that neither
+`dependabot[bot]` nor `n8n-assistant[bot]` opened, unless it carries the
+`maintainer-pr` label, and points the author to the CLI templates. These
+four starter-owned workflows are in the script's `PROTECTED` list, so a
+refresh never deletes them. `PROTECTED` does not stop a write: a template
+that emitted one of these paths would overwrite it.
 
 ### On Merge Queue Removal
 
