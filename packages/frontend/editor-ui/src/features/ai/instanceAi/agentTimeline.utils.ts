@@ -11,7 +11,11 @@ import type {
 import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isCloudBrowserAgent } from './cloudBrowserAgents';
-import { isSimulatedTestRunOutcome } from './assistantTestRunCard.utils';
+import {
+	isSimulatedTestRunOutcome,
+	resolveAssistantTestRunCard,
+	type AssistantTestRunCardView,
+} from './assistantTestRunCard.utils';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
@@ -68,7 +72,12 @@ export type TimelineBlock =
 	| { type: 'app-blueprint'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'assistant-test-run'; key: string; toolCall: InstanceAiToolCallState }
+	| {
+			type: 'assistant-test-run';
+			key: string;
+			toolCall: InstanceAiToolCallState;
+			card: AssistantTestRunCardView;
+	  }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode }
 	| { type: 'activity'; key: string };
 
@@ -268,13 +277,19 @@ export function buildTimelineBlocks(
 			case 'preference':
 				pushStandalone({ type: 'preference', key: `preference-${idx}`, toolCall: tc });
 				return;
-			case 'assistant-test-run':
-				pushStandalone({
-					type: 'assistant-test-run',
-					key: `assistant-test-run-${idx}`,
-					toolCall: tc,
-				});
+			case 'assistant-test-run': {
+				// Resolve the card once here, so the template does not parse the result on each render.
+				const card = resolveAssistantTestRunCard(tc);
+				if (card) {
+					pushStandalone({
+						type: 'assistant-test-run',
+						key: `assistant-test-run-${idx}`,
+						toolCall: tc,
+						card,
+					});
+				}
 				return;
+			}
 			case 'trace':
 				pushTrace(entry, idx);
 				return;

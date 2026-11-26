@@ -20,10 +20,7 @@ import {
 } from '../agentTimeline.utils';
 import AgentAssistantTestRunCard from '@/features/agents/components/AgentAssistantTestRunCard.vue';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
-import {
-	resolveAssistantTestRunCard,
-	type AssistantTestRunCardView,
-} from '../assistantTestRunCard.utils';
+import type { AssistantTestRunCardView } from '../assistantTestRunCard.utils';
 import { formatArtifactMetadata } from '@/features/ai/instanceAi/artifactCardMetadata';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
@@ -261,21 +258,16 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 	return tc.confirmation?.appBlueprint;
 }
 
-function resolveTestRunCard(
-	tc: InstanceAiToolCallState,
-): (AssistantTestRunCardView & { agentName: string }) | null {
-	const card = resolveAssistantTestRunCard(tc);
-	if (!card) return null;
-	const agentName =
+function testRunAgentName(card: AssistantTestRunCardView): string {
+	return (
 		card.agentName ??
 		(card.agentId ? thread.producedArtifacts.get(card.agentId)?.name : undefined) ??
-		i18n.baseText('agents.assistantTestRun.badge');
-	return { ...card, agentName };
+		i18n.baseText('agents.assistantTestRun.badge')
+	);
 }
 
-function handleOpenTestChat(tc: InstanceAiToolCallState, testChatId: string): void {
-	const card = resolveAssistantTestRunCard(tc);
-	if (!card?.agentId || !card.projectId) return;
+function handleOpenTestChat(card: AssistantTestRunCardView, testChatId: string): void {
+	if (!card.agentId || !card.projectId) return;
 	openAgentChatPreview?.(card.agentId, card.projectId, testChatId);
 }
 </script>
@@ -357,12 +349,12 @@ function handleOpenTestChat(tc: InstanceAiToolCallState, testChatId: string): vo
 
 					<!-- Simulated agent test run card -->
 					<AgentAssistantTestRunCard
-						v-else-if="block.type === 'assistant-test-run' && resolveTestRunCard(block.toolCall)"
-						:agent-name="resolveTestRunCard(block.toolCall)!.agentName"
-						:calls="resolveTestRunCard(block.toolCall)!.calls"
-						:test-chat-id="resolveTestRunCard(block.toolCall)!.testChatId"
+						v-else-if="block.type === 'assistant-test-run'"
+						:agent-name="testRunAgentName(block.card)"
+						:calls="block.card.calls"
+						:test-chat-id="block.card.testChatId"
 						:class="$style.timelineItem"
-						@open-test-chat="(testChatId) => handleOpenTestChat(block.toolCall, testChatId)"
+						@open-test-chat="(testChatId) => handleOpenTestChat(block.card, testChatId)"
 					/>
 
 					<!-- The run is live but a committed answer settled the block behind it -->
