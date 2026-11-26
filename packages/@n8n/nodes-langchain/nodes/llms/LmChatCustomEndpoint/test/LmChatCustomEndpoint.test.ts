@@ -1,4 +1,5 @@
 import { ChatOpenAI, ChatOpenAICompletions } from '@langchain/openai';
+import { N8nLlmTracing, openAiTokensUsageParser } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -8,6 +9,10 @@ import { LmChatCustomEndpoint } from '../LmChatCustomEndpoint.node';
 import { createCustomModelEndpointConfig } from '@utils/custom-model-endpoint/gateway-config';
 
 vi.mock('@langchain/openai');
+vi.mock('@n8n/ai-utilities', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities')>()),
+	N8nLlmTracing: vi.fn(),
+}));
 vi.mock('@utils/custom-model-endpoint/gateway-config', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@utils/custom-model-endpoint/gateway-config')>()),
 	createCustomModelEndpointConfig: vi.fn(() => ({
@@ -257,6 +262,51 @@ describe('LmChatCustomEndpoint', () => {
 			);
 
 			expect(marked).toBe(false);
+		});
+
+		it.each([['chatCompletions'], ['responses']])(
+			'configures N8nLlmTracing with openAiTokensUsageParser on %s',
+			async (apiFormat) => {
+				const ctx = contextWith({ apiFormat });
+				await node.supplyData.call(ctx, 0);
+
+				expect(vi.mocked(N8nLlmTracing)).toHaveBeenCalledWith(ctx, {
+					tokensUsageParser: openAiTokensUsageParser,
+				});
+			},
+		);
+
+		it('parses Responses usage_metadata using the configured parser', async () => {
+			const ctx = contextWith(RESPONSES);
+			await node.supplyData.call(ctx, 0);
+
+			const tracingCalls = vi.mocked(N8nLlmTracing).mock.calls;
+			const parser = tracingCalls[0]?.[1]?.tokensUsageParser;
+			expect(parser).toBe(openAiTokensUsageParser);
+
+			const result = parser?.({
+				generations: [
+					[
+						{
+							text: 'Hello',
+							message: {
+								usage_metadata: {
+									input_tokens: 1234,
+									output_tokens: 567,
+									total_tokens: 1801,
+								},
+							},
+						} as never,
+					],
+				],
+				llmOutput: { id: 'resp_1', estimatedTokenUsage: {} },
+			});
+
+			expect(result).toEqual({
+				promptTokens: 1234,
+				completionTokens: 567,
+				totalTokens: 1801,
+			});
 		});
 	});
 

@@ -4,6 +4,7 @@ import {
 	getConnectionHintNoticeField,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	openAiTokensUsageParser,
 } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
@@ -221,7 +222,7 @@ export class LmChatCustomEndpoint implements INodeType {
 			timeout: options.timeout,
 			maxRetries: options.maxRetries ?? 2,
 			modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex, usesResponses),
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser: openAiTokensUsageParser })],
 			// The gateways this node exists for (vLLM, LM Studio and the rest) reject
 			// `strict: null` in a tool definition, so the OpenAI sub-node turns this off too
 			supportsStrictToolCalling: false,
