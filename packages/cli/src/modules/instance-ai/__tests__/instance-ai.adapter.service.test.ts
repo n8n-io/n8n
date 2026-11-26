@@ -5391,6 +5391,22 @@ describe('createWorkflowAdapter', () => {
 			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
 			expect(guardSpy).not.toHaveBeenCalled();
 		});
+
+		it('does not check an archived workflow, so the publish returns its archive error', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				isArchived: true,
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('notifying open editors', () => {

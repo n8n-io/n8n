@@ -1817,6 +1817,8 @@ export class InstanceAiAdapterService {
 					'workflow:publish',
 				]);
 				if (!workflow) throw new WorkflowNotFoundError(workflowId);
+				// The publish refuses archived workflows with its own error, and they cannot go to review.
+				if (workflow.isArchived) return undefined;
 
 				const targetVersionId = versionId ?? workflow.versionId;
 				// Same as the publish: the live version goes live again without the review rules.
