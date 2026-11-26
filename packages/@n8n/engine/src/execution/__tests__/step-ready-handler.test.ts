@@ -125,6 +125,12 @@ function makeExecutionStore(
 		findPrunableExecutions: vi.fn(),
 		findRetentionCountCutoff: vi.fn(),
 		deleteEndedExecutions: vi.fn(),
+		loadErrorWorkflowState: vi
+			.fn()
+			.mockResolvedValue({ dueAt: null, hasErrorExecution: false, workflow: {} }),
+		findDueErrorWorkflows: vi.fn().mockResolvedValue([]),
+		deferErrorWorkflow: vi.fn().mockResolvedValue(true),
+		clearErrorWorkflowDue: vi.fn(),
 	};
 }
 

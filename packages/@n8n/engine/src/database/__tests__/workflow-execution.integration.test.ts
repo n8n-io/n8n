@@ -699,6 +699,15 @@ describe('workflow_execution table (integration)', () => {
 			return id;
 		}
 
+		/** Sets `updated_at` to a time in the past, so a write that sets it to now changes it. */
+		async function backdate(id: string): Promise<Date> {
+			const endedAt = new Date('2026-01-01T00:00:00.000Z');
+			await dataSource
+				.getRepository(WorkflowExecution)
+				.update({ id }, { updatedAt: () => `'${endedAt.toISOString()}'::timestamptz` });
+			return endedAt;
+		}
+
 		function errorRecord(sourceId: string): NewExecutionRecord {
 			return {
 				...newRecord(generateId()),
@@ -771,17 +780,30 @@ describe('workflow_execution table (integration)', () => {
 		it('createExecution keeps updated_at of the source when it clears the marker', async () => {
 			const store = errorStore();
 			const sourceId = await failedSource(store);
-			// A time in the past, so a write that sets `updated_at` to now changes it.
-			const endedAt = new Date('2026-01-01T00:00:00.000Z');
-			await dataSource
-				.getRepository(WorkflowExecution)
-				.update({ id: sourceId }, { updatedAt: () => `'${endedAt.toISOString()}'::timestamptz` });
+			const endedAt = await backdate(sourceId);
 
 			await store.createExecution(errorRecord(sourceId));
 
 			const source = await loadRow(sourceId);
 			expect(source.errorWorkflowDueAt).toBeNull();
 			expect(source.updatedAt).toEqual(endedAt);
+		});
+
+		it('deferErrorWorkflow and clearErrorWorkflowDue keep updated_at of the execution', async () => {
+			const store = errorStore();
+			const id = await failedSource(store);
+			const endedAt = await backdate(id);
+			const dueAt = (await loadRow(id)).errorWorkflowDueAt;
+			expect(dueAt).toBeInstanceOf(Date);
+
+			expect(await store.deferErrorWorkflow(id, dueAt as Date)).toBe(true);
+			const deferred = await loadRow(id);
+			expect(deferred.updatedAt).toEqual(endedAt);
+
+			await store.clearErrorWorkflowDue(id);
+			const cleared = await loadRow(id);
+			expect(cleared.errorWorkflowDueAt).toBeNull();
+			expect(cleared.updatedAt).toEqual(endedAt);
 		});
 
 		it('createExecution throws for an error execution whose id another execution has, and keeps the marker', async () => {

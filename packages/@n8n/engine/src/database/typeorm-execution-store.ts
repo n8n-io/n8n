@@ -15,6 +15,8 @@ import {
 	ExecutionNotFoundError,
 	ParentExecutionEndedError,
 	type CreateExecutionResult,
+	type DueErrorWorkflow,
+	type ErrorWorkflowState,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
@@ -228,9 +230,64 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
-			{ status: 'cancelled', finishedAt, staleAfter: null },
+			{
+				status: 'cancelled',
+				finishedAt,
+				staleAfter: null,
+			},
 		);
 		return result.affected === 1 ? { finishedAt } : null;
+	}
+
+	async loadErrorWorkflowState(id: string): Promise<ErrorWorkflowState> {
+		const row = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.error_workflow_due_at', 'dueAt')
+			.addSelect('execution.workflow', 'workflow')
+			// Served by the unique index on the source.
+			.addSelect(
+				`EXISTS (
+					SELECT 1 FROM workflow_execution error_execution
+					WHERE error_execution.error_source_execution_id = execution.id
+				)`,
+				'hasErrorExecution',
+			)
+			.where('execution.id = :id', { id })
+			.getRawOne<ErrorWorkflowState>();
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row;
+	}
+
+	async findDueErrorWorkflows(at: Date, limit: number): Promise<DueErrorWorkflow[]> {
+		// Served by the partial index on `error_workflow_due_at`.
+		const rows = await this.repo.find({
+			select: { id: true, errorWorkflowDueAt: true },
+			where: { errorWorkflowDueAt: LessThanOrEqual(at) },
+			order: { errorWorkflowDueAt: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, errorWorkflowDueAt }) =>
+			errorWorkflowDueAt ? [{ id, dueAt: errorWorkflowDueAt }] : [],
+		);
+	}
+
+	// The two marker writes below run after the execution has ended, so they keep its `updated_at`.
+	async deferErrorWorkflow(id: string, dueAt: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, errorWorkflowDueAt: dueAt },
+			{
+				errorWorkflowDueAt: new Date(Date.now() + errorWorkflowPendingMs(this.staleness)),
+				...KEEP_UPDATED_AT,
+			},
+		);
+		return result.affected === 1;
+	}
+
+	async clearErrorWorkflowDue(id: string): Promise<void> {
+		await this.repo.update(
+			{ id, errorWorkflowDueAt: Not(IsNull()) },
+			{ errorWorkflowDueAt: null, ...KEEP_UPDATED_AT },
+		);
 	}
 
 	async findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]> {

@@ -34,6 +34,8 @@ export type {
 export { ExecutionNotFoundError } from './execution-store';
 export type {
 	CreateExecutionResult,
+	DueErrorWorkflow,
+	ErrorWorkflowState,
 	ExecutionRecord,
 	ExecutionStore,
 	NewExecutionRecord,

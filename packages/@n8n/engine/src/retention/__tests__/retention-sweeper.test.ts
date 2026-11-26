@@ -30,6 +30,10 @@ function makeExecutionStore(): ExecutionStore {
 		findPrunableExecutions: vi.fn().mockResolvedValue([]),
 		findRetentionCountCutoff: vi.fn().mockResolvedValue(undefined),
 		deleteEndedExecutions: vi.fn(async (ids: string[]) => ids.length),
+		loadErrorWorkflowState: vi.fn(),
+		findDueErrorWorkflows: vi.fn(),
+		deferErrorWorkflow: vi.fn(),
+		clearErrorWorkflowDue: vi.fn(),
 	};
 }
 

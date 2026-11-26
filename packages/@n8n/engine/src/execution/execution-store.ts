@@ -24,7 +24,10 @@ interface BaseExecutionRecord {
 	mode: ExecutionMode;
 	/** As stored: the engine's own marks on top of what the caller sent. */
 	graph: StoredWorkflowGraph;
-	/** Stored for the read path only. Nothing on the execution path reads it. */
+	/**
+	 * Stored for the read path and for the error workflow resolver, which reads
+	 * the error workflow settings from it. `loadExecution` does not load it.
+	 */
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
 	callerContext: CallerContext;
@@ -76,6 +79,21 @@ export interface CreateExecutionResult {
 export interface StaleQueuedExecution {
 	id: string;
 	staleAfter: Date;
+}
+
+/** An ended execution whose error execution is due. */
+export interface DueErrorWorkflow {
+	id: string;
+	dueAt: Date;
+}
+
+/** What the error start reads of an ended execution. */
+export interface ErrorWorkflowState {
+	/** When the repair may act, or `null` when no error execution is due. */
+	dueAt: Date | null;
+	/** Whether this execution already has an error execution. */
+	hasErrorExecution: boolean;
+	workflow: WorkflowDocument;
 }
 
 /** An ended execution that the retention sweep can delete. */
@@ -179,6 +197,28 @@ export interface ExecutionStore {
 	 * or `null` when the execution had already ended.
 	 */
 	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
+
+	/** What the error start needs of an execution. Throws `ExecutionNotFoundError` if absent. */
+	loadErrorWorkflowState(id: string): Promise<ErrorWorkflowState>;
+
+	/**
+	 * The executions whose pending error workflow marker is `at` or earlier,
+	 * oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findDueErrorWorkflows(at: Date, limit: number): Promise<DueErrorWorkflow[]>;
+
+	/**
+	 * Moves the marker of a pending error workflow forward. A compare-and-set on
+	 * the `dueAt` value the caller read, so only one of several concurrent
+	 * callers gets `true`.
+	 */
+	deferErrorWorkflow(id: string, dueAt: Date): Promise<boolean>;
+
+	/**
+	 * Clears the marker: the error execution started elsewhere, or no error
+	 * workflow runs. Writes nothing when no marker is set, and keeps `updated_at`.
+	 */
+	clearErrorWorkflowDue(id: string): Promise<void>;
 
 	/**
 	 * The executions that are `queued` and whose `stale_after` time is `at` or
