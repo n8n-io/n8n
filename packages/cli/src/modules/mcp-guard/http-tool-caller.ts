@@ -29,8 +29,19 @@ const VERSION_SEGMENT = /^v\d+(?:\.\d+)*$/;
 // An id has a digit and is not a short word. A very long segment is an id too: no path word is that
 // long, and a long id (Microsoft Graph) can hold no digit.
 const LONG_ID_LENGTH = 40;
+// A mailbox address (`/users/<address>/...`) is no id, also when it holds a digit or is long.
 export const looksLikeId = (segment: string): boolean =>
-	segment.length >= LONG_ID_LENGTH || (segment.length >= 8 && /\d/.test(segment));
+	!segment.includes('@') &&
+	(segment.length >= LONG_ID_LENGTH || (segment.length >= 8 && /\d/.test(segment)));
+
+// A path can hold an id with `%2B` or `%3D`. The gym answer holds it as plain text.
+export const decodeSegment = (segment: string): string => {
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return segment;
+	}
+};
 
 function describePath(method: string, pathname: string): string {
 	const segments = pathname.split('/').filter((s) => s !== '');

@@ -1,7 +1,7 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { HttpGuardRouter, type HttpGuardRouterDeps } from '../http-router';
-import { GMAIL_PROFILE } from '../http-profiles';
+import { GMAIL_PROFILE, OUTLOOK_PROFILE } from '../http-profiles';
 import type { McpCaller } from '../mcp-upstream';
 import type { CapturedRequest } from '../network';
 import { currentRequestContext } from '../request-context';
@@ -429,5 +429,111 @@ describe('HttpGuardRouter ids with encoded characters', () => {
 		await router.handle(request('GET', '/gmail/v1/users/me/messages/1a1f32cf%ZZ'));
 
 		expect(upstream.callTool).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('Outlook mirror read', () => {
+	const mirrorRead = OUTLOOK_PROFILE.mirrorRead!;
+	const noAsk = async () => undefined;
+	const GYM_CALENDAR = 'AAMkAGYMCALENDAR000000000001';
+
+	it('reads the default calendar of the real service for a calendar of the gym', async () => {
+		const args = {
+			method: 'GET',
+			path: `/v1.0/me/calendars/${GYM_CALENDAR}/events`,
+			query: { $top: '5' },
+		};
+
+		expect(await mirrorRead(args, noAsk)).toEqual({
+			...args,
+			path: '/v1.0/me/events',
+		});
+		const view = { ...args, path: `/v1.0/me/calendars/${GYM_CALENDAR}/calendarView` };
+		expect((await mirrorRead(view, noAsk))?.path).toBe('/v1.0/me/calendarView');
+	});
+
+	it('reads the system folder of the same name for a folder of the gym', async () => {
+		const ask = vi.fn(async () => ({ displayName: 'Sent Items' }));
+		const args = { method: 'GET', path: '/v1.0/me/mailFolders/AAMkAGYMFOLDER0000000001/messages' };
+
+		expect((await mirrorRead(args, ask))?.path).toBe('/v1.0/me/mailFolders/sentitems/messages');
+		expect(ask).toHaveBeenCalledWith('/v1.0/me/mailFolders/AAMkAGYMFOLDER0000000001');
+	});
+
+	it('has no twin for a folder that the user made, or when the gym cannot answer', async () => {
+		const args = { method: 'GET', path: '/v1.0/me/mailFolders/AAMkAGYMFOLDER0000000001/messages' };
+
+		expect(await mirrorRead(args, async () => ({ displayName: 'Receipts' }))).toBeUndefined();
+		expect(
+			await mirrorRead(args, async () => {
+				throw new Error('down');
+			}),
+		).toBeUndefined();
+	});
+
+	it('has no twin for a path that names no calendar or folder', async () => {
+		expect(await mirrorRead({ method: 'GET', path: '/v1.0/me/messages' }, noAsk)).toBeUndefined();
+	});
+
+	it('copies the real data first, then the gym answers, when the id is an id of the gym', async () => {
+		const upstream = {
+			listTools: vi.fn(async () => []),
+			callTool: vi.fn(async (..._a: unknown[]) => result({ value: [{ id: 'realevent' }] })),
+		};
+		const gym = {
+			listTools: vi.fn(async () => []),
+			callTool: vi.fn(async (..._a: unknown[]) =>
+				result({ value: [{ id: 'gymevent0000000001' }] }),
+			),
+		};
+		const gymIds = new Set(['AAMkAGYMCALENDAR000000000001']);
+		const { router, hydrator } = setup({
+			profile: OUTLOOK_PROFILE,
+			upstream: upstream as unknown as McpCaller,
+			gym: gym as unknown as McpCaller,
+			gymIds,
+		});
+
+		const res = await router.handle(
+			request(
+				'GET',
+				'/v1.0/me/calendars/AAMkAGYMCALENDAR000000000001/events',
+				undefined,
+				'graph.microsoft.com',
+			),
+		);
+
+		expect(res.status).toBe(200);
+		const realArgs = upstream.callTool.mock.calls[0][1] as { path: string };
+		expect(realArgs.path).toBe('/v1.0/me/events');
+		expect(hydrator.hydrate).toHaveBeenCalledTimes(1);
+		const gymArgs = gym.callTool.mock.calls[gym.callTool.mock.calls.length - 1][1] as {
+			path: string;
+		};
+		expect(gymArgs.path).toBe('/v1.0/me/calendars/AAMkAGYMCALENDAR000000000001/events');
+	});
+
+	it('returns a failed real twin to the node when the token is refused', async () => {
+		const upstream = {
+			listTools: vi.fn(async () => []),
+			callTool: vi.fn(async (..._a: unknown[]) => result({ error: 'x' }, 401)),
+		};
+		const { router, gym } = setup({
+			profile: OUTLOOK_PROFILE,
+			upstream: upstream as unknown as McpCaller,
+			gymIds: new Set(['AAMkAGYMCALENDAR000000000001']),
+		});
+
+		const res = await router.handle(
+			request(
+				'GET',
+				'/v1.0/me/calendars/AAMkAGYMCALENDAR000000000001/events',
+				undefined,
+				'graph.microsoft.com',
+			),
+		);
+
+		expect(res.status).toBe(401);
+		expect(gym.callTool).not.toHaveBeenCalled();
 	});
 });
