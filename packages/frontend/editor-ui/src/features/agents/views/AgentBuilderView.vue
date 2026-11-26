@@ -2013,11 +2013,15 @@ async function flushAutosaveBeforeAssistantSend(): Promise<void> {
 	}
 }
 
-/** The embedded assistant waits to mint its thread until a list-view starter is applied. */
+/**
+ * The embedded assistant waits to mint its thread until a list-view starter is applied.
+ * A failed save must not leave the panel without a thread: the failed edit stays queued
+ * for a retry, and the assistant can help fix the config.
+ */
 async function beforeAiNewThread(): Promise<void> {
 	const gate = starterReady;
 	await gate?.promise;
-	await flushAutosaveIgnoringResult();
+	await flushAutosaveBeforeAssistantSend();
 }
 
 useEventListener(document, 'keydown', (event) => {
@@ -2026,9 +2030,27 @@ useEventListener(document, 'keydown', (event) => {
 	void flushAutosave().catch(() => {});
 });
 
-async function flushPendingRouteDraftBeforeNavigation() {
-	if (!isRouteAgentPending.value || !isUnsaved.value) return;
-	await flushAutosave();
+/** Resolves false when the user chooses to stay on the agent after a failed save. */
+async function flushPendingRouteDraftBeforeNavigation(): Promise<boolean> {
+	if (!isRouteAgentPending.value || !isUnsaved.value) return true;
+	try {
+		await flushAutosave();
+		return true;
+	} catch {
+		// The autosave already showed its error toast. A save that keeps failing (e.g. an
+		// imported skill from another project) must not trap the user on this agent.
+		const choice = await openAgentConfirmationModal({
+			title: locale.baseText('agents.builder.leaveUnsaved.title'),
+			description: locale.baseText('agents.builder.leaveUnsaved.description'),
+			confirmButtonText: locale.baseText('agents.builder.leaveUnsaved.confirm'),
+			cancelButtonText: locale.baseText('agents.builder.leaveUnsaved.cancel'),
+			isDestructive: true,
+		});
+		if (choice !== MODAL_CONFIRM) return false;
+		// Drop the failed edits so the unmount flush does not retry them.
+		cancelQueuedAutosaves();
+		return true;
+	}
 }
 
 onBeforeRouteLeave(flushPendingRouteDraftBeforeNavigation);
@@ -2037,14 +2059,14 @@ onBeforeRouteUpdate(async (to) => {
 		? to.params.projectId[0]
 		: to.params.projectId;
 	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
-	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
+	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return true;
 	if (isRouteAgentPending.value) {
-		await flushPendingRouteDraftBeforeNavigation();
-		return;
+		return await flushPendingRouteDraftBeforeNavigation();
 	}
 	// An in-place switch skips the unmount flush, so persist queued edits here.
 	// A failed save rejects and cancels the switch, so the edit stays for a retry.
 	await flushAutosave();
+	return true;
 });
 
 async function beforePreviewSend() {
