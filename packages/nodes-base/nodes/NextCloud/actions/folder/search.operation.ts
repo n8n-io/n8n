@@ -165,11 +165,11 @@ function whereClause(
 	filter: Filter,
 	i: number,
 ) {
-	const mimeType = filter.mimeType?.trim();
+	const mimeType = String(filter.mimeType ?? '').trim();
 	const invalid = (
 		[
 			['Search Query', query],
-			['MIME Type', mimeType ?? ''],
+			['MIME Type', mimeType],
 		] as const
 	).find(([, value]) => hasControlCharacter(value));
 	if (invalid) {
@@ -188,7 +188,7 @@ function whereClause(
 	if (filter.whatToSearch === 'files') conditions.push('<d:not><d:is-collection/></d:not>');
 
 	// Nextcloud takes a MIME pattern only as "type/%"
-	if (mimeType?.endsWith('/*')) {
+	if (mimeType.endsWith('/*')) {
 		conditions.push(compare('like', 'd:getcontenttype', `${mimeType.slice(0, -1)}%`));
 	} else if (mimeType) {
 		conditions.push(compare('eq', 'd:getcontenttype', mimeType));
@@ -223,10 +223,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 			itemIndex: i,
 		});
 	}
-	const filter: Filter = {
-		...(this.getNodeParameter('filter', i, {}) as Filter),
-		mimeType: this.getNodeParameter('filter.mimeType', i, '', { ensureType: 'string' }) as string,
-	};
+	const filter = this.getNodeParameter('filter', i, {}) as Filter;
 	const options = this.getNodeParameter('options', i, {}) as { exactName?: boolean };
 	const where = whereClause.call(this, query, options.exactName === true, filter, i);
 

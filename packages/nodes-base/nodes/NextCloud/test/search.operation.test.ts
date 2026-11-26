@@ -328,6 +328,26 @@ describe('NextCloud Node: folder search', () => {
 		expect(searchBody()).toContain(expected);
 	});
 
+	it('keeps the MIME Type when the whole Filter is one expression', async () => {
+		const { request, searchBody } = fakeNextcloud();
+		const functions = buildExecuteFunctions(
+			{ query: 'a', path: '/', filter: { mimeType: 'application/pdf' } },
+			request,
+		);
+		// n8n reads a dotted name from the raw parameters, so it finds nothing inside an expression
+		const getNodeParameter = functions.getNodeParameter.bind(functions);
+		functions.getNodeParameter = ((name: string, itemIndex: number, fallback?: unknown) =>
+			name.includes('.')
+				? fallback
+				: getNodeParameter(name, itemIndex, fallback)) as typeof functions.getNodeParameter;
+
+		await run(functions);
+
+		expect(searchBody()).toContain(
+			'<d:eq><d:prop><d:getcontenttype/></d:prop><d:literal>application/pdf</d:literal></d:eq>',
+		);
+	});
+
 	it('keeps the only result, because a SEARCH response has no folder entry', async () => {
 		const { request } = fakeNextcloud([pdf]);
 
