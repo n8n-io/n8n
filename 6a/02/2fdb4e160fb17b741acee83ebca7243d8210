@@ -1,0 +1,14 @@
+.agents/skills/ui-review/references/type.md
+  h_f8b427917eda26 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a022fdb4e160fb17b741acee83ebca7243d8210",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
