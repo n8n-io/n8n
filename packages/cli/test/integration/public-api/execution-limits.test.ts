@@ -77,7 +77,39 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 
 		const roundTrip = await testServer.publicApiAgentFor(admin).put(INSTANCE_PATH).send(read.body);
 		expect(roundTrip.statusCode).toBe(200);
-		expect(roundTrip.body).toEqual({ ...read.body, version: 2 });
+		expect(roundTrip.body).toEqual(read.body);
+	});
+
+	test('keeps the version when a PUT changes no value', async () => {
+		const settings = {
+			periodUnit: 'week',
+			maxExecutions: 50_000,
+			defaultProjectMaxExecutions: 5_000,
+		};
+		await testServer
+			.publicApiAgentFor(owner)
+			.put(INSTANCE_PATH)
+			.send({ ...settings, version: 0 });
+
+		const unchanged = await testServer
+			.publicApiAgentFor(owner)
+			.put(INSTANCE_PATH)
+			.send({ ...settings, version: 1 });
+		expect(unchanged.statusCode).toBe(200);
+		expect(unchanged.body).toEqual({ ...settings, version: 1 });
+
+		const stale = await testServer
+			.publicApiAgentFor(owner)
+			.put(INSTANCE_PATH)
+			.send({ ...settings, version: 0 });
+		expect(stale.statusCode).toBe(409);
+
+		const changed = await testServer
+			.publicApiAgentFor(owner)
+			.put(INSTANCE_PATH)
+			.send({ ...settings, maxExecutions: 60_000, version: 1 });
+		expect(changed.statusCode).toBe(200);
+		expect(changed.body).toEqual({ ...settings, maxExecutions: 60_000, version: 2 });
 	});
 
 	test('rejects a stale version with 409 and changes nothing', async () => {

@@ -111,6 +111,29 @@ describe('ExecutionLimitsService', () => {
 			expect((await service.getSettings()).instanceMaxExecutions).toBeNull();
 		});
 
+		it('keeps the version when a change sets the values already stored', async () => {
+			await service.updateSettings({ periodUnit: 'week', instanceMaxExecutions: 1000 }, 0, USER_ID);
+
+			const unchanged = await service.updateSettings(
+				{ periodUnit: 'week', instanceMaxExecutions: 1000 },
+				1,
+				USER_ID,
+			);
+			expect(unchanged.version).toBe(1);
+			expect((await service.getSettings()).version).toBe(1);
+
+			const changed = await service.updateSettings({ instanceMaxExecutions: 2000 }, 1, USER_ID);
+			expect(changed.version).toBe(2);
+		});
+
+		it('rejects a stale version with ConflictError even when the change sets the stored values', async () => {
+			await service.updateSettings({ instanceMaxExecutions: 1000 }, 0, USER_ID);
+
+			await expect(
+				service.updateSettings({ instanceMaxExecutions: 1000 }, 0, USER_ID),
+			).rejects.toThrow(ConflictError);
+		});
+
 		it('rejects a stale version with ConflictError and writes nothing', async () => {
 			await service.updateSettings({ instanceMaxExecutions: 1000 }, 0, USER_ID);
 			events.length = 0;
@@ -389,7 +412,7 @@ describe('ExecutionLimitsService', () => {
 			await service.removeProjectLimits(['project-with-no-limit'], USER_ID);
 			await (await removeLimitInTransaction('project-with-no-limit'))();
 
-			expect(saved.version).toBe(2);
+			expect(saved.version).toBe(1);
 			expect(events).toEqual([]);
 			expect(await readAuditRows()).toEqual(rowsBefore);
 		});

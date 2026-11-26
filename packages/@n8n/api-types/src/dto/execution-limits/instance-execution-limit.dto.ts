@@ -23,7 +23,8 @@ const instanceExecutionLimitShape = {
 		example: 10_000,
 	}),
 	version: executionLimitVersionSchema.openapi({
-		description: 'Optimistic concurrency version. Must match the version from the last read.',
+		description:
+			'Optimistic concurrency version. Must match the version from the last read. A PUT that changes no value keeps the version.',
 		example: 3,
 	}),
 };

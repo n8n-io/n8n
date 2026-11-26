@@ -74,6 +74,7 @@ export class ExecutionLimitsService {
 	 * An instance limit below a project limit is accepted. The project limit stays as it is.
 	 * The default limit for new projects cannot be above the instance limit.
 	 * `expectedVersion` must match the stored version; a stale version throws `ConflictError`.
+	 * A change that sets the values already stored writes nothing and keeps the version.
 	 */
 	async updateSettings(
 		changes: Partial<Omit<ExecutionLimitSettings, 'version'>>,
@@ -88,11 +89,7 @@ export class ExecutionLimitsService {
 				);
 			}
 
-			const merged = executionLimitSettingsSchema.safeParse({
-				...current,
-				...changes,
-				version: current.version + 1,
-			});
+			const merged = executionLimitSettingsSchema.safeParse({ ...current, ...changes });
 			if (!merged.success) {
 				throw BadRequestError.wrap('The execution limit settings are not valid', merged.error);
 			}
@@ -102,9 +99,15 @@ export class ExecutionLimitsService {
 				);
 			}
 
-			await this.settingsStore.write(merged.data, ctx);
+			// A new version tells other clients that their read is stale. Without a change, it
+			// would only make their next write fail.
+			const settingChanges = diffLimitSettings(current, merged.data);
+			if (settingChanges.length === 0) return { result: current, changes: [] };
 
-			return { result: merged.data, changes: diffLimitSettings(current, merged.data) };
+			const saved = { ...merged.data, version: current.version + 1 };
+			await this.settingsStore.write(saved, ctx);
+
+			return { result: saved, changes: settingChanges };
 		});
 	}
 

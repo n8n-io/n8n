@@ -74,10 +74,10 @@ describe('Internal API /rest/execution-limits/instance', () => {
 		expect(read.statusCode).toBe(200);
 		expect(read.body.data).toEqual(write.body.data);
 
-		// A GET body round-trips as a valid PUT body.
+		// A GET body round-trips as a valid PUT body. It changes no value, so the version stays.
 		const roundTrip = await testServer.authAgentFor(admin).put(INSTANCE_PATH).send(read.body.data);
 		expect(roundTrip.statusCode).toBe(200);
-		expect(roundTrip.body.data).toEqual({ ...read.body.data, version: 2 });
+		expect(roundTrip.body.data).toEqual(read.body.data);
 	});
 
 	test('rejects a stale version with 409 and changes nothing', async () => {

@@ -41,7 +41,7 @@ requestBody:
           version:
             type: integer
             minimum: 0
-            description: Optimistic concurrency version. Must match the version from the last read.
+            description: Optimistic concurrency version. Must match the version from the last read. A PUT that changes no value keeps the version.
             example: 3
         required:
           - periodUnit
