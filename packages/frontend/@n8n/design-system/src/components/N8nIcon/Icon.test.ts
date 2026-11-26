@@ -53,14 +53,6 @@ describe('Icon', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
-	it('should render correctly with spin enabled', () => {
-		const wrapper = render(Icon, {
-			props: { icon: 'check', spin: true },
-			...renderOptions,
-		});
-		expect(wrapper.html()).toMatchSnapshot();
-	});
-
 	it('should render correctly with a custom color', () => {
 		const wrapper = render(Icon, {
 			props: { icon: 'check', color: 'primary' },

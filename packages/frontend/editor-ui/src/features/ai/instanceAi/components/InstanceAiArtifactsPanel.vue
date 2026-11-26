@@ -2,6 +2,7 @@
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
 import {
+	N8nSpinner,
 	isIconOrEmoji,
 	N8nHeading,
 	N8nIcon,
@@ -111,15 +112,12 @@ const tasks = computed(() => thread.currentTasks);
 const visibleTasks = computed(() => tasks.value?.tasks ?? []);
 const hasTasks = computed(() => visibleTasks.value.length > 0);
 
-const statusIconMap: Record<
-	TaskItem['status'],
-	{ icon: IconName; spin: boolean; className: string }
-> = {
-	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
-	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
-	done: { icon: 'check', spin: false, className: 'doneIcon' },
-	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
-	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
+const statusIconMap: Record<TaskItem['status'], { icon: IconName; className: string }> = {
+	todo: { icon: 'circle', className: 'todoIcon' },
+	in_progress: { icon: 'spinner', className: 'inProgressIcon' },
+	done: { icon: 'check', className: 'doneIcon' },
+	failed: { icon: 'circle-x', className: 'failedIcon' },
+	cancelled: { icon: 'ban', className: 'cancelledIcon' },
 };
 
 // --- Artifacts ---
@@ -322,10 +320,9 @@ async function dismissContext(key: string) {
 						@click="handleArtifactClick(artifact, $event)"
 					>
 						<span :class="$style.artifactIconWrap">
-							<N8nIcon
+							<N8nSpinner
 								v-if="buildingArtifactIds.has(artifact.id)"
-								icon="spinner"
-								spin
+								type="dots"
 								size="large"
 								:class="$style.artifactIcon"
 								data-test-id="instance-ai-artifact-building-spinner"
@@ -383,10 +380,16 @@ async function dismissContext(key: string) {
 							task.status === 'cancelled' ? $style.cancelledTask : '',
 						]"
 					>
+						<N8nSpinner
+							v-if="task.status === 'in_progress'"
+							type="dots"
+							:class="$style[statusIconMap[task.status].className]"
+							size="medium"
+						/>
 						<N8nIcon
+							v-else
 							:icon="statusIconMap[task.status].icon"
 							:class="$style[statusIconMap[task.status].className]"
-							:spin="statusIconMap[task.status].spin"
 							size="medium"
 						/>
 						<span :class="$style.taskDescription" :title="task.description">{{

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {
+	N8nSpinner,
 	N8nHoverCard,
 	N8nIcon,
 	N8nIconButton,
@@ -319,11 +320,10 @@ async function handleCopyLink(tab: PreviewTab) {
 								aria-hidden="true"
 								data-test-id="instance-ai-tab-waiting-dot"
 							/>
-							<N8nIcon
+							<N8nSpinner
 								v-else-if="isArtifactTab(tab) && tab.building"
-								icon="spinner"
+								type="dots"
 								size="large"
-								spin
 								:class="$style.icon"
 								data-test-id="instance-ai-tab-building-spinner"
 							/>

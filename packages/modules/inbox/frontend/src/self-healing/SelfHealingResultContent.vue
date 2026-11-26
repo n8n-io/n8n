@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail } from '@n8n/api-types';
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nCallout,
 	N8nDropdownMenu,
@@ -183,7 +184,8 @@ function onTabChange(tab: string) {
 											: 'inbox.selfHealing.action.continueIn',
 									)
 								}}
-								<N8nIcon :icon="continuing ? 'loader' : 'chevron-down'" :spin="continuing" />
+								<N8nSpinner v-if="continuing" type="dots" />
+								<N8nIcon v-else icon="chevron-down" />
 							</N8nButton>
 						</template>
 						<template v-if="menuNotes.length" #footer>

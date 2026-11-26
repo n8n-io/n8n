@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router';
-import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
+import { N8nSpinner, N8nButton, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentTaskStopNotice } from '../composables/useAgentChatTaskControls';
 
@@ -21,10 +21,9 @@ const locale = useI18n();
 		aria-live="polite"
 		data-testid="agent-task-stop-status"
 	>
-		<N8nIcon
+		<N8nSpinner
 			v-if="status === 'stopping' || status === 'preparing'"
-			icon="loader-circle"
-			spin
+			type="dots"
 			size="small"
 			aria-hidden="true"
 		/>

@@ -922,7 +922,7 @@ watch(
 					</template>
 					<template #fallback>
 						<N8nText size="small" class="async-notice">
-							<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
+							<N8nIcon icon="refresh-cw" size="xsmall" :class="$style.spinning" />
 							{{ i18n.baseText('parameterInputList.loadingFields') }}
 						</N8nText>
 					</template>
@@ -1141,6 +1141,12 @@ watch(
 </style>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
+.spinning {
+	@include motion.spin;
+}
+
 .parameterContainer {
 	scroll-margin: var(--spacing--xl);
 }

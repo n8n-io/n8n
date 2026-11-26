@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import type { TaskList } from '@n8n/api-types';
-import { N8nCard, N8nIcon, N8nText, type IconName, type TextColor } from '@n8n/design-system';
+import {
+	N8nSpinner,
+	N8nCard,
+	N8nIcon,
+	N8nText,
+	type IconName,
+	type TextColor,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import ButtonLike from './ButtonLike.vue';
@@ -13,7 +20,6 @@ const i18n = useI18n();
 
 type StatusConfig = {
 	icon: IconName;
-	spin?: boolean;
 	color: TextColor;
 	textColor?: TextColor;
 	lineThrough?: boolean;
@@ -23,7 +29,6 @@ const statusConfig: Record<string, StatusConfig> = {
 	todo: { icon: 'circle', color: 'text-xlight' },
 	in_progress: {
 		icon: 'spinner',
-		spin: true,
 		color: 'primary',
 	},
 	done: { icon: 'check', color: 'success', textColor: 'text-light' },
@@ -57,7 +62,13 @@ const taskList = computed(() =>
 <template>
 	<N8nCard v-if="taskList.length">
 		<ButtonLike v-for="task in taskList" :key="task.id">
-			<N8nIcon :icon="task.icon" :spin="task.spin" size="small" :color="task.color" />
+			<N8nSpinner
+				v-if="task.status === 'in_progress'"
+				type="dots"
+				size="small"
+				style="color: var(--color--primary)"
+			/>
+			<N8nIcon v-else :icon="task.icon" size="small" :color="task.color" />
 			<span :class="$style.content">
 				<N8nText :color="task.textColor" :class="{ [$style.lineThrough]: task.lineThrough }">
 					{{ task.description }}

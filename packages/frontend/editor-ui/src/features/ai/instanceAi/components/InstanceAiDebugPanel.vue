@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nSpinner, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { formatDebugJson } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -289,7 +289,7 @@ onMounted(() => {
 			</div>
 
 			<div v-if="debugStore.isLoadingThreads" :class="$style.loadingState">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
+				<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 			</div>
 
 			<div v-else-if="debugStore.threads.length === 0" :class="$style.emptyState">
@@ -326,7 +326,7 @@ onMounted(() => {
 
 				<div :class="$style.threadDetailContent">
 					<div v-if="debugStore.isLoadingMessages" :class="$style.loadingState">
-						<N8nIcon icon="spinner" color="primary" spin size="small" />
+						<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 					</div>
 					<div v-else-if="debugStore.threadMessages.length === 0" :class="$style.emptyState">
 						{{ i18n.baseText('instanceAi.debug.threads.noMessages') }}
@@ -368,7 +368,7 @@ onMounted(() => {
 			</div>
 
 			<div v-if="debugStore.isLoadingThreadDebugRuns" :class="$style.loadingState">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
+				<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 			</div>
 
 			<div v-else-if="debugStore.threadDebugRuns.length === 0" :class="$style.emptyState">
@@ -403,14 +403,14 @@ onMounted(() => {
 				v-if="debugStore.isLoadingRunDebug && activeTab === 'llmSteps'"
 				:class="$style.loadingState"
 			>
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
+				<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 			</div>
 
 			<div
 				v-if="debugStore.isLoadingRunDebug && activeTab === 'workflowCode'"
 				:class="$style.loadingState"
 			>
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
+				<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 			</div>
 
 			<template v-else-if="debugStore.runDebug && activeTab === 'workflowCode'">

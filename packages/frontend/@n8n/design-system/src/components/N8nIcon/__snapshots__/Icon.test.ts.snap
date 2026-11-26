@@ -29,9 +29,3 @@ exports[`Icon > should render correctly with predefined size 1`] = `
   <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
-
-exports[`Icon > should render correctly with spin enabled 1`] = `
-"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
-  <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
-</svg>"
-`;

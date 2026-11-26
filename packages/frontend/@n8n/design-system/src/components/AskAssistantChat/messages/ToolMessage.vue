@@ -5,6 +5,7 @@ import BaseMessage from './BaseMessage.vue';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
+import N8nSpinner from '../../N8nSpinner';
 import N8nText from '../../N8nText';
 import N8nTooltip from '../../N8nTooltip';
 
@@ -68,11 +69,10 @@ const statusColor = computed(() => {
 									{{ statusMessage }}
 								</span>
 							</template>
-							<N8nIcon
+							<N8nSpinner
 								v-if="message.status === 'running'"
-								icon="spinner"
-								spin
-								:color="statusColor"
+								type="dots"
+								style="color: var(--color--secondary)"
 								size="large"
 							/>
 							<N8nIcon

@@ -6,7 +6,7 @@
  * user, they already have control; otherwise the agent's calls wait from now on. "I'm done" gives
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
-import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nSpinner, FocusScope, N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -201,11 +201,10 @@ async function returnControl(userNote?: string) {
 					:class="$style.placeholder"
 					data-test-id="instance-ai-browser-preview-placeholder"
 				>
-					<N8nIcon
+					<N8nSpinner
 						v-if="!isDisconnected"
-						icon="loader-circle"
+						type="dots"
 						size="small"
-						spin
 						aria-hidden="true"
 						data-test-id="instance-ai-browser-preview-spinner"
 					/>

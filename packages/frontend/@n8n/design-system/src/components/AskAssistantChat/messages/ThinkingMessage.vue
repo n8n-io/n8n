@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
+import N8nSpinner from '../../N8nSpinner';
 
 interface Props {
 	items: ChatUI.ThinkingItem[];
@@ -38,13 +39,13 @@ const toggleExpanded = () => {
 function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 	switch (status) {
 		case 'completed':
-			return { icon: 'circle-check' as const, spin: false };
+			return 'circle-check';
 		case 'running':
-			return { icon: 'spinner' as const, spin: true };
+			return 'spinner';
 		case 'error':
-			return { icon: 'triangle-alert' as const, spin: false };
+			return 'triangle-alert';
 		default:
-			return { icon: 'circle' as const, spin: false };
+			return 'circle';
 	}
 }
 </script>
@@ -63,11 +64,8 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 		<Transition name="expand">
 			<div v-if="isExpanded" :class="$style.itemList">
 				<div v-for="item in items" :key="item.id" :class="$style.item">
-					<N8nIcon
-						:icon="getIconForStatus(item.status).icon"
-						:spin="getIconForStatus(item.status).spin"
-						:class="$style.itemIcon"
-					/>
+					<N8nSpinner v-if="item.status === 'running'" type="dots" :class="$style.itemIcon" />
+					<N8nIcon v-else :icon="getIconForStatus(item.status)" :class="$style.itemIcon" />
 					<span :class="$style.itemText">
 						{{ item.displayTitle }}
 					</span>

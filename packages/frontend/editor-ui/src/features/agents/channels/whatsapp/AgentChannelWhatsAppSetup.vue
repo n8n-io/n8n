@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
+import {
+	N8nSpinner,
+	N8nButton,
+	N8nCopyInput,
+	N8nIcon,
+	N8nLink,
+	N8nStepper,
+	N8nText,
+} from '@n8n/design-system';
 import {
 	resolveWhatsAppSettings,
 	type AgentJsonConfig,
@@ -611,7 +619,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							:class="[$style.hint, $style.verified]"
 							data-testid="whatsapp-webhook-waiting"
 						>
-							<N8nIcon icon="loader-circle" size="small" spin />
+							<N8nSpinner type="dots" size="small" />
 							{{ i18n.baseText('agents.channels.whatsapp.setup.verify.waiting') }}
 						</N8nText>
 					</div>

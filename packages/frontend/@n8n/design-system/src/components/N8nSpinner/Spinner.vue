@@ -24,7 +24,7 @@ const gridSizes: Record<IconSize, number> = {
 
 interface SpinnerProps {
 	/** Set the icon size. Brand uses this height with a 336:160 aspect ratio. */
-	size?: IconSize;
+	size?: IconSize | number;
 	/**
 	 * Use brand while a page or component loads, before its content is ready.
 	 * Use grid or dots for activity status, such as an assistant thinking or an execution running.
@@ -37,6 +37,10 @@ const props = withDefaults(defineProps<SpinnerProps>(), {
 	type: 'grid',
 	size: 'medium',
 });
+
+const sizeInPixels = computed(() =>
+	typeof props.size === 'number' ? props.size : gridSizes[props.size],
+);
 
 const reducedMotion = usePreferredReducedMotion();
 const progress = ref(0.375);
@@ -80,9 +84,9 @@ function updateBrandMotion() {
 			fill="currentColor"
 			role="presentation"
 			viewBox="0 0 7.5 7.5"
-			:width="gridSizes[size]"
-			:height="gridSizes[size]"
-			:style="{ width: `${gridSizes[size]}px`, height: `${gridSizes[size]}px` }"
+			:width="sizeInPixels"
+			:height="sizeInPixels"
+			:style="{ width: `${sizeInPixels}px`, height: `${sizeInPixels}px` }"
 			data-spinner="grid"
 		>
 			<path
@@ -99,9 +103,9 @@ function updateBrandMotion() {
 			aria-hidden="true"
 			focusable="false"
 			viewBox="42 0 336 160"
-			:width="(gridSizes[size] * 336) / 160"
-			:height="gridSizes[size]"
-			:style="{ width: `${(gridSizes[size] * 336) / 160}px`, height: `${gridSizes[size]}px` }"
+			:width="(sizeInPixels * 336) / 160"
+			:height="sizeInPixels"
+			:style="{ width: `${(sizeInPixels * 336) / 160}px`, height: `${sizeInPixels}px` }"
 		>
 			<rect x="0" y="71" width="420" height="18" />
 			<g v-for="(stem, index) in stems" :key="index" :transform="`translate(${stem.x} 80)`">
@@ -112,12 +116,16 @@ function updateBrandMotion() {
 				</g>
 			</g>
 		</svg>
-		<N8nIcon v-else icon="spinner" :size="size" spin />
+		<N8nIcon v-else icon="spinner" :size="size" class="n8n-spinner-dots" />
 	</span>
 </template>
 
 <style lang="scss">
 @use '../../css/mixins/motion';
+
+.n8n-spinner-dots {
+	@include motion.spin;
+}
 
 .n8n-spinner:has(> svg[data-spinner='grid']) {
 	display: inline-flex;

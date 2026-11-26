@@ -74,9 +74,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['theme'],
 		template: '<div><slot /><slot name="trailingContent" /></div>',
 	},
+	N8nSpinner: { name: 'N8nSpinner', props: ['type', 'size'], template: '<span />' },
 	N8nIcon: {
 		template: '<i :data-icon="icon" />',
-		props: ['icon', 'size', 'spin'],
+		props: ['icon', 'size'],
 	},
 	N8nLink: {
 		props: ['underline', 'size'],

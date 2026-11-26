@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { useI18n } from '@n8n/i18n';
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -230,7 +230,7 @@ watch(
 		</div>
 
 		<div v-else-if="showProbeLoading" :class="$style.gate" data-test-id="tests-panel-probe-loading">
-			<N8nIcon icon="spinner" size="medium" :spin="true" />
+			<N8nSpinner type="dots" size="medium" />
 		</div>
 
 		<div v-else-if="showGate" :class="$style.gate" data-test-id="tests-panel-gate">

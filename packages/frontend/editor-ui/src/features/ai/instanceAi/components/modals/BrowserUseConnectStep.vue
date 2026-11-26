@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
@@ -128,7 +128,7 @@ onBeforeUnmount(() => {
 			:class="$style.waiting"
 			data-test-id="browser-use-direct-connect-waiting"
 		>
-			<N8nIcon icon="spinner" color="primary" spin size="small" />
+			<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 			<N8nText color="text-light" size="small">
 				{{ i18n.baseText(inFlightTextKey) }}
 			</N8nText>

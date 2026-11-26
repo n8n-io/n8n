@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
@@ -252,7 +253,7 @@ function formatStepCount(count: number): string {
 
 					<div ref="detailPaneRef" :class="$style.detail">
 						<div v-if="debugStore.isLoadingRunDebug" :class="$style.loadingState">
-							<N8nIcon icon="spinner" color="primary" spin size="small" />
+							<N8nSpinner type="dots" style="color: var(--color--primary)" size="small" />
 						</div>
 						<div
 							v-else-if="selectedStep || runWorkflowCode.length > 0"

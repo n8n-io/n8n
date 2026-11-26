@@ -3,6 +3,7 @@ import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nCheckbox,
 	N8nDialog,
@@ -10,7 +11,6 @@ import {
 	N8nDialogClose,
 	N8nDialogDescription,
 	N8nDialogFooter,
-	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -430,7 +430,7 @@ watch(
 		/>
 
 		<div v-if="otelStore.loading" :class="$style.loading" data-test-id="otel-loading">
-			<N8nIcon icon="spinner" spin />
+			<N8nSpinner type="dots" />
 		</div>
 
 		<div v-else :class="$style.settingsContent">

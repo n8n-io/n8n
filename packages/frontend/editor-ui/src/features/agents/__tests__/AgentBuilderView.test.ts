@@ -890,7 +890,7 @@ const commonStubs = {
 	},
 	N8nIcon: {
 		template: '<i v-bind="$attrs" :data-icon="icon"></i>',
-		props: ['icon', 'size', 'spin'],
+		props: ['icon', 'size'],
 	},
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 	N8nHeading: {

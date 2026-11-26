@@ -59,6 +59,14 @@ describe('Spinner', () => {
 		expect(svg?.style.height).toBe(`${pixels}px`);
 	});
 
+	it.each(['grid', 'dots', 'brand'] as const)('supports numeric sizes for %s', (type) => {
+		const { container } = render(Spinner, { props: { type, size: 80 } });
+		expect(container.querySelector('svg')).toHaveAttribute(
+			'height',
+			type === 'dots' ? '80px' : '80',
+		);
+	});
+
 	it('still renders the dots variant', () => {
 		const dots = render(Spinner, { props: { type: 'dots' } });
 		expect(dots.container.querySelector('[data-spinner="grid"]')).toBeNull();

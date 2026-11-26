@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nIcon, N8nText } from '@n8n/design-system';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
@@ -210,7 +210,7 @@ const failureReason = computed(() => {
 		:data-test-id="`tests-result-running-${index}`"
 	>
 		<div :class="$style.runLine">
-			<N8nIcon icon="spinner" size="small" :spin="true" color="text-light" />
+			<N8nSpinner type="dots" size="small" style="color: var(--color--text--tint-1)" />
 			<N8nText size="small" color="text-light">
 				{{ locale.baseText('evaluations.tests.results.running') }}
 			</N8nText>

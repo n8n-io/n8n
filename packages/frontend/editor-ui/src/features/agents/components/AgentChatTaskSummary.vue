@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nLink } from '@n8n/design-system';
+import { N8nSpinner, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { RouteLocationRaw } from 'vue-router';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
@@ -31,7 +31,7 @@ const i18n = useI18n();
 			<AgentMarkdownChunk :source="content" />
 		</div>
 		<div v-else-if="preparing" :class="$style.preparing" role="status" aria-live="polite">
-			<N8nIcon icon="loader-circle" spin size="small" aria-hidden="true" />
+			<N8nSpinner type="dots" size="small" aria-hidden="true" />
 			<span>{{ i18n.baseText('agents.chat.tasks.summary.preparing') }}</span>
 		</div>
 		<p v-else :class="$style.fallback">{{ i18n.baseText('agents.chat.tasks.summary.empty') }}</p>

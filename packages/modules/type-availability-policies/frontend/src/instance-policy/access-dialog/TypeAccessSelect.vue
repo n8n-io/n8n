@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { policyActionSchema, type PolicyAction } from '@n8n/api-types';
-import { N8nIcon, N8nOption, N8nSelect, type IconColor, type IconName } from '@n8n/design-system';
+import {
+	N8nSpinner,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	type IconColor,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -65,11 +72,10 @@ function onChange(value: unknown) {
 		@update:model-value="onChange"
 	>
 		<template v-if="loading || valueIcon" #prefix>
-			<N8nIcon
+			<N8nSpinner
 				v-if="loading"
-				icon="loader-circle"
+				type="dots"
 				size="small"
-				spin
 				data-test-id="type-access-select-loading"
 			/>
 			<N8nIcon

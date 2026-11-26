@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PolicyAction, TypeUsage } from '@n8n/api-types';
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nDataTableServer,
 	N8nDropdownMenu,
@@ -370,11 +371,10 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 							@click.stop
 						>
 							<!-- A spinner and not a disabled button: a disabled button loses the focus. -->
-							<N8nIcon
+							<N8nSpinner
 								v-if="item.checking"
-								icon="loader-circle"
+								type="dots"
 								size="small"
-								spin
 								:data-test-id="`instance-policy-access-checking-${item.name}`"
 							/>
 							<N8nIcon v-else v-bind="ACCESS_ICON[item.access]" size="small" />

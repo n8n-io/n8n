@@ -14,6 +14,7 @@ import {
 	type Ref,
 } from 'vue';
 import {
+	N8nSpinner,
 	N8nAiActivityStepGroup,
 	N8nAttachment,
 	N8nAttachmentGroup,
@@ -1902,13 +1903,14 @@ onBeforeUnmount(() => {
 						content-position="above"
 					>
 						<template #prefix>
-							<N8nIcon
-								:icon="backgroundInProgress ? 'loader-circle' : 'circle'"
-								:spin="backgroundInProgress"
+							<N8nSpinner
+								v-if="backgroundInProgress"
+								type="dots"
 								size="small"
-								:class="{ [$style.jobSpinner]: backgroundInProgress }"
+								:class="$style.jobSpinner"
 								aria-hidden="true"
 							/>
+							<N8nIcon v-else icon="circle" size="small" aria-hidden="true" />
 						</template>
 						<template #header-trailing>
 							<span
@@ -1931,12 +1933,13 @@ onBeforeUnmount(() => {
 										]"
 										:data-status="job.status"
 									>
-										<N8nIcon
-											:icon="job.indicator.icon"
-											:spin="job.indicator.icon === 'loader-circle'"
+										<N8nSpinner
+											v-if="job.indicator.icon === 'loader-circle'"
+											type="dots"
 											size="small"
-											:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+											:class="$style.jobSpinner"
 										/>
+										<N8nIcon v-else :icon="job.indicator.icon" size="small" />
 									</span>
 									<span :class="$style.jobLabel">{{ job.label }}</span>
 									<N8nText

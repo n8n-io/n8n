@@ -19,6 +19,7 @@ import cloneDeep from 'lodash/cloneDeep';
 
 import { ElDatePicker } from 'element-plus';
 import {
+	N8nSpinner,
 	N8nBadge,
 	N8nButton,
 	N8nCheckbox,
@@ -386,7 +387,7 @@ onBeforeMount(() => {
 							:teleported="teleported"
 						>
 							<template v-if="isLoadingVersions" #prefix>
-								<N8nIcon icon="spinner" spin />
+								<N8nSpinner type="dots" />
 							</template>
 							<N8nOption
 								v-for="(item, idx) in versionFilterOptions"

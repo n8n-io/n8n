@@ -58,7 +58,6 @@ describe('AgentChatBackgroundJobSignal', () => {
 				const icon = wrapper.findAll('li')[index].getComponent(N8nIcon);
 				expect(icon.props()).toMatchObject({
 					icon: job.status === 'completed' ? 'circle-check' : 'circle-x',
-					spin: false,
 				});
 			}
 			await wrapper.setProps({ signal: structuredClone(signal) });

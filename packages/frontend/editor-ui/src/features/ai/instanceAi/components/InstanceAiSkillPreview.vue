@@ -2,7 +2,7 @@
 import { ref, shallowRef, watch } from 'vue';
 import type { SkillDetail } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AgentSkillModal, {
 	type AgentSkillModalData,
@@ -103,7 +103,7 @@ async function saveSkill({
 			:class="$style.centerState"
 			data-test-id="instance-ai-skill-preview-loading"
 		>
-			<N8nIcon icon="loader-circle" :size="80" spin />
+			<N8nSpinner type="dots" :size="80" />
 		</div>
 
 		<AgentSkillModal

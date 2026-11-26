@@ -69,9 +69,6 @@ const meta = {
 			control: 'select',
 			options: ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'],
 		},
-		spin: {
-			control: 'boolean',
-		},
 		color: {
 			control: 'select',
 			options: [
@@ -138,7 +135,6 @@ export const Default: Story = {
 	args: {
 		icon: 'check',
 		size: 'medium',
-		spin: false,
 	},
 };
 
@@ -247,7 +243,6 @@ export const AllIcons: Story = {
 							:icon="name"
 							:size="args.size"
 							:color="args.color"
-							:spin="args.spin"
 							:stroke-width="args.strokeWidth"
 						/>
 						<N8nText :style="galleryLayout.label" size="xsmall" color="text-light">
@@ -261,7 +256,6 @@ export const AllIcons: Story = {
 	}),
 	args: {
 		size: 'large',
-		spin: false,
 	},
 	argTypes: {
 		icon: { control: false },
@@ -287,14 +281,6 @@ export const WithCustomSize: Story = {
 	args: {
 		icon: 'info',
 		size: 32,
-	},
-	render: renderIcon,
-};
-
-export const WithSpin: Story = {
-	args: {
-		icon: 'spinner',
-		spin: true,
 	},
 	render: renderIcon,
 };

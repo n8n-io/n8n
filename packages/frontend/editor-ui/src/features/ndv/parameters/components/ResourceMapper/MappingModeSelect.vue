@@ -137,7 +137,7 @@ defineExpose({
 			</div>
 			<div class="mt-5xs">
 				<N8nText v-if="loading" size="small">
-					<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
+					<N8nIcon icon="refresh-cw" size="xsmall" :class="$style.spinning" />
 					{{
 						locale.baseText('resourceMapper.fetchingFields.message', {
 							interpolate: {
@@ -157,3 +157,11 @@ defineExpose({
 		</N8nInputLabel>
 	</div>
 </template>
+
+<style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
+.spinning {
+	@include motion.spin;
+}
+</style>

@@ -42,7 +42,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -123,7 +122,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -145,7 +143,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -203,7 +200,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -241,7 +237,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
           data-v-d00cba9a=""
           icon="ellipsis"
           size="small"
-          spin="false"
         />
         <!--teleport start-->
         <!--teleport end-->
@@ -271,7 +266,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <!--v-if-->
@@ -314,7 +308,6 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
       data-v-882a318e=""
       icon="chevron-down"
       size="medium"
-      spin="false"
     />
   </div>
   <node-icon-stub
@@ -383,7 +376,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -404,7 +396,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-882a318e=""
               icon="bolt-filled"
               size="xsmall"
-              spin="false"
             />
             <div
               class="extra-info"
@@ -439,7 +430,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -461,7 +451,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -507,7 +496,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -529,7 +517,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-0f5e7239=""
               icon="list"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -575,7 +562,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -597,7 +583,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-0f5e7239=""
               icon="list"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -643,7 +628,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -665,7 +649,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -711,7 +694,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -733,7 +715,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -779,7 +760,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -801,7 +781,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               data-v-0f5e7239=""
               icon="list"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -849,7 +828,6 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <!--v-if-->
@@ -927,7 +905,6 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -988,7 +965,6 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               data-v-0f5e7239=""
               icon="hash"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1039,7 +1015,6 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -1059,7 +1034,6 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               data-v-0f5e7239=""
               icon="list"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1115,7 +1089,6 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1176,7 +1149,6 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1258,7 +1230,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -1279,7 +1250,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               data-v-882a318e=""
               icon="bolt-filled"
               size="xsmall"
-              spin="false"
             />
             <div
               class="extra-info"
@@ -1314,7 +1284,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -1336,7 +1305,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               data-v-0f5e7239=""
               icon="list"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1382,7 +1350,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -1404,7 +1371,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1450,7 +1416,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -1472,7 +1437,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1530,7 +1494,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               data-v-0f5e7239=""
               icon="hash"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1593,7 +1556,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1646,7 +1608,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -1692,7 +1653,6 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <!--v-if-->
@@ -1762,7 +1722,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -1783,7 +1742,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-882a318e=""
               icon="bolt-filled"
               size="xsmall"
-              spin="false"
             />
             <!--v-if-->
           </div>
@@ -1814,7 +1772,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <!--v-if-->
@@ -1863,7 +1820,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1924,7 +1880,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -1985,7 +1940,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2005,7 +1959,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             icon="lock"
             size="small"
-            spin="false"
           />
           <!--teleport start-->
           <!--teleport end-->
@@ -2041,7 +1994,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -2061,7 +2013,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2117,7 +2068,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2178,7 +2128,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2239,7 +2188,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2290,7 +2238,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 class="collapse-icon"
                 data-v-0f5e7239=""
                 icon="chevron-down"
-                spin="false"
               />
             </div>
           </div>
@@ -2310,7 +2257,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="box"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2366,7 +2312,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2427,7 +2372,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2488,7 +2432,6 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               data-v-0f5e7239=""
               icon="square-check"
               size="small"
-              spin="false"
             />
             <span
               class="content title"
@@ -2570,7 +2513,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -2591,7 +2533,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               data-v-882a318e=""
               icon="bolt-filled"
               size="xsmall"
-              spin="false"
             />
             <div
               class="extra-info"
@@ -2638,7 +2579,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="title"
@@ -2693,7 +2633,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
                 data-v-882a318e=""
                 icon="chevron-down"
                 size="medium"
-                spin="false"
               />
             </div>
             <node-icon-stub
@@ -2755,7 +2694,6 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               data-v-0f5e7239=""
               icon="type"
               size="small"
-              spin="false"
             />
             <span
               class="title"

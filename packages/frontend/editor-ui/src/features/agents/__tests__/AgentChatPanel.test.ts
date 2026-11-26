@@ -224,7 +224,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHoverCard: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
-	N8nIcon: { name: 'N8nIcon', props: ['icon', 'spin'], template: '<i />' },
+	N8nSpinner: { name: 'N8nSpinner', props: ['type', 'size'], template: '<span />' },
+	N8nIcon: { name: 'N8nIcon', props: ['icon'], template: '<i />' },
 	N8nIconButton: {
 		emits: ['click'],
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
@@ -2663,9 +2664,16 @@ describe('AgentChatPanel', () => {
 			}
 		});
 
-		it('shows new running jobs', () => {
+		it('shows new running jobs', async () => {
 			backgroundJobsMock.value = [job];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			expect(panel.get('button').getComponent({ name: 'N8nSpinner' }).props('type')).toBe('dots');
+
+			await panel.get('button').trigger('click');
+			expect(
+				panel.get('[data-status="running"]').getComponent({ name: 'N8nSpinner' }).props('type'),
+			).toBe('dots');
 
 			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).not.toContain(
 				'Stopped',
@@ -3118,7 +3126,6 @@ describe('AgentChatPanel', () => {
 			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
 			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon: 'circle',
-				spin: false,
 			});
 			const link = wrapper.get('[data-testid="agent-background-jobs-trace"]');
 			expect(link.text()).toBe('View trace');
@@ -3178,7 +3185,6 @@ describe('AgentChatPanel', () => {
 			expect(statusIcon.attributes('aria-label')).toBe(label);
 			expect(statusIcon.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon,
-				spin: false,
 			});
 			wrapper.unmount();
 		});

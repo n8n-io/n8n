@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
 import {
+	N8nSpinner,
 	type IconColor,
 	N8nIcon,
 	N8nButton,
@@ -191,10 +192,18 @@ const summary = computed(() => {
 			:title="plan.closed || plan.document.presentation ? label : plan.document.title"
 		>
 			<template #header>
+				<N8nSpinner
+					v-if="isRunning"
+					type="dots"
+					:class="$style.running"
+					size="medium"
+					style="color: var(--color--text--tint-1)"
+					aria-hidden="true"
+					data-testid="agent-chat-plan-indicator"
+				/>
 				<N8nIcon
-					:icon="isRunning ? 'loader-circle' : 'list-checks'"
-					:spin="isRunning"
-					:class="{ [$style.running]: isRunning }"
+					v-else
+					icon="list-checks"
 					size="medium"
 					color="text-light"
 					aria-hidden="true"
@@ -254,9 +263,16 @@ const summary = computed(() => {
 									:title="i18n.baseText(statusLabels[item.status])"
 									:data-status="item.status"
 								>
+									<N8nSpinner
+										v-if="item.status === 'in_progress'"
+										type="dots"
+										style="color: var(--color--text--tint-1)"
+										size="medium"
+										aria-hidden="true"
+									/>
 									<N8nIcon
+										v-else
 										:icon="statusIcons[item.status]"
-										:spin="item.status === 'in_progress'"
 										:color="statusIconColors[item.status]"
 										size="medium"
 										aria-hidden="true"
@@ -293,10 +309,17 @@ const summary = computed(() => {
 										:title="i18n.baseText(statusLabels[task.status])"
 										:data-status="task.status"
 									>
+										<N8nSpinner
+											v-if="task.status === 'in_progress'"
+											type="dots"
+											style="color: var(--color--text--tint-1)"
+											size="medium"
+											aria-hidden="true"
+										/>
 										<N8nIcon
+											v-else
 											:icon="statusIcons[task.status]"
 											:color="statusIconColors[task.status]"
-											:spin="task.status === 'in_progress'"
 											size="medium"
 											aria-hidden="true"
 										/>

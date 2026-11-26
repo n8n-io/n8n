@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nBadge, N8nIcon, N8nSelect2, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nSpinner, N8nBadge, N8nIcon, N8nSelect2, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { SelectItem, SelectOptionBase, SelectValue, SelectVariants } from '@n8n/design-system';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
@@ -188,7 +188,7 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 				>
 					<span>
 						{{ selectedLabel ?? placeholder }}
-						<N8nIcon v-if="loading" icon="spinner" spin size="small" />
+						<N8nSpinner v-if="loading" type="dots" size="small" />
 					</span>
 				</N8nTooltip>
 			</template>
