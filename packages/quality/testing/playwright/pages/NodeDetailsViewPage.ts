@@ -620,6 +620,7 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.expectOutputRunSelectorValue(value);
 	}
 
+	// The select teleports this list outside the NDV.
 	// A pointer click misses this option: the menu hides it before the click lands.
 	// The option stays mounted on this control's list. Send the click there.
 	private async chooseRunSelectorOption(selector: Locator, value: string) {

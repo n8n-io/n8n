@@ -264,6 +264,68 @@ describe('NodeDetailsViewPage scope configuration', () => {
 		expect(new ScopeLockdownRule().analyzeProject(project, [file])).toEqual([]);
 	});
 
+	test('allows the teleported run selector list', () => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/NodeDetailsViewPage.ts`,
+			`export class NodeDetailsViewPage {
+				get container() { return this.page.getByTestId('ndv'); }
+				chooseOption(listId: string, value: string) {
+					return this.page.locator(\`[id="\${listId}"]\`).getByRole('option', {
+						name: value,
+						exact: true,
+						includeHidden: true,
+					});
+				}
+			}`,
+		);
+
+		expect(new ScopeLockdownRule().analyzeProject(project, [file])).toEqual([]);
+	});
+
+	test.each([
+		'this.page.locator(`[id="${listId}"]`)',
+		'this.page.locator(`[id="${listId}"]`).getByRole(\'option\', { name: value, exact: true })',
+		"this.page.getByRole('option', { name: value, exact: true, includeHidden: true })",
+	])('reports a run selector locator that leaves the NDV: %s', (locator) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/NodeDetailsViewPage.ts`,
+			`export class NodeDetailsViewPage {
+				get container() { return this.page.getByTestId('ndv'); }
+				getControl() { return ${locator}; }
+			}`,
+		);
+
+		const violations = new ScopeLockdownRule().analyzeProject(project, [file]);
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('Unscoped locator');
+	});
+
+	test.each([
+		{ fileName: 'OtherPage.ts', className: 'NodeDetailsViewPage' },
+		{ fileName: 'NodeDetailsViewPage.ts', className: 'OtherPage' },
+	])('keeps the run selector list scoped to $fileName:$className', ({ fileName, className }) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/pages/${fileName}`,
+			`export class ${className} {
+				get container() { return this.page.getByTestId('ndv'); }
+				chooseOption(listId: string, value: string) {
+					return this.page.locator(\`[id="\${listId}"]\`).getByRole('option', {
+						name: value,
+						exact: true,
+						includeHidden: true,
+					});
+				}
+			}`,
+		);
+
+		const violations = new ScopeLockdownRule().analyzeProject(project, [file]);
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('Unscoped locator');
+	});
+
 	test('allows the exact fullscreen editor locator outside a has filter', () => {
 		const project = new Project({ useInMemoryFileSystem: true });
 		const file = project.createSourceFile(

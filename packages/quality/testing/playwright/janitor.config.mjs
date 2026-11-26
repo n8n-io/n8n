@@ -88,6 +88,8 @@ export default defineConfig({
 				/^pages\/NodeDetailsViewPage\.ts:NodeDetailsViewPage: this\.page\.getByRole\('dialog'\)\.filter\(\{\s*has: this\.page\.getByTestId\('code-editor-fullscreen'\),\s*\}\)$/,
 				// Playwright evaluates this `has` locator relative to each dialog.
 				/^pages\/NodeDetailsViewPage\.ts:NodeDetailsViewPage: this\.page\.getByTestId\('code-editor-fullscreen'\)$/,
+				// The run selector teleports its list outside the NDV.
+				/^pages\/NodeDetailsViewPage\.ts:NodeDetailsViewPage: this\.page\.locator\(`\[id="\$\{listId\}"\]`\)\.getByRole\('option', \{\s*name: value,\s*exact: true,\s*includeHidden: true,\s*\}\)$/,
 				// The error-workflow list is teleported outside the settings content.
 				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByRole\('listbox'\)\.filter\(\{ visible: true \}\)$/,
 				// The save button is in the footer, outside the settings content slot.
