@@ -18,8 +18,8 @@ import { startExpressionEngine, stopExpressionEngine } from './runners/expressio
 import { V1Runner } from './runners/v1-runner';
 import { V2Runner } from './runners/v2-runner';
 
-function write(stream: NodeJS.WriteStream, text: string): Promise<void> {
-	return new Promise((done) => stream.write(text, () => done()));
+async function write(stream: NodeJS.WriteStream, text: string): Promise<void> {
+	return await new Promise((done) => stream.write(text, () => done()));
 }
 
 async function replay(file: string): Promise<number> {
