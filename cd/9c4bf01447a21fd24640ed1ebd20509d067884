@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_50795f9787e625::t_5fdc5b27e7ab74 400-404
+packages/nodes-base/credentials/NextCloudApi.credentials.ts
+  s_50795f9787e625::t_5fdc5b27e7ab74 52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd9c4bf01447a21fd24640ed1ebd20509d067884",
+  "prompts": {},
+  "sessions": {
+    "s_50795f9787e625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42d12515-ea53-4ce2-9f84-b88ec831710f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
