@@ -12,6 +12,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useI18n } from '@n8n/i18n';
 import { type IFormInput } from '@n8n/design-system';
 import { type JSONSchema7 } from 'json-schema';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
@@ -26,6 +27,7 @@ interface GetToolParametersProps {
 }
 
 export function useToolParameters({ node }: GetToolParametersProps) {
+	const i18n = useI18n();
 	const parameters = ref<IFormInput[]>([]);
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const projectsStore = useProjectsStore();
@@ -123,7 +125,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			name: getToolNameOptionName(newNode),
 			initialValue: '',
 			properties: {
-				label: 'Tool name',
+				label: i18n.baseText('toolParameters.field.toolName'),
 				type: 'select',
 				options: toolOptions,
 				required: true,
@@ -226,7 +228,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			name: getToolNameOptionName(newNode),
 			initialValue: '',
 			properties: {
-				label: 'Tool name',
+				label: i18n.baseText('toolParameters.field.toolName'),
 				type: 'select',
 				options: toolOptions,
 				required: true,
@@ -307,7 +309,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 				name: hasImplicitInput ? 'query.input' : 'query',
 				initialValue: (queryValue as string) ?? '',
 				properties: {
-					label: 'Query',
+					label: i18n.baseText('toolParameters.field.query'),
 					type: 'text',
 					required: true,
 				},
@@ -334,7 +336,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 				const result = await getToolParameters(newNode);
 				parameters.value = result.parameters;
 			} catch (e: unknown) {
-				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
+				error.value = e instanceof Error ? e : new Error(i18n.baseText('toolParameters.error.unknown'));
 				return;
 			}
 		},
