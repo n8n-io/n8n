@@ -24,7 +24,7 @@ export function useSkillWorkflowMentionSearch(projectId: MaybeRefOrGetter<string
 				projectId: toValue(projectId),
 				query: query.value || undefined,
 				isArchived: false,
-				select: ['id', 'name'],
+				select: ['id', 'name', 'updatedAt'],
 				options: {
 					skip,
 					take: SKILL_WORKFLOW_MENTION_PAGE_SIZE,
