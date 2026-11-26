@@ -1697,9 +1697,13 @@ const FIRST_MESSAGE_PREVIEW_MAX_CHARS = 200;
 function toFirstMessagePreview(message: string | null, agentName: string): string | null {
 	const cleaned = cleanUserMessage(message, agentName)?.replace(/\s+/g, ' ');
 	if (!cleaned) return null;
-	return cleaned.length > FIRST_MESSAGE_PREVIEW_MAX_CHARS
-		? `${cleaned.slice(0, FIRST_MESSAGE_PREVIEW_MAX_CHARS - 1).trimEnd()}…`
-		: cleaned;
+	// Cut by code points, so an emoji at the cut does not become a lone surrogate.
+	const chars = Array.from(cleaned);
+	if (chars.length <= FIRST_MESSAGE_PREVIEW_MAX_CHARS) return cleaned;
+	return `${chars
+		.slice(0, FIRST_MESSAGE_PREVIEW_MAX_CHARS - 1)
+		.join('')
+		.trimEnd()}…`;
 }
 
 function cleanUserMessage(message: string | null, agentName: string): string | null {

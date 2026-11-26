@@ -112,6 +112,8 @@ export class SystemAgentChatController {
 	 * matches the title, and `cursor` is the `nextCursor` of the previous page.
 	 * It checks thread ownership only, like a stop: the list shows a thread in a
 	 * project that the user can no longer read, but opening it runs the floor.
+	 * The list shows the title and the first message of the thread. The user
+	 * wrote that message, and the title is generated from it.
 	 */
 	@Get('/:agentId/threads')
 	async listThreads(

@@ -2183,6 +2183,18 @@ describe('AgentExecutionService', () => {
 			expect(previews.has('thread-3')).toBe(false);
 			expect(previews.has('thread-4')).toBe(false);
 		});
+
+		it('does not split an emoji at the cut', async () => {
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(
+				new Map([['thread-1', `${'x'.repeat(198)}🌧️ rain`]]),
+			);
+
+			const previews = await service.findFirstMessagePreviews([
+				{ id: 'thread-1', agentName: 'Support' },
+			]);
+
+			expect(previews.get('thread-1')).toBe(`${'x'.repeat(198)}🌧…`);
+		});
 	});
 
 	describe('findN8nChatThreadsForAgents', () => {
