@@ -275,7 +275,7 @@ export class DeploymentProbe {
 		return lastResponse!;
 	}
 
-	/** Check readiness, complete owner setup if needed, and log in via REST API (P1). */
+	/** Check readiness, complete owner setup if needed, and log in via REST API. */
 	async signIn(): Promise<SignInResult> {
 		const readinessDeadline = Date.now() + 15_000;
 		let ready = false;
@@ -369,7 +369,7 @@ export class DeploymentProbe {
 		return { version };
 	}
 
-	/** Import and activate a workflow, trigger its production webhook, and verify the response (P2). */
+	/** Import and activate a workflow, trigger its production webhook, and verify the response. */
 	async runWebhook(): Promise<WebhookRunResult> {
 		const token = nanoid(10);
 		const webhookId = nanoid(12);
@@ -437,7 +437,7 @@ export class DeploymentProbe {
 		return { workflowId, webhookPath, token, responseBody: body };
 	}
 
-	/** Run a JavaScript Code node, and a Python Code node when `python: true` (P3). */
+	/** Run a JavaScript Code node, and a Python Code node when `python: true`. */
 	async runCodeNodes(options: RunCodeNodesOptions = {}): Promise<RunCodeNodesResult> {
 		const js = await this.runCodeNode('javaScript');
 		if (!options.python) {
@@ -528,7 +528,7 @@ export class DeploymentProbe {
 		return { workflowId, webhookPath, responseBody: body };
 	}
 
-	/** Read the finished execution for `workflowId` back via REST API (P4). */
+	/** Read the finished execution for `workflowId` back via REST API. */
 	async readExecution(
 		workflowId: string,
 		options: ReadExecutionOptions = {},
@@ -623,7 +623,7 @@ export class DeploymentProbe {
 		};
 	}
 
-	/** Write binary data in one node and read it in a later node (P5). */
+	/** Write binary data in one node and read it in a later node. */
 	async roundTripBinary(): Promise<BinaryRoundTripResult> {
 		const token = nanoid(10);
 		const payload = `binary-probe-${token}`;
