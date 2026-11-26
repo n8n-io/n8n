@@ -46,7 +46,6 @@ export const sourcePackages = [
 export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
 	{ name: '@n8n/frontend-module-html-display-mode', dir: 'modules/html-display-mode/frontend' },
 	{ name: '@n8n/frontend-module-engine-v2', dir: 'modules/engine-v2/frontend' },
-	{ name: '@n8n/frontend-module-runtime-credentials', dir: 'modules/runtime-credentials/frontend' },
 	{ name: '@n8n/frontend-module-promotions', dir: 'modules/promotions/frontend' },
 	{ name: '@n8n/frontend-module-apps', dir: 'modules/apps/frontend' },
 	{ name: '@n8n/frontend-module-self-healing', dir: 'modules/self-healing/frontend' },

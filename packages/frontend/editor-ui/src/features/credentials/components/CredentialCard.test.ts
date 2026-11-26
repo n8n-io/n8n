@@ -211,55 +211,6 @@ describe('CredentialCard', () => {
 		expect(heading).toHaveTextContent('Read only');
 	});
 
-	describe('run-time credentials', () => {
-		it('should show the run-time label', () => {
-			const data = createCredential({ isRuntime: true });
-			const { getByTestId } = renderComponent({ props: { data } });
-
-			expect(getByTestId('credential-card-runtime')).toHaveTextContent('Provided at run time');
-		});
-
-		it('should not show the run-time label for regular credentials', () => {
-			const { queryByTestId } = renderComponent({ props: { data: createCredential() } });
-
-			expect(queryByTestId('credential-card-runtime')).not.toBeInTheDocument();
-		});
-
-		it('should hide the actions menu, including Open and Delete', () => {
-			const data = createCredential({
-				isRuntime: true,
-				scopes: ['credential:delete', 'credential:update'],
-			});
-			const { queryByTestId } = renderComponent({ props: { data } });
-
-			expect(queryByTestId('credential-card-actions')).not.toBeInTheDocument();
-		});
-
-		it('should not offer Move, even for a user who may move credentials', () => {
-			vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
-			const data = createCredential({ isRuntime: true, scopes: ['credential:move'] });
-			const { queryByTestId } = renderComponent({ props: { data } });
-
-			expect(queryByTestId('credential-card-actions')).not.toBeInTheDocument();
-		});
-
-		it('should not show the project badge, because a stub has no owner project', () => {
-			const data = createCredential({ isRuntime: true, isGlobal: true });
-			const { queryByTestId } = renderComponent({ props: { data } });
-
-			expect(queryByTestId('credential-global-badge')).not.toBeInTheDocument();
-		});
-
-		it('should not emit click when the card is clicked', async () => {
-			const data = createCredential({ isRuntime: true, name: 'Request value: x' });
-			const { getByText, emitted } = renderComponent({ props: { data } });
-
-			await userEvent.click(getByText('Request value: x'));
-
-			expect(emitted('click')).toBeUndefined();
-		});
-	});
-
 	describe('global credentials', () => {
 		it('should display global badge when credential has isGlobal true', () => {
 			const data = createCredential({

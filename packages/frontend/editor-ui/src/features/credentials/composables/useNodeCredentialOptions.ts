@@ -140,7 +140,6 @@ export function useNodeCredentialOptions(
 			isManaged: raw.isManaged,
 			isGlobal: raw.isGlobal,
 			isResolvable: raw.isResolvable,
-			isRuntime: raw.isRuntime,
 			connectedByMe: raw.connectedByMe,
 			connectedAccountIdentifier: raw.connectedAccountIdentifier,
 			connectedUserCount: raw.connectedUserCount,

@@ -33,12 +33,6 @@
 			],
 			"@n8n/frontend-module-engine-v2": ["../../modules/engine-v2/frontend/src/index.ts"],
 			"@n8n/frontend-module-engine-v2/*": ["../../modules/engine-v2/frontend/src/*"],
-			"@n8n/frontend-module-runtime-credentials": [
-				"../../modules/runtime-credentials/frontend/src/index.ts"
-			],
-			"@n8n/frontend-module-runtime-credentials/*": [
-				"../../modules/runtime-credentials/frontend/src/*"
-			],
 			"@n8n/frontend-module-promotions": ["../../modules/promotions/frontend/src/index.ts"],
 			"@n8n/frontend-module-promotions/*": ["../../modules/promotions/frontend/src/*"],
 			"@n8n/frontend-module-apps": ["../../modules/apps/frontend/src/index.ts"],

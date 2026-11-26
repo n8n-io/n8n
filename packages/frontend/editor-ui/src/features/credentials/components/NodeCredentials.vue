@@ -441,12 +441,6 @@ function isCredentialResolvable(credentialType: string): boolean {
 	return credential?.isResolvable === true;
 }
 
-function isCredentialRuntime(credentialType: string): boolean {
-	const credentialId = selected.value[credentialType]?.id;
-	if (!credentialId) return false;
-	return findDisplayedCredential(credentialType, credentialId)?.isRuntime === true;
-}
-
 function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
 	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
@@ -1966,16 +1960,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										/>
 										<div :class="$style.credentialOptionName">
 											<N8nText :class="$style.optionName">{{ row.option.name }}</N8nText>
-											<N8nTooltip v-if="row.option.isRuntime" placement="top">
-												<template #content>{{
-													i18n.baseText('credentials.runtime.tooltip')
-												}}</template>
-												<N8nIcon
-													icon="arrow-down-to-line"
-													size="small"
-													data-test-id="credential-option-runtime-badge"
-												/>
-											</N8nTooltip>
 											<N8nTooltip
 												v-if="isPrivateCredentialsEnabled && row.option.isResolvable"
 												placement="top"
@@ -1992,13 +1976,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										</div>
 										<N8nText size="small" color="text-light" :class="$style.optionMeta">
 											{{
-												row.option.isRuntime
-													? i18n.baseText('credentials.runtime.label')
-													: row.option.isResolvable
-														? i18n.baseText(
-																'credentialEdit.credentialConfig.credentialType.endUser.title',
-															)
-														: row.option.typeDisplayName
+												row.option.isResolvable
+													? i18n.baseText(
+															'credentialEdit.credentialConfig.credentialType.endUser.title',
+														)
+													: row.option.typeDisplayName
 											}}
 										</N8nText>
 										<CredentialTypeRestrictedMarker
@@ -2124,8 +2106,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							(isCredentialExisting(type) ||
 								(getUnlistedSelected(type.name) &&
 									credentialsStore.getCredentialById(selected[type.name].id ?? ''))) &&
-							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name)) &&
-							!isCredentialRuntime(type.name)
+							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
 						"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
