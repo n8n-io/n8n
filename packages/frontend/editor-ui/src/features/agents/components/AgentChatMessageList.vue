@@ -1113,7 +1113,8 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 
 <style lang="scss" module>
 .messages {
-	width: 100%;
+	// A host panel can cover the end of the chat. The messages center in the space it leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	padding-bottom: var(--spacing--xl);
 	display: flex;
@@ -1121,6 +1122,9 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	// An offset, not a transform: a transform would move fixed-position descendants.
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 // Sticks to the top of the view. The zero height and the negative margin
