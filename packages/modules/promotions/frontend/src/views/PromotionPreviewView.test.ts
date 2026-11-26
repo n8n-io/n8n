@@ -553,6 +553,19 @@ describe('PromotionPreviewView', () => {
 		},
 	);
 
+	it.each(['promote', 'apply'] as const)(
+		'puts Refresh and the submit button in the title row for %s',
+		async (direction) => {
+			const { getByTestId } = await render(`/projects/p1/promotions/${direction}`, direction);
+
+			const titleRow = within(getByTestId('promotion-preview-title-row'));
+			expect(titleRow.getByRole('heading', { level: 1 })).toBeInTheDocument();
+			expect(titleRow.getByTestId('promotion-preview-refresh')).toBeInTheDocument();
+			expect(titleRow.getByTestId('promotion-preview-submit')).toBeInTheDocument();
+			expect(within(getByTestId('promotion-preview-tabs')).queryByRole('button')).toBeNull();
+		},
+	);
+
 	it('should keep the changes and warn when a refresh fails', async () => {
 		const { getByTestId, getByText } = await render();
 		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));

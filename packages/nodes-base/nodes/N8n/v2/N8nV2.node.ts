@@ -5,7 +5,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '../shared/constants';
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '@n8n/constants';
 import { searchWorkflows } from '../shared/WorkflowLocator';
 import { properties } from './generated/properties.generated';
 

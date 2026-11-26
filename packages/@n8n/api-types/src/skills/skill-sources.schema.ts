@@ -152,7 +152,7 @@ export type SkillSourceMovePreview = z.infer<typeof skillSourceMovePreviewSchema
 /** The source that a link points to. */
 export type SkillSourceSummary = {
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -174,6 +174,10 @@ export const SKILL_SCAN_RULES = [
 	'over_limit',
 	'file_skipped',
 	'file_unstorable',
+	'file_too_large',
+	'file_over_skill_limit',
+	'script_file',
+	'binary_file',
 	'hidden_unicode',
 	'new_url',
 	'risky_url',
@@ -258,6 +262,7 @@ export type SkillPreviewFile = {
 	 * line. Each hidden character shows as a marker such as `⟦U+200B⟧`.
 	 */
 	text: string;
+	isBinary?: boolean;
 };
 
 /** One skill in the picker. */
@@ -269,7 +274,7 @@ export type DiscoveredSkill = {
 	/** Null when n8n cannot read the skill. `error` then says why. */
 	name: string | null;
 	description: string | null;
-	/** Files that the import leaves out, such as scripts. */
+	/** Files that the import leaves out. */
 	skippedFiles: string[];
 	/** The files that the import keeps, for the review. Empty when n8n cannot read the skill. */
 	previewFiles: SkillPreviewFile[];
@@ -334,7 +339,7 @@ export type SkillSyncState =
 
 /** The answer of Check now. */
 export type SkillSourceCheckResponse = {
-	/** The source, such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** Skills of the source with an update that waits for review, after the check. */
 	updatesFound: number;
@@ -349,7 +354,7 @@ export type SkillSourceCheckResponse = {
 export type SkillSyncedFrom = {
 	sourceId: string;
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -412,7 +417,7 @@ export type SkillSourceHealth = 'connected' | 'credential_issue' | 'source_unava
 export type SkillSourceListItem = {
 	id: string;
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -541,7 +546,10 @@ export type SkillUpdateFile = {
 	path: string;
 	before: string;
 	after: string;
-	status?: 'added' | 'removed';
+	beforeIsBinary?: true;
+	afterIsBinary?: true;
+	/** Modified indicates a change to bytes or encoding that a text diff cannot show. */
+	status?: 'added' | 'removed' | 'modified';
 };
 
 /** Names are limited to agents the user can read. */

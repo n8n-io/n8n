@@ -7,7 +7,8 @@
 export type Finding =
 	| { kind: 'execution-queued-no-message'; executionId: string; staleAfter: Date }
 	| { kind: 'step-queued-no-message'; stepId: string; executionId: string; staleAfter: Date }
-	| { kind: 'step-running-no-worker'; stepId: string; staleAfter: Date };
+	| { kind: 'step-running-no-worker'; stepId: string; staleAfter: Date }
+	| { kind: 'step-settled-no-message'; stepId: string; executionId: string; staleAfter: Date };
 
 /** Finds rows in one stuck state. Writes nothing. */
 export interface Detector {

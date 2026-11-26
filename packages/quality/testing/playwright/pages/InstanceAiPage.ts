@@ -220,7 +220,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getStatusBar(): Locator {
-		return this.container.getByTestId('instance-ai-status-bar');
+		return this.container.getByTestId('instance-ai-run-activity');
 	}
 
 	/** "Working in the background..." indicator — visible when orchestrator is done but child agents still building. */
@@ -286,15 +286,13 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput().press('ArrowRight');
 	}
 
-	// Scoped to the composer: a sent message renders the same chips for its attachments.
+	// Scoped to the composer: a sent message renders the same cards for its attachments.
 	getComposerWorkflowChip(name: string | RegExp): Locator {
 		return this.getComposer().getByTestId('attachment-preview-resource').filter({ hasText: name });
 	}
 
 	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
-		return this.getComposerWorkflowChip(name).getByRole('button', {
-			name: 'Remove workflow context',
-		});
+		return this.getComposerWorkflowChip(name).getByTestId('attachment-remove');
 	}
 
 	getComposerNodeChip(name: string | RegExp): Locator {

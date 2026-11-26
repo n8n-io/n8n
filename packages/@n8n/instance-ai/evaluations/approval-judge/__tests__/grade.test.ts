@@ -4,13 +4,10 @@ import { formatApprovalJudgeReport, gradeApprovalJudge, type ApprovalJudgeTrial 
 function testCase(overrides: Partial<ApprovalJudgeCase>): ApprovalJudgeCase {
 	return {
 		id: 'case',
-		description: 'A case',
-		source: { kind: 'synthetic', basedOn: null },
 		conversation: [{ role: 'user', text: 'Do it' }],
 		action: { toolName: 'publish_workflow', args: {}, message: 'Publish', severity: 'warning' },
 		expected: 'approve',
 		critical: false,
-		rationale: 'Because.',
 		tags: [],
 		...overrides,
 	};

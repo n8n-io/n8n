@@ -31,7 +31,9 @@ import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import {
+	AGENT_CHAT_MARKDOWN_HOST_KEY,
 	AGENT_TOOL_STEP_LABEL_KEY,
+	type AgentChatMarkdownHost,
 	type AgentToolStepLabeler,
 } from '@/features/agents/components/agentChatInjectionKeys';
 import { mockedStore } from '@/__tests__/utils';
@@ -153,6 +155,8 @@ const isAwaitingUserApproval = ref(false);
 const focusOpenInteraction = vi.fn();
 // The tool step labeler that the view gives the chat.
 const panelToolStepLabel: { current?: AgentToolStepLabeler } = {};
+// The resources that the view gives the chat markdown.
+const panelMarkdownHost: { current?: AgentChatMarkdownHost } = {};
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 // The user message whose references the stub panel renders through its slot.
 const referencedMessage = ref<ChatMessage>();
@@ -162,6 +166,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose, slots }) {
 			panelToolStepLabel.current = inject(AGENT_TOOL_STEP_LABEL_KEY, undefined);
+			panelMarkdownHost.current = inject(AGENT_CHAT_MARKDOWN_HOST_KEY, undefined);
 			// A chip with the same id replaces the old one, as in the real panel.
 			const addComposerAttachment = (
 				chip: AgentChatComposerAttachment['chip'],
@@ -835,6 +840,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_answered_questions' }),
 			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_preference_card' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
@@ -842,6 +848,7 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_tool_result_table' }),
 			expect.objectContaining({ key: 'assistant_tool_result_code' }),
 			expect.objectContaining({ key: 'assistant_shared_files' }),
+			expect.objectContaining({ key: 'assistant_artifact_card' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
@@ -1073,9 +1080,9 @@ describe('AssistantAgentThreadView', () => {
 			content: '',
 			toolCalls: [
 				{
-					tool: 'apps',
+					tool: 'commit_app',
 					toolCallId,
-					input: { action: 'commit', appId: 'app-1', label: 'Change' },
+					input: { appId: 'app-1', label: 'Change' },
 					output: {
 						app: { id: 'app-1', name: 'Todos', projectId: 'project-1' },
 						versionId: toolCallId,
@@ -1231,6 +1238,32 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
 			expect(getByTestId('skill-preview-draft')).toHaveValue('Unsaved instructions');
+		});
+
+		it('shows the artifacts panel over the chat while the preview is open', async () => {
+			if (threadArea.width) threadArea.width.value = 1200;
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+
+			// A pick opens another tab, so the panel over the chat closes.
+			tabBarTabToOpen.current = { type: 'workflow', id: 'wf-1', name: 'Workflow' };
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('gives the chat markdown the resources of the thread', async () => {
+			await renderWithSkill();
+
+			const skill = { type: 'skill', id: 'skill-1' };
+			expect(panelMarkdownHost.current?.resources()).toContainEqual(expect.objectContaining(skill));
+			expect(panelMarkdownHost.current?.linkableResources()).toContainEqual(
+				expect.objectContaining(skill),
+			);
 		});
 
 		it('opens a skill from the artifacts panel', async () => {
@@ -1575,21 +1608,33 @@ describe('AssistantAgentThreadView', () => {
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 	});
 
-	it('opens the session timeline of the thread from the header', async () => {
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
-		await flushPromises();
-
-		await fireEvent.click(getByTestId('assistant-agent-view-session'));
-
-		expect(routerPush).toHaveBeenCalledWith({
-			name: INSTANCE_AI_THREAD_SESSION_VIEW,
-			params: { threadId: 'thread-1' },
-		});
-	});
-
 	describe('trace export', () => {
 		afterEach(() => {
 			localStorage.removeItem('instanceAi.debugMode');
+		});
+
+		it('hides the session timeline button without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-view-session')).not.toBeInTheDocument();
+		});
+
+		it('opens the session timeline of the thread from the header with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await fireEvent.click(getByTestId('assistant-agent-view-session'));
+
+			expect(routerPush).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_SESSION_VIEW,
+				params: { threadId: 'thread-1' },
+			});
 		});
 
 		it('hides the trace menu without the debug flag', async () => {
@@ -2105,12 +2150,9 @@ describe('AssistantAgentThreadView', () => {
 			expect(clientContext()).not.toHaveProperty('context');
 		});
 
-		it('opens the handed-off workflow and sends it with the first message', async () => {
-			stashPendingWorkflowAttachment('thread-new', {
-				type: 'workflow',
-				id: 'wf-7',
-				name: 'Handed off',
-			});
+		it('opens the handed-off workflow and stages it as a composer chip', async () => {
+			const workflow = { type: 'workflow' as const, id: 'wf-7', name: 'Handed off' };
+			stashPendingWorkflowAttachment('thread-new', workflow);
 
 			const { getByTestId } = await renderNewThread();
 			isLoadingHistory.value = false;
@@ -2119,9 +2161,14 @@ describe('AssistantAgentThreadView', () => {
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
 			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-7' });
-			expect(clientContext()).toMatchObject({
-				attachments: [{ type: 'workflow', id: 'wf-7', name: 'Handed off' }],
-			});
+			// The chip sends the workflow, so a removed chip does not send it.
+			expect(composerAttachments.value).toEqual([
+				{
+					chip: { id: 'mention:workflow:wf-7', label: 'Handed off', icon: 'workflow' },
+					clientContextPatch: { attachments: [workflow] },
+				},
+			]);
+			expect(clientContext()).not.toHaveProperty('attachments');
 		});
 
 		it('puts a handed-off draft into the composer without sending it', async () => {
@@ -2182,15 +2229,37 @@ describe('AssistantAgentThreadView', () => {
 			const { unmount } = await renderNewThread();
 			unmount();
 			setDraft.mockReset();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
 
 			await renderNewThread();
 			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
-			expect(clientContext()).toMatchObject({ attachments: [{ type: 'workflow', id: 'wf-7' }] });
+			expect(stagedNodes()).toEqual([
+				{ id: 'mention:workflow:wf-7', attachments: [{ type: 'workflow', id: 'wf-7' }] },
+			]);
 
 			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 			onSessionCreated();
 			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
 			expect(getPendingComposerDraft('thread-new')).toBeNull();
+		});
+
+		it('does not stage a removed handed-off workflow again after a reload', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			const { unmount } = await renderNewThread();
+			const onRemoved = panelProps.current.onComposerAttachmentRemoved as (id: string) => void;
+
+			onRemoved('mention:workflow:other');
+			expect(getPendingWorkflowAttachment('thread-new')).toEqual({ type: 'workflow', id: 'wf-7' });
+
+			onRemoved('mention:workflow:wf-7');
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+
+			unmount();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
+			await renderNewThread();
+			expect(composerAttachments.value).toEqual([]);
 		});
 
 		it('drops the launch marker once the server accepts the first message', async () => {
@@ -2629,7 +2698,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 
 		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
-			const { getByTestId, getAllByTestId } = renderView({
+			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
@@ -2641,7 +2710,7 @@ describe('AssistantAgentThreadView', () => {
 				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
 				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
 			]);
-			expect(getAllByTestId('agent-chat-composer-chip').map((chip) => chip.textContent)).toEqual([
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual([
 				'Uptime monitor',
 				'Support agent',
 			]);
@@ -2778,9 +2847,10 @@ describe('AssistantAgentThreadView', () => {
 			};
 			await flushPromises();
 
-			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
-				['Uptime monitor', 'Support agent'],
-			);
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(2);
+			expect(cards[0]).toHaveTextContent('Uptime monitor');
+			expect(cards[1]).toHaveTextContent('Support agent');
 		});
 
 		it('does not show the agent that the thread builds as a reference', async () => {
@@ -2806,9 +2876,9 @@ describe('AssistantAgentThreadView', () => {
 			};
 			await flushPromises();
 
-			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
-				['Uptime monitor'],
-			);
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(1);
+			expect(cards[0]).toHaveTextContent('Uptime monitor');
 		});
 	});
 });

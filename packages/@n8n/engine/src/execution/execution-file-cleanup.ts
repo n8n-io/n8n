@@ -2,6 +2,12 @@ import type { ExecutionFilesDeleter, ExecutionLocation } from '../dependencies';
 import type { EngineLogger } from '../logging';
 
 /**
+ * At most this many deletions run at once. They share the libuv threadpool with
+ * the file, DNS and crypto work of the process. v1 uses the same bound.
+ */
+const MAX_PARALLEL_FILE_DELETES = 5;
+
+/**
  * Deletes the binary files of executions before the retention job prunes them.
  *
  * Returns the executions that are safe to prune. A failed deletion is logged
@@ -9,17 +15,20 @@ import type { EngineLogger } from '../logging';
  */
 export class ExecutionFileCleanup {
 	constructor(
-		private readonly deleteFiles: ExecutionFilesDeleter | undefined,
+		private readonly deleteFiles: ExecutionFilesDeleter,
 		private readonly logger: EngineLogger,
 	) {}
 
 	async deleteFilesOf(executions: ExecutionLocation[]): Promise<ExecutionLocation[]> {
-		const deleteFiles = this.deleteFiles;
-		if (!deleteFiles) return executions;
-
-		const results = await Promise.allSettled(
-			executions.map(async (execution) => await deleteFiles(execution)),
-		);
+		const results: Array<PromiseSettledResult<void>> = [];
+		for (let start = 0; start < executions.length; start += MAX_PARALLEL_FILE_DELETES) {
+			const chunk = executions.slice(start, start + MAX_PARALLEL_FILE_DELETES);
+			results.push(
+				...(await Promise.allSettled(
+					chunk.map(async (execution) => await this.deleteFiles(execution)),
+				)),
+			);
+		}
 
 		return executions.filter((execution, index) => {
 			const result = results[index];

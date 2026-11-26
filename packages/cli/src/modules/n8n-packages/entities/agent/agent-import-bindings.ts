@@ -343,6 +343,30 @@ function collectReferences(item: AgentPlanItem, scope: AgentImportBindingScope):
 			},
 		});
 	}
+	for (const [index, guardrail] of (item.config?.config?.guardrails?.tools ?? []).entries()) {
+		if (guardrail.kind !== 'workflow') continue;
+		refs.push({
+			kind: 'workflow',
+			id: guardrail.workflowId,
+			path: `config.config.guardrails.tools.${index}.workflowId`,
+			projectLocal: true,
+			setId: (id) => {
+				guardrail.workflowId = id;
+			},
+		});
+	}
+	for (const [index, interaction] of (item.config?.hitlConfigurations ?? []).entries()) {
+		if (interaction.method !== 'workflow') continue;
+		refs.push({
+			kind: 'workflow',
+			id: interaction.workflowId,
+			path: `config.hitlConfigurations.${index}.workflowId`,
+			projectLocal: true,
+			setId: (id) => {
+				interaction.workflowId = id;
+			},
+		});
+	}
 	for (const [index, tool] of (item.config?.tools ?? []).entries()) {
 		if (tool.type !== 'node') continue;
 		const node = { type: tool.node.nodeType, parameters: tool.node.nodeParameters };

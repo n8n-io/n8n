@@ -37,6 +37,7 @@ import type {
 import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
+import { linkInputItems } from './item-links';
 import { supplySubExecutionResult } from './sub-execution-result';
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import {
@@ -187,7 +188,11 @@ function toExecuteLineage(
 		const iterations = Object.keys(outputsByIteration).map(Number);
 		if (iterations.length > 0) lastIterationByNodeId.set(nodeId, Math.max(...iterations));
 	}
-	return toSourceLineage(graph, lastIterationByNodeId);
+	return toSourceLineage(
+		graph,
+		lastIterationByNodeId,
+		(nodeId, iteration) => outputsByNode[nodeId]?.[iteration],
+	);
 }
 
 export function toV1Workflow(
@@ -389,12 +394,13 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
+	itemLinks,
 	resumeToken,
 	subWorkflowCalls,
 	subExecutionResume,
 	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
-	itemsByConnection = withPairedItemLineage(itemsByConnection);
+	itemsByConnection = linkInputItems(itemsByConnection, itemLinks);
 	// As v1 does for execution order v1: the first input with items supplies the
 	// connection data, and an empty input stays empty for the node to read.
 	const inputWithItems = itemsByConnection.find((items) => items.length > 0);
@@ -439,23 +445,4 @@ export function toV1ExecuteContext({
 	context.subWorkflowCalls = subWorkflowCalls;
 	context.subExecutionResume = subExecutionResume;
 	return context;
-}
-
-/**
- * Points every input item's `pairedItem` at its own position, as v1 does before it
- * runs a node (`WorkflowExecute.addPairedItemLineage`). An item keeps the link its
- * producer gave it, which points into the producer's input. A node that passes items
- * through, like If, keeps a link that is already set, so without this the link
- * would skip a node and name the wrong item.
- *
- * v1 also keeps a tool call's `sourceOverwrite`. Engine v2 runs no tool calls: the
- * converter rejects every connection that is not `main`.
- */
-function withPairedItemLineage(itemsByConnection: INodeExecutionData[][]): INodeExecutionData[][] {
-	return itemsByConnection.map((items, inputIndex) =>
-		items.map((item, itemIndex) => ({
-			...item,
-			pairedItem: inputIndex === 0 ? { item: itemIndex } : { item: itemIndex, input: inputIndex },
-		})),
-	);
 }

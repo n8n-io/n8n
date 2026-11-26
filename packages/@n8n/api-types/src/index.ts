@@ -24,6 +24,7 @@ export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export type * from './instance-type-access';
+export type * from './project-policies';
 export type * from './type-usage';
 export type * from './transfer-preview';
 export type * from './transfer-result';
@@ -466,7 +467,6 @@ export {
 	confirmationInputTypeSchema,
 	appBlueprintSchema,
 	appBlueprintResumeSchema,
-	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -640,7 +640,6 @@ export type {
 	InstanceAiRunLimitMeta,
 	AppBlueprint,
 	AppBlueprintResume,
-	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -1075,7 +1074,6 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
 	agentPublishSendTargetSchema,
@@ -1158,3 +1156,23 @@ export {
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';
+
+export {
+	AGENT_SAFE_TESTING_FLAG,
+	toolCallRouteSchema,
+	toolCallReasonSchema,
+	toolCallSimulationSchema,
+	agentChatModeSchema,
+	type AgentChatMode,
+	toolTestKindSchema,
+	toolTestCapabilitySchema,
+} from './schemas/agent-safe-testing.schema';
+export type {
+	ToolCallRoute,
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestability,
+	ToolTestKind,
+	ToolTestCapability,
+	AgentTestRunToolsResponse,
+} from './schemas/agent-safe-testing.schema';

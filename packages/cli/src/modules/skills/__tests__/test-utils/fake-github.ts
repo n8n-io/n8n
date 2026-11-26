@@ -8,7 +8,7 @@ import { create as createTar } from 'tar';
 
 import { pktLine } from '../../sources/github/git-refs';
 
-type Files = Record<string, string>;
+type Files = Record<string, string | Buffer>;
 type TreeEntry =
 	| { path: string; type: 'tree'; mode: '040000'; sha: string }
 	| { path: string; type: 'blob'; mode: '100644'; sha: string; size: number };
@@ -32,7 +32,7 @@ export class FakeGitHub {
 	/** Commits by SHA, for tarballs and raw file reads. */
 	private readonly commits = new Map<string, { key: string; repository: string; files: Files }>();
 	private readonly trees = new Map<string, TreeEntry[]>();
-	private readonly blobs = new Map<string, string>();
+	private readonly blobs = new Map<string, Buffer>();
 
 	/** Requests per host, for tests that count them. */
 	readonly requests = { refs: 0, archives: 0, trees: 0, files: 0 };
@@ -154,7 +154,7 @@ export class FakeGitHub {
 		if (kind === 'blobs') {
 			this.requests.files += 1;
 			const content = this.blobs.get(sha);
-			return content === undefined ? [404, ''] : [200, Buffer.from(content)];
+			return content === undefined ? [404, ''] : [200, content];
 		}
 		this.requests.trees += 1;
 		const tree = this.trees.get(sha);
@@ -174,7 +174,9 @@ export class FakeGitHub {
 		const commit = this.commits.get(sha);
 		if (this.access(key, undefined) !== 200 || commit?.key !== key) return [404, ''];
 		const path = parts.map(decodeURIComponent).join('/');
-		return Object.hasOwn(commit.files, path) ? [200, Buffer.from(commit.files[path])] : [404, ''];
+		if (!Object.hasOwn(commit.files, path)) return [404, ''];
+		const content = commit.files[path];
+		return [200, typeof content === 'string' ? Buffer.from(content) : content];
 	}
 
 	private expandTree(tree: TreeEntry[], prefix = ''): TreeEntry[] {
@@ -195,14 +197,15 @@ export class FakeGitHub {
 		for (const [path, content] of Object.entries(files)) {
 			const slash = path.indexOf('/');
 			if (slash === -1) {
-				const blob = createHash('sha1').update(content).digest('hex');
-				this.blobs.set(blob, content);
+				const bytes = typeof content === 'string' ? Buffer.from(content) : content;
+				const blob = createHash('sha1').update(bytes).digest('hex');
+				this.blobs.set(blob, bytes);
 				tree.push({
 					path,
 					type: 'blob',
 					mode: '100644',
 					sha: blob,
-					size: Buffer.byteLength(content),
+					size: bytes.length,
 				});
 			} else {
 				const folder = path.slice(0, slash);

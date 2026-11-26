@@ -1,5 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { z } from 'zod';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { connectionUnavailable, unsupportedQuery } from '../../integration-helpers';
 
@@ -7,8 +8,6 @@ const PLATFORM = 'discord';
 
 /** Discord message content hard limit. */
 const DISCORD_MESSAGE_CONTENT_LIMIT = 2000;
-
-const DISCORD_ATTACHMENT_HOST = 'cdn.discordapp.com';
 
 /**
  * Guild channel types the agent can post into. Forums (15) are excluded: posting
@@ -25,37 +24,6 @@ const POSTABLE_CHANNEL_TYPES = new Set([
  * behind a fan-out of REST calls.
  */
 const MAX_GUILDS_SCANNED = 20;
-
-export async function downloadDiscordAttachment(
-	attachmentUrl: string,
-	httpClient: HttpRequestClient,
-): Promise<Buffer> {
-	const url = new URL(attachmentUrl);
-	if (
-		url.protocol !== 'https:' ||
-		url.username ||
-		url.password ||
-		url.hostname !== DISCORD_ATTACHMENT_HOST ||
-		!url.pathname.startsWith('/attachments/')
-	) {
-		throw new Error('Invalid Discord attachment URL');
-	}
-
-	const response = await httpClient.request<Buffer>({
-		method: 'GET',
-		url: url.href,
-		encoding: 'arraybuffer',
-		returnFullResponse: true,
-		ignoreHttpStatusErrors: true,
-		disableFollowRedirect: true,
-		timeout: 30_000,
-		abortSignal: AbortSignal.timeout(30_000),
-	});
-	if (response.statusCode < 200 || response.statusCode >= 300) {
-		throw new Error(`Discord attachment download failed with status ${response.statusCode}`);
-	}
-	return Buffer.from(response.body);
-}
 
 export const discordSearchChannelsSchema = z.object({
 	query: z.string().min(1),
@@ -295,4 +263,67 @@ export async function fetchDiscordApplicationMetadata(params: {
 		return { ok: false, kind: 'incomplete' };
 	}
 	return { ok: true, application: { id: body.id, verify_key: body.verify_key } };
+}
+
+/** Discord returns at most 200 guilds per page; more than that only changes a count. */
+const DISCORD_GUILD_PAGE_LIMIT = 200;
+
+/**
+ * The bot username and the servers it is in, for display labels. A failed
+ * request leaves that part out, so the label falls back to less detail.
+ */
+export async function fetchDiscordAccount(params: {
+	httpClient: HttpRequestClient;
+	apiUrl: string;
+	botToken: string;
+}): Promise<{ botName?: string; workspaceNames?: string[]; hasMoreWorkspaces?: boolean }> {
+	const headers = { Authorization: `Bot ${params.botToken}` };
+	/** Settle each request on its own, so one failure does not drop the other part. */
+	const [userResult, guildsResult] = await Promise.allSettled([
+		params.httpClient.request<unknown>({
+			method: 'GET',
+			url: `${params.apiUrl}/users/@me`,
+			headers,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			sendCredentialsOnCrossOriginRedirect: false,
+		}),
+		params.httpClient.request<unknown>({
+			method: 'GET',
+			url: `${params.apiUrl}/users/@me/guilds?limit=${DISCORD_GUILD_PAGE_LIMIT}`,
+			headers,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			sendCredentialsOnCrossOriginRedirect: false,
+		}),
+	]);
+
+	const user = userResult.status === 'fulfilled' ? userResult.value : undefined;
+	const guilds = guildsResult.status === 'fulfilled' ? guildsResult.value : undefined;
+
+	const botName =
+		user &&
+		isSuccess(user.statusCode) &&
+		isRecord(user.body) &&
+		typeof user.body.username === 'string'
+			? user.body.username
+			: undefined;
+	const guildList =
+		guilds && isSuccess(guilds.statusCode) && Array.isArray(guilds.body)
+			? (guilds.body as unknown[])
+			: undefined;
+	const workspaceNames = guildList?.flatMap((guild) =>
+		isRecord(guild) && typeof guild.name === 'string' ? [guild.name] : [],
+	);
+	/** A full page means more servers can exist, so the count is only a lower bound. */
+	const hasMoreWorkspaces =
+		guildList && guildList.length >= DISCORD_GUILD_PAGE_LIMIT ? true : undefined;
+
+	return { botName, workspaceNames, ...(hasMoreWorkspaces ? { hasMoreWorkspaces } : {}) };
+}
+
+function isSuccess(statusCode: number) {
+	return statusCode >= 200 && statusCode < 300;
 }

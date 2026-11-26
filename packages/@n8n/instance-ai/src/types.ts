@@ -51,6 +51,7 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowReviewBlockedDetails,
 	InstanceAiAgentFeedbackCategory,
 	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
@@ -633,6 +634,14 @@ export interface InstanceAiWorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
+	/**
+	 * The workflow review rule that blocks publishing this version (the draft when omitted), or
+	 * undefined when the version may go live. Absent when the host has no review rules.
+	 */
+	getPublishReviewBlock?(
+		workflowId: string,
+		versionId?: string,
+	): Promise<WorkflowReviewBlockedDetails['reason'] | undefined>;
 	/** List version history for a workflow (metadata only, no nodes/connections). */
 	listVersions?(
 		workflowId: string,
@@ -1848,8 +1857,10 @@ export interface InstanceAiContext {
 	 * utility calls use `modelId`.
 	 */
 	utilityModelId?: ModelConfig;
-	/** Transport for those utility LLM calls. It carries no run labels. */
+	/** Transport for those utility LLM calls. It carries run labels when request labels are enabled. */
 	modelFetch?: FetchFn;
+	/** Unlabeled transport for non-LLM utility fetches such as the models.dev catalog. */
+	catalogFetch?: FetchFn;
 	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
 	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;

@@ -26,8 +26,13 @@ Requires the Promotions feature to be licensed. The API key scopes are:
   connect and disconnect them, and link projects
 - `promotions:readEnvironments`: list and get environments, their projects and
   their missing projects
-- `promotions:promote`: preview and promote
+- `promotions:promote`: preview and promote. Every member can add it to a key.
+  The key promotes only the projects where the role of its owner can promote:
+  instance owners and admins in every project, project admins and editors as
+  the `promotion-settings` option `--who-can-promote` allows. Only instance
+  owners and admins can promote all team projects
 - `promotions:apply`: preview, apply and continue
+- `securitySettings:manage`: get and update the promotion settings
 
 A scope lets the key start the operation. The role of the key owner still
 decides what the operation can read and write. For example, the change details
@@ -656,3 +661,25 @@ n8n-cli promotion-environment remove-project env-3 proj-abc
 
 A project can have one environment for each direction. A direction without a
 project environment uses the instance environment.
+
+## `promotion-settings get` / `update`
+
+Decide who can promote, approve, and apply in their own projects. Instance
+owners and admins can always do all three.
+
+```bash
+n8n-cli promotion-settings get
+n8n-cli promotion-settings update --who-can-promote=projectAdmins
+n8n-cli promotion-settings update --who-can-approve=projectAdminsAndEditors --who-can-apply=instanceAdmins
+```
+
+Each setting takes one of these values:
+
+| Value | Who can do it in their projects |
+|-------|---------------------------------|
+| `instanceAdmins` | Nobody below instance admin (default) |
+| `projectAdmins` | Project admins |
+| `projectAdminsAndEditors` | Project admins and editors |
+
+A setting that you leave out keeps its value. The settings change the project
+admin and project editor roles. Custom project roles keep their own scopes.

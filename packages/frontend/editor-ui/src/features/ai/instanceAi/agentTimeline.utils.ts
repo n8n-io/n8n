@@ -35,15 +35,14 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
 /**
- * How long the transcript must stay quiet before the activity indicator shows.
+ * How long the transcript must stay quiet before the typing indicator shows.
  *
- * Short silences are normal — the tail of a streamed answer, a run wrapping up
- * after its last token — and calling those "Thinking" is noise on every reply.
- * A real stall is an order of magnitude longer: a provider that buffers tool
- * calls goes quiet for 10s on a 4.5KB write and ~53s on a 20KB one (INS-1224).
+ * Short silences are normal: the tail of a streamed answer, or a run that ends
+ * after its last token. A real stall is much longer. A provider that buffers
+ * tool calls can go quiet for 10s to 53s (INS-1224).
  *
- * A threshold rather than a signal, because the client cannot tell the two
- * apart on its own; the server knowing it is mid-generation would replace this.
+ * The client cannot tell the two apart, so a threshold is used. A server
+ * signal for "mid-generation" would replace it.
  */
 export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
 
@@ -334,8 +333,14 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
+/** The fields the artifact extractors read. The Agents chat maps its tool calls to them too. */
+type ArtifactSourceToolCall = Pick<
+	InstanceAiToolCallState,
+	'toolName' | 'args' | 'result' | 'isLoading' | 'completedAt'
+>;
+
 /** The workflow a workflow_builder_build_workflow / submit-workflow call wrote, if it wrote one. */
-function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+function workflowArtifactFromToolCall(tc: ArtifactSourceToolCall): ArtifactInfo | undefined {
 	if (
 		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
 		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
@@ -365,7 +370,7 @@ function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo
  * Only successful builds count, each workflow once.
  */
 export function extractBuiltWorkflowArtifacts(
-	toolCalls: InstanceAiToolCallState[],
+	toolCalls: readonly ArtifactSourceToolCall[],
 ): ArtifactInfo[] {
 	const artifacts = new Map<string, ArtifactInfo>();
 	for (const tc of toolCalls) {
@@ -379,7 +384,7 @@ export function extractBuiltWorkflowArtifacts(
 }
 
 /** The Agent an orchestrator builder call created or changed, if it did. */
-function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+function agentArtifactFromToolCall(tc: ArtifactSourceToolCall): ArtifactInfo | undefined {
 	if (tc.isLoading || !isRecord(tc.result)) return undefined;
 	const result = tc.result;
 	if (typeof result.agentId !== 'string') return undefined;
@@ -402,7 +407,9 @@ function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | 
  * Agents the orchestrator created or changed with its own builder tool calls.
  * Each Agent appears once, with the name and project of its latest change.
  */
-export function extractBuiltAgentArtifacts(toolCalls: InstanceAiToolCallState[]): ArtifactInfo[] {
+export function extractBuiltAgentArtifacts(
+	toolCalls: readonly ArtifactSourceToolCall[],
+): ArtifactInfo[] {
 	const artifacts = new Map<string, ArtifactInfo>();
 	for (const tc of toolCalls) {
 		const agent = agentArtifactFromToolCall(tc);
