@@ -1438,5 +1438,14 @@ describe('utils', () => {
 
 			expect(result.message).toBe('Execution was cancelled');
 		});
+
+		it('includes the HTTP status from streamable HTTP errors in the description', () => {
+			const node = mockDeep<INode>();
+			const error = Object.assign(new Error('Error POSTing to endpoint:'), { code: 503 });
+
+			const result = mapToNodeOperationError(node, { type: 'connection', error });
+
+			expect(result.description).toBe('HTTP 503: Error POSTing to endpoint:');
+		});
 	});
 });

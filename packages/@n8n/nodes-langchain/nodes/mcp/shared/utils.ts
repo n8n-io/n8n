@@ -112,6 +112,12 @@ type ConnectMcpClientError =
  * @param error - The MCP client error to map
  * @returns A NodeOperationError containing a user-facing message and, when available, the original error message as the description
  */
+/** Include the HTTP status from SDK errors so 401/404/429/503 are distinguishable. */
+function describeMcpError(error: Error): string {
+	const code = (error as { code?: unknown }).code;
+	return typeof code === 'number' ? `HTTP ${code}: ${error.message}` : error.message;
+}
+
 export function mapToNodeOperationError(
 	node: INode,
 	error: ConnectMcpClientError,
@@ -128,13 +134,13 @@ export function mapToNodeOperationError(
 		case 'auth':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. Authentication failed.',
-				description: error.error.message,
+				description: describeMcpError(error.error),
 			});
 		case 'connection':
 		default:
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server',
-				description: error.error.message,
+				description: describeMcpError(error.error),
 			});
 	}
 }
