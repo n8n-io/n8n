@@ -354,6 +354,7 @@ function hasActiveToolCall(): boolean {
 								v-if="tc.childProgress.steps.length > 0"
 								:tool-calls="childToolCalls(tc.childProgress.steps)"
 								:project-id="projectId"
+								:test-run="testRun"
 							/>
 							<AiReasoningBlock
 								v-for="segment in childReasoningSegments(tc.childProgress)"
@@ -438,6 +439,7 @@ function hasActiveToolCall(): boolean {
 								v-if="tc.childProgress.steps.length > 0"
 								:tool-calls="childToolCalls(tc.childProgress.steps)"
 								:project-id="projectId"
+								:test-run="testRun"
 							/>
 							<AiReasoningBlock
 								v-for="segment in childReasoningSegments(tc.childProgress)"
