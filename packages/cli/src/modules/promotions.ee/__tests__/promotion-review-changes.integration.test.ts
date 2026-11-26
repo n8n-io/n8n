@@ -4,6 +4,7 @@ import type { Person } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
+	SettingsRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -23,6 +24,7 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner, createUserShell } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
@@ -30,11 +32,12 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { GitLabMergeRequestClient } from '../git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest } from '../git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from '../promotion-review-host.resolver';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsService } from '../promotions.service';
 
 import { createFixtureGit, createGitRemoteSeed, type TestRemote } from './utils/git-remote-fixture';
-import { insertTokenProvider } from './utils/promotion-fixtures';
+import { createProjectEnvironment, insertTokenProvider } from './utils/promotion-fixtures';
 
 const instanceFolder = mkdtempSync(path.join(tmpdir(), 'promotion-review-changes-'));
 const remoteSeedRoot = path.join(instanceFolder, 'remote-seed');
@@ -59,6 +62,7 @@ let remoteFolder: string;
 let remoteSeed: Promise<TestRemote> | undefined;
 let owner: Person;
 let environmentId: string;
+let providerId: string;
 /** What GitLab reports for each merge request, by iid. */
 let hostMergeRequests: Map<number, GitLabMergeRequest>;
 
@@ -77,6 +81,7 @@ beforeEach(async () => {
 	await Container.get(PromotionReviewRepository).delete({});
 	await Container.get(PromotionEnvironmentRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
+	await Container.get(SettingsRepository).delete({ key: 'promotions.projectEnvironments' });
 	await testDb.truncate([
 		'SharedCredentials',
 		'CredentialsEntity',
@@ -118,11 +123,11 @@ beforeEach(async () => {
 		return mergeRequest;
 	});
 
-	const provider = await insertTokenProvider({ name: 'Reviews' });
+	providerId = (await insertTokenProvider({ name: 'Reviews' })).id;
 	const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
 		name: 'Reviews',
 		scope: 'instance',
-		providerId: provider.id,
+		providerId,
 		remote: { schemaVersion: 1, remoteUrl: remoteFolder },
 		direction: 'promote',
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
@@ -631,6 +636,38 @@ it('reads a merged review from the target branch after the host deleted its head
 		[`project:${project.id}`, 'added'],
 		[`workflow:${quote.id}`, 'added'],
 	]);
+}, 60_000);
+
+it('lists the resources of a project that moved to its own Promote environment as deleted', async () => {
+	const orders = await createTeamProject('Orders', owner);
+	const order = await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, orders);
+	const baseline = await promote('Baseline');
+	await mergeOnHost(baseline.iid, baseline.commitSha);
+	await Container.get(PromotionSettingsService).setProjectEnvironmentsEnabled(owner, true);
+	const ownEnvironment = await createProjectEnvironment({
+		providerId,
+		remoteUrl: remoteFolder,
+		direction: 'promote',
+	});
+	await Container.get(PromotionEnvironmentProjectRepository).linkProject(
+		orders.id,
+		ownEnvironment.id,
+		'promote',
+	);
+
+	const review = await promote('Release 42');
+
+	expect(changed((await changesOf(review.reviewId)).resources)).toEqual([
+		[`project:${orders.id}`, 'deleted'],
+		[`workflow:${order.id}`, 'deleted'],
+	]);
+	const mergeRequest = hostMergeRequests.get(review.iid);
+	expect(mergeRequest?.title).toBe('Release 42');
+	expect(mergeRequest?.description).toContain(
+		`Projects moved to their own Promote environment:\n- Orders (${orders.id})`,
+	);
+	const [run] = await Container.get(PromotionRunRepository).findByReviewIds([review.reviewId]);
+	expect(run.details).toMatchObject({ contents: { projectIds: [orders.id] } });
 }, 60_000);
 
 const writeUnreadableManifest = async (folder: string) => {

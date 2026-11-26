@@ -30,6 +30,7 @@ import {
 	FolderRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	SettingsRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
@@ -108,6 +109,8 @@ import { PromotionCredentialSelectionService } from '../promotion-credential-sel
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
+import { PromotionEnvironmentsService } from '../promotion-environments.service';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
@@ -125,7 +128,11 @@ import {
 	createGitRemoteSeed,
 	type TestRemote,
 } from './utils/git-remote-fixture';
-import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
+import {
+	createProjectEnvironment,
+	expectPushed,
+	writeInstancePromotionPackage,
+} from './utils/promotion-fixtures';
 
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
@@ -185,6 +192,7 @@ beforeEach(async () => {
 	await linkRepository.delete({});
 	await environmentRepository.delete({});
 	await providerRepository.delete({});
+	await Container.get(SettingsRepository).delete({ key: 'promotions.projectEnvironments' });
 	await testDb.truncate([
 		'WorkflowTagMapping',
 		'TagEntity',
@@ -226,7 +234,12 @@ beforeEach(async () => {
 		instanceSettings,
 	);
 	service = new PromotionsService(
-		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
+		new PromotionEnvironmentResolver(
+			environmentRepository,
+			linkRepository,
+			projectRepository,
+			Container.get(PromotionSettingsService),
+		),
 		new PromotionProvidersService(
 			providerRepository,
 			environmentRepository,
@@ -4523,5 +4536,136 @@ describe('Promotion base branch listing', () => {
 		await remote.git.raw(['push', 'origin', '--delete', 'production']);
 		await createFixtureGit(remote.bareDir).raw(['update-ref', '-d', 'refs/heads/main']);
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
+	});
+});
+
+describe('Promote with projects that have their own Promote environment', () => {
+	const readBranchManifest = async (bareDir: string) =>
+		packageManifestSchema.parse(
+			jsonParse(await createFixtureGit(bareDir).show(['main:n8n/manifest.json'])),
+		);
+	const head = async (bareDir: string) =>
+		(await createFixtureGit(bareDir).revparse(['main'])).trim();
+
+	async function promoteWithOrdersDetached() {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const {
+			project: orders,
+			workflows: [order],
+		} = await setupProjectWithWorkflows('Orders', ['Process order']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', ['Send invoice']);
+		await service.promote(environments.promote.id, owner, { commitMessage: 'Baseline' });
+		const ordersTarget = (await readBranchManifest(remote.bareDir)).projects?.find(
+			({ id }) => id === orders.id,
+		)?.target;
+		assert(ordersTarget);
+
+		await Container.get(PromotionSettingsService).setProjectEnvironmentsEnabled(owner, true);
+		const { project: fresh } = await setupProjectWithWorkflows('Fresh', []);
+		const ownEnvironment = await createProjectEnvironment({
+			providerId: environments.promote.providerId,
+			remoteUrl: remote.bareDir,
+			direction: 'promote',
+		});
+		const headBeforeDetach = await head(remote.bareDir);
+		for (const projectId of [orders.id, fresh.id]) {
+			await Container.get(PromotionEnvironmentsService).addProject({
+				user: owner,
+				environmentId: ownEnvironment.id,
+				projectId,
+			});
+		}
+		expect(await head(remote.bareDir)).toBe(headBeforeDetach);
+
+		await service.promote(environments.promote.id, owner, {});
+
+		return { remote, environments, ownEnvironment, orders, order, billing, ordersTarget };
+	}
+
+	it('leaves out a project with its own Promote environment and removes it from the branch', async () => {
+		const { remote, orders, billing, ordersTarget } = await promoteWithOrdersDetached();
+
+		const remoteGit = createFixtureGit(remote.bareDir);
+		expect((await remoteGit.raw(['log', '-1', '--format=%B', 'main'])).trim()).toBe(
+			`Promote instance: 1 project, 1 workflow\n\nProjects moved to their own Promote environment:\n- Orders (${orders.id})`,
+		);
+		const paths = (await remoteGit.raw(['ls-tree', '-r', '--name-only', 'main'])).split('\n');
+		expect(paths.filter((filePath) => filePath.startsWith(`n8n/${ordersTarget}/`))).toEqual([]);
+		expect((await readBranchManifest(remote.bareDir)).projects?.map(({ id }) => id)).toEqual([
+			billing.id,
+		]);
+	}, 60_000);
+
+	it('writes a project back to the branch after its own Promote environment is removed', async () => {
+		const { remote, environments, ownEnvironment, orders, order } =
+			await promoteWithOrdersDetached();
+		const headBeforeReattach = await head(remote.bareDir);
+
+		await Container.get(PromotionEnvironmentsService).removeProject({
+			user: owner,
+			environmentId: ownEnvironment.id,
+			projectId: orders.id,
+		});
+		expect(await head(remote.bareDir)).toBe(headBeforeReattach);
+		await service.promote(environments.promote.id, owner, {});
+
+		const manifest = await readBranchManifest(remote.bareDir);
+		expect(manifest.projects?.map(({ id }) => id)).toContain(orders.id);
+		expect(manifest.workflows?.map(({ id }) => id)).toContain(order.id);
+	}, 60_000);
+
+	it('removes every project from the branch when each team project has its own Promote environment', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project: orders } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', ['Send invoice']);
+		await service.promote(environments.promote.id, owner, { commitMessage: 'Baseline' });
+		await Container.get(PromotionSettingsService).setProjectEnvironmentsEnabled(owner, true);
+		const ownEnvironment = await createProjectEnvironment({
+			providerId: environments.promote.providerId,
+			remoteUrl: remote.bareDir,
+			direction: 'promote',
+		});
+		for (const { id } of [orders, billing]) {
+			await linkRepository.linkProject(id, ownEnvironment.id, 'promote');
+		}
+
+		await service.promote(environments.promote.id, owner, {});
+
+		expect((await readBranchManifest(remote.bareDir)).projects ?? []).toEqual([]);
+		const paths = (
+			await createFixtureGit(remote.bareDir).raw(['ls-tree', '-r', '--name-only', 'main'])
+		).split('\n');
+		expect(
+			paths.filter((filePath) =>
+				filePath.startsWith(`n8n/${PACKAGE_ENTITY_LAYOUT.projects.directory}/`),
+			),
+		).toEqual([]);
+	}, 60_000);
+
+	it.each([
+		{ case: 'project environments are off', enabled: false, direction: 'promote' as const },
+		{ case: 'it has only its own Apply environment', enabled: true, direction: 'apply' as const },
+	])('exports a project with its own environment when $case', async ({ enabled, direction }) => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project: orders } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		await Container.get(PromotionSettingsService).setProjectEnvironmentsEnabled(owner, enabled);
+		const ownEnvironment = await createProjectEnvironment({
+			providerId: environments.promote.providerId,
+			remoteUrl: remote.bareDir,
+			direction,
+		});
+		await linkRepository.linkProject(orders.id, ownEnvironment.id, direction);
+
+		await service.promote(environments.promote.id, owner, {});
+
+		expect((await readBranchManifest(remote.bareDir)).projects?.map(({ id }) => id)).toEqual([
+			orders.id,
+		]);
 	});
 });

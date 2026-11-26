@@ -6,7 +6,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@n8n/errors';
@@ -16,6 +16,7 @@ import { PromotionEnvironmentProjectRepository } from '../database/repositories/
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
+import { PromotionSettingsService } from '../promotion-settings.service';
 
 let providerRepository: PromotionProviderRepository;
 let environmentRepository: PromotionEnvironmentRepository;
@@ -41,6 +42,7 @@ beforeAll(async () => {
 		environmentRepository,
 		linkRepository,
 		Container.get(ProjectRepository),
+		Container.get(PromotionSettingsService),
 	);
 });
 
@@ -54,6 +56,7 @@ beforeEach(async () => {
 	await environmentRepository.delete({});
 	await providerRepository.delete({});
 	await testDb.truncate(['SharedWorkflow', 'ProjectRelation', 'Project']);
+	await Container.get(SettingsRepository).delete({ key: 'promotions.projectEnvironments' });
 	owner = await createOwner();
 });
 
@@ -163,5 +166,31 @@ describe('PromotionEnvironmentResolver', () => {
 				BadRequestError,
 			);
 		});
+	});
+
+	describe('findProjectIdsOutsideInstanceEnvironment', () => {
+		it.each([{ enabled: false }, { enabled: true }])(
+			'returns the projects with their own Promote environment only while project environments are on (on: $enabled)',
+			async ({ enabled }) => {
+				const { environment: projectPromote } = await createEnvironment({
+					name: 'teamPromote',
+					scope: 'projects',
+					direction: 'promote',
+				});
+				const { environment: projectApply } = await createEnvironment({
+					name: 'teamApply',
+					scope: 'projects',
+				});
+				const promoteLinked = await createTeamProject('Orders', owner);
+				const applyLinked = await createTeamProject('Billing', owner);
+				await linkRepository.linkProject(promoteLinked.id, projectPromote.id, 'promote');
+				await linkRepository.linkProject(applyLinked.id, projectApply.id, 'apply');
+				await Container.get(PromotionSettingsService).setProjectEnvironmentsEnabled(owner, enabled);
+
+				const outside = await resolver.findProjectIdsOutsideInstanceEnvironment('promote');
+
+				expect(outside).toEqual(new Set(enabled ? [promoteLinked.id] : []));
+			},
+		);
 	});
 });

@@ -435,6 +435,7 @@ describe('PromotionsService', () => {
 		beforeEach(async () => {
 			const input = promoteInput();
 			resolver.resolveForEnvironment.mockResolvedValue(input);
+			resolver.findProjectIdsOutsideInstanceEnvironment.mockResolvedValue(new Set());
 			await markCloned(input, 'staging');
 			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
 			inventoryReader.read.mockResolvedValue({

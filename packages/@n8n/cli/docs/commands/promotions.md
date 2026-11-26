@@ -302,6 +302,8 @@ the deployment can hold a different checkout.
 ## `promotion-environment promote`
 
 Export all team projects, commit them, and push to the configured branch.
+While project environments are on, each project that promotes to its own
+environment is left out.
 
 ```bash
 n8n-cli promotion-environment promote env-1

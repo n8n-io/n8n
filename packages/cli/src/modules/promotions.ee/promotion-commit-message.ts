@@ -25,6 +25,15 @@ export function buildInstancePromotionCommitMessage({
 	return `Promote instance: ${plural(projectCount, 'project')}, ${plural(workflowCount, 'workflow')}`;
 }
 
+/** A message from the caller also gets the list, so the merge request always names the projects. */
+export function appendProjectsMovedToOwnEnvironment(
+	commitMessage: string,
+	projects: NamedRef[],
+): string {
+	const section = listSection('Projects moved to their own Promote environment', projects);
+	return section ? `${commitMessage}\n\n${section}` : commitMessage;
+}
+
 /**
  * The commit message of a selection promote that has no message from the caller.
  * The first line becomes the merge request title. The lists become its description.
