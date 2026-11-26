@@ -1015,8 +1015,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			onBudgetNotice,
 			budget,
 			runtimeChunks,
+			scheduleTest = false,
 		}: {
 			abortSignal?: AbortSignal;
+			scheduleTest?: boolean;
 			previewChat?: boolean;
 			automaticPreviewContinuation?: boolean;
 			announceExecution?: boolean;
@@ -1027,6 +1029,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			const fixtures = makeService();
 			const runtime = makeRuntime(runtimeChunks, undefined, budget);
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			if (scheduleTest) {
+				fixtures.executionService.findThreadById.mockResolvedValue(
+					mock<AgentExecutionThread>({ id: 'thread-1', testTaskId: 'task-1' }),
+				);
+			}
 			fixtures.checkpointStorage.getStatus.mockResolvedValue({
 				status: 'active',
 				checkpoint: makeCheckpoint(),
@@ -1046,6 +1053,8 @@ describe('AgentExecutionOrchestratorService', () => {
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
 							...(onBudgetNotice ? { onBudgetNotice } : {}),
+							// The queue consumer reads the schedule test mark from the thread.
+							...(scheduleTest ? { allowBackgroundTasks: false } : {}),
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
@@ -1072,6 +1081,16 @@ describe('AgentExecutionOrchestratorService', () => {
 				sdkStart: operation === 'start' ? runtime.agent.stream : runtime.agent.resume,
 			};
 		}
+
+		it('builds the runtime of a schedule test without background tasks', async () => {
+			const { stream, runtimeCacheService } = makeTurn({ previewChat: true, scheduleTest: true });
+
+			await collect(stream);
+
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ previewChat: true, allowBackgroundTasks: false }),
+			);
+		});
 
 		it('finishes an admitted turn when Agents is disabled', async () => {
 			const { stream, settingsService, onExecutionStarted, executionService } = makeTurn();

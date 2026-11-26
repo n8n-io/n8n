@@ -9,6 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import type { AgentTaskTestRequest } from '../types';
 import AgentTaskForm from './AgentTaskForm.vue';
 import AgentTestButton from './AgentTestButton.vue';
 import AgentModal from './modals/AgentModal.vue';
@@ -25,7 +26,7 @@ export type AgentTaskModalData = {
 	taskState?: {
 		enabled: boolean;
 	};
-	onPreview?: (instructions: string) => void;
+	onPreview?: (request: AgentTaskTestRequest) => void;
 	onSaved: () => void;
 };
 
@@ -51,7 +52,8 @@ function onPreview() {
 	if (!objective || !props.data.onPreview || props.data.getPreviewDisabledReason?.()) return;
 
 	closeModal();
-	props.data.onPreview(objective);
+	// The form's objective, so an unsaved edit can be tested.
+	props.data.onPreview({ objective, taskId: props.data.task?.id, source: 'schedule_modal' });
 }
 
 async function onDelete() {

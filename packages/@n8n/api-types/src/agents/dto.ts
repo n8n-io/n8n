@@ -919,11 +919,26 @@ const hasSessionForMessageId = {
 		!value.messageId || !!value.sessionId,
 	options: { message: 'A session ID is required with a message ID', path: ['sessionId'] },
 };
+const hasNewSessionForTaskId = {
+	check: (value: { taskId?: string; newSession?: true }) => !value.taskId || !!value.newSession,
+	options: { message: 'A task test must start a new session', path: ['newSession'] },
+};
+
+const projectAgentChatMessageShape = {
+	...agentChatMessageShape,
+	/**
+	 * Preview only: test a schedule. The server sends the message as that
+	 * task's scheduled run would, and runs the turn without background tasks.
+	 * Needs `newSession`. n8n Chat ignores it.
+	 */
+	taskId: z.string().min(1).optional(),
+};
 
 const agentChatMessageSchema = z
-	.object(agentChatMessageShape)
+	.object(projectAgentChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
-	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options)
+	.refine(hasNewSessionForTaskId.check, hasNewSessionForTaskId.options);
 
 const agentPreviewChatMessageSchema = z
 	.object(agentPreviewChatMessageShape)
@@ -975,7 +990,7 @@ const systemAgentChatMessageSchema = z
  * static cannot hold the refinement (a `ZodEffects` is not assignable to the
  * base class's `ZodObject`) and misses the text-or-attachment invariant.
  */
-export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
+export class AgentChatMessageDto extends Z.class(projectAgentChatMessageShape) {
 	constructor(data: z.infer<typeof agentChatMessageSchema>) {
 		super(agentChatMessageSchema.parse(data));
 	}

@@ -35,6 +35,7 @@ import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedes
 import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import type { AgentTaskRow } from '../composables/useAgentTasks';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
+import type { AgentTaskTestRequest } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
 import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
 import { useWhatsAppMetaStatus } from '../channels/whatsapp/useWhatsAppMetaStatus';
@@ -85,7 +86,7 @@ const emit = defineEmits<{
 	'trigger-removed': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
-	'preview-task': [instructions: string];
+	'preview-task': [request: AgentTaskTestRequest];
 	'agent-changed': [];
 }>();
 

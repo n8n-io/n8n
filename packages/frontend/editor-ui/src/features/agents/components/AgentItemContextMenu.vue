@@ -7,17 +7,32 @@ import { computed, ref } from 'vue';
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
-	defineProps<{ disabled?: boolean; enabled?: boolean; removeLabel?: string }>(),
-	{ enabled: undefined },
+	defineProps<{
+		disabled?: boolean;
+		enabled?: boolean;
+		removeLabel?: string;
+		/** Shows `Test now` first when set. `false` shows it disabled. */
+		testable?: boolean;
+	}>(),
+	{ enabled: undefined, testable: undefined },
 );
-const emit = defineEmits<{ remove: []; 'update:enabled': [enabled: boolean] }>();
+const emit = defineEmits<{ remove: []; 'update:enabled': [enabled: boolean]; test: [] }>();
 const i18n = useI18n();
 const open = ref(false);
 
-type Action = 'remove' | 'toggle-activation' | 'destructive';
+type Action = 'test' | 'remove' | 'toggle-activation' | 'destructive';
 
 const items = computed<Array<ContextMenuNode<Action>>>(() => {
 	const actions: Array<ContextMenuNode<Action>> = [];
+	if (props.testable !== undefined) {
+		actions.push({
+			type: 'item',
+			id: 'test',
+			label: i18n.baseText('agents.builder.contextMenu.testNow'),
+			icon: { type: 'icon', value: 'flask-conical' },
+			disabled: props.disabled || !props.testable,
+		});
+	}
 	if (props.enabled !== undefined) {
 		actions.push({
 			type: 'item',
@@ -50,7 +65,8 @@ const items = computed<Array<ContextMenuNode<Action>>>(() => {
 
 function select(action: Action) {
 	if (props.disabled) return;
-	if (action === 'remove') emit('remove');
+	if (action === 'test' && props.testable) emit('test');
+	else if (action === 'remove') emit('remove');
 	else if (action === 'toggle-activation' && props.enabled !== undefined)
 		emit('update:enabled', !props.enabled);
 }

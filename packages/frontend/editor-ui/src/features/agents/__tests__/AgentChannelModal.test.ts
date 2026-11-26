@@ -61,6 +61,22 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+// The schedule form loads stores. These tests only need the objective it returns.
+vi.mock('../components/AgentTaskForm.vue', async () => {
+	const { defineComponent } = await import('vue');
+	return {
+		default: defineComponent({
+			name: 'AgentTaskForm',
+			props: { task: { type: Object, default: null } },
+			setup(props, { expose }) {
+				expose({
+					previewObjective: () => (props.task as { objective?: string } | null)?.objective,
+				});
+				return () => null;
+			},
+		}),
+	};
+});
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: mocks.showMessage, showError: mocks.showError }),
 }));
@@ -391,6 +407,29 @@ describe('AgentChannelModal', () => {
 		mocks.afterSave.mockResolvedValue(undefined);
 		mocks.ensureAgentPersisted.mockResolvedValue(undefined);
 		mocks.saveDescription.mockResolvedValue(undefined);
+	});
+
+	it('tests an edited schedule with its task id from the schedule view', async () => {
+		const wrapper = mountModal('schedule_edit', false, {
+			showSchedule: true,
+			isRunnable: true,
+			task: {
+				id: 'task-1',
+				name: 'Inbox digest',
+				objective: 'Summarize the inbox',
+				cronExpression: '0 9 * * *',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+		});
+		await flushPromises();
+
+		wrapper.getComponent({ name: 'AgentTestButton' }).vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(wrapper.emitted('preview-task')).toEqual([
+			[{ objective: 'Summarize the inbox', taskId: 'task-1', source: 'schedule_modal' }],
+		]);
 	});
 
 	it('uses the Add trigger title in the trigger picker', async () => {

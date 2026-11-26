@@ -310,6 +310,8 @@ export class AgentMessageQueueConsumer {
 			sessionId: thread.id,
 			sessionMode: 'existing',
 			previewChat: true,
+			// A schedule test matches a scheduled run, which has no background tasks.
+			...(thread.testTaskId ? { allowBackgroundTasks: false } : {}),
 			source: claim.recording.source,
 			admittedExecution: admission,
 			abortSignal: signal,

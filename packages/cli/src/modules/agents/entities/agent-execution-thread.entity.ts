@@ -113,6 +113,20 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	})
 	taskVersionId: string | null;
 
+	/**
+	 * Draft task that this Preview session tests. A schedule test runs once, so
+	 * the session takes no further messages. Not an FK: the test stays read-only
+	 * after the task is deleted.
+	 */
+	@Column({
+		type: 'varchar',
+		length: AGENT_TASK_ID_MAX_LENGTH,
+		nullable: true,
+		comment:
+			'Task that this Preview session tests. The session takes no further messages. Not an FK: the test stays read-only after the task is deleted',
+	})
+	testTaskId: string | null;
+
 	/** Stable, project-scoped incrementing counter assigned at creation. */
 	@Column({ type: 'int', default: 0 })
 	sessionNumber: number;

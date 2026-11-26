@@ -707,6 +707,11 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the response holds the whole thread.
 	 */
 	nextCursor?: string | null;
+	/**
+	 * Preview only: the task that this session tests. A schedule test runs once,
+	 * so the session takes no further messages.
+	 */
+	testTaskId?: string;
 }
 
 /** Suggested starter prompts returned by the test-chat scenario generator. */

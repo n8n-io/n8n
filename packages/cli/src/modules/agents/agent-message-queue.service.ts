@@ -119,7 +119,8 @@ export class AgentMessageQueueService {
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
 				await this.settingsService.assertEnabledFor(input.agentId, ctx);
-				await this.executionService.prepareThread(
+				const testTaskId = payload.kind === 'preview' ? payload.taskId : undefined;
+				const { thread, created } = await this.executionService.prepareThread(
 					{
 						...input,
 						agentName: agent.name,
@@ -129,6 +130,7 @@ export class AgentMessageQueueService {
 							payload.kind === 'integration'
 								? { accessScope: 'project', ownerId: null }
 								: { accessScope: 'user', ownerId: payload.userId },
+						...(testTaskId ? { threadMetadata: { testTaskId } } : {}),
 					},
 					ctx,
 				);
@@ -139,6 +141,13 @@ export class AgentMessageQueueService {
 					ctx,
 					messageId,
 				);
+				// A schedule test runs once, like the scheduled run. This runs after
+				// the insert, so a re-sent first message still counts as a duplicate.
+				if (!created && thread.testTaskId && payload.kind !== 'integration' && !payload.hidden) {
+					throw new UserError(
+						'A schedule test runs once. Start a new session to chat with the agent.',
+					);
+				}
 				// Register delivery before another main can see the committed item.
 				onInserted?.(inserted.id);
 				return inserted;

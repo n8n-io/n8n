@@ -1235,4 +1235,27 @@ describe('AgentTaskService', () => {
 			expect(taskRepository.update).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('buildTaskTestMessage', () => {
+		it('formats the given objective like a scheduled run, with the task timezone', async () => {
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(
+				makeTask({ timezone: 'Europe/London' }),
+			);
+
+			const message = await service.buildTaskTestMessage(AGENT_ID, 'task-1', 'Unsaved objective');
+
+			expect(taskRepository.findByIdAndAgentId).toHaveBeenCalledWith('task-1', AGENT_ID);
+			expect(message).toMatch(
+				/^Unsaved objective\n\nCurrent date and time: .+ \(timezone: UTC\)\nThis task is scheduled in Europe\/London\.$/,
+			);
+		});
+
+		it('throws NotFoundError for a task that is not on the agent', async () => {
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
+
+			await expect(service.buildTaskTestMessage(AGENT_ID, 'other', 'Objective')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
 });

@@ -173,6 +173,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
 	simulation?: DraftSimulationResolver;
+	/** False for a schedule test, which runs like a scheduled run. Defaults to true. */
+	allowBackgroundTasks?: boolean;
 }
 
 export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
@@ -691,11 +693,21 @@ export class AgentExecutionOrchestratorService {
 			...resume,
 			source: resume.source ?? checkpoint.scope.source,
 			simulationSession,
+			...((await this.isScheduleTest(resume, checkpoint.memoryScope.threadId))
+				? { allowBackgroundTasks: false }
+				: {}),
 		};
 		yield* this.withRuntimeLease(
 			async () => await this.getResumeRuntime(run, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(run, checkpoint, runtime),
 		);
+	}
+
+	/** A schedule test in Preview resumes like a scheduled run, without background tasks. */
+	private async isScheduleTest(config: ResumeForChatConfig, threadId: string): Promise<boolean> {
+		if (config.chatSurface !== 'preview') return false;
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		return Boolean(thread?.testTaskId);
 	}
 
 	/**
@@ -1987,6 +1999,8 @@ export class AgentExecutionOrchestratorService {
 				user: setup.runtime.user,
 				sandboxPrincipalHash: setup.sandboxPrincipalHash,
 				previewChat: setup.runtime.previewChat,
+				// Before the simulation params: a test run turns background tasks off.
+				allowBackgroundTasks: config.allowBackgroundTasks,
 				...simulationRuntimeParams(config.simulationSession),
 			},
 			{

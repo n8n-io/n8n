@@ -257,6 +257,9 @@ Keep these actions out of inline Agent editors and channel,
 MCP, vector store, and memory menus. Schedules use this menu instead of a modal
 switch. Activation edits the draft and takes effect in production after publish.
 
+Schedules also show `Test now` with the `flask-conical` icon before
+`Activate` or `Deactivate`.
+
 Keep deactivated items editable and removable. Use the same reduced opacity as
 a disabled Design System button. Apply it to the whole chip in both themes.
 Do not show a status tag on the chip. Keep `Deactivated` in its accessible
@@ -298,6 +301,25 @@ save. A workflow that is archived, deleted, or that the user cannot read has
 one note only. The not found note does not say whether the workflow exists.
 When an agent opens the skill, the notes that block that agent (archived, not
 found, no supported trigger, not published) show behind a warning icon instead.
+
+## Schedule tests
+
+Put an icon-only ghost `play` button after each schedule chip. Its tooltip is
+`Test in Preview`. The button, `Test now` in the chip menu, and `Preview` in the
+schedule modal start a new Preview session. The first message is the objective,
+in the format of a scheduled run. The modal sends the objective in the form, so
+users can test an edit before they save it. Disable these actions when the Test
+button beside the Agent title is disabled, and show the same tooltip. Deactivated
+schedules stay testable.
+
+A schedule test runs once, like the scheduled run. Lock the composer of its
+session, and show the notice `Schedule test: runs once, like the real schedule.`
+above it. Do not show a disabled field without an explanation. The notice has
+two actions. `Run again` starts a new test of the same schedule with its saved
+objective. `Chat with the agent` starts a new, normal Preview session. Keep Stop
+available while the test runs. Keep inline approval cards. The server marks the
+session as a schedule test and refuses new messages, so the lock stays after a
+reload and when the user opens the session from Preview history.
 
 ## Modal patterns
 

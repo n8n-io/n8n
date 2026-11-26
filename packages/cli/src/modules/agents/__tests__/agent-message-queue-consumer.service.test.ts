@@ -73,6 +73,7 @@ describe('AgentMessageQueueConsumer', () => {
 				agentId: 'agent',
 				projectId: 'project',
 				ownerId: integration ? null : 'user',
+				testTaskId: null,
 			}),
 			admission: {
 				executionId: `execution-${threadId}`,
@@ -207,6 +208,22 @@ describe('AgentMessageQueueConsumer', () => {
 			stopReport: true,
 		});
 		expect(sender.send.mock.calls[0][0]).not.toHaveProperty('message');
+	});
+
+	it('runs a schedule test turn without background tasks', async () => {
+		const item = claim('session');
+		item.payload = { kind: 'preview', message: 'Summarize', resourceId: 'draft-chat:user' };
+		item.thread.testTaskId = 'task-1';
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Summarize', allowBackgroundTasks: false }),
+		);
 	});
 
 	it('accepts Stop while the thread owner is loading', async () => {

@@ -8,6 +8,7 @@ import type {
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
+	AgentPreviewPrompt,
 	AgentResource,
 } from '@/features/agents/types';
 import type { BudgetAmountField } from '@/features/agents/utils/budget-config';
@@ -28,7 +29,7 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		effectiveSessionId?: string;
 		newSession?: boolean;
-		initialPrompt?: string;
+		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
@@ -60,6 +61,8 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'schedule-test-run-again': [taskId: string];
+	'schedule-test-chat': [];
 	'message-sent': [];
 }>();
 
@@ -101,7 +104,7 @@ watch(
 	[() => props.initialPrompt, chatPanel],
 	([prompt, panel]) => {
 		if (!prompt || !panel) return;
-		panel.sendMessageFromOutside(prompt);
+		panel.sendMessageFromOutside(prompt.text, undefined, undefined, prompt.taskId);
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -143,6 +146,8 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
+				@schedule-test-run-again="emit('schedule-test-run-again', $event)"
+				@schedule-test-chat="emit('schedule-test-chat')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@first-user-message="onFirstUserMessage"

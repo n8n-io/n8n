@@ -3,10 +3,13 @@ import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-t
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed } from 'vue';
 import { useAgentTasks, type AgentTaskRow } from '../composables/useAgentTasks';
+import type { AgentTaskTestRequest } from '../types';
 import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -37,7 +40,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
-	'preview-task': [instructions: string];
+	'preview-task': [request: AgentTaskTestRequest];
 }>();
 
 const i18n = useI18n();
@@ -58,8 +61,21 @@ const { taskRows, taskErrorMessage, removingTaskId, toggleTask, removeTask, open
 		getEnsureAgentPersisted: () => props.ensureAgentPersisted,
 		onToggle: (payload) => emit('toggle-task', payload),
 		onChanged: () => emit('tasks-changed'),
-		onPreview: (instructions) => emit('preview-task', instructions),
+		onPreview: (request) => emit('preview-task', request),
 	});
+
+// Same readiness rules as the Test button beside the agent title.
+const testDisabled = computed(() => !props.isRunnable || Boolean(props.previewDisabledReason));
+const testTooltip = computed(() =>
+	testDisabled.value
+		? (props.previewDisabledReason ?? i18n.baseText('agents.builder.preview.disabledTooltip'))
+		: i18n.baseText('agents.builder.tasks.test.tooltip'),
+);
+
+function testTask(task: AgentTaskRow) {
+	if (props.disabled || testDisabled.value) return;
+	emit('preview-task', { objective: task.objective, taskId: task.id, source: 'schedule' });
+}
 
 function taskScheduleTooltip(task: AgentTaskRow): string {
 	const timezone = task.timezone ?? rootStore.timezone;
@@ -93,8 +109,10 @@ defineExpose({ openAddSchedule });
 				<AgentItemContextMenu
 					:disabled="props.disabled || removingTaskId !== null"
 					:enabled="task.enabled"
+					:testable="!testDisabled"
 					@update:enabled="toggleTask(task, $event)"
 					@remove="removeTask(task)"
+					@test="testTask(task)"
 				>
 					<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
 						<AgentChipButton
@@ -111,6 +129,33 @@ defineExpose({ openAddSchedule });
 						</AgentChipButton>
 					</N8nTooltip>
 				</AgentItemContextMenu>
+
+				<AgentValidationTooltip
+					:disabled="false"
+					:fallback="testTooltip"
+					action="preview"
+					:issues="testDisabled && !props.previewDisabledReason ? props.validationIssues : []"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon-only
+						:disabled="props.disabled || testDisabled"
+						focusable-when-disabled
+						:aria-label="
+							i18n.baseText('agents.builder.tasks.test.ariaLabel', {
+								interpolate: { name: task.name },
+							})
+						"
+						data-testid="agent-capabilities-test-task"
+						data-attr="agent-capabilities-test-task"
+						@click="testTask(task)"
+					>
+						<template #icon>
+							<N8nIcon icon="play" :size="16" color="text-light" />
+						</template>
+					</N8nButton>
+				</AgentValidationTooltip>
 
 				<N8nTooltip
 					v-if="!props.hideAdd && taskIndex === taskRows.length - 1"

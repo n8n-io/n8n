@@ -19,6 +19,7 @@
 | taskId | varchar(32) |  | true |  |  | Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows |
 | taskStop | json |  | true |  |  | Latest task stop boundary and unresolved stop errors |
 | taskVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) | Published agent_history version that supplied the task snapshot |
+| testTaskId | varchar(32) |  | true |  |  | Task that this Preview session tests. The session takes no further messages. Not an FK: the test stays read-only after the task is deleted |
 | title | varchar(255) |  | true |  |  |  |
 | totalCompletionTokens | integer | 0 | false |  |  |  |
 | totalCost | double precision | 0 | false |  |  |  |
@@ -91,6 +92,7 @@ erDiagram
   varchar_32_ taskId
   json taskStop
   varchar_36_ taskVersionId FK
+  varchar_32_ testTaskId
   varchar_255_ title
   integer totalCompletionTokens
   double_precision totalCost

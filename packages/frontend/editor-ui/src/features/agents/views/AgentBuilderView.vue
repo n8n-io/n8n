@@ -71,6 +71,7 @@ import {
 	moveAgent,
 	createAgentTask,
 	deleteAgent,
+	getAgentTasks,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentKnowledge } from '../composables/useAgentKnowledge';
@@ -84,6 +85,8 @@ import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
+	AgentPreviewPrompt,
+	AgentTaskTestRequest,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentTestScenariosExperiment } from '@/experiments/agentTestScenarios/useAgentTestScenariosExperiment';
@@ -458,7 +461,7 @@ const defaultPanelWidth = computed(() => {
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
-const taskPreviewPrompt = ref<string>();
+const taskPreviewPrompt = ref<AgentPreviewPrompt>();
 const isPreviewActive = computed(function isPreviewActive() {
 	return isStandalonePreview.value || isPreviewDockOpen.value;
 });
@@ -1365,15 +1368,39 @@ async function onOpenPreview(
 	return true;
 }
 
-async function onPreviewTask(instructions: string) {
+/** Tests a schedule in a new Preview session, so the run does not mix with an open chat. */
+async function onPreviewTask({ objective, taskId, source }: AgentTaskTestRequest) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
-	if (!(await onOpenPreview(undefined, target))) return;
+	if (!(await onOpenPreview(source, target))) return;
 
-	// Reset first so the same objective can be previewed more than once.
+	// Reset first so the same objective can be tested more than once.
 	taskPreviewPrompt.value = undefined;
+	onNewChat();
 	await nextTick();
 	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
-	taskPreviewPrompt.value = instructions;
+	taskPreviewPrompt.value = { text: objective, taskId };
+}
+
+/** Tests the schedule of a schedule test session again, with its saved objective. */
+async function onRunScheduleTestAgain(taskId: string) {
+	const target = { projectId: projectId.value, agentId: agentId.value };
+	let task;
+	try {
+		const tasks = await getAgentTasks(rootStore.restApiContext, target.projectId, target.agentId);
+		task = tasks.find(({ id }) => id === taskId);
+	} catch (error) {
+		showError(error, locale.baseText('agents.chat.scheduleTest.runAgain.error'));
+		return;
+	}
+	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
+	if (!task) {
+		showMessage({
+			type: 'warning',
+			title: locale.baseText('agents.chat.scheduleTest.runAgain.missing'),
+		});
+		return;
+	}
+	await onPreviewTask({ objective: task.objective, taskId, source: 'schedule_rerun' });
 }
 
 function getBuilderQuery() {
@@ -3746,6 +3773,7 @@ useKeybindings({
 					:effective-session-id="effectiveSessionId"
 					:show-test-scenarios="showTestScenariosEmptyState"
 					:new-session="currentSessionIsEphemeral"
+					:initial-prompt="taskPreviewPrompt"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
@@ -3756,6 +3784,9 @@ useKeybindings({
 					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
+					@initial-consumed="taskPreviewPrompt = undefined"
+					@schedule-test-run-again="onRunScheduleTestAgain"
+					@schedule-test-chat="startNewPreviewSession"
 				/>
 
 				<AgentBuilderEditorColumn
@@ -3917,6 +3948,8 @@ useKeybindings({
 							@send-to-assistant="onSendPreviewToAssistant"
 							@open-build="!isArtifactMode && setChatMode('build')"
 							@initial-consumed="taskPreviewPrompt = undefined"
+							@schedule-test-run-again="onRunScheduleTestAgain"
+							@schedule-test-chat="startNewPreviewSession"
 						>
 							<template v-if="inlineTestChat" #composer-footer>
 								<AgentBuilderChatDisclaimer />

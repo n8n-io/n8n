@@ -37,6 +37,19 @@ describe('AgentChatMessageDto', () => {
 		}
 	});
 
+	it('accepts a task id only on the first message of a new session', () => {
+		expect(
+			AgentChatMessageDto.safeParse({ message: 'Summarize', newSession: true, taskId: 'task-1' })
+				.success,
+		).toBe(true);
+		expect(AgentChatMessageDto.safeParse({ message: 'Summarize', taskId: 'task-1' }).success).toBe(
+			false,
+		);
+		expect(
+			AgentChatMessageDto.safeParse({ message: 'Summarize', newSession: true, taskId: '' }).success,
+		).toBe(false);
+	});
+
 	it('rejects a payload with neither message text nor attachments', () => {
 		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
 		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);

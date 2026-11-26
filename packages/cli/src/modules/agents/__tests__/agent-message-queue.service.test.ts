@@ -21,12 +21,16 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
-import type { AgentMessageRepository } from '../repositories/agent-message.repository';
+import {
+	AgentMessageIdConflictError,
+	type AgentMessageRepository,
+} from '../repositories/agent-message.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
+import { queuedMessageId } from '../utils/queued-message-id';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -37,6 +41,7 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		ownerId: 'user-1',
 		parentThreadId: null,
 		taskId: null,
+		testTaskId: null,
 		...overrides,
 	});
 }
@@ -64,6 +69,7 @@ describe('AgentMessageQueueService', () => {
 		// The real policy: the setting covers every agent except a registered system agent.
 		settingsService.appliesTo.mockImplementation((agentId) => !systemAgents.has(agentId));
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		executionService.prepareThread.mockResolvedValue({ created: true, thread: makeThread() });
 		executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
 			new Map([['thread-1', N8N_CHAT_PRODUCTION_SOURCE]]),
 		);
@@ -520,6 +526,70 @@ describe('AgentMessageQueueService', () => {
 				expect.objectContaining({ episodicScope }),
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('schedule tests', () => {
+		const payload = {
+			kind: 'preview' as const,
+			userId: 'user-1',
+			messageId: 'client-message-1',
+			message: 'Summarize',
+			resourceId: 'draft-chat:user-1',
+		};
+		const enqueue = async (sessionMode: 'new' | 'existing', taskId?: string) =>
+			await service.enqueue({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode,
+				source: 'chat',
+				payload: { ...payload, ...(taskId ? { taskId } : {}) },
+			});
+
+		beforeEach(() => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+		});
+
+		it('marks the new session as a test of the task', async () => {
+			await enqueue('new', 'task-1');
+
+			expect(executionService.prepareThread).toHaveBeenCalledWith(
+				expect.objectContaining({ threadMetadata: { testTaskId: 'task-1' } }),
+				expect.anything(),
+			);
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'preview' },
+				expect.anything(),
+			);
+		});
+
+		it('refuses a new message in a schedule test session', async () => {
+			executionService.prepareThread.mockResolvedValue({
+				created: false,
+				thread: makeThread({ testTaskId: 'task-1' }),
+			});
+
+			await expect(enqueue('existing')).rejects.toThrow('A schedule test runs once');
+			expect(updates.notifyQueueUpdated).not.toHaveBeenCalled();
+		});
+
+		it('treats a re-sent first message as a duplicate', async () => {
+			executionService.prepareThread.mockResolvedValue({
+				created: false,
+				thread: makeThread({ testTaskId: 'task-1' }),
+			});
+			messages.createInput.mockRejectedValue(
+				new AgentMessageIdConflictError(
+					queuedMessageId('agent-1', 'thread-1', { ...payload, taskId: 'task-1' })!,
+				),
+			);
+
+			await expect(enqueue('new', 'task-1')).resolves.toEqual({ status: 'duplicate' });
 		});
 	});
 

@@ -19,6 +19,7 @@ import type {
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
+	AgentPreviewPrompt,
 	AgentResource,
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
@@ -57,7 +58,7 @@ const props = withDefaults(
 		placeholder?: string;
 		effectiveSessionId?: string;
 		newSession?: boolean;
-		initialPrompt?: string;
+		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
@@ -93,6 +94,8 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'schedule-test-run-again': [taskId: string];
+	'schedule-test-chat': [];
 	'message-sent': [];
 }>();
 
@@ -356,6 +359,8 @@ defineExpose({ clearBudgetStops });
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
+				@schedule-test-run-again="emit('schedule-test-run-again', $event)"
+				@schedule-test-chat="emit('schedule-test-chat')"
 				@message-sent="emit('message-sent')"
 			>
 				<template v-if="$slots['composer-start']" #composer-start>

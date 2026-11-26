@@ -62,6 +62,19 @@ export interface AgentEditRequestEvent {
 
 export type AgentSendToAssistantEvent = AgentFixWithAssistantEvent | AgentEditRequestEvent;
 
+/** A message that opens a new Preview session. `taskId` makes it a test of that schedule. */
+export interface AgentPreviewPrompt {
+	text: string;
+	taskId?: string;
+}
+
+/** A schedule to test in Preview. A new task in the modal has no `taskId` yet. */
+export interface AgentTaskTestRequest {
+	objective: string;
+	taskId?: string;
+	source: 'schedule' | 'schedule_modal' | 'schedule_rerun';
+}
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.

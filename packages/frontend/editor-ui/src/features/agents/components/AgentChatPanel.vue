@@ -75,6 +75,7 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
+import AgentScheduleTestNotice from './AgentScheduleTestNotice.vue';
 import SessionFilesList from './SessionFilesList.vue';
 import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
@@ -234,6 +235,10 @@ const emit = defineEmits<{
 	'first-user-message': [text: string | undefined];
 	/** The agent became unavailable in this channel (unpublished before send, or mid-run/resume). */
 	'agent-unavailable': [];
+	/** Test the schedule of this schedule test session again, in a new session. */
+	'schedule-test-run-again': [taskId: string];
+	/** Leave a schedule test session for a new, normal session. */
+	'schedule-test-chat': [];
 	/**
 	 * The server accepted a new message. Answers to an open card do not emit this.
 	 * `clientContext` is the context sent with it: the `clientContext` prop, then
@@ -334,6 +339,7 @@ const {
 	dismissFatalError,
 	dismissWarning,
 	clearBudgetNotices,
+	sessionTestTaskId,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
@@ -428,7 +434,7 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 
 async function startQueueEdit(item: AgentChatQueueItem) {
 	// A disabled composer could not send the message again, so it stays queued.
-	if (props.disabled || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
+	if (isInputLocked.value || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
 		return;
 	}
 	queueExpanded.value = true;
@@ -1018,8 +1024,13 @@ const isPreparingToSend = ref(false);
  * The composer takes no input while the host disables it, a send starts, or a
  * queued message moves back into it.
  */
+/** A schedule test runs once, like the scheduled run, so its session takes no typed input. */
+const isInputLocked = computed(() => props.disabled || !!sessionTestTaskId.value);
+function runScheduleTestAgain() {
+	if (sessionTestTaskId.value) emit('schedule-test-run-again', sessionTestTaskId.value);
+}
 const isComposerBlocked = computed(
-	() => props.disabled || isPreparingToSend.value || !!editingQueueId.value,
+	() => isInputLocked.value || isPreparingToSend.value || !!editingQueueId.value,
 );
 let disposed = false;
 let queuedExternalMessage: string | undefined;
@@ -1031,6 +1042,8 @@ let handoffPreview: ChatMessage | undefined;
 let externalAttachedFiles: File[] = [];
 // The client context a hand-off sends with its own message only, on top of the `clientContext` prop.
 let externalClientContext: Record<string, unknown> | undefined;
+// The schedule a hand-off tests. It goes with the hand-off's own message only.
+let externalTaskId: string | undefined;
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -1190,6 +1203,8 @@ const showStop = computed(
 );
 
 const chatPlaceholder = computed(() => {
+	// The schedule test notice explains the lock. A placeholder would invite typing.
+	if (sessionTestTaskId.value) return '';
 	if (hasOpenInteractiveQuestion.value) {
 		return locale.baseText('agents.chat.answerQuestionPlaceholder');
 	}
@@ -1359,6 +1374,7 @@ watch(
 	() => {
 		queuedExternalMessage = undefined;
 		externalClientContext = undefined;
+		externalTaskId = undefined;
 		handoffPreview = undefined;
 		editingQueueId.value = undefined;
 		queueExpanded.value = false;
@@ -1379,6 +1395,7 @@ function consumeQueuedExternalMessage(message: string) {
 	if (queuedExternalMessage !== message) return;
 	queuedExternalMessage = undefined;
 	externalClientContext = undefined;
+	externalTaskId = undefined;
 	emit('initial-consumed');
 }
 
@@ -1441,6 +1458,7 @@ async function submitDraft(
 	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
 	if (ownedHandoffPreview) handoffPreview = undefined;
 	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
+	const ownedTaskId = submittingQueuedExternalMessage ? externalTaskId : undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const isCurrentTarget = captureTarget();
 
@@ -1475,6 +1493,7 @@ async function submitDraft(
 		staleControlledDraft: options.staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
+		taskId: ownedTaskId,
 	});
 }
 
@@ -1492,6 +1511,8 @@ interface SendRequest {
 	handoffPreview?: ChatMessage;
 	/** Sent with this message only, on top of the `clientContext` prop. */
 	clientContext?: Record<string, unknown>;
+	/** The schedule that this message tests. */
+	taskId?: string;
 }
 
 async function sendRequest(request: SendRequest): Promise<SubmitResult> {
@@ -1502,6 +1523,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 		staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
+		taskId,
 	} = request;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const isCurrentTarget = captureTarget();
@@ -1563,7 +1585,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			consumeQueuedExternalMessage(text);
 		};
 		emitMessageSending({ text, files, clientContext });
-		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
+		const sending = sendMessage(text, sentFiles, onAccepted, clientContext, taskId);
 		isPreparingToSend.value = false;
 		const result = await sending;
 		// A send the server never accepted (busy, failed, lost) won't bring the real
@@ -1631,10 +1653,12 @@ function sendMessageFromOutside(
 	message: string,
 	files?: File[],
 	clientContext?: Record<string, unknown>,
+	taskId?: string,
 ) {
 	queuedExternalMessage = message;
 	externalAttachedFiles = files ?? [];
 	externalClientContext = clientContext;
+	externalTaskId = taskId;
 	// Staged as the composer's own attachments, with the same count and size checks
 	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
 	// every retry `submitQueuedExternalMessage` makes while blocked.
@@ -1671,6 +1695,7 @@ async function submitQueuedExternalMessage() {
 		queuedExternalMessage = undefined;
 		// The draft is the user's now, so the hand-off's context does not go with it.
 		externalClientContext = undefined;
+		externalTaskId = undefined;
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
@@ -2045,13 +2070,19 @@ onBeforeUnmount(() => {
 					</div>
 				</div>
 				<div v-else :class="$style.composer">
+					<AgentScheduleTestNotice
+						v-if="sessionTestTaskId"
+						:class="$style.scheduleTestNotice"
+						@run-again="runScheduleTestAgain"
+						@chat="emit('schedule-test-chat')"
+					/>
 					<ChatInputBase
 						ref="chatInput"
 						v-model="inputText"
 						:block-canvas-shortcuts="false"
 						:placeholder="chatPlaceholder"
 						:placeholder-preview="
-							!hasOpenInteractiveQuestion && queuedMessages.length === 0
+							!hasOpenInteractiveQuestion && queuedMessages.length === 0 && !sessionTestTaskId
 								? props.placeholderPreview
 								: undefined
 						"
@@ -2063,7 +2094,7 @@ onBeforeUnmount(() => {
 						:show-attach="showAttach"
 						:show-attach-button="false"
 						:accepted-mime-types="acceptedMimeTypes"
-						:can-submit="!props.disabled && !isSubmissionBlocked && hasDraft"
+						:can-submit="!isInputLocked && !isSubmissionBlocked && hasDraft"
 						:disabled="isComposerBlocked"
 						data-testid="chat-input"
 						@submit="onSubmit"
@@ -2078,7 +2109,7 @@ onBeforeUnmount(() => {
 								:displayed-items="queueDisplayItems"
 								:expanded="queueExpanded"
 								:is-reordering="isReorderingQueue"
-								:can-edit="!props.disabled && !hasDraft && !isSubmissionBlocked"
+								:can-edit="!isInputLocked && !hasDraft && !isSubmissionBlocked"
 								:steer-action="queueSteerAction"
 								:can-steer="canSteer"
 								:can-drag-queue-item="canDragQueueItem"
@@ -2364,6 +2395,10 @@ onBeforeUnmount(() => {
 .composer {
 	display: flex;
 	flex-direction: column;
+}
+
+.scheduleTestNotice {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .inputArea {

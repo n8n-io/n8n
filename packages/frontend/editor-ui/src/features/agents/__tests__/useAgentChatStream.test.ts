@@ -3888,6 +3888,47 @@ describe('useAgentChatStream — done executionId', () => {
 			}
 		},
 	);
+
+	it('sends a task id only with the first message of a new session', async () => {
+		getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+		const fetchMock = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 }),
+		);
+		globalThis.fetch = fetchMock as typeof fetch;
+		const newSession = ref(true);
+		const hook = buildHook('thread-new', { newSession });
+
+		await hook.loadHistory();
+		expect(hook.sessionTestTaskId.value).toBeUndefined();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, 'task-1');
+		await flushPromises();
+		// The session is now a schedule test, so the host locks its composer.
+		expect(hook.sessionTestTaskId.value).toBe('task-1');
+		newSession.value = false;
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, 'task-1');
+		await flushPromises();
+
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+			newSession: true,
+			taskId: 'task-1',
+		});
+		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).not.toHaveProperty('taskId');
+	});
+
+	it('marks a reopened schedule test session from its history', async () => {
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+			testTaskId: 'task-1',
+		});
+		const hook = buildHook('thread-test');
+
+		await hook.loadHistory();
+
+		expect(hook.sessionTestTaskId.value).toBe('task-1');
+	});
 });
 
 describe('useAgentChatStream — subagent-chunk', () => {

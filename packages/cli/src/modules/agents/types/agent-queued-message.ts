@@ -41,6 +41,8 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	stopReportId?: string;
 	/** Preview chat only: `test` asks for a test run. Absent means live. */
 	mode?: AgentChatMode;
+	/** Preview only: the first turn of a schedule test. The new session is marked as a test of this task. */
+	taskId?: string;
 }
 
 /**

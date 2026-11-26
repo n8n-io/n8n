@@ -77,6 +77,7 @@ const clearBudgetNoticesMock = vi.fn((codes: ReadonlySet<string>) => {
 	});
 });
 const isStreamingMock = ref(false);
+const sessionTestTaskIdMock = ref<string>();
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
 const trackSubmittedMessageMock = vi.fn();
@@ -408,6 +409,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			cancelAndSteer: cancelAndSteerMock,
 			dismissFatalError: vi.fn(),
 			clearBudgetNotices: clearBudgetNoticesMock,
+			sessionTestTaskId: sessionTestTaskIdMock,
 		};
 	},
 }));
@@ -439,6 +441,7 @@ describe('AgentChatPanel', () => {
 		isReorderingQueueMock.value = false;
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		sessionTestTaskIdMock.value = undefined;
 		isSubmittingMock.value = false;
 		isLoadingHistoryMock.value = false;
 		queuedMessagesMock.value = [];
@@ -582,6 +585,7 @@ describe('AgentChatPanel', () => {
 				undefined,
 				expect.any(Function),
 				undefined,
+				undefined,
 			);
 			sendMessageMock.mock.lastCall?.[2]?.();
 			await nextTick();
@@ -628,6 +632,7 @@ describe('AgentChatPanel', () => {
 				[file],
 				expect.any(Function),
 				undefined,
+				undefined,
 			);
 			expect(messagesMock.value.at(-1)?.status).toBe('error');
 			wrapper.unmount();
@@ -663,6 +668,7 @@ describe('AgentChatPanel', () => {
 					'Find the invoice',
 					withFile ? [file] : undefined,
 					expect.any(Function),
+					undefined,
 					undefined,
 				);
 				wrapper.unmount();
@@ -1289,6 +1295,7 @@ describe('AgentChatPanel', () => {
 			[userFile],
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		wrapper.unmount();
 	});
@@ -1657,6 +1664,7 @@ describe('AgentChatPanel', () => {
 			undefined,
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		wrapper.unmount();
 	});
@@ -1855,6 +1863,7 @@ describe('AgentChatPanel', () => {
 				'original',
 				[expect.any(File)],
 				expect.any(Function),
+				undefined,
 				undefined,
 			);
 			const files = sendMessageMock.mock.calls[0][1];
@@ -3368,6 +3377,7 @@ describe('AgentChatPanel', () => {
 			undefined,
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
@@ -3394,9 +3404,15 @@ describe('AgentChatPanel', () => {
 			await flushPromises();
 
 			expect(events).toEqual(['beforeSend', 'clientContext']);
-			expect(sendMessageMock).toHaveBeenCalledWith('hello', undefined, expect.any(Function), {
-				timeZone: 'Europe/Helsinki',
-			});
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'hello',
+				undefined,
+				expect.any(Function),
+				{
+					timeZone: 'Europe/Helsinki',
+				},
+				undefined,
+			);
 			wrapper.unmount();
 		});
 
@@ -3471,6 +3487,7 @@ describe('AgentChatPanel', () => {
 			undefined,
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
@@ -3504,6 +3521,7 @@ describe('AgentChatPanel', () => {
 			[file],
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		wrapper.unmount();
 	});
@@ -3523,6 +3541,7 @@ describe('AgentChatPanel', () => {
 			'',
 			[file],
 			expect.any(Function),
+			undefined,
 			undefined,
 		);
 		wrapper.unmount();
@@ -3592,6 +3611,107 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('sends the task id of an outside message with that message only', async () => {
+		sendMessageMock.mockResolvedValue('sent');
+		const wrapper = mountPanel({ newSession: true });
+		const panel = wrapper.vm as unknown as {
+			sendMessageFromOutside: (
+				message: string,
+				files?: File[],
+				clientContext?: Record<string, unknown>,
+				taskId?: string,
+			) => void;
+		};
+
+		panel.sendMessageFromOutside('Summarize', undefined, undefined, 'task-1');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		await flushPromises();
+		panel.sendMessageFromOutside('Follow up');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenNthCalledWith(
+			1,
+			'Summarize',
+			undefined,
+			expect.any(Function),
+			undefined,
+			'task-1',
+		);
+		expect(sendMessageMock).toHaveBeenNthCalledWith(
+			2,
+			'Follow up',
+			undefined,
+			expect.any(Function),
+			undefined,
+			undefined,
+		);
+		wrapper.unmount();
+	});
+
+	describe('schedule test sessions', () => {
+		it('locks the composer and offers a new test or a new chat', async () => {
+			sessionTestTaskIdMock.value = 'task-1';
+			const wrapper = mountPanel();
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('disabled')).toBe(true);
+			expect(chatInput.props('placeholder')).toBe('');
+			chatInput.vm.$emit('update:modelValue', 'Follow up');
+			await nextTick();
+			expect(chatInput.props('canSubmit')).toBe(false);
+
+			await wrapper.get('[data-testid="agent-schedule-test-run-again"]').trigger('click');
+			await wrapper.get('[data-testid="agent-schedule-test-chat"]').trigger('click');
+
+			expect(wrapper.emitted('schedule-test-run-again')).toEqual([['task-1']]);
+			expect(wrapper.emitted('schedule-test-chat')).toHaveLength(1);
+			wrapper.unmount();
+		});
+
+		it('keeps Stop while the test runs', async () => {
+			sessionTestTaskIdMock.value = 'task-1';
+			isStreamingMock.value = true;
+			const wrapper = mountPanel();
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showStopButton')).toBe(true);
+			chatInput.vm.$emit('stop');
+			await flushPromises();
+
+			expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
+			wrapper.unmount();
+		});
+
+		it('keeps inline approvals', async () => {
+			sessionTestTaskIdMock.value = 'task-1';
+			messagesMock.value = [
+				{
+					...openInteractiveMessage(),
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: { type: 'approval', toolName: 'send_message', args: {} },
+					},
+				},
+			];
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('shows no notice in a normal session', () => {
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="agent-schedule-test-notice"]').exists()).toBe(false);
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
 	it('submits an outside message while the current stream runs', async () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);
@@ -3613,6 +3733,7 @@ describe('AgentChatPanel', () => {
 			'Test these instructions',
 			undefined,
 			expect.any(Function),
+			undefined,
 			undefined,
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
@@ -3719,6 +3840,7 @@ describe('AgentChatPanel', () => {
 			[file],
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
@@ -3742,6 +3864,7 @@ describe('AgentChatPanel', () => {
 			'keep this draft',
 			undefined,
 			expect.any(Function),
+			undefined,
 			undefined,
 		);
 		wrapper.unmount();
@@ -3781,6 +3904,7 @@ describe('AgentChatPanel', () => {
 				'edited draft',
 				outcome === 'busy' ? [file, nextFile] : [nextFile],
 				expect.any(Function),
+				undefined,
 				undefined,
 			);
 			wrapper.unmount();
@@ -4018,6 +4142,7 @@ describe('AgentChatPanel', () => {
 					'Keep this draft',
 					[file],
 					expect.any(Function),
+					undefined,
 					undefined,
 				);
 			} finally {
@@ -4508,6 +4633,7 @@ describe('AgentChatPanel', () => {
 			undefined,
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 		expect(cancelAndSteerMock).not.toHaveBeenCalled();
 	});
@@ -4573,6 +4699,7 @@ describe('AgentChatPanel', () => {
 			'something new',
 			undefined,
 			expect.any(Function),
+			undefined,
 			undefined,
 		);
 	});
@@ -4663,7 +4790,13 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('canSubmit')).toBe(true);
 		chatInput.vm.$emit('submit');
 		await flushPromises();
-		expect(sendMessageMock).toHaveBeenCalledWith('', [file], expect.any(Function), undefined);
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'',
+			[file],
+			expect.any(Function),
+			undefined,
+			undefined,
+		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
 		expect(chatInput.props('showStopButton')).toBe(true);
@@ -4770,6 +4903,7 @@ describe('AgentChatPanel', () => {
 				[supported],
 				expect.any(Function),
 				undefined,
+				undefined,
 			);
 		});
 
@@ -4837,6 +4971,7 @@ describe('AgentChatPanel', () => {
 				'',
 				[csv],
 				expect.any(Function),
+				undefined,
 				undefined,
 			);
 		});
@@ -5417,6 +5552,7 @@ describe('AgentChatPanel', () => {
 				undefined,
 				expect.any(Function),
 				clientContext,
+				undefined,
 			);
 			expect(wrapper.emitted('message-accepted')).toEqual([
 				[{ text: 'use these', files: [], clientContext }],
@@ -5430,6 +5566,7 @@ describe('AgentChatPanel', () => {
 				'next message',
 				undefined,
 				expect.any(Function),
+				undefined,
 				undefined,
 			);
 		});
@@ -5471,6 +5608,7 @@ describe('AgentChatPanel', () => {
 				undefined,
 				expect.any(Function),
 				clientContext,
+				undefined,
 			);
 			expect(wrapper.emitted('message-accepted')).toEqual([
 				[{ text: 'use these', files: [], clientContext }],
@@ -5496,6 +5634,7 @@ describe('AgentChatPanel', () => {
 					undefined,
 					expect.any(Function),
 					clientContext,
+					undefined,
 				);
 				expect(wrapper.emitted('message-accepted')).toEqual([
 					[{ text: 'fix it', files: [], clientContext }],
@@ -5533,9 +5672,15 @@ describe('AgentChatPanel', () => {
 			await flushPromises();
 			await flushPromises();
 
-			expect(sendMessageMock).toHaveBeenCalledWith('go', undefined, expect.any(Function), {
-				workflowId: 'new',
-			});
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'go',
+				undefined,
+				expect.any(Function),
+				{
+					workflowId: 'new',
+				},
+				undefined,
+			);
 		});
 
 		it('keeps the chips when the server does not accept the message', async () => {
@@ -5620,6 +5765,7 @@ describe('AgentTestDock stream lifecycle', () => {
 				'Message from the dock',
 				undefined,
 				expect.any(Function),
+				undefined,
 				undefined,
 			);
 		} finally {
