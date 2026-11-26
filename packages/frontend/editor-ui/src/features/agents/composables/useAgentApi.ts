@@ -1,6 +1,7 @@
 import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
 	AgentPlanSnapshotDto,
+	AgentKnowledgeCollectionDto,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -602,6 +603,45 @@ export const runAgentTask = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
+	);
+};
+
+/** The collections that the agent's project can use, each marked as added to this agent or not. */
+export const listAgentKnowledgeCollections = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentKnowledgeCollectionDto[]> => {
+	return await makeRestApiRequest<AgentKnowledgeCollectionDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections`,
+	);
+};
+
+export const addAgentKnowledgeCollection = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	collectionId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'PUT',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections/${collectionId}`,
+	);
+};
+
+export const removeAgentKnowledgeCollection = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	collectionId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections/${collectionId}`,
 	);
 };
 

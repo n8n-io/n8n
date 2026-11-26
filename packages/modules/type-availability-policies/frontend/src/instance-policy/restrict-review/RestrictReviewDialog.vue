@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nAlertDialog, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed } from 'vue';
 
 import { useRestrictReviewStore } from './restrict-review.store';
 import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
+import { TELEMETRY_POLICY_KIND } from '../../type-availability-policies.telemetry';
 
 const { stacked = false } = defineProps<{
 	/** The review opens above an access dialog. */
@@ -12,6 +15,7 @@ const { stacked = false } = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const review = useRestrictReviewStore();
 
 const DESCRIPTION_KEY: Record<RestrictedTypeKind, { known: BaseTextKey; unknown: BaseTextKey }> = {
@@ -54,9 +58,24 @@ const usageLines = computed(() => {
 	];
 });
 
+// The page also cancels an open review when it closes. That is not an answer, so only the dialog reports.
+function answer(confirmed: boolean) {
+	const request = review.request;
+	if (!request) return;
+	telemetry.track(TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_REVIEWED_TYPE_RESTRICTION, {
+		kind: TELEMETRY_POLICY_KIND[request.kind],
+		type_name: request.name,
+		decision: confirmed ? 'confirm' : 'cancel',
+		use_count: request.usage?.uses ?? null,
+		workflow_count: request.usage?.workflows ?? null,
+		active_workflow_count: request.usage?.activeWorkflows ?? null,
+	});
+	review.resolve(confirmed);
+}
+
 function onOpenChange(open: boolean) {
 	// Escape and a click outside cancel, as the Cancel button does.
-	if (!open) review.resolve(false);
+	if (!open) answer(false);
 }
 </script>
 
@@ -74,7 +93,7 @@ function onOpenChange(open: boolean) {
 		:cancel-label="i18n.baseText('generic.cancel')"
 		action-variant="destructive"
 		:stacked="stacked"
-		@action="review.resolve(true)"
+		@action="answer(true)"
 		@update:open="onOpenChange"
 	>
 		<div :class="$style.content" data-test-id="restrict-review-dialog">

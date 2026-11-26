@@ -623,7 +623,12 @@ defineExpose({
 		<!-- The zero-size anchor pins the checklist popover (start-aligned, no offset)
 		 to the canvas top-left corner, 16px in from the header's bottom-left edge. -->
 		<span :class="$style.checklistAnchor">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+			<WorkflowProductionChecklist
+				v-if="!isNewWorkflow"
+				ref="productionChecklist"
+				hide-trigger
+				:disable-auto-open="onExecutionsTab"
+			/>
 		</span>
 		<!-- sub-menu-max-height: ~12 rows of 32px; a longer submenu (e.g. dependencies) scrolls -->
 		<N8nDropdownMenu

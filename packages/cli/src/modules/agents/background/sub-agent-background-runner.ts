@@ -207,11 +207,18 @@ export class SubAgentBackgroundRunner {
 		}
 		const { metadata, scope } = approval;
 		const workspace = metadata.sharedWorkspace
-			? await this.workspaceService.getAgentWorkspace(
-					context.projectId,
-					job.parentAgentId,
-					scope.principalHash,
-				)
+			? metadata.sharedWorkspaceEgress !== undefined
+				? await this.workspaceService.getAgentWorkspace(
+						context.projectId,
+						job.parentAgentId,
+						scope.principalHash,
+						{ sandboxEgress: metadata.sharedWorkspaceEgress },
+					)
+				: await this.workspaceService.getAgentWorkspace(
+						context.projectId,
+						job.parentAgentId,
+						scope.principalHash,
+					)
 			: undefined;
 		const started = createDeferredPromise();
 		const controller = new AbortController();
@@ -320,11 +327,18 @@ export class SubAgentBackgroundRunner {
 			return;
 		}
 		const workspace = metadata.sharedWorkspace
-			? await this.workspaceService.getAgentWorkspace(
-					context.projectId,
-					job.parentAgentId,
-					scope.principalHash,
-				)
+			? metadata.sharedWorkspaceEgress !== undefined
+				? await this.workspaceService.getAgentWorkspace(
+						context.projectId,
+						job.parentAgentId,
+						scope.principalHash,
+						{ sandboxEgress: metadata.sharedWorkspaceEgress },
+					)
+				: await this.workspaceService.getAgentWorkspace(
+						context.projectId,
+						job.parentAgentId,
+						scope.principalHash,
+					)
 			: undefined;
 		const controller = new AbortController();
 		const started = createDeferredPromise();

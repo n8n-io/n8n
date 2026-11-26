@@ -174,6 +174,7 @@ export const API_KEY_RESOURCES = {
 		'readEnvironments',
 		'promote',
 		'apply',
+		'readReviews',
 	] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
