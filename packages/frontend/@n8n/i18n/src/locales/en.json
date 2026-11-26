@@ -11641,7 +11641,6 @@
 	"promotions.preview.select": "Select {name}",
 	"promotions.preview.selectContainer": "Select {name} and everything in it",
 	"promotions.preview.tree.selectAll": "Select all",
-	"promotions.preview.tree.selectedOfTotal": "{selected} of {total} selected",
 	"promotions.preview.tree.section.workflows": "Workflows",
 	"promotions.preview.tree.group.select": "Select {group}",
 	"promotions.preview.tree.group.credential": "Credentials",
