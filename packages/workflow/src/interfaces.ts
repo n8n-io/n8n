@@ -2924,6 +2924,23 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
+/**
+ * One thing that a node version offers and an earlier version does not. Result of
+ * `getNodeVersionAdditions`.
+ * `path` is the parameter name, or `collection.option` for a direct option of a top-level collection.
+ */
+export type NodeVersionAddition =
+	| { kind: 'parameter'; path: string; displayName: string }
+	| {
+			/** A new choice in the dropdown of a parameter that both versions have. */
+			kind: 'value';
+			path: string;
+			/** Display name of the parameter that has the dropdown. */
+			displayName: string;
+			value: string | number | boolean;
+			valueDisplayName: string;
+	  };
+
 /** Result of `carryOverNodeParameters`. */
 export interface NodeParametersCarryOver {
 	/** Parameters to save on the node for the target version. Most default values are left out. */

@@ -41,6 +41,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 	NodeParametersCarryOver,
+	NodeVersionAddition,
 	ResourceMapperValue,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
@@ -57,7 +58,9 @@ import { validateFilterParameter } from './node-parameters/filter-parameter';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import {
 	isFilterValue,
+	isINodeProperties,
 	isINodePropertiesList,
+	isINodePropertyOptions,
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 	isResourceLocatorValue,
@@ -2759,4 +2762,96 @@ export function resolveSupportedCredentialActivation(
 		}
 	}
 	return undefined;
+}
+
+const pickVersionRules = (rules: object | undefined) =>
+	Object.fromEntries(Object.entries(rules ?? {}).filter(([key]) => key.startsWith('@')));
+
+/** Returns the entries that a version can show. Only the `@` rules count, not the node values. */
+function availableInVersion<T extends INodeProperties | INodePropertyOptions>(
+	entries: T[],
+	version: number,
+	type: INodeTypeDescription,
+): T[] {
+	return entries.filter(
+		(entry) =>
+			!('type' in entry && entry.type === 'hidden') &&
+			displayParameter(
+				{},
+				{
+					...entry,
+					displayOptions: {
+						show: pickVersionRules(entry.displayOptions?.show),
+						hide: pickVersionRules(entry.displayOptions?.hide),
+					},
+				},
+				{ typeVersion: version },
+				type,
+			),
+	);
+}
+
+const collectionOptionsOf = (property: INodeProperties): INodeProperties[] =>
+	property.type === 'collection' ? (property.options ?? []).filter(isINodeProperties) : [];
+
+function dropdownChoices(property: INodeProperties, version: number, type: INodeTypeDescription) {
+	if (property.type !== 'options' && property.type !== 'multiOptions') return [];
+	return availableInVersion((property.options ?? []).filter(isINodePropertyOptions), version, type);
+}
+
+/**
+ * Returns what the new version of a node offers and the old version does not: parameters, direct
+ * options of a top-level collection, and dropdown choices of a parameter that both versions have.
+ * A parameter that is new as a whole gives one entry, without its dropdown choices.
+ *
+ * Same-named parameters are compared together. A parameter or a choice that is new for one
+ * resource and exists for another resource is not returned.
+ */
+export function getNodeVersionAdditions(
+	oldType: INodeTypeDescription,
+	oldVersion: number,
+	newType: INodeTypeDescription,
+	newVersion: number,
+): NodeVersionAddition[] {
+	const oldProperties = availableInVersion(oldType.properties, oldVersion, oldType);
+	const additions = new Map<string, NodeVersionAddition>();
+
+	const compare = (path: string, property: INodeProperties, oldVariants: INodeProperties[]) => {
+		const { displayName } = property;
+		if (oldVariants.length === 0) {
+			additions.set(path, { kind: 'parameter', path, displayName });
+			return;
+		}
+		const oldValues = new Set(
+			oldVariants.flatMap((old) => dropdownChoices(old, oldVersion, oldType)).map((c) => c.value),
+		);
+		for (const choice of dropdownChoices(property, newVersion, newType)) {
+			if (oldValues.has(choice.value)) continue;
+			additions.set(`${path}=${choice.value}`, {
+				kind: 'value',
+				path,
+				displayName,
+				value: choice.value,
+				valueDisplayName: choice.name,
+			});
+		}
+	};
+
+	for (const property of availableInVersion(newType.properties, newVersion, newType)) {
+		const oldVariants = oldProperties.filter((old) => old.name === property.name);
+		compare(property.name, property, oldVariants);
+
+		const oldOptions = oldVariants.flatMap((old) =>
+			availableInVersion(collectionOptionsOf(old), oldVersion, oldType),
+		);
+		for (const option of availableInVersion(collectionOptionsOf(property), newVersion, newType)) {
+			compare(
+				`${property.name}.${option.name}`,
+				option,
+				oldOptions.filter((old) => old.name === option.name),
+			);
+		}
+	}
+
+	return [...additions.values()];
 }
