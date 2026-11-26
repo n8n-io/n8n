@@ -7,6 +7,7 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useToast } from '@n8n/composables/useToast';
 import { useClipboard } from '@n8n/composables/useClipboard';
+import { AGENT_PREVIEW_HANDOFF_MAX_SESSIONS } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
@@ -160,14 +161,15 @@ async function onFlagCardAction(actionId: string) {
  * Hand all flagged sessions to the Assistant in one turn. The first session fills the
  * context chip. The Assistant reads each session in `threadIds` with `agent-context`,
  * finds the shared root cause, and fixes the agent.
- * After a successful hand-off, dismiss the flags that were sent. The sessions stay, and
- * flags that arrive later stay visible.
+ * One hand-off carries at most AGENT_PREVIEW_HANDOFF_MAX_SESSIONS sessions.
+ * After a successful hand-off, dismiss only the flags that were sent. The other flags
+ * stay visible, so the user can send them next.
  */
 async function sendFlaggedSessionsToAssistant() {
 	if (!sessionAssistant || !hasAssistantEnabled.value || hasSentToAssistant.value) return;
 
-	const sentFlags = [...attentionFlags.value];
-	const threadIds = [...flaggedSessionIds.value];
+	const sentFlags = attentionFlags.value.slice(0, AGENT_PREVIEW_HANDOFF_MAX_SESSIONS);
+	const threadIds = [...new Set(sentFlags.map(({ sessionId }) => sessionId))];
 	const [firstThreadId] = threadIds;
 	if (!firstThreadId) return;
 

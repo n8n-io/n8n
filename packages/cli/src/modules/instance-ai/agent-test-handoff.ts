@@ -1,4 +1,7 @@
-import type { InstanceAiAgentPreviewHandoffContext } from '@n8n/api-types';
+import {
+	AGENT_PREVIEW_HANDOFF_MAX_SESSIONS,
+	type InstanceAiAgentPreviewHandoffContext,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ForbiddenError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
@@ -66,6 +69,8 @@ export async function resolveAgentTestHandoff(
 		throw new UserError('Preview session turn not found');
 	}
 
+	const threadIds = await resolveAccessibleThreadIds(context, options);
+
 	const trimmedTitle = detail.thread.title?.trim() ?? '';
 	const titleFallback =
 		trimmedTitle.length > 0 ? trimmedTitle : `Session #${detail.thread.sessionNumber}`;
@@ -80,7 +85,7 @@ export async function resolveAgentTestHandoff(
 		agentId: context.agentId,
 		threadId: context.threadId,
 		...(context.executionId ? { executionId: context.executionId } : {}),
-		...(context.threadIds ? { threadIds: context.threadIds } : {}),
+		...(threadIds ? { threadIds } : {}),
 		...(context.agentName
 			? { agentName: escapeAgentTestContextDelimiters(context.agentName) }
 			: {}),
@@ -92,8 +97,8 @@ export async function resolveAgentTestHandoff(
 			: {}),
 	});
 
-	const prose = context.threadIds
-		? buildMultiSessionProse(context.agentId, context.threadIds)
+	const prose = threadIds
+		? buildMultiSessionProse(context.agentId, threadIds)
 		: [
 				`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${safeSessionLabel}).`,
 				'Call `get-session` to read the transcript before commenting on the agent.',
@@ -114,6 +119,36 @@ export async function resolveAgentTestHandoff(
 		titleFallback,
 		target: { agentId: context.agentId, projectId: options.projectId },
 	};
+}
+
+/**
+ * Keeps only the `threadIds` that are sessions of this agent that the user can access.
+ * The client sends the IDs, so they must not reach the prompt without this check.
+ * Always includes the primary `threadId`, which the caller already checked.
+ */
+async function resolveAccessibleThreadIds(
+	context: InstanceAiAgentPreviewHandoffContext,
+	options: Parameters<typeof resolveAgentTestHandoff>[1],
+): Promise<string[] | undefined> {
+	if (!context.threadIds) return undefined;
+
+	const candidates = [...new Set([context.threadId, ...context.threadIds])].slice(
+		0,
+		AGENT_PREVIEW_HANDOFF_MAX_SESSIONS,
+	);
+	const accessible = await Promise.all(
+		candidates.map(async (threadId) => {
+			if (threadId === context.threadId) return true;
+			const detail = await options.getThreadDetail(
+				threadId,
+				options.projectId,
+				context.agentId,
+				options.userId,
+			);
+			return detail !== null;
+		}),
+	);
+	return candidates.filter((_, index) => accessible[index]);
 }
 
 /**

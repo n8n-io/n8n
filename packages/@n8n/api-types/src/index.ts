@@ -534,6 +534,7 @@ export {
 	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	AGENT_PREVIEW_HANDOFF_MAX_SESSIONS,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
 	instanceAiThreadArtifactsContextSchema,
