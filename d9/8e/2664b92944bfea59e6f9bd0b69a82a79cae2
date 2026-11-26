@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  ai_agent 113,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d98e2664b92944bfea59e6f9bd0b69a82a79cae2",
+  "prompts": {}
+}
