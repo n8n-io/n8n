@@ -396,6 +396,9 @@ The table has the same columns as
 Apply deletes each team project that the package does not hold. The table lists
 such a project as `deleted`, together with everything in it.
 
+While project environments are on, projects that apply from their own
+environment are left out.
+
 Use `--json` to get the full preview:
 
 - `commitSha` and `source`: the commit and branch that the preview read. Pass
@@ -487,6 +490,11 @@ each team project that the package does not hold, with all its workflows,
 credentials, and data tables. The Apply check reports each such project as a
 `project-deletion` conflict.
 
+While project environments are on, projects that apply from their own
+environment are left out. For a `project-deletion` conflict, a project can use
+its own environment on the source instance, or the source instance did not
+promote it back yet. Check this before you confirm the deletion.
+
 Workflows and folders move within their project to match the branch, and folders
 take the name on the branch. `counts.workflows.moved` is part of
 `counts.workflows.updated`. `counts.folders.moved` and `counts.folders.renamed` are
@@ -500,6 +508,9 @@ This command works on an `instance` Apply environment only. The API key needs
 ## `promotion-environment apply-continue`
 
 Continue an Apply that was `blocked`, after you resolve the missing bindings, access requirements, or conflicts.
+
+While project environments are on, projects that apply from their own
+environment are left out.
 
 ```bash
 n8n-cli promotion-environment apply-continue env-2 \

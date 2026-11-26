@@ -274,7 +274,9 @@ describe('promotion-environment apply command', () => {
 
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
-			'Apply deletes these projects with everything in them:\n' + '  Sales (proj-2)',
+			'Apply deletes these projects with everything in them:\n' +
+				'  Sales (proj-2)\n' +
+				'While project environments are on, a project can use its own environment on the source instance, or the source instance did not promote it back yet. Check this before you confirm the deletion.',
 		);
 		expect(message).toContain(
 			"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",

@@ -95,6 +95,7 @@ function blockedMessage(
 			? [
 					'Apply deletes these projects with everything in them:',
 					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
+					'While project environments are on, a project can use its own environment on the source instance, or the source instance did not promote it back yet. Check this before you confirm the deletion.',
 				]
 			: []),
 		'Run with --json for the details. After you resolve them, run:',
