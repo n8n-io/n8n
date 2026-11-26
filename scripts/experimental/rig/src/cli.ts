@@ -29,6 +29,7 @@ import {
 	redisCliCommand,
 } from './commands/tools';
 import { profileCommand } from './commands/profile';
+import { secretsCommand } from './commands/secrets';
 import { RigError } from './errors';
 import { runningVersion } from './meta';
 import { printError } from './ui/output';
@@ -57,6 +58,7 @@ const rig = defineCommand({
 		services: servicesCommand,
 		env: envCommand,
 		profile: profileCommand,
+		secrets: secretsCommand,
 		exec: execCommand,
 		print: printCommand,
 		psql: psqlCommand,

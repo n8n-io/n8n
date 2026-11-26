@@ -1582,6 +1582,7 @@ describe('settleWorkflowJobByExecutionId', () => {
 				projectId: 'project-1',
 				threadId: 'thread-1',
 				resourceId: 'draft-chat:user-1',
+				workflowId: 'workflow-1',
 			});
 			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 				'wf-job-1',

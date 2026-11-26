@@ -355,10 +355,11 @@ export class DynamicNodeParametersService {
 		path: string,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeTypeAndVersion: INodeTypeNameVersion,
+		user: User,
 	): Promise<ResourceMapperFields> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
-		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
+		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData, user);
 		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
@@ -487,12 +488,14 @@ export class DynamicNodeParametersService {
 	private getLocalLoadOptionsContext(
 		path: string,
 		additionalData: IWorkflowExecuteAdditionalData,
+		user: User,
 	): ILocalLoadOptionsFunctions {
+		// The workflow id comes from the node parameters, which `refineResourceIds` does not check.
 		return new LocalLoadOptionsContext(
 			this.nodeTypes,
 			additionalData,
 			path,
-			this.workflowLoaderService,
+			this.workflowLoaderService.forUser(user),
 		);
 	}
 
