@@ -621,6 +621,11 @@ const treeResizer = useResizablePanel({
 .tabs {
 	flex: 1;
 	min-width: 0;
+
+	/* The tab list is the first child. A taller list leaves more space between the label and the underline. */
+	& > :first-child {
+		--n8n-tabs--height: calc(var(--height--lg) + var(--spacing--5xs) + var(--border-width));
+	}
 }
 
 // The title grows to fill the row, so the buttons sit on the right beside it. On their own line
