@@ -197,14 +197,21 @@ describe('ResourceOwnerService', () => {
 			);
 		});
 
-		it('picks the sole project admin, and nobody when there are two', async () => {
+		it('picks the project admin who joined the project first', async () => {
 			expect(await service.ownerForNewResource(outsider, project.id, 'agent', {})).toBe(
 				projectAdmin.id,
 			);
 
-			await linkUserToProject(await createMember(), project, 'project:admin');
+			const olderAdmin = await createMember();
+			await linkUserToProject(olderAdmin, project, 'project:admin');
+			await Container.get(ProjectRelationRepository).update(
+				{ projectId: project.id, userId: olderAdmin.id },
+				{ createdAt: new Date(2020, 0, 1) },
+			);
 
-			expect(await service.ownerForNewResource(outsider, project.id, 'agent', {})).toBeNull();
+			expect(await service.ownerForNewResource(outsider, project.id, 'agent', {})).toBe(
+				olderAdmin.id,
+			);
 		});
 
 		it('picks the instance owner in a team project without a project admin', async () => {

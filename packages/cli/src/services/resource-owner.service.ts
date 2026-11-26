@@ -189,8 +189,7 @@ export class ResourceOwnerService {
 		}
 
 		const projectAdminIds = await findPersonIdsWithRole(PROJECT_ADMIN_ROLE_SLUG);
-		if (projectAdminIds.length === 1) return projectAdminIds[0];
-		if (projectAdminIds.length > 1) return null;
+		if (projectAdminIds.length > 0) return projectAdminIds[0];
 
 		return await this.findInstanceOwnerIfValidOwner(projectId, ctx, leavingUserId);
 	}
