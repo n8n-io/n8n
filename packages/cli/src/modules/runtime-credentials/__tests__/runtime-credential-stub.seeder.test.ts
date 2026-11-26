@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 
+import type { CredentialFieldTargetValidator } from '../credential-field-target';
 import { RuntimeCredentialStubSeeder } from '../runtime-credential-stub.seeder';
 import type { CredentialRule } from '../runtime-credentials.service';
 import { RuntimeCredentialsService, runtimeStubId } from '../runtime-credentials.service';
@@ -20,6 +21,7 @@ describe('RuntimeCredentialStubSeeder', () => {
 	const rulesService = mock<RuntimeCredentialsService>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const credentialTypes = mock<CredentialTypes>();
+	const targetValidator = mock<CredentialFieldTargetValidator>();
 	const cipher = mock<Cipher>();
 	const logger = mock<Logger>();
 	let seeder: RuntimeCredentialStubSeeder;
@@ -29,12 +31,14 @@ describe('RuntimeCredentialStubSeeder', () => {
 		cipher.encryptV2.mockResolvedValue('encrypted-placeholder');
 		Container.set(Cipher, cipher);
 		credentialTypes.recognizes.mockReturnValue(true);
+		targetValidator.getError.mockReturnValue(undefined);
 		credentialsRepository.insertRuntimeStubIfMissing.mockResolvedValue(true);
 		seeder = new RuntimeCredentialStubSeeder(
 			logger,
 			rulesService,
 			credentialsRepository,
 			credentialTypes,
+			targetValidator,
 		);
 	});
 
@@ -64,6 +68,18 @@ describe('RuntimeCredentialStubSeeder', () => {
 
 		expect(credentialsRepository.insertRuntimeStubIfMissing).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('gmailOAuth3'));
+	});
+
+	it('skips a rule with a protected target field and names the alias in the warning', async () => {
+		rulesService.getCredentialRules.mockReturnValue([
+			['bad', { ...rule('oAuth2Api'), transform: 'field:authUrl' }],
+		]);
+		targetValidator.getError.mockReturnValue('The field "authUrl" is controlled by n8n');
+
+		await seeder.seed();
+
+		expect(credentialsRepository.insertRuntimeStubIfMissing).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('"bad"'));
 	});
 
 	it('creates nothing when no rule names a credential type', async () => {

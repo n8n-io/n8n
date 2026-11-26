@@ -7,6 +7,10 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, RuntimeCredentialRuleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
+import type { ICredentialType } from 'n8n-workflow';
+
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { RuntimeCredentialsService } from '@/modules/runtime-credentials/runtime-credentials.service';
 import { runtimeStubId } from '@/modules/runtime-credentials/runtime-credentials.service';
@@ -38,6 +42,33 @@ const body = {
 	credentialType: 'httpHeaderAuth',
 };
 
+/** An OAuth2 type that extends the base type and adds a hidden field, like most OAuth2 types. */
+function registerOAuth2Types() {
+	const loader = Container.get(LoadNodesAndCredentials);
+	const child: ICredentialType = {
+		name: 'testOAuth2',
+		displayName: 'Test OAuth2',
+		extends: ['oAuth2Api'],
+		properties: [
+			{ displayName: 'Scope', name: 'scope', type: 'hidden', default: 'read' },
+			{ displayName: 'Tenant', name: 'tenant', type: 'string', default: '' },
+		],
+	};
+	loader.loaded.credentials.oAuth2Api = { type: new OAuth2Api(), sourcePath: '' };
+	loader.loaded.credentials.testOAuth2 = { type: child, sourcePath: '' };
+	loader.knownCredentials.oAuth2Api = {
+		className: 'OAuth2Api',
+		sourcePath: '',
+		supportedNodes: [],
+	};
+	loader.knownCredentials.testOAuth2 = {
+		className: 'TestOAuth2',
+		sourcePath: '',
+		supportedNodes: [],
+		extends: ['oAuth2Api'],
+	};
+}
+
 describe('runtime credential rules REST', () => {
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
@@ -45,6 +76,7 @@ describe('runtime credential rules REST', () => {
 
 	beforeAll(async () => {
 		await utils.initCredentialsTypes();
+		registerOAuth2Types();
 		owner = await createOwner();
 		ownerAgent = testServer.authAgentFor(owner);
 		memberAgent = testServer.authAgentFor(await createMember());
@@ -215,6 +247,75 @@ describe('runtime credential rules REST', () => {
 			.post(URL)
 			.send({ alias: 'db_bad', ...body, ...override })
 			.expect(400);
+	});
+
+	describe('field transform target', () => {
+		it('creates a rule that writes to a field of the credential type', async () => {
+			const { body: result } = await ownerAgent
+				.post(URL)
+				.send({ alias: 'db_field_ok', ...body, transform: 'field:value' })
+				.expect(200);
+			expect(result.data.transform).toBe('field:value');
+		});
+
+		it.each([
+			['an unknown field', 'httpHeaderAuth', 'field:noSuchField', /has no field "noSuchField"/],
+			['an OAuth endpoint field', 'testOAuth2', 'field:authUrl', /controlled by n8n/],
+			['a client id field', 'testOAuth2', 'field:clientId', /controlled by n8n/],
+			['a client secret field', 'testOAuth2', 'field:clientSecret', /controlled by n8n/],
+			['a hidden field', 'testOAuth2', 'field:scope', /controlled by n8n/],
+		])(
+			'returns 400 with a reason for %s on create',
+			async (_name, credentialType, transform, reason) => {
+				const { body: result } = await ownerAgent
+					.post(URL)
+					.send({ alias: 'db_field_bad', ...body, credentialType, transform })
+					.expect(400);
+				expect(result.message).toMatch(reason);
+				await ownerAgent.patch(`${URL}/db_field_bad`).send({ path: 'a' }).expect(404);
+			},
+		);
+
+		it('returns 400 when a patch moves the transform to a protected field', async () => {
+			await ownerAgent
+				.post(URL)
+				.send({ alias: 'db_field_patch', ...body, credentialType: 'testOAuth2' })
+				.expect(200);
+
+			const { body: result } = await ownerAgent
+				.patch(`${URL}/db_field_patch`)
+				.send({ transform: 'field:authUrl' })
+				.expect(400);
+			expect(result.message).toMatch(/controlled by n8n/);
+
+			const { body: listed } = await ownerAgent.get(URL).expect(200);
+			const rule = listed.data.rules.find((r: { alias: string }) => r.alias === 'db_field_patch');
+			expect(rule.transform).toBeUndefined();
+		});
+
+		it('allows a visible field of a type that extends the OAuth2 base type', async () => {
+			await ownerAgent
+				.post(URL)
+				.send({
+					alias: 'db_tenant',
+					...body,
+					credentialType: 'testOAuth2',
+					transform: 'field:tenant',
+				})
+				.expect(200);
+		});
+
+		it('keeps the bearer transform on an OAuth2 type', async () => {
+			await ownerAgent
+				.post(URL)
+				.send({
+					alias: 'db_bearer',
+					...body,
+					credentialType: 'testOAuth2',
+					transform: 'bearer',
+				})
+				.expect(200);
+		});
 	});
 
 	it('updates nodeType, path and transform', async () => {

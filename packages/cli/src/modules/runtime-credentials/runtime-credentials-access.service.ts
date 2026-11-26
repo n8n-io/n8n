@@ -11,6 +11,7 @@ import { toSecureArtifacts } from 'n8n-workflow';
 
 import { RuntimeCredentialProvider } from '@n8n/backend-services';
 
+import { CredentialFieldTargetValidator } from './credential-field-target';
 import { RuntimeCredentialsService } from './runtime-credentials.service';
 import type { CredentialTransform } from './runtime-credentials.schemas';
 
@@ -22,6 +23,7 @@ export class RuntimeCredentialsAccessService implements RuntimeCredentialProvide
 	constructor(
 		private readonly cipher: Cipher,
 		private readonly runtimeCredentialsService: RuntimeCredentialsService,
+		private readonly targetValidator: CredentialFieldTargetValidator,
 	) {}
 
 	async getRuntimeCredential(
@@ -80,6 +82,12 @@ export class RuntimeCredentialsAccessService implements RuntimeCredentialProvide
 			);
 		}
 		const { alias, rule } = entry;
+		// Rules from the environment or database load before this check can run, so check again here.
+		if (this.targetValidator.getError(rule.credentialType, rule.transform)) {
+			throw new UserError(
+				`The run-time input rule "${alias}" targets a field that n8n controls. Ask an instance admin to fix it.`,
+			);
+		}
 
 		const encrypted = executionContext?.secureArtifacts;
 		if (typeof encrypted !== 'string') throw new UserError(MISSING_VALUE_MESSAGE);

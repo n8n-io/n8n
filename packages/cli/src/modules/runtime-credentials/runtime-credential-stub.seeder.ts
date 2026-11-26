@@ -6,6 +6,7 @@ import { Credentials } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
 
+import { CredentialFieldTargetValidator } from './credential-field-target';
 import {
 	type CredentialRule,
 	RuntimeCredentialsService,
@@ -30,6 +31,7 @@ export class RuntimeCredentialStubSeeder {
 		private readonly rulesService: RuntimeCredentialsService,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly targetValidator: CredentialFieldTargetValidator,
 	) {}
 
 	async seed(): Promise<void> {
@@ -38,11 +40,19 @@ export class RuntimeCredentialStubSeeder {
 		}
 	}
 
-	/** Creates the stub for one rule when it is missing. Returns false when the credential type is unknown. */
+	/** Creates the stub for one rule when it is missing. Returns false when the credential type is unknown or the target field is not allowed. */
 	async seedRule(alias: string, rule: CredentialRule): Promise<boolean> {
 		if (!this.credentialTypes.recognizes(rule.credentialType)) {
 			this.logger.warn(
 				`Run-time input rule "${alias}" names unknown credential type "${rule.credentialType}". No stub credential was created.`,
+			);
+			return false;
+		}
+
+		const targetError = this.targetValidator.getError(rule.credentialType, rule.transform);
+		if (targetError) {
+			this.logger.warn(
+				`Run-time input rule "${alias}" is not used. ${targetError}. No stub credential was created.`,
 			);
 			return false;
 		}

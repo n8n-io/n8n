@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialFieldTargetValidator } from '../credential-field-target';
 import { RuntimeCredentialsService } from '../runtime-credentials.service';
 import { RuntimeCredentialStubSeeder } from '../runtime-credential-stub.seeder';
 import { RuntimeCredentialsModule } from '../runtime-credentials.module';
@@ -28,6 +29,7 @@ describe('RuntimeCredentialsModule', () => {
 			Container.set(RuntimeCredentialStubSeeder, seeder);
 			const rulesService = mock<RuntimeCredentialsService>();
 			Container.set(RuntimeCredentialsService, rulesService);
+			Container.set(CredentialFieldTargetValidator, mock<CredentialFieldTargetValidator>());
 
 			await expect(module.init()).resolves.toBeUndefined();
 			expect(rulesService.loadDatabaseRules).toHaveBeenCalledTimes(1);

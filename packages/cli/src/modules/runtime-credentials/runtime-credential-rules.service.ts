@@ -10,7 +10,9 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 
 import { CredentialTypes } from '@/credential-types';
 
+import { CredentialFieldTargetValidator } from './credential-field-target';
 import { RuntimeCredentialStubSeeder } from './runtime-credential-stub.seeder';
+import type { CredentialTransform } from './runtime-credentials.schemas';
 import {
 	type CredentialRule,
 	RuntimeCredentialsService,
@@ -26,6 +28,7 @@ export class RuntimeCredentialRulesService {
 		private readonly repository: RuntimeCredentialRuleRepository,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly seeder: RuntimeCredentialStubSeeder,
+		private readonly targetValidator: CredentialFieldTargetValidator,
 	) {}
 
 	list(): RuntimeCredentialRule[] {
@@ -38,6 +41,7 @@ export class RuntimeCredentialRulesService {
 		if (!this.credentialTypes.recognizes(dto.credentialType)) {
 			throw new BadRequestError(`Unknown credential type "${dto.credentialType}"`);
 		}
+		this.assertTargetAllowed(dto.credentialType, dto.transform ?? undefined);
 		if (this.rulesService.isEnvironmentRule(dto.alias)) throw this.aliasExists(dto.alias);
 
 		try {
@@ -64,7 +68,8 @@ export class RuntimeCredentialRulesService {
 	}
 
 	async update(alias: string, dto: UpdateRuntimeCredentialRuleDto): Promise<RuntimeCredentialRule> {
-		await this.requireDatabaseRule(alias);
+		const row = await this.requireDatabaseRule(alias);
+		if (dto.transform) this.assertTargetAllowed(row.credentialType, dto.transform);
 
 		await this.repository.updateByAlias(
 			alias,
@@ -86,6 +91,11 @@ export class RuntimeCredentialRulesService {
 		await this.requireDatabaseRule(alias);
 		await this.repository.deleteByAlias(alias, {});
 		await this.afterChange();
+	}
+
+	private assertTargetAllowed(credentialType: string, transform: CredentialTransform | undefined) {
+		const reason = this.targetValidator.getError(credentialType, transform);
+		if (reason) throw new BadRequestError(reason);
 	}
 
 	private async requireDatabaseRule(alias: string) {

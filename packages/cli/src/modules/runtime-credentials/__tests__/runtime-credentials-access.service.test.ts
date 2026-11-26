@@ -2,6 +2,7 @@ import type { Cipher } from 'n8n-core';
 import type { IExecutionContext, IRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialFieldTargetValidator } from '../credential-field-target';
 import { RuntimeCredentialsAccessService } from '../runtime-credentials-access.service';
 import type { ValueLookupPath } from '../runtime-credentials.schemas';
 import type { RuntimeCredentialsService } from '../runtime-credentials.service';
@@ -18,7 +19,8 @@ const buildRunExecutionData = (secureArtifacts: unknown): IRunExecutionData =>
 describe('RuntimeCredentialsAccessService', () => {
 	const cipher = mock<Cipher>();
 	const rulesService = mock<RuntimeCredentialsService>();
-	const service = new RuntimeCredentialsAccessService(cipher, rulesService);
+	const targetValidator = mock<CredentialFieldTargetValidator>();
+	const service = new RuntimeCredentialsAccessService(cipher, rulesService, targetValidator);
 
 	const plaintextArtifacts = JSON.stringify({
 		version: 1,
@@ -29,6 +31,7 @@ describe('RuntimeCredentialsAccessService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		targetValidator.getError.mockReturnValue(undefined);
 		cipher.decryptV2.mockResolvedValue(plaintextArtifacts);
 	});
 
@@ -111,6 +114,15 @@ describe('RuntimeCredentialsAccessService', () => {
 			artifacts({ auth: ['k1'] });
 
 			await expect(run()).resolves.toEqual({ apiKey: 'k1' });
+		});
+
+		it('refuses a rule whose target field n8n controls and never reads the value', async () => {
+			useRule(rule('headers.x-key', 'field:authUrl'));
+			targetValidator.getError.mockReturnValue('protected');
+			artifacts({ auth: ['k1'] });
+
+			await expect(run()).rejects.toThrow(/targets a field that n8n controls/);
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
 		});
 
 		it('accepts the same value from several items', async () => {
