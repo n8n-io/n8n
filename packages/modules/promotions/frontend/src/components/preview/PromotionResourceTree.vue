@@ -476,7 +476,11 @@ function onToggle(resource: PromotionResource) {
 .lock {
 	display: inline-flex;
 	align-items: center;
-	padding: var(--spacing--5xs);
+	justify-content: center;
+	/* The same box as the ghost button of the warning icon, so the icons line up in one column. */
+	flex-shrink: 0;
+	width: var(--height--xs);
+	height: var(--height--xs);
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
