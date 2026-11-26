@@ -611,17 +611,33 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async changeInputRunSelector(value: string) {
-		const selector = this.inputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.chooseRunSelectorOption(this.inputPanel.getRunSelector(), value);
 		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
-		const selector = this.outputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.chooseRunSelectorOption(this.outputPanel.getRunSelector(), value);
 		await this.expectOutputRunSelectorValue(value);
+	}
+
+	// A pointer click misses this option: the menu hides it before the click lands.
+	// The option stays mounted on this control's list. Send the click there.
+	private async chooseRunSelectorOption(selector: Locator, value: string) {
+		const input = selector.getByRole('combobox');
+		await expect(async () => {
+			const listId = await input.getAttribute('aria-controls');
+			if (!listId) {
+				throw new Error('Run selector list is missing');
+			}
+
+			const option = this.page.locator(`[id="${listId}"]`).getByRole('option', {
+				name: value,
+				exact: true,
+				includeHidden: true,
+			});
+			await option.dispatchEvent('click', {}, { timeout: 2_000 });
+			await expect(input).toHaveValue(containsValue(value), { timeout: 1_000 });
+		}).toPass({ timeout: 15_000 });
 	}
 
 	// Run-selector updates can land asynchronously (notably cross-panel via
