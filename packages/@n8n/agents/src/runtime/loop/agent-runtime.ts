@@ -850,6 +850,7 @@ export class AgentRuntime {
 			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,
+			onThreadTitle: options.onThreadTitle,
 			promptCaching: this.config.promptCaching,
 		});
 		this.backgroundTasks.track(titlePromise);

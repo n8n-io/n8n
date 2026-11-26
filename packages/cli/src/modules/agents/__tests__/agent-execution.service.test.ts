@@ -212,6 +212,44 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
 	});
 
+	describe('applyGeneratedTitle', () => {
+		const context = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+
+		it('stores the title and tells the open lists', async () => {
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(true);
+
+			await service.applyGeneratedTitle(context, 'Berlin rain alert', '🌧️');
+
+			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalledWith(
+				'thread-1',
+				'Berlin rain alert',
+				'🌧️',
+			);
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).toHaveBeenCalledWith({
+				...context,
+				title: 'Berlin rain alert',
+				emoji: '🌧️',
+			});
+		});
+
+		it('sends no push when the thread already has a title', async () => {
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(false);
+
+			await service.applyGeneratedTitle(context, 'Berlin rain alert', null);
+
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
+		});
+
+		it('does not throw when the title cannot be stored', async () => {
+			agentExecutionThreadRepository.setGeneratedTitle.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.applyGeneratedTitle(context, 'Berlin rain alert', null),
+			).resolves.toBeUndefined();
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {
@@ -1340,6 +1378,8 @@ describe('AgentExecutionService', () => {
 				'Workflow builder chat',
 				null,
 			);
+			// The title was already set, so nothing changed and no list needs the push.
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
 		});
 
 		it('does not sync title from memory when the thread already has a title', async () => {

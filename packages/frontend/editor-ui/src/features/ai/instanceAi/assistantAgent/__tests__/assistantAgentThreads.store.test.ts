@@ -51,6 +51,78 @@ describe('useAssistantAgentThreadsStore', () => {
 		showError.mockReset();
 	});
 
+	describe('generated titles', () => {
+		const titlePush = (threadId: string, agentId = 'assistant') => ({
+			projectId: 'project-1',
+			agentId,
+			threadId,
+			title: 'Berlin rain alert',
+		});
+		const untitled = (id: string): SystemAgentThreadSummary => ({
+			...thread(id, '2026-01-02T00:00:00.000Z'),
+			title: null,
+		});
+
+		it('shows a pushed title on a thread that the lists hold', async () => {
+			vi.mocked(listSystemAgentThreads).mockResolvedValue({
+				data: [untitled('t1')],
+				nextCursor: null,
+			});
+			const store = useAssistantAgentThreadsStore();
+			await store.fetchRecent();
+
+			store.applyGeneratedTitle(titlePush('t1'));
+
+			expect(store.threadsById.get('t1')?.title).toBe('Berlin rain alert');
+			expect(getSystemAgentThread).not.toHaveBeenCalled();
+		});
+
+		it('loads a thread that the lists do not hold yet', async () => {
+			vi.mocked(getSystemAgentThread).mockResolvedValue({
+				...untitled('t1'),
+				title: 'Berlin rain alert',
+			});
+			const store = useAssistantAgentThreadsStore();
+
+			store.applyGeneratedTitle(titlePush('t1'));
+
+			await vi.waitFor(() => expect(store.threadsById.get('t1')?.title).toBe('Berlin rain alert'));
+		});
+
+		it('keeps a title that the user renamed the thread to', async () => {
+			vi.mocked(listSystemAgentThreads).mockResolvedValue({
+				data: [untitled('t1')],
+				nextCursor: null,
+			});
+			vi.mocked(renameSystemAgentThread).mockResolvedValue(undefined);
+			const store = useAssistantAgentThreadsStore();
+			await store.fetchRecent();
+			await store.renameThread('t1', 'My alerts');
+
+			store.applyGeneratedTitle(titlePush('t1'));
+
+			expect(store.threadsById.get('t1')?.title).toBe('My alerts');
+		});
+
+		it('ignores titles of other agents and of deleted threads', async () => {
+			vi.mocked(listSystemAgentThreads).mockResolvedValue({
+				data: [untitled('t1'), untitled('t2')],
+				nextCursor: null,
+			});
+			vi.mocked(deleteSystemAgentThread).mockResolvedValue(undefined);
+			const store = useAssistantAgentThreadsStore();
+			await store.fetchRecent();
+			await store.deleteThread(untitled('t2'));
+
+			store.applyGeneratedTitle(titlePush('t1', 'other-agent'));
+			store.applyGeneratedTitle(titlePush('t2'));
+
+			expect(store.threadsById.get('t1')?.title).toBeNull();
+			expect(store.threadsById.has('t2')).toBe(false);
+			expect(getSystemAgentThread).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('thread credits', () => {
 		it('loads the stored credit total of a thread', async () => {
 			vi.mocked(fetchAssistantAgentThreadCredits).mockResolvedValue({ creditsUsed: 2.5 });

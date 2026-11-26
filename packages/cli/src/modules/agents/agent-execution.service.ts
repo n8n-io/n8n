@@ -706,7 +706,7 @@ export class AgentExecutionService {
 			duration: record.duration,
 		});
 		if (this.executionsNeedingTitleSync.has(executionId)) {
-			await this.syncTitleFromMemory(threadId, agentId);
+			await this.syncTitleFromMemory(params);
 		}
 	}
 
@@ -734,27 +734,53 @@ export class AgentExecutionService {
 	}
 
 	/**
-	 * Try to read the title from the SDK memory thread and sync it to our execution thread.
-	 * The SDK's titleGeneration runs fire-and-forget after the first message,
-	 * so the title is typically available by the second message.
+	 * Store a generated title on a thread that has none, and tell the open lists.
+	 * The SDK reports the title as soon as it is stored, which can be mid-turn.
+	 * Best-effort: a failure must not break the turn.
 	 */
-	private async syncTitleFromMemory(threadId: string, agentId: string): Promise<void> {
+	async applyGeneratedTitle(
+		{ projectId, agentId, threadId }: { projectId: string; agentId: string; threadId: string },
+		title: string,
+		emoji: string | null,
+	): Promise<void> {
 		try {
-			const memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
-			if (memoryThread?.title) {
-				const emoji =
-					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
-						? memoryThread.metadata.emoji
-						: null;
-				await this.agentExecutionThreadRepository.setGeneratedTitle(
-					threadId,
-					memoryThread.title,
-					emoji,
-				);
-			}
-		} catch {
-			// Memory thread may not exist (agent without memory configured) — ignore
+			const applied = await this.agentExecutionThreadRepository.setGeneratedTitle(
+				threadId,
+				title,
+				emoji,
+			);
+			if (!applied) return;
+			this.executionUpdateBroadcaster.notifyThreadTitleUpdated({
+				projectId,
+				agentId,
+				threadId,
+				title,
+				...(emoji && { emoji }),
+			});
+		} catch (error) {
+			this.logger.warn('Failed to store the generated thread title', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
+	}
+
+	/**
+	 * Copy the title from the SDK memory thread to the execution thread when the
+	 * execution ends. A fallback for a title that the SDK did not report mid-turn.
+	 */
+	private async syncTitleFromMemory(params: RecordMessageParams): Promise<void> {
+		const { projectId, agentId, threadId } = params;
+		const memoryThread = await Promise.resolve()
+			.then(async () => await this.n8nMemory.getImplementation(agentId).getThread(threadId))
+			// Memory thread may not exist (agent without memory configured) — ignore
+			.catch(() => null);
+		if (!memoryThread?.title) return;
+		const emoji =
+			memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
+				? memoryThread.metadata.emoji
+				: null;
+		await this.applyGeneratedTitle({ projectId, agentId, threadId }, memoryThread.title, emoji);
 	}
 
 	/**

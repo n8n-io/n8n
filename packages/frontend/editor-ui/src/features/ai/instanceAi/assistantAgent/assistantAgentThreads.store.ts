@@ -1,4 +1,4 @@
-import type { SystemAgentThreadSummary } from '@n8n/api-types';
+import type { PushPayload, SystemAgentThreadSummary } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -152,6 +152,28 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		}
 	}
 
+	/**
+	 * Shows a title that title generation stored, from its push. The title can come
+	 * while the first turn still runs, so the lists do not wait for the turn to end.
+	 * A rename in this session still wins, through `renamedTitles`.
+	 */
+	function applyGeneratedTitle({
+		agentId,
+		threadId,
+		title,
+	}: PushPayload<'agentThreadTitleUpdated'>): void {
+		if (agentId !== ASSISTANT_AGENT_ID || deletedThreadIds.value.has(threadId)) return;
+		if (!threadsById.value.has(threadId)) {
+			// The lists do not hold the thread yet. Its load returns the stored title.
+			void loadThread(threadId);
+			return;
+		}
+		const retitle = (threads: SystemAgentThreadSummary[]) =>
+			threads.map((thread) => (thread.id === threadId ? { ...thread, title } : thread));
+		recentThreads.value = retitle(recentThreads.value);
+		openedThreads.value = retitle(openedThreads.value);
+	}
+
 	/** The credit total of a thread, or `undefined` before its first claim. */
 	function threadCreditsUsed(threadId: string): number | undefined {
 		return creditsUsed.value.get(threadId);
@@ -198,6 +220,7 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		loadThread,
 		deleteThread,
 		renameThread,
+		applyGeneratedTitle,
 		threadCreditsUsed,
 		setThreadCreditsUsed,
 		loadThreadCredits,

@@ -104,6 +104,26 @@ describe('AgentRuntime title generation timing', () => {
 		expect(titleCall).toHaveBeenCalledTimes(1);
 	});
 
+	it('reports the title to the host while the agent loop still runs', async () => {
+		const memory = new InMemoryMemory();
+		const agentReplied = createDeferredPromise<Call>();
+		agentCall.mockImplementationOnce(async () => await agentReplied.promise);
+		titleCall.mockResolvedValueOnce(titleReply);
+		const onThreadTitle = vi.fn();
+
+		const run = createRuntime(memory, {}).generate(MESSAGE, { persistence, onThreadTitle });
+
+		await vi.waitFor(() =>
+			expect(onThreadTitle).toHaveBeenCalledWith({
+				threadId: 'thread-1',
+				title: 'Berlin rain alert',
+				emoji: '🌧️',
+			}),
+		);
+		agentReplied.resolve(agentReply);
+		await run;
+	});
+
 	it('titles the text that the host gives, not the run input', async () => {
 		const memory = new InMemoryMemory();
 		agentCall.mockResolvedValueOnce(agentReply);
