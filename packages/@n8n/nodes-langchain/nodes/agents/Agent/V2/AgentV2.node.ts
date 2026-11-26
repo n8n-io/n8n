@@ -25,6 +25,7 @@ export class AgentV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2, 2.1, 2.2],
+			// Keep the restrictive default because connected tools and memory have unknowable effects.
 			defaults: {
 				name: 'AI Agent',
 				color: '#404040',
