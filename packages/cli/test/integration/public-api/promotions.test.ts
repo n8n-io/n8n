@@ -45,6 +45,7 @@ import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-pro
 import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.service';
 import { PromotionSettingsService } from '@/modules/promotions.ee/promotion-settings.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { resolvePublicApiRoutes } from '@/public-api/public-api-route-resolver';
 import { PromotionsPublicController } from '@/public-api/v1/controllers/promotions.public.controller';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -125,6 +126,10 @@ describe('Promotions in Public API', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
+		// Promotion reviews need environments v2, the version of a new instance.
+		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+			environmentsVersion: 'v2',
+		};
 	});
 
 	beforeEach(async () => {
@@ -1941,11 +1946,15 @@ describe('Promotions in Public API', () => {
 		const missingProjects = await agent.get(
 			`/promotions/environments/${randomUUID()}/missing-projects`,
 		);
+		const reviews = await agent.get('/promotions/reviews');
+		const review = await agent.get(`/promotions/reviews/${randomUUID()}`);
 
 		expect(list.status).toBe(403);
 		expect(createProvider.status).toBe(403);
 		expect(apply.status).toBe(403);
 		expect(missingProjects.status).toBe(403);
+		expect(reviews.status).toBe(403);
+		expect(review.status).toBe(403);
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
@@ -2694,6 +2703,7 @@ describe('Promotions in Public API', () => {
 							promotionProviderId: providerId,
 							promotionEnvironmentId: environmentId,
 							repositoryId: '42',
+							promotionReviewId: randomUUID(),
 							projectId: projectRoleRoutes.includes(name) ? otherProject.id : ownProject.id,
 							direction,
 						};
@@ -2712,6 +2722,11 @@ describe('Promotions in Public API', () => {
 				]),
 			);
 
+			// The review routes hide what the Inbox of the member hides, instead of refusing it.
+			const hidingRoutes: Record<string, number> = {
+				'GET /promotions/reviews': 200,
+				'GET /promotions/reviews/:promotionReviewId': 404,
+			};
 			const memberAgent = testServer.publicApiAgentFor(member);
 			const notRefused: string[] = [];
 			for (const { method, name, url } of requests) {
@@ -2720,7 +2735,9 @@ describe('Promotions in Public API', () => {
 				const response = ['post', 'put', 'patch'].includes(method)
 					? await request.send({ commitSha: null, keys: ['workflow:w1'] })
 					: await request;
-				if (response.status !== 403) notRefused.push(`${name}: ${response.status}`);
+				if (response.status !== (hidingRoutes[name] ?? 403)) {
+					notRefused.push(`${name}: ${response.status}`);
+				}
 			}
 			expect(notRefused).toEqual([]);
 		});

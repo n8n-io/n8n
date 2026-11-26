@@ -33,7 +33,7 @@ function resolveState(error: string | undefined): ToolCallState {
 
 /**
  * Adapts a persisted eval result's `toolCalls` blob into the shape
- * `AgentChatToolSteps` renders, so the chat component stays the single renderer of
+ * `AgentChatActivity` renders, so the chat component stays the single renderer of
  * a tool-call disclosure.
  *
  * The runner stores `{ calls: [...] }`, and its records carry neither a call id nor
