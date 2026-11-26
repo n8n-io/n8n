@@ -348,6 +348,18 @@ describe('NextCloud Node: folder search', () => {
 		);
 	});
 
+	it('searches when Filter and Options expressions resolve to null', async () => {
+		const { request, searchBody } = fakeNextcloud();
+
+		await run(
+			buildExecuteFunctions({ query: 'a', path: '/', filter: null, options: null }, request),
+		);
+
+		expect(searchBody()).toContain(
+			'<d:where><d:like><d:prop><d:displayname/></d:prop><d:literal>%a%</d:literal></d:like></d:where>',
+		);
+	});
+
 	it('keeps the only result, because a SEARCH response has no folder entry', async () => {
 		const { request } = fakeNextcloud([pdf]);
 

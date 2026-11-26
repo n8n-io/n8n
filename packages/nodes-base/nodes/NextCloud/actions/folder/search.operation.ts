@@ -223,8 +223,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 			itemIndex: i,
 		});
 	}
-	const filter = this.getNodeParameter('filter', i, {}) as Filter;
-	const options = this.getNodeParameter('options', i, {}) as { exactName?: boolean };
+	// An expression can resolve a whole collection to null
+	const filter = (this.getNodeParameter('filter', i, {}) ?? {}) as Filter;
+	const options = (this.getNodeParameter('options', i, {}) ?? {}) as { exactName?: boolean };
 	const where = whereClause.call(this, query, options.exactName === true, filter, i);
 
 	// Nextcloud reads a relative scope href as it is and never decodes it (SearchDAV
