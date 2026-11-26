@@ -114,6 +114,7 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import {
 	buildDateAnchors,
+	cloneMockResponse,
 	createLlmMockHandler,
 	extractDateFilterConstraints,
 	findDateFilterViolations,
@@ -534,6 +535,23 @@ describe('createLlmMockHandler', () => {
 		// … but the first caller's mutation must not leak into it.
 		expect(second.body).toEqual({ items: [{ id: 1 }] });
 		expect(second.body).not.toBe(first.body);
+	});
+
+	it('keeps a header list of the cached response when a caller changes its copy', () => {
+		const cached = {
+			body: { ok: true },
+			headers: { 'content-type': 'application/json', 'set-cookie': ['a=1', 'b=2'] },
+			statusCode: 200,
+		};
+
+		const copy = cloneMockResponse(cached);
+		const cookies = copy.headers['set-cookie'];
+		if (!Array.isArray(cookies)) throw new Error('set-cookie must stay a list');
+		cookies.push('c=3');
+
+		expect(copy.headers['set-cookie']).toEqual(['a=1', 'b=2', 'c=3']);
+		expect(cached.headers['set-cookie']).toEqual(['a=1', 'b=2']);
+		expect(cloneMockResponse(cached).headers['set-cookie']).toEqual(['a=1', 'b=2']);
 	});
 
 	it('lets timers run before it serves a cached repeat, like a real request', async () => {

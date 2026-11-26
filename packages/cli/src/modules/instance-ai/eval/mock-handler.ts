@@ -430,13 +430,17 @@ const softFallbackResponses = new WeakSet<EvalMockHttpResponse>();
  * cached original by mutating the body (nodes routinely reshape response data
  * in place) or headers.
  */
-function cloneMockResponse(response: EvalMockHttpResponse): EvalMockHttpResponse {
+export function cloneMockResponse(response: EvalMockHttpResponse): EvalMockHttpResponse {
 	const body = Buffer.isBuffer(response.body)
 		? Buffer.from(response.body)
 		: response.body !== null && typeof response.body === 'object'
 			? structuredClone(response.body)
 			: response.body;
-	return { ...response, body, headers: { ...response.headers } };
+	const headers: EvalMockHttpResponse['headers'] = {};
+	for (const [name, value] of Object.entries(response.headers)) {
+		headers[name] = Array.isArray(value) ? [...value] : value;
+	}
+	return { ...response, body, headers };
 }
 
 /**
