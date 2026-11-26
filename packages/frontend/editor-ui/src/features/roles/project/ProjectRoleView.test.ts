@@ -815,6 +815,34 @@ describe('ProjectRoleView', () => {
 
 			expect(getByText('Skills')).toBeInTheDocument();
 		});
+
+		it.each([
+			['inactive', false, defaultScopes],
+			['active', true, [...defaultScopes, 'projectSkill:read', 'projectSkill:list']],
+		])(
+			'starts a new role without the hidden Skills scopes (agents module %s)',
+			async (_case, agentsActive, expectedScopes) => {
+				vi.mocked(settingsStore.isModuleActive).mockImplementation(
+					(name: string) => name === 'agents' && agentsActive,
+				);
+				rolesStore.processedProjectRoles = mockSystemRoles.map((role) =>
+					role.slug === 'project:viewer'
+						? { ...role, scopes: [...defaultScopes, 'projectSkill:read', 'projectSkill:list'] }
+						: role,
+				);
+				rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role' });
+				const { container, getByRole } = renderComponent();
+
+				await fillForm(container, 'New Test Role', 'A new test role');
+				await userEvent.click(getByRole('button', { name: 'Create' }));
+
+				await waitFor(() =>
+					expect(rolesStore.createRole).toHaveBeenCalledWith(
+						expect.objectContaining({ scopes: expectedScopes }),
+					),
+				);
+			},
+		);
 	});
 
 	describe('External Secrets Scopes', () => {

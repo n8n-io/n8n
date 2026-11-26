@@ -106,7 +106,11 @@ describe('RoleHoverPopover', () => {
 		it('should display permission count, without the scopes of hidden resources', () => {
 			const { getByText } = renderComponent();
 
-			const total = TOTAL_PROJECT_PERMISSIONS - scopeCountOf('app') - scopeCountOf('mcpServer');
+			const total =
+				TOTAL_PROJECT_PERMISSIONS -
+				scopeCountOf('app') -
+				scopeCountOf('mcpServer') -
+				scopeCountOf('projectSkill');
 			expect(getByText(`3/${total} permissions`)).toBeInTheDocument();
 		});
 
@@ -114,7 +118,8 @@ describe('RoleHoverPopover', () => {
 			settingsStore.isAppsEnabled = true;
 			const { getByText } = renderComponent();
 
-			const total = TOTAL_PROJECT_PERMISSIONS - scopeCountOf('mcpServer');
+			const total =
+				TOTAL_PROJECT_PERMISSIONS - scopeCountOf('mcpServer') - scopeCountOf('projectSkill');
 			expect(getByText(`3/${total} permissions`)).toBeInTheDocument();
 		});
 

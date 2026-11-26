@@ -21,6 +21,8 @@ export function useHiddenRoleResources() {
 	return computed(() => {
 		const hidden = new Set<string>();
 		if (!settingsStore.isAppsEnabled) hidden.add('app');
+		// Project skills exist only while the agents module is on.
+		if (!settingsStore.isModuleActive('agents')) hidden.add('projectSkill');
 		if (!settingsStore.isModuleActive('mcp-servers') || !customMcpServersEnabled()) {
 			hidden.add('mcpServer');
 		}
