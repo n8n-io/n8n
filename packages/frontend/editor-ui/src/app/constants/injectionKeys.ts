@@ -129,6 +129,9 @@ export const LogsPanelHostKey: InjectionKey<LogsPanelHost> = Symbol('LogsPanelHo
 export const EmbeddedCanvasElementKey: InjectionKey<Readonly<Ref<HTMLElement | null>>> =
 	Symbol('EmbeddedCanvasElement');
 
-/** Tells if a parameter path, such as `parameters.options.timeout`, is new in the node version that the user selected. */
+/**
+ * Tells if a parameter path, such as `parameters.options.timeout`, is new
+ * in the node version that the user selected.
+ */
 export const NodeVersionNewParameterKey: InjectionKey<(path: string) => boolean> =
 	Symbol('NodeVersionNewParameter');
