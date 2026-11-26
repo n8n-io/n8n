@@ -37,6 +37,15 @@ const paginationRows = (count: number) =>
 		row(`type${index}`, `Type ${String(index).padStart(2, '0')}`, 'delegate', false),
 	);
 
+// Two pages of rows that the admin can change, plus a read-only row and a restricted row.
+const TWO_PAGES = [
+	...Array.from({ length: 30 }, (_, index) =>
+		row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
+	),
+	row('readOnly', 'Read only', 'delegate', false),
+	row('restricted', 'Restricted type', 'deny'),
+];
+
 const renderTable = createComponentRenderer(InstancePolicyTable);
 
 const setup = (rows = ROWS) =>
@@ -635,14 +644,7 @@ describe('InstancePolicyTable', () => {
 		});
 
 		it('selects the rows of the page from the header, and keeps the rows of other pages', async () => {
-			const rows = [
-				...Array.from({ length: 30 }, (_, index) =>
-					row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
-				),
-				row('readOnly', 'Read only', 'delegate', false),
-				row('restricted', 'Restricted type', 'deny'),
-			];
-			const { getByRole, getByTestId } = setup(rows);
+			const { getByRole, getByTestId } = setup(TWO_PAGES);
 			const selectAll = () => getByRole('checkbox', { name: 'Select all rows on this page' });
 			const bar = () => within(getByTestId('selected-items-info'));
 
@@ -673,6 +675,51 @@ describe('InstancePolicyTable', () => {
 			expect(emitted('bulkChange')).toEqual([
 				[[{ name: 'bitlyApi', label: 'Bitly API' }], 'allow'],
 			]);
+		});
+
+		describe('select all rows on every page', () => {
+			it('selects the rows that the admin can change on every page', async () => {
+				const { getByRole, getByTestId } = setup(TWO_PAGES);
+				const selectAll = getByRole('button', { name: 'Select all 31 rows' });
+
+				await userEvent.click(selectAll);
+
+				expect(
+					within(getByTestId('selected-items-info')).getByText('31 rows selected'),
+				).toBeVisible();
+				expect(selectAll).toHaveAttribute('aria-disabled', 'true');
+				expect(selectAll).toHaveFocus();
+			});
+
+			it('selects only the rows that the search and the filter show, and keeps the others', async () => {
+				const { getByRole, getByTestId, getByPlaceholderText, emitted } = setup(TWO_PAGES);
+
+				await userEvent.click(rowCheckbox(getByRole, 'Type 00'));
+				await fireEvent.update(getByPlaceholderText('Search credentials'), 'type');
+				await openFilter(getByRole);
+				await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+				await userEvent.click(getByRole('button', { name: 'Select all 1 row' }));
+
+				expect(
+					within(getByTestId('selected-items-info')).getByText('2 rows selected'),
+				).toBeVisible();
+				await userEvent.click(getByTestId('policy-bulk-allow'));
+				expect(emitted('bulkChange')).toEqual([
+					[
+						[
+							{ name: 'type0', label: 'Type 00' },
+							{ name: 'restricted', label: 'Restricted type' },
+						],
+						'allow',
+					],
+				]);
+			});
+
+			it('is not shown when no row can change', () => {
+				const { queryByTestId } = setup([row('readOnly', 'Read only', 'delegate', false)]);
+
+				expect(queryByTestId('instance-policy-select-all')).not.toBeInTheDocument();
+			});
 		});
 
 		it('clears the selection and moves the focus to the select-all checkbox', async () => {

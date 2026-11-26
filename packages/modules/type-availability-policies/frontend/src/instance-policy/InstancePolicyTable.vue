@@ -277,6 +277,21 @@ watch(rowsByName, (rows) => {
 	if (kept.length !== selection.value.length) selection.value = kept;
 });
 
+// The header checkbox selects one page. This selects the rows of every page that the search and the
+// filter show, so with neither it selects all the types.
+const selectableRows = computed(() => filteredRows.value.filter((row) => row.editable));
+const allSelected = computed(() => {
+	const selected = new Set(selection.value);
+	return selectableRows.value.every((row) => selected.has(row.name));
+});
+
+function selectAll() {
+	// Rows that the search or the filter hides stay selected.
+	selection.value = [
+		...new Set([...selection.value, ...selectableRows.value.map((row) => row.name)]),
+	];
+}
+
 const canRestrict = computed(() => selectedRows.value.some((row) => row.access !== 'deny'));
 const canAllow = computed(() => selectedRows.value.some((row) => row.access !== 'allow'));
 
@@ -368,6 +383,24 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 				@update:model-value="onFilterChange"
 			/>
 		</div>
+		<!-- Focusable when disabled: a click that selects everything must not lose the focus. -->
+		<N8nButton
+			v-if="selectableRows.length > 0"
+			:class="$style.selectAllButton"
+			variant="ghost"
+			size="small"
+			:disabled="allSelected"
+			focusable-when-disabled
+			data-test-id="instance-policy-select-all"
+			data-attr="instance-policy-select-all"
+			:label="
+				i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectAllPages', {
+					adjustToNumber: selectableRows.length,
+					interpolate: { count: String(selectableRows.length) },
+				})
+			"
+			@click="selectAll"
+		/>
 		<!-- The reload after a save must not swap the message, and its clear button, for skeleton rows. -->
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
@@ -501,6 +534,10 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 	/* No width token fits; this matches the filter of the design. */
 	width: 232px;
 	margin-inline-start: auto;
+}
+
+.selectAllButton {
+	align-self: flex-start;
 }
 
 .row {

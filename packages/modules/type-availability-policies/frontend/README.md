@@ -55,7 +55,8 @@ fails keeps the last list, and a read that ends after a newer one is ignored.
 The tables of the admin page let the admin select rows and act on them with
 `PolicySelectionBar`. The bar does not know the scope of the policy, so the project page can use it
 too. A selection stays in its tab and is kept across a page change, a search and a filter. The
-header checkbox selects the rows of the current page.
+header checkbox selects the rows of the current page. The "Select all" button above the table
+selects the rows of every page that the search and the filter show.
 `useInstanceTypeAccess(kind).changeAccessMany` leaves out the read-only types and the types that
 already have the access. A bulk restriction asks once, through the review store, for all the types
 that workflows use.
