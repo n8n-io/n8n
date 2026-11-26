@@ -4,14 +4,14 @@ description: >
   Design review to ensure coherent interfaces. Use when reviewing code that contains .vue|scss|css changes. Triggers when working on UI components or during code review. Returns ranked report.
 ---
 
-## UI Design
+## UI Review
 
 This skill runs a cross-discipline UI review. It ranks changes against a set of references.
 
 ## Scoring
 
 - **0-25**: Likely false positive
-- **26-50**: Minor nitpick not explicitly against rules
+- **26-49**: Minor nitpick not explicitly against rules
 - **50-79**: Low confidence or low impact issue
 - **80-89**: Issue that breaks rules
 - **90-100**: Clear rules violation
@@ -20,8 +20,8 @@ This skill runs a cross-discipline UI review. It ranks changes against a set of 
 
 1. **Get scope**: Focus on UI changes only. Narrow to `.vue|scss|css` files. If requested, fix to commit point (`git diff <fixed-point>...HEAD`).
 2. **References**: Load each reference `*.md` from `/references` (relative to this skill) to establish the source of truth. From each take the rules and common fixes.
-3. **Review**: Review the code using the references above
-4. **Report**: Collect findings, rating each issues from 0-100 using the scoring system.
+3. **Review**: Review the code using the references above.
+4. **Report**: Collect findings, rating each issue from 0-100 using the scoring system.
 
 ## Output
 

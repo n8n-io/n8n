@@ -1,23 +1,23 @@
 # Layout
 
-Guidance on grouping, alignment, spacing structure.
+Guidance on grouping, alignment and spacing structure.
 
 ## Rules
 
-- Prefer `flex` or `grid` for layout
-- When stacking elements consider vertical alignment between elements such as icons and text labels.
+- Prefer `flex` or `grid` for layout.
+- When stacking elements, consider vertical alignment between elements such as icons and text labels.
 - Write direction-dependent layout as leading and trailing: `margin-inline-start`, `padding-inline-end`, `inset-inline-start`, `text-align: start`. Reserve physical left and right for physical geometry such as safe-area insets.
 - Give every interactive element a background shape, a border, an underline or a consistent placement zone. A control styled like the static text beside it does not read as a control.
-- Space groups first, background shapes second, separator lines last. The gap between groups is at least 2× the gap within one (e.g 8px inside a group means 16px or more between groups).
-- Prefer even spacing inside a container such as panel or `N8nCard`
+- Space groups first, background shapes second, separator lines last. The gap between groups is at least 2× the gap within one (e.g. 8px inside a group means 16px or more between groups).
+- Prefer even spacing inside a container such as a panel or `N8nCard`.
 - The most important content sits near the top and the leading edge. Within a row, identifying content leads and metadata and actions trail. Visual order matches DOM order, so never move content out of source sequence with order, row-reverse or grid placement.
 - Every piece of off-screen or collapsed content needs a visible cue. Use the project's established cue, let the next item peek 16–32px past the scroll edge or show a disclosure control.
 - Ghost containers need more clearance than those with borders or backgrounds.
 - Never park a critical action where resizing, zoom or scrolling clips it. Keep it in the normal flow or in stable chrome.
 - Prefer text that is aligned at the start.
-- Actions such as Buttons should either stack vertically or be aligned at the end of horiztonal containers. Never at the start.
+- Actions such as buttons should either stack vertically or be aligned at the end of horizontal containers. Never at the start.
 - Scrollbars should keep gutter stable and use `mixins.scroll-bar` to display prettier scrollbars. Prefer using `N8nScrollArea` when you can.
-- When content scrolls outside the viewport, add `mixins.scroll-mask` to the edge which where the content cuts-off.
+- When content scrolls outside the viewport, add `mixins.scroll-mask` to the edge where the content cuts-off.
 
 ## Common fixes
 
