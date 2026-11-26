@@ -11,6 +11,7 @@ import { createGunzip, createInflate } from 'zlib';
 
 import { BadRequestError, UnprocessableRequestError, UserError } from '@n8n/errors';
 import { ownerKeyExchangePath } from '@/public-api/v1/owner-key-exchange.dto';
+import { routedPath } from '@/utils/request-path';
 
 // One parser per request: xml2js keeps parse state on the instance, and async
 // mode spreads large bodies over several ticks.
@@ -159,7 +160,7 @@ export const bodyParser: RequestHandler = async (req, _res, next) => {
 	// The exchange applies its rate limit and small JSON parser before reading credentials.
 	if (
 		req.method === 'POST' &&
-		req.url.split('?')[0].replace(/\/$/, '').toLowerCase() === credentialExchangePath
+		routedPath(req)?.replace(/\/$/, '').toLowerCase() === credentialExchangePath
 	) {
 		next();
 		return;
