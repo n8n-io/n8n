@@ -1,0 +1,71 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_c51b71bedc600f::t_f76052f9ad658d 110
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_c51b71bedc600f::t_f76052f9ad658d 96,758
+  s_c51b71bedc600f::t_5677a88e09ec19 1173,1178,1182,1189,1194-1198,1208,1244,1277
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 45
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c51b71bedc600f::t_e0f6b4434d61a0 726-737
+  s_c51b71bedc600f::t_be5a72cca1b552 632,637,639
+  s_c51b71bedc600f::t_7d7bb46fdd1f4e 725
+  s_c51b71bedc600f::t_a1873da002903f 607
+  s_c51b71bedc600f::t_0f5a8b909b9f57 248
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_c51b71bedc600f::t_c7c8c81f21d14b 1,145
+  s_c51b71bedc600f::t_6777aa668b7492 102-107,114
+  s_c51b71bedc600f::t_f498b45d679489 151
+  s_c51b71bedc600f::t_efc462fcb485b2 471-473,475-476,478,480
+  s_c51b71bedc600f::t_53175acf4b8fc1 318
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_c51b71bedc600f::t_eec0da14001283 74-75
+  s_c51b71bedc600f::t_eba76273059e30 530-551
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_c51b71bedc600f::t_41186e0a041d9f 129-132,135-137
+  s_c51b71bedc600f::t_d35cc29a4bbb45 92-99
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_c51b71bedc600f::t_9f3e81af0f7f33 191
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_c51b71bedc600f::t_5f1c72c7b3bb13 93-96
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  ai_agent 95
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_c51b71bedc600f::t_1011adef046696 102-105,108-112
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_c51b71bedc600f::t_d81370085b4756 74-78,98-102,139-200
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c51b71bedc600f::t_d5e5674b1971b0 338-341
+packages/modules/promotions/frontend/src/composables/usePromotionBindings.ts
+  s_c51b71bedc600f::t_8c90e26c7c0391 76-80
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_c51b71bedc600f::t_a4578f631cbfe7 857,860-867
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_c51b71bedc600f::t_dd2e541d76afae 188-211
+packages/modules/promotions/frontend/src/composables/usePromotionBindings.test.ts
+  s_c51b71bedc600f::t_18e1df3ef365e9 108-115
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_c51b71bedc600f::t_0ef4721c7ca991 2470-2472,2474-2478,2484-2504
+  s_c51b71bedc600f::t_24f91eb237fd6c 2473,2479-2483
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.credentials.test.ts
+  s_c51b71bedc600f::t_a4578f631cbfe7 35
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 46
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_c51b71bedc600f::t_f76052f9ad658d 379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "98e9685468e1a3eaa41ba9c72a854cf6512dbba7",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultText.vue
+  s_cf08597b8e4e18::t_e79a77f3d019ed 2-3,10,15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aee7dcca203818dced2c1227210a343daaed096",
+  "prompts": {},
+  "sessions": {
+    "s_cf08597b8e4e18": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20d77-45f5-7320-9e58-5a91629c58b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
