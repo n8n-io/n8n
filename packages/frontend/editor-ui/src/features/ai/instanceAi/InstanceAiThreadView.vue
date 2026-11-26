@@ -559,6 +559,16 @@ watch(
 	{ flush: 'sync' },
 );
 
+// A clicked card wins only while its dock is open. A hand-off closes the dock, so a later hand-off
+// for the same agent shows its own session.
+watch(
+	isAgentTestDockOpen,
+	(open) => {
+		if (!open) requestedAgentPreviewSession.value = undefined;
+	},
+	{ flush: 'sync' },
+);
+
 const {
 	previewMinWidth,
 	previewMaxWidth,

@@ -2542,6 +2542,32 @@ describe('AssistantAgentThreadView', () => {
 			});
 		});
 
+		it('drops the clicked card session on a later hand-off for the same agent', async () => {
+			await renderAgentTab();
+			agentPreview.openChatPreview?.('agent-1', 'project-1', 'test-chat-42');
+			await flushPromises();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-3',
+			});
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-3' });
+		});
+
+		it('drops the clicked card session when the test chat dock closes', async () => {
+			await renderAgentTab();
+			agentPreview.openChatPreview?.('agent-1', 'project-1', 'test-chat-42');
+			await flushPromises();
+
+			agentPreview.emit?.('preview-open-change', false);
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-1' });
+		});
+
 		it('goes back to the stored session when the preview opens without a card session', async () => {
 			await renderAgentTab();
 
