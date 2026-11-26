@@ -12,7 +12,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
 import { getProjectPromotionEnvironments } from '../promotions.api';
-import { promotionDirectionIcon, promotionProviderIcon } from '../promotionsSettings.utils';
+import { promotionDirectionIcon } from '../promotionsSettings.utils';
 
 const props = defineProps<{ projectId: string }>();
 
@@ -29,18 +29,12 @@ const response = ref<ProjectPromotionEnvironmentsResponse>();
 const rows = computed(() => {
 	const environments = response.value;
 	if (!environments?.enabled) return [];
-	return DIRECTIONS.map((direction) => {
-		const environment = environments[direction];
-		return {
-			direction,
-			title: i18n.baseText(`settings.promotions.environments.${direction}.title`),
-			description: describeEnvironment(environment),
-			icon:
-				environment.state === 'default'
-					? promotionProviderIcon[environment.providerType]
-					: promotionDirectionIcon[direction],
-		};
-	});
+	return DIRECTIONS.map((direction) => ({
+		direction,
+		title: i18n.baseText(`settings.promotions.environments.${direction}.title`),
+		description: describeEnvironment(environments[direction]),
+		icon: promotionDirectionIcon[direction],
+	}));
 });
 
 watch(
