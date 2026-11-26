@@ -128,6 +128,17 @@ describe('AgentSkillWorkflowAccessService', () => {
 		).resolves.toEqual([outside.id]);
 	});
 
+	it('lists only the outside workflows that the user can read', async () => {
+		const readable = await createWorkflow({ name: 'Readable' }, member);
+		const unreadable = await createWorkflow({ name: 'Unreadable' }, otherProject);
+		const skillId = await createSkillMentioning([readable, unreadable]);
+		const agentId = await createAgent(agentProject.id);
+
+		await expect(
+			service.findOutsideProjectWorkflowIds(member, agentProject.id, agentId, skillId),
+		).resolves.toEqual([readable.id]);
+	});
+
 	it('lists nothing when workflows in skills are off', async () => {
 		flagGate.isEnabled.mockResolvedValue(false);
 		const outside = await createWorkflow({ name: 'Outside' }, otherProject);

@@ -7,6 +7,7 @@ import {
 	SkillRuntimeService,
 	WorkflowsInSkillsFlagGate,
 } from '@/modules/skills';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRepository } from './repositories/agent.repository';
 import { findUnarchivedWorkflowIds } from './tools/workflow-tool-workflow-resolver';
@@ -20,6 +21,7 @@ export class AgentSkillWorkflowAccessService {
 		private readonly skillAccess: SkillAccessService,
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async findOutsideProjectWorkflowIds(
@@ -43,10 +45,12 @@ export class AgentSkillWorkflowAccessService {
 			[],
 		);
 		const usableIds = new Set(usable.map(({ id }) => id));
-		const outside = await findUnarchivedWorkflowIds(
-			this.workflowRepository,
+		const readableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
 			workflowIds.filter((workflowId) => !usableIds.has(workflowId)),
+			user,
+			['workflow:read'],
 		);
+		const outside = await findUnarchivedWorkflowIds(this.workflowRepository, [...readableIds]);
 		return [...outside];
 	}
 }
