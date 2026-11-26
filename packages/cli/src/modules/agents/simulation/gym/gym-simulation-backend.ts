@@ -30,7 +30,11 @@ const HTTP_REQUEST_NODE_TYPES = new Set([
 /** Its nodes run in this process, and each request they send goes through the world. */
 const PER_REQUEST_KINDS = new Set<SimulatedTool['kind']>(['workflow']);
 
-const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+/**
+ * Same read set as the held-action classifier, so a request it holds is never shown as a read.
+ * A POST read still counts as a write here: only the tool call's action mode can tell them apart.
+ */
+const READ_METHODS = new Set(['GET', 'HEAD']);
 
 const HTTP_SCHEMES = new Set(['http:', 'https:']);
 

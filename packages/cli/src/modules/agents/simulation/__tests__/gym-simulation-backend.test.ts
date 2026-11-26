@@ -144,6 +144,20 @@ describe('GymSimulationBackend', () => {
 		});
 	});
 
+	it.each([
+		['GET', 'world_read'],
+		['head', 'world_read'],
+		['OPTIONS', 'world_write'],
+		['DELETE', 'world_write'],
+	])('marks a %s request as %s, like the held-action classifier', async (method, evidence) => {
+		const { backend } = setup();
+		const world = await backend.openWorld(openInput);
+
+		const reply = await world.handleRequest({ ...get('/api/conversations.history'), method }, call);
+
+		expect(reply).toMatchObject({ outcome: 'served', evidence: [evidence] });
+	});
+
 	it('keeps each set-cookie value apart instead of joining them into one cookie', async () => {
 		const { backend } = setup();
 		const world = await backend.openWorld(openInput);
