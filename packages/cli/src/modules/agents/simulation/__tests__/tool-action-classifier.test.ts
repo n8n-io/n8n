@@ -314,6 +314,28 @@ describe('classifyToolAction', () => {
 				},
 			},
 			{
+				label: 'HTTP Request tool node with omitted method',
+				action: {
+					toolName: 'http_get',
+					kind: 'node',
+					nodeType: 'n8n-nodes-base.httpRequestTool',
+					nodeParameters: { url: 'https://api.example.com' },
+				},
+			},
+			{
+				label: 'node tool named get_customer with omitted operation',
+				action: {
+					toolName: 'get_customer',
+					kind: 'node',
+					nodeType: 'n8n-nodes-base.hubspot',
+					nodeParameters: { resource: 'contact' },
+				},
+			},
+			{
+				label: 'node tool named get_customer without node parameters',
+				action: { toolName: 'get_customer', kind: 'node', nodeType: 'n8n-nodes-base.hubspot' },
+			},
+			{
 				label: 'custom code tool named get_data',
 				action: { toolName: 'get_data', kind: 'custom' },
 			},

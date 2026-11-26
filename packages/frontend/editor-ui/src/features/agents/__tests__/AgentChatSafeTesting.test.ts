@@ -403,4 +403,64 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 		);
 		expect(clearTestChatMessages).toHaveBeenCalledTimes(2);
 	});
+
+	it('lets a chat opened during a reset start its own test run', async () => {
+		vi.mocked(getAgentTestRunTools).mockResolvedValue({
+			tools: [
+				{
+					toolName: 'run_custom_code',
+					kind: 'custom',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+				},
+			],
+		});
+		vi.mocked(resetAgentTestRun).mockReturnValue(new Promise(() => {}));
+
+		const pinia = createTestingPinia();
+		const posthog = mockedStore(usePostHog);
+		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		const pushStore = mockedStore(usePushConnectionStore);
+		pushStore.addEventListener.mockReturnValue(() => {});
+
+		const { container, rerender } = renderChatPanel({
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				continueSessionId: 'session-1',
+				agentConfig: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-5-5',
+					instructions: 'Help users',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+				visible: true,
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-testid="agent-test-run-tools"]')).toBeInTheDocument();
+		});
+		await fireEvent.click(container.querySelector('[data-testid="agent-new-test-run-button"]')!);
+		await waitFor(() => {
+			expect(resetAgentTestRun).toHaveBeenCalledTimes(1);
+		});
+
+		await rerender({ continueSessionId: 'session-2' });
+		await waitFor(() => {
+			expect(container.querySelector('[data-testid="agent-test-run-tools"]')).toBeInTheDocument();
+		});
+		await fireEvent.click(container.querySelector('[data-testid="agent-new-test-run-button"]')!);
+
+		await waitFor(() => {
+			expect(resetAgentTestRun).toHaveBeenLastCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				'session-2',
+			);
+		});
+	});
 });

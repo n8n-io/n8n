@@ -137,12 +137,15 @@ export interface AgentTestRunResetResponse {
 	reset: boolean;
 }
 
+/** The most held write actions a test chat keeps, and so the most one commit can replay. */
+export const AGENT_TEST_RUN_MAX_HELD_ACTIONS = 500;
+
 /** Request body to replay held write actions from a test run against real services. */
 export const agentTestRunCommitRequestSchema = z.object({
 	testChatId: z.string().min(1),
 	executionId: z.string().min(1).optional(),
 	/** Non-empty list of held tool call IDs to replay in order. */
-	actionIds: z.array(z.string().min(1)).min(1),
+	actionIds: z.array(z.string().min(1)).min(1).max(AGENT_TEST_RUN_MAX_HELD_ACTIONS),
 });
 export type AgentTestRunCommitRequest = z.infer<typeof agentTestRunCommitRequestSchema>;
 

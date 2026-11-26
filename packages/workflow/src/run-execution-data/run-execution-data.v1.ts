@@ -72,6 +72,8 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Binary IDs that an authorized caller passed into this execution. */
+	binaryDataAccess?: string[];
 	/** Keep the caller's output policy when a child execution resumes. */
 	subWorkflowOutput?: SubWorkflowOutputPolicy;
 	/** Keep the mode of the top-level execution when a child execution resumes. */

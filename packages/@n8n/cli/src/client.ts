@@ -376,7 +376,7 @@ export class N8nClient {
 	}
 
 	async updatePromotionSettings(body: unknown) {
-		return await this.put<Record<string, unknown>>('/promotions/settings', body);
+		return await this.patch<Record<string, unknown>>('/promotions/settings', body);
 	}
 
 	async getPromotionProvider(id: string) {

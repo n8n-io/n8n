@@ -38,7 +38,7 @@ export class SkillSourceConnection extends WithTimestamps {
 	@JsonColumn()
 	locator: OpaqueSourceValue;
 
-	/** Source type, host, owner and repository in lower case. The duplicate rules compare it. */
+	/** Repository key for roots and legacy sources. New folder sources use a bounded hash key. */
 	@Column({ type: 'varchar', length: 255 })
 	identityKey: string;
 

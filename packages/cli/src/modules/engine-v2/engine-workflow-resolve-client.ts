@@ -4,11 +4,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from '@n8n/errors';
 
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
-import { isResolveSubWorkflowResponse } from './engine-sub-workflow.contract';
+import { isResolveSubWorkflowResponse } from './engine-workflow-resolve.contract';
 import type {
 	ResolveSubWorkflowRequest,
 	ResolveSubWorkflowResponse,
-} from './engine-sub-workflow.contract';
+} from './engine-workflow-resolve.contract';
 import { SUB_WORKFLOWS_RESOLVE_PATH } from './engine-v2.constants';
 
 /** The message and hint a control plane error response carries, if any. */

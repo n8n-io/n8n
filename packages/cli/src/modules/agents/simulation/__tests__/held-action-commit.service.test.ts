@@ -2,17 +2,24 @@ import type { Agent as RuntimeAgent, BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import type { AgentRuntime, AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import { draftChatMemoryResourceId } from '../../utils/agent-memory-scope';
 import { HeldActionCommitService } from '../held-action-commit.service';
 import { SimulationSession } from '../simulation-session';
 import type { SimulationSessionService } from '../simulation-session.service';
 import type { SimulationWorld } from '../tool-simulation.contracts';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
 
 const user = mock<User>({ id: 'user-1' });
 const slackNode = mock<INode>({ type: 'n8n-nodes-base.slack', name: 'Slack' });
@@ -35,6 +42,7 @@ function createSimulatedSession() {
 		capabilities: [
 			{ toolName: 'slack_post_message', kind: 'node', testability: 'simulated' },
 			{ toolName: 'gmail_send_email', kind: 'node', testability: 'simulated' },
+			{ toolName: 'crm_update_contact', kind: 'node', testability: 'simulated' },
 		],
 	});
 
@@ -81,8 +89,15 @@ async function captureHeldWrite(
 	);
 }
 
-function makeRuntime(tools: BuiltTool[]) {
-	const agent = { declaredTools: tools } as unknown as RuntimeAgent;
+function makeAgent(tools: BuiltTool[], mcpTools: BuiltTool[] = []) {
+	return {
+		declaredTools: tools,
+		listMcpTools: vi.fn().mockResolvedValue(mcpTools),
+	} as unknown as RuntimeAgent;
+}
+
+function makeRuntime(tools: BuiltTool[], mcpTools: BuiltTool[] = []) {
+	const agent = makeAgent(tools, mcpTools);
 	const runtime = mock<AgentRuntime>({ agent });
 	const runtimeCache = mock<AgentRuntimeCacheService>();
 	runtimeCache.getRuntime.mockResolvedValue(runtime);
@@ -90,6 +105,37 @@ function makeRuntime(tools: BuiltTool[]) {
 }
 
 describe('HeldActionCommitService', () => {
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+	});
+
+	it('rejects a commit from a user without agent:read, because the replay runs the draft', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		const simulationSessions = mock<SimulationSessionService>();
+		const runtimeCache = mock<AgentRuntimeCacheService>();
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
+
+		await expect(
+			service.commitHeldActions({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				user,
+				testChatId: 'chat-1',
+				actionIds: ['tc-1'],
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+			projectId: 'project-1',
+		});
+		expect(simulationSessions.getSession).not.toHaveBeenCalled();
+		expect(runtimeCache.getRuntime).not.toHaveBeenCalled();
+	});
+
 	it('tracks the counts of a replay, without tool names or inputs', async () => {
 		const { session } = createSimulatedSession();
 		const realSlack = vi.fn().mockResolvedValue({ ok: true });
@@ -426,9 +472,7 @@ describe('HeldActionCommitService', () => {
 		const { runtime, runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
-		const missingTool = mock<AgentRuntime>({
-			agent: { declaredTools: [] } as unknown as RuntimeAgent,
-		});
+		const missingTool = mock<AgentRuntime>({ agent: makeAgent([]) });
 		runtimeCache.getRuntime
 			.mockRejectedValueOnce(new Error('Runtime build failed'))
 			.mockResolvedValueOnce(missingTool)
@@ -458,6 +502,119 @@ describe('HeldActionCommitService', () => {
 			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
 		]);
 		expect(realSlack).toHaveBeenCalledTimes(1);
+	});
+
+	it('replays a held action of an MCP tool', async () => {
+		const { session } = createSimulatedSession();
+		const realMcp = vi.fn().mockResolvedValue({ ok: true });
+		await captureHeldWrite(session, 'crm_update_contact', 'tc-1', { id: 'c-1' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime(
+			[],
+			[{ name: 'crm_update_contact', description: 'CRM', handler: realMcp, mcpTool: true }],
+		);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
+
+		const result = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		});
+
+		expect(result.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'crm_update_contact', status: 'done' },
+		]);
+		expect(realMcp).toHaveBeenCalledWith({ id: 'c-1' }, expect.anything());
+	});
+
+	it('reports a policy refusal as failed and keeps the action replayable', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi
+			.fn()
+			.mockResolvedValueOnce({
+				isPolicyRefusal: true,
+				message: 'Slack is blocked by policy',
+				violations: [{ message: 'Slack is blocked by policy' }],
+				instruction: 'Do not retry.',
+			})
+			.mockResolvedValueOnce({ ok: true });
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
+		const request = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		};
+
+		const refused = await service.commitHeldActions(request);
+		expect(refused.results).toEqual([
+			{
+				actionId: 'tc-1',
+				toolName: 'slack_post_message',
+				status: 'failed',
+				error: 'Slack is blocked by policy',
+			},
+		]);
+		expect(session.getHeldAction('tc-1')?.committedAt).toBeUndefined();
+
+		// The refused call sent nothing, so a later commit can run it.
+		const replay = await service.commitHeldActions(request);
+		expect(replay.results[0]).toMatchObject({ actionId: 'tc-1', status: 'done' });
+	});
+
+	it('replays in the thread scope of the test chat, so file inputs resolve', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi.fn().mockResolvedValue({ ok: true });
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
+
+		await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		});
+
+		expect(realSlack).toHaveBeenCalledWith(
+			{ text: 'Hi' },
+			expect.objectContaining({
+				persistence: { threadId: 'chat-1', resourceId: draftChatMemoryResourceId('user-1') },
+			}),
+		);
 	});
 
 	it('builds the replay runtime with the sandbox scope of the test chat', async () => {
