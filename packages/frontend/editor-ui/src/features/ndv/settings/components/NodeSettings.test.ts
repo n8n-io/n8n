@@ -1,9 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref, shallowRef } from 'vue';
+import { defineComponent, h, nextTick, ref, shallowRef } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
-import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	type IConnections,
+	type INodeTypeDescription,
+	type IRunData,
+} from 'n8n-workflow';
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -126,6 +131,9 @@ const agentNodeType = {
 interface RenderOptions {
 	runData?: IRunData;
 	node?: typeof httpNode;
+	/** The other nodes of the workflow. Each end of a connection must be a node. */
+	nodes?: Array<typeof httpNode>;
+	connections?: IConnections;
 	nodeType?: INodeTypeDescription;
 	/** Registers these descriptions and not `nodeType`. Use it for a node type with many versions. */
 	nodeTypes?: INodeTypeDescription[];
@@ -142,6 +150,8 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	const {
 		runData,
 		node = httpNode,
+		nodes = [],
+		connections = {},
 		nodeType = httpNodeType,
 		nodeTypes = [nodeType],
 		provide = {},
@@ -154,7 +164,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
-	const workflow = createTestWorkflow({ nodes: [node], connections: {} });
+	const workflow = createTestWorkflow({ nodes: [node, ...nodes], connections });
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
@@ -915,8 +925,8 @@ describe('NodeSettings', () => {
 		});
 
 		describe('after the user confirms a version', () => {
-			const renderAndUpdate = async () => {
-				const rendered = renderVersioned();
+			const renderAndUpdate = async (options: RenderOptions = {}) => {
+				const rendered = renderVersioned(options);
 				const settingsTab = await rendered.findByTestId('tab-settings');
 				await fireEvent.mouseDown(settingsTab.querySelector<HTMLElement>('.tab')!);
 				await waitFor(() => {
@@ -1017,6 +1027,104 @@ describe('NodeSettings', () => {
 				});
 
 				expect(await findByText(/All parameters are set\./)).toBeInTheDocument();
+			});
+
+			const otherNode = (name: string) =>
+				createTestNode({ name, type: httpNode.type, typeVersion: 2 });
+			const main = (node: string, index = 0) => ({ node, type: 'main' as const, index });
+			const twoOutputs = { main: [[main('A')], [main('B')]] };
+
+			it('removes the connection of an output that the version does not have', async () => {
+				const { workflowDocumentStore, getByTestId } = await renderAndUpdate({
+					nodeTypes: [{ ...typeV1, outputs: ['main', 'main'] }, typeV2],
+					nodes: [otherNode('A'), otherNode('B')],
+					connections: { [httpNode.name]: twoOutputs },
+				});
+
+				// The store removes the connection and keeps the slot.
+				expect(workflowDocumentStore.connectionsBySourceNode[httpNode.name]).toEqual({
+					main: [[main('A')], []],
+				});
+				expect(
+					getByTestId('node-version-change-connections').querySelector('summary'),
+				).toHaveTextContent('1 connection removed');
+			});
+
+			it('counts the outputs that depend on a parameter of that version', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate({
+					nodeTypes: [
+						{ ...typeV1, outputs: ['main', 'main'] },
+						{
+							...typeV2,
+							outputs: "={{ Array.from({ length: $parameter.count }, () => 'main') }}",
+							properties: [
+								...typeV2.properties,
+								{ displayName: 'Count', name: 'count', type: 'number', default: 1 },
+							],
+						} as INodeTypeDescription,
+					],
+					nodes: [otherNode('A'), otherNode('B')],
+					connections: { [httpNode.name]: twoOutputs },
+				});
+
+				expect(workflowDocumentStore.connectionsBySourceNode[httpNode.name]).toEqual({
+					main: [[main('A')], []],
+				});
+			});
+
+			it('keeps the connections that fit the version', async () => {
+				const connections = {
+					A: { main: [[main(httpNode.name)]] },
+					[httpNode.name]: { main: [[main('B')]] },
+				};
+				const { workflowDocumentStore, queryByTestId } = await renderAndUpdate({
+					nodes: [otherNode('A'), otherNode('B')],
+					connections: structuredClone(connections),
+				});
+
+				expect(workflowDocumentStore.connectionsBySourceNode).toEqual(connections);
+				expect(queryByTestId('node-version-change-connections')).not.toBeInTheDocument();
+			});
+
+			it('reports the required credential of that version', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate({
+					nodeTypes: [typeV1, { ...typeV2, credentials: [{ name: 'testApi', required: true }] }],
+				});
+
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(Object.keys(node?.issues?.credentials ?? {})).toEqual(['testApi']);
+			});
+
+			it('reports the required input of that version', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate({
+					nodeTypes: [
+						typeV1,
+						{ ...typeV2, inputs: ['main', { type: 'ai_languageModel', required: true }] },
+					],
+				});
+
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(Object.keys(node?.issues?.input ?? {})).toEqual(['ai_languageModel']);
+			});
+
+			it('reports the required input of a node that lost its connection', async () => {
+				const agentType = {
+					...httpNodeType,
+					name: 'n8n-nodes-base.agent',
+					version: 1,
+					inputs: ['main', { type: 'ai_tool', required: true }],
+				} as INodeTypeDescription;
+				const { workflowDocumentStore } = await renderAndUpdate({
+					nodeTypes: [{ ...typeV1, outputs: ['ai_tool'] }, typeV2, agentType],
+					nodes: [createTestNode({ name: 'Agent', type: agentType.name, typeVersion: 1 })],
+					connections: {
+						[httpNode.name]: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					},
+				});
+				await nextTick();
+
+				const agent = workflowDocumentStore.getNodeByName('Agent');
+				expect(Object.keys(agent?.issues?.input ?? {})).toEqual(['ai_tool']);
 			});
 		});
 
