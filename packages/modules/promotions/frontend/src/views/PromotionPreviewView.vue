@@ -622,9 +622,11 @@ const treeResizer = useResizablePanel({
 	flex: 1;
 	min-width: 0;
 
-	/* The tab list is the first child. A taller list leaves more space between the label and the underline. */
+	/* The design has a 38px tab list. The tab content has 4px above and 8px above the underline. The tab border takes 1px of each. The tab list is the first child. */
 	& > :first-child {
 		--n8n-tabs--height: calc(var(--height--lg) + var(--spacing--5xs) + var(--border-width));
+		--n8n-tabs--tab--padding: calc(var(--spacing--4xs) - var(--border-width)) var(--spacing--sm)
+			calc(var(--spacing--2xs) + var(--spacing--5xs) - var(--border-width));
 	}
 }
 
