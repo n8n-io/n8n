@@ -79,7 +79,11 @@ const editorProps: EditorProps = {
 			picker.value?.handleExternalKeydown(event);
 			return event.defaultPrevented;
 		}
-		if (!mentionsEnabled.value || (event.key !== 'Backspace' && event.key !== 'Delete')) {
+		if (
+			!mentionsEnabled.value ||
+			props.disabled ||
+			(event.key !== 'Backspace' && event.key !== 'Delete')
+		) {
 			return false;
 		}
 		const { selection } = view.state;
