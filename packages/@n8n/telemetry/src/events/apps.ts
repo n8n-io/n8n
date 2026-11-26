@@ -2,6 +2,10 @@ import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
 
+// Apps used to be visible to their project or to the whole instance. Kept for the
+// warehouse history of the deprecated properties below.
+const legacyVisibility = z.enum(['project', 'instance']);
+
 const actorUserId = z
 	.string()
 	.optional()
@@ -19,6 +23,10 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 				.string()
 				.optional()
 				.describe('The n8n Assistant thread that created the app. Absent outside the Assistant'),
+			visibility: legacyVisibility
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: apps are visible only to their project. No longer emitted.'),
 		}),
 	},
 	USER_OPENED_APP_BUILDER: {
@@ -39,6 +47,10 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			app_id: z.string(),
 			version_id: z.string(),
 			user_id: actorUserId,
+			access_level: legacyVisibility
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: apps are visible only to their project. No longer emitted.'),
 			is_first_publish: z
 				.boolean()
 				.describe('True when the app had no published version before this publish'),
@@ -60,6 +72,19 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			user_id: actorUserId,
 			was_published: z.boolean(),
 		}),
+	},
+	USER_CHANGED_APP_VISIBILITY: {
+		name: 'User changed app visibility',
+		description:
+			'Deprecated: apps are visible only to their project, so this event is no longer emitted. A user changed who can open an app, in the publish dialog or through the API.',
+		properties: z
+			.object({
+				app_id: z.string(),
+				user_id: actorUserId,
+				from: legacyVisibility,
+				to: legacyVisibility,
+			})
+			.meta({ deprecated: true }),
 	},
 	APP_BUILD_FINISHED: {
 		name: 'App build finished',

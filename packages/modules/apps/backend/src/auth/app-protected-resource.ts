@@ -53,8 +53,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 			isAvailable: async () => !!(await currentApp()),
 			authorize: async (user) => {
 				const current = await currentApp();
-				if (!current) return false;
-				return preview ? await this.canRead(current, user) : await this.canAccess(current, user);
+				return !!current && (await this.canRead(current, user));
 			},
 			getGrant: () => this.grantFor(app, kind),
 		};
@@ -70,10 +69,6 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 	): ResourceGrant {
 		const audiences = [this.hosts.callbackUrl(app, kind)];
 		return { audiences, projectAccess: { projectId: app.projectId, scopes: ['app:read'] } };
-	}
-
-	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {
-		return await this.canRead(app, user);
 	}
 
 	async canRead(app: App, user: ResourcePrincipal): Promise<boolean> {
