@@ -724,13 +724,14 @@ const applyNodeVersion = (targetVersion: number) => {
 	// The ports can depend on the parameters of the node, so read them after the write.
 	const updatedNode = workflowDocumentStore.value.getNodeByName(currentNode.name) ?? currentNode;
 	const workflow = { expression: workflowDocumentStore.value.getExpressionHandler() };
-	const removedConnections = NodeHelpers.getUnfitNodeConnections(
+	const unfitConnections = NodeHelpers.getUnfitNodeConnections(
 		currentNode.name,
 		workflowDocumentStore.value.connectionsBySourceNode,
 		NodeHelpers.getNodeInputs(workflow, updatedNode, targetType),
 		NodeHelpers.getNodeOutputs(workflow, updatedNode, targetType),
 	);
-	for (const connection of removedConnections) {
+	const removedConnections: typeof unfitConnections = [];
+	for (const connection of unfitConnections) {
 		const sourceNode = workflowDocumentStore.value.getNodeByName(connection[0].node);
 		const targetNode = workflowDocumentStore.value.getNodeByName(connection[1].node);
 		if (!sourceNode || !targetNode) continue;
@@ -738,6 +739,7 @@ const applyNodeVersion = (targetVersion: number) => {
 			mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection),
 			{ validateNodeGroups: false },
 		);
+		removedConnections.push(connection);
 	}
 
 	if (ndvStore.value.activeNodeName === currentNode.name) {

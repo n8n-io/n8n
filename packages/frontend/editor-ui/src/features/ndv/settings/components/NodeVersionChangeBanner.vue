@@ -275,6 +275,7 @@ const changedDefaultRows = computed(() => {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	overflow-wrap: anywhere;
 }
 
 .chip {
@@ -283,6 +284,5 @@ const changedDefaultRows = computed(() => {
 	border-radius: var(--radius);
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-	overflow-wrap: anywhere;
 }
 </style>

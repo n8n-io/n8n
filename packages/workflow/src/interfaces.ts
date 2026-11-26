@@ -2956,6 +2956,7 @@ export interface NodeParametersCarryOver {
 	 * Credential types on the node that the target version does not use.
 	 * These are keys of `node.credentials`, taken as they are and not checked against the known credential types.
 	 * The list holds no credential id, name or data.
+	 * The entries stay on the node. A consumer must check them against the current node state.
 	 */
 	droppedCredentials: string[];
 }

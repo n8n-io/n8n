@@ -1826,6 +1826,7 @@ export function carryOverNodeParameters(
 	);
 
 	// A credential that the current version did not use is not a result of this change.
+	// When the types that the current version uses are not known, the type is reported.
 	const oldActive = getActiveCredentialTypes(node, currentNodeType);
 	const newActive = getActiveCredentialTypes({ ...targetNode, parameters }, targetNodeType);
 	const droppedCredentials = newActive
@@ -1839,7 +1840,7 @@ export function carryOverNodeParameters(
 
 /**
  * Returns the connections of a node that do not fit its ports.
- * Each entry is a `[source, target]` pair of copies.
+ * Each entry is a `[source, target]` pair. The pair holds copies, not the objects in `connectionsBySourceNode`.
  *
  * @param inputs The resolved inputs of the node, from `getNodeInputs`.
  * @param outputs The resolved outputs of the node, from `getNodeOutputs`.
@@ -1850,7 +1851,7 @@ export function getUnfitNodeConnections(
 	inputs: Array<NodeConnectionType | INodeInputConfiguration>,
 	outputs: Array<NodeConnectionType | INodeOutputConfiguration>,
 ): Array<[IConnection, IConnection]> {
-	const count = (types: NodeConnectionType[], type: string) =>
+	const count = (types: NodeConnectionType[], type: NodeConnectionType) =>
 		types.filter((portType) => portType === type).length;
 	const inputTypes = getConnectionTypes(inputs);
 	const outputTypes = getConnectionTypes(outputs);
