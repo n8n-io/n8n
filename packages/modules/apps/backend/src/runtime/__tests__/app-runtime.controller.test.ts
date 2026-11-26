@@ -1,7 +1,6 @@
 import type { AgentSseEvent, AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import { Person } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -55,6 +54,7 @@ const draftBindings: AppBinding[] = [
 ];
 
 const user = { id: 'user-1', email: 'a@b.c', firstName: 'Ada', lastName: undefined };
+const editor = { id: 'editor-1', email: 'e@b.c', firstName: 'Eve', lastName: undefined };
 
 function request(
 	options: {
@@ -101,17 +101,19 @@ function response() {
 
 function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) {
 	const auth = mock<AppAuthService>();
-	auth.admit.mockResolvedValue({ ok: true, app, security: { subject: user } as never });
+	auth.admit.mockResolvedValue({
+		ok: true,
+		app,
+		security: { subject: user } as never,
+		token: 'app-token',
+	});
+	auth.sealVisitor.mockResolvedValue('sealed-identity');
 	const preview = mock<AppPreviewService>();
 	preview.admit.mockResolvedValue({
 		app,
 		versionId: DRAFT_ID,
-		user: Object.assign(new Person(), {
-			id: 'editor-1',
-			email: 'e@b.c',
-			firstName: 'Eve',
-			lastName: null,
-		}),
+		security: { subject: editor } as never,
+		token: 'preview-token',
 	});
 	const versions = mock<AppVersionRepository>();
 	// Plain objects: `mock()` does not keep arrays such as `bindings`.
@@ -242,6 +244,30 @@ describe('AppRuntimeController', () => {
 			expect(req.appRuntime?.user).toEqual(user);
 		});
 
+		it('runs a bound workflow with the sealed identity of the visitor', async () => {
+			const { controller, auth, workflows } = setup();
+			workflows.run.mockResolvedValue({ executionId: '1', status: 'success', output: [] });
+			const req = request({ method: 'POST', runtime: false });
+			await controller.prepare(req, response(), vi.fn());
+
+			await controller.runWorkflow(
+				Object.assign(req, { params: { key: 'submit' }, body: {} }),
+				response(),
+			);
+
+			expect(auth.sealVisitor).toHaveBeenCalledExactlyOnceWith(
+				app,
+				'app-token',
+				user.id,
+				'published',
+			);
+			expect(workflows.run).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: user.id, runnerIdentity: 'sealed-identity' }),
+				'workflow-1',
+				{},
+			);
+		});
+
 		it('serves the bindings of the published version', async () => {
 			const { controller, versions, preview } = setup();
 			const req = request({ runtime: false });
@@ -286,12 +312,7 @@ describe('AppRuntimeController', () => {
 			expect(versions.findVersionById).toHaveBeenCalledWith(DRAFT_ID);
 			expect(req.appRuntime?.bindings).toEqual(draftBindings);
 			expect(req.appRuntime).toMatchObject({ versionId: DRAFT_ID, isPreview: true });
-			expect(req.appRuntime?.user).toEqual({
-				id: 'editor-1',
-				email: 'e@b.c',
-				firstName: 'Eve',
-				lastName: undefined,
-			});
+			expect(req.appRuntime?.user).toEqual(editor);
 		});
 
 		it('works for an app that was never published', async () => {
@@ -299,7 +320,8 @@ describe('AppRuntimeController', () => {
 			preview.admit.mockResolvedValue({
 				app: { ...app, publishedVersionId: null } as App,
 				versionId: DRAFT_ID,
-				user: Object.assign(new Person(), { id: 'editor-1', email: 'e@b.c' }),
+				security: { subject: editor } as never,
+				token: 'preview-token',
 			});
 			const req = request({ headers: sameOrigin, runtime: false });
 			const next = vi.fn();
@@ -329,6 +351,30 @@ describe('AppRuntimeController', () => {
 			);
 		});
 
+		it('runs a bound workflow with the sealed identity of the preview user', async () => {
+			const { controller, auth, workflows } = setup({ host: 'preview' });
+			workflows.run.mockResolvedValue({ executionId: '1', status: 'success', output: [] });
+			const req = request({ method: 'POST', headers: sameOrigin, runtime: false });
+			await controller.prepare(req, response(), vi.fn());
+
+			await controller.runWorkflow(
+				Object.assign(req, { params: { key: 'submit' }, body: {} }),
+				response(),
+			);
+
+			expect(auth.sealVisitor).toHaveBeenCalledExactlyOnceWith(
+				app,
+				'preview-token',
+				editor.id,
+				'preview',
+			);
+			expect(workflows.run).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: editor.id, runnerIdentity: 'sealed-identity' }),
+				'workflow-1',
+				{},
+			);
+		});
+
 		it('rejects the origin of the published host', async () => {
 			const { controller, preview } = setup({ host: 'preview' });
 			const res = response();
@@ -342,6 +388,17 @@ describe('AppRuntimeController', () => {
 			expect(res.status).toHaveBeenCalledWith(403);
 			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'forbidden_origin' }));
 			expect(preview.admit).not.toHaveBeenCalled();
+		});
+
+		it('answers 404 when the preview host has no app', async () => {
+			const { controller, preview } = setup({ host: 'preview' });
+			preview.admit.mockRejectedValue(new NotFoundError('App not found.'));
+			const res = response();
+
+			await controller.prepare(request({ headers: sameOrigin, runtime: false }), res, vi.fn());
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'app_not_found' }));
 		});
 
 		it('answers 401 when the preview session ended', async () => {

@@ -61,6 +61,7 @@ it.each([
 	await operation.submit({
 		workflowIds: ['wf-1'],
 		folderIds: [],
+		credentialIds: [],
 		confirmDestructiveChanges: false,
 	});
 

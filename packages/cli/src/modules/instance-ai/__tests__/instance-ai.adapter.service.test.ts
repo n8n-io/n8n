@@ -69,10 +69,13 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
@@ -82,7 +85,10 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
 import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
@@ -124,10 +130,12 @@ function globalConfigStub(
 		allowSendingParameterValues?: boolean;
 		queueMode?: boolean;
 		maxExecutionTimeout?: number;
+		diagnosticsEnabled?: boolean;
 	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
+		diagnostics: { enabled: overrides.diagnosticsEnabled ?? false },
 		executions: {
 			mode: overrides.queueMode ? 'queue' : 'regular',
 			maxTimeout: overrides.maxExecutionTimeout ?? 3600,
@@ -1951,6 +1959,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	ExecutionRedactionServiceProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
@@ -1970,6 +1979,7 @@ import {
 	InternalServerError,
 	LockedError,
 	NotFoundError,
+	NotImplementedError,
 	UserError,
 	UnexpectedError,
 } from '@n8n/errors';
@@ -1987,9 +1997,12 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
+
+const engineV1Setup = { engineV2Available: false, newWorkflowEngine: 'v1' } as const;
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -2133,6 +2146,21 @@ describe('createContext models', () => {
 		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
 
 		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
+
+describe('createContext engine setup', () => {
+	it('puts the engine setup of the instance on the context', () => {
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' } as const;
+		const getSetup = vi
+			.spyOn(WorkflowEngineDefaults.prototype, 'getSetup')
+			.mockReturnValue(engineSetup);
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser);
+
+		expect(context.engineSetup).toEqual(engineSetup);
+		getSetup.mockRestore();
 	});
 });
 
@@ -2903,6 +2931,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
 	maxExecutionTimeout?: number;
 	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
+	executionRepository?: { findOne: Mock };
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -3007,7 +3036,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockWorkflowRepository as unknown as WorkflowRepository,
 		mockSharedWorkflowRepository as unknown as SharedWorkflowRepository,
 		mockProjectRepository as unknown as ProjectRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		(overrides?.executionRepository ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[7],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
@@ -3476,6 +3507,159 @@ describe('createWorkflowAdapter', () => {
 		expect(result.name).toBe('Test Workflow');
 		expect(result.nodes[0]).toEqual(expect.objectContaining({ name: 'Old Node', typeVersion: 3 }));
 		expect(result.connections).toEqual({ 'Old Node': {} });
+	});
+
+	it("returns the version's engine, not the draft's, when a versionId is passed", async () => {
+		const { adapter, mockWorkflowHistoryService, mockWorkflowFinderService, savedWorkflow } =
+			createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			...savedWorkflow,
+			settings: { engineType: 'v2', timezone: 'Europe/Berlin' },
+		});
+		mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: [],
+			connections: {},
+			nodeGroups: null,
+			settings: { engineType: 'v1' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		const get = Container.get.bind(Container);
+		const spy = vi
+			.spyOn(Container, 'get')
+			.mockImplementation(((token: Parameters<typeof Container.get>[0]) =>
+				token === WorkflowVersionedSettingsService
+					? versionedSettings
+					: get(token)) as typeof Container.get);
+
+		try {
+			const result = await adapter.getAsWorkflowJSON('wf-new', 'v-old');
+
+			expect(result.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	describe('getLatestRunData', () => {
+		const v1RunData = { Fetch: [makeTaskData([{ engine: 'v1' }])] };
+		const v2RunData = { Fetch: [makeTaskData([{ engine: 'v2' }])] };
+
+		let containerSpy: MockInstance | undefined;
+
+		afterEach(() => {
+			containerSpy?.mockRestore();
+			containerSpy = undefined;
+		});
+
+		/**
+		 * `v1StartedAt` and `v2StartedAt` set the newest run on each engine. Leave one
+		 * out for a workflow without runs on that engine. `v2Error` fails the data plane.
+		 */
+		function setup(options: { v1StartedAt?: Date; v2StartedAt?: Date; v2Error?: Error }) {
+			const executionRepository = {
+				findOne: vi
+					.fn()
+					.mockResolvedValue(
+						options.v1StartedAt ? { id: 'exec-v1', startedAt: options.v1StartedAt } : null,
+					),
+			};
+			const harness = createWorkflowAdapterForTests({ executionRepository });
+
+			const reader = mock<EngineV2ExecutionReader>();
+			if (options.v2Error) {
+				reader.findLatest.mockRejectedValue(options.v2Error);
+			} else {
+				reader.findLatest.mockResolvedValue(
+					(options.v2StartedAt
+						? makeExecution({ startedAt: options.v2StartedAt, runData: v2RunData })
+						: undefined) as never,
+				);
+			}
+			const persistence = mock<ExecutionPersistence>();
+			persistence.findSingleExecution.mockResolvedValue(
+				makeExecution({ runData: v1RunData }) as never,
+			);
+			const redaction = { processExecution: vi.fn() };
+
+			containerSpy = vi.spyOn(Container, 'get').mockImplementation(((token: unknown) => {
+				if (token === EngineV2ExecutionReader) return reader;
+				if (token === ExecutionRedactionServiceProxy) return redaction;
+				return persistence;
+			}) as typeof Container.get);
+
+			const getLatestRunData = harness.adapter.getLatestRunData as NonNullable<
+				typeof harness.adapter.getLatestRunData
+			>;
+			return { ...harness, getLatestRunData, reader, persistence, redaction };
+		}
+
+		const older = new Date('2026-01-01T00:00:00Z');
+		const newer = new Date('2026-01-02T00:00:00Z');
+
+		it('returns the engine v2 run data when the engine v2 run is newer', async () => {
+			const { getLatestRunData, reader, persistence, redaction } = setup({
+				v1StartedAt: older,
+				v2StartedAt: newer,
+			});
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v2RunData);
+			expect(reader.findLatest).toHaveBeenCalledWith({}, ['wf-new']);
+			expect(redaction.processExecution).toHaveBeenCalledTimes(1);
+			expect(persistence.findSingleExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns the v1 run data when the v1 run is newer', async () => {
+			const { getLatestRunData, persistence } = setup({ v1StartedAt: newer, v2StartedAt: older });
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v1RunData);
+			expect(persistence.findSingleExecution).toHaveBeenCalledWith('exec-v1', expect.anything());
+		});
+
+		it('returns the engine v2 run data when the workflow has no v1 run', async () => {
+			const { getLatestRunData } = setup({ v2StartedAt: older });
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v2RunData);
+		});
+
+		it('returns the v1 run data when the workflow has no engine v2 run', async () => {
+			const { getLatestRunData } = setup({ v1StartedAt: older });
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v1RunData);
+		});
+
+		it('falls back to the v1 run data when the data plane fails', async () => {
+			const { getLatestRunData, mockLogger } = setup({
+				v1StartedAt: older,
+				v2Error: new Error('data plane down'),
+			});
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v1RunData);
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to read the latest engine v2 execution',
+				{ workflowId: 'wf-new', error: 'data plane down' },
+			);
+		});
+
+		it('returns null without a read when the user cannot read the executions', async () => {
+			const { getLatestRunData, mockWorkflowFinderService, reader } = setup({
+				v1StartedAt: older,
+				v2StartedAt: newer,
+			});
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(getLatestRunData('wf-new')).resolves.toBeNull();
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-new',
+				expect.anything(),
+				['workflow:read', 'execution:read'],
+			);
+			expect(reader.findLatest).not.toHaveBeenCalled();
+		});
 	});
 
 	it('lists active workflows by default', async () => {
@@ -6677,6 +6861,7 @@ function createAdapterWithGatewayMock(
 		instanceContext?: InstanceContextService;
 		aiPreferenceService?: unknown;
 		logger?: unknown;
+		diagnosticsEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -6696,7 +6881,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ diagnosticsEnabled: overrides?.diagnosticsEnabled });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -7777,6 +7962,294 @@ describe('createExecutionAdapter runStep()', () => {
 	});
 });
 
+describe('createExecutionAdapter on engine v2', () => {
+	const V2_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+	const V2_PAST_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+
+	const v2Workflow = {
+		id: 'wf-1',
+		versionId: 'v-current',
+		settings: { engineType: 'v2' },
+		nodes: [
+			{ name: 'Trigger', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [0, 0] },
+			{ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', typeVersion: 1, position: [1, 0] },
+			{ name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1, position: [2, 0] },
+		],
+		connections: {
+			Trigger: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			Fetch: { main: [[{ node: 'Send', type: 'main', index: 0 }]] },
+		},
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	/**
+	 * A harness whose runner starts a v2 run. `statuses` are what the data plane
+	 * reports on each status read, the last one repeating.
+	 */
+	function createV2Harness(options?: {
+		statuses?: string[];
+		execution?: ReturnType<typeof makeExecution>;
+		readable?: boolean;
+	}) {
+		const harness = createRunAdapterForTests(v2Workflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		harness.mockWorkflowRunner.run.mockResolvedValue(V2_ID);
+
+		const statuses = [...(options?.statuses ?? ['success'])];
+		const nextStatus = () => (statuses.length > 1 ? statuses.shift() : statuses[0]);
+		const reader = mock<EngineV2ExecutionReader>();
+		reader.findOne.mockImplementation((async (
+			id: string,
+			access: unknown,
+			readOptions?: { includeData?: boolean },
+		) => {
+			// The viewer reads check access with a function, the status polls with a list.
+			if (options?.readable === false && typeof access === 'function') return undefined;
+			if (readOptions?.includeData === false) {
+				return { id, workflowId: 'wf-1', status: nextStatus() };
+			}
+			return { ...(options?.execution ?? makeExecution({ status: 'success' })), id };
+		}) as never);
+
+		const dataPlane = mock<EngineDataPlaneProxyService>();
+		dataPlane.isAvailable.mockReturnValue(true);
+		dataPlane.cancelExecution.mockResolvedValue({ cancelled: true, finishedAt: new Date() });
+		const executionList = mock<ExecutionListService>();
+
+		vi.mocked(Container.get).mockImplementation(((token: unknown) => {
+			if (token === EngineV2ExecutionReader) return reader;
+			if (token === EngineDataPlaneProxyService) return dataPlane;
+			if (token === ExecutionListService) return executionList;
+			return harness.mockExecutionPersistence;
+		}) as typeof Container.get);
+
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+		return { ...harness, runStep, reader, dataPlane, executionList };
+	}
+
+	describe('run()', () => {
+		it('runs in manual mode and names the trigger, so the engine keeps the pin data', async () => {
+			const { adapter, mockWorkflowRunner } = createV2Harness();
+
+			await adapter.run('wf-1', { body: { name: 'Ada' } });
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.executionMode).toBe('manual');
+			expect(runData.triggerToStartFrom).toEqual({ name: 'Trigger' });
+			expect(runData.startNodes).toBeUndefined();
+			expect(runData.executionData).toBeUndefined();
+			expect(runData.pinData.Trigger).toBeDefined();
+		});
+
+		it('waits on the data plane and reads the result from it', async () => {
+			const { adapter, reader, mockActiveExecutions, mockExecutionPersistence } = createV2Harness({
+				statuses: ['running', 'success'],
+				execution: makeExecution({
+					status: 'success',
+					runData: { Trigger: [makeTaskData([{}])], Fetch: [makeTaskData([{ id: 1 }])] },
+				}),
+			});
+
+			const result = await adapter.run('wf-1', undefined, {
+				verificationPinData: { Fetch: [{ id: 1 }] },
+			});
+
+			expect(result).toMatchObject({ executionId: V2_ID, status: 'success' });
+			// Two status polls, then one read of the result.
+			expect(reader.findOne).toHaveBeenCalledTimes(3);
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
+			expect(reader.findOne).toHaveBeenLastCalledWith(V2_ID, expect.any(Function));
+			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
+			// No control-plane row exists, so no verification pins are pruned from one.
+			expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			expect(mockExecutionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		});
+
+		it('stops the run on the data plane when the time runs out', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['running'] });
+
+			const result = await adapter.run('wf-1', undefined, { timeout: 300 });
+
+			expect(result).toMatchObject({
+				executionId: V2_ID,
+				status: 'error',
+				error: 'Execution timed out after 300ms and was cancelled',
+			});
+			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+		});
+
+		it('stops the run on the data plane when the caller aborts', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['running'] });
+			const controller = new AbortController();
+			controller.abort();
+
+			const result = await adapter.run('wf-1', undefined, { abortSignal: controller.signal });
+
+			expect(result).toMatchObject({ status: 'error', error: 'Execution was cancelled' });
+			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+		});
+	});
+
+	describe('runStep()', () => {
+		it('waits on the data plane for a step run', async () => {
+			const { runStep, reader, mockActiveExecutions } = createV2Harness({
+				statuses: ['running', 'success'],
+			});
+
+			const result = await runStep('wf-1', 'Send', { mockInput: [{ text: 'hello' }] });
+
+			expect(result).toMatchObject({ executionId: V2_ID, status: 'success', inputMode: 'mocked' });
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
+			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
+		});
+
+		it('replays the run data of a past engine v2 execution', async () => {
+			const priorRunData = { Trigger: [makeTaskData([{}])], Fetch: [makeTaskData([{ id: 9 }])] };
+			const { runStep, mockWorkflowRunner, mockExecutionPersistence } = createV2Harness({
+				execution: makeExecution({ status: 'success', runData: priorRunData }),
+			});
+
+			const result = await runStep('wf-1', 'Send', { reuseExecutionId: V2_PAST_ID });
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.runData).toEqual(priorRunData);
+			expect(result.reusedFromExecutionId).toBe(V2_PAST_ID);
+			expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
+		});
+
+		it('refuses a past engine v2 execution the user cannot read', async () => {
+			const { runStep, mockWorkflowRunner } = createV2Harness({ readable: false });
+
+			await expect(runStep('wf-1', 'Send', { reuseExecutionId: V2_PAST_ID })).rejects.toThrow(
+				`Execution ${V2_PAST_ID} not found`,
+			);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('passes on the engine error for a step run that the engine cannot do', async () => {
+			const { runStep, mockWorkflowRunner } = createV2Harness();
+			mockWorkflowRunner.run.mockRejectedValue(
+				new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.'),
+			);
+
+			await expect(runStep('wf-1', 'Send', undefined)).rejects.toThrow(
+				'Engine v2 cannot run a workflow as an AI tool yet.',
+			);
+		});
+	});
+
+	describe('execution actions', () => {
+		it('reports a running execution as running', async () => {
+			const { adapter, mockActiveExecutions } = createV2Harness({ statuses: ['running'] });
+
+			await expect(adapter.getStatus(V2_ID)).resolves.toEqual({
+				executionId: V2_ID,
+				status: 'running',
+			});
+			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
+		});
+
+		it('reports the outcome of a settled execution', async () => {
+			const { adapter } = createV2Harness({ statuses: ['success'] });
+
+			await expect(adapter.getStatus(V2_ID)).resolves.toMatchObject({
+				executionId: V2_ID,
+				status: 'success',
+			});
+		});
+
+		it('hides an execution the user cannot read', async () => {
+			const { adapter } = createV2Harness({ readable: false });
+
+			await expect(adapter.getStatus(V2_ID)).rejects.toThrow(`Execution ${V2_ID} not found`);
+			await expect(adapter.getResult(V2_ID)).rejects.toThrow(`Execution ${V2_ID} not found`);
+			await expect(adapter.stop(V2_ID)).rejects.toThrow(`Execution ${V2_ID} not found`);
+		});
+
+		it('waits for the result of a running execution', async () => {
+			const { adapter, reader } = createV2Harness({ statuses: ['running', 'running', 'success'] });
+
+			await expect(adapter.getResult(V2_ID)).resolves.toMatchObject({ status: 'success' });
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
+		});
+
+		it('stops a running execution on the data plane', async () => {
+			const { adapter, dataPlane, reader } = createV2Harness({ statuses: ['running'] });
+
+			await expect(adapter.stop(V2_ID)).resolves.toEqual({
+				success: true,
+				message: `Execution ${V2_ID} cancelled`,
+			});
+			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, expect.any(Function), {
+				includeData: false,
+			});
+		});
+
+		it('does not stop an execution that already settled', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['success'] });
+
+			await expect(adapter.stop(V2_ID)).resolves.toEqual({
+				success: false,
+				message: `Execution ${V2_ID} is not currently running`,
+			});
+			expect(dataPlane.cancelExecution).not.toHaveBeenCalled();
+		});
+
+		it('reports no stop when the run ends before the engine can cancel it', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['running'] });
+			dataPlane.cancelExecution.mockResolvedValue({ cancelled: false, status: 'completed' });
+
+			await expect(adapter.stop(V2_ID)).resolves.toMatchObject({ success: false });
+		});
+
+		it('lists the executions of both engines when the engine-v2 module is on', async () => {
+			const { adapter, mockExecutionRepository } = createExecutionAdapterForTests();
+			const dataPlane = mock<EngineDataPlaneProxyService>();
+			dataPlane.isAvailable.mockReturnValue(true);
+			const executionList = mock<ExecutionListService>();
+			const containerGet = vi
+				.spyOn(Container, 'get')
+				.mockImplementation(((token: unknown) =>
+					token === EngineDataPlaneProxyService
+						? dataPlane
+						: executionList) as typeof Container.get);
+			onTestFinished(() => containerGet.mockRestore());
+			executionList.findPageWithCount.mockResolvedValue({
+				results: [
+					{
+						id: V2_ID,
+						workflowId: 'wf-1',
+						workflowName: 'My workflow',
+						status: 'success',
+						mode: 'manual',
+						finished: true,
+						createdAt: new Date('2026-01-01T00:00:00Z'),
+						startedAt: new Date('2026-01-01T00:00:00Z'),
+					},
+				],
+				nextCursor: null,
+				count: 1,
+				estimated: false,
+			});
+
+			const executions = await adapter.list({ workflowId: 'wf-1', limit: 5 });
+
+			expect(executionList.findPageWithCount).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId: 'wf-1', range: { limit: 5 } }),
+			);
+			expect(executions).toEqual([
+				expect.objectContaining({ id: V2_ID, workflowName: 'My workflow', status: 'success' }),
+			]);
+			expect(mockExecutionRepository.findManyByRangeQuery).not.toHaveBeenCalled();
+		});
+	});
+});
+
 describe('getGatewayConfigOrNull', () => {
 	async function callGet(adapter: InstanceAiAdapterService) {
 		return await (
@@ -8092,6 +8565,7 @@ describe('resolveExperimentGates', () => {
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG]: INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
@@ -8107,6 +8581,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
+			draftWorkflowPreviewEnabled: true,
 			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
@@ -8166,6 +8641,27 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it.each([true, false])(
+		'reads skill sources %s from the Skill Sync gate, with the flags of the turn',
+		async (enabled) => {
+			const flags = { [INSTANCE_AI_NODE_USAGE_FLAG]: true };
+			const getFeatureFlags = vi.fn().mockResolvedValue(flags);
+			getFeatureFlagForInstance.mockReset().mockResolvedValue(false);
+			const isEnabledForFlags = vi.fn().mockReturnValue(enabled);
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+				token === SkillSyncFlagGate
+					? { isEnabledForFlags }
+					: { getFeatureFlags, getFeatureFlagForInstance },
+			);
+
+			const gates = await createAdapter().resolveExperimentGates(user);
+
+			expect(isEnabledForFlags).toHaveBeenCalledWith(flags);
+			expect(gates.skillSourcesEnabled).toBe(enabled ? true : undefined);
+			expect(getFeatureFlags).toHaveBeenCalledTimes(1);
+		},
+	);
+
 	it('keeps instance activity off when its evaluation fails', async () => {
 		stubContainer(allEnabled, true);
 		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
@@ -8187,6 +8683,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it.each(['control', 'variant'])('passes the preferences note variant %s', async (variant) => {
+		stubContainer({ [INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG]: variant });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			preferencesNoteVariant: variant,
+		});
+	});
+
 	it.each([CANVAS_NODE_CONTEXT_FLAG, AI_ASSISTANT_AT_MENTIONS_FLAG])(
 		'enables node context with %s',
 		async (flag) => {
@@ -8202,6 +8706,7 @@ describe('resolveExperimentGates', () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG]: 'control',
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
@@ -8214,6 +8719,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
+			draftWorkflowPreviewEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
@@ -8272,6 +8778,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
+			draftWorkflowPreviewEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
@@ -8291,6 +8798,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
+			draftWorkflowPreviewEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
@@ -8322,6 +8830,7 @@ describe('MCP registry discovery', () => {
 			if (token === McpRegistryService) return { search, getBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			if (token === ModuleRegistry) return { isActive: () => false };
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
@@ -8666,6 +9175,7 @@ describe('createContext — builder delegate wiring', () => {
 			if (token === ModuleRegistry) return moduleRegistry;
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
 			if (token === AgentsBuilderService) return builderService;
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 		return { ...builderDelegateAdapter, builderService, credentialProvider };
@@ -9531,6 +10041,7 @@ describe('createContext — skill service wiring', () => {
 				return { createService: vi.fn().mockReturnValue(skillService) };
 			}
 			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 		const service = createAdapterWithGatewayMock(vi.fn());
@@ -9554,15 +10065,38 @@ describe('createContext — skill service wiring', () => {
 				if (token === SkillsGate) return { isEnabled: true };
 				if (token === InstanceAiSkillsAdapterService) return { createService };
 				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+				if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 			});
 			const service = createAdapterWithGatewayMock(vi.fn());
 
 			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
 
-			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
+			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled, undefined);
 		},
 	);
+
+	it('passes skill sources on to the skills adapter', () => {
+		const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) {
+				return {
+					isActive: vi.fn().mockReturnValue(true),
+					settings: new Map([['agents', { enabled: true }]]),
+				};
+			}
+			if (token === SkillsGate) return { isEnabled: true };
+			if (token === InstanceAiSkillsAdapterService) return { createService };
+			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		service.createContext(mockUser, { threadId: 'thread-1', skillSourcesEnabled: true });
+
+		expect(createService).toHaveBeenCalledWith(mockUser, false, true);
+	});
 });
 
 describe('createContext: appService', () => {
@@ -9715,7 +10249,10 @@ describe('createContext: appService', () => {
 
 	it('saves bindings as the acting user with the update scope', async () => {
 		const { bindings } = mockAppsModule(true);
-		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
 		const workflow = { key: 'submit', kind: 'workflow' as const, workflowId: 'w1' };
 		bindings.setBindings.mockResolvedValue({ versionId: 'v2', bindings: [], warnings: [] });
 
@@ -9724,9 +10261,14 @@ describe('createContext: appService', () => {
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
 			projectId: 'project-1',
 		});
-		expect(bindings.setBindings).toHaveBeenCalledWith(mockUser, 'project-1', APP_ID, null, [
-			workflow,
-		]);
+		expect(bindings.setBindings).toHaveBeenCalledWith(
+			mockUser,
+			'project-1',
+			APP_ID,
+			null,
+			[workflow],
+			{ threadId: 'thread-1', source: 'assistant' },
+		);
 		expect(result).toMatchObject({ versionId: 'v2', types: '// Generated by n8n' });
 	});
 
@@ -9812,5 +10354,115 @@ describe('createContext: appService', () => {
 		).rejects.toThrow('Cannot modify apps on a protected instance.');
 		await context.appService?.exportDraft(APP_ID);
 		expect(sources.commit).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — agentFeedbackService
+// ---------------------------------------------------------------------------
+
+describe('createContext: agentFeedbackService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService({ diagnosticsEnabled = true } = {}) {
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			logger,
+			telemetry,
+			diagnosticsEnabled,
+		});
+		return { service, telemetry };
+	}
+
+	it('is present when telemetry is enabled', () => {
+		const { service } = buildService();
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeDefined();
+	});
+
+	it('is absent when telemetry is disabled', () => {
+		const { service } = buildService({ diagnosticsEnabled: false });
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeUndefined();
+	});
+
+	it('tracks the feedback as a registered telemetry event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'blocked',
+			summary: 'build_workflow rejects valid code with the same error.',
+			toolName: 'build-workflow',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK,
+			{
+				user_id: 'user-1',
+				thread_id: 't1',
+				run_id: 'r1',
+				category: 'bug',
+				severity: 'blocked',
+				summary: 'build_workflow rejects valid code with the same error.',
+				tool_name: 'build-workflow',
+			},
+		);
+	});
+
+	it('removes secrets from the summary before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'The API key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789 failed.',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain(
+			'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+		);
+	});
+
+	it('removes a secret that crosses the summary length cap, then cuts the summary', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: `${'x'.repeat(990)} ${secret} ${'y'.repeat(500)}`,
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		const { summary } = properties as { summary: string };
+		expect(summary).not.toContain('sk-ant-api03-abcdefghij');
+		expect(summary.length).toBeLessThanOrEqual(1003);
+	});
+
+	it('removes secrets from the tool name before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'A tool failed.',
+			toolName: 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain('abcdefghijklmnopqrstuvwxyz0123456789');
 	});
 });

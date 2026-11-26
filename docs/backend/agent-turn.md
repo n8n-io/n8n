@@ -1,6 +1,6 @@
 ---
 title: Agent turn
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: bjorger
 ---
 
@@ -30,11 +30,11 @@ sequenceDiagram
 
 ## Queue
 
-The test chat sends your message to the main, which keeps the HTTP response open to stream the answer. First, the main saves the message to a queue in the database, so a crash or a closed tab does not lose it.
+The test chat sends your message to the main, which keeps the HTTP response open to stream the answer. The main saves the message to a queue in the database. A crash or a closed tab does not lose the saved message.
 
 ## Turn start
 
-Any main can dequeue a message, and the database makes sure that only one main dequeues each message. The messages of one conversation run in order, one at a time, and different conversations run at the same time. The main that dequeues your message records the turn as running and starts the agent runtime.
+Any main can read from the queue. The database lets only one main claim each message. Queued messages for one conversation run in order, one at a time. Different conversations can run at the same time. The main that claims your message records the turn as running and starts the agent runtime.
 
 ## Loop
 
@@ -61,8 +61,8 @@ In queue mode, a workflow tool runs on a worker, and the turn waits for it on th
 
 Your message took the simplest path. Other turns differ from it in these common ways:
 
-- **Other sources:** A published agent can also take messages from a chat platform (e.g. Slack), or run on a schedule. These messages go into the same queue.
-- **Second message:** A second message to the same conversation waits in the queue until the turn ends. It can also **steer** the running turn, i.e. join it before the next call to the model. Only messages from the test chat and the n8n chat can steer.
+- **Other sources:** A published agent can take messages from a chat platform (e.g. Slack), or run on a schedule. The API channel starts the turn without putting the message in the queue. The main that receives the request runs the turn and returns JSON.
+- **Second message:** A second chat message to the same conversation waits in the queue until the turn ends. In the test chat and the n8n chat, the user can also **steer** the turn. This adds the message to the running turn before the next model call. The API channel returns an error if a turn is already running in the same conversation.
 - **Approval:** A tool can ask a person for approval. The turn then saves a checkpoint and pauses, and the approval resumes it from the checkpoint on any main.
 - **Multi-main:** Mains relay the stream over pubsub, so a second tab or the Stop button works on any main.
 
@@ -77,12 +77,12 @@ The **AI Agent** node is not part of this runtime. It is a node inside a workflo
 
 ## Quiz
 
-1. A main crashes just after you send a message to an agent. Is the message lost?
+1. A main crashes after it saves your test chat message. Is the message lost?
    - A. Yes.
    - B. Only in multi-main.
    - C. No. Redis keeps the message.
    - D. No. The database keeps the message.
-2. Two messages for the same conversation arrive on two different mains. How do they run?
+2. Two test chat messages for the same conversation arrive on different mains. How does the queue handle them?
    - A. At the same time, one on each main.
    - B. The second message cancels the first turn.
    - C. In order, one at a time.

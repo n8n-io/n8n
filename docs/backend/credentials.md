@@ -1,6 +1,6 @@
 ---
 title: Credentials
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: afitzek
 ---
 
@@ -28,7 +28,7 @@ A user can use their personal credential in any team project they are a member o
 
 n8n encrypts credentials with an **encryption key**. An operator sets this key, or n8n generates one at first startup. Both the main and workers need the same key.
 
-n8n can also rotate keys, when the feature flag `N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION` is on. After a rotation, n8n encrypts new values with the new key, and keeps the old keys in the database to read old values. Values in the new format name the key that encrypted them. Legacy values do not name a key, and n8n reads them with the legacy key.
+n8n can also rotate keys, when the feature flag `N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION` is on. After a rotation, n8n encrypts new values with the new key, and keeps the old keys in the database to read old values. Values in the new format name the key that encrypted them. Legacy values do not name a key. For legacy values, n8n uses the instance key if the stored legacy key is unavailable or does not match the instance key.
 
 To encrypt or decrypt, new code calls `encryptV2` and `decryptV2`. These methods pick the correct key.
 

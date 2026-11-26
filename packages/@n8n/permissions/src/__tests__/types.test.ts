@@ -41,6 +41,7 @@ describe('ApiKeyScope', () => {
 			'workflow:create',
 			'workflow:deactivate',
 			'workflow:delete',
+			'workflow:execute',
 			'workflow:list',
 			'workflow:move',
 			'workflow:read',

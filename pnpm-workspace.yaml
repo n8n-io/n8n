@@ -52,6 +52,7 @@ packages:
   - packages/modules/**
   - packages/extensions/**
   - packages/quality/**
+  - scripts/experimental/*
   - '!packages/quality/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:
@@ -80,13 +81,13 @@ catalog:
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
   # that resolves higher than the locked `chat` pulls a second copy of it into
   # the tree. Bump this together with `chat` and the other adapters below.
-  '@chat-adapter/discord': 4.37.0
-  '@chat-adapter/linear': 4.37.0
-  '@chat-adapter/slack': 4.37.0
-  '@chat-adapter/state-memory': 4.37.0
-  '@chat-adapter/teams': 4.37.0
-  '@chat-adapter/telegram': 4.37.0
-  '@chat-adapter/whatsapp': 4.37.0
+  '@chat-adapter/discord': 4.39.0
+  '@chat-adapter/linear': 4.39.0
+  '@chat-adapter/slack': 4.39.0
+  '@chat-adapter/state-memory': 4.39.0
+  '@chat-adapter/teams': 4.39.0
+  '@chat-adapter/telegram': 4.39.0
+  '@chat-adapter/whatsapp': 4.39.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -202,7 +203,7 @@ catalog:
   cache-manager: 5.2.3
   callsites: 3.1.0
   change-case: ^5.4.4
-  chat: 4.37.0
+  chat: 4.39.0
   cheerio: 1.1.0
   chokidar: 4.0.3
   citty: ^0.1.6
@@ -285,6 +286,7 @@ catalog:
   stylelint: ^16.23.0
   tar: 7.5.21
   testcontainers: ^11.13.0
+  title-case: 3.0.3
   tmp-promise: 3.0.3
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
@@ -313,8 +315,11 @@ catalog:
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
   '@microsoft/opentelemetry': 1.5.0
+  parseurl: 1.3.3
+  '@types/parseurl': 1.3.3
   pg-copy-streams: 7.0.0
   '@types/pg-copy-streams': 1.2.5
+  '@n8n/sandbox-client': 1.4.0
 
 catalogMode: strict
 
@@ -472,7 +477,7 @@ overrides:
   picomatch@4: 4.0.4
   avsc: 5.7.9
   brace-expansion@<2.1.7: 2.1.7
-  '@xmldom/xmldom': 0.8.15
+  '@xmldom/xmldom@<0.9': 0.8.15
   yaml@<=2.8.3: 2.8.3
   axios: 'catalog:'
   fast-xml-builder: 1.2.1
@@ -485,7 +490,8 @@ overrides:
   protobufjs: 7.6.5
   shell-quote: 1.11.0
   adm-zip: 0.6.1
-  ip-address@10: 10.7.1
+  ip-address@10: 10.7.6
+  socks@2: 2.8.9
   brace-expansion@5: 5.0.12
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.42
@@ -529,6 +535,8 @@ overrides:
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   'toml@<5.0.1': 5.0.1
+  # get-uri still asks for basic-ftp 5. Version 6 only blocks separate transfer hosts by default.
+  'get-uri>basic-ftp': 6.2.6
   # Keep the copies that langchain brings in on the catalog version.
   '@langchain/langgraph': 'catalog:'
   '@langchain/langgraph-checkpoint': 'catalog:'
@@ -554,8 +562,8 @@ patchedDependencies:
   '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
   '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
-  '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
-  '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
+  '@chat-adapter/teams@4.39.0': patches/@chat-adapter__teams@4.39.0.patch
+  '@chat-adapter/whatsapp@4.39.0': patches/@chat-adapter__whatsapp@4.39.0.patch
   pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch
   '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
   xml2js@0.6.2: patches/xml2js@0.6.2.patch

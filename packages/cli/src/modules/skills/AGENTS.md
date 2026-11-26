@@ -96,6 +96,49 @@ and scans it again. New skills start unchecked. Unchecked skills stay pending.
 flag. The source menu always offers "Review skills", including skipped entries.
 Closing review changes nothing. Imports use the source scope and create a link.
 
+## Skill sources in n8n Assistant and MCP
+
+Both surfaces use `SkillSourceService` and the same Skill Sync gate as the UI.
+They list visible sources and show sync status on skill reads. They can preview
+public GitHub sources and import selected skills from the previewed revision.
+The service checks access and scans the skills again before it writes. Only
+skills that pass can come in. The other selected skills come back in `failed`,
+on both surfaces. If no selected skill can come in, the request fails with the
+reason of the first one.
+
+The import rules are in `SkillSourceService` only. `checkPublicImport` applies
+them and stores nothing. n8n Assistant calls it before the approval, so the
+card names the skills that come in. A check that fails reports a failed connect,
+as `connectPublic` does. A flagged skill in the selection comes back in `failed`.
+The check sends no flagged-skill telemetry event for it, because the preview
+sent one. Use the Skills UI to review warnings, accept
+updates, or connect private repositories.
+
+A model can start a source request on each tool call, and each request reads the
+source. So `SkillSourceToolBudget` allows 15 preview, check, and import requests
+for each user in 5 minutes, on both surfaces together. The next request fails
+with `rate_limited`. The budget is in memory on each main. The connect dialog
+does not use it. The tools also fail with `rate_limited`, with no read of the
+source, while `SkillSourceBackoff` holds a wait for the public access of the
+source type. `SkillSyncService` records that wait after a rate limit, and the
+checks of public sources need the same request budget.
+
+The MCP tools are `list_skill_sources` (`skill:read` or `skill:write`),
+`discover_skill_source`, and `import_skills_from_source` (both `skill:write`).
+n8n Assistant asks for approval for each import. Connect and import use the
+existing telemetry events with `surface: 'assistant'` or `surface: 'mcp'`.
+
+The user decision for an MCP import is the `skill:write` grant plus the pass
+verdict. `import_skills_from_source` has no confirmation step of its own, as
+`create_skill` has none. The revision check guards against a changed source,
+not against a missing user decision. An imported skill starts with
+`availableToAssistant` and `availableToMCP` off, and no agent uses it. Do not
+add an MCP source action that takes a skill with a warning or accepts an update:
+those need a review by a person, in the Skills UI.
+
+The three surfaces (Skills UI, MCP, n8n Assistant) have one switch, the Skill
+Sync gate. They go on and off together.
+
 ## Gates
 
 - `SkillsGate.isEnabled` decides if skills are on. Skills have no admin toggle of their own. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')`, the proxy or the consumer settings in other code. The gate needs two facts:
@@ -111,7 +154,7 @@ Closing review changes nothing. Imports use the source scope and create a link.
   When all consumers are off, the skills routes and the Skill Sync routes answer 404, MCP and n8n Assistant show no skill tools, and the frontend hides the skills page (`isContextSkillsEnabled`, which uses the same rule). n8n keeps the skill data. Each consumer refreshes its module settings on every main when an admin changes it (`reload-agents-settings`, `reload-instance-ai-settings` and `reload-mcp-settings`).
   The delete and move guards do not read the agents toggle. While agents are off and skills stay on for n8n Assistant or MCP, a user still cannot delete or move a skill that an agent uses.
 - `AssistantSkillsFlagGate.isEnabled()` needs two facts: `SkillsGate` is on, and the PostHog instance flag `ASSISTANT_SKILLS_FLAG` is on. It switches n8n Assistant skills separately from skills.
-- `SkillSyncFlagGate.isEnabled(user)` needs three facts: `SkillsGate` is on, the Skill Sync switch is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. The Skill Sync controller checks it in a middleware before the body is validated, and the service calls `assertEnabled`. Both answer 404. The check task has no user, so it reads the flag of the user who created the source, or of the instance owner when that user is gone. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag and switch through `useSkillSyncFlag`.
+- `SkillSyncFlagGate.isEnabled(user)` needs three facts: `SkillsGate` is on, the Skill Sync switch is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. The Skill Sync controller checks it in a middleware before the body is validated, and the service calls `assertEnabled`. Both answer 404. The check task has no user, so it reads the flag of the user who created the source, or of the instance owner when that user is gone. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag and switch through `useSkillSyncFlag`. `isAvailable` is the instance part of the gate, without the flag of a user. The MCP consent screen has no user, so it reads `isAvailable` to hide the source tools.
 - `SkillSyncSettingsService.isEnabled()` is the Skill Sync switch. An admin with `skill:manage` sets it with `PUT /skill-sync/settings`, and every main reloads it (`reload-skill-sync-settings`). When `N8N_SKILL_SYNC_MANAGED_BY_ENV` is true, `N8N_SKILL_SYNC_ENABLED` is the value and the route answers 403. With no saved value, the switch is off on the enterprise plan and on for other plans. The service reads the plan on each call, like the n8n Assistant, Preferences and MCP switches. At startup, an enterprise instance that has a skill source saves the switch as on. While the switch is off, the check task does not run, and the sources and synced skills stay.
 
 ## DI and start order

@@ -12,6 +12,7 @@ import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useUsersStore } from '@n8n/stores/users.store';
 import WorkflowHistoryVersionSelect from '../components/WorkflowHistoryVersionSelect.vue';
 import { useWorkflowHistoryVersionOptions } from '../useWorkflowHistoryVersionOptions';
+import { toVersionDiffWorkflow } from '../utils';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -92,20 +93,8 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 
 		const workflowWithoutPinData: IWorkflowDb = omit(workflow, 'pinData');
 
-		sourceWorkflow.value = {
-			...workflowWithoutPinData,
-			versionId: sourceWorkflowVersion.versionId,
-			nodes: sourceWorkflowVersion.nodes,
-			connections: sourceWorkflowVersion.connections,
-			nodeGroups: sourceWorkflowVersion.nodeGroups ?? [],
-		};
-		targetWorkflow.value = {
-			...workflowWithoutPinData,
-			versionId: targetWorkflowVersion.versionId,
-			nodes: targetWorkflowVersion.nodes,
-			connections: targetWorkflowVersion.connections,
-			nodeGroups: targetWorkflowVersion.nodeGroups ?? [],
-		};
+		sourceWorkflow.value = toVersionDiffWorkflow(workflowWithoutPinData, sourceWorkflowVersion);
+		targetWorkflow.value = toVersionDiffWorkflow(workflowWithoutPinData, targetWorkflowVersion);
 
 		sourceLabel.value = getVersionLabelById(sourceWorkflowVersion.versionId);
 		targetLabel.value = getVersionLabelById(targetWorkflowVersion.versionId);

@@ -41,7 +41,9 @@ ${getSchemaReferenceSection()}
   attached skill body and its reference files; do not rely on descriptions to
   find field references. Use \`agent-context({ type: "config" })\` for the attached
   refs, then read each skill with \`agent-context({ type: "skill", skillId })\`.
-  Pass every listed path in \`referencePaths\` so you can search its content.
+  Read the listed text paths in batches of up to 20 in \`referencePaths\`.
+  When the result has \`omittedReferencePaths\`, read the skill again with those paths.
+  When a file has \`nextOffset\`, read that path alone with \`referenceOffset\` set to that value.
   Update every match to fit the new schema.
 - Before updating any affected skill, use \`ask_user\` to ask
   the user to confirm the skill changes. Builder context does not show who

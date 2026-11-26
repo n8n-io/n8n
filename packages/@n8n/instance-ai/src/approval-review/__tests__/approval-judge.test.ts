@@ -389,16 +389,23 @@ describe('judgeApproval', () => {
 		const setSchema = vi.spyOn(Agent.prototype, 'structuredOutput');
 		const setModelFetch = vi.spyOn(Agent.prototype, 'modelFetch');
 		const setTelemetry = vi.spyOn(Agent.prototype, 'telemetry');
+		const setFunctionId = vi.spyOn(Agent.prototype, 'functionId');
 		const modelFetch = vi.fn();
 		const telemetry = { functionId: 'instance-ai.approval-judge' } as BuiltTelemetry;
 
-		await judgeApproval(input, { model: 'anthropic/claude-haiku', modelFetch, telemetry });
+		await judgeApproval(input, {
+			model: 'anthropic/claude-haiku',
+			modelFetch,
+			telemetry,
+			requestLabels: true,
+		});
 
 		expect(setModel).toHaveBeenCalledWith('anthropic/claude-haiku');
 		expect(setInstructions).toHaveBeenCalledWith(APPROVAL_JUDGE_INSTRUCTIONS, expect.anything());
 		expect(setSchema).toHaveBeenCalledWith(approvalJudgeVerdictSchema);
 		expect(setModelFetch).toHaveBeenCalledWith(modelFetch);
 		expect(setTelemetry).toHaveBeenCalledWith(telemetry);
+		expect(setFunctionId).toHaveBeenCalledWith('instance-ai.approval-judge');
 	});
 
 	it('returns the verdict with its usage', async () => {

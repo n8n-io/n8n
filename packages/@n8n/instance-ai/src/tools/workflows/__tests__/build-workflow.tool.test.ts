@@ -28,6 +28,7 @@ import {
 	resolveCredentials,
 } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
+import type { WorkflowDraft } from '../workflow-draft-publisher';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
 import {
 	getWorkflowSourceFileBinding,
@@ -310,6 +311,232 @@ describe('createBuildWorkflowTool', () => {
 		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
 	});
 
+	describe('target engine', () => {
+		type EngineOutput = BuildToolOutput & {
+			targetEngine?: { engine: 'v1' | 'v2'; source: string };
+		};
+		const v2Default = { engineV2Available: true, newWorkflowEngine: 'v2' } as const;
+		const v1Default = { engineV2Available: true, newWorkflowEngine: 'v1' } as const;
+
+		const compileWithSettings = (settings?: WorkflowJSON['settings']) =>
+			vi.mocked(compileWorkflowSource).mockResolvedValue({
+				success: true,
+				workflow: { ...structuredClone(generatedWorkflow), ...(settings ? { settings } : {}) },
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+
+		const compiledEngine = () => vi.mocked(compileWorkflowSource).mock.calls[0]?.[4]?.engine;
+
+		it('validates a new workflow against the v2 instance default', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v2Default } });
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(compiledEngine()).toBe('v2');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'instance-default' });
+		});
+
+		it('validates a new workflow against the v1 instance default', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v1Default } });
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(compiledEngine()).toBe('v1');
+			expect(result.targetEngine).toEqual({ engine: 'v1', source: 'instance-default' });
+		});
+
+		it('keeps the engine of a saved v1 workflow on an instance with v2 as default', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v2Default } });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				name: 'Target workflow',
+				nodes: [],
+				connections: {},
+				settings: { engineType: 'v1' },
+			});
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+			});
+
+			expect(result.success).toBe(true);
+			expect(compiledEngine()).toBe('v1');
+			expect(result.targetEngine).toEqual({ engine: 'v1', source: 'saved-workflow' });
+		});
+
+		it('keeps the engine of a saved v2 workflow', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v1Default } });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				name: 'Target workflow',
+				nodes: [],
+				connections: {},
+				settings: { engineType: 'v2' },
+			});
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+			});
+
+			expect(compiledEngine()).toBe('v2');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'saved-workflow' });
+		});
+
+		it('checks an edit for v2 when the saved workflow cannot be read', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v1Default } });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockRejectedValue(
+				new Error('read failed'),
+			);
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+			});
+
+			expect(compiledEngine()).toBe('v2');
+			expect(result.targetEngine).toEqual({
+				engine: 'v2',
+				source: 'saved-workflow-unreadable',
+			});
+		});
+
+		it('names the engine when a new workflow has no name', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v2Default } });
+			vi.mocked(compileWorkflowSource).mockResolvedValue({
+				success: true,
+				workflow: { ...structuredClone(generatedWorkflow), name: '' },
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.remediation?.reason).toBe('workflow_name_missing');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'instance-default' });
+		});
+
+		it('names the engine that the code sets', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v1Default } });
+			compileWithSettings({ engineType: 'v2' });
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'workflow-settings' });
+		});
+
+		it('names the engine when an engine v2 issue fails the build', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v2Default } });
+			const engineIssue: ValidationWarning = {
+				code: 'ENGINE_V2_RETRY_ON_FAIL',
+				nodeName: 'Webhook',
+				message: 'engine v2 does not support Retry On Fail yet. Remove `retryOnFail`.',
+			};
+			vi.mocked(compileWorkflowSource).mockResolvedValue({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [engineIssue],
+				compiler: 'sandbox-tsx',
+			});
+			vi.mocked(partitionWarnings).mockImplementationOnce((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[ENGINE_V2_RETRY_ON_FAIL] (Webhook)');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'instance-default' });
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('does not name the engine without the engine-v2 module', async () => {
+			const { context, filePath } = makeContext({});
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(compiledEngine()).toBe('v1');
+			expect(result).not.toHaveProperty('targetEngine');
+		});
+
+		describe('without the engine-v2 module', () => {
+			const noV2 = { engineV2Available: false, newWorkflowEngine: 'v1' } as const;
+
+			it('checks an edit of a saved v2 workflow for v2', async () => {
+				// The dispatcher sends a v2 workflow to engine v2 even without the module.
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+					name: 'Target workflow',
+					nodes: [],
+					connections: {},
+					settings: { engineType: 'v2' },
+				});
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-1',
+				});
+
+				expect(compiledEngine()).toBe('v2');
+				expect(result.targetEngine).toEqual({ engine: 'v2', source: 'saved-workflow' });
+			});
+
+			it('names the engine when the code sets v2', async () => {
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+				compileWithSettings({ engineType: 'v2' });
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+				});
+
+				expect(result.targetEngine).toEqual({ engine: 'v2', source: 'workflow-settings' });
+			});
+
+			it('checks an edit for v1 when the saved workflow cannot be read', async () => {
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockRejectedValue(
+					new Error('read failed'),
+				);
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-1',
+				});
+
+				expect(compiledEngine()).toBe('v1');
+				expect(result).not.toHaveProperty('targetEngine');
+			});
+
+			it('checks a new workflow for v1 and does not name the engine', async () => {
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+				});
+
+				expect(result.success).toBe(true);
+				expect(compiledEngine()).toBe('v1');
+				expect(result).not.toHaveProperty('targetEngine');
+			});
+		});
+	});
+
 	describe('publish state', () => {
 		it('warns that a save to a published workflow is not live', async () => {
 			// No verification runs here. Without this, a trigger-only workflow or a
@@ -574,7 +801,9 @@ describe('createBuildWorkflowTool', () => {
 				expect(result).toMatchObject({ success: true, sourceHash: hashWorkflowSource(source) });
 				expect(files.get(filePath)).toBe(source);
 				expect(context.workspace?.filesystem?.writeFile).not.toHaveBeenCalled();
-				expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+				expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined, {
+					engine: 'v1',
+				});
 			},
 		);
 
@@ -647,7 +876,9 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
 		);
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined, {
+			engine: 'v1',
+		});
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),
 			{ markAsAiTemporary: true },
@@ -1686,6 +1917,122 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	describe('workflow drafts', () => {
+		function withDraftPublisher(source = 'workflow source') {
+			const publish = vi.fn(async (_draft: WorkflowDraft) => await Promise.resolve());
+			const publishIssues = vi.fn();
+			const made = makeContext({
+				source,
+				overrides: { workflowDraftPublisher: { publish, publishIssues } },
+			});
+			return { ...made, publish, publishIssues };
+		}
+
+		it('publishes the compiled workflow as a draft even when validation blocks the save', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' }],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, publish } = withDraftPublisher();
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(publish).toHaveBeenCalledWith({
+				filePath,
+				workflowId: undefined,
+				workflow: generatedWorkflow,
+			});
+		});
+
+		it('publishes the issues that blocked the save for the draft', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, publishIssues } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+			expect(publishIssues).toHaveBeenCalledWith({
+				filePath,
+				issues: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+			});
+		});
+
+		it('publishes no issues when the build saves', async () => {
+			const { context, filePath, publishIssues } = withDraftPublisher();
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(publishIssues).not.toHaveBeenCalled();
+		});
+
+		it('names the bound workflow on the draft of an edit', async () => {
+			const { context, filePath, publish } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-bound',
+			});
+
+			expect(publish).toHaveBeenCalledWith(
+				expect.objectContaining({ filePath, workflowId: 'wf-bound' }),
+			);
+		});
+
+		it('shows the workflow name that the build passes on the draft', async () => {
+			const { context, filePath, publish } = withDraftPublisher();
+			const draftNames: string[] = [];
+			publish.mockImplementation(async (draft: WorkflowDraft) => {
+				draftNames.push(draft.workflow.name);
+				await Promise.resolve();
+			});
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily digest',
+			});
+
+			expect(draftNames).toEqual(['Daily digest']);
+		});
+
+		it('publishes no draft when the source does not compile', async () => {
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce(
+				workflowSourceBuildFailure('SyntaxError: Unexpected token'),
+			);
+			const { context, filePath, publish } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+			expect(publish).not.toHaveBeenCalled();
+		});
+	});
+
 	it('does not require setup for pending nodes the build did not change', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
 			{
@@ -2483,7 +2830,9 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-existing',
 			workflowName: 'Daily Slack Channel Digest',
 		});
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined, {
+			engine: 'v1',
+		});
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			workflowJson,
@@ -2885,7 +3234,9 @@ describe('createBuildWorkflowTool', () => {
 
 		// Normalized to the workspace-relative path throughout (binding + output).
 		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined, {
+			engine: 'v1',
+		});
 	});
 
 	it('builds from an absolute path under the fallback workspace root', async () => {
@@ -2904,7 +3255,9 @@ describe('createBuildWorkflowTool', () => {
 		});
 
 		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined, {
+			engine: 'v1',
+		});
 	});
 
 	it('returns a recoverable error for absolute paths outside the workspace root', async () => {

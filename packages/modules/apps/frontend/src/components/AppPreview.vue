@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	APP_INSPECTOR_MESSAGE_SOURCE,
+	APP_PREVIEW_FRAME_PARAM,
 	appInspectorEventSchema,
 	type AppPreviewElement,
 	type AppResponse,
@@ -24,6 +25,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { createAppPreview } from '../apps.api';
 import { getAppVersionLabel, type AppVersions } from '../composables/useAppVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
+import AppFeedbackLink from './feedback/AppFeedbackLink.vue';
 
 const SCREEN_SIZES = ['desktop', 'tablet', 'mobile'] as const;
 type ScreenSize = (typeof SCREEN_SIZES)[number];
@@ -68,9 +70,15 @@ const latestFetch = useLatestFetch();
 
 const { head, latestBuilt, building } = props.versions;
 
-type Preview = { version: AppVersionResponse; url: string };
+type Preview = {
+	version: AppVersionResponse;
+	url: string;
+	frameUrl: string;
+	authorizeUrl: string;
+};
 
 const preview = ref<Preview | null>(null);
+const frameSrc = ref<string>();
 const granting = ref(false);
 const grantFailed = ref(false);
 const screenSize = ref<ScreenSize>('desktop');
@@ -108,9 +116,16 @@ async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
 }
 
+function toFrameUrl(url: string): string {
+	const frameUrl = new URL(url);
+	frameUrl.searchParams.set(APP_PREVIEW_FRAME_PARAM, '1');
+	return frameUrl.toString();
+}
+
 function showPreview(next: Preview | null) {
 	clearTimeout(refreshTimer);
 	preview.value = next;
+	frameSrc.value = next?.frameUrl;
 	if (next) refreshTimer = setTimeout(async () => await show(true), GRANT_REFRESH_MS);
 }
 
@@ -125,9 +140,9 @@ async function show(force = false) {
 	}
 	granting.value = true;
 	try {
-		const { url } = await grant(version.id);
+		const { url, authorizeUrl } = await grant(version.id);
 		if (!isLatest()) return;
-		showPreview({ version, url });
+		showPreview({ version, url, frameUrl: toFrameUrl(url), authorizeUrl });
 		grantFailed.value = false;
 	} catch (error) {
 		if (!isLatest()) return;
@@ -171,6 +186,12 @@ function setInspecting(value: boolean) {
 }
 
 function onFrameLoad() {
+	// The first load only prepares the sign-in. The editor opens the sign-in itself, because a
+	// browser can drop the n8n session cookie when the preview host redirects the frame.
+	if (preview.value && frameSrc.value === preview.value.frameUrl) {
+		frameSrc.value = preview.value.authorizeUrl;
+		return;
+	}
 	if (inspecting.value) postInspectCommand('inspect:enable');
 }
 
@@ -298,7 +319,7 @@ onBeforeUnmount(() => {
 				v-else-if="preview"
 				:key="preview.url"
 				ref="frame"
-				:src="preview.url"
+				:src="frameSrc"
 				:title="i18n.baseText('apps.preview.frameTitle', { interpolate: { name: app.name } })"
 				:style="{ width: SCREEN_WIDTHS[screenSize], colorScheme: theme }"
 				:class="$style.frame"
@@ -354,6 +375,7 @@ onBeforeUnmount(() => {
 				</N8nTooltip>
 			</div>
 		</div>
+		<AppFeedbackLink :app="app" />
 	</div>
 </template>
 
@@ -430,6 +452,11 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	padding: 0 var(--spacing--xs) var(--spacing--xs);
 	overflow: auto;
+
+	// The feedback footer holds the bottom spacing when it shows.
+	&:not(:last-child) {
+		padding-bottom: 0;
+	}
 }
 
 .frame {

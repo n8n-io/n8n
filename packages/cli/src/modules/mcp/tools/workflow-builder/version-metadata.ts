@@ -14,6 +14,11 @@ export const versionDescriptionInputSchema = z
 	.max(MAX_VERSION_DESCRIPTION_LENGTH)
 	.optional();
 
+// Shared by the create and update tools so that both ask for the same format.
+export const VERSION_NAME_GUIDANCE = 'Use 5 words or fewer. Always provide it.';
+export const VERSION_DESCRIPTION_GUIDANCE =
+	'Name the nodes, connections, and settings that changed, and say why. Always provide it.';
+
 const MAX_LISTED_NODES = 5;
 
 export type VersionMetadata = { name: string; description: string };

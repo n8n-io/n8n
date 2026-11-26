@@ -7,13 +7,13 @@ priors. Read a recent migration for the local idiom.
 
 Flag:
 
-- a hand-written table prefix or quoted identifier. Use `escape.tableName()` and
-  `escape.columnName()`;
+- a hand-written table prefix, quoted identifier or constraint name. Use
+  `escape.tableName()` and `escape.columnName()`;
 - `queryRunner.query()` where `runQuery()` belongs, or `console.log` where the
   context `logger` belongs;
 - a value import of an entity, or a cross-package import;
-- a timestamp that is not above every existing migration;
-- a hand-edited generated index file;
+- a timestamp that is not above every existing migration, or a class suffix that
+  differs from the file timestamp;
 - an 80-line `up()` that needs named private methods.
 
 Precedent beats generic style opinion, but it is not a defence. An older migration
@@ -28,5 +28,14 @@ engines, `down()`, and dirty rows. A happy-path test, on a migration that claims
 to handle bad data, is worth a comment. For a schema-only migration the DSL calls
 are enough, so a missing test is informational.
 
-Regenerate the migration index files and the schema docs in `docs/generated/` when
-the schema changes. Check the changed file list before you call one stale.
+In a test, flag:
+
+- state shared between `it` blocks. Each test sets up its own rows;
+- a rollback with no `undoLastSingleMigration()`, or no second `up()` after it;
+- value checks with no schema check: column type, foreign key count, and what
+  `down()` must remove;
+- a SQLite rebuild with no seeded rows in the tables that reference it.
+
+Migration index files are gitignored; never ask for them. Schema changes need
+regenerated docs in `docs/generated/`. Check the changed files before you call
+them stale.

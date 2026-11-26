@@ -4,17 +4,19 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| callerExecutionId | integer |  | true |  | [public.execution_entity](public.execution_entity.md) | Workflow execution waiting for this approval |
 | childExecutionId | varchar(36) |  | true |  |  | Workflow jobs only |
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | error | text |  | true |  |  |  |
 | files | json |  | true |  |  | Output files that the job stored for the parent thread |
 | id | varchar(36) |  | false |  |  |  |
-| kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
+| kind | varchar(16) |  | false |  |  | subagent: detached Agent; workflow: background workflow; approval: decision workflow for a suspended Agent |
 | notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
 | parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
+| parentRunId | varchar(128) |  | true |  |  | Agent SDK run ID retained by this approval request |
 | parentThreadId | varchar(128) |  | false |  |  |  |
 | pauseRequestId | uuid |  | true |  |  | Groups jobs stopped by one user request |
 | planId | uuid |  | true |  | [public.agent_plan](public.agent_plan.md) | Plan that owns this work |
@@ -35,9 +37,10 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying])::text[]))) |
+| CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying, 'approval'::character varying])::text[]))) |
 | CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'suspended'::character varying, 'paused'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
 | FK_4db3b7ebea4ed4f69649982018c | FOREIGN KEY | FOREIGN KEY ("sourceExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
+| FK_agent_approval_caller_execution | FOREIGN KEY | FOREIGN KEY ("callerExecutionId") REFERENCES execution_entity(id) ON DELETE SET NULL |
 | FK_ce131bff629d89015893e350e9c | FOREIGN KEY | FOREIGN KEY ("planId") REFERENCES agent_plan(id) ON DELETE SET NULL |
 | FK_d46c6f00730c2ef8bcb6ee24b67 | FOREIGN KEY | FOREIGN KEY ("parentAgentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_6e0db58281aa2b4c956dc0d58e9 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -57,6 +60,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
+| IDX_agent_approval_parent_run | CREATE INDEX "IDX_agent_approval_parent_run" ON public.agent_background_job USING btree ("parentAgentId", "parentRunId") WHERE (((kind)::text = 'approval'::text) AND ("notifiedAt" IS NULL)) |
+| IDX_agent_background_job_callerExecutionId | CREATE INDEX "IDX_agent_background_job_callerExecutionId" ON public.agent_background_job USING btree ("callerExecutionId") |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
 | IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (((status)::text <> 'running'::text) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_planId_planTaskId | CREATE INDEX "IDX_agent_background_job_planId_planTaskId" ON public.agent_background_job USING btree ("planId", "planTaskId") |
@@ -71,11 +76,13 @@
 ```mermaid
 erDiagram
 
+"public.agent_background_job" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;callerExecutionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
@@ -87,6 +94,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
@@ -103,8 +111,31 @@ erDiagram
   uuid wakeAttemptId
   varchar_36_ workflowId
 }
+"public.execution_entity" {
+  bigint binaryDataSizeBytes
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ deduplicationKey
+  timestamp_3__with_time_zone deletedAt
+  boolean finished
+  integer id
+  bigint jsonSizeBytes
+  varchar mode
+  smallint resumeAttempts
+  varchar retryOf
+  varchar retrySuccessId
+  timestamp_3__with_time_zone startedAt
+  varchar status
+  timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
+  json tracingContext
+  boolean usedPrivateCredentials
+  timestamp_3__with_time_zone waitTill
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
+}
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id

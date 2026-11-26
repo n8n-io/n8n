@@ -52,6 +52,8 @@ export type ResourceGrant = {
 	readonly audiences: string[];
 	/** Workflow the holder must keep `workflow:execute` on. Absent if none is required. */
 	readonly executeAccessWorkflowId?: string;
+	/** Project in which the holder must keep all `scopes`. Absent if none is required. */
+	readonly projectAccess?: { projectId: string; scopes: string[] };
 };
 
 /** Who is calling, on whose authority, and how they proved it. No field holds a bearer token. */
