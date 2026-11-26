@@ -1,6 +1,7 @@
 import {
 	projectPromotionEnvironmentsResponseSchema,
 	promotionProviderTypeSchema,
+	type ProjectPromotionEnvironment,
 	type ProjectPromotionEnvironmentsResponse,
 	type PromotionDirection,
 } from '@n8n/api-types';
@@ -38,12 +39,12 @@ export class ProjectPromotionEnvironmentsService {
 		]);
 
 		// The own environment wins, as in PromotionEnvironmentResolver.resolveForProject.
-		const environmentFor = (direction: PromotionDirection) => {
-			if (own.includes(direction)) return { state: 'own' as const };
+		const environmentFor = (direction: PromotionDirection): ProjectPromotionEnvironment => {
+			if (own.includes(direction)) return { state: 'own' };
 			const environment = defaults.find((entry) => entry.direction === direction);
 			const providerType = promotionProviderTypeSchema.safeParse(environment?.providerType);
-			if (!environment || !providerType.success) return { state: 'none' as const };
-			return { state: 'default' as const, name: environment.name, providerType: providerType.data };
+			if (!environment || !providerType.success) return { state: 'none' };
+			return { state: 'default', name: environment.name, providerType: providerType.data };
 		};
 
 		return projectPromotionEnvironmentsResponseSchema.parse({

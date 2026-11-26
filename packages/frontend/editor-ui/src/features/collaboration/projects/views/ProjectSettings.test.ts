@@ -21,6 +21,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { EnterpriseEditionFeature } from '@/app/constants';
 
@@ -72,17 +73,6 @@ vi.mock('vue-router', async () => {
 		onBeforeRouteLeave: (guard: RouteLeaveGuard) => {
 			routeLeaveGuard = guard;
 		},
-	};
-});
-
-const promotions = vi.hoisted(() => ({ enabled: false }));
-vi.mock('@/features/shared/promotions/usePromotionsEnabled', async () => {
-	const { computed } = await import('vue');
-	return {
-		usePromotionsEnabled: () => ({
-			isAvailable: computed(() => promotions.enabled),
-			isEnabled: computed(() => promotions.enabled),
-		}),
 	};
 });
 
@@ -1467,13 +1457,11 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
 		});
 	});
-	describe('Project environments', () => {
-		afterEach(() => {
-			promotions.enabled = false;
-		});
 
+	describe('Project environments', () => {
 		it('shows the environments to a role that can manage members but not update the project', async () => {
-			promotions.enabled = true;
+			settingsStore.isModuleActive.mockImplementation((name: string) => name === 'promotions');
+			useSourceControlStore().preferences.environmentsVersion = 'v2';
 			projectsStore.currentProject = {
 				...projectsStore.currentProject!,
 				scopes: ['project:read', 'project:manageMembers'],

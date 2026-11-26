@@ -1,4 +1,7 @@
-import type { ProjectPromotionEnvironmentsResponse } from '@n8n/api-types';
+import type {
+	ProjectPromotionEnvironment,
+	ProjectPromotionEnvironmentsResponse,
+} from '@n8n/api-types';
 import {
 	capabilities,
 	capabilityRegistry,
@@ -7,7 +10,7 @@ import {
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
 import type * as PromotionsApi from '../promotions.api';
@@ -23,7 +26,7 @@ const renderSection = createComponentRenderer(ProjectPromotionEnvironmentsSectio
 });
 
 const answer = (
-	environments: Partial<Extract<ProjectPromotionEnvironmentsResponse, { enabled: true }>> = {},
+	environments: { promote?: ProjectPromotionEnvironment; apply?: ProjectPromotionEnvironment } = {},
 ): ProjectPromotionEnvironmentsResponse => ({
 	enabled: true,
 	promote: { state: 'default', name: 'Production', providerType: 'gitlab' },
@@ -85,7 +88,9 @@ it('shows nothing when project environments are off', async () => {
 	api.getProjectPromotionEnvironments.mockResolvedValue({ enabled: false });
 	renderSection();
 
-	await waitFor(() => expect(api.getProjectPromotionEnvironments).toHaveBeenCalled());
+	await waitAllPromises();
+
+	expect(api.getProjectPromotionEnvironments).toHaveBeenCalled();
 	expect(screen.queryByTestId('project-promotion-environments-section')).not.toBeInTheDocument();
 });
 
@@ -102,7 +107,9 @@ it('shows nothing when the environments cannot load', async () => {
 	api.getProjectPromotionEnvironments.mockRejectedValue(new Error('Request failed'));
 	renderSection();
 
-	await waitFor(() => expect(api.getProjectPromotionEnvironments).toHaveBeenCalled());
+	await waitAllPromises();
+
+	expect(api.getProjectPromotionEnvironments).toHaveBeenCalled();
 	expect(screen.queryByTestId('project-promotion-environments-section')).not.toBeInTheDocument();
 });
 

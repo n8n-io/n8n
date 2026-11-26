@@ -144,6 +144,7 @@ describe('GET /projects/:projectId/promotion-environments', () => {
 		const response = await getEnvironments(owner, personal.id);
 
 		expect(response.status).toBe(400);
+		expect(response.body.data).toBeUndefined();
 	});
 
 	it('refuses the request without a license for environments', async () => {

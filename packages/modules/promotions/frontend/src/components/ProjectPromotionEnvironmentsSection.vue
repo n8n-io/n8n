@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { ProjectPromotionEnvironmentsResponse, PromotionDirection } from '@n8n/api-types';
+import type {
+	ProjectPromotionEnvironment,
+	ProjectPromotionEnvironmentsResponse,
+	PromotionDirection,
+} from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { N8nIcon, N8nSettingsRow, N8nSettingsRowGroup, N8nText } from '@n8n/design-system';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
@@ -9,11 +13,6 @@ import { computed, ref, watch } from 'vue';
 
 import { getProjectPromotionEnvironments } from '../promotions.api';
 import { promotionDirectionIcon, promotionProviderIcon } from '../promotionsSettings.utils';
-
-type ProjectPromotionEnvironment = Extract<
-	ProjectPromotionEnvironmentsResponse,
-	{ enabled: true }
->[PromotionDirection];
 
 const props = defineProps<{ projectId: string }>();
 
@@ -30,7 +29,18 @@ const response = ref<ProjectPromotionEnvironmentsResponse>();
 const rows = computed(() => {
 	const environments = response.value;
 	if (!environments?.enabled) return [];
-	return DIRECTIONS.map((direction) => ({ direction, environment: environments[direction] }));
+	return DIRECTIONS.map((direction) => {
+		const environment = environments[direction];
+		return {
+			direction,
+			title: i18n.baseText(`settings.promotions.environments.${direction}.title`),
+			description: describeEnvironment(environment),
+			icon:
+				environment.state === 'default'
+					? promotionProviderIcon[environment.providerType]
+					: promotionDirectionIcon[direction],
+		};
+	});
 });
 
 watch(
@@ -49,7 +59,7 @@ watch(
 	{ immediate: true },
 );
 
-function describe(environment: ProjectPromotionEnvironment) {
+function describeEnvironment(environment: ProjectPromotionEnvironment) {
 	if (environment.state === 'own') {
 		return i18n.baseText('projects.settings.promotionEnvironments.own');
 	}
@@ -77,23 +87,15 @@ function describe(environment: ProjectPromotionEnvironment) {
 		</N8nText>
 		<N8nSettingsRowGroup>
 			<N8nSettingsRow
-				v-for="{ direction, environment } in rows"
-				:key="direction"
-				:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
-				:description="describe(environment)"
+				v-for="row in rows"
+				:key="row.direction"
+				:title="row.title"
+				:description="row.description"
 				show-visual
-				:data-test-id="`project-promotion-environment-${direction}`"
+				:data-test-id="`project-promotion-environment-${row.direction}`"
 			>
 				<template #visual>
-					<N8nIcon
-						:icon="
-							environment.state === 'default'
-								? promotionProviderIcon[environment.providerType]
-								: promotionDirectionIcon[direction]
-						"
-						color="text-dark"
-						size="xlarge"
-					/>
+					<N8nIcon :icon="row.icon" color="text-dark" size="xlarge" />
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
