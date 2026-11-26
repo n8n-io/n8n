@@ -36,8 +36,6 @@ const jsonValidateTypePending = [
 	'./nodes/llms/LMChatOpenAi/**',
 	'./nodes/llms/LmChatAzureOpenAi/**',
 	'./nodes/output_parser/OutputParserStructured/**',
-	'./nodes/retrievers/RetrieverWorkflow/**',
-	'./nodes/tools/ToolWorkflow/**',
 	'./nodes/vector_store/VectorStoreMongoDBAtlas/**',
 	'./nodes/vector_store/VectorStoreQdrant/**',
 	'./nodes/vendors/GoogleGemini/**',

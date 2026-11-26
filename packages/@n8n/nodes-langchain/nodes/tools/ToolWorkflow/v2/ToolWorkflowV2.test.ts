@@ -565,7 +565,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			} as unknown as IWorkflowDataProxyData;
 			const mockWorkflow = { id: 'test-workflow' };
 
-			vi.spyOn(context, 'getNodeParameter').mockReturnValueOnce(JSON.stringify(mockWorkflow));
+			vi.spyOn(context, 'getNodeParameter').mockReturnValueOnce(mockWorkflow);
 
 			const result = await service['getSubWorkflowInfo'](
 				context,
@@ -576,20 +576,6 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result.workflowInfo.code).toEqual(mockWorkflow);
 			expect(result.subWorkflowId).toBe('proxy-id');
-		});
-
-		it('should throw error for invalid JSON in parameter source', async () => {
-			const source = 'parameter';
-			const itemIndex = 0;
-			const workflowProxyMock = {
-				$workflow: { id: 'proxy-id' },
-			} as unknown as IWorkflowDataProxyData;
-
-			vi.spyOn(context, 'getNodeParameter').mockReturnValueOnce('invalid json');
-
-			await expect(
-				service['getSubWorkflowInfo'](context, source, itemIndex, workflowProxyMock),
-			).rejects.toThrow(NodeOperationError);
 		});
 	});
 

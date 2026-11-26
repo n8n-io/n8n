@@ -290,6 +290,34 @@ describe('ToolWorkflowV1', () => {
 		);
 	});
 
+	it('should run the workflow object from the Workflow JSON parameter', async () => {
+		const { ctx } = createContext();
+		const workflowJson = { nodes: [], connections: {} };
+		const getNodeParameter = ctx.getNodeParameter.getMockImplementation();
+		ctx.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+			if (paramName === 'source') return 'parameter';
+			if (paramName === 'workflowJson') return workflowJson;
+			return getNodeParameter?.(paramName, itemIndex, fallback);
+		});
+		vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [[{ json: { result: 'ok' } }]],
+			executionId: 'test-execution',
+		});
+
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1.3] as ToolWorkflowV1;
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		await tool.func('hello');
+
+		expect(ctx.executeWorkflow).toHaveBeenCalledWith(
+			{ code: workflowJson },
+			expect.anything(),
+			undefined,
+			expect.anything(),
+		);
+	});
+
 	it('should emit ai-tool-called when the sub-workflow fails', async () => {
 		const { ctx, logAiEvent } = createContext();
 		vi.spyOn(ctx, 'executeWorkflow').mockRejectedValueOnce(new Error('Workflow execution failed'));

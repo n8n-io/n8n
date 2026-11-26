@@ -77,21 +77,11 @@ export class ToolWorkflowV1 implements INodeType {
 				subWorkflowId = workflowInfo.id;
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
-				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
-				try {
-					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-
-					// subworkflow is same as parent workflow
-					subWorkflowId = workflowProxy.$workflow.id;
-				} catch (error) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`The provided workflow is not valid JSON: "${(error as Error).message}"`,
-						{
-							itemIndex,
-						},
-					);
-				}
+				workflowInfo.code = this.getNodeParameter('workflowJson', itemIndex) as
+					| IWorkflowBase
+					| undefined;
+				// subworkflow is same as parent workflow
+				subWorkflowId = workflowProxy.$workflow.id;
 			}
 
 			const rawData: IDataObject = { query };

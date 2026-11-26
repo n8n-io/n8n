@@ -140,6 +140,7 @@ export const versionDescription: INodeTypeDescription = {
 			displayName: 'Workflow JSON',
 			name: 'workflowJson',
 			type: 'json',
+			validateType: 'object',
 			typeOptions: {
 				rows: 10,
 			},

@@ -380,18 +380,11 @@ export class WorkflowToolService {
 			workflowInfo.id = value as string;
 			subWorkflowId = workflowInfo.id;
 		} else if (source === 'parameter') {
-			const workflowJson = context.getNodeParameter('workflowJson', itemIndex) as string;
-			try {
-				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-				// subworkflow is same as parent workflow
-				subWorkflowId = workflowProxy.$workflow.id;
-			} catch (error) {
-				throw new NodeOperationError(
-					context.getNode(),
-					`The provided workflow is not valid JSON: "${(error as Error).message}"`,
-					{ itemIndex },
-				);
-			}
+			workflowInfo.code = context.getNodeParameter('workflowJson', itemIndex) as
+				| IWorkflowBase
+				| undefined;
+			// subworkflow is same as parent workflow
+			subWorkflowId = workflowProxy.$workflow.id;
 		}
 
 		return { workflowInfo, subWorkflowId: subWorkflowId! };
