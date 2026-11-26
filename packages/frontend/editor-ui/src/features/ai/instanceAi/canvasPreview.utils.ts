@@ -498,6 +498,24 @@ export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | 
 	return { appId: id, name, projectId };
 }
 
+/** The app tools whose result carries a new app version. */
+const APP_VERSION_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
+	SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
+]);
+
+/** The app versions that the assistant wrote in the thread. */
+export function getAppWriteVersionIds(turns: readonly ArtifactTurn[]): string[] {
+	const ids: string[] = [];
+	for (const tc of artifactToolCalls(turns)) {
+		if (!APP_VERSION_TOOL_NAMES.has(tc.toolName) || tc.isLoading) continue;
+		const result = unwrapUntrustedToolResult(tc.result);
+		if (isRecord(result) && typeof result.versionId === 'string') ids.push(result.versionId);
+	}
+	return ids;
+}
+
 /** The latest app that the assistant created or committed with the app tools. */
 export function getLatestAppArtifactResult(
 	turns: readonly ArtifactTurn[],

@@ -23,7 +23,6 @@ const props = defineProps<{
 	appId: string;
 	inspectable?: boolean;
 	elementSelected?: boolean;
-	autoRun?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -136,7 +135,6 @@ defineExpose({ refresh });
 						:versions="versions"
 						:inspectable="inspectable"
 						:element-selected="elementSelected"
-						:auto-run="autoRun"
 						@element-selected="emit('element-selected', $event)"
 					/>
 					<AppConfigure v-else :app="app" :versions="versions" @updated="onAppUpdated" />

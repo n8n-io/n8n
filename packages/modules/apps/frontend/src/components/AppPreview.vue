@@ -61,7 +61,6 @@ const props = defineProps<{
 	versions: AppVersions;
 	inspectable?: boolean;
 	elementSelected?: boolean;
-	autoRun?: boolean;
 }>();
 
 const emit = defineEmits<{ 'element-selected': [element: AppPreviewElement] }>();
@@ -119,7 +118,7 @@ const versionLabel = computed(() => {
 const awaitingRun = computed(() => !!latestBuilt.value && !canRun(latestBuilt.value));
 
 function canRun(version: AppVersionResponse) {
-	return canPreview && (props.autoRun || hasSeen(version.id));
+	return canPreview && hasSeen(version.id);
 }
 
 async function grant(versionId: string) {
@@ -164,9 +163,8 @@ async function show(force = false) {
 	}
 }
 
-async function run() {
+function run() {
 	if (latestBuilt.value) markSeen(latestBuilt.value.id);
-	await show();
 }
 
 async function reload() {
@@ -236,7 +234,7 @@ onMounted(() => {
 	window.addEventListener('keydown', onKeyDown);
 });
 
-watch([() => latestBuilt.value?.id, () => props.autoRun], async () => await show(), {
+watch([() => latestBuilt.value?.id, awaitingRun], async () => await show(), {
 	immediate: true,
 });
 

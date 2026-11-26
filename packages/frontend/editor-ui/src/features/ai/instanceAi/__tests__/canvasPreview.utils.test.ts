@@ -41,6 +41,8 @@ const getLatestSkillArtifactResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestSkillArtifactResult(turns(node));
 const getLatestAppArtifactResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestAppArtifactResult(turns(node));
+const getAppWriteVersionIds = (node: InstanceAiAgentNode) =>
+	utils.getAppWriteVersionIds(turns(node));
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
 	return {
@@ -1629,6 +1631,39 @@ describe('getAppArtifactFromToolCall', () => {
 				makeToolCall({ toolName: 'create_app', args: {}, isLoading: true }),
 			),
 		).toBeUndefined();
+	});
+});
+
+describe('getAppWriteVersionIds', () => {
+	test('returns the versions of app commits and binding changes, also from a child agent', () => {
+		const root = makeAgentNode({
+			toolCalls: [
+				makeToolCall({ toolName: 'commit_app', result: { app: { id: 'app-1' }, versionId: 'v1' } }),
+				makeToolCall({ toolName: 'bind_app_resource', result: { versionId: 'v2', bindings: [] } }),
+			],
+			children: [
+				makeAgentNode({
+					agentId: 'child',
+					toolCalls: [
+						makeToolCall({ toolName: 'unbind_app_resource', result: { versionId: 'v3' } }),
+					],
+				}),
+			],
+		});
+
+		expect(getAppWriteVersionIds(root)).toEqual(['v1', 'v2', 'v3']);
+	});
+
+	test('ignores other tools, failed writes and running calls', () => {
+		const root = makeAgentNode({
+			toolCalls: [
+				makeToolCall({ toolName: 'get_app', result: { versionId: 'v1' } }),
+				makeToolCall({ toolName: 'commit_app', result: { error: 'There are no staged changes.' } }),
+				makeToolCall({ toolName: 'commit_app', isLoading: true }),
+			],
+		});
+
+		expect(getAppWriteVersionIds(root)).toEqual([]);
 	});
 });
 
