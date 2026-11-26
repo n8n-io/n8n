@@ -75,8 +75,6 @@ const props = withDefaults(
 		returnObject?: boolean;
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
-		/** The accessible name of the checkbox that selects the rows of the page. */
-		selectAllLabel?: string;
 		/** The accessible name of the checkbox of a row, for example "Select Slack". */
 		selectRowLabel?: (row: T) => string;
 		pageSizes?: number[];
@@ -123,7 +121,6 @@ const props = withDefaults(
 	}>(),
 	{
 		itemSelectable: undefined,
-		selectAllLabel: undefined,
 		selectRowLabel: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
@@ -481,7 +478,7 @@ const selectColumn: ColumnDef<T> = {
 	header: () =>
 		h(N8nCheckbox, {
 			...pageSelectAllState(),
-			'aria-label': props.selectAllLabel ?? t('dataTable.selectAll'),
+			'aria-label': t('dataTable.selectAll'),
 		}),
 	cell: ({ row }) => {
 		return h(N8nCheckbox, {
@@ -510,7 +507,10 @@ type SelectAllState = {
 // Reads the rows from props, so that the header updates when the page changes. Rows that stay
 // selected on other pages do not make the header checkbox look checked.
 function pageSelectAllState(): SelectAllState {
-	const ids = props.items.filter(isItemSelectable).map((item, index) => getRowId(item, index));
+	// The index is the position on the page, as for the row checkboxes, because `itemValue` can use it.
+	const ids = props.items.flatMap((item, index) =>
+		isItemSelectable(item) ? [getRowId(item, index)] : [],
+	);
 	const selectedCount = ids.filter((id) => rowSelection.value[id]).length;
 	return {
 		modelValue: ids.length > 0 && selectedCount === ids.length,

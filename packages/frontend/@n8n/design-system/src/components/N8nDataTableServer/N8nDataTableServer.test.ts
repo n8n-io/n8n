@@ -478,12 +478,8 @@ describe('N8nDataTableServer', () => {
 		expect(getByRole('checkbox', { name: 'Select all rows on this page' })).toBeInTheDocument();
 		expect(getAllByRole('checkbox', { name: 'Select row' })).toHaveLength(3);
 
-		await rerender({
-			selectAllLabel: 'Select the page',
-			selectRowLabel: (item: Item) => `Select ${item.firstName}`,
-		});
+		await rerender({ selectRowLabel: (item: Item) => `Select ${item.firstName}` });
 
-		expect(getByRole('checkbox', { name: 'Select the page' })).toBeInTheDocument();
 		expect(getByRole('checkbox', { name: `Select ${items[0].firstName}` })).toBeInTheDocument();
 	});
 
@@ -526,6 +522,28 @@ describe('N8nDataTableServer', () => {
 		// Clearing the page leaves the rows of the other pages.
 		await userEvent.click(header);
 		expect(emitted('update:selection').at(-1)).toEqual([[offPage]]);
+	});
+
+	it('gives the header checkbox the same row ids as the row checkboxes', async () => {
+		const { container, emitted, rerender } = render(N8nDataTableServer<Item>, {
+			props: {
+				items,
+				headers,
+				itemsLength: 3,
+				showSelect: true,
+				selection: [],
+				// An id from the position on the page, and a first row that cannot be selected.
+				itemValue: (_row: Item, index: number) => `row-${index}`,
+				itemSelectable: (row: Item) => row.id !== items[0].id,
+			},
+		});
+		const header = container.querySelector<HTMLElement>('thead [role="checkbox"]')!;
+
+		await userEvent.click(header);
+		expect(emitted('update:selection').at(-1)).toEqual([['row-1', 'row-2']]);
+
+		await rerender({ selection: ['row-1', 'row-2'] });
+		expect(header).toHaveAttribute('aria-checked', 'true');
 	});
 
 	it('updates the header checkbox when the rows of the page change', async () => {
