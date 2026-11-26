@@ -614,7 +614,10 @@ const treeResizer = useResizablePanel({
 }
 
 .tabRow {
-	width: 100%;
+	/* The line under the tabs runs over the padding of the header, from the left edge to the right edge. */
+	width: calc(100% + 2 * var(--spacing--sm));
+	margin-inline: calc(-1 * var(--spacing--sm));
+	padding-inline: var(--spacing--sm);
 	border-bottom: var(--border);
 }
 
