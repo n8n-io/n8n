@@ -107,6 +107,7 @@ export class QuickChart implements INodeType {
 				displayName: 'Data',
 				name: 'data',
 				type: 'json',
+				validateType: 'array',
 				default: '',
 				description:
 					'Data to use for the dataset, documentation and examples <a href="https://quickchart.io/documentation/chart-types/" target="_blank">here</a>',
@@ -350,7 +351,7 @@ export class QuickChart implements INodeType {
 		}
 
 		for (let i = 0; i < items.length; i++) {
-			const data = this.getNodeParameter('data', i) as string;
+			const data = (this.getNodeParameter('data', i) as unknown[] | undefined) ?? [];
 			const datasetOptions = this.getNodeParameter('datasetOptions', i) as IDataObject;
 
 			const backgroundColor = datasetOptions.backgroundColor as string;

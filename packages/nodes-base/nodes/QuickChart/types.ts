@@ -1,8 +1,6 @@
-import type { IDataObject } from 'n8n-workflow';
-
 export interface IDataset {
 	label?: string;
-	data: string | IDataObject;
+	data: unknown[];
 	backgroundColor?: string;
 	borderColor?: string;
 	color?: string;
