@@ -90,6 +90,7 @@ const guestExprs = {
 	'guest-numbers-50000': 'return Array.from({ length: 50000 }, function (_, i) { return i; });',
 	'guest-sparse-5000':
 		'var a = new Array(5000); a[0] = 1; a[2500] = { x: 1 }; a[4999] = 2; return a;',
+	'guest-end-holes-5000': 'var a = new Array(5000); a[0] = 1; a[2500] = { x: 1 }; return a;',
 	'guest-deep-200':
 		'var o = { v: 1 }; for (var i = 0; i < 200; i++) { o = { next: o, i: i }; } return o;',
 	'guest-wide-object-5000':

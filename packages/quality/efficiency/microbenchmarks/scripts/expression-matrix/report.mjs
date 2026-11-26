@@ -20,7 +20,7 @@ if (!file || !baseLabel || !newLabel) {
 /** A case counts as changed when it moves by more than 10% and by more than 0.02 ms. */
 const CHANGE_PCT = 10;
 const CHANGE_MS = 0.02;
-const MEMORY_KEYS = ['guestInitKB', 'guestKB', 'hostHeapKB'];
+const MEMORY_KEYS = ['guestInitKB', 'guestKB', 'hostAllocKB'];
 const top = Number(process.env.TOP ?? 15);
 
 function formatMs(ms) {
@@ -65,13 +65,13 @@ function printChanged(title, cases) {
 }
 
 function printTable(cases) {
-	console.log('| case | base ms | new ms | diff | same result | guest KB | host heap KB |');
+	console.log('| case | base ms | new ms | diff | same result | guest KB | host alloc KB |');
 	console.log('| -- | -- | -- | -- | -- | -- | -- |');
 	for (const c of cases) {
 		const sign = pct(c) >= 0 ? '+' : '';
 		const same = c.base.hash === c.next.hash ? 'yes' : 'NO';
 		console.log(
-			`| ${c.name} | ${formatMs(c.base.med)} | ${formatMs(c.next.med)} | ${sign}${pct(c).toFixed(0)}% | ${same} | ${c.base.guestKB}/${c.next.guestKB} | ${c.base.hostHeapKB}/${c.next.hostHeapKB} |`,
+			`| ${c.name} | ${formatMs(c.base.med)} | ${formatMs(c.next.med)} | ${sign}${pct(c).toFixed(0)}% | ${same} | ${c.base.guestKB}/${c.next.guestKB} | ${c.base.hostAllocKB}/${c.next.hostAllocKB} |`,
 		);
 	}
 }

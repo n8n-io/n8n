@@ -68,7 +68,7 @@ export const shapes = {
 		rows: Array.from({ length: 20 }, (_, i) => String(i % 10).repeat(40000)),
 	}),
 	// Nesting.
-	'tree-60KB': () => ({ id: 1, tree: tree(9), rows: [tree(2)] }),
+	'tree-27KB': () => ({ id: 1, tree: tree(9), rows: [tree(2)] }),
 	'chain-30': () => ({ id: 1, chain: chain(30), rows: [1] }),
 	// Data that JSON cannot carry stays lazy.
 	'rows-with-dates-200': () => ({

@@ -41,12 +41,21 @@ if (
 	process.exit(1);
 }
 
+/** Two builds with one label would be written as one build. */
+function hasRepeatedLabel(labelledBuilds) {
+	return new Set(labelledBuilds.map((build) => build.label)).size !== labelledBuilds.length;
+}
+
 const only = process.env.ONLY ? new RegExp(process.env.ONLY) : undefined;
 
 const builds = buildArgs.map((arg) => {
 	const [label, ...dir] = arg.split('=');
 	return { label, dir: resolve(dir.join('=')) };
 });
+if (hasRepeatedLabel(builds)) {
+	console.error('Each build must have its own label.');
+	process.exit(1);
+}
 
 /** Every valid "<shape> <expr>" pair of the matrix that passes the ONLY filter. */
 async function listCases() {

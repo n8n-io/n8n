@@ -45,7 +45,7 @@ async function createBridge() {
 
 /**
  * A text form of the result that keeps what JSON drops: Map, Set, Date, Error,
- * undefined, and a value that the result holds more than once.
+ * undefined, the length of an array, and a value that the result holds more than once.
  */
 function describeResult(root) {
 	const ids = new Map();
@@ -70,7 +70,8 @@ function describeResult(root) {
 		const error = value instanceof Error ? `${value.name}|${value.message}|` : '';
 		const primitive = typeof value.valueOf === 'function' ? value.valueOf() : value;
 		const boxed = primitive === value ? '' : `${describe(primitive)}|`;
-		return `${Object.prototype.toString.call(value)}{${error}${boxed}${fields.join(',')}}`;
+		const length = Array.isArray(value) ? `length:${value.length}|` : '';
+		return `${Object.prototype.toString.call(value)}{${error}${boxed}${length}${fields.join(',')}}`;
 	};
 	return describe(root);
 }
@@ -115,10 +116,12 @@ const out = { variant: label, engine, shape: shapeName, expr: exprName, ok: true
 
 global.gc();
 global.gc();
+// No collection after the run: the growth is what one run allocates on the host,
+// not what the host keeps.
 const hostHeapBefore = process.memoryUsage().heapUsed;
 try {
 	const result = bridge.execute(code, data);
-	out.hostHeapKB = toKB(process.memoryUsage().heapUsed - hostHeapBefore);
+	out.hostAllocKB = toKB(process.memoryUsage().heapUsed - hostHeapBefore);
 	out.guestKB = toKB(guestUsed() - guestAfterInit);
 	out.hash = hashResult(result);
 	const times = measureWarmRuns(() => bridge.execute(code, data));
@@ -132,4 +135,5 @@ try {
 out.guestInitKB = toKB(guestAfterInit);
 
 console.log(JSON.stringify(out));
-process.exit(0);
+// Do not force the exit: a forced exit can drop the end of the output line.
+process.exitCode = 0;
