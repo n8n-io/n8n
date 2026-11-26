@@ -62,8 +62,8 @@ const collection = ref<KnowledgeCollectionDto | null>(null);
 const uploading = ref(false);
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
-/** The text of the title. After a refused rename, it keeps the name that the user typed. */
-const editableName = ref('');
+// The title edit gets the saved name, so a refused name stays in its text and the user can send it again.
+const nameEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('nameEdit');
 const renaming = ref(false);
 const renameError = ref('');
 const modalOpen = ref(false);
@@ -170,12 +170,11 @@ watch(
 	{ immediate: true },
 );
 
-// Make sure the title, the tab and the rename state follow the saved name, and only the name:
+// Make sure the tab and the rename error follow the saved name, and only the name:
 // a description save must not discard a refused name that the user can still fix.
 watch(
 	() => collection.value?.name,
 	(name) => {
-		editableName.value = name ?? '';
 		renameError.value = '';
 		if (name) {
 			documentTitle.set(name);
@@ -184,14 +183,7 @@ watch(
 );
 
 async function onRename(name: string) {
-	const current = collection.value;
-	if (!current) {
-		return;
-	}
-
-	// The saved name needs no request. Typing it back after a refused name also clears the error.
-	if (name === current.name) {
-		renameError.value = '';
+	if (!collection.value) {
 		return;
 	}
 
@@ -226,7 +218,7 @@ async function onRename(name: string) {
 		}
 
 		toast.showError(error, i18n.baseText('settings.context.collections.error.update'));
-		editableName.value = current.name;
+		nameEdit.value?.forceCancel();
 		renameError.value = '';
 	} finally {
 		renaming.value = false;
@@ -263,8 +255,12 @@ function closeDeleteDialog() {
 }
 
 // Replace, so Back does not open the deleted collection.
-async function onDeleted() {
+async function onDeleted(deleted: KnowledgeCollectionDto) {
 	closeDeleteDialog();
+	if (!isCurrent(deleted.homeProject.id, deleted.id)) {
+		return;
+	}
+
 	await router.replace(collectionsRoute);
 }
 
@@ -353,15 +349,18 @@ async function removeFile(fileId: string) {
 				<div :class="$style.heading">
 					<!-- A user who cannot change the collection sees the name as plain text. -->
 					<N8nHeading tag="h1" size="xlarge">
+						<!-- A new edit clears the error: the user may put back the saved name, which sends nothing. -->
 						<N8nInlineTextEdit
 							v-if="canEdit"
-							v-model="editableName"
+							ref="nameEdit"
+							:model-value="collection.name"
 							:disabled="renaming"
 							:max-length="KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH"
 							max-width="100%"
 							:placeholder="i18n.baseText('settings.context.collections.modal.name.label')"
 							data-test-id="collection-name-inline-edit"
 							@update:model-value="onRename"
+							@focusin="renameError = ''"
 						/>
 						<template v-else>{{ collection.name }}</template>
 					</N8nHeading>

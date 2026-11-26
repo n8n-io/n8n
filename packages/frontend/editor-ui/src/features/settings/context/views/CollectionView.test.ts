@@ -441,6 +441,26 @@ describe('CollectionView', () => {
 			expect(titlePreview()).toHaveTextContent('Customer support');
 		});
 
+		it('saves a refused name when the user sends it again after the name is free', async () => {
+			await setup();
+			collectionsStore.updateCollection
+				.mockRejectedValueOnce(
+					new ResponseError('A collection with this name already exists in this project.', {
+						httpStatusCode: 409,
+					}),
+				)
+				.mockResolvedValueOnce(collectionDto({ name: 'Product docs' }));
+			await typeTitle('Product docs');
+			await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+			await typeTitle('Product docs');
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledTimes(2);
+			await waitFor(() => expect(currentCrumb()).toHaveAttribute('title', 'Product docs'));
+			expect(titlePreview()).toHaveTextContent('Product docs');
+			expect(screen.queryByRole('alert')).toBeNull();
+		});
+
 		it('shows any other failure in a toast and puts the saved name back in the title', async () => {
 			await setup();
 			const failure = new Error('offline');
