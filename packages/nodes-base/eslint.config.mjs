@@ -39,7 +39,6 @@ const jsonValidateTypePending = [
 	'./nodes/Amqp/**',
 	'./nodes/ApiTemplateIo/**',
 	'./nodes/Beeminder/**',
-	'./nodes/Bubble/**',
 	'./nodes/ClickUp/**',
 	'./nodes/Cockpit/**',
 	'./nodes/Confluence/**',

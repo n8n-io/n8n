@@ -36,6 +36,20 @@ describe('Bubble > Workflows', () => {
 				.reply(200, {
 					response: { results: [{ _id: '1696851234568x123456789012345679' }], remaining: 0 },
 				});
+			mock
+				.get('/obj/customer')
+				.query({
+					constraints: '[{"key":"name","constraint_type":"equals","value":"Nathan"}]',
+					limit: 1,
+				})
+				.reply(200, { response: { results: [{ _id: objectId }], remaining: 0 } });
+			mock
+				.get('/obj/customer')
+				.query({
+					constraints: '[{"key":"name","constraint_type":"equals","value":"Jan"}]',
+					limit: 2,
+				})
+				.reply(200, { response: { results: [{ _id: objectId }], remaining: 0 } });
 			mock.patch(`/obj/customer/${objectId}`, { name: 'Nathan' }).reply(204);
 			mock.delete(`/obj/customer/${objectId}`).reply(204);
 		});
