@@ -1,4 +1,4 @@
-import { dbNowLiteral, parseDbTime } from '@n8n/db';
+import { dbTxNowLiteral, parseDbTime } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
@@ -17,7 +17,7 @@ export class McpRegistryServerRepository extends Repository<McpRegistryServerEnt
 	async readDbNow(): Promise<Date> {
 		const isPostgres = this.manager.connection.options.type === 'postgres';
 		const [row]: Array<{ dbNow: Date | string }> = await this.query(
-			`SELECT ${dbNowLiteral(isPostgres)} AS "dbNow"`,
+			`SELECT ${dbTxNowLiteral(isPostgres)} AS "dbNow"`,
 		);
 		return parseDbTime(row.dbNow);
 	}

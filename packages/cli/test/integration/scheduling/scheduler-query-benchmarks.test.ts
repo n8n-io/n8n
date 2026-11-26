@@ -1,7 +1,7 @@
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { testDb } from '@n8n/backend-test-utils';
 import {
-	dbNowLiteral,
+	dbTxNowLiteral,
 	ScheduledJob,
 	ScheduledJobRepository,
 	ScheduledTask,
@@ -403,7 +403,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 						AND (c."status" = 'running'
 							OR (c."status" = 'pending'
 								AND (c."missedAfter" IS NULL
-									OR c."missedAfter" > ${dbNowLiteral(isPostgres)}
+									OR c."missedAfter" > ${dbTxNowLiteral(isPostgres)}
 									OR c."attempts" > 0)))
 				) ranked
 				WHERE ranked."status" = 'pending' AND ranked."slot" <= ranked."freeSlots"`;
