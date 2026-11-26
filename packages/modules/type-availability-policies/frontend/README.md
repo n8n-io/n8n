@@ -56,9 +56,9 @@ The tables of the admin page let the admin select rows and act on them with
 `PolicySelectionBar`. The bar does not know the scope of the policy, so the project page can use it
 too. A selection stays in its tab and is kept across a page change, a search and a filter. The
 table draws its own checkbox column, because the select column of `N8nDataTableServer` has no
-accessible names. The checkbox next to the search selects the rows of the current page. The
-"Select all" button above the table selects the rows of every page that the search and the filter
-show.
+accessible names. The checkbox in the header of that column selects the rows of the current page.
+The "Select all" button above the table selects the rows of every page that the search and the
+filter show.
 `useInstanceTypeAccess(kind).changeAccessMany` leaves out the read-only types and the types that
 already have the access. A bulk restriction asks once, through the review store, for all the types
 that workflows use.

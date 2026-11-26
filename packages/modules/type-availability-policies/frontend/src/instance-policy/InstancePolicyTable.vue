@@ -91,8 +91,8 @@ const itemsPerPage = ref(25);
 
 const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
 	{
-		// The table's own select column has no accessible names, so the rows render their checkboxes.
-		// The checkbox of the page is next to the search, because a header cannot hold a control.
+		// The table's own select column has no accessible names, and its header checkbox counts the
+		// rows of every page, so this column renders the checkboxes.
 		title: '',
 		key: 'select',
 		value: () => undefined,
@@ -412,14 +412,6 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-			<N8nCheckbox
-				:model-value="pageAllSelected"
-				:indeterminate="pageSomeSelected"
-				:disabled="pageSelectableNames.length === 0"
-				:label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectPage')"
-				data-test-id="instance-policy-select-page"
-				@update:model-value="(value: boolean) => setSelected(pageSelectableNames, value)"
-			/>
 			<N8nSelect2
 				ref="filter"
 				:model-value="accessFilter"
@@ -474,6 +466,16 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					"
 					data-test-id="instance-policy-no-match"
 					@click:button="clearSearchAndFilter"
+				/>
+			</template>
+			<template #[`header.select`]>
+				<N8nCheckbox
+					:model-value="pageAllSelected"
+					:indeterminate="pageSomeSelected"
+					:disabled="pageSelectableNames.length === 0"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectPage')"
+					data-test-id="instance-policy-select-page"
+					@update:model-value="(value: boolean) => setSelected(pageSelectableNames, value)"
 				/>
 			</template>
 			<template #[`item.select`]="{ item }">
