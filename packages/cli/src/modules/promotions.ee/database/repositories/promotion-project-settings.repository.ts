@@ -1,4 +1,3 @@
-import type { PromotionProjectEnvironmentsAllowListProject } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -18,6 +17,9 @@ class PromotionProjectSettingsTable extends BaseRepository<PromotionProjectSetti
 	}
 }
 
+export type TeamProjectEnvironmentsAllowance = Pick<Project, 'id' | 'name'> &
+	Pick<PromotionProjectSettings, 'allowEnvironments'>;
+
 @Service()
 export class PromotionProjectSettingsRepository {
 	private readonly table: PromotionProjectSettingsTable;
@@ -35,7 +37,7 @@ export class PromotionProjectSettingsRepository {
 			take,
 		}: { search?: string; allowEnvironments?: boolean; skip: number; take: number },
 		ctx: OperationContext,
-	): Promise<[PromotionProjectEnvironmentsAllowListProject[], number]> {
+	): Promise<[TeamProjectEnvironmentsAllowance[], number]> {
 		const manager = this.table.managerFor(ctx);
 		const query = manager
 			.createQueryBuilder(Project, 'project')
@@ -105,7 +107,6 @@ export class PromotionProjectSettingsRepository {
 				.values({ projectId })
 				.orIgnore()
 				.execute();
-			// Only one of several concurrent saves matches the old value, so only one reports a change.
 			const result = await manager.update(
 				PromotionProjectSettings,
 				{ projectId, allowEnvironments: !allowEnvironments },

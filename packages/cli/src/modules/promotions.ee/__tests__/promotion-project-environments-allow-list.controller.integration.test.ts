@@ -121,6 +121,10 @@ describe('listing which projects can have own environments', () => {
 		]);
 		expect(await listedNames({ search: '0%' })).toEqual(['Sales A 100%']);
 		expect(await listedNames({ search: '1_' })).toEqual(['Sales C 1_00']);
+		expect((await list(ownerAgent, { search: 'zzz' }).expect(200)).body.data).toEqual({
+			count: 0,
+			data: [],
+		});
 		expect(await listedNames({ allowEnvironments: 'true' })).toEqual(['Sales B 1000']);
 		expect(await listedNames({ allowEnvironments: 'false' })).toEqual([
 			'Alpha',
