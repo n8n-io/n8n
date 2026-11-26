@@ -1,0 +1,29 @@
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_cd7e7352b0ed80::t_e921be3dffad0c 29-36
+  s_cd7e7352b0ed80::t_968ba54db3d4ba 28
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_cd7e7352b0ed80::t_bb5160a2de446f 4,15,48-68
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_cd7e7352b0ed80::t_1c381d5c04d112 285,317,319-324,355-357
+  s_cd7e7352b0ed80::t_e921be3dffad0c 64
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_cd7e7352b0ed80::t_5d106747423af7 7,27,35,40,65,84,126,130,641-670
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_cd7e7352b0ed80::t_968ba54db3d4ba 438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6fb8f795bb51eb8ef40b066e2993ac3ef6fd7dd",
+  "prompts": {},
+  "sessions": {
+    "s_cd7e7352b0ed80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c2556b9-65b4-4831-bbc8-43d9191242d3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
