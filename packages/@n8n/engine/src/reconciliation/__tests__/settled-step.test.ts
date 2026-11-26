@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { StepStore } from '../../execution';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../../queue';
 import { SettledStepDetector } from '../settled-step-detector';
 import { SettledStepRepair } from '../settled-step-repair';
 
@@ -16,8 +16,8 @@ function makeStepStore() {
 	};
 }
 
-function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+function makeOrchestrationQueue(): WorkQueuePublisher<OrchestrationMessage> {
+	return { publish: vi.fn() };
 }
 
 describe('SettledStepDetector', () => {
