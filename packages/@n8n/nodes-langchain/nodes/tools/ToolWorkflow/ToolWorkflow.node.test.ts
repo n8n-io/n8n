@@ -1,11 +1,17 @@
 import { DynamicTool } from '@langchain/classic/tools';
+import { SupplyDataContext } from 'n8n-core';
 import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	Workflow,
 	type ExecuteWorkflowData,
 	type INode,
+	type INodeTypes,
 	type ISupplyDataFunctions,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type IWorkflowDataProxyData,
+	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -312,6 +318,65 @@ describe('ToolWorkflowV1', () => {
 
 		expect(ctx.executeWorkflow).toHaveBeenCalledWith(
 			{ code: workflowJson },
+			expect.anything(),
+			undefined,
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		{ case: 'a JSON string', workflowJson: '{"nodes": [], "connections": {}}' },
+		{ case: 'an expression', workflowJson: '={{ { "nodes": [], "connections": {} } }}' },
+	])('should run the workflow from $case through core', async ({ workflowJson }) => {
+		const node = new ToolWorkflow().nodeVersions[1.3] as ToolWorkflowV1;
+		const coreNode: INode = {
+			id: 'tool-workflow',
+			name: 'test tool',
+			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+			typeVersion: 1.3,
+			position: [0, 0],
+			parameters: {
+				name: 'test_tool',
+				description: 'description text',
+				source: 'parameter',
+				workflowJson,
+			},
+		};
+		const nodeTypes = mock<INodeTypes>();
+		nodeTypes.getByNameAndVersion.mockReturnValue(node);
+		const workflow = new Workflow({
+			id: 'workflow-id',
+			nodes: [coreNode],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+		const ctx = new SupplyDataContext(
+			workflow,
+			coreNode,
+			mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'https://example.com/webhook-waiting',
+				formWaitingBaseUrl: 'https://example.com/form-waiting',
+			}),
+			'manual',
+			createRunExecutionData(),
+			0,
+			[],
+			{ main: [[{ json: {} }]] },
+			NodeConnectionTypes.AiTool,
+			{ node: coreNode, data: {}, source: null },
+			[],
+		);
+		const executeWorkflow = vi.spyOn(ctx, 'executeWorkflow').mockResolvedValueOnce({
+			data: [[{ json: { result: 'ok' } }]],
+			executionId: 'test-execution',
+		});
+
+		const supplyDataResult = await node.supplyData.call(ctx, 0);
+		await (supplyDataResult.response as DynamicTool).func('hello');
+
+		expect(executeWorkflow).toHaveBeenCalledWith(
+			{ code: { nodes: [], connections: {} } },
 			expect.anything(),
 			undefined,
 			expect.anything(),

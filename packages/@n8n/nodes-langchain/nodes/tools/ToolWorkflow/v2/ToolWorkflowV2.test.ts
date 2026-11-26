@@ -1,16 +1,26 @@
 import { DynamicTool } from '@langchain/core/tools';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError } from 'n8n-workflow';
+import { SupplyDataContext } from 'n8n-core';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	NodeOperationError,
+	Workflow,
+} from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
+	INodeTypes,
 	IWorkflowDataProxyData,
+	IWorkflowExecuteAdditionalData,
 	ExecuteWorkflowData,
 	INode,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
+import { ToolWorkflow } from '../ToolWorkflow.node';
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import type { MockedFunction } from 'vitest';
 
@@ -576,6 +586,50 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result.workflowInfo.code).toEqual(mockWorkflow);
 			expect(result.subWorkflowId).toBe('proxy-id');
+		});
+
+		it.each([
+			{ case: 'a JSON string', workflowJson: '{"nodes": [], "connections": {}}' },
+			{ case: 'an expression', workflowJson: '={{ { "nodes": [], "connections": {} } }}' },
+		])('should read the workflow from $case through core', async ({ workflowJson }) => {
+			const coreNode: INode = {
+				id: 'tool-workflow',
+				name: 'Test Tool',
+				type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				typeVersion: 2.2,
+				position: [0, 0],
+				parameters: { source: 'parameter', workflowJson },
+			};
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(new ToolWorkflow().nodeVersions[2.2]);
+			const workflow = new Workflow({
+				nodes: [coreNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const coreContext = new SupplyDataContext(
+				workflow,
+				coreNode,
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'https://example.com/webhook-waiting',
+					formWaitingBaseUrl: 'https://example.com/form-waiting',
+				}),
+				'manual',
+				createRunExecutionData(),
+				0,
+				[],
+				{ main: [[{ json: {} }]] },
+				NodeConnectionTypes.AiTool,
+				{ node: coreNode, data: {}, source: null },
+				[],
+			);
+
+			const result = await service['getSubWorkflowInfo'](coreContext, 'parameter', 0, {
+				$workflow: { id: 'proxy-id' },
+			} as unknown as IWorkflowDataProxyData);
+
+			expect(result.workflowInfo.code).toEqual({ nodes: [], connections: {} });
 		});
 	});
 
