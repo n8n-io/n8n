@@ -20,6 +20,7 @@ import {
 import { createRunExecutionData, ExpressionError, WorkflowOperationError } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import type {
+	IExecuteData,
 	IRunExecutionData,
 	ITaskData,
 	Workflow,
@@ -1956,6 +1957,29 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			},
 		);
+
+		it('creates the hooks when the first entry of the execution stack has no node', async () => {
+			const stackEntryWithoutNode = { data: { main: [[{ json: {} }]] }, source: null };
+			const hooks = getLifecycleHooksForRegularMain(
+				{
+					executionMode: 'trigger',
+					workflowData,
+					executionData: createRunExecutionData({
+						executionData: {
+							nodeExecutionStack: [stackEntryWithoutNode as unknown as IExecuteData],
+						},
+					}),
+				},
+				executionId,
+			);
+
+			await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			const postExecute = eventService.emit.mock.calls.find(
+				([eventName]) => eventName === 'workflow-post-execute',
+			);
+			expect(postExecute?.[1]).not.toHaveProperty('startNodeType');
+		});
 	});
 
 	describe('getLifecycleHooksForScalingMain', () => {

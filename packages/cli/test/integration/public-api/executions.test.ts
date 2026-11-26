@@ -544,6 +544,7 @@ describe('POST /executions/:id/retry', () => {
 				options: { loadWorkflow: true },
 				sharedWorkflowIds: expect.arrayContaining([workflow.id]),
 				user: expect.objectContaining({ id: user1.id }),
+				telemetryMetadata: { startedByPublicApi: true },
 			},
 			undefined,
 		);

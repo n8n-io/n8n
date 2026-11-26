@@ -238,8 +238,9 @@ function hookFunctionsWorkflowEvents(
 }
 
 /** The head of the initial execution stack. For a webhook or trigger run, this is the trigger node. */
+/** Only for telemetry, so it must never throw while the hooks of a run are created. */
 function getStartNodeType(data: IWorkflowExecutionDataProcess): string | undefined {
-	return data.executionData?.executionData?.nodeExecutionStack[0]?.node.type;
+	return data.executionData?.executionData?.nodeExecutionStack?.[0]?.node?.type;
 }
 
 /** Must be the first `workflowExecuteAfter` handler, so that every later handler sees a stop. */
