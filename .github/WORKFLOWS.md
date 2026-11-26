@@ -984,13 +984,25 @@ The file drives four workflows:
 On an eligible PR into `master`, apply `Auto-assign reviewers` to request all
 owning teams. Apply `Auto-assign required reviewers` to request only teams whose
 `required` or `involved` OWNERS entries match changed non-test files. If both labels are
-present, the workflow requests all owning teams.
+present, the workflow requests all owning teams. It runs only when one of these
+labels is added. Pushes, reopened PRs, and unrelated label changes do not run
+assignment.
 
 After it requests reviews, the workflow replaces the trigger labels with
 `Reviewers auto-assigned` to prevent repeat requests. While that marker is
 present, the workflow removes any trigger labels without requesting reviews
-again. If no teams match, it leaves the trigger label in place so a later
-update can try again.
+again. If no teams match, it leaves the trigger label in place. Remove and
+reapply the label to try again.
+
+The workflow uses the SHA-pinned
+[`ownership-checks/actions/assign-reviewers`](https://github.com/n8n-io/github-actions/tree/d3c5d37964afe1712f8ff7d2400401ef0edff3ed/ownership-checks/actions/assign-reviewers)
+action from `n8n-io/github-actions` (`ownership-checks/v1.2.0`) in `labels` mode.
+The action reads OWNERS from `master` through the GitHub API. It does not check
+out or run PR code. It uses the n8n Assistant GitHub App token to request reviews
+and update labels. The local `owners.mjs` script still validates OWNERS.
+
+The shared action also supports `all` and `required` modes. Each repository
+chooses its own workflow events, including `ready_for_review`.
 
 ### Required reviews
 

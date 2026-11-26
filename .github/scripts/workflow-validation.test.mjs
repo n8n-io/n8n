@@ -140,6 +140,62 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('owner reviewer assignment', () => {
+	const workflow = workflowFile('ci-owners-assign-reviewers.yml');
+	const job = workflow.jobs['assign-reviewers'];
+	const assignment = stepNamed(workflow, 'assign-reviewers', 'Assign reviewer teams');
+
+	it('runs only when a label is added to a PR targeting master', () => {
+		assert.deepEqual(triggersOf(workflow), {
+			pull_request: { types: ['labeled'], branches: ['master'] },
+		});
+		for (const label of ['all-owners-label', 'required-owners-label']) {
+			assert.ok(job.if.includes(`github.event.label.name == '${assignment.with[label]}'`));
+		}
+	});
+
+	it('keeps the same-repository and bot guards', () => {
+		assert.ok(
+			job.if.includes('github.event.pull_request.head.repo.full_name == github.repository'),
+		);
+		assert.ok(job.if.includes("github.event.pull_request.user.type != 'Bot'"));
+		assert.ok(job.if.includes("github.event.pull_request.user.login == 'n8n-cat-bot[bot]'"));
+	});
+
+	it('uses the pinned shared action with the App token and existing labels', () => {
+		assert.match(
+			assignment.uses,
+			/^n8n-io\/github-actions\/ownership-checks\/actions\/assign-reviewers@[a-f0-9]{40}$/,
+		);
+		assert.deepEqual(assignment.with, {
+			token: '${{ steps.app-token.outputs.token }}',
+			owners: 'labels',
+			'all-owners-label': 'Auto-assign reviewers',
+			'required-owners-label': 'Auto-assign required reviewers',
+			'assigned-label': 'Reviewers auto-assigned',
+		});
+		assert.equal(job.steps.length, 2);
+		assert.equal(job.steps[0].id, 'app-token');
+		assert.match(job.steps[0].uses, /^actions\/create-github-app-token@[a-f0-9]{40}$/);
+		assert.deepEqual(job.steps[0].with, {
+			'app-id': '${{ secrets.N8N_ASSISTANT_APP_ID }}',
+			'private-key': '${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}',
+		});
+	});
+
+	it('serializes assignment without cancelling an active run', () => {
+		assert.deepEqual(job.concurrency, {
+			group: 'owners-assign-reviewers-${{ github.event.pull_request.number }}',
+			'cancel-in-progress': false,
+		});
+	});
+
+	it('limits token permissions to contents read and pull requests write', () => {
+		assert.deepEqual(workflow.permissions, { contents: 'read' });
+		assert.deepEqual(job.permissions, { contents: 'read', 'pull-requests': 'write' });
+	});
+});
+
 describe('ownership workflow routing', () => {
 	const reviews = workflowFile('ci-owners-required-reviews.yml');
 	const comments = workflowFile('ci-owners-review-recommendations.yml');

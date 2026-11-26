@@ -6,8 +6,6 @@ on:
   pull_request:
     types:
       - labeled
-      - synchronize
-      - reopened
     branches:
       - master
 
@@ -26,10 +24,11 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       (github.event.pull_request.user.type != 'Bot' ||
        github.event.pull_request.user.login == 'n8n-cat-bot[bot]') &&
-      (contains(github.event.pull_request.labels.*.name, 'Auto-assign reviewers') ||
-       contains(github.event.pull_request.labels.*.name, 'Auto-assign required reviewers'))
+      (github.event.label.name == 'Auto-assign reviewers' ||
+       github.event.label.name == 'Auto-assign required reviewers')
     concurrency:
       group: owners-assign-reviewers-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -43,16 +42,11 @@ jobs:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
-      # The script reads only `.github/` and the root OWNERS file, which cone
-      # mode always includes.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          sparse-checkout: .github
-
       - name: Assign reviewer teams
-        uses: ./.github/actions/run-workflow-script
-        env:
-          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        uses: n8n-io/github-actions/ownership-checks/actions/assign-reviewers@d3c5d37964afe1712f8ff7d2400401ef0edff3ed # v1.2.0
         with:
-          script: .github/scripts/owners/assign-reviewers.mjs
-          github-token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
+          owners: labels
+          all-owners-label: Auto-assign reviewers
+          required-owners-label: Auto-assign required reviewers
+          assigned-label: Reviewers auto-assigned
