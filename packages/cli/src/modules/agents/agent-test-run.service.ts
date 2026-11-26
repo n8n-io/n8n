@@ -10,6 +10,7 @@ import {
 	type AgentChatMode,
 	type ToolCallSimulation,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -32,6 +33,7 @@ import {
 	noEvidence,
 	noReasons,
 	noRoutes,
+	safeTrack,
 	telemetryBackend,
 } from './simulation/safe-testing-telemetry';
 import type { SimulationSession } from './simulation/simulation-session';
@@ -196,6 +198,7 @@ export class AgentTestRunService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly simulationSessions: SimulationSessionService,
 		private readonly telemetry: TelemetryProxy,
+		private readonly logger: Logger,
 	) {}
 
 	async prepareDraftRun({
@@ -486,7 +489,7 @@ export class AgentTestRunService {
 		status: TurnStatus,
 	): void {
 		const calls = state.simulatedToolCalls;
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_TURN_FINISHED, {
+		safeTrack(this.telemetry, this.logger, TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_TURN_FINISHED, {
 			agent_id: run.agentId,
 			project_id: run.projectId,
 			user_id: run.user.id,

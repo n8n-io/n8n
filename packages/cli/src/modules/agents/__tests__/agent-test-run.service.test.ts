@@ -7,6 +7,7 @@ import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { toolCallSimulationSchema, type ToolCallSimulation } from '@n8n/api-types';
 import type { TelemetryProxy } from '@n8n/backend-services';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -84,6 +85,7 @@ function makeService() {
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 	vi.mocked(userHasScopes).mockResolvedValue(true);
 	const telemetry = mock<TelemetryProxy>();
+	const logger = mockLogger();
 
 	return {
 		service: new AgentTestRunService(
@@ -93,8 +95,10 @@ function makeService() {
 			n8nCheckpointStorage,
 			simulationSessions,
 			telemetry,
+			logger,
 		),
 		telemetry,
+		logger,
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
@@ -793,6 +797,33 @@ describe('AgentTestRunService', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_TURN_FINISHED,
 				expect.objectContaining({ status: 'failed', backend: 'none', tool_call_count: 0 }),
+			);
+		});
+
+		it('keeps the turn result and the original error when telemetry throws', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions, telemetry, logger } =
+				makeService();
+			telemetry.track.mockImplementation(() => {
+				throw new Error('telemetry down');
+			});
+			simulationSessions.openForDraftRun.mockResolvedValue(
+				countAdmittedTurns(mock<SimulationSession>({ backend: 'llm-mock' })),
+			);
+
+			await expect(
+				runWithStream(service, agentExecutionOrchestratorService, [toolResult('tc-1')]),
+			).resolves.toMatchObject({ status: 'completed', executionId: 'execution-1' });
+
+			const failure = new Error('model failed');
+			await expect(
+				runWithStream(service, agentExecutionOrchestratorService, [
+					{ type: 'error', error: failure },
+				]),
+			).rejects.toBe(failure);
+			expect(telemetry.track).toHaveBeenCalledTimes(2);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'[SafeTesting] Could not track a telemetry event',
+				expect.objectContaining({ error: 'telemetry down' }),
 			);
 		});
 

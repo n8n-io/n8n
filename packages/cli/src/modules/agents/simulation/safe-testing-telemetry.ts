@@ -1,4 +1,7 @@
 import type { ToolCallEvidence, ToolCallReason, ToolCallRoute } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { TelemetryTracker } from '@n8n/backend-services';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 
 import type { SimulationBackendId } from './tool-simulation.contracts';
 
@@ -40,6 +43,26 @@ export const noEvidence = (): Record<ToolCallEvidence, number> => ({
 	world_read: 0,
 	world_write: 0,
 });
+
+/**
+ * Tracks an event on a best-effort basis. Telemetry runs after real writes and inside
+ * `finally` blocks, so an error from it must not change the result or hide another error.
+ */
+export function safeTrack<T extends TelemetryEventDef>(
+	telemetry: TelemetryTracker,
+	logger: Logger,
+	event: T,
+	properties: InferTelemetryProps<T>,
+): void {
+	try {
+		telemetry.track(event, properties);
+	} catch (error) {
+		logger.warn('[SafeTesting] Could not track a telemetry event', {
+			event: event.name,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
 
 /** `none` when no simulated world opened. */
 export const telemetryBackend = (backend: SimulationBackendId | undefined) => backend ?? 'none';

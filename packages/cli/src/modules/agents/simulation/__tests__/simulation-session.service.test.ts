@@ -111,8 +111,9 @@ function setup({
 			(type === 'telegram' ? { conversationTools: ['do_not_respond'] } : undefined) as never,
 	);
 	const telemetry = mock<TelemetryProxy>();
+	const logger = mock<Logger>();
 	const service = new SimulationSessionService(
-		mock<Logger>(),
+		logger,
 		flagGate,
 		registry,
 		agentRepository,
@@ -131,6 +132,7 @@ function setup({
 		flagGate,
 		workflowRepository,
 		telemetry,
+		logger,
 	};
 }
 
@@ -465,6 +467,25 @@ describe('SimulationSessionService', () => {
 				not_simulatable: 3,
 			},
 		});
+	});
+
+	it('marks the chat and starts the turn when telemetry throws', async () => {
+		const { service, telemetry, threadRepository, logger } = setup({ backend: llmBackend() });
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const session = await service.openForDraftRun(openInput);
+
+		await expect(session!.markTestChat()).resolves.toBeUndefined();
+		await session!.markTestChat();
+
+		expect(threadRepository.markTestChat).toHaveBeenCalledTimes(2);
+		// The chat counts as marked, so the second turn does not track the start again.
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[SafeTesting] Could not track a telemetry event',
+			expect.objectContaining({ error: 'telemetry down' }),
+		);
 	});
 
 	it('tracks a test run without a simulator as backend none', async () => {

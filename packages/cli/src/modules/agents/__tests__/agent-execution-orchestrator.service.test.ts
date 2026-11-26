@@ -1765,6 +1765,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				checkpointStorage,
 				mock<SimulationSessionService>(),
 				mock<TelemetryProxy>(),
+				mockLogger(),
 			);
 			const finalization = createDeferredPromise<string>();
 			executionService.finalizeExecution.mockReturnValue(finalization.promise);
@@ -1885,6 +1886,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				checkpointStorage,
 				mock<SimulationSessionService>(),
 				mock<TelemetryProxy>(),
+				mockLogger(),
 			);
 			const finalization = createDeferredPromise<string>();
 			executionService.finalizeExecution.mockReturnValue(finalization.promise);

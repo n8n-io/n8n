@@ -28,7 +28,7 @@ import { instrumentedRunGap } from '../tools/instrumented-run-guard';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import { nodeSimulationGap } from './non-http-node-types';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
-import { countBy, noBlockedReasons, telemetryBackend } from './safe-testing-telemetry';
+import { countBy, noBlockedReasons, safeTrack, telemetryBackend } from './safe-testing-telemetry';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
 import type { SimulatedAgent, SimulatedTool, SimulationWorld } from './tool-simulation.contracts';
@@ -307,7 +307,7 @@ export class SimulationSessionService {
 		const blockedReasons = capabilities.flatMap((tool) =>
 			tool.testability === 'blocked' ? [tool.reason] : [],
 		);
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_STARTED, {
+		safeTrack(this.telemetry, this.logger, TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_STARTED, {
 			agent_id: input.agentId,
 			project_id: input.projectId,
 			user_id: input.user.id,

@@ -138,6 +138,45 @@ describe('HeldActionCommitService', () => {
 		);
 	});
 
+	it('returns the replay results after the real writes ran when telemetry throws', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi.fn().mockResolvedValue({ ok: true });
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, realSlack);
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+		const telemetry = mock<TelemetryProxy>();
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const logger = mock<Logger>();
+		const service = new HeldActionCommitService(
+			logger,
+			simulationSessions,
+			runtimeCache,
+			telemetry,
+		);
+
+		const result = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		});
+
+		expect(realSlack).toHaveBeenCalledTimes(1);
+		expect(result.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+		]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[SafeTesting] Could not track a telemetry event',
+			expect.objectContaining({ error: 'telemetry down' }),
+		);
+	});
+
 	it('holds writes during test run, replays them in order once, and returns already_committed on duplicate calls', async () => {
 		const { session, world } = createSimulatedSession();
 		const callOrder: string[] = [];

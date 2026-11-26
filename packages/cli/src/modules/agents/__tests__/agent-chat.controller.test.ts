@@ -94,6 +94,7 @@ function makeController() {
 		mock<N8NCheckpointStorage>(),
 		mock<SimulationSessionService>(),
 		mock<TelemetryProxy>(),
+		mockLogger(),
 	);
 
 	const messageQueue = mock<AgentMessageQueueService>();

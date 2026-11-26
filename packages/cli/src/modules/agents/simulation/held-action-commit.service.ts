@@ -10,7 +10,7 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
-import { countBy, telemetryBackend } from './safe-testing-telemetry';
+import { countBy, safeTrack, telemetryBackend } from './safe-testing-telemetry';
 import type { HeldActionDescriptor } from './simulation-session';
 import { SimulationSessionService } from './simulation-session.service';
 
@@ -184,7 +184,7 @@ export class HeldActionCommitService {
 			{ done: 0, failed: 0, already_committed: 0 },
 			done.map((result) => result.status),
 		);
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_RAN_HELD_AGENT_ACTIONS, {
+		safeTrack(this.telemetry, this.logger, TELEMETRY_EVENT.AGENTS.USER_RAN_HELD_AGENT_ACTIONS, {
 			agent_id: input.agentId,
 			project_id: input.projectId,
 			user_id: input.user.id,
