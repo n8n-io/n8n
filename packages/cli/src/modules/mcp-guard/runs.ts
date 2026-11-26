@@ -1,13 +1,13 @@
 import { OperationalError } from '@n8n/errors';
+import { createHash } from 'node:crypto';
 
-import { AgentHydrator } from './agent-hydrator';
 import type { GymAdmin } from './gym-admin';
-import { createHydrationLlm, createPlanLlm, type HydrationModel } from './hydration-llm';
+import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { PlanHydrator } from './plan-hydrator';
 import { createMcpCaller, type McpCaller } from './mcp-upstream';
 import { GuardRouter, type Hydrator } from './router';
-import { guardMode, type GuardServiceProfile } from './services';
+import type { GuardServiceProfile } from './services';
 
 export interface Run {
 	tenant: string;
@@ -30,13 +30,27 @@ const IDLE_MS = 6 * 60 * 60 * 1000;
 // `tenantExists` lists every tenant of the gym. Check a run at most once in this time.
 const VERIFY_MS = 30 * 1000;
 
+// How often idle runs are removed. A run holds real data and the upstream token in memory.
+const SWEEP_MS = 10 * 60 * 1000;
+
 export class RunRegistry {
 	private readonly runs = new Map<string, Run>();
 
 	// Runs that are being created. A second request for the same run waits for the first.
 	private readonly creating = new Map<string, Promise<Run>>();
 
+	private sweeper?: NodeJS.Timeout;
+
 	constructor(private readonly cfg: RunConfig) {}
+
+	private startSweeper(): void {
+		if (this.sweeper) return;
+		this.sweeper = setInterval(() => {
+			this.deleteIdle().catch(() => undefined);
+		}, SWEEP_MS);
+		// The timer must not keep the process alive.
+		this.sweeper.unref();
+	}
 
 	// The tenant is created on the first request of a run. A run is one chat of one agent.
 	async getOrCreate(runId: string, token: string, model?: HydrationModel): Promise<Run> {
@@ -69,7 +83,9 @@ export class RunRegistry {
 		if (!model)
 			throw new OperationalError('mcp-guard needs the model of the agent to fill the gym');
 		await this.deleteIdle();
-		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		// The hash keeps two run ids that clean to the same name apart.
+		const hash = createHash('sha256').update(runId).digest('hex').slice(0, 8);
+		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-') + `-${hash}`;
 		await this.cfg.admin.createTenant(tenant);
 		// The gym issues a credential only for a tenant with an account. Seed one placeholder account.
 		const { profile } = this.cfg;
@@ -97,10 +113,11 @@ export class RunRegistry {
 		const now = Date.now();
 		const run: Run = { tenant, lastUsed: now, verifiedAt: now, tokenRef, router };
 		this.runs.set(runId, run);
+		this.startSweeper();
 		return run;
 	}
 
-	// MCP_GUARD_HYDRATION picks the hydrator: plan or agent. Both use the model of the agent under test.
+	// The plan hydrator uses the model of the agent under test.
 	private createHydrator(
 		profile: GuardServiceProfile,
 		tenant: string,
@@ -109,17 +126,6 @@ export class RunRegistry {
 		model: HydrationModel,
 	): Hydrator {
 		const { admin } = this.cfg;
-		if (guardMode() === 'agent') {
-			return new AgentHydrator({
-				admin,
-				tenant,
-				upstream,
-				gym,
-				readTools: profile.readTools,
-				serviceInstructions: profile.instructions,
-				llm: createHydrationLlm(model),
-			});
-		}
 		return new PlanHydrator({
 			admin,
 			tenant,

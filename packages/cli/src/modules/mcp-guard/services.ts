@@ -93,10 +93,8 @@ export const NOTION_PROFILE: GuardServiceProfile = {
 export const GUARD_PROFILES: readonly GuardServiceProfile[] = [LINEAR_PROFILE, NOTION_PROFILE];
 
 /**
- * MCP_GUARD_HYDRATION turns the guard on and picks the hydrator: `plan` or `agent`. Without it, or with
+ * MCP_GUARD_HYDRATION=plan turns the guard on. Without it, or with
  * another value, the guard is off and nothing changes.
  */
-export const guardMode = (): 'plan' | 'agent' | undefined => {
-	const mode = process.env.MCP_GUARD_HYDRATION;
-	return mode === 'plan' || mode === 'agent' ? mode : undefined;
-};
+export const guardMode = (): 'plan' | undefined =>
+	process.env.MCP_GUARD_HYDRATION === 'plan' ? 'plan' : undefined;

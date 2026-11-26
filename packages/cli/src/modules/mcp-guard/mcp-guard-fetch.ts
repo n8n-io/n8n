@@ -10,23 +10,23 @@ const GUARDED_HOSTS: ReadonlySet<string> = new Set(GUARD_PROFILES.map((p) => p.h
 
 const OAUTH_PATHS: ReadonlySet<string> = new Set(['/authorize', '/token', '/register']);
 
-/** Test chats send Linear and Notion MCP calls to the guard when it is on. An evaluation run has its own MCP fetch and never uses it. */
-export const isMcpGuardActive = (runType: string | undefined, hasInstrumentedFetch: boolean) =>
-	runType === 'test' && !hasInstrumentedFetch && guardMode() !== undefined;
+/**
+ * The Builder preview chat sends Linear and Notion MCP calls to the guard when it is on. Manual and chat
+ * workflow runs also have `runType` 'test', but they have no chat scope. An evaluation run has its own
+ * MCP fetch and never uses the guard.
+ */
+export const isMcpGuardActive = (
+	runType: string | undefined,
+	hasInstrumentedFetch: boolean,
+	previewChat: boolean | undefined,
+) =>
+	runType === 'test' && previewChat === true && !hasInstrumentedFetch && guardMode() !== undefined;
 
 /** How long a guarded tool call may take. A call can wait for a hydration, which can need several model turns. */
 export const GUARDED_CALL_TIMEOUT_MS = 5 * 60 * 1000;
 
 // `mcp.linear.app.` (trailing dot) and `MCP.LINEAR.APP` name the same server. Compare the canonical host.
 const canonicalHost = (hostname: string): string => hostname.toLowerCase().replace(/\.+$/, '');
-
-export const isGuardedUrl = (url: string): boolean => {
-	try {
-		return GUARDED_HOSTS.has(canonicalHost(new URL(url).hostname));
-	} catch {
-		return false;
-	}
-};
 
 // One run (one gym tenant) for each chat of the agent. Outside a chat the run is the agent's.
 const chatRunId = (agentId: string): string => {

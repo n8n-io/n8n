@@ -65,14 +65,14 @@ describe('AgentRuntimeReconstructionService MCP guard wiring', () => {
 		beforeEach(() => vi.stubEnv('MCP_GUARD_HYDRATION', 'plan'));
 
 		it('should keep Linear MCP calls away from the real service', async () => {
-			const proxyFetch = await proxyFetchOf({ runType: 'test' });
+			const proxyFetch = await proxyFetchOf({ runType: 'test', previewChat: true });
 			const res = await proxyFetch('https://mcp.linear.app/mcp', { method: 'POST', body: '{}' });
 			expect(await res.text()).toBe('guard');
 			expect(aiMcpFetch).not.toHaveBeenCalled();
 		});
 
 		it('should name the agent as the owner of the run', async () => {
-			const proxyFetch = await proxyFetchOf({ runType: 'test' });
+			const proxyFetch = await proxyFetchOf({ runType: 'test', previewChat: true });
 			await proxyFetch('https://mcp.notion.com/mcp', { method: 'POST', body: '{}' });
 			expect(handleMcp).toHaveBeenCalledWith(
 				'mcp.notion.com',
@@ -83,30 +83,31 @@ describe('AgentRuntimeReconstructionService MCP guard wiring', () => {
 		});
 
 		it('should leave other hosts to the real fetch', async () => {
-			const proxyFetch = await proxyFetchOf({ runType: 'test' });
+			const proxyFetch = await proxyFetchOf({ runType: 'test', previewChat: true });
 			await proxyFetch('https://example.com/mcp', { method: 'POST', body: '{}' });
 			expect(aiMcpFetch).toHaveBeenCalled();
 			expect(handleMcp).not.toHaveBeenCalled();
 		});
 
 		it('should give every MCP call a long timeout', async () => {
-			await proxyFetchOf({ runType: 'test' });
+			await proxyFetchOf({ runType: 'test', previewChat: true });
 			expect(built.options!.callTimeoutMs).toBe(5 * 60 * 1000);
 		});
 	});
 
 	describe('when the guard does not apply', () => {
 		it('should do nothing without MCP_GUARD_HYDRATION', async () => {
-			const proxyFetch = await proxyFetchOf({ runType: 'test' });
+			const proxyFetch = await proxyFetchOf({ runType: 'test', previewChat: true });
 			expect(proxyFetch).toBe(aiMcpFetch);
 			expect(built.options!.callTimeoutMs).toBeUndefined();
 		});
 
 		it.each([
-			['outside a test chat', { runType: 'production' }],
+			['outside a test chat', { runType: 'production', previewChat: true }],
+			['for a manual or chat workflow run', { runType: 'test' }],
 			[
 				'for an evaluation run with its own MCP fetch',
-				{ runType: 'test', instrumentation: { mcpFetch: vi.fn() } },
+				{ runType: 'test', previewChat: true, instrumentation: { mcpFetch: vi.fn() } },
 			],
 		])('should do nothing %s', async (_name, options) => {
 			vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');

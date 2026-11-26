@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import type { GymAdmin } from './gym-admin';
@@ -68,6 +69,20 @@ const DETAIL_TOOL = /(^|[-_])(get|fetch)([-_]|$)/;
 const MADE_ID_KEYS: ReadonlySet<string> = new Set(['id', 'uuid', 'identifier', 'page_id']);
 const MAX_SHOWN = 6000;
 const MAX_REPAIRS = 2;
+// A hydration stops starting new model turns and reads after this time. Shorter than GUARDED_CALL_TIMEOUT_MS,
+// so a hydration does not go on after the agent stopped waiting for it.
+const HYDRATION_DEADLINE_MS = 4 * 60 * 1000;
+
+interface HydrationStats {
+	turns: number;
+	reads: number;
+	deadline: number;
+}
+
+function checkDeadline(stats: HydrationStats): void {
+	if (Date.now() > stats.deadline)
+		throw new OperationalError('mcp-guard hydration deadline passed');
+}
 
 // Keys and value types of a value, without the values. For logs.
 function shapeOf(value: unknown): unknown {
@@ -254,7 +269,7 @@ export class PlanHydrator implements Hydrator {
 		options: { verify?: Verify } = {},
 	): Promise<boolean> {
 		const started = Date.now();
-		const stats = { turns: 0, reads: 0 };
+		const stats: HydrationStats = { turns: 0, reads: 0, deadline: started + HYDRATION_DEADLINE_MS };
 		try {
 			const ok = await this.run(toolName, prompt, result, args, options.verify, stats);
 			Container.get(Logger).info(
@@ -274,7 +289,7 @@ export class PlanHydrator implements Hydrator {
 		result: unknown,
 		args: Record<string, unknown>,
 		verify: Verify | undefined,
-		stats: { turns: number; reads: number },
+		stats: HydrationStats,
 	): Promise<boolean> {
 		const ctx: PointerContext = { result, reads: [], args };
 		let fullPrompt = prompt;
@@ -339,7 +354,8 @@ export class PlanHydrator implements Hydrator {
 		return { rest: lookups.filter((_, i) => !held[i]), held: lookups.filter((_, i) => held[i]) };
 	}
 
-	private async ask(prompt: string, stats: { turns: number }): Promise<Plan> {
+	private async ask(prompt: string, stats: HydrationStats): Promise<Plan> {
+		checkDeadline(stats);
 		stats.turns++;
 		const started = Date.now();
 		const answer = await this.deps.llm({ instructions: this.deps.instructions, prompt });
@@ -358,9 +374,10 @@ export class PlanHydrator implements Hydrator {
 	private async execute(
 		reads: Plan['reads'],
 		ctx: PointerContext,
-		stats: { reads: number },
+		stats: HydrationStats,
 		cached = false,
 	): Promise<string> {
+		checkDeadline(stats);
 		const outputs = await Promise.all(
 			reads.map(async ({ tool, args }) => {
 				stats.reads++;

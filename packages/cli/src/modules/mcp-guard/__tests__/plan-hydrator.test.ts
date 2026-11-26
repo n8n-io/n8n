@@ -180,6 +180,27 @@ describe('PlanHydrator', () => {
 		]);
 	});
 
+	it('stops a hydration that runs past its deadline', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const plan = JSON.stringify({ reads: [{ tool: 'get_team', args: { query: 'T' } }] });
+			const { hydrator, seeds, prompts, upstreamCalls } = setup([plan]);
+			const slow = hydrator as unknown as { deps: PlanHydratorDeps };
+			const llm = slow.deps.llm;
+			slow.deps.llm = async (request) => {
+				const answer = await llm(request);
+				vi.advanceTimersByTime(5 * 60 * 1000);
+				return answer;
+			};
+			await hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+			expect(prompts).toHaveLength(1);
+			expect(upstreamCalls).toEqual([]);
+			expect(seeds).toEqual([]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('runs the reads of the plan in code, refuses a non-read tool, then asks once more', async () => {
 		const first = JSON.stringify({
 			reads: [

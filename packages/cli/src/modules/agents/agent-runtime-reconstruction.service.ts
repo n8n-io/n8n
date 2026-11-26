@@ -1093,7 +1093,11 @@ export class AgentRuntimeReconstructionService {
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
-		const guardActive = isMcpGuardActive(options.runType, instrumentation?.mcpFetch !== undefined);
+		const guardActive = isMcpGuardActive(
+			options.runType,
+			instrumentation?.mcpFetch !== undefined,
+			options.previewChat,
+		);
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				wrapApproval: (tool) => wrapApproval(tool, server.approvalRoute),

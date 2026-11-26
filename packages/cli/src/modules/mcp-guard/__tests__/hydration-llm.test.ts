@@ -1,4 +1,4 @@
-import { createHydrationLlm, createPlanLlm, type HydrationModel } from '../hydration-llm';
+import { createPlanLlm, type HydrationModel } from '../hydration-llm';
 
 const created: Array<{
 	name: string;
@@ -105,23 +105,6 @@ describe('hydration LLM adapters', () => {
 				prompt: '',
 			});
 			expect(created[0].fetch).toBeUndefined();
-		});
-	});
-
-	describe('createHydrationLlm', () => {
-		it('should register the tools and run them from the model', async () => {
-			const run = vi.fn(async (input: unknown) => `ran ${JSON.stringify(input)}`);
-			await createHydrationLlm(model)({
-				instructions: 'seed it',
-				prompt: 'go',
-				maxIterations: 7,
-				tools: [{ name: 'gym_seed', description: 'seed', input: {} as never, run }],
-			});
-			const [agent] = created;
-			expect(agent.tools.map((t) => t.name)).toEqual(['gym_seed']);
-			expect(await agent.tools[0].handler({ a: 1 })).toBe('ran {"a":1}');
-			expect(agent.generateArgs).toEqual(['go', { maxIterations: 7 }]);
-			expect(agent.fetch).toBe(fetch);
 		});
 	});
 });

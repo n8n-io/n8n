@@ -6,7 +6,7 @@ This file explains the path of one MCP call in a preview-mode chat. It ends with
 
 ## 1. Goal
 
-When an agent runs in the Agent Builder test chat (`runType === 'test'`), its Linear and Notion MCP calls must never change real data.
+When an agent runs in the Agent Builder preview chat (`runType === 'test'` and `previewChat`), its Linear and Notion MCP calls must never change real data.
 
 | Kind of call | Real MCP | AI Gym |
 |---|---|---|
@@ -43,15 +43,15 @@ Rules of the router:
 - Errors become tool errors. They do not crash the chat.
 - Hydration failure never fails the call. The gym then answers with what it has.
 
-### 2.1 Hydration strategies (`MCP_GUARD_HYDRATION`)
+### 2.1 Hydration (`MCP_GUARD_HYDRATION`)
+
+`MCP_GUARD_HYDRATION=plan` turns the guard on. Any other value, or no value, leaves it off.
 
 | Value | Class | How it works |
 |---|---|---|
-| `plan` (default when a model is available) | `PlanHydrator` | Plan and execute. See section 3. |
-| `agent` | `AgentHydrator` | ReAct loop. The model has tools `real_read`, `gym_read`, `gym_seed`, `gym_event`. Slow: 54 to 119 s per run in tests. |
-| `deterministic` | `LinearHydrator`, `NotionHydrator` | Parsers written by hand for known tools. No model. Also used when no model is available. |
+| `plan` | `PlanHydrator` | Plan and execute. See section 3. |
 
-All three implement the `Hydrator` interface (`hydrate`, optional `hydrateWrite`).
+`PlanHydrator` implements the `Hydrator` interface (`hydrate`, optional `hydrateWrite`). A hydration stops after 4 minutes.
 
 ## 3. Plan and execute (`plan-hydrator.ts`, `plan-template.ts`)
 

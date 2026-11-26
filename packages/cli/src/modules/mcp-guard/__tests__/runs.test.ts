@@ -45,8 +45,8 @@ describe('RunRegistry', () => {
 
 	it('should create a tenant for a new run and give it an account and a credential', async () => {
 		const run = await registry.getOrCreate('Agent_1-Chat 2', 'real-token', model);
-		expect(run.tenant).toBe('guard-agent-1-chat-2');
-		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent-1-chat-2');
+		expect(run.tenant).toBe('guard-agent-1-chat-2-026bdff1');
+		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent-1-chat-2-026bdff1');
 		expect(admin.seed).toHaveBeenCalledWith(run.tenant, LINEAR_PROFILE.placeholderSeed);
 		expect(admin.issueMcpCredential).toHaveBeenCalledWith(
 			run.tenant,
@@ -54,6 +54,12 @@ describe('RunRegistry', () => {
 			LINEAR_PROFILE.credentialKind,
 			LINEAR_PROFILE.credentialField,
 		);
+	});
+
+	it('should give two run ids that clean to the same name two tenants', async () => {
+		const first = await registry.getOrCreate('Agent 1', 'token', model);
+		const second = await registry.getOrCreate('agent-1', 'token', model);
+		expect(first.tenant).not.toBe(second.tenant);
 	});
 
 	it('should reuse the run of a chat and take the new token', async () => {
@@ -93,7 +99,7 @@ describe('RunRegistry', () => {
 			vi.advanceTimersByTime(31_000);
 			const run = await registry.getOrCreate('a-1', 'token', model);
 			expect(admin.createTenant).toHaveBeenCalledTimes(2);
-			expect(run.tenant).toBe('guard-a-1');
+			expect(run.tenant).toBe('guard-a-1-2f8fe63a');
 		} finally {
 			vi.useRealTimers();
 		}

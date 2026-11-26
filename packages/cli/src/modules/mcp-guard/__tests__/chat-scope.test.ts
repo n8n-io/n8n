@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 
 import { withChatScope } from '../chat-scope';
 import { McpGuardService } from '../mcp-guard.service';
-import { GUARDED_CALL_TIMEOUT_MS, isGuardedUrl, withMcpGuard } from '../mcp-guard-fetch';
+import { GUARDED_CALL_TIMEOUT_MS, withMcpGuard } from '../mcp-guard-fetch';
 
 describe('withMcpGuard run id', () => {
 	const calls: string[] = [];
@@ -38,11 +38,7 @@ describe('withMcpGuard run id', () => {
 });
 
 describe('guarded call timeout', () => {
-	it('applies to the guarded hosts only, and is longer than the MCP SDK default of 60 s', () => {
-		expect(isGuardedUrl('https://mcp.linear.app/mcp')).toBe(true);
-		expect(isGuardedUrl('https://mcp.notion.com/mcp')).toBe(true);
-		expect(isGuardedUrl('https://mcp.example.com/mcp')).toBe(false);
-		expect(isGuardedUrl('not a url')).toBe(false);
+	it('is longer than the MCP SDK default of 60 s', () => {
 		expect(GUARDED_CALL_TIMEOUT_MS).toBeGreaterThan(60_000);
 	});
 });

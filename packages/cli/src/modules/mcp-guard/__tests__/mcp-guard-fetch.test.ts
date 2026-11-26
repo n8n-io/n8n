@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { isGuardedUrl, isMcpGuardActive, withMcpGuard } from '../mcp-guard-fetch';
+import { isMcpGuardActive, withMcpGuard } from '../mcp-guard-fetch';
 import { McpGuardService } from '../mcp-guard.service';
 
 vi.mock('../mcp-guard.service', () => ({ McpGuardService: class {} }));
@@ -72,31 +72,25 @@ describe('withMcpGuard', () => {
 	});
 });
 
-describe('isGuardedUrl', () => {
-	it('should compare the canonical host', () => {
-		expect(isGuardedUrl('https://mcp.linear.app./mcp')).toBe(true);
-		expect(isGuardedUrl('https://example.com/mcp')).toBe(false);
-		expect(isGuardedUrl('not a url')).toBe(false);
-	});
-});
-
 describe('isMcpGuardActive', () => {
 	afterEach(() => vi.unstubAllEnvs());
 
-	it('should be off unless MCP_GUARD_HYDRATION is plan or agent', () => {
-		expect(isMcpGuardActive('test', false)).toBe(false);
+	it('should be off unless MCP_GUARD_HYDRATION is plan', () => {
+		expect(isMcpGuardActive('test', false, true)).toBe(false);
 		vi.stubEnv('MCP_GUARD_HYDRATION', 'true');
-		expect(isMcpGuardActive('test', false)).toBe(false);
-		vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
-		expect(isMcpGuardActive('test', false)).toBe(true);
+		expect(isMcpGuardActive('test', false, true)).toBe(false);
 		vi.stubEnv('MCP_GUARD_HYDRATION', 'agent');
-		expect(isMcpGuardActive('test', false)).toBe(true);
+		expect(isMcpGuardActive('test', false, true)).toBe(false);
+		vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
+		expect(isMcpGuardActive('test', false, true)).toBe(true);
 	});
 
-	it('should stay off outside a test chat and for an instrumented fetch', () => {
+	it('should stay off outside the preview chat and for an instrumented fetch', () => {
 		vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
-		expect(isMcpGuardActive('production', false)).toBe(false);
-		expect(isMcpGuardActive(undefined, false)).toBe(false);
-		expect(isMcpGuardActive('test', true)).toBe(false);
+		expect(isMcpGuardActive('production', false, true)).toBe(false);
+		expect(isMcpGuardActive(undefined, false, true)).toBe(false);
+		expect(isMcpGuardActive('test', true, true)).toBe(false);
+		expect(isMcpGuardActive('test', false, false)).toBe(false);
+		expect(isMcpGuardActive('test', false, undefined)).toBe(false);
 	});
 });
