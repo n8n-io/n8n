@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useId, useTemplateRef, watch, type Ref } from 'vue';
+import { computed, ref, useTemplateRef, watch, type Ref } from 'vue';
 import {
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
@@ -74,7 +74,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const voiceReasonId = useId();
 const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
@@ -344,7 +343,6 @@ defineExpose({
 						variant="ghost"
 						:disabled="disabled || isStreaming"
 						:focusable-when-disabled="isStreaming"
-						:aria-describedby="isStreaming ? voiceReasonId : undefined"
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
@@ -355,14 +353,6 @@ defineExpose({
 				</N8nTooltip>
 			</template>
 		</N8nChatInput>
-		<N8nText
-			v-if="showVoice && speechInput.isSupported && isStreaming"
-			:id="voiceReasonId"
-			tag="p"
-			size="small"
-			color="text-light"
-			>{{ i18n.baseText('chatInputBase.button.dictate.stopResponse') }}</N8nText
-		>
 	</div>
 </template>
 
