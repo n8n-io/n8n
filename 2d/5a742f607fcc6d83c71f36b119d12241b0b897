@@ -1,0 +1,16 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8a472ace01776f 10081
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  h_8a472ace01776f 304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d5a742f607fcc6d83c71f36b119d12241b0b897",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
