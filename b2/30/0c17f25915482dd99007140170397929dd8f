@@ -1,0 +1,68 @@
+packages/@n8n/api-types/src/index.ts
+  h_8a472ace01776f 1164
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  h_8a472ace01776f 6-8
+packages/@n8n/telemetry/src/events/agents.ts
+  h_8a472ace01776f 236-249,894-896,1385-1481
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  h_8a472ace01776f 22,96
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  h_8a472ace01776f 43,1767,1887
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  h_8a472ace01776f 4,156-161
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  h_8a472ace01776f 9,12,86,95,97,720-785
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  h_8a472ace01776f 13,17,30-36,69-72,198,279,308,444-448,457-512
+packages/cli/src/modules/agents/simulation/__tests__/held-action-commit.service.test.ts
+  h_8a472ace01776f 3,6,93-140,170-175,238-243,293-298,346-351,397-402,433-438,461-466
+packages/cli/src/modules/agents/simulation/__tests__/safe-testing-flag-gate.test.ts
+  h_8a472ace01776f 18-25,35
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  h_8a472ace01776f 3,146
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  h_8a472ace01776f 3,7,113,125,127-134,446-481
+packages/cli/src/modules/agents/simulation/held-action-commit.service.ts
+  h_8a472ace01776f 4,8,13,49,180-198
+packages/cli/src/modules/agents/simulation/safe-testing-flag-gate.ts
+  h_8a472ace01776f 1,7-10,17
+packages/cli/src/modules/agents/simulation/safe-testing-telemetry.ts
+  h_8a472ace01776f 1-45
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  h_8a472ace01776f 5,11,31,74,288,302-321
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  h_8a472ace01776f 2-3,234-239,327
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  h_8a472ace01776f 7974,8021,8090,8128
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  h_8a472ace01776f 55,426
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatSafeTesting.test.ts
+  h_8a472ace01776f 37-48,220-222,271-274,297-299,338
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  h_8a472ace01776f 28-38,212-221,259-270,282,285
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentSafeTestingFlag.test.ts
+  h_8a472ace01776f 7-8,11,15-16,20,23,25-29
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  h_8a472ace01776f 418-459
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  h_8a472ace01776f 101,1556,1785-1786,1816,1832
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  h_8a472ace01776f 14,30,49,64-78,145,154-157
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSafeTestingFlag.ts
+  h_8a472ace01776f 3,7-8,12-17
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  h_8a472ace01776f 1,141,146,447-477,480-483
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_8a472ace01776f 3762,3943
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2300c17f25915482dd99007140170397929dd8f",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  h_52a137d26d774c 592-593
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a32f5ff880f39801b9ed2bb41f5303f1bfe43586",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
