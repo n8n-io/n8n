@@ -140,8 +140,9 @@ const timeSaved = {
 } satisfies CountingRule;
 
 // A run counts once, at its start. A blocked run gives its slot back: see executionLimitDelta.
+// V1 does not limit agents.
 const executionLimit = {
-	entityType: { workflow: true, agent: true },
+	entityType: { workflow: true, agent: false },
 	event: { started: true, ended: false },
 	outcome: {
 		none: true,
@@ -159,13 +160,13 @@ const executionLimit = {
 		trigger: true,
 		webhook: true,
 		evaluation: true,
-		agent: true,
 
 		integrated: false,
 		error: false,
 		internal: false,
 		manual: false,
 		chat: false,
+		agent: false,
 	},
 } satisfies CountingRule;
 
