@@ -24,6 +24,7 @@ export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export type * from './instance-type-access';
+export type * from './project-policies';
 export type * from './type-usage';
 export type * from './transfer-preview';
 export type * from './transfer-result';

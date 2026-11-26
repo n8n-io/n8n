@@ -181,7 +181,7 @@ These only run if specific files changed:
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docs/backend/**`, `packages/@n8n/backend-docs-site/**`                | `release-docs-backend.yml` (PR preview, master deploys to n8n-backend-docs.pages.dev) | master     |
 | `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (builds only the bases whose inputs changed; publishes on master only) | any        |
-| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
+| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds compiled `-dev` images for pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; independent of `RUNTIME_IMAGE`; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
@@ -193,8 +193,11 @@ These only run if specific files changed:
 A push to an open PR tests only the commits after the newest PR commit that
 passed `ci-pull-requests.yml`. `find-last-green-commit.mjs` finds that commit.
 `ci-filter` then uses the diff from that commit, not the whole PR, for the path
-filters, the test scoping and the E2E selection. Lint and typecheck still
-compare the whole PR with the base branch.
+filters, the test scoping and the E2E selection. On an incremental run, lint
+and typecheck compare the same commit with the PR head (`TURBO_SCM_BASE` and
+`TURBO_SCM_HEAD`), not with the merge commit, which also holds the base-branch
+changes since that commit. In all other runs, they compare the whole PR with
+the base branch, as before.
 
 `ci-filter` tests the whole PR when one of these is true:
 
@@ -696,7 +699,7 @@ Push to master
 ├─ unit-test (matrix: Node 24.22.2, 26.13.0)
 │   └─ Coverage only on 24.22.2
 ├─ lint
-├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```

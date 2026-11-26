@@ -4162,6 +4162,30 @@ describe('LogStreamingEventRelay', () => {
 			},
 		);
 
+		it.each([
+			[
+				'Required',
+				true,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.enabled',
+			],
+			[
+				'Not required',
+				false,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled',
+			],
+		])('should log %s for a project as `%s`', (_option, requiredByInstance, eventName) => {
+			eventService.emit('project-workflow-review-required-by-instance-updated', {
+				user: reviewer,
+				projectId: 'project-1',
+				requiredByInstance,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: { ...redactedReviewer, projectId: 'project-1' },
+			});
+		});
+
 		it('should log `workflow-review.closed-by-user` with the closer and the reviewed version', () => {
 			eventService.emit('workflow-review-closed-by-user', {
 				user: reviewer,

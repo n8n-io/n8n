@@ -10,7 +10,6 @@ import TypeAccessSelect from './TypeAccessSelect.vue';
 import type { RelatedTypeItem } from './useRelatedTypeIndex';
 import { useTypeAccessEdits } from './useTypeAccessEdits';
 import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
-import { useInstancePolicy } from '../useInstancePolicy';
 
 const {
 	kind,
@@ -31,8 +30,7 @@ const SECTION_LIMIT = 6;
 const i18n = useI18n();
 const NodeTypeIcon = computed(() => componentRegistry.get('node-type-icon'));
 const CredentialTypeIcon = computed(() => componentRegistry.get('credential-type-icon'));
-const { accessOf, isLocked, canManage, setAccess } = useTypeAccessEdits();
-const instancePolicy = useInstancePolicy();
+const { accessOf, isLocked, isChecking, canManage, usageOf, setAccess } = useTypeAccessEdits();
 
 const expanded = ref(false);
 
@@ -56,7 +54,7 @@ function usageText(usage: TypeUsage): string {
 
 const visibleItems = computed(() =>
 	(expanded.value ? items : items.slice(0, SECTION_LIMIT)).map((item) => {
-		const usage = instancePolicy.usageOf(kind, item.name);
+		const usage = usageOf(kind, item.name);
 		return { ...item, usage: usage ? usageText(usage) : undefined };
 	}),
 );
@@ -101,7 +99,8 @@ const visibleItems = computed(() =>
 					:model-value="accessOf(kind, item.name)"
 					:label="item.label"
 					:disabled="isLocked(kind, item.name)"
-					@update:model-value="(action) => setAccess(kind, item.name, action)"
+					:loading="isChecking(kind, item.name)"
+					@update:model-value="(action) => setAccess(kind, item.name, action, item.label)"
 				/>
 			</li>
 		</ul>

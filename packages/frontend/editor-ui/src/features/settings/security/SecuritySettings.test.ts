@@ -1053,7 +1053,7 @@ describe('SecuritySettings', () => {
 			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
-		it('hides Require approval while workflow reviews are off', async () => {
+		it('hides Require approval and the projects link while workflow reviews are off', async () => {
 			const { findByTestId, queryByTestId } = renderView();
 
 			await findByTestId('security-workflow-reviews-toggle');
@@ -1061,6 +1061,35 @@ describe('SecuritySettings', () => {
 			expect(
 				queryByTestId('security-workflow-reviews-require-approval-select'),
 			).not.toBeInTheDocument();
+			expect(queryByTestId('security-workflow-reviews-projects-row')).not.toBeInTheDocument();
+		});
+
+		it('links the Reviews card to the projects page', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			const { findByTestId } = renderView();
+
+			const row = await findByTestId('security-workflow-reviews-projects-row');
+			expect(row).toHaveTextContent('View all');
+			await userEvent.click(row);
+
+			expect(routerPush).toHaveBeenCalledWith({ name: 'SecurityWorkflowReviewInstanceSettings' });
+		});
+
+		it('keeps the stored workflow review policy current after loading the page', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			settingsStore.settings.workflowReviews = { enabled: false };
+			const { findByTestId } = renderView();
+
+			await findByTestId('security-workflow-reviews-projects-row');
+
+			// The route guard of the projects page reads the policy from the settings store.
+			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 		});
 
 		it('shows Require approval and saves Always required', async () => {
@@ -1075,6 +1104,7 @@ describe('SecuritySettings', () => {
 			const { findByTestId, findByRole } = renderView();
 			const select = await findByTestId('security-workflow-reviews-require-approval-select');
 			expect(select).toHaveTextContent('Set per project or workflow');
+			expect(select.querySelector('[data-icon="lock-unlocked"]')).not.toBeNull();
 
 			await userEvent.click(select);
 			await userEvent.click(await findByRole('option', { name: 'Always required' }));

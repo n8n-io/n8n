@@ -8,6 +8,8 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { raceAbort } from '@n8n/utils/race-abort';
+import { InstanceSettings } from 'n8n-core';
+import { v5 as uuidv5 } from 'uuid';
 
 import { APP_BUILD_SCRIPT } from './app-build-script';
 import { loadAppSdkFiles } from './app-sdk-files';
@@ -17,11 +19,20 @@ import { AppsConfig } from '../apps.config';
 import { AppArchive } from '../app-archive';
 import type { AppFiles } from '../storage/app-version-stores';
 
+const APP_BUILD_SANDBOX_NAMESPACE = uuidv5('n8n-app-build-sandbox', uuidv5.URL);
+
 const FAILURE_MESSAGES = {
 	sandbox: 'Sandbox setup failed. Check the sandbox configuration and build log.',
 	install: 'Dependency installation failed. Check the build log.',
 	build: 'The app build failed. Fix the errors in the build log and save a new version.',
 };
+
+function buildAppBuildSandboxId(instanceId: string, projectId: string, appId: string): string {
+	return uuidv5(
+		JSON.stringify([instanceId, projectId, 'app-build', appId]),
+		APP_BUILD_SANDBOX_NAMESPACE,
+	);
+}
 
 @Service()
 export class AppWorkspaceService {
@@ -29,6 +40,7 @@ export class AppWorkspaceService {
 		private readonly settings: AppSandboxSettings,
 		private readonly config: AppsConfig,
 		private readonly archives: AppArchive,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {}
 
@@ -181,15 +193,16 @@ export class AppWorkspaceService {
 	): Promise<SandboxConfig> {
 		const config = await this.settings.resolve(projectId, options);
 		if (!config.enabled) return config;
+		const sandboxId = buildAppBuildSandboxId(this.instanceSettings.instanceId, projectId, appId);
 		return config.provider === 'daytona'
 			? {
 					...config,
-					id: appId,
-					name: `app-build-${appId}`,
+					id: sandboxId,
+					name: `app-build-${sandboxId}`,
 					ephemeral: true,
 					autoStopInterval: 15,
 					autoDeleteInterval: undefined,
 				}
-			: { ...config, id: appId, ephemeral: true };
+			: { ...config, id: sandboxId, ephemeral: true };
 	}
 }

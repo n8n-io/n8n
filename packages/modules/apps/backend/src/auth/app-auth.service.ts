@@ -4,16 +4,21 @@ import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { ResourceAdmission } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
-import type { NextFunction, Request, Response } from 'express';
+import type { CookieOptions, NextFunction, Request, Response } from 'express';
 import { LRUCache } from 'lru-cache';
 import { ExecutionContextService } from 'n8n-core';
 import { createHash, randomBytes } from 'node:crypto';
 
-import { appCookieName, appCookieOptions, readCookie } from './app-cookies';
+import {
+	appCookieName,
+	appCookieOptions,
+	embeddedAppCookieOptions,
+	readCookie,
+} from './app-cookies';
 import { AppProtectedResource } from './app-protected-resource';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
-import { AppHostService } from '../serving/app-host.service';
+import { AppHostService, type AppHostKind } from '../serving/app-host.service';
 
 export interface AppRequest extends Request {
 	appContext?: {
@@ -29,13 +34,29 @@ export type AppAdmission =
 	| { ok: true; app: App; security: SecurityContext; token: string }
 	| { ok: false; app: App; reason: 'unauthenticated' | 'insufficient_scope' };
 
+/** The nonce binds the callback to the browser that holds the flow cookie. */
+export type AppSignIn = { authorizeUrl: string; state: string; nonce: string };
+
+export type AppSignedIn = {
+	app: App;
+	token: string;
+	expiresIn: number;
+	userId: string;
+	metadata: Record<string, string>;
+};
+
 type CachedAdmission = { app: App; security: SecurityContext };
 
 const ADMISSION_CACHE_TTL_MS = 30_000;
 const ADMISSION_CACHE_MAX_ENTRIES = 10_000;
+const FLOW_COOKIE_TTL_MS = 5 * 60 * 1000;
 
 @Service()
 export class AppAuthService {
+	/**
+	 * Both host kinds share this cache on purpose, so an access change applies within 30 seconds.
+	 * Workflow runs check access again when they resolve credentials.
+	 */
 	private readonly admitted = new LRUCache<string, CachedAdmission>({
 		max: ADMISSION_CACHE_MAX_ENTRIES,
 		ttl: ADMISSION_CACHE_TTL_MS,
@@ -52,29 +73,32 @@ export class AppAuthService {
 		private readonly executionContext: ExecutionContextService,
 	) {}
 
-	async requireApp(req: Request, appId?: string): Promise<App> {
-		const namespace = this.hosts.namespace(req);
+	async requireApp(req: Request, appId?: string, kind: AppHostKind = 'published'): Promise<App> {
+		const namespace = this.namespace(req, kind);
 		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
-		if (!app?.publishedVersionId || (appId !== undefined && app.id !== appId)) {
+		if (
+			!app ||
+			(kind === 'published' && !app.publishedVersionId) ||
+			(appId !== undefined && app.id !== appId)
+		) {
 			throw new NotFoundError('App not found.');
 		}
 		return app;
 	}
 
-	/** Resolves the published app of the request host and checks the visitor's session. */
-	async admit(req: Request): Promise<AppAdmission> {
+	/** Resolves the app of the request host and checks the visitor's session. */
+	async admit(req: Request, kind: AppHostKind = 'published'): Promise<AppAdmission> {
 		const token = readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '';
-		const cacheKey = `${this.hosts.namespace(req)}:${this.hash(token)}`;
+		const cacheKey = this.cacheKey(kind, this.namespace(req, kind), token);
 		const cached = token ? this.admitted.get(cacheKey) : undefined;
 		if (cached) return { ok: true, ...cached, token };
 
-		const app = await this.requireApp(req);
+		const app = await this.requireApp(req, undefined, kind);
 		if (!token) return { ok: false, app, reason: 'unauthenticated' };
 
-		const request = { method: req.method, url: this.hosts.callbackUrl(app), ip: req.ip ?? '' };
 		const result = await this.admission.admitBearer(
-			this.resources.forApp(app, { revalidate: false }),
-			request,
+			this.resources.forApp(app, { kind, revalidate: false }),
+			{ method: req.method, url: this.hosts.callbackUrl(app, kind), ip: req.ip ?? '' },
 			token,
 		);
 		if (result.ok) {
@@ -90,11 +114,16 @@ export class AppAuthService {
 	}
 
 	/** Seals the user ID too, so the run resolves credentials after the session token expires. */
-	async sealVisitor(app: App, token: string, userId: string): Promise<string> {
+	async sealVisitor(
+		app: App,
+		token: string,
+		userId: string,
+		kind: AppHostKind = 'published',
+	): Promise<string> {
 		return await this.executionContext.buildTriggerIdentityCredentials(
 			token,
-			this.hosts.callbackUrl(app),
-			this.resources.grantFor(app),
+			this.hosts.callbackUrl(app, kind),
+			this.resources.grantFor(app, kind),
 			userId,
 		);
 	}
@@ -133,33 +162,67 @@ export class AppAuthService {
 	}
 
 	async begin(app: App, returnPath: string, res: Response): Promise<void> {
-		const nonce = randomBytes(32).toString('hex');
-		const url = await this.flow.begin(this.hosts.callbackUrl(app), {
-			appId: app.id,
-			namespace: app.namespace,
+		const signIn = await this.startSignIn(app, 'published', {
 			returnPath: this.returnPath(returnPath),
-			nonceHash: this.hash(nonce),
 		});
-		const state = new URL(url).searchParams.get('state');
-		if (!state) throw new AuthError('Invalid app sign-in state.');
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-		res.cookie(this.flowCookieName(state), nonce, {
-			...appCookieOptions(this.hosts.baseUrl),
-			maxAge: 5 * 60 * 1000,
-		});
-		res.redirect(url);
+		this.setFlowCookie(res, 'published', signIn);
+		res.redirect(signIn.authorizeUrl);
 	}
 
 	async complete(req: Request, res: Response, appId: string): Promise<void> {
+		const { token, expiresIn, metadata } = await this.finishSignIn(req, res, appId, 'published');
+		res.cookie(appCookieName(this.hosts.baseUrl, 'session'), token, {
+			...appCookieOptions(this.hosts.baseUrl),
+			maxAge: expiresIn * 1000,
+		});
+		res.redirect(this.returnPath(metadata.returnPath));
+	}
+
+	async startSignIn(
+		app: App,
+		kind: AppHostKind,
+		metadata: Record<string, string>,
+	): Promise<AppSignIn> {
+		const nonce = randomBytes(32).toString('hex');
+		const authorizeUrl = await this.flow.begin(this.hosts.callbackUrl(app, kind), {
+			...metadata,
+			appId: app.id,
+			namespace: app.namespace,
+			nonceHash: this.hash(nonce),
+		});
+		const state = new URL(authorizeUrl).searchParams.get('state');
+		if (!state) throw new AuthError('Invalid app sign-in state.');
+		return { authorizeUrl, state, nonce };
+	}
+
+	setFlowCookie(
+		res: Response,
+		kind: AppHostKind,
+		{ state, nonce }: Omit<AppSignIn, 'authorizeUrl'>,
+	) {
+		res.cookie(this.flowCookieName(state), nonce, {
+			...this.cookieOptions(kind),
+			maxAge: FLOW_COOKIE_TTL_MS,
+		});
+	}
+
+	async finishSignIn(
+		req: Request,
+		res: Response,
+		appId: string,
+		kind: AppHostKind,
+	): Promise<AppSignedIn> {
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-		const app = await this.requireApp(req, appId);
+		const app = await this.requireApp(req, appId, kind);
+		const callbackUrl = this.hosts.callbackUrl(app, kind);
 		const { code, state, iss, error } = req.query;
 		if (typeof state !== 'string' || !state || iss !== this.urls.getInstanceBaseUrl()) {
 			throw new BadRequestError('Invalid app sign-in callback.');
 		}
 		const name = this.flowCookieName(state);
 		const nonce = readCookie(req, name);
-		res.clearCookie(name, appCookieOptions(this.hosts.baseUrl));
+		res.clearCookie(name, this.cookieOptions(kind));
 		if (!nonce) throw new AuthError('Restart app sign-in in this browser.');
 		if (typeof error === 'string' && error) {
 			throw new AuthError(
@@ -171,11 +234,8 @@ export class AppAuthService {
 		if (typeof code !== 'string' || error !== undefined) {
 			throw new BadRequestError('Invalid app sign-in callback.');
 		}
-		const result = await this.flow.complete(code, state, {
-			method: req.method,
-			url: this.hosts.callbackUrl(app),
-			ip: req.ip ?? '',
-		});
+		const request = { method: req.method, url: callbackUrl, ip: req.ip ?? '' };
+		const result = await this.flow.complete(code, state, request);
 		if (
 			!result.valid ||
 			result.metadata?.appId !== app.id ||
@@ -188,21 +248,19 @@ export class AppAuthService {
 		}
 		// Verify against this callback's resource as well as the flow's stored resource.
 		const admitted = await this.admission.admitBearer(
-			this.resources.forApp(app),
-			{
-				method: req.method,
-				url: this.hosts.callbackUrl(app),
-				ip: req.ip ?? '',
-			},
+			this.resources.forApp(app, { kind }),
+			request,
 			result.token,
 		);
 		if (!admitted.ok)
 			throw new AuthError('App access is no longer available. Open the app again to check access.');
-		res.cookie(appCookieName(this.hosts.baseUrl, 'session'), result.token, {
-			...appCookieOptions(this.hosts.baseUrl),
-			maxAge: result.expiresIn * 1000,
-		});
-		res.redirect(this.returnPath(result.metadata.returnPath));
+		return {
+			app,
+			token: result.token,
+			expiresIn: result.expiresIn,
+			userId: result.user.id,
+			metadata: result.metadata,
+		};
 	}
 
 	private returnPath(value: string | undefined): string {
@@ -218,12 +276,27 @@ export class AppAuthService {
 		return appCookieName(this.hosts.baseUrl, `flow-${this.hash(state)}`);
 	}
 
+	/** The editor embeds the preview host in a frame on another site. */
+	private cookieOptions(kind: AppHostKind): CookieOptions {
+		return kind === 'preview'
+			? embeddedAppCookieOptions(this.hosts.baseUrl)
+			: appCookieOptions(this.hosts.baseUrl);
+	}
+
 	/** A cache hit skips token verification, so an entry must not outlive the token. */
 	private admissionTtl(token: string): number {
 		const { exp } = this.jwt.decodeUnverified(token) ?? {};
 		return typeof exp === 'number'
 			? Math.max(1, Math.min(ADMISSION_CACHE_TTL_MS, exp * 1000 - Date.now()))
 			: ADMISSION_CACHE_TTL_MS;
+	}
+
+	private namespace(req: Request, kind: AppHostKind): string | undefined {
+		return kind === 'preview' ? this.hosts.previewNamespace(req) : this.hosts.namespace(req);
+	}
+
+	private cacheKey(kind: AppHostKind, namespace: string | undefined, token: string): string {
+		return `${kind}:${namespace}:${this.hash(token)}`;
 	}
 
 	private hash(value: string): string {

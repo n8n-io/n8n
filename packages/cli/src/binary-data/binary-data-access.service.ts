@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 import { BinaryDataRepository, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { parseExecutionFileId, TEMP_EXECUTION_ID } from 'n8n-core';
 
 import { WorkflowSharingService } from '@n8n/backend-services';
@@ -15,7 +16,9 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
  * engine v2 execution has no row in the execution table, so the data plane
  * names its workflow.
  */
-type AccessSource = { executionId: string } | { workflowId: string };
+type AccessSource =
+	| { type: 'execution'; executionId: string; workflowId?: string }
+	| { type: 'workflow'; workflowId: string };
 
 /**
  * Authorizes access to binary data. A binary belongs to an execution, so access
@@ -30,6 +33,17 @@ export class BinaryDataAccessService {
 		private readonly dataPlane: EngineDataPlaneProxyService,
 	) {}
 
+	async assertIsAllowed(
+		binaryDataId: string,
+		workflowId: string | undefined,
+		grantedIds?: string[],
+	): Promise<void> {
+		if (grantedIds?.includes(binaryDataId)) return;
+		if (workflowId && (await this.isOwnedByWorkflow(workflowId, binaryDataId))) return;
+
+		throw new UserError('This binary data is not available to the current workflow.');
+	}
+
 	/** Whether `user` may read the execution that owns `binaryDataId`. */
 	async hasReadAccess(user: User, binaryDataId: string): Promise<boolean> {
 		const source = await this.resolveAccessSource(binaryDataId);
@@ -39,12 +53,26 @@ export class BinaryDataAccessService {
 			scopes: ['execution:read'],
 		});
 
-		if ('workflowId' in source) return accessibleWorkflowIds.includes(source.workflowId);
+		if (source.type === 'workflow') return accessibleWorkflowIds.includes(source.workflowId);
+		if (source.workflowId && !accessibleWorkflowIds.includes(source.workflowId)) return false;
 
 		return await this.executionRepository.existsForAccessibleWorkflows(
 			source.executionId,
-			accessibleWorkflowIds,
+			source.workflowId ? [source.workflowId] : accessibleWorkflowIds,
 		);
+	}
+
+	/** Whether a binary belongs to an execution of `workflowId`. */
+	async isOwnedByWorkflow(workflowId: string, binaryDataId: string): Promise<boolean> {
+		const source = await this.resolveAccessSource(binaryDataId);
+		if (!source) return false;
+
+		if (source.type === 'workflow') return source.workflowId === workflowId;
+		if (source.workflowId && source.workflowId !== workflowId) return false;
+
+		return await this.executionRepository.existsForAccessibleWorkflows(source.executionId, [
+			workflowId,
+		]);
 	}
 
 	/**
@@ -63,7 +91,9 @@ export class BinaryDataAccessService {
 			const source = await this.binaryDataRepository.findSourceByFileId(fileId);
 			if (source?.sourceType !== 'execution') return null;
 
-			if (isExecutionIdV1(source.sourceId)) return { executionId: source.sourceId };
+			if (isExecutionIdV1(source.sourceId)) {
+				return { type: 'execution', executionId: source.sourceId };
+			}
 
 			// The row names no workflow, so a temp placeholder has nothing to fall back on.
 			return isExecutionIdV2(source.sourceId)
@@ -76,11 +106,12 @@ export class BinaryDataAccessService {
 		if (!location) return null;
 
 		const { workflowId, executionId } = location;
-		if (isExecutionIdV1(executionId)) return { executionId };
+		if (isExecutionIdV1(executionId)) {
+			return { type: 'execution', executionId, workflowId };
+		}
 
-		// The placeholder names no execution yet, so the workflow in the path
-		// authorizes the read.
-		if (executionId === TEMP_EXECUTION_ID) return { workflowId };
+		// The workflow in the path authorizes reads before the execution exists.
+		if (executionId === TEMP_EXECUTION_ID) return { type: 'workflow', workflowId };
 
 		if (!isExecutionIdV2(executionId)) return null;
 
@@ -96,8 +127,8 @@ export class BinaryDataAccessService {
 	 */
 	private async resolveEngineV2Execution(
 		executionId: ExecutionIdV2,
-	): Promise<{ workflowId: string } | null> {
+	): Promise<{ type: 'workflow'; workflowId: string } | null> {
 		const execution = await this.dataPlane.getExecution(executionId);
-		return execution ? { workflowId: execution.workflowId } : null;
+		return execution ? { type: 'workflow', workflowId: execution.workflowId } : null;
 	}
 }

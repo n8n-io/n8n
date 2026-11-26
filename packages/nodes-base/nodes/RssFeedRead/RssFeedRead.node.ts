@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 import { URL } from 'url';
 
 import type Parser from 'rss-parser';
@@ -32,6 +32,7 @@ export class RssFeedRead implements INodeType {
 		iconColor: 'orange-red',
 		group: ['input'],
 		version: [1, 1.1, 1.2],
+		annotations: READ_ONLY_ANNOTATIONS,
 		description: 'Reads data from an RSS Feed',
 		defaults: {
 			name: 'RSS Read',

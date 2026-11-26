@@ -23,12 +23,13 @@ import type { DecisionAuditInput } from './policy-decision-audit';
 import { auditedActor, decisionAudit } from './policy-decision-audit';
 
 /**
- * How long one check gets. Tight on the two points that sit inside a running execution: a wedged
- * policy store there pins worker slots rather than failing a single request.
+ * How long one check gets. Tight on the points on the execution path: a wedged policy store
+ * there pins worker slots rather than failing a single request.
  */
 const DEADLINES_MS = {
 	workflowSave: 1_000,
 	workflowPublish: 1_000,
+	executionAdmission: 250,
 	workflowStart: 250,
 	workflowTransfer: 1_000,
 	credentialSave: 1_000,

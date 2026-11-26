@@ -8,7 +8,7 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
-Why these eight points, why every check must pass, and why a check that does not
+Why these points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
@@ -24,6 +24,7 @@ flowchart LR
     subgraph hosts["Host call sites (packages/cli)"]
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
+        admission["executionAdmission<br/>no host calls it yet"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
         other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
     end
@@ -46,7 +47,7 @@ flowchart LR
 
     repo["WorkflowRepository.updateContent<br/>assertClearedFor(token, point, subject)"]
 
-    save & publish & start & other --> pes
+    save & publish & admission & start & other --> pes
     pes -. "setImplementation() at module init" .-> pds
     pds --> registry --> checks
     pes --> cleared --> repo
@@ -94,6 +95,7 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | ------------------- | -------- | --------------------------------- | --------------------------------------------------------------------- |
 | `workflowSave`      | 1000 ms  | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore        |
 | `workflowPublish`   | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
+| `executionAdmission` | 250 ms  | artifact id (workflow or agent)   | no host calls it yet; it is for the check before a run gets its row   |
 | `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
 | `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
@@ -101,8 +103,11 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
 | `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
 
-Deadlines are tight on the two points that sit inside a running execution. A
-wedged policy store there pins worker slots instead of failing one request.
+Deadlines are tight on the points on the execution path. A wedged policy store
+there pins worker slots instead of failing one request. A check on
+`executionAdmission` must read memory only. When a host calls the point, it
+runs before every execution. A refusal there leaves no execution row, no queue
+job, and no worker slot.
 
 A one-off CLI command registers no check unless it calls
 `BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,
@@ -123,6 +128,7 @@ Each point hands its check a different context. The types are in
 | ------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
 | `workflowSave`      | `WorkflowSaveContext`      | `workflow`, `storedWorkflow` (`null` for a create), `projectId`                          |
 | `workflowPublish`   | `WorkflowPublishContext`   | `workflow`, `projectId`                                                                  |
+| `executionAdmission` | `ExecutionAdmissionContext` | `artifact` (`kind`, `id`, `name`), `projectId`, `mode`, `source` (`null` for a regular run), `engine` (`v1` or `v2`) |
 | `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
 | `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
 | `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
@@ -136,6 +142,10 @@ Each point hands its check a different context. The types are in
 `type`. The name and the data never reach a check.
 Every field is `readonly` — a check reads, it never writes.
 
+The `ExecutionAdmissionContext` fields are the fields of an execution ledger row.
+A check can apply the shared counting rules in `@n8n/backend-services` to them.
+The context has no nodes.
+
 `transport` is `cli`, `source-control`, `package`, or `git-connection`. Read it
 to hold an unattended sync to a different standard than a hand-run import. The
 host reads it too, to pick its fail posture: a package import refuses the whole
@@ -145,6 +155,7 @@ package, a source-control pull skips and reports the workflow.
 
 An agent has no enforcement point of its own. It goes through the workflow
 points, so every check that reads `nodes` covers agents with no change.
+`executionAdmission` covers agent runs with `artifact.kind: 'agent'`.
 
 - **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
   are its node tools, one node each, built by `toPolicedNodes` in
@@ -175,7 +186,8 @@ points, so every check that reads `nodes` covers agents with no change.
 - **A check returns violations:** `PolicyViolationError`, HTTP 403. Every violation
   from every check is in `meta.violations`, so a user fixing a workflow sees the
   whole list. On `workflowStart` the run is stored as `error` with the same
-  violations on `resultData.error`.
+  violations on `resultData.error`. On `executionAdmission` the caller gets the
+  refusal and no run is stored.
 - **A check throws or overruns its deadline:** `PolicyCheckFailedError`, HTTP 503.
   Check internals never reach the response. The `correlationIds` tie the response
   to the server log lines that hold the real errors.
@@ -244,6 +256,8 @@ the log format or on `N8N_LOG_SCOPES`.
 - **A run never names a user.** Not every execution path knows reliably who started the
   run, so a block inside a run is `execution` and carries the `executionId`. Use the
   execution to find who started it. This includes manual runs and sub-workflows.
+  A block on `executionAdmission` carries the `executionId` only when the engine
+  makes the id before the row (engine v2). For engine v1 the field is absent.
 - **The payload says which.** `actorType` is `user` or `system`. A system actor adds
   `systemReason` and has `userId: null`.
 - **`userId` always means the accountable human.** A future agent actor adds its own
