@@ -42,7 +42,7 @@ The feature sits behind the environment flag `N8N_ENV_FEAT_RUNTIME_CREDENTIALS`.
 | Hook phases | `packages/core/src/execution-engine/execution-context.service.ts`, `packages/core/src/execution-engine/execution-context-hook-registry.service.ts`, `packages/@n8n/decorators/src/context-establishment/context-establishment-hook-metadata.ts` |
 | Policy kind | `packages/cli/src/modules/type-availability-policies/request-fed-credential-type-policy.ts` and the two `request-fed-credential-type-policy-*.controller.ts` files |
 | Entities and repositories | `packages/@n8n/db/src/entities/credentials-entity.ts`, `packages/@n8n/db/src/entities/runtime-credential-rule.ts`, `packages/@n8n/db/src/repositories/runtime-credential-rule.repository.ts`, `packages/@n8n/db/src/repositories/credentials.repository.ts` |
-| Migrations | `packages/@n8n/db/src/migrations/common/1794995238085-AddIsRuntimeToCredentials.ts`, `packages/@n8n/db/src/migrations/sqlite/1794995238085-AddIsRuntimeToCredentials.ts`, `packages/@n8n/db/src/migrations/common/1795006844318-CreateRuntimeCredentialRuleTable.ts`, `packages/@n8n/db/src/migrations/common/1795020741941-AddAllowedDomainsToRuntimeCredentialRule.ts` |
+| Migrations | `packages/@n8n/db/src/migrations/common/1795700000001-AddIsRuntimeToCredentials.ts`, `packages/@n8n/db/src/migrations/sqlite/1795700000001-AddIsRuntimeToCredentials.ts`, `packages/@n8n/db/src/migrations/common/1795700000002-CreateRuntimeCredentialRuleTable.ts`, `packages/@n8n/db/src/migrations/common/1795700000003-AddAllowedDomainsToRuntimeCredentialRule.ts` |
 | Stub protection | `packages/cli/src/credentials/credentials.service.ts` (`assertNotRuntime`), `packages/cli/src/credentials/credentials.service.ee.ts`, `packages/cli/src/credentials/credentials.controller.ts` |
 | Scopes | `packages/@n8n/permissions/src/constants.ee.ts`, `packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts` |
 | Pubsub command | `packages/@n8n/backend-services/src/pubsub/pubsub.types.ts`, `packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts` |
@@ -332,8 +332,8 @@ pnpm test:integration test/integration/modules/runtime-credentials-pinned.integr
 pnpm test:integration test/integration/modules/runtime-credential-allowed-domains.integration.test.ts --maxWorkers=1
 
 # Migration tests
-pnpm test:sqlite:migrations test/migration/1794995238085-add-is-runtime-to-credentials.test.ts
-pnpm test:sqlite:migrations test/migration/1795020741941-add-allowed-domains-to-runtime-credential-rule.test.ts
+pnpm test:sqlite:migrations test/migration/1795700000001-add-is-runtime-to-credentials.test.ts
+pnpm test:sqlite:migrations test/migration/1795700000003-add-allowed-domains-to-runtime-credential-rule.test.ts
 ```
 
 Other tests:

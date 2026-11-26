@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const credentialsTableName = 'credentials_entity';
 
-export class AddIsRuntimeToCredentials1794995238085 implements ReversibleMigration {
+export class AddIsRuntimeToCredentials1795700000001 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			credentialsTableName,

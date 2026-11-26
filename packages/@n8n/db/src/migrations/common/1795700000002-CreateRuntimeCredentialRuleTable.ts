@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'runtime_credential_rule';
 
-export class CreateRuntimeCredentialRuleTable1795006844318 implements ReversibleMigration {
+export class CreateRuntimeCredentialRuleTable1795700000002 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(

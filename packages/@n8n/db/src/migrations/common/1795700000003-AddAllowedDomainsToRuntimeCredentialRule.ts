@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'runtime_credential_rule';
 
-export class AddAllowedDomainsToRuntimeCredentialRule1795020741941 implements ReversibleMigration {
+export class AddAllowedDomainsToRuntimeCredentialRule1795700000003 implements ReversibleMigration {
 	// No table has a foreign key to `runtime_credential_rule`, so the SQLite table
 	// recreation cannot cascade into other tables.
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {

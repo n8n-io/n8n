@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddAllowedDomainsToRuntimeCredentialRule1795020741941';
+const MIGRATION_NAME = 'AddAllowedDomainsToRuntimeCredentialRule1795700000003';
 const TABLE = 'runtime_credential_rule';
 
 describe('AddAllowedDomainsToRuntimeCredentialRule migration', () => {

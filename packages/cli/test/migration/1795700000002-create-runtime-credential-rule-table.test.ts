@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateRuntimeCredentialRuleTable1795006844318';
+const MIGRATION_NAME = 'CreateRuntimeCredentialRuleTable1795700000002';
 const TABLE = 'runtime_credential_rule';
 
 describe('CreateRuntimeCredentialRuleTable migration', () => {

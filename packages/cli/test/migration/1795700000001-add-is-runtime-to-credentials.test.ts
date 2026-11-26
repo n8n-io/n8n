@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddIsRuntimeToCredentials1794995238085';
+const MIGRATION_NAME = 'AddIsRuntimeToCredentials1795700000001';
 
 describe('AddIsRuntimeToCredentials migration', () => {
 	let dataSource: DataSource;
