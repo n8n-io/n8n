@@ -134,4 +134,45 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 			previous_attachment_count: z.number(),
 		}),
 	},
+	USER_OPENED_TYPE_ACCESS_DIALOG: {
+		name: 'User opened type access dialog',
+		description:
+			'An admin opened the access dialog of one node or credential type on the instance policy page. Fires once the page knows the type, so a link to a type that the instance does not have does not fire it.',
+		properties: z.object({
+			kind,
+			type_name: z.string().describe('The node or credential type name, not user data'),
+			source: z
+				.enum(['table', 'link'])
+				.describe("'table' for a click in the policy table, 'link' for a URL that names the type"),
+			current_access: z
+				.enum(['allow', 'deny', 'delegate'])
+				.describe('The instance access of the type when the dialog opened'),
+		}),
+	},
+	USER_REVIEWED_TYPE_RESTRICTION: {
+		name: 'User reviewed type restriction',
+		description:
+			'An admin answered the review that opens before a type that workflows use becomes restricted. A cancel does not reach the backend, so only this event reports it. A type that no workflow uses skips the review and does not fire it.',
+		properties: z.object({
+			kind,
+			type_name: z.string().describe('The node or credential type name, not user data'),
+			decision: z
+				.enum(['confirm', 'cancel'])
+				.describe("'cancel' also covers Escape and a click outside the review"),
+			use_count: z
+				.number()
+				.nullable()
+				.describe('Nodes that use the type. Null when the review could not load the counts'),
+			workflow_count: z
+				.number()
+				.nullable()
+				.describe('Workflows that use the type. Null when the review could not load the counts'),
+			active_workflow_count: z
+				.number()
+				.nullable()
+				.describe(
+					'Active workflows that use the type. Null when the review could not load the counts',
+				),
+		}),
+	},
 });
