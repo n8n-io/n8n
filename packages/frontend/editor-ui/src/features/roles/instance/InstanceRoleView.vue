@@ -95,7 +95,10 @@ const sameScopeSet = (a: readonly string[], b: readonly string[]) => {
 const activePresetSlug = computed(
 	() =>
 		presetRoles.value.find((preset) =>
-			sameScopeSet(presetScopesOf(preset.scopes), form.value.scopes),
+			sameScopeSet(
+				presetScopesOf(preset.scopes),
+				withoutHiddenScopes(form.value.scopes, hiddenResources.value),
+			),
 		)?.slug ?? null,
 );
 
