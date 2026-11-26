@@ -197,6 +197,30 @@ test.each([
 	expect(imageExists).not.toHaveBeenCalled();
 });
 
+test.each<{ scenario: string; config: N8NConfig; reuse: boolean }>([
+	{ scenario: 'stack files', config: { files: [keyFile] }, reuse: false },
+	{ scenario: 'shared storage', config: { sharedStorage: true }, reuse: false },
+	{
+		scenario: 'read-only root filesystem',
+		config: { n8nContainer: { readOnlyRootfs: true } },
+		reuse: false,
+	},
+	{
+		scenario: 'tmpfs mounts',
+		config: { n8nContainer: { tmpfs: hardeningOptions.tmpfs } },
+		reuse: false,
+	},
+	{
+		scenario: 'platform with a writable root filesystem',
+		config: { n8nContainer: { readOnlyRootfs: false, platform: hardeningOptions.platform } },
+		reuse: true,
+	},
+])('sets container reuse to $reuse for $scenario', async ({ config, reuse }) => {
+	await startStack({ services: [], ...config });
+
+	expect(built.get(main)?.reuse).toBe(reuse);
+});
+
 test('strips a normalized path prefix before Caddy matches webhook processor paths', async () => {
 	await startStack({ pathPrefix: '/n8n', webhooks: 1 });
 	const caddyfile = built.get(caddy)?.files.find(({ target }) => target === '/etc/caddy/Caddyfile');
