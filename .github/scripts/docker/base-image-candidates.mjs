@@ -131,7 +131,11 @@ export function movingTagOf(tag) {
  */
 export const PATCH_UPDATES = new Set(['DHI_REF']);
 
-/** The tags of the next patches of a pinned tag: 26.13.0-x -> 26.13.1-x, 26.13.2-x, ... */
+/**
+ * The tags of the next patches of a pinned tag: 26.13.0-x -> 26.13.1-x, 26.13.2-x, ...
+ * A Node minor gets a few patches, and the window starts at the current pin.
+ * Past the window, the source keeps the version-update alert.
+ */
 export function nextPatchTags(tag, count = 20) {
 	const match = /^(\d+\.\d+)\.(\d+)(-.+)?$/.exec(tag);
 	if (!match) return [];
