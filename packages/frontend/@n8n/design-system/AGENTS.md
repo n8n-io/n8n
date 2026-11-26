@@ -144,13 +144,11 @@ const enabled = computed(() => props.enabled ?? localEnabled.value);
 </script>
 ```
 
-✅ Do: render the parent value in controlled mode and update local state only in
-uncontrolled mode. This example is a component named `N8nToggleField.vue`.
+✅ Do: forward the value and initial value to `N8nSwitch`. It already handles
+both modes. This example is a component named `N8nToggleField.vue`.
 
 ```vue
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-
 import N8nSwitch from '../N8nSwitch/Switch.vue';
 
 /** Props for a toggle with optional parent state ownership. */
@@ -174,20 +172,15 @@ const props = withDefaults(defineProps<ToggleFieldProps>(), {
 	defaultEnabled: false,
 });
 const emit = defineEmits<ToggleFieldEmits>();
-
-const localEnabled = ref(props.defaultEnabled);
-const enabled = computed(() => props.enabled ?? localEnabled.value);
-
-function updateEnabled(value: boolean) {
-	if (props.enabled === undefined) {
-		localEnabled.value = value;
-	}
-	emit('update:enabled', value);
-}
 </script>
 
 <template>
-	<N8nSwitch :label="label" :model-value="enabled" @update:model-value="updateEnabled" />
+	<N8nSwitch
+		:label="label"
+		:model-value="props.enabled"
+		:default-value="defaultEnabled"
+		@update:model-value="emit('update:enabled', $event)"
+	/>
 </template>
 ```
 
@@ -221,8 +214,8 @@ const enabled = ref(false);
 - **Don't** watch `default*` to keep local state in sync. It is an initial value,
   not a controlled prop.
 - **Do** use a Reka primitive's controlled/uncontrolled API when it already
-  provides this behavior. The explicit state above explains the contract; it
-  does not require each wrapper to implement it again.
+  provides this behavior. Forward that API through wrappers instead of adding
+  local state.
 
 ### Prefer explicit components with slots over many-mode components
 
