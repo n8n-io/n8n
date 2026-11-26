@@ -127,7 +127,7 @@ export class EvaluationDatasetService {
 		workflowId: string,
 		configId: string,
 	): Promise<EvaluationConfig> {
-		const config = await this.configRepository.findByIdAndWorkflowId(configId, workflowId);
+		const config = await this.configRepository.findByIdAndWorkflowId(configId, workflowId, {});
 		if (!config) {
 			throw new NotFoundError('Evaluation config not found');
 		}

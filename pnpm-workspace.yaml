@@ -344,12 +344,14 @@ catalogs:
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
     autoprefixer: ^10.4.19
+    chart.js: ^4.4.0
     element-plus: 2.4.3
     highlight.js: 11.12.0
     pinia: ^2.2.4
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
+    vue-chartjs: ^5.2.0
     vue-i18n: 11.4.14
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
@@ -422,7 +424,7 @@ overrides:
   '@google-cloud/resource-manager>google-gax': ^5.0.1
   '@google-cloud/secret-manager>google-gax': ^5.0.1
   google-gax: ^4.3.7
-  ws: '>=8.21.1'
+  ws: '>=8.23.0'
   date-fns: 2.30.0
   date-fns-tz: 2.0.0
   form-data: 4.0.6

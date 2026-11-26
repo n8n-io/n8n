@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 
 import * as createStore from './createStore.operation';
 import * as deleteStore from './deleteStore.operation';
@@ -19,18 +19,21 @@ export const description: INodeProperties[] = [
 				value: 'createStore',
 				action: 'Create a File Search store',
 				description: 'Create a new File Search store for RAG (Retrieval Augmented Generation)',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				name: 'Delete File Search Store',
 				value: 'deleteStore',
 				action: 'Delete a File Search store',
 				description: 'Delete a File Search store',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'List File Search Stores',
 				value: 'listStores',
 				action: 'List all File Search stores',
 				description: 'List all File Search stores owned by the user',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Upload to File Search Store',
@@ -38,6 +41,7 @@ export const description: INodeProperties[] = [
 				action: 'Upload a file to a File Search store',
 				description:
 					'Upload a file to a File Search store for RAG (Retrieval Augmented Generation)',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'createStore',

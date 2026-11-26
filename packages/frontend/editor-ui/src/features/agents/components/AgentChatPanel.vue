@@ -2331,6 +2331,8 @@ onBeforeUnmount(() => {
 .scrollArea {
 	flex: 1;
 	min-height: 0;
+	// Centers the scroll button over the input, which a host panel can move.
+	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
 }
 
 .centeredEmpty {
@@ -2348,9 +2350,12 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 100%;
+	// Same as the messages: centers in the space that a host panel leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 .backgroundJobs {

@@ -102,12 +102,17 @@ a deployable engine worker) without touching core logic.
 Change the schema only with a new migration, for example one that adds a
 column. Never edit a migration that is already on master. Engine databases
 persist, and a database that ran a migration does not run it again, so an edit
-never reaches it.
+never reaches it. The engine roles are deployed and upgraded independently, so
+for a while old code runs on the new schema and a migration must not remove
+what that code uses.
 
 A new migration gets a timestamp later than the last one and its entry in
 `src/database/migrations/index.ts`. Add its file name to the
 `unicorn/filename-case` exemptions in `oxlint.config.mts` and
 `eslint.config.mjs`. Mirror a new column or index in the entity decorators.
+All pending engine migrations run in one transaction under the migration lock,
+so a migration cannot opt out of the transaction (for example,
+`CREATE INDEX CONCURRENTLY` does not work).
 
 ## Crash recovery: reconciliation, not transactions
 
