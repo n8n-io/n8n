@@ -1,0 +1,53 @@
+packages/modules/engine-v2/frontend/src/composables/useEngineV2Compatibility.ts
+  s_575f118919c8e4::t_ab7b2941ad1a59 8,46-48,56
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityButton.vue
+  s_575f118919c8e4::t_513749a6cc6e80 2,4,6-8,10-11,15,17-19,21,23-31,35-57,65-70
+packages/modules/engine-v2/frontend/src/composables/useEngineV2FindingsDialog.test.ts
+  s_575f118919c8e4::t_0f6916a470d988 1-16
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.test.ts
+  s_575f118919c8e4::t_415f9adcaa2adc 2,5,12-18,23,25-33,50-69,74-176,182-188,194,200,206,212,218-236,242,248,254,272-280,287
+  s_575f118919c8e4::t_4b2dbbd39feae1 281-286,288,290-292,305-309,312,315,317-319,323,326,328-329,332-334,337-339,342-345,348-350,353-388,426,438,440-443,446,456
+packages/modules/engine-v2/frontend/src/engineV2ReasonText.ts
+  s_575f118919c8e4::t_d2b25bf2c8c54a 9-14,16-18,20-21
+  s_575f118919c8e4::t_985b49fd8930e9 22-25,29-31,34-49,51-67,69-92,94-101,103-110,113-120,122-129,135-154,157-161,165,169-171,176,178-179,189-190
+packages/modules/engine-v2/frontend/src/confirmEngineV2Switch.ts
+  s_575f118919c8e4::t_fbd442944f0dca 1-57
+packages/modules/engine-v2/frontend/README.md
+  s_575f118919c8e4::t_26ae12d1135a5a 22-37,40-42,46
+packages/modules/engine-v2/frontend/src/confirmEngineV2Switch.test.ts
+  s_575f118919c8e4::t_0f6916a470d988 1-71
+packages/modules/engine-v2/frontend/src/engineV2Findings.test.ts
+  s_575f118919c8e4::t_0f6916a470d988 1-85
+packages/modules/engine-v2/frontend/src/index.ts
+  s_575f118919c8e4::t_ab7b2941ad1a59 7-12,18,20
+  s_575f118919c8e4::t_1eb0c1241f3dba 6
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.vue
+  s_575f118919c8e4::t_0d678ab364b732 2-9,11,13,15,17-31,37,41,47-56,65,77,79-83,85-126,128-135,139-150,160-161,169-204,208-211
+  s_575f118919c8e4::t_513749a6cc6e80 127
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityButton.test.ts
+  s_575f118919c8e4::t_0f6916a470d988 1,3,5,8-19,22-25,28-30,32,34-35,37-39,42-43,45-47,50-51,53-54,57-58,60-62,64-67,69,71
+packages/modules/engine-v2/frontend/src/engineV2Findings.ts
+  s_575f118919c8e4::t_7273cfbcf48c88 1-83
+packages/modules/engine-v2/frontend/src/composables/useEngineV2FindingsDialog.ts
+  s_575f118919c8e4::t_41b787650955ef 1-19
+packages/modules/engine-v2/frontend/src/composables/useEngineV2Compatibility.test.ts
+  s_575f118919c8e4::t_c06f6396450a35 86,93,169
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_575f118919c8e4::t_8deac6cf78b324 1844-1912,6361-6363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d002b4ae496f7e70cec83a32a757be4ed6dad709",
+  "prompts": {},
+  "sessions": {
+    "s_575f118919c8e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ce6719b-0a4c-4ba2-84e3-eb3e398607d5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
