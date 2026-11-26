@@ -85,6 +85,19 @@ describe('MigrationBackportRule', () => {
 		expect(violations[0].message).toContain('is not on master');
 	});
 
+	it('checks a migration whose name has a hyphen or an underscore', async () => {
+		const releaseOnly = `${COMMON}/1793553583763-Release_Only-Fix.ts`;
+		write(releaseOnly, 'export class ReleaseOnly1793553583763 {}\n');
+
+		expect(await rule.analyze(context([releaseOnly]))).toHaveLength(1);
+	});
+
+	it('does nothing when no files changed', async () => {
+		expect(
+			await rule.analyze({ rootDir, baseBranch: RELEASE_BRANCH, masterRef: 'master' }),
+		).toEqual([]);
+	});
+
 	it('ignores a deleted migration', async () => {
 		const deleted = `${COMMON}/1793553583762-Deleted.ts`;
 
@@ -120,6 +133,13 @@ describe('MigrationBackportRule', () => {
 			expect(await rule.analyze(context([MIGRATION], { baseBranch }))).toHaveLength(1);
 		},
 	);
+
+	it('fails when no master ref is set', async () => {
+		const violations = await rule.analyze(context([MIGRATION], { masterRef: undefined }));
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('CODE_HEALTH_MASTER_REF');
+	});
 
 	it('fails when the master ref is not available', async () => {
 		const violations = await rule.analyze(context([MIGRATION], { masterRef: 'origin/master' }));

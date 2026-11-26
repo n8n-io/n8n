@@ -8,7 +8,7 @@ import type { CodeHealthContext } from '../context.js';
 import { MIGRATIONS_ROOT, isReleaseBranch } from './migration-analysis.js';
 
 const MIGRATION_FILE = new RegExp(
-	`^${MIGRATIONS_ROOT}/(?:common|postgresdb|sqlite)/\\d{10,16}-[A-Za-z][A-Za-z0-9]*\\.ts$`,
+	`^${MIGRATIONS_ROOT}/(?:common|postgresdb|sqlite)/\\d{10,16}-[^/]+\\.ts$`,
 );
 
 const BACKPORT_DOCS = 'See .github/backport_conventions.md#migrations.';

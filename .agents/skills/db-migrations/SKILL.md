@@ -348,7 +348,7 @@ Once merged, migrations are immutable. Write a new migration. To remove a column
 
 ### Backporting a migration
 
-Backport a migration only together with an urgent fix. Copy it from `master` without changes. See [backport conventions](../../../.github/backport_conventions.md#migrations).
+Backport a migration only together with a fix that the [backport conventions](../../../.github/backport_conventions.md#when-to-backport) allow. Merge it to `master` first, then copy it without changes. See [backport conventions](../../../.github/backport_conventions.md#migrations).
 
 ### Don't parameterize values that aren't user input
 
