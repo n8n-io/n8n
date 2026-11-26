@@ -21,7 +21,8 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 4,
 		},
-		description: 'The text to write to the file',
+		description:
+			'The text to write to the file. If an expression here returns null, the node stops with an error. To create an empty file, leave the field empty.',
 	},
 	{
 		displayName: 'File Name',
@@ -138,30 +139,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const endpoint = requestPath`${folder}/${fileName}`;
 	let writtenName = fileName;
 
+	let created: boolean;
 	try {
 		if (ifFileExists === 'overwrite') {
 			await nextCloudApiRequest.call(this, 'PUT', endpoint, content);
-		} else if (!(await putIfNew.call(this, endpoint, content))) {
-			if (ifFileExists === 'fail') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The file "${outputPath(`${parentFolder}/${fileName}`)}" already exists`,
-					{
-						itemIndex: i,
-						description:
-							'Set "If File Exists" to "Overwrite" to replace it, or to "Add Suffix" to keep both files.',
-					},
-				);
-			}
-
-			writtenName = nameWithTimestamp(fileName, new Date());
-			if (!(await putIfNew.call(this, requestPath`${folder}/${writtenName}`, content))) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The file "${outputPath(`${parentFolder}/${writtenName}`)}" already exists`,
-					{ itemIndex: i },
-				);
-			}
+			created = true;
+		} else {
+			created = await putIfNew.call(this, endpoint, content);
 		}
 	} catch (error) {
 		// Nextcloud answers 409 when the parent folder is missing or is a file, or when a folder has the file's name
@@ -177,6 +161,30 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 			);
 		}
 		throw error;
+	}
+
+	if (!created) {
+		if (ifFileExists === 'fail') {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The file "${outputPath(`${parentFolder}/${fileName}`)}" already exists`,
+				{
+					itemIndex: i,
+					description:
+						'Set "If File Exists" to "Overwrite" to replace it, or to "Add Suffix" to keep both files.',
+				},
+			);
+		}
+
+		// The 412 above proves the folder exists, so errors of this write pass through unchanged
+		writtenName = nameWithTimestamp(fileName, new Date());
+		if (!(await putIfNew.call(this, requestPath`${folder}/${writtenName}`, content))) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The file "${outputPath(`${parentFolder}/${writtenName}`)}" already exists`,
+				{ itemIndex: i },
+			);
+		}
 	}
 
 	const path = outputPath(`${parentFolder}/${writtenName}`);

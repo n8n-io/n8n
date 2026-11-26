@@ -146,6 +146,50 @@
 					"name": "NextCloud account"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "createFromText",
+				"fileName": "notes.txt",
+				"ifFileExists": "fail",
+				"content": "={{ null }}",
+				"parentFolder": "/docs"
+			},
+			"name": "File Create From Text With Null Content",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"id": "00000000-0000-4000-8000-000000008902",
+			"onError": "continueRegularOutput",
+			"credentials": {
+				"nextCloudApi": {
+					"id": "1",
+					"name": "NextCloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "createFromText",
+				"fileName": "notes.txt",
+				"ifFileExists": "fail",
+				"content": "hello",
+				"parentFolder": "={{ null }}"
+			},
+			"name": "File Create From Text With Null Parent Folder",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "00000000-0000-4000-8000-000000008903",
+			"onError": "continueRegularOutput",
+			"credentials": {
+				"nextCloudApi": {
+					"id": "1",
+					"name": "NextCloud account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -211,6 +255,20 @@
 					"eTag": "file-etag"
 				}
 			}
+		],
+		"File Create From Text With Null Content": [
+			{
+				"json": {
+					"error": "Parameter 'content' must not be null"
+				}
+			}
+		],
+		"File Create From Text With Null Parent Folder": [
+			{
+				"json": {
+					"error": "Parameter 'parentFolder' must not be null"
+				}
+			}
 		]
 	},
 	"connections": {
@@ -249,6 +307,16 @@
 					},
 					{
 						"node": "Folder List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Create From Text With Null Content",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Create From Text With Null Parent Folder",
 						"type": "main",
 						"index": 0
 					}

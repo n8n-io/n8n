@@ -327,6 +327,28 @@ describe('NextCloud Node: file createFromText', () => {
 		});
 	});
 
+	it('passes a 409 on the Add Suffix write through, because the 412 before it proves the folder exists', async () => {
+		const { files, request } = fakeNextcloud();
+		files.set(notesUri, { id: '1', content: '' });
+		const answer = request.getMockImplementation()!;
+		request.mockImplementation(async (credentialType, options) => {
+			if (options.method === 'PUT' && String(options.uri) !== notesUri) {
+				throw new NodeApiError(node, { message: 'Conflict', httpCode: '409' });
+			}
+			return await answer(credentialType, options);
+		});
+
+		const execution = run(
+			buildExecuteFunctions(
+				[{ content: 'x', fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'addSuffix' }],
+				request,
+			),
+		);
+
+		await expect(execution).rejects.toThrow(NodeApiError);
+		await expect(execution).rejects.toMatchObject({ httpCode: '409' });
+	});
+
 	it('passes errors other than 409 and 412 through', async () => {
 		const { request } = fakeNextcloud();
 		request.mockRejectedValueOnce(
@@ -390,20 +412,6 @@ describe('NextCloud Node: file createFromText', () => {
 			expect(request).not.toHaveBeenCalled();
 		},
 	);
-
-	it('asks for File Content and Parent Folder as text, so core stops on null', async () => {
-		const { request } = fakeNextcloud();
-		const executeFunctions = buildExecuteFunctions(
-			[{ content: 'hello', fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'fail' }],
-			request,
-		);
-		const getNodeParameter = vi.spyOn(executeFunctions, 'getNodeParameter');
-
-		await run(executeFunctions);
-
-		expect(getNodeParameter).toHaveBeenCalledWith('content', 0, '', { ensureType: 'string' });
-		expect(getNodeParameter).toHaveBeenCalledWith('parentFolder', 0, '/', { ensureType: 'string' });
-	});
 
 	it('returns the path with a leading slash when Parent Folder has none', async () => {
 		const { request } = fakeNextcloud();
