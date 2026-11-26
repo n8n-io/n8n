@@ -32,7 +32,7 @@ describe('useSkillWorkflowMentionSearch', () => {
 			projectId: 'project-1',
 			query: 'report',
 			isArchived: false,
-			select: ['id', 'name'],
+			select: ['id', 'name', 'updatedAt'],
 			options: {
 				skip: 0,
 				take: SKILL_WORKFLOW_MENTION_PAGE_SIZE,
@@ -45,6 +45,16 @@ describe('useSkillWorkflowMentionSearch', () => {
 			{ workflowId: 'wf1', name: 'Workflow 1' },
 		]);
 		expect(hasMore.value).toBe(false);
+	});
+
+	it('selects the column that it sorts by, so the server can page the workflows of a team project', async () => {
+		searchWorkflows.mockResolvedValue([]);
+		const { search } = useSkillWorkflowMentionSearch(() => 'team-project');
+
+		await search('');
+
+		const [{ select, options }] = searchWorkflows.mock.calls[0];
+		expect(select).toContain(options.sortBy.split(':')[0]);
 	});
 
 	it('searches all readable workflows when the skill has no project', async () => {
