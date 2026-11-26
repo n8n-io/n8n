@@ -163,7 +163,7 @@ describe('AgentSkillFileNav', () => {
 		await waitFor(() =>
 			expect(byTestId(rows()[0], 'agent-skill-workflow-notes')).toHaveAttribute(
 				'aria-label',
-				"Agents can use this workflow only in its own project. To use it in other projects, share it with them and set 'This workflow can be called by' to 'Any workflow'.",
+				"Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
 			),
 		);
 		const [weeklyRow, archiveRow] = rows();

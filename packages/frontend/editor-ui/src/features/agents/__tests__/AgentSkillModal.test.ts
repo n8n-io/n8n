@@ -1,4 +1,5 @@
 import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, ref, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -293,6 +294,14 @@ const SAVED_SKILL: AgentSkill = {
 	description: 'Write clear customer-facing copy.',
 	instructions: 'Keep it short.',
 };
+
+const callableWorkflows = (ids: string[]) =>
+	ids.map((id) => ({
+		id,
+		nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
+		activeVersionId: 'v1',
+		settings: {},
+	}));
 
 describe('AgentSkillModal', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
@@ -1427,7 +1436,9 @@ describe('AgentSkillModal', () => {
 						name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
 						variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
 				);
-				mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue([]);
+				mockedStore(useWorkflowsListStore).searchWorkflows = vi
+					.fn()
+					.mockResolvedValue(callableWorkflows(['wf1', 'wf2']));
 			}
 
 			it('warns in the preview about each workflow that the agent project cannot use', async () => {
@@ -3282,7 +3293,9 @@ describe('Compare mode', () => {
 				name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
 				variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
 		);
-		mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue([]);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue(callableWorkflows(['wf1', 'wf2']));
 		const mentioning = (skill: AgentSkill) => ({
 			...skill,
 			instructions: `${skill.instructions} Run [Archive](n8n://workflow/wf2).`,

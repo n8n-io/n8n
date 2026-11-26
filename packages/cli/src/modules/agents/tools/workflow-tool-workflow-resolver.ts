@@ -41,6 +41,7 @@ export async function findReadableUnarchivedWorkflowIds(
 	workflowIds: string[],
 	user: User,
 ): Promise<Set<string>> {
+	if (workflowIds.length === 0) return new Set();
 	const readableIds = await workflowFinderService.findWorkflowIdsWithScopeForUser(
 		workflowIds,
 		user,
