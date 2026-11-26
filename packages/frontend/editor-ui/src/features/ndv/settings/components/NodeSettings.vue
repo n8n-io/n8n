@@ -724,12 +724,25 @@ const applyNodeVersion = (targetVersion: number) => {
 	// The ports can depend on the parameters of the node, so read them after the write.
 	const updatedNode = workflowDocumentStore.value.getNodeByName(currentNode.name) ?? currentNode;
 	const workflow = { expression: workflowDocumentStore.value.getExpressionHandler() };
-	const unfitConnections = NodeHelpers.getUnfitNodeConnections(
-		currentNode.name,
-		workflowDocumentStore.value.connectionsBySourceNode,
-		NodeHelpers.getNodeInputs(workflow, updatedNode, targetType),
-		NodeHelpers.getNodeOutputs(workflow, updatedNode, targetType),
-	);
+	// A port expression that gives no list did not resolve. Keep every connection then.
+	const arePortsKnown = [targetType.inputs, targetType.outputs].every((ports) => {
+		if (Array.isArray(ports)) return true;
+		try {
+			return Array.isArray(
+				workflow.expression.getSimpleParameterValue(updatedNode, ports, 'internal', {}),
+			);
+		} catch {
+			return false;
+		}
+	});
+	const unfitConnections = arePortsKnown
+		? NodeHelpers.getUnfitNodeConnections(
+				currentNode.name,
+				workflowDocumentStore.value.connectionsBySourceNode,
+				NodeHelpers.getNodeInputs(workflow, updatedNode, targetType),
+				NodeHelpers.getNodeOutputs(workflow, updatedNode, targetType),
+			)
+		: [];
 	const removedConnections: typeof unfitConnections = [];
 	for (const connection of unfitConnections) {
 		const sourceNode = workflowDocumentStore.value.getNodeByName(connection[0].node);

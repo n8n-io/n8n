@@ -1072,6 +1072,23 @@ describe('NodeSettings', () => {
 				});
 			});
 
+			it('keeps the connections when the outputs of that version cannot be read', async () => {
+				const { workflowDocumentStore, queryByTestId } = await renderAndUpdate({
+					nodeTypes: [
+						{ ...typeV1, outputs: ['main', 'main'] },
+						{
+							...typeV2,
+							outputs: '={{ (() => { throw new Error("x") })() }}',
+						} as INodeTypeDescription,
+					],
+					nodes: [otherNode('A'), otherNode('B')],
+					connections: { [httpNode.name]: structuredClone(twoOutputs) },
+				});
+
+				expect(workflowDocumentStore.connectionsBySourceNode[httpNode.name]).toEqual(twoOutputs);
+				expect(queryByTestId('node-version-change-connections')).not.toBeInTheDocument();
+			});
+
 			it('keeps the connections that fit the version', async () => {
 				const connections = {
 					A: { main: [[main(httpNode.name)]] },
