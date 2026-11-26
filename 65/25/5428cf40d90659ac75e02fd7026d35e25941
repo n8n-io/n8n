@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_3d42f5aac10616::t_a48dae539f07d2 5394-5409
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_3d42f5aac10616::t_2e6ce529f44bcf 1820-1821
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65255428cf40d90659ac75e02fd7026d35e25941",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

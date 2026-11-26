@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatSafeTesting.test.ts
+  h_8a472ace01776f 20,24,32,36,344-405
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  h_8a472ace01776f 1829-1830
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  h_8a472ace01776f 741-742,751,754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b508a32eed0f8347016f05eda0ce9b24dc664c7",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

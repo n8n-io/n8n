@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  h_52a137d26d774c 118-122
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/binary-helper-functions.test.ts
+  h_52a137d26d774c 1215-1235
+packages/core/src/execution-engine/node-execution-context/utils/binary-helper-functions.ts
+  h_52a137d26d774c 305,307-317
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  h_52a137d26d774c 94-98
+packages/quality/testing/playwright/tests/e2e/workflows/editor/ndv/pinning.spec.ts
+  h_52a137d26d774c 231-233,240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49cd1608074fe9cdd0d7fe45bd91c0e0d9ae5c14",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
