@@ -1,6 +1,7 @@
 import { computed, defineComponent, h, nextTick, reactive, ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
+	NodeVersionNewParameterKey,
 	ToolConfigCredentialSelectedKey,
 	ParameterInputModalContextKey,
 	WorkflowDocumentStoreKey,
@@ -359,6 +360,40 @@ describe('ParameterInput.vue', () => {
 		expect(optionsInDropdown).toHaveLength(2);
 		expect(optionsInDropdown[0]).toHaveAttribute('aria-disabled', 'true');
 		expect(optionsInDropdown[1]).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('shows the new tag only on a dropdown value that the node version added', async () => {
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'parameters.resource',
+				parameter: createTestNodeProperties({
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Message', value: 'message' },
+						{ name: 'Thread', value: 'thread' },
+					],
+					default: 'message',
+				}),
+				modelValue: 'message',
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[NodeVersionNewParameterKey as symbol]: (path: string) =>
+						path === 'parameters.resource=thread',
+				},
+			},
+		});
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+		const [message, thread] = Array.from(
+			baseElement.querySelectorAll<HTMLElement>('[data-test-id="parameter-input-item"]'),
+		);
+		expect(within(thread).getByTestId('parameter-new-tag')).toBeInTheDocument();
+		expect(within(message).queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
 	});
 
 	describe('AI gateway action filtering', () => {
