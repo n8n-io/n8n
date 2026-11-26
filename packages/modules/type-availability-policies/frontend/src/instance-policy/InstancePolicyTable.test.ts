@@ -613,8 +613,8 @@ describe('InstancePolicyTable', () => {
 
 			await userEvent.click(rowCheckbox(getByRole, 'Airtable API'));
 
-			expect(getByTestId('policy-bulk-allow')).toBeDisabled();
-			expect(getByTestId('policy-bulk-restrict')).toBeEnabled();
+			expect(getByTestId('policy-bulk-allow')).toHaveAttribute('aria-disabled', 'true');
+			expect(getByTestId('policy-bulk-restrict')).not.toHaveAttribute('aria-disabled');
 		});
 
 		it('keeps the selection when the page, the search or the filter changes', async () => {
@@ -675,6 +675,23 @@ describe('InstancePolicyTable', () => {
 			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
 			expect(rowCheckbox(getByRole, 'Bitly API')).toHaveAttribute('aria-checked', 'false');
 			expect(getByTestId('policy-bulk-status')).toHaveTextContent('Selection cleared');
+			await waitFor(() => expect(getByRole('checkbox', { name: 'Select all rows' })).toHaveFocus());
+		});
+
+		it('keeps the focus on the action while it runs, then moves it to the select-all checkbox', async () => {
+			const { getByRole, getByTestId, rerender } = setup();
+			await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
+			const allow = getByTestId('policy-bulk-allow');
+			allow.focus();
+
+			await userEvent.keyboard('{Enter}');
+			await rerender({ bulkBusy: true });
+			// A native `disabled` would move the focus to the body in a browser.
+			expect(allow).not.toHaveAttribute('disabled');
+			expect(allow).toHaveAttribute('aria-disabled', 'true');
+			expect(allow).toHaveFocus();
+
+			await rerender({ bulkBusy: false, selection: [] });
 			await waitFor(() => expect(getByRole('checkbox', { name: 'Select all rows' })).toHaveFocus());
 		});
 

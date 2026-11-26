@@ -15,8 +15,8 @@ describe('PolicySelectionBar', () => {
 
 		expect(getByRole('group', { name: 'Actions for the selected rows' })).toBeInTheDocument();
 		expect(getByText('2 rows selected')).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Restrict' })).toBeEnabled();
-		expect(getByRole('button', { name: 'Allow' })).toBeEnabled();
+		expect(getByRole('button', { name: 'Restrict' })).not.toHaveAttribute('aria-disabled');
+		expect(getByRole('button', { name: 'Allow' })).not.toHaveAttribute('aria-disabled');
 	});
 
 	it('emits the action that the admin picks', async () => {
@@ -34,8 +34,8 @@ describe('PolicySelectionBar', () => {
 	it('disables an action that would change no selected row', () => {
 		const { getByRole } = setup({ canAllow: false });
 
-		expect(getByRole('button', { name: 'Allow' })).toBeDisabled();
-		expect(getByRole('button', { name: 'Restrict' })).toBeEnabled();
+		expect(getByRole('button', { name: 'Allow' })).toHaveAttribute('aria-disabled', 'true');
+		expect(getByRole('button', { name: 'Restrict' })).not.toHaveAttribute('aria-disabled');
 	});
 
 	it('clears the selection on Escape', async () => {

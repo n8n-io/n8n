@@ -249,7 +249,9 @@ describe('NodeTypesTab', () => {
 			await waitFor(() => expect(review.bulkRequest).not.toBeNull());
 			review.resolve(false);
 
-			await waitFor(() => expect(getByTestId('policy-bulk-restrict')).toBeEnabled());
+			await waitFor(() =>
+				expect(getByTestId('policy-bulk-restrict')).not.toHaveAttribute('aria-disabled'),
+			);
 			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
 			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
 		});

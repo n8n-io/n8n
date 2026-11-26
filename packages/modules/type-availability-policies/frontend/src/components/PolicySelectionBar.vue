@@ -56,10 +56,11 @@ watch(
 			@clear-selection="emit('clear')"
 		>
 			<template #actions>
+				<!-- Not `loading`: it disables the native button, which loses the keyboard focus. -->
 				<N8nButton
 					variant="outline"
-					:disabled="!canRestrict"
-					:loading="busy"
+					:disabled="!canRestrict || busy"
+					focusable-when-disabled
 					data-test-id="policy-bulk-restrict"
 					data-attr="policy-bulk-restrict"
 					:label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.restrict')"
@@ -67,8 +68,8 @@ watch(
 				/>
 				<N8nButton
 					variant="outline"
-					:disabled="!canAllow"
-					:loading="busy"
+					:disabled="!canAllow || busy"
+					focusable-when-disabled
 					data-test-id="policy-bulk-allow"
 					data-attr="policy-bulk-allow"
 					:label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.allow')"
