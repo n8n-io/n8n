@@ -173,14 +173,18 @@ describe('BinaryDataAccessService', () => {
 				const v2Id = (mode: string) =>
 					`${mode}:workflows/wf1/executions/${v2ExecutionId}/binary_data/${uuid}`;
 
+				beforeEach(() => {
+					dataPlane.getExecution.mockResolvedValue(mock<ExecutionSnapshot>({ workflowId: 'wf1' }));
+				});
+
 				test.each(['filesystem', 'filesystem-v2', 's3', 'azure'])(
-					'grants access from the workflow in the path for mode %s, without an execution lookup',
+					'grants access for mode %s when the execution belongs to the workflow',
 					async (mode) => {
 						workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
 
 						expect(await service.hasReadAccess(user, v2Id(mode))).toBe(true);
 						expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
-						expect(dataPlane.getExecution).not.toHaveBeenCalled();
+						expect(dataPlane.getExecution).toHaveBeenCalledWith(v2ExecutionId);
 					},
 				);
 

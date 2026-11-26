@@ -122,9 +122,7 @@ export class BinaryDataAccessService {
 	}
 
 	/**
-	 * A `database` row of an engine v2 execution names no workflow, so the data
-	 * plane is asked which workflow the execution belongs to. Its steps are not
-	 * needed. No data plane, or no such execution, means no access.
+	 * The data plane supplies the workflow for an engine v2 execution.
 	 */
 	private async resolveEngineV2Execution(
 		executionId: ExecutionIdV2,
