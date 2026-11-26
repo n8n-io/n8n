@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
@@ -36,6 +37,7 @@ export class SelfHealingTemporaryWorkflowService {
 		private readonly executionService: ExecutionService,
 		private readonly logger: Logger,
 		private readonly users: UserRepository,
+		private readonly resourceOwners: ResourceOwnerService,
 	) {}
 
 	async create({ user: actor, baseline, graph }: TemporaryWorkflowInput) {
@@ -82,10 +84,15 @@ export class SelfHealingTemporaryWorkflowService {
 			{ kind: 'user', user },
 		);
 
-		return await this.transactions.run(
-			{ policyCleared },
-			async (ctx) => await this.workflows.createTemporary(workflow, original.id, ctx),
-		);
+		return await this.transactions.run({ policyCleared }, async (ctx) => {
+			workflow.ownerUserId = await this.resourceOwners.ownerForNewResource(
+				user,
+				baseline.projectId,
+				'workflow',
+				ctx,
+			);
+			return await this.workflows.createTemporary(workflow, original.id, ctx);
+		});
 	}
 
 	async cleanupAbandoned(signal?: AbortSignal): Promise<void> {
