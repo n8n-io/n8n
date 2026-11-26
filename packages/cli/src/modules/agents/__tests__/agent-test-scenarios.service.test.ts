@@ -132,7 +132,7 @@ describe('AgentTestScenariosService', () => {
 		});
 		expect(agentModelMock).toHaveBeenCalledWith({ id: 'openai/gpt-4.1', apiKey: 'test-key' });
 		expect(agentInstructionsMock).toHaveBeenCalledWith(
-			expect.stringContaining('Generate exactly 4 short, natural user messages'),
+			expect.stringContaining('Generate up to 4 short, natural user messages'),
 		);
 		expect(generateMock).toHaveBeenCalledTimes(1);
 		expect(generateMock.mock.calls[0][0]).toContain('Support Triage');
@@ -228,29 +228,46 @@ describe('AgentTestScenariosService', () => {
 		expect(generateMock.mock.calls[0][0]).toContain('- Old scenario');
 	});
 
-	it('retries once when the first generation returns malformed or underfilled output', async () => {
+	it('allows fewer than four scenarios for simple agents without retrying', async () => {
+		const { service, agentConfigService } = makeService();
+		agentConfigService.getConfig.mockResolvedValue(
+			makeConfig({ instructions: 'Echo back any message in uppercase.', tools: [] }),
+		);
+		generateMock.mockResolvedValueOnce({
+			structuredOutput: {
+				scenarios: ['Hello world', 'Convert this sentence to uppercase'],
+			},
+		});
+
+		const result = await service.generateTestScenarios(user, 'project-1', 'agent-1');
+
+		expect(generateMock).toHaveBeenCalledTimes(1);
+		expect(result.scenarios).toEqual(['Hello world', 'Convert this sentence to uppercase']);
+	});
+
+	it('retries once when the first generation returns no valid scenarios', async () => {
 		const { service, agentConfigService } = makeService();
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
 		generateMock
-			.mockResolvedValueOnce({ structuredOutput: { scenarios: ['Only one'] } })
+			.mockResolvedValueOnce({ structuredOutput: { scenarios: ['   '] } })
 			.mockResolvedValueOnce({
 				structuredOutput: {
-					scenarios: ['Retry 1', 'Retry 2', 'Retry 3', 'Retry 4'],
+					scenarios: ['Retry 1', 'Retry 2'],
 				},
 			});
 
 		const result = await service.generateTestScenarios(user, 'project-1', 'agent-1');
 
 		expect(generateMock).toHaveBeenCalledTimes(2);
-		expect(result.scenarios).toEqual(['Retry 1', 'Retry 2', 'Retry 3', 'Retry 4']);
+		expect(result.scenarios).toEqual(['Retry 1', 'Retry 2']);
 	});
 
-	it('throws OperationalError when retry still returns fewer than four valid scenarios', async () => {
+	it('throws OperationalError when retry still returns no valid scenarios', async () => {
 		const { service, agentConfigService } = makeService();
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
 		generateMock
-			.mockResolvedValueOnce({ structuredOutput: { scenarios: ['Only one'] } })
-			.mockResolvedValueOnce({ structuredOutput: { scenarios: ['Still only one', 'And two'] } });
+			.mockResolvedValueOnce({ structuredOutput: { scenarios: [] } })
+			.mockResolvedValueOnce({ structuredOutput: { scenarios: ['   '] } });
 
 		await expect(service.generateTestScenarios(user, 'project-1', 'agent-1')).rejects.toThrow(
 			OperationalError,

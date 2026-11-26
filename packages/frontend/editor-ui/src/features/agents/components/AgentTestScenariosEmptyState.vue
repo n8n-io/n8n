@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref, watch } from 'vue';
@@ -142,13 +142,7 @@ watch(
 				role="status"
 				data-testid="agent-test-scenarios-loading"
 			>
-				<N8nIcon
-					icon="loader-circle"
-					spin
-					size="medium"
-					:class="$style.spinner"
-					aria-hidden="true"
-				/>
+				<N8nSpinner size="medium" />
 				<N8nText step="sm" color="text-light">
 					{{ i18n.baseText('agents.chat.testScenarios.generating') }}
 				</N8nText>
@@ -208,11 +202,6 @@ watch(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.spinner {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
 }
 
 .errorText {

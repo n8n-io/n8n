@@ -19,7 +19,7 @@ import { AgentConfigService } from './agent-config.service';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
-const SCENARIO_COUNT = 4;
+const MAX_SCENARIO_COUNT = 4;
 const MAX_INSTRUCTIONS_CHARS = 4_000;
 const MAX_TOOLS_IN_PROMPT = 30;
 const MAX_TOOL_DESCRIPTION_CHARS = 200;
@@ -34,7 +34,8 @@ const generatedTestScenariosSchema = z.object({
 
 const TEST_SCENARIOS_SYSTEM_PROMPT = [
 	'You write realistic starter messages that a user can send to test a specific AI agent.',
-	`Generate exactly ${SCENARIO_COUNT} short, natural user messages based on the agent's instructions and tools.`,
+	`Generate up to ${MAX_SCENARIO_COUNT} short, natural user messages based on the agent's instructions and tools.`,
+	`Aim for ${MAX_SCENARIO_COUNT} scenarios in most cases, but return fewer (1 to 3) if the agent is very simple and extra scenarios would feel fabricated or repetitive.`,
 	'Each scenario must be a single concise request or question a real user would type into chat — not a meta-instruction about testing.',
 	'Cover varied aspects of the agent: everyday requests, summaries, tool actions when tools exist, and realistic edge cases.',
 	'Match the language used in the agent instructions.',
@@ -89,7 +90,7 @@ function buildUserPrompt(config: AgentJsonConfig, previousScenarios: string[]): 
 				'<previous_scenarios>',
 				...sanitizedPrevious,
 				'</previous_scenarios>',
-				`Write ${SCENARIO_COUNT} genuinely different scenarios that do not repeat or paraphrase the previous scenarios.`,
+				`Write up to ${MAX_SCENARIO_COUNT} genuinely different scenarios that do not repeat or paraphrase the previous scenarios. Aim for ${MAX_SCENARIO_COUNT} when possible, or fewer if the agent is very simple.`,
 			);
 		}
 	}
@@ -112,7 +113,7 @@ function normalizeScenarios(raw: string[], previousScenarios: string[]): string[
 
 		seen.add(key);
 		result.push(bounded);
-		if (result.length === SCENARIO_COUNT) break;
+		if (result.length === MAX_SCENARIO_COUNT) break;
 	}
 
 	return result;
@@ -213,15 +214,15 @@ export class AgentTestScenariosService {
 		};
 
 		const first = await attempt(userPrompt);
-		if (first.length >= SCENARIO_COUNT) return first;
+		if (first.length > 0) return first;
 
 		const retry = await attempt(
-			`${userPrompt}\n\nReturn ONLY a JSON object with a "scenarios" array of ${SCENARIO_COUNT} distinct non-empty strings — no extra keys, no prose.`,
+			`${userPrompt}\n\nReturn ONLY a JSON object with a "scenarios" array of 1 to ${MAX_SCENARIO_COUNT} distinct non-empty strings — no extra keys, no prose.`,
 		);
-		if (retry.length >= SCENARIO_COUNT) return retry;
+		if (retry.length > 0) return retry;
 
 		throw new OperationalError(
-			`Test scenario generation did not return ${SCENARIO_COUNT} valid scenarios after a retry`,
+			'Test scenario generation returned no valid scenarios after a retry',
 		);
 	}
 }

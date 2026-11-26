@@ -38,9 +38,9 @@ const stubs = {
 		emits: ['click'],
 		template: '<button type="button" v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
 	},
-	N8nIcon: {
-		props: ['icon', 'spin', 'size'],
-		template: '<span :data-icon="icon" :data-spin="String(Boolean(spin))" />',
+	N8nSpinner: {
+		props: ['size', 'type'],
+		template: '<span data-testid="n8n-spinner" :data-size="size" />',
 	},
 	N8nText: {
 		props: ['tag', 'step', 'color'],
@@ -90,6 +90,7 @@ describe('AgentTestScenariosEmptyState', () => {
 
 		expect(beforeGenerate).toHaveBeenCalledTimes(1);
 		expect(wrapper.find('[data-testid="agent-test-scenarios-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="n8n-spinner"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('agents.chat.testScenarios.generating');
 		expect(wrapper.find('[data-testid="agent-test-scenarios-write-btn"]').exists()).toBe(false);
 
