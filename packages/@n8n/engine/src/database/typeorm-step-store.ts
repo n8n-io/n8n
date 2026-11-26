@@ -564,10 +564,10 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
-		// A step row is written for the last time when it settles, so `updated_at`
-		// is the start of the settling transaction. The order must match the read
-		// path: the view lists steps by creation, then sorts them stably by
-		// `updated_at`, so ties keep the creation order.
+		// `updated_at` stops changing when a step settles (later writes keep it, see
+		// `KEEP_UPDATED_AT`). Keep this order in sync with `toV1RunExecutionData` in
+		// @n8n/node-engine-compatibility: steps by creation, then a stable sort by
+		// `updatedAt`, so a tie keeps the creation order.
 		return await this.repo.find({
 			where: { executionId, status: 'failed' },
 			order: { updatedAt: 'ASC', createdAt: 'ASC', nodeId: 'ASC', iteration: 'ASC' },
