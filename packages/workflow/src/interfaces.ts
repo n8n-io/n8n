@@ -2924,6 +2924,36 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
+/** Result of `carryOverNodeParameters`. */
+export interface NodeParametersCarryOver {
+	/** Parameters to save on the node for the target version. Most default values are left out. */
+	parameters: INodeParameters;
+	/**
+	 * Values that the target version cannot keep.
+	 * `name` is a display label, for example `options.compression` or `rules.values[0].kind`.
+	 * Do not use it as a lodash path, because a saved key can contain a dot. Use `path`.
+	 * The values are raw user data. Do not log them.
+	 */
+	setAside: Array<{
+		name: string;
+		path: Array<string | number>;
+		displayName: string;
+		value: NodeParameterValueType;
+	}>;
+	/**
+	 * Untouched top-level parameters whose default is different in the target version.
+	 * `name` is the top-level parameter name.
+	 */
+	changedDefaults: Array<{
+		name: string;
+		displayName: string;
+		oldDefault: NodeParameterValueType;
+		newDefault: NodeParameterValueType;
+	}>;
+	/** Parameter issues of the node in the target version. */
+	issues: INodeIssues | null;
+}
+
 export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }

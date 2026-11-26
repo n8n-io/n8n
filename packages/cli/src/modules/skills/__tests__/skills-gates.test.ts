@@ -1,4 +1,4 @@
-import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG, WORKFLOWS_IN_SKILLS_FLAG } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import type { ModuleSettings } from '@n8n/decorators';
@@ -11,6 +11,7 @@ import type { SkillUsage } from '../services/skill-usage.contracts';
 import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import type { SkillSyncSettingsService } from '../services/skill-sync-settings.service';
 import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import { WorkflowsInSkillsFlagGate } from '../services/workflows-in-skills-flag-gate';
 import { SkillsGate } from '../services/skills-gate';
 
 describe('skills gates', () => {
@@ -31,7 +32,8 @@ describe('skills gates', () => {
 		const skillSyncSettings = mock<SkillSyncSettingsService>();
 		skillSyncSettings.isEnabled.mockReturnValue(true);
 		const syncGate = new SkillSyncFlagGate(skillsGate, postHog, skillSyncSettings);
-		return { proxy, skillsGate, postHog, assistantGate, syncGate, skillSyncSettings };
+		const mentionsGate = new WorkflowsInSkillsFlagGate(skillsGate, postHog);
+		return { proxy, skillsGate, postHog, assistantGate, syncGate, skillSyncSettings, mentionsGate };
 	}
 
 	const user = mock<User>({ id: 'user-1' });
@@ -101,6 +103,32 @@ describe('skills gates', () => {
 			expect(skillsGate.isEnabled).toBe(true);
 			expect(await assistantGate.isEnabled()).toBe(expected);
 			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(ASSISTANT_SKILLS_FLAG);
+		},
+	);
+
+	it('keeps workflow mentions off while skills are off, whatever the flag says', async () => {
+		const { postHog, mentionsGate } = createGates();
+		postHog.getFeatureFlagForInstance.mockResolvedValue('variant');
+
+		expect(await mentionsGate.isEnabled()).toBe(false);
+		expect(postHog.getFeatureFlagForInstance).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ flag: 'variant', expected: true },
+		{ flag: 'control', expected: false },
+		{ flag: true, expected: false },
+		{ flag: false, expected: false },
+		{ flag: undefined, expected: false },
+	])(
+		'turns workflow mentions on only for the flag value variant (flag: $flag)',
+		async ({ flag, expected }) => {
+			const { proxy, postHog, mentionsGate } = createGates();
+			postHog.getFeatureFlagForInstance.mockResolvedValue(flag);
+			proxy.register(mock<SkillUsage>());
+
+			expect(await mentionsGate.isEnabled()).toBe(expected);
+			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(WORKFLOWS_IN_SKILLS_FLAG);
 		},
 	);
 

@@ -161,10 +161,15 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		};
 	}
 
-	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
+	/** Every project scope of `kind`, or only the scope of `projectId` when it is given. */
+	async findProjectScopes(
+		kind: string,
+		ctx: OperationContext,
+		projectId?: string,
+	): Promise<ProjectPolicyScope[]> {
 		const scopes = await this.managerFor(ctx).findBy(TypeAvailabilityPolicyScope, {
 			kind,
-			projectId: Not(IsNull()),
+			projectId: projectId ?? Not(IsNull()),
 		});
 
 		return scopes.filter(isProjectScope);
