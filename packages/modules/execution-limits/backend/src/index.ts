@@ -2,6 +2,5 @@
 export type { ExecutionLimitsEventMap } from './execution-limits.events';
 export type { ExecutionLimitsMetricsEventMap } from './execution-limits-metrics.events';
 export { ExecutionLimitsService } from './execution-limits.service';
-export { ExecutionUsageCache } from './execution-usage-cache';
 export type { UsagePeriod } from './execution-usage-period';
 export type { ExecutionUsage, UsageScope } from './execution-usage';

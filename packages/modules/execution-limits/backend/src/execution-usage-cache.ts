@@ -67,11 +67,6 @@ export class ExecutionUsageCache {
 		this.refreshTimer.unref();
 	}
 
-	/** `false` when the module did not start the cache: no licence, or a worker. */
-	get isRunning(): boolean {
-		return this.refreshTimer !== undefined;
-	}
-
 	@OnShutdown()
 	stop(): void {
 		clearInterval(this.refreshTimer);

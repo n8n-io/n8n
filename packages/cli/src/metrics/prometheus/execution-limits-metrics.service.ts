@@ -1,8 +1,9 @@
-import { ExecutionUsageCache } from '@n8n/backend-module-execution-limits';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
@@ -12,13 +13,24 @@ import type { PrometheusMetricsCollector } from './base';
 export class PrometheusExecutionLimitsMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly usageCache: ExecutionUsageCache,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
 	) {}
 
-	/** The cache runs only where the module started it, so it decides for the module and licence. */
+	/**
+	 * Mirrors where `ExecutionLimitsModule.init` starts the usage cache. It does not ask the
+	 * cache, because an import of the module package loads its pubsub handlers.
+	 */
 	get enabled(): boolean {
-		return this.config.includeExecutionLimitsMetrics && this.usageCache.isRunning;
+		const { instanceType } = this.instanceSettings;
+		return (
+			this.config.includeExecutionLimitsMetrics &&
+			(instanceType === 'main' || instanceType === 'webhook') &&
+			this.moduleRegistry.isActive('execution-limits') &&
+			this.licenseState.isExecutionLimitsLicensed()
+		);
 	}
 
 	init() {

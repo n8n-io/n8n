@@ -300,16 +300,6 @@ describe('ExecutionUsageCache', () => {
 	});
 
 	describe('timers', () => {
-		it('is running only between start and stop', async () => {
-			expect(cache.isRunning).toBe(false);
-
-			await cache.start();
-			expect(cache.isRunning).toBe(true);
-
-			cache.stop();
-			expect(cache.isRunning).toBe(false);
-		});
-
 		it('refreshes on start and on every interval until the stop', async () => {
 			await cache.start();
 			expect(todayCalls()).toHaveLength(1);

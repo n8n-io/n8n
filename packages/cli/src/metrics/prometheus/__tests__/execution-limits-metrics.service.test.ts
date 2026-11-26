@@ -1,7 +1,8 @@
-import type { ExecutionUsageCache } from '@n8n/backend-module-execution-limits';
+import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
+import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,7 +15,9 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 		prefix: 'n8n_',
 		includeExecutionLimitsMetrics: true,
 	});
-	const usageCache = mock<ExecutionUsageCache>({ isRunning: true });
+	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
+	const moduleRegistry = mock<ModuleRegistry>();
+	const licenseState = mock<LicenseState>();
 	const eventService = mock<EventService>();
 	const metrics = new Map<
 		string,
@@ -49,14 +52,24 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 		vi.clearAllMocks();
 		metrics.clear();
 		Object.assign(config, { prefix: 'n8n_', includeExecutionLimitsMetrics: true });
-		Object.assign(usageCache, { isRunning: true });
+		Object.assign(instanceSettings, { instanceType: 'main' });
+		moduleRegistry.isActive.mockReturnValue(true);
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
 		Object.assign(promClient, { Counter: fake(), Gauge: fake(), Histogram: fake() });
-		service = new PrometheusExecutionLimitsMetricsService(config, usageCache, eventService);
+		service = new PrometheusExecutionLimitsMetricsService(
+			config,
+			instanceSettings,
+			moduleRegistry,
+			licenseState,
+			eventService,
+		);
 	});
 
 	describe('enabled', () => {
-		it('is true when opted in and the cache runs', () => {
+		it.each(['main', 'webhook'])('is true when opted in and licensed on %s', (instanceType) => {
+			Object.assign(instanceSettings, { instanceType });
 			expect(service.enabled).toBe(true);
+			expect(moduleRegistry.isActive).toHaveBeenCalledWith('execution-limits');
 		});
 
 		it('is false when not opted in', () => {
@@ -64,8 +77,18 @@ describe('PrometheusExecutionLimitsMetricsService', () => {
 			expect(service.enabled).toBe(false);
 		});
 
-		it('is false when the module did not start the cache', () => {
-			Object.assign(usageCache, { isRunning: false });
+		it('is false on a worker', () => {
+			Object.assign(instanceSettings, { instanceType: 'worker' });
+			expect(service.enabled).toBe(false);
+		});
+
+		it('is false when the module is not active', () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+			expect(service.enabled).toBe(false);
+		});
+
+		it('is false when execution limits are not licensed', () => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
 			expect(service.enabled).toBe(false);
 		});
 	});
