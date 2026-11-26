@@ -3,6 +3,8 @@ import type { PromotionProjectAccessSetting } from '@n8n/permissions';
 export const PROMOTIONS_SETTINGS_VIEW = 'PromotionsSettings';
 export const PROMOTIONS_ENVIRONMENT_ADD_VIEW = 'PromotionsEnvironmentAdd';
 export const PROMOTIONS_ENVIRONMENT_EDIT_VIEW = 'PromotionsEnvironmentEdit';
+export const PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW =
+	'PromotionsProjectEnvironmentsAllowList';
 
 export const ENVIRONMENTS_DOCS_URL = 'https://docs.n8n.io/administer/environments';
 export const ENVIRONMENTS_PLAN_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/plan-your-environments`;

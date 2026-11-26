@@ -14,7 +14,7 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 
-const enabled = ref(false);
+const enabled = defineModel<boolean>('enabled', { default: false });
 // Stays true when loading fails, so the switch never offers a guessed value as saved.
 const busy = ref(true);
 
