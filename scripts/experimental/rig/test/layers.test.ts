@@ -2,7 +2,13 @@ import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ensureLayerFile, managedConflicts, resolveLayer } from '../src/commands/layers';
+import {
+	ensureLayerFile,
+	generatedSecretWarning,
+	managedConflicts,
+	resolveLayer,
+} from '../src/commands/layers';
+import { secretOverrideChecks } from '../src/commands/doctor';
 import { parseTopology, saveTopology, type TopologyInput } from '../src/config/env-yaml';
 import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
@@ -72,6 +78,31 @@ describe('secrets', () => {
 		expect(trace.get('LICENSE')?.map((s) => s.layer)).toEqual(['secrets', 'secrets']);
 	});
 
+	it('should let more specific layers win over the secrets', () => {
+		write(globalSecretsFile(), 'OPENAI_API_KEY=global\nANTHROPIC_API_KEY=global\n');
+		write(profileFile('ai'), 'OPENAI_API_KEY=profile\nANTHROPIC_API_KEY=profile\n');
+		const env = makeEnv('s', { ...PRESETS.queue.topology, profiles: ['ai'] });
+		write(env.paths.secrets, 'ANTHROPIC_API_KEY=env\n');
+		write(env.paths.layerFile('worker-1'), 'OPENAI_API_KEY=worker-1\n');
+		const [main, worker] = env.processes();
+
+		expect(env.resolve(main).env).toMatchObject({
+			OPENAI_API_KEY: 'profile',
+			ANTHROPIC_API_KEY: 'env',
+		});
+		expect(env.resolve(worker).env.OPENAI_API_KEY).toBe('worker-1');
+	});
+
+	it('should warn when a layer overrides a generated secret', () => {
+		const env = makeEnv('s');
+		write(env.paths.secrets, 'N8N_ENCRYPTION_KEY=generated\n');
+		expect(generatedSecretWarning(env, 'shared', 'N8N_ENCRYPTION_KEY')).toMatch(
+			/A value in env\/shared\.env overrides it\. n8n then cannot read the credentials/,
+		);
+		expect(generatedSecretWarning(env, 'secrets', 'N8N_ENCRYPTION_KEY')).toBeUndefined();
+		expect(generatedSecretWarning(env, 'shared', 'OPENAI_API_KEY')).toBeUndefined();
+	});
+
 	it('should create secret files with mode 0600', () => {
 		const env = makeEnv('s');
 		expect(statSync(ensureLayerFile(env, 'global-secrets')).mode & 0o777).toBe(0o600);
@@ -105,5 +136,28 @@ describe('managedConflicts', () => {
 				value: expect.stringContaining('task-runner-python'),
 			},
 		]);
+	});
+});
+
+describe('secretOverrideChecks', () => {
+	it('should warn when a layer overrides a value of secrets.env', () => {
+		write(globalSecretsFile(), 'OPENAI_API_KEY=global\n');
+		const env = makeEnv('d');
+		write(env.paths.secrets, 'N8N_ENCRYPTION_KEY=generated\n');
+		write(env.paths.layerFile('shared'), 'N8N_ENCRYPTION_KEY=old\nOPENAI_API_KEY=layer\n');
+
+		const checks = secretOverrideChecks(env);
+		expect(checks.map((c) => c.detail)).toEqual([
+			'N8N_ENCRYPTION_KEY in env/shared.env:1 overrides secrets.env:1',
+		]);
+		expect(checks[0].hint).toContain('rig generated N8N_ENCRYPTION_KEY');
+	});
+});
+
+describe('secretOverrideChecks with engine v2', () => {
+	it('should not report the engine-v2 module that rig adds as a layer override', () => {
+		const env = makeEnv('e', { ...PRESETS['enginev2-local'].topology });
+		write(env.paths.secrets, 'N8N_ENABLED_MODULES=insights\n');
+		expect(secretOverrideChecks(env)).toEqual([]);
 	});
 });

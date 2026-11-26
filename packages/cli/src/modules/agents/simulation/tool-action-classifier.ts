@@ -226,18 +226,15 @@ export function classifyToolAction(action: ClassifiableToolAction): ToolActionMo
 		if (typeof rawMethod === 'string' && rawMethod.trim() !== '') {
 			return classifyHttpMethod(rawMethod);
 		}
-		if (action.nodeType === 'n8n-nodes-base.httpRequest') {
-			return 'write_hold';
-		}
 
 		const rawOperation = action.nodeParameters.operation;
-		if (typeof rawOperation === 'string' && rawOperation.trim() !== '') {
-			if (isExpression(rawOperation)) return 'write_hold';
-			return classifyTokens(tokenizeIdentifier(rawOperation));
-		}
-	} else if (action.nodeType === 'n8n-nodes-base.httpRequest') {
-		return 'write_hold';
+		if (typeof rawOperation !== 'string' || rawOperation.trim() === '') return 'write_hold';
+		if (isExpression(rawOperation)) return 'write_hold';
+		return classifyTokens(tokenizeIdentifier(rawOperation));
 	}
+
+	// A node tool without parameters has no operation to read. Its name is user-editable.
+	if (action.nodeType !== undefined) return 'write_hold';
 
 	const name = action.mcpToolName ?? action.toolName;
 	if (!name || isExpression(name)) return 'write_hold';

@@ -12,7 +12,7 @@ export async function resolveConfigMetricScales(
 	evaluationConfigId: string,
 	workflowId: string,
 ): Promise<Record<string, MetricScale>> {
-	const config = await evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+	const config = await evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId, {});
 	return config ? metricScalesFromConfig(config.metrics) : {};
 }
 

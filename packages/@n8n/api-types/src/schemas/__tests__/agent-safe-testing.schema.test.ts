@@ -1,4 +1,5 @@
 import {
+	AGENT_TEST_RUN_MAX_HELD_ACTIONS,
 	agentTestRunCommitActionResultSchema,
 	agentTestRunCommitRequestSchema,
 	agentTestRunCommitResponseSchema,
@@ -106,6 +107,16 @@ describe('agentTestRunCommitRequestSchema', () => {
 		{
 			name: 'blank executionId',
 			body: { testChatId: 'chat-1', executionId: '', actionIds: ['tc-1'] },
+		},
+		{
+			name: 'more actionIds than a test chat can hold',
+			body: {
+				testChatId: 'chat-1',
+				actionIds: Array.from(
+					{ length: AGENT_TEST_RUN_MAX_HELD_ACTIONS + 1 },
+					(_, index) => `tc-${index}`,
+				),
+			},
 		},
 	])('rejects $name', ({ body }) => {
 		expect(agentTestRunCommitRequestSchema.safeParse(body).success).toBe(false);

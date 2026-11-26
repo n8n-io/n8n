@@ -1,4 +1,5 @@
 import type { IconName } from '@n8n/design-system';
+import { i18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -244,11 +245,16 @@ const SENT_OBJECTS: ReadonlySet<string> = new Set([
  */
 export function actionObject(action: Pick<AgentHeldAction, 'actionLabel' | 'appName'>): string {
 	const words = action.actionLabel.toLowerCase().split(/\s+/).filter(Boolean);
-	if (words.length === 0 || action.actionLabel === action.appName) return 'action';
+	if (words.length === 0 || action.actionLabel === action.appName) return objectFallback();
 	const last = words[words.length - 1];
 	// `Reply` and `Post` are also objects. `Send` is not.
-	if (words.length === 1 && ACTION_VERBS.has(last) && !SENT_OBJECTS.has(last)) return 'action';
+	if (words.length === 1 && ACTION_VERBS.has(last) && !SENT_OBJECTS.has(last))
+		return objectFallback();
 	return last;
+}
+
+function objectFallback(): string {
+	return i18n.baseText('agents.testRun.holdReplay.actionObjectFallback');
 }
 
 /** Whether a run action was sent (an email, a message) or saved (a row, a contact). */
@@ -264,7 +270,8 @@ export function actionOutcome(
 export function formatPreviewEntries(input: unknown): Array<{ key: string; value: string }> {
 	if (!isRecord(input)) {
 		if (input === undefined || input === null) return [];
-		return [{ key: 'Input', value: typeof input === 'string' ? input : JSON.stringify(input) }];
+		const key = i18n.baseText('agents.testRun.holdReplay.previewInputKey');
+		return [{ key, value: typeof input === 'string' ? input : JSON.stringify(input) }];
 	}
 	return Object.entries(input)
 		.filter(([, value]) => value !== undefined && value !== null && value !== '')
