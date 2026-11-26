@@ -3,6 +3,7 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
+	AgentPreviewChatMessageDto,
 	AgentChatCancelDto,
 	AgentChatMessagesQueryDto,
 	AgentTaskCancellationDto,
@@ -257,11 +258,11 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: AgentPreviewChatMessageDto,
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, messageId, newSession, attachments } = payload;
+		const { message, sessionId, messageId, newSession, attachments, mode } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -306,6 +307,7 @@ export class AgentChatController {
 					kind: 'preview',
 					message,
 					messageId,
+					...(mode ? { mode } : {}),
 					attachments: await this.chatRelay.storeChatAttachments({
 						attachments,
 						agentId,

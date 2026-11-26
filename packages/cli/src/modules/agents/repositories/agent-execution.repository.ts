@@ -172,6 +172,11 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.managerFor(ctx).existsBy(AgentExecution, { threadId, status: 'running' });
 	}
 
+	/** An earlier turn of the thread ran. The turn that is running now does not count. */
+	async hasFinishedByThread(threadId: string): Promise<boolean> {
+		return await this.exists({ where: { threadId, status: Not('running') } });
+	}
+
 	async findRunningByThread(threadId: string, ctx: OperationContext): Promise<AgentExecution[]> {
 		return await this.managerFor(ctx).findBy(AgentExecution, { threadId, status: 'running' });
 	}
