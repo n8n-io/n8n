@@ -98,8 +98,6 @@ const iconsLoading = ref(false);
 const emojisLoaded = ref(false);
 const emojisLoading = ref(false);
 const popupVisible = ref(false);
-const scrollAreaRef = ref<HTMLElement | null>(null);
-const { scrollMaskAttrs } = useScrollEdges(scrollAreaRef, { axis: 'vertical' });
 
 const selectedTab = ref<TabType>(getDefaultTab());
 const searchQuery = ref('');
@@ -213,6 +211,7 @@ const {
 	stop: stopProgressiveRender,
 	visibleRows,
 } = useProgressiveRender(activeRows, popupVisible);
+const { scrollMaskAttrs } = useScrollEdges(scrollAreaRef, { axis: 'vertical' });
 const activeCoordinate = ref<PickerCoordinate | null>(null);
 const hasActiveItem = computed(() => activeCoordinate.value !== null);
 let activeDescendantOwner: HTMLElement | null = null;
