@@ -29,13 +29,18 @@ import {
 	type PreparedAgent,
 	type PersistedAgentOutcome,
 } from './agent-import.types';
-import type { ImportEntityProperties } from '../../n8n-packages.types';
+import { LayoutConflictPolicy, type ImportEntityProperties } from '../../n8n-packages.types';
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import { decideImportConflictAction } from '../import-conflict-policy';
 import { SkillImporter } from '../skill/skill-importer';
 import { decideWorkflowArchiveTransition } from '../workflow/workflow-archive-transition';
 import { derivePublishedState } from '../workflow/workflow-published-state';
 import { decidePublishingAction } from '../workflow/workflow-publishing-policy';
+
+type AgentImportOptions = ImportEntityProperties & {
+	checkRootPlacement: boolean;
+	layoutConflictPolicy?: LayoutConflictPolicy;
+};
 
 @Service()
 export class AgentImporter {
@@ -56,7 +61,7 @@ export class AgentImporter {
 		context: AgentImportMatchContext,
 		agents: PreparedAgent[],
 		skills: SerializedSkill[],
-		options: ImportEntityProperties,
+		options: AgentImportOptions,
 	): Promise<AgentImportPlan> {
 		const plan: AgentImportPlan = {
 			items: [],
@@ -184,6 +189,7 @@ export class AgentImporter {
 					definition,
 					user: context.user,
 					actor: { kind: 'user', user: context.user },
+					ctx: context.ctx,
 				});
 			} else {
 				agent = await this.configService.replaceDefinition(
@@ -199,6 +205,13 @@ export class AgentImporter {
 					},
 				);
 			}
+			const parentFolderId = item.action === 'create' ? item.parentFolderId : item.moveToFolderId;
+
+			if (parentFolderId !== undefined) {
+				await this.agentsService.move(agent.id, context.projectId, parentFolderId);
+				agent.parentFolderId = parentFolderId;
+			}
+
 			agent = await this.applyArchiveTransition(context, item, agent);
 			const channels = item.channels.map((channel) => this.withSetupUrl(channel, agent));
 			outcomes.push({
@@ -223,7 +236,7 @@ export class AgentImporter {
 		agent: PreparedAgent,
 		match: AgentImportIdentity | undefined,
 		context: AgentImportMatchContext,
-		options: ImportEntityProperties,
+		options: AgentImportOptions,
 	): Promise<AgentPlanItem | AgentImportIssue> {
 		const { action, blocked } = decideImportConflictAction(
 			options.conflictPolicy,
@@ -265,6 +278,25 @@ export class AgentImporter {
 				message: 'The destination Agent no longer exists.',
 			};
 		}
+
+		if (
+			action === 'update' &&
+			agent.parentFolderId !== undefined &&
+			(agent.parentFolderId !== null || options.checkRootPlacement) &&
+			existing.parentFolderId !== agent.parentFolderId
+		) {
+			if (options.layoutConflictPolicy !== LayoutConflictPolicy.FollowPackage) {
+				return {
+					type: 'agent-invalid',
+					sourceAgentId: agent.sourceAgentId,
+					path: 'parentFolderId',
+					message: 'The package places this Agent in a different folder from its current location.',
+				};
+			}
+
+			return { ...item, action, existing, moveToFolderId: agent.parentFolderId };
+		}
+
 		return { ...item, action, existing };
 	}
 
@@ -274,10 +306,23 @@ export class AgentImporter {
 		agent: ProjectAgent,
 	): Promise<ProjectAgent> {
 		if (item.archiveTransition === 'archive') {
-			return await this.publishService.archiveAgent(agent.id, context.projectId, context.user);
+			return await this.publishService.archiveAgent(
+				agent.id,
+				context.projectId,
+				context.user,
+				undefined,
+				undefined,
+				context.ctx,
+			);
 		}
 		if (item.archiveTransition === 'unarchive') {
-			return await this.publishService.unarchiveAgent(agent.id, context.projectId, context.user);
+			return await this.publishService.unarchiveAgent(
+				agent.id,
+				context.projectId,
+				context.user,
+				undefined,
+				context.ctx,
+			);
 		}
 		return agent;
 	}

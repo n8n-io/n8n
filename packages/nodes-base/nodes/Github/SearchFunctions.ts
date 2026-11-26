@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 
@@ -30,9 +31,9 @@ type RefItem = {
 	ref: string;
 };
 
-export async function getUsers(
+async function searchAccounts(
 	this: ILoadOptionsFunctions,
-	filter?: string,
+	query: string | undefined,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const page = paginationToken ? +paginationToken : 1;
@@ -47,9 +48,9 @@ export async function getUsers(
 		responseData = await githubApiRequest.call(
 			this,
 			'GET',
-			'/search/users',
+			requestPath`/search/users`,
 			{},
-			{ q: filter, page, per_page },
+			{ q: query, page, per_page },
 		);
 	} catch {
 		// will fail if the owner does not have any users
@@ -64,6 +65,23 @@ export async function getUsers(
 	const nextPaginationToken =
 		page * per_page < responseData.total_count ? String(page + 1) : undefined;
 	return { results, paginationToken: nextPaginationToken };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAccounts.call(this, filter, paginationToken);
+}
+
+/** Organizations only: user search also returns personal accounts, which have no organization webhooks. */
+export async function getOrganizations(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAccounts.call(this, `${filter ?? ''} type:org`.trim(), paginationToken);
 }
 
 export async function getRepositories(
@@ -84,7 +102,7 @@ export async function getRepositories(
 		responseData = await githubApiRequest.call(
 			this,
 			'GET',
-			'/search/repositories',
+			requestPath`/search/repositories`,
 			{},
 			{ q, page, per_page },
 		);
@@ -111,7 +129,7 @@ export async function getWorkflows(
 	const repository = this.getCurrentNodeParameter('repository', { extractValue: true });
 	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
-	const endpoint = `/repos/${owner}/${repository}/actions/workflows`;
+	const endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows`;
 	let responseData: { workflows: Array<{ id: string; name: string }>; total_count: number } = {
 		workflows: [],
 		total_count: 0,
@@ -146,7 +164,7 @@ export async function getRefs(
 	const responseData: RefItem[] = await githubApiRequest.call(
 		this,
 		'GET',
-		`/repos/${owner}/${repository}/git/refs`,
+		requestPath`/repos/${owner}/${repository}/git/refs`,
 		{},
 		{ page, per_page },
 	);

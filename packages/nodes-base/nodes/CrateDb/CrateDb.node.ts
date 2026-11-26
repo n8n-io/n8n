@@ -25,7 +25,7 @@ export class CrateDb implements INodeType {
 
 		icon: 'file:cratedb.png',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
@@ -278,7 +278,10 @@ export class CrateDb implements INodeType {
 		const db = pgp({
 			...config,
 			// Return date/timestamp columns as strings so node output stays JSON-safe
-			...(this.getNode().typeVersion >= 1.1 ? { types: getDateAsStringTypeParsers(pgp) } : {}),
+			...(this.getNode().typeVersion >= 1.1
+				? // CrateDB sends a UTC value, so the zoneless reading would strip a real offset, ENT-882
+					{ types: getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true }) }
+				: {}),
 		});
 
 		let returnItems: INodeExecutionData[] = [];
@@ -293,6 +296,7 @@ export class CrateDb implements INodeType {
 
 			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
 				resolveExpression: true,
+				literalExpressions: this.getNode().typeVersion >= 1.2,
 			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

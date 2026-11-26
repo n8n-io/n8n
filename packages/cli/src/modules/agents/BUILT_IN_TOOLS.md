@@ -32,7 +32,7 @@ These local tools stay eager when they are attached:
 - `workspace_str_replace_file`
 - `workspace_edit_files`
 - `workspace_execute_command`
-- `load_skill`
+- `load_skill`: loads attached skill instructions or a linked text file by its path relative to the skill folder. For a linked file over 72 KiB, pass the `offset` from the truncation note to read the next part. The tool truncates instructions over 72 KiB and does not page them.
 - `mark_session_failed`
 - `create_plan`
 - `read_plan`
@@ -48,6 +48,9 @@ Other eligible local tools are deferred. This includes built-in, custom,
 workflow, node, integration, knowledge, memory, and MCP tools. Provider-native
 tools stay eager. A local tool also stays eager when it has an explicit cache
 marker or `deferLoading: false`.
+
+The channel tool `do_not_respond` also stays eager when attached.
+Its definition sets `deferLoading: false` for both supported native search providers.
 
 Deferral changes model visibility only. All authorized handlers stay in the
 execution registry. Validation, approval, and cancellation use the same paths.
@@ -102,7 +105,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 ### `import_files`
 
-- Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`.
+- Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`. The result lists each copy under `imported`, with `fileId`, `fileName`, `mimeType`, `sizeBytes` and `path`. The list is not named `files`, because the chat shows the `files` of a tool result as new files.
 - Attach condition: The same as the workspace tools, and the instance flag `137_agent_sandbox_files` is on. The runtime attaches it next to them, and adds the instructions about `outputs/`, `sandbox:<path>` references and `import_files` to the workspace instructions.
 - Source: [`tools/import-files.tool.ts`](./tools/import-files.tool.ts).
 
@@ -114,7 +117,7 @@ Files in `outputs/` become conversation files with source `sandbox`. A turn that
 
 - Purpose: `find_file` finds uploaded knowledge files by filename pattern. `search_text` searches the file contents with a regex. `read_file` reads one file.
 - Attach condition: The sandbox is on, the `knowledge` module is active (`KnowledgeAvailabilityService` in the knowledge module answers this), the agent is not an inline agent, and the agent has knowledge files.
-- Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts).
+- Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts). The tools call `KnowledgeRetrievalService` in the knowledge module with the scope of the agent. The knowledge module owns the search, the read and the sandbox copy of the files.
 
 ## Tools attached to top-level agents only
 
@@ -127,7 +130,20 @@ Files in `outputs/` become conversation files with source `sandbox`. A turn that
 - Slack user and channel searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty list.
 - Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page and binds the search criteria and filters. Keep the same search inputs when you continue. Use `get_channel_info` when the channel ID is known.
 - Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
+- Actions that need approval require a short `__approvalDescription` from the model. The runtime shows this description in the request unless caller settings redact approval details, and removes it from the action inputs. Actions that do not need approval do not require this field.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
+
+### `do_not_respond`
+
+- Attach condition: The same top-level runtime that attaches channel tools. At least one channel must support silence. Attach the tool once, even with multiple connections.
+- Visibility: The tool stays eager. It does not require tool discovery.
+- Routing: Use the current turn's integration context. Reject the call if that connection does not support silence. Do not fall back to another configured connection.
+- A successful call ends the turn. The existing channel reply policy still applies.
+- The grouped action tool no longer exposes silence when the generic tool is attached. Saved action handlers remain available for execution and resume.
+- Rich cards stay in the channel actions. Use `respond` for the current context. Use an explicit send action for another destination. Card input, approval, and interactive suspension use the existing paths.
+- Each channel action tool adds a short system instruction. It names the connection tools and the declared card components. It tells the agent to search its tools for channel operations. This instruction stays visible when the action tool is deferred.
+- New channels declare their supported card components and actions in `AgentChatIntegration`. The runtime uses these declarations for the capability summary. `AgentChatIntegration.conversationTools` derives silence support from `do_not_respond`.
+- Source: [`integrations/conversation-tools.ts`](./integrations/conversation-tools.ts). Contract: [`AgentChatIntegration.conversationTools`](./integrations/agent-chat-integration.ts).
 
 ### `delegate_subagent`
 

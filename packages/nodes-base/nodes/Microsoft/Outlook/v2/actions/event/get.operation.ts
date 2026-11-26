@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -73,7 +74,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		qs.$select = 'id,subject,bodyPreview,start,end,organizer,attendees,webLink';
 	}
 
-	const endpoint = `/calendar/events/${eventId}`;
+	const endpoint = requestPath`/calendar/events/${eventId}`;
 
 	const responseData = await microsoftApiRequest.call(this, 'GET', endpoint, index, undefined, qs);
 

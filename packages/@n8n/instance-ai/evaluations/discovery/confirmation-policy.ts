@@ -58,6 +58,11 @@ export function resolveConfirmation(
 	return { ...answer?.resumeWith, approved: true };
 }
 
+/** Whether the scenario declares an answer for the tool that suspended. */
+export function declaresAnswer(suspension: SuspensionInfo, policy: ConfirmationPolicy): boolean {
+	return policy.has(suspendedToolName(suspension));
+}
+
 export function unmatchedConfirmations(
 	policy: ConfirmationPolicy,
 	suspensions: Iterable<SuspensionInfo>,

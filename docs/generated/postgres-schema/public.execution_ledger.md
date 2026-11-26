@@ -16,7 +16,7 @@
 | occurredAt | timestamp(3) with time zone |  | false |  |  | When the run started or ended |
 | origin | varchar(8) |  | false |  |  | v1: written by this instance; v2: pulled from the engine v2 data plane |
 | outcome | varchar(16) |  | false |  |  | none for started rows. blocked: the run stopped before its first node |
-| projectId | varchar(36) |  | false |  |  | Project at the time of the event. No foreign key: rows outlive the project |
+| projectId | varchar(36) |  | true |  |  | Project at the time of the event. No foreign key: rows outlive the project. Null when the workflow has no owner project |
 | runtimeMs | bigint | 0 | false |  |  | Run time in milliseconds. 0 for started rows |
 | source | varchar(32) | 'none'::character varying | false |  |  | Raw execution source, such as instance_ai. none when unset. Not constrained |
 | timeSavedMin | integer | 0 | false |  |  | Time saved in minutes. 0 for started rows |
@@ -45,7 +45,6 @@
 | execution_ledger_occurredAt_not_null | n | NOT NULL "occurredAt" |
 | execution_ledger_origin_not_null | n | NOT NULL origin |
 | execution_ledger_outcome_not_null | n | NOT NULL outcome |
-| execution_ledger_projectId_not_null | n | NOT NULL "projectId" |
 | execution_ledger_runtimeMs_not_null | n | NOT NULL "runtimeMs" |
 | execution_ledger_source_not_null | n | NOT NULL source |
 | execution_ledger_timeSavedMin_not_null | n | NOT NULL "timeSavedMin" |

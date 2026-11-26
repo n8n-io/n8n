@@ -129,6 +129,7 @@ export function createFakeOutboundHttp(routes: Route[], fn: MockFnFactory) {
 		(options?: HttpRequestClientOptions): HttpRequestClient => ({
 			request: (async (request: IHttpRequestOptions) =>
 				await httpRequest(applyClientDefaults(options, request))) as HttpRequestClient['request'],
+			// oxlint-disable-next-line typescript/no-deprecated -- Match the legacy method on HttpRequestClient.
 			requestLegacy: () => {
 				throw new Error('requestLegacy is not supported by the fake OutboundHttp');
 			},

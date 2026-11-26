@@ -6,11 +6,12 @@ import { DataSource, InsertQueryBuilder } from '@n8n/typeorm';
 import type { JsonObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentPlanHistory } from '@/modules/agents/entities/agent-plan-history.entity';
 import { AgentPlan } from '@/modules/agents/entities/agent-plan.entity';
-import { Agent } from '@/modules/agents/entities/agent.entity';
 import {
 	AgentPlanRepository,
 	AgentPlanWriteConflictError,
@@ -34,7 +35,7 @@ describe('AgentPlanRepository', () => {
 		repository = Container.get(AgentPlanRepository);
 		({ id: projectId } = await createTeamProject());
 		agentId = randomUUID();
-		await dataSource.getRepository(Agent).save({
+		await createAgent({
 			id: agentId,
 			name: 'Plan storage agent',
 			projectId,

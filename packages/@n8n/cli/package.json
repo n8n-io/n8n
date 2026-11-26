@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.27.0",
+  "version": "0.29.0",
   "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
@@ -69,6 +69,9 @@
       "promotion-environment": {
         "description": "Create and manage promotion environments, and promote or apply packages"
       },
+      "promotion-settings": {
+        "description": "Get and update who can promote, approve, and apply in their own projects"
+      },
       "source-control": {
         "description": "Pull changes from the configured source control provider"
       },
@@ -81,6 +84,7 @@
     }
   },
   "dependencies": {
+    "@n8n/constants": "workspace:*",
     "@oclif/core": "^4.5.2"
   },
   "devDependencies": {

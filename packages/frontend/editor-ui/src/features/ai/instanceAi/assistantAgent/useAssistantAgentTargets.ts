@@ -2,7 +2,7 @@ import type { AssistantAgentTargetsState } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { readonly, shallowRef } from 'vue';
 
-import type { ArtifactAgentTargets } from '../artifactAgentTargets';
+import type { ArtifactAgentTarget, ArtifactAgentTargets } from '../artifactAgentTargets';
 import {
 	bindAssistantAgentTarget,
 	fetchAssistantAgentTargets,
@@ -25,6 +25,8 @@ export function useAssistantAgentTargets(options: UseAssistantAgentTargetsOption
 	const state = shallowRef<AssistantAgentTargetsState | null>(null);
 	// A response that is older than the last write must not replace it.
 	let generation = 0;
+	// The last agent that the preview bound before the server knew the thread.
+	let deferredBind: ArtifactAgentTarget | undefined;
 
 	function apply(targets: AssistantAgentTargetsState): void {
 		generation += 1;
@@ -44,10 +46,24 @@ export function useAssistantAgentTargets(options: UseAssistantAgentTargetsOption
 			// The previews still show the agents of the chat messages without the bindings.
 			console.warn('Failed to load the agents of the Assistant thread', error);
 		}
+		// The first message bound the subject, so a later change in the preview applies now.
+		const deferred = deferredBind;
+		deferredBind = undefined;
+		if (deferred) {
+			await agentTargets.bind(deferred).catch((error: unknown) => {
+				console.warn('Failed to bind the agent of the Assistant thread', error);
+			});
+		}
 	}
 
 	const agentTargets: ArtifactAgentTargets = {
 		bind: async (target) => {
+			// The server does not know a new thread before its first message. Keep the
+			// latest target, and bind it on the first refresh after that message.
+			if (!options.canLoad()) {
+				deferredBind = target;
+				return;
+			}
 			const { bound, pending } = state.value ?? {};
 			if (
 				bound?.agentId === target.agentId &&

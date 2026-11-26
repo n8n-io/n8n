@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -604,6 +607,46 @@ describe('SettingsUsageAndPlan', () => {
 				const reopenedInput = await findByPlaceholderText('Activation key');
 				expect(reopenedInput).toHaveValue('');
 			});
+		});
+	});
+
+	describe('modal prefetch', () => {
+		beforeEach(() => {
+			usersStore.currentUser = { globalScopes: ['community:register'] } as IUser;
+		});
+
+		it('prefetches the enrollment modal after the Community plan loads', async () => {
+			usageStore.planName = 'Community';
+			// The page catches errors from this call, so record the value and assert it below.
+			let enabledWhileLoading: boolean | undefined;
+			usageStore.getLicenseInfo = vi.fn(async () => {
+				enabledWhileLoading = isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL);
+			});
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(enabledWhileLoading).toBe(false);
+			expect(isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL)).toBe(true);
+		});
+
+		it('does not prefetch the enrollment modal on another plan', async () => {
+			usageStore.planName = 'Enterprise';
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL)).toBe(false);
+		});
+
+		it('does not prefetch the enrollment modal for a user who cannot register', async () => {
+			usageStore.planName = 'Community';
+			usersStore.currentUser = { globalScopes: [] } as unknown as IUser;
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL)).toBe(false);
 		});
 	});
 });

@@ -9,6 +9,7 @@ export class CalTrigger extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Cal.com Trigger',
 			name: 'calTrigger',
+			schemaPath: 'Cal',
 			icon: { light: 'file:cal.svg', dark: 'file:cal.dark.svg' },
 			group: ['trigger'],
 			description: 'Handle Cal.com events via webhooks',

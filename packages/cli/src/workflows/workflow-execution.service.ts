@@ -4,6 +4,7 @@ import {
 	EventService,
 	InstanceWriteAccessService,
 	WorkflowPublishedDataService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -14,7 +15,7 @@ import type {
 	PollLeaseFence,
 } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
@@ -23,6 +24,8 @@ import {
 	ErrorReporter,
 	ExecutionContextService,
 	anyReachableRootHasRunData,
+	collectAllowedBinaryDataIds,
+	filterBinaryDataIds,
 } from 'n8n-core';
 import type {
 	IExecuteData,
@@ -37,11 +40,17 @@ import type {
 	IWorkflowBase,
 	PollCursor,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	SubworkflowOperationError,
+	Workflow,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import { ForbiddenError, OperationalError, UnexpectedError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, OperationalError, UnexpectedError } from '@n8n/errors';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -49,6 +58,7 @@ import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
+import type { RegisterWebhooksOptions } from '@/webhooks/test-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -56,6 +66,11 @@ import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+
+export const TRIGGER_EVENT_REQUIRED_MESSAGE =
+	'The run data does not reach the destination node from a trigger, and the trigger needs an ' +
+	'external event to start. Pin data on the trigger. Or add run data for a trigger node ' +
+	'that comes before the destination node to `runData`.';
 
 @Service()
 export class WorkflowExecutionService {
@@ -78,6 +93,7 @@ export class WorkflowExecutionService {
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	async runWorkflow(
@@ -90,6 +106,14 @@ export class WorkflowExecutionService {
 		deduplicationKey?: string,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	) {
+		const binaryDataAccess =
+			workflowData.settings?.engineType === 'v2'
+				? []
+				: await collectAllowedBinaryDataIds(
+						data.flat(),
+						additionalData.binaryDataAccess,
+						workflowData,
+					);
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -101,6 +125,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess,
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -113,6 +138,7 @@ export class WorkflowExecutionService {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
+			...(binaryDataAccess.length > 0 ? { binaryDataAccess } : {}),
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -128,7 +154,7 @@ export class WorkflowExecutionService {
 
 	/**
 	 * Starts an execution for polled items, committing its row in the same transaction
-	 * as the poll's cursor advance so neither can exist without the other.
+	 * as the poll's cursor advance. A refused run advances the cursor alone, unless the poll is bounded.
 	 */
 	async runPolledWorkflow(
 		workflowData: IWorkflowBase,
@@ -140,7 +166,16 @@ export class WorkflowExecutionService {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
+		pollIsBounded = false,
 	): Promise<string | undefined> {
+		const binaryDataAccess =
+			workflowData.settings?.engineType === 'v2'
+				? []
+				: await collectAllowedBinaryDataIds(
+						data.flat(),
+						additionalData.binaryDataAccess,
+						workflowData,
+					);
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -152,6 +187,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess,
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -163,6 +199,7 @@ export class WorkflowExecutionService {
 		);
 
 		const runData: IWorkflowExecutionDataProcess = {
+			...(binaryDataAccess.length > 0 ? { binaryDataAccess } : {}),
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -197,10 +234,26 @@ export class WorkflowExecutionService {
 				this.logger.error('Blocked a polled execution before its row was committed', {
 					workflowId: workflowData.id,
 					nodeName: node.name,
+					pollIsBounded,
 					error: error.cause,
 				});
 
 				responsePromise?.reject(error.cause);
+
+				if (!pollIsBounded) {
+					const committed = await this.pollCursorService.commitCursorOnly({
+						workflowId: workflowData.id,
+						nodeId: node.id,
+						cursor,
+						fence,
+					});
+					if (!committed) {
+						this.logger.warn(
+							'Poll cursor commit skipped after a blocked execution: the poll no longer holds its lease',
+							{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name },
+						);
+					}
+				}
 
 				return undefined;
 			}
@@ -211,6 +264,7 @@ export class WorkflowExecutionService {
 		const payload: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			status: 'new',
@@ -224,6 +278,7 @@ export class WorkflowExecutionService {
 			nodeId: node.id,
 			cursor,
 			payload,
+			projectId,
 			fence,
 		});
 
@@ -343,13 +398,34 @@ export class WorkflowExecutionService {
 		return nodeType.description.group.includes('trigger');
 	}
 
-	async executeManually(
-		workflowData: IWorkflowBase,
-		payload: WorkflowRequest.ManualRunPayload,
-		user: User,
-		pushRef?: string,
-		n8nAuthCookie?: string,
-	): Promise<ManualRunResponse> {
+	private async assertNoTriggerEventNeeded(webhookOptions: RegisterWebhooksOptions) {
+		const needsTriggerEvent = await this.testWebhooks.needsTriggerEvent({
+			additionalData: webhookOptions.additionalData,
+			destinationNode: webhookOptions.destinationNode,
+			triggerToStartFrom: webhookOptions.triggerToStartFrom,
+			workflowEntity: webhookOptions.workflowEntity,
+		});
+
+		if (needsTriggerEvent) {
+			throw new ConflictError(TRIGGER_EVENT_REQUIRED_MESSAGE);
+		}
+	}
+
+	async executeManually({
+		workflowData,
+		payload,
+		user,
+		pushRef,
+		n8nAuthCookie,
+		waitForWebhook = true,
+	}: {
+		workflowData: IWorkflowBase;
+		payload: WorkflowRequest.ManualRunPayload;
+		user: User;
+		pushRef?: string;
+		n8nAuthCookie?: string;
+		waitForWebhook?: boolean;
+	}): Promise<ManualRunResponse> {
 		this.assertManualExecutionAllowed();
 
 		// Check whether this workflow is active.
@@ -398,7 +474,7 @@ export class WorkflowExecutionService {
 			// We must always register the webhook - even when the Chat Trigger has
 			// pinned data – because the chat SDK will POST the message to it.
 			if (payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) {
-				const { nodeNames, formTestUrls } = await this.testWebhooks.registerWebhooks({
+				const webhookOptions: RegisterWebhooksOptions = {
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -411,10 +487,17 @@ export class WorkflowExecutionService {
 					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
 					n8nAuthCookie,
-				});
+				};
 
-				if (nodeNames.length > 0) {
-					return { waitingForWebhook: true, formTestUrls };
+				if (!waitForWebhook) {
+					await this.assertNoTriggerEventNeeded(webhookOptions);
+				} else {
+					const { nodeNames, formTestUrls } =
+						await this.testWebhooks.registerWebhooks(webhookOptions);
+
+					if (nodeNames.length > 0) {
+						return { waitingForWebhook: true, formTestUrls };
+					}
 				}
 			}
 
@@ -439,7 +522,7 @@ export class WorkflowExecutionService {
 			);
 
 			if (pinnedTrigger === undefined) {
-				const { nodeNames, formTestUrls } = await this.testWebhooks.registerWebhooks({
+				const webhookOptions: RegisterWebhooksOptions = {
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -450,10 +533,17 @@ export class WorkflowExecutionService {
 					destinationNode: payload.destinationNode,
 					workflowIsActive,
 					n8nAuthCookie,
-				});
+				};
 
-				if (nodeNames.length > 0) {
-					return { waitingForWebhook: true, formTestUrls };
+				if (!waitForWebhook) {
+					await this.assertNoTriggerEventNeeded(webhookOptions);
+				} else {
+					const { nodeNames, formTestUrls } =
+						await this.testWebhooks.registerWebhooks(webhookOptions);
+
+					if (nodeNames.length > 0) {
+						return { waitingForWebhook: true, formTestUrls };
+					}
 				}
 			}
 
@@ -470,6 +560,25 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
+			const usesEngineV2 = workflowData.settings?.engineType === 'v2';
+			if (!usesEngineV2) {
+				const binaryItems = [
+					...Object.values(data.pinData ?? {}).flatMap((items) => items ?? []),
+					...Object.values(data.runData ?? {})
+						.flatMap((runs) => runs ?? [])
+						.flatMap((run) => run.data?.main ?? [])
+						.flatMap((items) => items ?? []),
+					...(data.triggerToStartFrom?.data?.data?.main ?? []).flatMap((items) => items ?? []),
+				];
+				const accessService = Container.get(BinaryDataAccessService);
+				const binaryDataAccess = await filterBinaryDataIds(
+					binaryItems,
+					workflowData.settings?.binaryMode === BINARY_MODE_COMBINED,
+					async (binaryDataId) => await accessService.hasReadAccess(user, binaryDataId),
+				);
+				if (binaryDataAccess.length > 0) data.binaryDataAccess = binaryDataAccess;
+			}
+
 			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 				this.ownershipService,
 				workflowData.id,
@@ -494,6 +603,7 @@ export class WorkflowExecutionService {
 			 */
 			if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
 				data.executionData = createRunExecutionData({
+					binaryDataAccess: data.binaryDataAccess,
 					startData: {
 						startNodes: data.startNodes,
 						destinationNode: data.destinationNode,
@@ -597,6 +707,10 @@ export class WorkflowExecutionService {
 			const workflowData = publishedData.workflow;
 			workflowData.nodes = publishedData.publishedVersion.nodes;
 			workflowData.connections = publishedData.publishedVersion.connections;
+			workflowData.settings = this.workflowVersionedSettings.forPublishedRun(
+				workflowData.settings,
+				publishedData.publishedVersion,
+			);
 			return workflowData;
 		}
 
@@ -617,6 +731,10 @@ export class WorkflowExecutionService {
 		}
 		loaded.nodes = loaded.activeVersion.nodes;
 		loaded.connections = loaded.activeVersion.connections;
+		loaded.settings = this.workflowVersionedSettings.forPublishedRun(
+			loaded.settings,
+			loaded.activeVersion,
+		);
 		return loaded;
 	}
 
@@ -667,10 +785,12 @@ export class WorkflowExecutionService {
 						errorWorkflowPermissionError,
 						initialNode,
 					);
+					fakeExecution.data.resultData.failedBeforeStart = 'policy';
 
 					const fullExecutionData: CreateExecutionPayload = {
 						data: fakeExecution.data,
 						mode: fakeExecution.mode,
+						// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 						finished: false,
 						stoppedAt: new Date(),
 						workflowData,

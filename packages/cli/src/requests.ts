@@ -5,6 +5,7 @@ import type {
 	Variables,
 	Project,
 	User,
+	UserKind,
 	ListQueryDb,
 	WorkflowHistory,
 } from '@n8n/db';
@@ -294,6 +295,7 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
+		kind: UserKind;
 		role: ProjectRole | AssignableProjectRole;
 	};
 	/**
@@ -306,6 +308,7 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
+		kind: UserKind;
 		globalRole: { slug: string; displayName: string };
 	};
 	type ProjectWithRelations = {

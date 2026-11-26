@@ -12,7 +12,8 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 } from 'n8n-workflow';
-import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -63,7 +64,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 				runExecutionData,
 				connectionInputData,
 			),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 
 			assertBinaryData: (propertyName, inputIndex = 0) =>
 				assertBinaryData(
@@ -81,6 +82,9 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 					propertyName,
 					inputIndex,
 					workflow.settings.binaryMode,
+					additionalData,
+					workflow.id,
+					runExecutionData,
 				),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
@@ -91,7 +95,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 	}
 
 	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return { json: {} };
 		}

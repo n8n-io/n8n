@@ -10,6 +10,7 @@ import type {
 	ICredentialTypeMap,
 	IUsedCredential,
 } from './credentials.types';
+import type { CredentialRestriction } from '@n8n/api-types';
 import * as credentialsApi from './credentials.api';
 import * as credentialsEeApi from './credentials.ee.api';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -57,6 +58,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	 * fetch to resolve would otherwise own the credential picker.
 	 */
 	const usableCredentials = ref<ICredentialMap>({});
+	/**
+	 * Restrictions from the last fetch that asked for them, by credential id. Kept apart from
+	 * `state.credentials` for the same reason: other fetches replace it without restrictions.
+	 */
+	const restrictionsById = ref<Record<string, CredentialRestriction>>({});
 	/**
 	 * An unfetched slice reads as empty, never as a fallback to the flat map —
 	 * falling back is the bug. Callers that must not act on "no credentials yet"
@@ -318,12 +324,40 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	// The request that runs now, if there is one. A call without `forceFetch` joins it, so the
+	// editor sends one request when many callers start together.
+	let credentialTypesLoad: Promise<void> | undefined;
+	// Requests can end out of order, for example a startup load and a forced refresh.
+	// A response is applied only when no newer request has been applied yet.
+	let credentialTypesRequestCount = 0;
+	let appliedCredentialTypesRequest = 0;
+
 	const fetchCredentialTypes = async (forceFetch: boolean) => {
-		if (allCredentialTypes.value.length > 0 && !forceFetch) {
-			return;
+		if (!forceFetch) {
+			if (allCredentialTypes.value.length > 0) {
+				return;
+			}
+			if (credentialTypesLoad) {
+				await credentialTypesLoad;
+				return;
+			}
 		}
-		const credentialTypes = await credentialsApi.getCredentialTypes(rootStore.baseUrl);
-		setCredentialTypes(credentialTypes);
+
+		const request = ++credentialTypesRequestCount;
+		const load = credentialsApi
+			.getCredentialTypes(rootStore.baseUrl)
+			.then((credentialTypes) => {
+				if (request < appliedCredentialTypesRequest) return;
+				appliedCredentialTypesRequest = request;
+				setCredentialTypes(credentialTypes);
+			})
+			.finally(() => {
+				if (credentialTypesLoad === load) {
+					credentialTypesLoad = undefined;
+				}
+			});
+		credentialTypesLoad = load;
+		await load;
 	};
 
 	const fetchAllCredentials = async (
@@ -332,6 +366,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			includeRestrictions?: boolean;
 			externalSecretsStore?: string;
 		} = {},
 	): Promise<ICredentialsResponse[]> => {
@@ -340,6 +375,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes = true,
 			onlySharedWithMe = false,
 			includeGlobal = true,
+			includeRestrictions = false,
 			externalSecretsStore,
 		} = options;
 
@@ -352,9 +388,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes,
 			onlySharedWithMe,
 			includeGlobal,
+			includeRestrictions,
 			externalSecretsStore,
 		});
 		setCredentials(credentials);
+		if (includeRestrictions) {
+			restrictionsById.value = Object.fromEntries(
+				credentials.flatMap(({ id, restriction }) => (restriction ? [[id, restriction]] : [])),
+			);
+		}
 		return credentials;
 	};
 
@@ -677,6 +719,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		fetchCredentialTypes,
 		fetchAllCredentials,
 		fetchUsableCredentials,
+		restrictionsById,
 		createNewCredential,
 		updateCredential,
 		getCredentialData,

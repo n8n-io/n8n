@@ -4,9 +4,11 @@ import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
+import { useTestButtonPrimaryColorExperiment } from '@/experiments/testButtonPrimaryColor/useTestButtonPrimaryColorExperiment';
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
-import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
+import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedesignFlag';
+import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -34,6 +36,7 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentTestButton from './AgentTestButton.vue';
+import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
@@ -57,6 +60,7 @@ const props = defineProps<{
 	executionsDescription: string;
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
+	tasks?: Array<SetupTask<SetupTaskId>>;
 	artifactMode?: boolean;
 	chatFirst?: boolean;
 	isPreviewOpen?: boolean;
@@ -76,7 +80,7 @@ const props = defineProps<{
 
 const childrenDisabled = computed(() => !props.canEditAgent);
 provideAgentPersonalisation(
-	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
+	() => props.localConfig?.personalisation ?? props.agent?.config?.personalisation,
 );
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
@@ -130,6 +134,15 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const agentTelemetry = useAgentTelemetry();
+const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
+
+// AGENT-1437 scopes the treatment to the standalone agent page. The same
+// component also renders inside the Assistant artifact builder, which must
+// keep the existing outlined button.
+const showPrimaryColorTestButton = computed(
+	() => !props.artifactMode && testButtonPrimaryColorExperiment.isEnabled.value,
+);
+const isTriggerRedesignEnabled = useAgentTriggerRedesignFlag();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
@@ -194,16 +207,24 @@ defineExpose({ onSetupTaskAction });
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
-					<AgentTestButton
-						v-if="!props.hidePreviewButton"
-						:disabled-reason="props.previewDisabledReason"
-						:is-runnable="props.agent?.isRunnable === true"
-						:is-preview-open="props.isPreviewOpen"
-						:validation-issues="props.configValidationIssues ?? []"
-						test-id="agent-header-preview-btn"
-						@open-preview="emit('open-preview', 'primary')"
-						@close-preview="emit('close-preview')"
-					/>
+					<div :class="$style.identityActions" data-testid="agent-identity-actions">
+						<AgentSetupTasks
+							v-if="tasks && tasks.length > 0"
+							:tasks="tasks"
+							@action="emit('setup-task-action', $event)"
+						/>
+						<AgentTestButton
+							v-if="!props.hidePreviewButton && !isTriggerRedesignEnabled"
+							:disabled-reason="props.previewDisabledReason"
+							:is-runnable="props.agent?.isRunnable === true"
+							:is-preview-open="props.isPreviewOpen"
+							:validation-issues="props.configValidationIssues ?? []"
+							:variant="showPrimaryColorTestButton ? 'solid' : 'outline'"
+							test-id="agent-header-preview-btn"
+							@open-preview="emit('open-preview', 'primary')"
+							@close-preview="emit('close-preview')"
+						/>
+					</div>
 				</div>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
@@ -212,6 +233,7 @@ defineExpose({ onSetupTaskAction });
 						:model-value="activeMainTab"
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
+						show-border
 						data-testid="agent-header-tabs"
 						@update:model-value="onMainTabSelect"
 					/>
@@ -219,44 +241,49 @@ defineExpose({ onSetupTaskAction });
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentInfoPanel
-						ref="agentInfoPanel"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						@update:config="(changes, meta) => emit('update:config', changes, meta)"
-						@draft:config="emit('draft:config')"
-					/>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.skills.title')"
-						:description="i18n.baseText('agents.builder.skills.description')"
-						data-testid="agent-skills-panel"
-					>
-						<AgentSkillsSection
-							:skills="appliedSkills"
+					<template v-if="!isTriggerRedesignEnabled">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
 							:disabled="childrenDisabled"
-							:show-label="false"
-							:validation-issues="configValidationIssues ?? []"
-							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
-							@open-skill="emit('open-skill', $event)"
-							@add-skill="emit('add-skill')"
-							@remove-skill="emit('remove-skill', $event)"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
 						/>
-					</AgentPanel>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+					</template>
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
+						data-testid="agent-triggers-panel"
 					>
 						<template #header-actions>
 							<AgentTestButton
 								:disabled-reason="props.previewDisabledReason"
-								:icon-only="true"
+								:icon-only="!isTriggerRedesignEnabled"
 								:is-runnable="props.agent?.isRunnable === true"
+								:is-preview-open="isTriggerRedesignEnabled && props.isPreviewOpen"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
 								@open-preview="emit('open-preview', 'icon')"
+								@close-preview="emit('close-preview')"
 							/>
 						</template>
 						<AgentTriggersSection
@@ -287,9 +314,38 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 
+					<template v-if="isTriggerRedesignEnabled">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
+						/>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+					</template>
+
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.capabilities.title')"
 						:description="i18n.baseText('agents.builder.capabilities.description')"
+						data-testid="agent-capabilities-panel"
 					>
 						<AgentCapabilitiesSection
 							supports-activation
@@ -583,6 +639,17 @@ defineExpose({ onSetupTaskAction });
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
 }
 
+.identityContent {
+	flex-basis: var(--spacing--5xl);
+}
+
+.identityActions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+}
+
 .chatFirst .identityContent {
 	flex-direction: column;
 	text-align: center;
@@ -606,11 +673,6 @@ defineExpose({ onSetupTaskAction });
 
 .mainTabs {
 	width: 100%;
-	border-bottom: var(--border);
-
-	:global([data-test-id='tab-agent'] > *) {
-		padding-left: 0;
-	}
 }
 
 .setupTasks {

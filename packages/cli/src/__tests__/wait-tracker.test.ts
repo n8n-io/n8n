@@ -20,6 +20,7 @@ import { mock, captor } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumeAttemptService } from '@/executions/resume-attempt.service';
@@ -129,7 +130,7 @@ describe('WaitTracker', () => {
 		});
 
 		describe('if execution to start', () => {
-			let startExecutionSpy: MockInstance<(...args: [executionId: string]) => Promise<void>>;
+			let startExecutionSpy: MockInstance<WaitTracker['startExecution']>;
 
 			beforeEach(() => {
 				executionPersistence.findSingleExecution
@@ -140,7 +141,7 @@ describe('WaitTracker', () => {
 
 				startExecutionSpy = vi
 					.spyOn(waitTracker, 'startExecution')
-					.mockImplementation(async () => {});
+					.mockImplementation(async () => true);
 
 				waitTracker.init();
 			});
@@ -226,7 +227,7 @@ describe('WaitTracker', () => {
 		});
 
 		it('claims a resume attempt before reading the execution', async () => {
-			await waitTracker.startExecution(execution.id);
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBe(true);
 
 			expect(resumeAttemptService.claim).toHaveBeenCalledWith(execution.id, 'waiting');
 			const [claimOrder] = resumeAttemptService.claim.mock.invocationCallOrder;
@@ -237,7 +238,7 @@ describe('WaitTracker', () => {
 		it('does not read or run the execution when its resume attempts are used up', async () => {
 			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
 
-			await waitTracker.startExecution(execution.id);
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBe(false);
 
 			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
@@ -257,6 +258,33 @@ describe('WaitTracker', () => {
 			);
 		});
 
+		it('keeps the attempt when the run data is gone', async () => {
+			const error = new MissingExecutionDataError({ executionId: '123', workflowId: 'abcd' });
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockRejectedValueOnce(error);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(error);
+
+			expect(resumeAttemptService.release).not.toHaveBeenCalled();
+		});
+
+		it('keeps the attempt when the workflow was never saved', async () => {
+			executionPersistence.findSingleExecution.calledWith(execution.id).mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					id: execution.id,
+					finished: false,
+					workflowData: mock<IWorkflowBase>({ id: '' }),
+				}),
+			);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				'Only saved workflows can be resumed.',
+			);
+
+			expect(resumeAttemptService.release).not.toHaveBeenCalled();
+		});
+
 		it('rejects a second resume while the first one is still loading', async () => {
 			const run = createDeferredPromise<string>();
 			workflowRunner.run.mockReturnValueOnce(run.promise);
@@ -272,7 +300,7 @@ describe('WaitTracker', () => {
 
 			run.resolve(execution.id);
 			await first;
-			await expect(waitTracker.startExecution(execution.id)).resolves.toBeUndefined();
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBe(true);
 		});
 
 		// The acting user is not a stored field, so a resume has to derive it again.
@@ -1309,6 +1337,9 @@ describe('WaitTracker', () => {
 				.mockResolvedValue(parkedParent([childId]));
 			executionPersistence.findSingleExecution.calledWith(childId).mockResolvedValue(crashedChild);
 			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'crashed' }]);
+			executionPersistence.findStatusesByIds.mockResolvedValue([
+				{ id: parentId, status: 'waiting' },
+			]);
 
 			await waitTracker.resumeParentsOfFinishedSubExecutions();
 
@@ -1362,7 +1393,7 @@ describe('WaitTracker', () => {
 
 	describe('multi-main setup', () => {
 		it('should re-arm waiting executions after leader takeover', async () => {
-			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue();
+			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue(true);
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
 			waitTracker.init();

@@ -278,9 +278,31 @@ describe('AgentSessionTimelineView', () => {
 		expect(wrapper.findComponent(AgentSessionTimelineHeader).props('metadata')).toEqual({
 			trigger: { source: null, icon: 'bolt-filled', label: '' },
 			totalTokens: 30,
+			// The loaded executions record no tokens of their own.
+			usage: {
+				inputTokens: 0,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				outputTokens: 0,
+				totalTokens: 0,
+				turns: 0,
+			},
 			totalCost: 0.5,
 			durationLabel: '1.5s',
 		});
+	});
+
+	it('shows an API channel session with the channel name and icon', async () => {
+		const wrapper = await renderTimeline();
+		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: sessionThread('thread-a'),
+			executions: [{ id: 'e1', source: 'webhook', status: 'success' }],
+		});
+		await nextTick();
+
+		expect(wrapper.getComponent(AgentSessionTimelineHeader).props('metadata')?.trigger).toEqual(
+			expect.objectContaining({ label: 'API', icon: 'plug' }),
+		);
 	});
 
 	it('returns to the session list when closed without a previous route', async () => {

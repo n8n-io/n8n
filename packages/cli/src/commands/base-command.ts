@@ -9,7 +9,7 @@ import {
 	ModulesConfig,
 } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
-import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
+import { NodeTypesProxy, PostHogClient, ExecutionDataJsonStore } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -42,7 +42,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
@@ -98,11 +97,14 @@ export abstract class BaseCommand<F = never> {
 	 */
 	protected needsDb = true;
 
-	/** Whether to init task runner. */
-	protected needsTaskRunner = false;
+	/** Whether to init the code execution backend, either task runners or the code sandbox. */
+	protected needsCodeExecution = false;
 
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
+
+	/** Whether to load the node and credential types. */
+	protected needsNodeTypes = true;
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
@@ -127,7 +129,7 @@ export abstract class BaseCommand<F = never> {
 
 		this.nodeTypes = Container.get(NodeTypes);
 
-		await Container.get(LoadNodesAndCredentials).init();
+		if (this.needsNodeTypes) await Container.get(LoadNodesAndCredentials).init();
 		Container.get(NodeTypesProxy).registerProvider(this.nodeTypes);
 
 		const useRedisForLocking =
@@ -168,6 +170,7 @@ export abstract class BaseCommand<F = never> {
 			try {
 				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
 					canSeed: this.seedsInstanceIdentity,
+					keepDerivedInstanceId: await this.keepsDerivedInstanceId(),
 				});
 			} catch (error) {
 				if (this.seedsInstanceIdentity) throw error;
@@ -200,18 +203,7 @@ export abstract class BaseCommand<F = never> {
 		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
 		this.instanceSettings.setMultiMainLicensed(isMultiMainEnabled); // no license check here, as the start command already implements that
 
-		const taskRunnersConfig = this.globalConfig.taskRunners;
-
-		if (this.needsTaskRunner) {
-			if (taskRunnersConfig.insecureMode) {
-				this.logger.warn(
-					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
-				);
-			}
-
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
-			await Container.get(TaskRunnerModule).start();
-		}
+		if (this.needsCodeExecution) await this.initCodeExecution();
 
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
 		Container.get(MessageEventBus);
@@ -320,6 +312,24 @@ export abstract class BaseCommand<F = never> {
 		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
 		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
 		await Container.get(SystemTaskRunner).init();
+	}
+
+	/**
+	 * Whether a new `instance.id` must be the encryption-key-derived one: one-off
+	 * commands never seed, and a license certificate is bound to the derived ID.
+	 */
+	protected async keepsDerivedInstanceId(): Promise<boolean> {
+		if (!this.seedsInstanceIdentity) return true;
+		try {
+			return Boolean(await Container.get(License).loadCertStr());
+		} catch (error) {
+			// A wrong "no" would cost the install its license, so treat an unreadable cert as present.
+			this.logger.warn(
+				'Could not check for a license certificate, so a new instance ID will be the derived one',
+				{ error: ensureError(error) },
+			);
+			return true;
+		}
 	}
 
 	/**
@@ -583,6 +593,50 @@ export abstract class BaseCommand<F = never> {
 	 */
 	async initPolicyEnforcement() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
+	}
+
+	/**
+	 * Registers the workflow review rules, so a one-off command that publishes is refused what the
+	 * server refuses. Call after `initLicense()`: the module is license-gated. Call it once per
+	 * process: a second init of the module throws.
+	 */
+	async initWorkflowReviews() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['workflow-reviews']);
+	}
+
+	/** One-off commands that run workflows init only the modules they need. */
+	async initExecutionLedger() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['execution-ledger']);
+	}
+
+	/** Starts one code execution backend. An instance never loads both. */
+	private async initCodeExecution() {
+		const { backend } = this.globalConfig.codeExecution;
+
+		switch (backend) {
+			case 'task-runners': {
+				if (this.globalConfig.taskRunners.insecureMode) {
+					this.logger.warn(
+						'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
+					);
+				}
+
+				const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
+				await Container.get(TaskRunnerModule).start();
+				return;
+			}
+
+			case 'sandbox': {
+				const { CodeSandboxModule } = await import('@n8n/backend-module-code-sandbox');
+				Container.get(CodeSandboxModule).start();
+				return;
+			}
+
+			default: {
+				const exhaustive: never = backend;
+				throw new UnexpectedError(`Unknown code execution backend: ${JSON.stringify(exhaustive)}`);
+			}
+		}
 	}
 
 	async cleanupTestRunner() {

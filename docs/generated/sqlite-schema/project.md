@@ -20,7 +20,7 @@ CREATE TABLE "project" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(25
 | customTelemetryTags | TEXT | '[]' | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [app](app.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [promotion_environment_project](promotion_environment_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [skill_source](skill_source.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
+| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [app](app.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [knowledge_collection](knowledge_collection.md) [project_execution_limit](project_execution_limit.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [project_workflow_review_settings](project_workflow_review_settings.md) [promotion_environment_project](promotion_environment_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_knowledge_collection](shared_knowledge_collection.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [skill_source](skill_source.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -55,9 +55,12 @@ erDiagram
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_metadata" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"knowledge_collection" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_execution_limit" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_pool_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_workflow_review_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_configuration" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -65,6 +68,7 @@ erDiagram
 "self_healing_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"shared_knowledge_collection" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_source" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -155,12 +159,15 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
@@ -206,6 +213,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   datetime_3_ updatedAt
 }
 "insights_metadata" {
@@ -222,6 +230,25 @@ erDiagram
   varchar_36_ projectId FK
   varchar_255_ resourceId
   TEXT title
+  datetime_3_ updatedAt
+}
+"knowledge_collection" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_512_ description
+  varchar_16_ id PK
+  boolean isGlobal
+  varchar_16_ kind
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_24_ slug
+  datetime_3_ updatedAt
+}
+"project_execution_limit" {
+  datetime_3_ createdAt
+  INTEGER maxExecutions
+  varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
 "project_pool_settings" {
@@ -242,6 +269,13 @@ erDiagram
   varchar_36_ projectId PK
   varchar_128_ role
   INTEGER secretsProviderConnectionId PK
+  datetime_3_ updatedAt
+}
+"project_workflow_review_settings" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  boolean requiredByInstance
+  boolean requiredByProject
   datetime_3_ updatedAt
 }
 "promotion_environment_project" {
@@ -309,6 +343,13 @@ erDiagram
   TEXT role
   datetime_3_ updatedAt
 }
+"shared_knowledge_collection" {
+  datetime_3_ createdAt
+  varchar_16_ knowledgeCollectionId PK
+  varchar_36_ projectId PK
+  varchar_32_ role
+  datetime_3_ updatedAt
+}
 "shared_workflow" {
   datetime_3_ createdAt
   varchar_36_ projectId PK
@@ -330,6 +371,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
@@ -339,6 +381,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "type_availability_policy_scope" {

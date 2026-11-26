@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -16,7 +15,6 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
-	const logger = mock<Logger>();
 	const pollerStateRepository = mock<PollerStateRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const eventService = mock<EventService>();
@@ -37,7 +35,6 @@ describe('PollCursorService', () => {
 		);
 
 		return new PollCursorService(
-			logger,
 			pollerStateRepository,
 			txRunner,
 			executionPersistence,
@@ -89,30 +86,6 @@ describe('PollCursorService', () => {
 					schedulerEnabledForPollTriggers: false,
 				}).enabled,
 			).toBe(false);
-		});
-
-		it('warns once when durable cursors are configured without the scheduler chain', () => {
-			buildService(true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false });
-
-			expect(logger.warn).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_POLLER_DURABLE_CURSORS_ENABLED'),
-			);
-		});
-
-		it('does not warn when durable cursors are off, whatever the scheduler flags', () => {
-			buildService(false, {
-				schedulerEnabled: false,
-				schedulerEnabledForPollTriggers: false,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-
-		it('does not warn when the full chain is enabled', () => {
-			buildService(true);
-
-			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -227,6 +200,7 @@ describe('PollCursorService', () => {
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
+				projectId: 'project-1',
 			});
 
 			expect(result).toEqual({ executionId: 'exec-1' });
@@ -240,7 +214,9 @@ describe('PollCursorService', () => {
 				ctx,
 				undefined,
 			);
-			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx);
+			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx, {
+				projectId: 'project-1',
+			});
 		});
 
 		it('advances the cursor and creates the execution as two separate writes when the flag is off', async () => {
@@ -254,6 +230,7 @@ describe('PollCursorService', () => {
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
+				projectId: 'project-1',
 			});
 
 			expect(result).toEqual({ executionId: 'exec-1' });
@@ -265,7 +242,11 @@ describe('PollCursorService', () => {
 				{},
 				undefined,
 			);
-			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, {});
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				createPayload,
+				{},
+				{ projectId: 'project-1' },
+			);
 		});
 
 		// The transaction runner is a pass-through here, so this only pins that the insert

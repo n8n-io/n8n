@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	linkUserToProject,
 	createTeamProject,
@@ -6,7 +6,10 @@ import {
 	createWorkflow,
 	getPersonalProject,
 	testDb,
+	testModules,
 } from '@n8n/backend-test-utils';
+import { ExecutionLimitsService } from '@n8n/backend-module-execution-limits';
+import { EventService } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRelation,
@@ -17,13 +20,14 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, IsNull } from '@n8n/typeorm';
 import { LicenseMocker } from '@test-integration/license';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createOwner, createUser } from './shared/db/users';
 
 import { License } from '@/license';
+import { packagedModules } from '@/modules/modules.manifest';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -32,6 +36,7 @@ describe('ProjectService', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 
 	beforeAll(async () => {
+		await testModules.loadModules(['execution-limits'], packagedModules);
 		await testDb.init();
 
 		projectService = Container.get(ProjectService);
@@ -41,6 +46,9 @@ describe('ProjectService', () => {
 		license.mock(Container.get(License));
 		license.mockLicenseState(Container.get(LicenseState));
 		license.enable('feat:projectRole:editor');
+		license.setQuota('quota:maxTeamProjects', -1);
+		license.enable('feat:executionLimits');
+		await Container.get(ModuleRegistry).initModules('main', ['execution-limits']);
 	});
 
 	afterEach(async () => {
@@ -50,12 +58,90 @@ describe('ProjectService', () => {
 			'ProjectRelation',
 			'WorkflowEntity',
 			'SharedWorkflow',
+			'Settings',
+			'ExecutionLimitAudit',
 		]);
 	});
 
 	afterAll(async () => {
 		await cleanupRolesAndScopes();
 		await testDb.terminate();
+	});
+
+	describe('createTeamProject', () => {
+		it('gives the new project the default execution limit', async () => {
+			const executionLimitsService = Container.get(ExecutionLimitsService);
+			await executionLimitsService.updateSettings({ defaultProjectMaxExecutions: 50 }, null);
+
+			const project = await projectService.createTeamProject(await createOwner(), {
+				name: 'Team',
+			});
+
+			expect(await executionLimitsService.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 50 },
+			]);
+		});
+	});
+
+	describe('deleteProject', () => {
+		const removals: unknown[] = [];
+		let executionLimitsService: ExecutionLimitsService;
+		let owner: User;
+		let project: Project;
+
+		async function readRemovalRows() {
+			return await Container.get(DataSource)
+				.getRepository('ExecutionLimitAudit')
+				.find({
+					select: ['projectId', 'field', 'oldValue', 'newValue', 'updatedBy'],
+					where: { field: 'projectMaxExecutions', newValue: IsNull() },
+				});
+		}
+
+		beforeAll(() => {
+			executionLimitsService = Container.get(ExecutionLimitsService);
+			Container.get(EventService).on('execution-limit-updated', (event) => removals.push(event));
+		});
+
+		beforeEach(async () => {
+			owner = await createOwner();
+			project = await createTeamProject('Limited', owner);
+			await executionLimitsService.setProjectLimits(
+				[{ projectId: project.id, maxExecutions: 10 }],
+				owner.id,
+			);
+			removals.length = 0;
+		});
+
+		it('records the removal of the execution limit of the project', async () => {
+			await projectService.deleteProject(owner, project.id);
+
+			const removal = {
+				projectId: project.id,
+				field: 'projectMaxExecutions',
+				oldValue: 10,
+				newValue: null,
+				updatedBy: owner.id,
+			};
+			expect(removals).toEqual([removal]);
+			expect(await readRemovalRows()).toEqual([removal]);
+		});
+
+		it('keeps the execution limit and records nothing when the project delete fails', async () => {
+			vi.spyOn(Container.get(ProjectRepository), 'removeProjectForDeletion').mockRejectedValueOnce(
+				new Error('The project delete failed'),
+			);
+
+			await expect(projectService.deleteProject(owner, project.id)).rejects.toThrow(
+				'The project delete failed',
+			);
+
+			expect(await executionLimitsService.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 10 },
+			]);
+			expect(removals).toEqual([]);
+			expect(await readRemovalRows()).toEqual([]);
+		});
 	});
 
 	describe('project reads', () => {
@@ -226,9 +312,11 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(user, project.id, [
-				{ userId: user.id, role: 'project:admin' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId: project.id,
+				relations: [{ userId: user.id, role: 'project:admin' }],
+			});
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });
@@ -247,9 +335,11 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(user, project.id, [
-				{ userId: user.id, role: 'project:editor' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId: project.id,
+				relations: [{ userId: user.id, role: 'project:editor' }],
+			});
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });
@@ -487,9 +577,11 @@ describe('ProjectService', () => {
 				}),
 			).toBe(true);
 
-			await projectService.addUsersToProject(serviceAccount, project.id, [
-				{ userId: person.id, role: 'project:editor' },
-			]);
+			await projectService.addUsersToProject({
+				user: serviceAccount,
+				projectId: project.id,
+				relations: [{ userId: person.id, role: 'project:editor' }],
+			});
 			const added = await Container.get(ProjectRelationRepository).findOne({
 				where: { projectId: project.id, userId: person.id },
 				relations: { role: true },

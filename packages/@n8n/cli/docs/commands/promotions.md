@@ -17,8 +17,22 @@ to one repository and apply from another. A project can have its own environment
 for each direction. A direction without a project environment uses the instance
 environment.
 
-Requires the Promotions feature to be licensed. The API key scopes are named
-`promotions:*`.
+Requires the Promotions feature to be licensed. The API key scopes are:
+
+- `promotions:manageProviders`: create, update and delete providers, and list
+  the repositories and branches of a provider
+- `promotions:readProviders`: list and get providers
+- `promotions:manageEnvironments`: create, update and delete environments,
+  connect and disconnect them, and link projects
+- `promotions:readEnvironments`: list and get environments, their projects and
+  their missing projects
+- `promotions:promote`: preview and promote
+- `promotions:apply`: preview, apply and continue
+- `securitySettings:manage`: get and update the promotion settings
+
+A scope lets the key start the operation. The role of the key owner still
+decides what the operation can read and write. For example, the change details
+show variable values only when that role can list variables.
 
 ## Setup example: Git over SSH
 
@@ -34,11 +48,7 @@ echo '{"name":"GitHub","type":"git","auth":{"authType":"ssh-key","keyType":"ed25
 cat promote.json | n8n-cli promotion-environment create --stdin
 cat apply.json | n8n-cli promotion-environment create --stdin
 
-# 4. Connect each environment.
-n8n-cli promotion-environment connect env-1
-n8n-cli promotion-environment connect env-2
-
-# 5. Promote from this instance, or apply to it.
+# 4. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote env-1 --message="Promote team projects"
 n8n-cli promotion-environment apply env-2
 ```
@@ -84,10 +94,9 @@ n8n-cli promotion-provider list-repositories "$PROVIDER_ID" --search=flows --jso
 n8n-cli promotion-provider list-branches "$PROVIDER_ID" acme/flows --json
 
 # 4. Create an environment for each direction. Use the `remoteUrl` from step 2
-#    and a branch name from step 3. Then connect, promote, and apply as in the
-#    SSH example.
+#    and a branch name from step 3. Then promote and apply as in the SSH
+#    example.
 n8n-cli promotion-environment create --file=promote.json
-n8n-cli promotion-environment connect env-1
 ```
 
 Steps 2 and 3 use `--json` because the table shortens values longer than 60
@@ -275,11 +284,13 @@ n8n-cli promotion-environment disconnect env-1
 ```
 
 `connect` prepares the environment. For Git, it copies the configured branch
-into local storage. You can run it again at any time. Connecting one environment
-does not make another environment ready.
+into local storage. You can run it again at any time. This command is optional:
+the other commands prepare the environment when they need it. Run it to copy
+the branch early, or to check the remote and the credentials.
 
 `disconnect` removes the local checkout. The environment, its credentials, and
-the trusted SSH host keys stay.
+the trusted SSH host keys stay. The environment still works: the next command
+prepares it again.
 
 Both commands work on the instance that handles the request. Another instance in
 the deployment can hold a different checkout.
@@ -302,9 +313,8 @@ Personal projects are not included. A workflow on the branch that moved to a
 personal project is refused, because Apply would delete it on the destination.
 Move it back to its team project first. A workflow or folder on the branch that
 moved to another team project is also refused while its old project still
-exists, because Apply can't move it between projects. Connect the environment first. This command
-works on an `instance` Promote environment only. The API key also needs
-`variable:list` when the workflows reference variables.
+exists, because Apply can't move it between projects. This command works on an
+`instance` Promote environment only.
 
 ## `promotion-environment list-changes`
 
@@ -319,7 +329,6 @@ n8n-cli promotion-environment list-changes proj-abc apply --json
 For `promote` the preview is what a promotion would send to the branch, and the
 API key needs `promotions:promote`. For `apply` the preview is what applying the
 branch would change on this instance, and the key needs `promotions:apply`.
-Connect the environment first.
 
 The table lists each changed resource:
 
@@ -353,8 +362,44 @@ Use `--json` to get the full preview:
 - `dependencies`: the resources that each workflow uses. `included: true` means
   that selecting the workflow sends the resource.
 - `blocker`: the open review that holds the changes, if there is one.
-- `check` and `revision`, for `apply` only: what blocks the Apply, and the value
-  to pass to `--expected-preview-revision`.
+- `check`, for `apply` only: what blocks the Apply.
+- `revision`: the value to pass to `--expected-preview-revision` of
+  `promote-selection` or `apply-selection`.
+
+## `promotion-environment list-apply-changes`
+
+Preview what Apply changes on the whole instance: its projects, folders,
+workflows, credentials, data tables, variables, and tags.
+
+```bash
+n8n-cli promotion-environment list-apply-changes env-2
+n8n-cli promotion-environment list-apply-changes env-2 --json
+```
+
+Run it before [`apply`](#promotion-environment-apply). This command works on an
+`instance` Apply environment only. The API key needs `promotions:apply`.
+
+The table has the same columns as
+[`list-changes`](#promotion-environment-list-changes), with two differences:
+
+- `PROJECT` names the project that holds the resource. Empty for instance-wide
+  resources, such as a credential that no project holds.
+- There is no `SELECTABLE` column. Apply takes every change, so you can't select
+  a resource.
+
+Apply deletes each team project that the package does not hold. The table lists
+such a project as `deleted`, together with everything in it.
+
+Use `--json` to get the full preview:
+
+- `commitSha` and `source`: the commit and branch that the preview read. Pass
+  them to the `--expected-*` flags of `apply`.
+- `resources` and `dependencies`: as for `list-changes`.
+- `check`: what blocks the Apply. A team project that Apply deletes is a
+  `project-deletion` conflict. `movedWorkflows` and `movedFolders` list the
+  workflows and folders that the branch and this instance hold in different
+  projects. Apply can't move them between projects, so it refuses them.
+- `revision`: the value to pass to `--expected-preview-revision`.
 
 ## `promotion-environment promote-selection`
 
@@ -367,6 +412,8 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
 n8n-cli promotion-environment promote-selection proj-abc --folder folder-1
 n8n-cli promotion-environment promote-selection proj-abc
+n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
+  --expected-preview-revision=<revision>
 ```
 
 | Flag | Description |
@@ -374,6 +421,12 @@ n8n-cli promotion-environment promote-selection proj-abc
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. |
 | `--folder` | Folder ID to promote. Repeat the flag for more than one. |
 | `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
+| `--expected-preview-revision` | `revision` of the Promote preview that you reviewed, from `list-changes proj-abc promote --json`. |
+
+| Result | Exit code | What happened |
+|--------|-----------|---------------|
+| `promoted` | `0` | The selection was pushed. JSON output includes `counts` and `git`. |
+| `preview-changed` | `3` | Only with `--expected-preview-revision`: the project on this instance or its branch changed since you reviewed the preview. Nothing was pushed. Review the changes again. |
 
 The project's own details (name, icon, description, and telemetry tags) are
 always pushed. Without `-w` and `--folder`, the command promotes only the
@@ -386,8 +439,7 @@ Archived workflows stay on the branch as archived. A selected workflow that was
 deleted leaves this project's branch. A selected workflow that moved into or out
 of the project since the branch was written is refused: move it back
 first. The request fails before any write if the branch does not hold a
-deleted workflow under this project. Connect that environment first. The API key also needs
-`variable:list` when the workflows reference variables.
+deleted workflow under this project.
 
 ## `promotion-environment apply`
 
@@ -397,7 +449,8 @@ package. This overwrites the instance to match the branch.
 ```bash
 n8n-cli promotion-environment apply env-2
 n8n-cli promotion-environment apply env-2 \
-  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --expected-preview-revision=<revision>
 ```
 
 | Flag | Description |
@@ -405,16 +458,18 @@ n8n-cli promotion-environment apply env-2 \
 | `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
+| `--expected-preview-revision` | `revision` of the Apply preview that you reviewed, from `list-apply-changes env-2 --json`. |
 
 Without the `--expected-*` flags, the command applies the branch tip. With them,
 the command applies only the source that you reviewed. Pass all three flags or
-none.
+none. With `--expected-preview-revision`, the command applies only when this
+instance still matches the preview that you reviewed.
 
 | Result | Exit code | What happened |
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `preview-changed` | `3` | Only for `apply-selection` and `apply-selection-continue` with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
+| `preview-changed` | `3` | Only with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
 | `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
@@ -433,8 +488,8 @@ parts of `counts.folders.updated`. A workflow or folder that the branch and this
 instance hold in different projects is refused before any write, and nothing is
 imported.
 
-Connect the environment first. This command works on an `instance` Apply
-environment only. The API key needs `promotions:apply`.
+This command works on an `instance` Apply environment only. The API key needs
+`promotions:apply`.
 
 ## `promotion-environment apply-continue`
 
@@ -443,14 +498,22 @@ Continue an Apply that was `blocked`, after you resolve the missing bindings, ac
 ```bash
 n8n-cli promotion-environment apply-continue env-2 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-continue env-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --expected-preview-revision=<revision> --confirm-destructive-changes
 ```
 
 The three `--expected-*` flags are required. Use the `environmentId`,
 `git.branchName`, and `git.commitSha` that the blocked Apply reported. The
 command runs the Apply check again. The results and exit codes are the same as
 for `apply`: `blocked` again means that something still blocks, and
-`source-changed` means that you must review again. The server keeps no session,
-so run the command again when it exits `4`.
+`source-changed` or `preview-changed` means that you must review again. The
+server keeps no session, so run the command again when it exits `4`.
+
+Setting up bindings changes the preview, so an earlier
+`--expected-preview-revision` no longer matches. To continue only with a preview
+that you reviewed, run `list-apply-changes env-2 --json` again and pass its new
+`revision`.
 
 Add `--confirm-destructive-changes` to also apply destructive data table
 changes and delete projects:
@@ -460,27 +523,28 @@ changes and delete projects:
 - Team projects that the package does not hold. Each project is deleted with
   everything in it. You can't undo this.
 
-The flag applies all such changes when the command runs. This includes changes
-and projects that the blocked Apply did not report. Without the flag, a
+Without `--expected-preview-revision`, the flag applies all such changes when
+the command runs. This includes changes and projects that the blocked Apply did
+not report. With `--expected-preview-revision`, the flag covers only the changes
+and project deletions of the preview that you reviewed. Without the flag, a
 destructive change or a project deletion blocks the command, and it exits `4`.
 
 ## Apply a reviewed commit
 
 ```bash
-# 1. Review the changes. Take the commit SHA from the same response as the rows:
-#    a second request can read a newer commit.
-n8n-cli promotion-environment list-changes proj-abc apply --json > reviewed-changes.json
-jq '{commitSha, source, resources}' reviewed-changes.json
+# 1. Review the changes. Take the source, commit SHA, and revision from the same
+#    response as the rows: a second request can read a newer commit.
+n8n-cli promotion-environment list-apply-changes env-2 --json > reviewed-changes.json
+jq '{commitSha, source, revision}' reviewed-changes.json
 
-# 2. Read the branch of the Apply environment.
-n8n-cli promotion-environment get env-2 --jq '.settings.branchName'
-
-# 3. Apply that commit only.
+# 2. Apply that commit only, and only while this instance matches the preview.
 n8n-cli promotion-environment apply env-2 \
-  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<sha from step 1>
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<sha from step 1> \
+  --expected-preview-revision=<revision from step 1>
 
+# 3. On exit code 3, the source or this instance changed. Go back to step 1.
 # 4. On exit code 4, resolve the missing bindings, access requirements, or conflicts.
-#    Then run the apply-continue command that step 3 printed.
+#    Then run the apply-continue command that step 2 printed.
 ```
 
 ## `promotion-environment apply-selection`
@@ -527,9 +591,8 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same selection. With `--json`, the output is the full result for
 each status.
 
-Connect the environment first. The API key needs `promotions:apply`. The
-environment is the project's own Apply environment when it has one, otherwise
-the instance Apply environment.
+The API key needs `promotions:apply`. The environment is the project's own
+Apply environment when it has one, otherwise the instance Apply environment.
 
 ## `promotion-environment apply-selection-continue`
 
@@ -594,3 +657,25 @@ n8n-cli promotion-environment remove-project env-3 proj-abc
 
 A project can have one environment for each direction. A direction without a
 project environment uses the instance environment.
+
+## `promotion-settings get` / `update`
+
+Decide who can promote, approve, and apply in their own projects. Instance
+owners and admins can always do all three.
+
+```bash
+n8n-cli promotion-settings get
+n8n-cli promotion-settings update --who-can-promote=projectAdmins
+n8n-cli promotion-settings update --who-can-approve=projectAdminsAndEditors --who-can-apply=instanceAdmins
+```
+
+Each setting takes one of these values:
+
+| Value | Who can do it in their projects |
+|-------|---------------------------------|
+| `instanceAdmins` | Nobody below instance admin (default) |
+| `projectAdmins` | Project admins |
+| `projectAdminsAndEditors` | Project admins and editors |
+
+A setting that you leave out keeps its value. The settings change the project
+admin and project editor roles. Custom project roles keep their own scopes.

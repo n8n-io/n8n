@@ -36,6 +36,7 @@ Supply `projectId`, `workflowId`, and the original failed `executionId`.
 The producer selects the project configuration and checks the enabling user’s current access.
 A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
 The call returns `null` when no enabled configuration authorizes the investigation.
+On Cloud, it returns `null` when the PostHog instance flag is off. See [Availability](#availability).
 It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
 The run keeps the captured baseline in memory. The investigation stores only the published version
@@ -74,6 +75,9 @@ It checks current access before it reads and compiles the candidate against the 
 The workflow ID selects the baseline. The run tries to admit a workflow that is not a target yet.
 A workflow that the run cannot admit fails validation. The error gives the reason.
 The file must declare the same workflow ID. Otherwise, validation fails with `candidate_workflow_mismatch`.
+The candidate keeps the settings of the baseline, so it runs on the engine of the baseline.
+Validation checks the candidate for that engine. When the file sets another `engineType`,
+validation fails with `candidate_engine_changed`.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
 The tool passes these options to the existing verification runner. Each call tests one trigger.
@@ -402,6 +406,39 @@ Use the reviewer's personal project, not the result's `projectId`, for this chat
 Load the personal project before the review action. If it cannot load, keep the result open.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 
+## Telemetry
+
+The events are in the `SELF_HEALING` domain of `@n8n/telemetry`.
+Run `pnpm --filter @n8n/telemetry catalog` for the event names and properties.
+Each service calls `Telemetry.track()` at the place where the change occurs.
+
+| Event                                          | Sender                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| `Self healing evaluated failure`               | `SelfHealingInvestigationService.start()`.                         |
+| `Self healing finished investigation`          | `SelfHealingInvestigationService`, also from reconciliation.       |
+| `Self healing changed result state`            | `SelfHealingResultService`: `complete()`, `act()` and `dismiss()`. |
+| `Instance changed self healing configuration`  | `SelfHealingConfigurationService`.                                 |
+| `Instance reported self healing configuration` | `SelfHealingConfigurationSnapshotTask`, one time each day.         |
+| `User viewed self healing result`              | The Inbox result view.                                             |
+| `User clicked self healing action`             | The Inbox result view, before the request.                         |
+
+- Each main evaluates a relayed failure. Only the leader reports a skip. The main that
+  creates the investigation reports it.
+- A main that is not the leader can handle a failure without a relay, for example a webhook
+  run that fails before a worker starts it. A skip of that failure sends no event.
+- A rare repeat is possible. Analytics keeps one row for each `execution_id`,
+  `investigation_id`, or `result_id` with `new_state`.
+- Events are sent after the transaction commits. Code in a transaction registers the call
+  with `afterCommit()`, and `runInTransaction()` runs it after the commit (`../after-commit.ts`).
+- The workflow suggestion code closes a result as outdated. It does not import the result
+  service. It emits `self-healing-result-outdated`, and `SelfHealingTelemetryEventRelay`
+  reports the result.
+- A result sends one state event for each change, also when its fix changes more than one
+  workflow. `changed_workflow_count` has the number of changed workflows.
+- A chat that starts from a result adds `result_id` and `result_kind` to
+  `User launched Instance AI thread`. This links the chat to the result.
+- Events never carry an error message, a node name or report text.
+
 ## Availability
 
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to enable investigations
@@ -410,11 +447,27 @@ The `instance-ai` module must be loaded. Entities and migrations do not depend o
 Saved review services do not require Assistant model availability. Recovery of existing
 investigations remains available when the flag is off.
 
+Self-healing is off on self-hosted Enterprise instances even when the environment variable is on.
+Every Cloud plan requires both `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and the PostHog
+instance flag `150_self_healing`.
+`SelfHealingConfigurationService.isEnabled()` gives the combined decision.
+The editor gets the PostHog flag with its other feature flags and applies the same rule.
+The editor reads the PostHog flag at page load only.
+Self-hosted instances have no PostHog flag.
+When self-hosted Enterprise is blocked, the PostHog flag is off, or PostHog gives no answer on
+Cloud, no new investigation starts and the editor hides the self-healing setup.
+`GET /self-healing/status` then returns `enabled: false` and no `setupProjectId`, so the Inbox
+does not offer the setup. Investigations in progress finish, and results stay available for review.
+PostHog decisions are cached for 10 minutes. A change needs no restart.
+
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership of every
 suggestion workflow.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
+`GET /self-healing/status` tells the Inbox whether a configuration can send results to the current user.
+It applies the reviewer and workflow edit access rules of the result list.
+It also returns the ID of the user's personal project, where the Inbox offers the setup.
 Open and Closed derive from `reviewState`.
 Could not fix results are Closed. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.

@@ -10,7 +10,7 @@ import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nPopover from '../N8nPopover';
-import N8nTabs from '../N8nTabs';
+import { N8nTabs } from '../N8nTabs';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import type { EmojiSection } from './emojiData';
@@ -28,6 +28,7 @@ import type { LucideIconMeta } from './lucideIconData';
 import SkinTonePicker from './SkinTonePicker.vue';
 import type { IconOrEmoji } from './types';
 import { useIconPickerSearch } from './useIconPickerSearch';
+import { useProgressiveRender } from './useProgressiveRender';
 import {
 	buildEmojiRows,
 	buildIconBrowseRows,
@@ -49,8 +50,6 @@ import IconShuffle from '~icons/lucide/shuffle';
 defineOptions({ name: 'N8nIconPicker' });
 
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
-const INITIAL_ROW_COUNT = 10;
-const ROW_BATCH_SIZE = 10;
 const ITEM_TOOLTIP_SHOW_DELAY = 150;
 
 type TabType = 'icons' | 'emojis';
@@ -206,36 +205,17 @@ const activeDataLoaded = computed(function getActiveDataLoaded() {
 const activeDataLoading = computed(function getActiveDataLoading() {
 	return selectedTab.value === 'icons' ? iconsLoading.value : emojisLoading.value;
 });
-const renderedRowCount = ref(INITIAL_ROW_COUNT);
-const visibleRows = computed(function getVisibleRows() {
-	return activeRows.value.slice(0, renderedRowCount.value);
-});
+const {
+	loadMoreRef,
+	renderedRowCount,
+	scrollAreaRef,
+	start: startProgressiveRender,
+	stop: stopProgressiveRender,
+	visibleRows,
+} = useProgressiveRender(activeRows, popupVisible);
 const activeCoordinate = ref<PickerCoordinate | null>(null);
 const hasActiveItem = computed(() => activeCoordinate.value !== null);
 let activeDescendantOwner: HTMLElement | null = null;
-let renderFrame: number | undefined;
-
-function renderNextBatch() {
-	if (!popupVisible.value) return;
-
-	renderedRowCount.value = Math.min(
-		renderedRowCount.value + ROW_BATCH_SIZE,
-		activeRows.value.length,
-	);
-
-	if (renderedRowCount.value < activeRows.value.length) {
-		renderFrame = requestAnimationFrame(renderNextBatch);
-	}
-}
-
-function startProgressiveRender() {
-	if (renderFrame !== undefined) cancelAnimationFrame(renderFrame);
-	renderedRowCount.value = INITIAL_ROW_COUNT;
-
-	if (renderedRowCount.value < activeRows.value.length) {
-		renderFrame = requestAnimationFrame(renderNextBatch);
-	}
-}
 
 function loadActiveTabData() {
 	if (selectedTab.value === 'icons') {
@@ -315,6 +295,7 @@ watch(popupVisible, function handlePopupVisibilityChange(isOpen) {
 	if (isOpen) {
 		void handlePopupOpen();
 	} else {
+		stopProgressiveRender();
 		clearActiveElement();
 	}
 });
@@ -337,7 +318,6 @@ watch(activeRows, function handleActiveRowsChange() {
 });
 
 onBeforeUnmount(function cancelPendingWork() {
-	if (renderFrame !== undefined) cancelAnimationFrame(renderFrame);
 	if (itemTooltipTimer !== undefined) clearTimeout(itemTooltipTimer);
 });
 
@@ -422,13 +402,17 @@ function handlePickerKeydown(event: KeyboardEvent) {
 	const coordinates = getPickerCoordinates(activeRows.value);
 	if (coordinates.length === 0) return;
 
-	/** Rows are progressively rendered, so we must start on first item regardless of arrow direction */
-	event.preventDefault();
 	if (!activeCoordinate.value) {
+		if (event.key === 'ArrowUp') return;
+
+		/** Rows are progressively rendered, so start on the first item before moving. */
+		event.preventDefault();
 		const coordinate = coordinates[0];
 		if (coordinate) activatePickerItem(coordinate, target);
 		return;
 	}
+
+	event.preventDefault();
 
 	const direction = getPickerDirection(event.key);
 	if (!direction) return;
@@ -657,6 +641,12 @@ function handlePickerKeyup(event: KeyboardEvent) {
 								</N8nButton>
 							</div>
 						</template>
+						<div
+							v-if="renderedRowCount < activeRows.length"
+							ref="loadMoreRef"
+							:class="$style.loadMore"
+							aria-hidden="true"
+						></div>
 					</div>
 					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
 						{{ t('iconPicker.search.noResults') }}
@@ -707,6 +697,12 @@ function handlePickerKeyup(event: KeyboardEvent) {
 								</N8nButton>
 							</div>
 						</template>
+						<div
+							v-if="renderedRowCount < activeRows.length"
+							ref="loadMoreRef"
+							:class="$style.loadMore"
+							aria-hidden="true"
+						></div>
 					</div>
 					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
 						{{ t('iconPicker.search.noResults') }}
@@ -835,6 +831,10 @@ function handlePickerKeyup(event: KeyboardEvent) {
 
 	.sectionHeaderRow {
 		padding-block: var(--spacing--2xs);
+	}
+
+	.loadMore {
+		height: var(--spacing--5xs);
 	}
 
 	.iconGridRow,

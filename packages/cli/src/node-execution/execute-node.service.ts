@@ -34,7 +34,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 export const DEFAULT_EXECUTE_NODE_TIMEOUT_MS = 30_000;
-export const MAX_EXECUTE_NODE_TIMEOUT_MS = 60_000;
+export const MAX_EXECUTE_NODE_TIMEOUT_MS = 600_000;
 
 const NODE_NAME = 'Node';
 const MULTI_MAIN_POLL_INTERVAL_MS = 1_000;

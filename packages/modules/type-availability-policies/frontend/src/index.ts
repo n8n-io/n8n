@@ -1,20 +1,28 @@
 export { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
 export {
+	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
+	RESTRICTED_NODE_POPOVER_WIDTH,
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from './type-availability-policies.constants';
 export { useTypeAvailability } from './composables/useTypeAvailability';
+export { usePolicyAdminAccess } from './composables/usePolicyAdminAccess';
 export {
 	describeAgentToolRestriction,
+	describeImportedRestrictions,
 	describeNodeTypeRestriction,
 	describeTypeRestriction,
 	describeRestrictedNodeTypes,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
+	getNodeTypeRestrictionKind,
 	getRestrictionMessage,
 	getViolationVerdict,
+	collectRestrictedNodeTypes,
 	isNodeTypeRestricted,
 	useCredentialTypeRestriction,
 	useNodeTypeRestriction,
@@ -30,15 +38,23 @@ export {
 	type SubWorkflowRestriction,
 } from './composables/useSubWorkflowRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
+export { default as RestrictedMenuItemMarker } from './components/RestrictedMenuItemMarker.vue';
 export { default as RestrictedNodePanel } from './components/RestrictedNodePanel.vue';
 export { default as RestrictedTypeCallout } from './components/RestrictedTypeCallout.vue';
+export { default as RestrictedTemplateNodesCallout } from './components/RestrictedTemplateNodesCallout.vue';
 export { default as RestrictedSubWorkflowCallout } from './components/RestrictedSubWorkflowCallout.vue';
 export { default as ContactAdminModal } from './components/ContactAdminModal.vue';
-export { getPolicyViolations } from './policy-violations/policyViolations';
+export {
+	getPolicyViolations,
+	type PolicyViolationListItem,
+} from './policy-violations/policyViolations';
+export { getGeneratedToolVariantBase } from './related-types/relatedTypes';
 export { parseExecutionBlockCauses } from './wont-execute/wontExecute';
 export { default as WontExecuteFilter } from './wont-execute/WontExecuteFilter.vue';
+export { default as CauseCheckboxFilter } from './components/CauseCheckboxFilter.vue';
 export { default as WontExecuteCallout } from './wont-execute/WontExecuteCallout.vue';
 export { default as PolicyViolationList } from './policy-violations/PolicyViolationList.vue';
+export { default as PolicyViolationToastBody } from './policy-violations/PolicyViolationToastBody.vue';
 export {
 	useTransferPreview,
 	type TransferPreview,

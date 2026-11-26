@@ -14,7 +14,9 @@ import type {
 	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
+	WorkflowExecuteMode,
 } from '..';
+import type { FailedBeforeStartMarker } from '../execution-blocked-reason';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
@@ -55,7 +57,8 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
-		failedBeforeStart?: true;
+		/** Set when the run stopped before its first node. Holds the reason. */
+		failedBeforeStart?: FailedBeforeStartMarker;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -69,8 +72,12 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Binary IDs that an authorized caller passed into this execution. */
+	binaryDataAccess?: string[];
 	/** Keep the caller's output policy when a child execution resumes. */
 	subWorkflowOutput?: SubWorkflowOutputPolicy;
+	/** Keep the mode of the top-level execution when a child execution resumes. */
+	rootExecutionMode?: WorkflowExecuteMode;
 	/** Suspended agent tool call to resume once this execution finishes. */
 	parentAgentRun?: RelatedAgentRun;
 	/**
@@ -90,6 +97,8 @@ export interface IRunExecutionDataV1 {
 	 */
 	waitReason?: 'suspended';
 	pushRef?: string;
+	/** The user who owns `pushRef`, used only to route push messages on resume. */
+	pushRefUserId?: string;
 
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<

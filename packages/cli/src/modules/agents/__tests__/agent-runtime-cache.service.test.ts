@@ -1,5 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
+import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import type { LanguageModel } from 'ai';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -17,6 +19,7 @@ import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.servic
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
+import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
@@ -109,6 +112,55 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			{},
 		);
+	});
+
+	it('carries the tool guardrails from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const toolGuardrails: AgentToolGuardrailConfig[] = [
+			{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] },
+		];
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			toolGuardrails,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		// The cache service rebuilds the runtime object explicitly, so every
+		// reconstruction field must be carried over by hand.
+		expect(runtime.toolGuardrails).toBe(toolGuardrails);
+	});
+
+	it('carries the guardrail model from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailModel = {} as LanguageModel;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailModel,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailModel).toBe(guardrailModel);
+	});
+
+	it('carries the guardrail workflow context from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailWorkflowContext = { projectId: 'project-1' } as unknown as WorkflowToolContext;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailWorkflowContext,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailWorkflowContext).toBe(guardrailWorkflowContext);
 	});
 
 	it('keeps task runtimes separate and disables their background tools', async () => {

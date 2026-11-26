@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -65,7 +65,7 @@ export const execute: ConfluenceOperation = async function (
 	return await confluenceApiRequest.call(
 		this,
 		'POST',
-		`/wiki/rest/api/content/${encodeURIComponent(pageId)}/label`,
+		requestPath`/wiki/rest/api/content/${pageId}/label`,
 		names.map((name) => ({ prefix: 'global', name })),
 	);
 };

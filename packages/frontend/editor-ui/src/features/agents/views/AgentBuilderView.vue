@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
+import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
+import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
 	ref,
 	computed,
@@ -26,19 +29,15 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
+	N8nSpinner,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_FILES_PER_UPLOAD,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
-	type AgentFileDto,
+	isDraftIntegration,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -69,14 +68,12 @@ import { buildAgentTestHref } from '../utils/agentTestUrl';
 import {
 	getAgent,
 	createAgent,
+	moveAgent,
 	createAgentTask,
 	deleteAgent,
-	listAgentFiles,
-	uploadAgentFiles,
-	deleteAgentFile,
-	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
+import { useAgentKnowledge } from '../composables/useAgentKnowledge';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
@@ -186,8 +183,7 @@ import {
 } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
-import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
-import { isKnownAssistantAgentThread } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
+import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
@@ -978,12 +974,6 @@ const instanceAiEmbedLaunch = computed<InstanceAiThreadLaunch>(() => ({
 	origin: 'internal',
 	sourceContext: { agentId: agentId.value },
 }));
-const agentFiles = ref<AgentFileDto[]>([]);
-const agentFilesLoading = ref(false);
-const agentFilesUploading = ref(false);
-const deletingAgentFileId = ref<string | null>(null);
-const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
-
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
 });
@@ -1040,9 +1030,18 @@ let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
+const agentsInvocationStepExperiment = useAgentsInvocationStepExperiment();
 const connectedTriggers = ref<string[]>([]);
 const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
+	const connectedChannelIds = (localConfig.value?.integrations ?? [])
+		.filter((integration) => !isDraftIntegration(integration))
+		.map((integration) => integration.type);
+
+	const enabledScheduleCount = (localConfig.value?.tasks ?? []).filter(
+		(task) => task.enabled,
+	).length;
+
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
@@ -1053,10 +1052,11 @@ const setupChecklistContext = computed(() => {
 				(localConfig.value?.tools?.length ?? 0) +
 				(localConfig.value?.mcpServers?.length ?? 0) +
 				(localConfig.value?.subAgents?.agents?.length ?? 0),
+			scheduleCount: enabledScheduleCount,
 		},
 		channels: {
-			loaded: initialized.value,
-			ids: connectedTriggers.value,
+			loaded: initialized.value && localConfig.value !== null,
+			ids: connectedChannelIds,
 		},
 		publication: {
 			loaded: initialized.value,
@@ -1071,10 +1071,12 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && previewSessionsLoaded.value,
 			count: sessionsStore.previewThreads.length,
 		},
+		showTriggerStep: agentsInvocationStepExperiment.isEnabled.value,
 	};
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const { isEnabled: isSetupHeaderEnabled } = useAgentSetupHeaderExperiment();
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
@@ -1246,149 +1248,27 @@ async function fetchAgent(
 	upsertProjectAgentsListCache(targetProjectId, data);
 }
 
-async function fetchAgentFiles(
-	targetProjectId: string = projectId.value,
-	targetAgentId: string = agentId.value,
-) {
-	if (!isKnowledgeBaseEnabled.value) return;
-	agentFilesLoading.value = true;
-	try {
-		const files = await listAgentFiles(rootStore.restApiContext, targetProjectId, targetAgentId);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		agentFiles.value = files;
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.loadError'));
-	} finally {
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-			agentFilesLoading.value = false;
-		}
-	}
-}
-
-async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
-	builderTelemetry.trackStartedFileUpload(files.length);
-
-	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
-	if (oversizedFiles.length > 0) {
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadFileTooLarge.message', {
-					interpolate: { name: oversizedFiles[0].name, size: String(MAX_AGENT_FILE_SIZE_MB) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadFileTooLarge.title'),
-		);
-	}
-	// Make sure each upload reports one client rejection at most: report the oversized files
-	// only when no later check rejects the upload.
-	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
-	if (filesWithinLimit.length === 0) {
-		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
-		return;
-	}
-
-	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
-		builderTelemetry.trackRejectedFileUpload('too_many_files', filesWithinLimit.length);
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
-					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
-		);
-		return;
-	}
-
-	const existingTotalSizeBytes = agentFiles.value.reduce(
-		(total, file) => total + file.fileSizeBytes,
-		0,
-	);
-	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
-	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-		builderTelemetry.trackRejectedFileUpload('total_limit', filesWithinLimit.length);
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
-					interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
-		);
-		return;
-	}
-
-	if (oversizedFiles.length > 0) {
-		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
-	}
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	agentFilesUploading.value = true;
-	try {
-		await ensureAgentPersisted();
-		const uploadedFiles = await uploadAgentFiles(
-			rootStore.restApiContext,
-			targetProjectId,
-			targetAgentId,
-			filesWithinLimit,
-		);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		const existingById = new Map(agentFiles.value.map((file) => [file.id, file]));
-		for (const file of uploadedFiles) {
-			existingById.set(file.id, file);
-		}
-		agentFiles.value = Array.from(existingById.values()).sort(
-			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-		);
-		showMessage({
-			title: locale.baseText('agents.builder.files.uploaded'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.uploadError'));
-	} finally {
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-			agentFilesUploading.value = false;
-		}
-	}
-}
-
-async function onDeleteAgentFile(file: AgentFileDto) {
-	if (deletingAgentFileId.value !== null) return;
-
-	const confirmed = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.files.deleteModal.title', {
-			interpolate: { name: file.fileName },
-		}),
-		description: locale.baseText('agents.builder.files.deleteModal.description', {
-			interpolate: { name: file.fileName },
-		}),
-		confirmButtonText: locale.baseText('agents.builder.files.deleteModal.button.delete'),
-		cancelButtonText: locale.baseText('generic.cancel'),
-	});
-	if (confirmed !== MODAL_CONFIRM) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	deletingAgentFileId.value = file.id;
-	try {
-		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		agentFiles.value = agentFiles.value.filter((agentFile) => agentFile.id !== file.id);
-		showMessage({
-			title: locale.baseText('agents.builder.files.deleted'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.deleteError'));
-	} finally {
-		if (deletingAgentFileId.value === file.id) {
-			deletingAgentFileId.value = null;
-		}
-	}
-}
+const {
+	agentFiles,
+	agentFilesLoading,
+	agentFilesUploading,
+	deletingAgentFileId,
+	fetchAgentFiles,
+	uploadFiles: onUploadAgentFiles,
+	deleteFile: onDeleteAgentFile,
+	warmKnowledgeSandbox: warmAgentKnowledgeSandboxForPage,
+	reset: resetAgentKnowledge,
+} = useAgentKnowledge({
+	projectId,
+	agentId,
+	agent,
+	initialized,
+	isUnsaved,
+	isKnowledgeBaseEnabled,
+	isStaleAgentTarget,
+	ensureAgentPersisted,
+	telemetry: builderTelemetry,
+});
 
 async function refreshAgentAfterIntegrationChange(
 	targetProjectId: string = projectId.value,
@@ -1575,26 +1455,6 @@ function selectLatestPreviewSession() {
 	onNewChat();
 }
 
-function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
-	// No agent row to warm a sandbox for yet.
-	if (isUnsaved.value) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	const warmupKey = `${targetProjectId}:${targetAgentId}`;
-	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
-	lastKnowledgeSandboxWarmupKey.value = warmupKey;
-
-	void warmAgentKnowledgeSandbox(rootStore.restApiContext, targetProjectId, targetAgentId).catch(
-		() => {
-			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-				lastKnowledgeSandboxWarmupKey.value = null;
-			}
-		},
-	);
-}
-
 // Base hashes are captured when the edit is scheduled, not when the debounced
 // save fires: a refresh landing in between would otherwise lend a stale
 // snapshot the fresh hash and let it overwrite the newer server state.
@@ -1727,19 +1587,17 @@ async function createPendingAgent(
 		projectId: targetProjectId,
 		agentId: targetAgentId,
 		name,
+		...(typeof route.query.folderId === 'string' ? { parentFolderId: route.query.folderId } : {}),
 		config: initialConfig,
 	};
 	if (props.artifactPersistAgent) {
 		return await props.artifactPersistAgent(request);
 	}
-	// An Assistant agent thread binds the saved agent with its next message.
-	if (aiThreadId.value && !isKnownAssistantAgentThread(aiThreadId.value)) {
-		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, request);
-		return result.agent;
-	}
+	// Manual edits must also save when the Assistant thread is only a local draft.
 	try {
 		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
 			id: targetAgentId,
+			parentFolderId: request.parentFolderId,
 			config: initialConfig,
 		});
 	} catch (error) {
@@ -1747,6 +1605,17 @@ async function createPendingAgent(
 		const lostInsert = error instanceof ResponseError && error.httpStatusCode === 409;
 		if (!aiThreadId.value || !lostInsert) throw error;
 		const existing = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+
+		if (request.parentFolderId && existing.parentFolderId !== request.parentFolderId) {
+			await moveAgent(
+				rootStore.restApiContext,
+				targetProjectId,
+				targetAgentId,
+				request.parentFolderId,
+			);
+			existing.parentFolderId = request.parentFolderId;
+		}
+
 		return { ...existing, config: null, configHash: null, adopted: true };
 	}
 }
@@ -2765,8 +2634,23 @@ watch(
 	{ immediate: true },
 );
 
+const folderMoveAction = ref<AgentFolderAction | null>(null);
+
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [];
+
+	if (
+		agent.value &&
+		!isUnsaved.value &&
+		effectiveCanEditAgent.value &&
+		settingsStore.isFoldersFeatureEnabled
+	) {
+		actions.push({
+			id: 'move-folder',
+			label: locale.baseText('agents.folders.move'),
+			icon: 'folder',
+		});
+	}
 
 	// Same order as the workflow menu: description and favorite first, then import/export.
 	if (effectiveCanEditAgent.value) {
@@ -2939,6 +2823,21 @@ async function saveN8nChatDescription(description: string): Promise<void> {
 }
 
 async function onHeaderAction(action: string) {
+	if (action === 'move-folder') {
+		if (isUnsaved.value) {
+			return;
+		}
+
+		folderMoveAction.value = {
+			mode: 'moveAgent',
+			id: agentId.value,
+			name: agent.value?.name,
+			parentFolderId: agent.value?.parentFolderId,
+		};
+
+		return;
+	}
+
 	if (action === 'edit-description') {
 		openDescriptionModal();
 		return;
@@ -2993,7 +2892,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 
@@ -3037,14 +2936,16 @@ async function onHeaderAction(action: string) {
  */
 function draftAgentResource(personalisation: AgentJsonConfig['personalisation']): AgentResource {
 	const now = new Date().toISOString();
+
 	return {
 		resourceType: 'agent',
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
-		schema: personalisation ? { personalisation } : null,
+		parentFolderId: typeof route.query.folderId === 'string' ? route.query.folderId : null,
+		project: null,
+		isArchived: false,
 		availableInMCP: false,
-		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
 		hasVersionHistory: false,
@@ -3052,8 +2953,20 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		updatedAt: now,
 		versionId: null,
 		activeVersionId: null,
+		config: personalisation
+			? {
+					name: locale.baseText('agents.new.defaultName'),
+					model: '',
+					instructions: '',
+					personalisation,
+				}
+			: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
 		activeVersion: null,
 	};
 }
@@ -3138,10 +3051,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			activeChatSessionId.value = null;
 			localConfig.value = null;
 			connectedTriggers.value = [];
-			agentFiles.value = [];
-			agentFilesLoading.value = false;
-			agentFilesUploading.value = false;
-			deletingAgentFileId.value = null;
+			resetAgentKnowledge();
 			repointConfig(targetProjectId, targetAgentId);
 			repointConfigValidation(targetProjectId, targetAgentId);
 		}
@@ -3569,6 +3479,12 @@ useKeybindings({
 		]"
 		data-testid="agent-builder-layout"
 	>
+		<AgentFolderDialog
+			:project-id="projectId"
+			:action="folderMoveAction"
+			@close="folderMoveAction = null"
+			@saved="fetchAgent()"
+		/>
 		<AgentTestHeader
 			v-if="isStandalonePreview"
 			:agent-id="agentId"
@@ -3603,7 +3519,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			:tasks="areSetupTasksVisible && !isSetupHeaderEnabled ? setupTasks : undefined"
+			@setup-task-action="onSetupTaskAction"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3611,7 +3528,6 @@ useKeybindings({
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3780,7 +3696,7 @@ useKeybindings({
 				<AgentBuildingIndicator />
 			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
-				<N8nIcon icon="spinner" spin />
+				<N8nSpinner type="brand" size="xxlarge" />
 			</div>
 			<template v-else>
 				<AgentTestChatPage
@@ -3829,6 +3745,11 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="
+						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived
+							? setupTasks
+							: undefined
+					"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3868,6 +3789,7 @@ useKeybindings({
 					@open-preview="onOpenPreview"
 					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
+					@setup-task-action="onSetupTaskAction"
 				/>
 
 				<AgentVersionHistoryPanel

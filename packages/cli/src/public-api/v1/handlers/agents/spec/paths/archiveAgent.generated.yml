@@ -1,0 +1,31 @@
+operationId: archiveAgent
+tags:
+  - Agent
+summary: Archive an agent
+description: |-
+  Soft-deletes an agent by archiving it. Idempotent: archiving an already archived agent returns 200 with the current agent.
+
+  Requires the `agent:delete` API key scope.
+x-required-scope: agent:delete
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/agentPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

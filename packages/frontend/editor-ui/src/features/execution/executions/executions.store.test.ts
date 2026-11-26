@@ -81,6 +81,28 @@ describe('executions.store', () => {
 
 			expect(executionsStore.executions).toEqual([]);
 		});
+
+		// The backend deletes by date from the engine v1 table only.
+		it('should keep engine v2 executions when deleting by date', async () => {
+			const v2Execution: ExecutionSummaryWithScopes = {
+				...mockExecutions[0],
+				id: '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b',
+			};
+			executionsStore.addExecution(v2Execution);
+
+			await executionsStore.deleteExecutions({ deleteBefore: new Date() });
+
+			expect(executionsStore.executions).toEqual([v2Execution]);
+		});
+
+		it('should delete engine v2 executions by ID', async () => {
+			const v2Id = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+			executionsStore.addExecution({ ...mockExecutions[0], id: v2Id });
+
+			await executionsStore.deleteExecutions({ ids: [v2Id] });
+
+			expect(executionsStore.executions.map(({ id }) => id)).toEqual(['3', '2', '1']);
+		});
 	});
 
 	describe('pagination', () => {

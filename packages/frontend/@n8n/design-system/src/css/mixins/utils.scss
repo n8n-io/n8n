@@ -38,6 +38,16 @@
 	white-space: nowrap;
 }
 
+@mixin utils-sr-only {
+	position: absolute;
+	width: var(--spacing--5xs);
+	height: var(--spacing--5xs);
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
 @function joinVarName($list) {
 	$name: '--' + 'el';
 	@each $item in $list {

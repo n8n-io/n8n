@@ -198,6 +198,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		const creation = this.client.createSandbox({
 			id: existingId,
 			ephemeral: this.options.ephemeral,
+			egress: 'public',
 		});
 		try {
 			return await this.withLifecycleTimeout(creation);

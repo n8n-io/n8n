@@ -37,7 +37,10 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import {
+	getLifecycleHooksForScalingWorker,
+	getPushRefUserId,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -227,28 +230,30 @@ export class JobProcessor {
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		additionalData.restartExecutionId = job.data.restartExecutionId;
 		additionalData.evaluationRunId = execution.data.manualData?.evaluationRunId;
+		additionalData.rootExecutionMode = execution.data.rootExecutionMode;
 		// Rehydrate the manual-execution identity for private credential resolution.
 		additionalData.encryptedRunnerIdentity = job.data.encryptedRunnerIdentity;
 
 		const { pushRef } = job.data;
 
-		const lifecycleHooks = getLifecycleHooksForScalingWorker(
-			{
-				executionMode: execution.mode,
-				workflowData: execution.workflowData,
-				retryOf: execution.retryOf,
-				pushRef,
-				userId: execution.data.manualData?.userId,
-				source: execution.data.manualData?.source,
-				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
-			},
-			executionId,
-		);
+		const hooksData: IWorkflowExecutionDataProcess = {
+			executionMode: execution.mode,
+			workflowData: execution.workflowData,
+			executionData: execution.data,
+			retryOf: execution.retryOf,
+			pushRef,
+			pushRefUserId: job.data.pushRefUserId,
+			userId: execution.data.manualData?.userId,
+			source: execution.data.manualData?.source,
+			suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
+		};
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(hooksData, executionId);
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
+				userId: getPushRefUserId(hooksData),
 			});
 		}
 
@@ -344,6 +349,7 @@ export class JobProcessor {
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			const data: IWorkflowExecutionDataProcess = {
+				binaryDataAccess: execution.data.binaryDataAccess,
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
 				destinationNode: startData?.destinationNode,
@@ -363,6 +369,7 @@ export class JobProcessor {
 				executionId,
 				resultData.pinData,
 				execution.storedAt,
+				execution.data.resumeToken,
 			);
 		}
 
@@ -538,6 +545,7 @@ export class JobProcessor {
 				mcpType: 'trigger',
 				sessionId: job.data.mcpSessionId,
 				messageId: job.data.mcpMessageId ?? '',
+				toolName,
 				response: toolResult, // Actual tool result
 				workerId: this.instanceSettings.hostId,
 			};
@@ -577,7 +585,9 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
-			...(run.data.resultData.failedBeforeStart && { failedBeforeStart: true }),
+			...(run.data.resultData.failedBeforeStart && {
+				failedBeforeStart: run.data.resultData.failedBeforeStart,
+			}),
 			nodeTimeSavedMinutes: sumNodeTimeSavedMinutes(run.data.resultData.runData),
 		};
 	}

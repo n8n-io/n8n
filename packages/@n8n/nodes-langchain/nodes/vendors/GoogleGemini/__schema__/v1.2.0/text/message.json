@@ -1,0 +1,34 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"content": {
+			"properties": {
+				"parts": {
+					"items": {
+						"properties": {
+							"text": {
+								"type": "string"
+							},
+							"thoughtSignature": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"role": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"finishReason": {
+			"type": "string"
+		},
+		"index": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

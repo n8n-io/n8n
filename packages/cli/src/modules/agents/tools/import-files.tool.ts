@@ -1,6 +1,6 @@
 import type { Workspace } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
@@ -35,8 +35,15 @@ export function createImportFilesTool({
 		.handler(async ({ files }, ctx) => {
 			const threadId = ctx.persistence?.threadId;
 			if (!threadId) throw new UserError('Files can only be imported in a conversation');
+			// Not `files`: the chat shows the `files` of a tool result as new files, and these
+			// are copies of files that the conversation already has.
 			return {
-				files: await sandboxFiles.importFiles(workspace, files, { projectId, threadId }),
+				imported: await sandboxFiles.importFiles(
+					workspace,
+					files,
+					{ projectId, threadId },
+					ctx.abortSignal,
+				),
 			};
 		});
 }

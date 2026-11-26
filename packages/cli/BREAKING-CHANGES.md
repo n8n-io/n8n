@@ -4,6 +4,17 @@ This list shows all the versions which include breaking changes and how to upgra
 
 # Unreleased
 
+## SAML
+
+n8n now checks that each SAML response is for this instance.
+The `Audience` must be the n8n Entity ID.
+The `Destination` and the `Recipient` must be the n8n ACS URL.
+If your identity provider has an old Entity ID or ACS URL for n8n, SAML sign-in fails with `ERR_AUDIENCE_MISMATCH` or `ERR_RECIPIENT_MISMATCH`.
+Copy the Entity ID URL and the Redirect URL from the n8n SAML settings into your identity provider.
+The identity provider metadata must contain a signing certificate.
+Without one, SAML sign-in fails with `NO_SELECTED_CERTIFICATE`.
+n8n accepts each SAML assertion only once.
+
 ## n8n Packages (preview)
 
 Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
@@ -38,7 +49,30 @@ An import that unpublishes a workflow requires `workflow:deactivate`.
 An import that archives a published workflow requires only `workflow:delete`.
 If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
 
+Package imports that create a missing credential now require the `credential:create` API key scope in both `create-stub` (default) and `create-with-values` modes.
+If your pipeline imports packages with missing credentials, add this scope to its API key.
+
 ## Promotions (preview)
+
+The 12 promotion scopes are now 8. Four setup scopes replace the old setup scopes:
+
+| New scope | Replaces |
+| --- | --- |
+| `promotions:manageProviders` | `promotions:create`, `promotions:update`, `promotions:delete`, `promotions:discover` (for providers) |
+| `promotions:readProviders` | `promotions:read`, `promotions:list` (for providers) |
+| `promotions:manageEnvironments` | `promotions:create`, `promotions:update`, `promotions:delete`, `promotions:connect`, `promotions:manageProjects` (for environments) |
+| `promotions:readEnvironments` | `promotions:read`, `promotions:list` (for environments) |
+
+`promotions:promote`, `promotions:apply`, `promotions:readReviews` and `promotions:approveReviews` do not change.
+An API key with an old scope gets 403 for that operation.
+Edit the API key and select the new scopes.
+There is no automatic conversion.
+
+Promote and its CLI commands no longer need `variable:list` on the API key.
+A key with only `promotions:promote` can preview and promote.
+A key with only `promotions:apply` can preview, apply and continue.
+The change details of a preview show variable values when the user's role can list variables.
+The scopes of the API key no longer decide this.
 
 The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
 Read `resources` instead.
@@ -52,6 +86,12 @@ The endpoint no longer accepts the `search`, `sort` and `order` query parameters
 The CLI `promotion-environment list-changes` command shows the changed resources of all types.
 It no longer accepts `--search`, `--sort` and `--order`.
 It needs an n8n instance with this change.
+
+The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/promote` now returns a `status`.
+`promoted` means that the push succeeded. Only this status has `counts` and `git`.
+`preview-changed` means that nothing was pushed. It occurs only when the request sends `expectedPreviewRevision`.
+Read `status` before you read `counts` and `git`.
+The change preview now always returns `revision`, also for `promote`.
 
 # 2.0.0
 

@@ -4,6 +4,7 @@ import type {
 	ParentLink,
 	StepError,
 	StepSlots,
+	StepOutputSources,
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
@@ -70,6 +71,18 @@ export interface ExecutionSnapshot {
 	finishedAt: string | null;
 	/** Only set when the request asked for steps. Oldest first. */
 	steps?: StepDetail[];
+	/** Only set when the request asked for steps. `null` for a top-level execution. */
+	parentWorkflowId?: string | null;
+	/** Only set when the request asked for steps. The executions the steps started, oldest first. */
+	subExecutions?: SubExecutionDetail[];
+}
+
+/** An execution that a step started, as `GET /:id?includeSteps=true` reports it. */
+export interface SubExecutionDetail {
+	executionId: string;
+	workflowId: string;
+	/** The step that started it. */
+	stepId: string;
 }
 
 /**
@@ -85,6 +98,8 @@ export interface StepDetail {
 	iteration: number;
 	status: StepStatus;
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	error: StepError | null;
 	createdAt: string;
 	updatedAt: string;

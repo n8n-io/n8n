@@ -16,12 +16,14 @@ export {
 	roleSchema,
 	type Role,
 	scopeSchema,
+	principalTypeSchema,
 } from './schemas.ee';
 
 export { hasScope } from './utilities/has-scope.ee';
 export { hasGlobalScope } from './utilities/has-global-scope.ee';
 export { combineScopes } from './utilities/combine-scopes.ee';
 export * from './roles/custom-role-scopes.ee';
+export * from './roles/promotion-project-access.ee';
 export { staticRolesWithScope } from './utilities/static-roles-with-scope.ee';
 export { getGlobalScopes } from './utilities/get-global-scopes.ee';
 export { isReservedGlobalRole } from './utilities/is-reserved-global-role.ee';

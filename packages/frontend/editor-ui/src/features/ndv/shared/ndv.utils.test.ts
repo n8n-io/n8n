@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, afterAll, afterEach, beforeEach } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type {
 	IConnections,
@@ -19,10 +19,12 @@ import {
 	shouldSkipParamValidation,
 	createCommonNodeSettings,
 	collectSettings,
+	resolveDisplayMode,
 } from './ndv.utils';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { type Ref, ref } from 'vue';
+import { runDataDisplayModeRegistry } from '@n8n/frontend-module-sdk';
 
 describe('updateDynamicConnections', () => {
 	afterAll(() => {
@@ -818,5 +820,32 @@ describe('setValue with dot-notation paths that name inherited members', () => {
 		expect(
 			(nodeValues.value.parameters as { a?: { toString?: { call?: unknown } } }).a?.toString?.call,
 		).toBe('y');
+	});
+});
+
+describe('resolveDisplayMode', () => {
+	beforeEach(() => {
+		runDataDisplayModeRegistry.clear();
+	});
+
+	it('returns a built-in mode', () => {
+		expect(resolveDisplayMode('json', 'input')).toBe('json');
+	});
+
+	it('returns a registered mode, even if it cannot render the current data', () => {
+		runDataDisplayModeRegistry.register({
+			id: 'map',
+			label: () => 'Map',
+			icon: 'globe',
+			component: { render: () => null },
+			canRender: () => false,
+		});
+
+		expect(resolveDisplayMode('map', 'output')).toBe('map');
+	});
+
+	it('returns the pane default for an unknown mode', () => {
+		expect(resolveDisplayMode('map', 'input')).toBe('schema');
+		expect(resolveDisplayMode('map', 'output')).toBe('table');
 	});
 });

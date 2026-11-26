@@ -1,4 +1,5 @@
-import { type IExecuteFunctions, NodeApiError, UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import { type IExecuteFunctions, NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from '../GenericFunctions';
 
@@ -34,7 +35,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 		const result = await elasticsearchApiRequest.call(
 			mockExecuteFunctions,
 			'GET',
-			'/test-endpoint',
+			requestPath`/test-endpoint`,
 		);
 
 		expect(result).toEqual(response);
@@ -42,7 +43,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 			'elasticsearchApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: 'https://example.com/test-endpoint',
+				url: requestUrl`https://example.com/test-endpoint`,
 				json: true,
 				skipSslCertificateValidation: false,
 			}),
@@ -57,7 +58,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 		const result = await elasticsearchApiRequest.call(
 			mockExecuteFunctions,
 			'POST',
-			'/test-endpoint',
+			requestPath`/test-endpoint`,
 			body,
 		);
 
@@ -67,7 +68,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 			expect.objectContaining({
 				body,
 				method: 'POST',
-				url: 'https://example.com/test-endpoint',
+				url: requestUrl`https://example.com/test-endpoint`,
 				json: true,
 				skipSslCertificateValidation: false,
 			}),
@@ -79,14 +80,14 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 		mockHttpRequestWithAuthentication.mockRejectedValue(errorResponse);
 
 		await expect(
-			elasticsearchApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint'),
+			elasticsearchApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test-endpoint`),
 		).rejects.toThrow(NodeApiError);
 
 		expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'elasticsearchApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: 'https://example.com/test-endpoint',
+				url: requestUrl`https://example.com/test-endpoint`,
 				json: true,
 				skipSslCertificateValidation: false,
 			}),
@@ -100,13 +101,27 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 			baseUrl: 'https://elastic.domain.com/',
 			ignoreSSLIssues: false,
 		});
-		await elasticsearchApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint');
+		await elasticsearchApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test-endpoint`);
 
 		expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'elasticsearchApi',
 			expect.objectContaining({
-				url: 'https://elastic.domain.com/test-endpoint',
+				url: requestUrl`https://elastic.domain.com/test-endpoint`,
 			}),
+		);
+	});
+
+	it('should encode a plus sign in the index and document ID', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValue(response);
+
+		await elasticsearchApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/${'logs+2024'}/_doc/${'a+b'}`,
+		);
+
+		expect(String(mockHttpRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+			'https://example.com/logs%2B2024/_doc/a%2Bb',
 		);
 	});
 });
@@ -135,5 +150,19 @@ describe('Elasticsearch -> elasticsearchApiRequestAllItems', () => {
 		).rejects.toThrow(UserError);
 
 		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
+	});
+
+	it('should encode the index ID in the point in time request URL', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
+
+		await elasticsearchApiRequestAllItems.call(mockExecuteFunctions, 'my-index/_doc', {}, {});
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'elasticsearchApi',
+			expect.objectContaining({
+				method: 'POST',
+				url: requestUrl`https://example.com/my-index%2F_doc/_pit`,
+			}),
+		);
 	});
 });

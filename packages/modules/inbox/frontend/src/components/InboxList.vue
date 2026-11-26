@@ -94,7 +94,6 @@ function onListBackgroundClick() {
 			<N8nTabs
 				:model-value="activeTab"
 				:options="tabs"
-				variant="modern"
 				data-test-id="inbox-tabs"
 				@update:model-value="onTabChange"
 			/>

@@ -1,6 +1,18 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	h,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -9,6 +21,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
 	skillScopeSchema,
+	skillSourceDeleteBlockSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -22,19 +35,25 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { ResponseError } from '@n8n/rest-api-client';
+import { isRecord } from '@n8n/utils/is-record';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nCheckbox,
+	N8nEnterpriseReadinessBadge,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
+	N8nPopover,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSwitch,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
@@ -46,6 +65,13 @@ import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
+import RecommendedSkillCards from '@/experiments/recommendedSkills/components/RecommendedSkillCards.vue';
+import RecommendedSkillsDialog from '@/experiments/recommendedSkills/components/RecommendedSkillsDialog.vue';
+import type { RecommendedSkillSelection } from '@/experiments/recommendedSkills/recommendedSkills';
+import {
+	type RecommendedSkillsEntryPoint,
+	useRecommendedSkillsExperiment,
+} from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	AgentSkillImportError,
@@ -60,12 +86,20 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillSourceMoveDialog from '../components/SkillSourceMoveDialog.vue';
+import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
-import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
-import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
+import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
+import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
+import { useSkillSyncEnabled, useSkillSyncFlag } from '../composables/useSkillSyncFlag';
+import {
+	CONTEXT_DEFAULT_SORT_BY,
+	PREFERENCES_PAGE_SIZES,
+	SKILLS_DEFAULT_PAGE_SIZE,
+} from '../context.constants';
 import {
 	canWriteInstanceSkillScope,
 	canWriteProjectSkillScope,
@@ -75,6 +109,7 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
+import { sourceLineOf } from '../skillSourceReview.utils';
 import {
 	PROJECT_SCOPE_PREFIX,
 	parseScope,
@@ -91,12 +126,14 @@ type SkillFilters = {
 	scope: string;
 	agentId: string;
 	createdById: string;
+	sourceIds: string[];
 };
 
-const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById'];
-const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '' };
+const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById', 'sourceIds'];
+const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '', sourceIds: [] };
 
 const i18n = useI18n();
+const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
@@ -104,21 +141,90 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
-const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const settingsStore = useSettingsStore();
+const { isEnabled: assistantSkillsExperimentEnabled } = useAssistantSkillsExperiment();
+const assistantSkillsEnabled = computed(
+	() =>
+		assistantSkillsExperimentEnabled.value &&
+		settingsStore.moduleSettings['instance-ai']?.enabled === true,
+);
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
-const skillSyncEnabled = useSkillSyncFlag();
-const connectOpen = ref(false);
+const skillSyncFlagEnabled = useSkillSyncFlag();
+const skillSyncEnabled = useSkillSyncEnabled();
+const rbacStore = useRBACStore();
+const canManageSkillSync = computed(
+	() => skillSyncFlagEnabled.value && rbacStore.hasScope('skill:manage'),
+);
+const skillSyncManagedByEnv = computed(
+	() => settingsStore.moduleSettings.skills?.skillSyncManagedByEnv === true,
+);
+const skillSyncSaving = ref(false);
 
-const tableOptions = ref<TableOptions>({
+async function isSkillSyncTurnedOff() {
+	await settingsStore.getModuleSettings().catch(() => undefined);
+	return !skillSyncEnabled.value;
+}
+
+async function onSkillSyncEnabledChange(enabled: boolean) {
+	skillSyncSaving.value = true;
+	try {
+		await skillsStore.setSkillSyncEnabled(enabled);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.skillSync.saveError'));
+	} finally {
+		skillSyncSaving.value = false;
+	}
+}
+const {
+	showRecommendedSkills,
+	hasVariant: hasRecommendedSkillsVariant,
+	trackExposure: trackRecommendedSkillsExposure,
+	trackSkillAdded: trackRecommendedSkillAdded,
+} = useRecommendedSkillsExperiment();
+const connectOpen = ref(false);
+const movingSource = ref<SkillSourceListItem | null>(null);
+const recommendedOpen = ref(false);
+const sourceToDelete = ref<SkillSourceListItem>();
+const sourceToReplaceCredential = ref<SkillSourceListItem>();
+
+const usersStore = useUsersStore();
+const defaultTableOptions: TableOptions = {
 	page: 0,
 	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: CONTEXT_DEFAULT_SORT_BY,
-});
+};
+const tableOptions = useLocalStorage<TableOptions>(
+	() => `n8n-skills-pagination:${usersStore.currentUserId ?? 'anonymous'}`,
+	{ ...defaultTableOptions },
+	{
+		// Another tab must not move this table while the user reads it.
+		listenToStorageChanges: false,
+		serializer: {
+			read(value) {
+				const saved: unknown = JSON.parse(value);
+				if (!isRecord(saved)) return { ...defaultTableOptions };
+				return {
+					page:
+						typeof saved.page === 'number' && Number.isSafeInteger(saved.page) && saved.page >= 0
+							? saved.page
+							: 0,
+					itemsPerPage:
+						typeof saved.itemsPerPage === 'number' &&
+						PREFERENCES_PAGE_SIZES.includes(saved.itemsPerPage)
+							? saved.itemsPerPage
+							: SKILLS_DEFAULT_PAGE_SIZE,
+					sortBy: CONTEXT_DEFAULT_SORT_BY,
+				};
+			},
+			write: ({ page, itemsPerPage }) => JSON.stringify({ page, itemsPerPage }),
+		},
+	},
+);
 const search = ref('');
 const filters = ref<SkillFilters>({ ...NO_FILTERS });
 const agentOptions = ref<SkillAgentOption[]>([]);
@@ -161,6 +267,21 @@ function creatorLabel(creator: SkillUserDto): string {
 	return preferenceUserName(creator) || creator.id;
 }
 
+const sourceFilterOptions = computed(() =>
+	skillsStore.sources
+		.map((source) => {
+			const { label: scope } = scopeDisplay({
+				...source,
+				scope: source.projectId ? 'project' : 'instance',
+			});
+			return {
+				value: source.id,
+				label: `${sourceLineOf(source)} · ${scope}`,
+			};
+		})
+		.sort((a, b) => a.label.localeCompare(b.label)),
+);
+
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
 	const parsed = skillScopeSchema.safeParse(scope);
 	return parsed.success ? { scope: parsed.data } : {};
@@ -170,7 +291,7 @@ function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
 // describe the matching skills, and the page is the only slice the browser holds.
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
-	const { scope, agentId, createdById } = filters.value;
+	const { scope, agentId, createdById, sourceIds } = filters.value;
 	const sortBy = toSortOption(tableOptions.value.sortBy, SKILLS_SORT_OPTIONS);
 	return {
 		skip: page * itemsPerPage,
@@ -185,6 +306,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 			? {
 					groupBy: 'source' as const,
 					page,
+					...(sourceIds.length > 0 ? { sourceIds: sourceIds.join(',') } : {}),
 					...(collapsedSourceIds.value.length > 0
 						? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
 						: {}),
@@ -213,6 +335,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			projectIcon: personalProject.icon,
 			target: { projectId: personalProject.id },
 		});
 	}
@@ -222,6 +345,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			projectIcon: project.icon,
 			target: { projectId: project.id },
 		});
 	}
@@ -236,9 +360,13 @@ async function load(focusSourceId?: string) {
 	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const query = { ...listQuery(page, itemsPerPage), ...(focusSourceId ? { focusSourceId } : {}) };
 	// Sort and paging do not narrow the list, so they do not count as filters.
-	const filtered = [query.search, query.scope, query.agentId, query.createdById].some(
-		(value) => value !== undefined,
-	);
+	const filtered = [
+		query.search,
+		query.scope,
+		query.agentId,
+		query.createdById,
+		query.sourceIds,
+	].some((value) => value !== undefined);
 	try {
 		await skillsStore.fetchSkills(query);
 		if (!isLatest()) return;
@@ -258,6 +386,8 @@ async function load(focusSourceId?: string) {
 		loadFailed.value = false;
 		loadedFiltered.value = filtered;
 	} catch (error) {
+		if (!isLatest()) return;
+		if (query.groupBy === 'source' && (await isSkillSyncTurnedOff())) return;
 		if (!isLatest()) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
@@ -282,7 +412,7 @@ async function resetPage() {
 
 const onSearch = useDebounceFn(resetPage, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
-async function setFilter(key: keyof SkillFilters, value: unknown) {
+async function setFilter(key: Exclude<keyof SkillFilters, 'sourceIds'>, value: unknown) {
 	// A cleared select reports an empty value, not an empty string.
 	filters.value = { ...filters.value, [key]: typeof value === 'string' ? value : '' };
 	await resetPage();
@@ -349,6 +479,7 @@ function openModal(data: AgentSkillModalData) {
  */
 function openCreateModal(
 	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
+	onCreated?: (skillId: string) => void,
 ) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
@@ -364,11 +495,20 @@ function openCreateModal(
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
 		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
-			await onCreate(skill, scope ?? options[0].value, method, availableToMCP),
+			await onCreate(skill, scope ?? options[0].value, method, availableToMCP, onCreated),
 	});
 }
 
-type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
+function onRecommendedSkillSelect(
+	entryPoint: RecommendedSkillsEntryPoint,
+	recommended: RecommendedSkillSelection,
+) {
+	openCreateModal({ skill: recommended.skill }, (skillId) =>
+		trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
+	);
+}
+
+type CreateAction = 'recommended' | 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
 // One upload at a time. An upload is dropped when another skill action starts or the
 // user leaves the page, so its late result opens no modal and shows no toast.
@@ -382,7 +522,7 @@ function dropPendingUpload() {
 
 onBeforeUnmount(dropPendingUpload);
 
-// Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
+// "Recommended skills" and "Connect to GitHub" are behind flags. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
 	...(skillSyncEnabled.value
 		? [
@@ -414,7 +554,39 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 		icon: 'pen',
 		testId: 'skills-create-manual',
 	},
+	...(showRecommendedSkills.value
+		? [
+				{
+					id: 'recommended' as const,
+					label: i18n.baseText('experiments.recommendedSkills.menuItem'),
+					icon: 'sparkles' as const,
+					testId: 'skills-create-recommended',
+				},
+			]
+		: []),
 ]);
+
+const recommendedSkillsEligible = computed(
+	() =>
+		emptyState.value === 'noSkills' &&
+		skillsStore.collapsedSources.length === 0 &&
+		scopeOptions.value.length > 0,
+);
+
+const showRecommendedEmptyState = computed(
+	() => recommendedSkillsEligible.value && showRecommendedSkills.value,
+);
+
+watch(
+	() => recommendedSkillsEligible.value && hasRecommendedSkillsVariant.value,
+	(eligible) => {
+		if (eligible) trackRecommendedSkillsExposure();
+	},
+);
+
+const emptyStateCreateMenuItems = computed(() =>
+	createMenuItems.value.filter(({ id }) => id !== 'recommended'),
+);
 
 const skillFolderInput = useTemplateRef<HTMLInputElement>('skillFolderInput');
 const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
@@ -426,7 +598,8 @@ function onCreateMenuSelect(action: CreateAction) {
 	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
 	else {
 		dropPendingUpload();
-		connectOpen.value = true;
+		if (action === 'recommended') recommendedOpen.value = true;
+		else connectOpen.value = true;
 	}
 }
 
@@ -540,6 +713,7 @@ async function onCreate(
 	scopeValue: string,
 	method?: SkillCreateMethod,
 	availableToMCP?: boolean,
+	onCreated?: (skillId: string) => void,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -554,6 +728,7 @@ async function onCreate(
 	} catch (error) {
 		return saveFailed(error);
 	}
+	onCreated?.(createdId);
 	// The creator may be new to the list. The table does not wait for the filter options.
 	void loadCreators();
 	await load();
@@ -604,7 +779,10 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
-			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+			: [
+					{ value: currentValue, ...scopeDisplay(detail), projectIcon: detail.projectIcon },
+					...scopeOptions.value,
+				];
 		// A restore keeps the modal open, so the next save must send the hash it produced.
 		let baseSkillHash = detail.skillHash;
 		openModal({
@@ -617,6 +795,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			projectType: detail.projectType,
+			projectIcon: detail.projectIcon,
 			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
@@ -709,9 +889,30 @@ async function onDownload(item: Pick<SkillListItem, 'id'>) {
 }
 
 /** `onDeleted` runs as soon as the delete succeeds, before the list reloads. */
-async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void) {
+async function onDelete(skill: SkillListItem, onDeleted?: () => void) {
+	const source = skillsStore.sources.find(
+		(item) =>
+			skillSyncEnabled.value &&
+			item.id === skill.sourceId &&
+			item.skillCount === 1 &&
+			item.canDelete,
+	);
+	let removeSource = false;
+	const warning = i18n.baseText('settings.context.skills.delete.confirm.message');
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.delete.confirm.message'),
+		source
+			? h('div', { class: $style.confirmation }, [
+					h('p', warning),
+					h(N8nCheckbox, {
+						label: i18n.baseText('settings.context.skills.delete.removeSource', {
+							interpolate: { source: source.label },
+						}),
+						'onUpdate:modelValue': (checked: boolean) => {
+							removeSource = checked;
+						},
+					}),
+				])
+			: warning,
 		i18n.baseText('settings.context.skills.delete.confirm.title'),
 		{
 			type: 'warning',
@@ -721,7 +922,11 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	try {
-		await skillsStore.deleteSkill(skill.id);
+		if (source && removeSource) {
+			await skillsStore.deleteSource(source.id, { onlySkillId: skill.id });
+		} else {
+			await skillsStore.deleteSkill(skill.id);
+		}
 		onDeleted?.();
 		showMessage({
 			title: i18n.baseText('settings.context.skills.delete.success'),
@@ -729,7 +934,24 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 		});
 	} catch (error) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
-		showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		// The source delete names its agents in a payload, which a toast cannot list.
+		const block = skillSourceDeleteBlockSchema.safeParse(
+			error instanceof ResponseError && error.httpStatusCode === 409 ? error.meta : undefined,
+		);
+		if (block.success) {
+			const count = block.data.agents.length + block.data.hiddenAgents;
+			showMessage({
+				title: i18n.baseText('settings.context.skills.error.delete'),
+				message: i18n.baseText('settings.context.skills.delete.inUse', {
+					interpolate: { count },
+					adjustToNumber: count,
+				}),
+				type: 'error',
+				duration: 0,
+			});
+		} else {
+			showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		}
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
@@ -745,10 +967,19 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	const name = skill.name;
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
-			interpolate: { scope: scopeDisplay(skill).label, count: skill.latestVersion },
-			adjustToNumber: skill.latestVersion,
-		}),
+		h('div', { class: $style.confirmation }, [
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
+					interpolate: { scope: scopeDisplay(skill).label },
+				}),
+			),
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.keep', { adjustToNumber: 1 }),
+			),
+			h('p', i18n.baseText('settings.context.skills.stopSyncing.confirm.updates')),
+		]),
 		i18n.baseText('settings.context.skills.stopSyncing.confirm.title', {
 			interpolate: { name },
 		}),
@@ -774,7 +1005,6 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 }
 
 /** The sources that the user folded, kept in this browser, so the table opens as it was left. */
-const usersStore = useUsersStore();
 const collapsedSourceIds = useLocalStorage<string[]>(
 	() => `n8n-skills-collapsed-sources:${usersStore.currentUserId ?? 'anonymous'}`,
 	[],
@@ -784,8 +1014,25 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
+const reviewSource = ref<SkillSourceListItem | null>(null);
+
+async function onSourceUpdatesChanged() {
+	await Promise.all([load(), loadSources()]);
+}
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
+
+async function onSourceDeleted() {
+	sourceToDelete.value = undefined;
+	void loadCreators();
+	await loadSources();
+	await load();
+}
+
+async function onSourceCredentialReplaced() {
+	sourceToReplaceCredential.value = undefined;
+	await loadSources();
+}
 
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
@@ -797,6 +1044,7 @@ async function loadSources() {
 		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
 		if (kept.length !== collapsedSourceIds.value.length) collapsedSourceIds.value = kept;
 	} catch (error) {
+		if (await isSkillSyncTurnedOff()) return;
 		showError(error, i18n.baseText('settings.context.skills.sources.error.load'));
 	}
 }
@@ -806,7 +1054,7 @@ async function onToggleSource(sourceId: string) {
 	if (ids.has(sourceId)) ids.delete(sourceId);
 	else ids.add(sourceId);
 	collapsedSourceIds.value = [...ids];
-	await load(sourceId);
+	await load();
 }
 
 /** Check for updates on a source: progress on its row, then a toast with the result. */
@@ -818,7 +1066,14 @@ async function onCheckSource(source: SkillSourceListItem) {
 		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
-		// The user cannot pick another credential here, so that reason gets its own text.
+		if (reason === 'rate_limited') {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.sources.health.delayed'),
+				message: i18n.baseText('settings.context.skills.sources.health.delayed.description'),
+				type: 'info',
+			});
+			return;
+		}
 		const text =
 			reason === 'credential_missing'
 				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
@@ -834,7 +1089,7 @@ async function onCheckSource(source: SkillSourceListItem) {
 		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
 		await loadSources();
 	}
-	const { label, updatesFound, throttled } = result;
+	const { label, updatesFound, newSkillsFound = 0, throttled } = result;
 	showMessage({
 		title: throttled
 			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
@@ -843,15 +1098,35 @@ async function onCheckSource(source: SkillSourceListItem) {
 			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
 					interpolate: { label },
 				}),
-		message:
-			updatesFound === 0
+		message: [
+			updatesFound === 0 && newSkillsFound === 0
 				? i18n.baseText('settings.context.skills.checkForUpdates.none')
-				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
-						interpolate: { count: updatesFound },
-						adjustToNumber: updatesFound,
-					}),
+				: updatesFound > 0
+					? i18n.baseText('settings.context.skills.checkForUpdates.found', {
+							interpolate: { count: updatesFound },
+							adjustToNumber: updatesFound,
+						})
+					: '',
+			newSkillsFound > 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.new', {
+						interpolate: { count: newSkillsFound },
+						adjustToNumber: newSkillsFound,
+					})
+				: '',
+		]
+			.filter(Boolean)
+			.join(' '),
 		type: 'success',
 	});
+}
+
+async function onSourceMoved(sourceId: string) {
+	movingSource.value = null;
+	showMessage({
+		title: i18n.baseText('settings.context.skills.moveSource.success'),
+		type: 'success',
+	});
+	await onOpenSource(sourceId);
 }
 
 async function onOpenSource(sourceId: string) {
@@ -872,7 +1147,7 @@ async function goBack() {
 
 // The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
 watch(skillSyncEnabled, async (enabled) => {
-	tableOptions.value = { ...tableOptions.value, page: 0 };
+	if (!enabled) filters.value = { ...filters.value, sourceIds: [] };
 	await Promise.all([load(), ...(enabled ? [loadSources()] : [])]);
 });
 
@@ -913,13 +1188,27 @@ onMounted(async () => {
 			:title="i18n.baseText('settings.context.skills.title')"
 			:description="i18n.baseText('settings.context.skills.description')"
 			:show-docs-link="false"
-		/>
+		>
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="skills-enterprise-readiness-badge"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 
-		<div :class="$style.toolbar">
+		<div v-if="!showRecommendedEmptyState || canManageSkillSync" :class="$style.toolbar">
 			<N8nInput
+				v-if="!showRecommendedEmptyState"
 				v-model="search"
 				:class="$style.search"
-				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
+				:placeholder="
+					i18n.baseText(
+						skillSyncEnabled
+							? 'settings.context.skills.search.withSourcesPlaceholder'
+							: 'settings.context.skills.search.placeholder',
+					)
+				"
 				clearable
 				data-test-id="skills-search"
 				@update:model-value="onSearch"
@@ -929,6 +1218,7 @@ onMounted(async () => {
 				</template>
 			</N8nInput>
 			<ResourceFiltersDropdown
+				v-if="!showRecommendedEmptyState"
 				:model-value="filters"
 				:keys="FILTER_KEYS"
 				:reset="resetFilters"
@@ -1010,10 +1300,83 @@ onMounted(async () => {
 						/>
 					</N8nSelect>
 				</div>
+				<div v-if="skillSyncEnabled" :class="$style.filter">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.filter.source')"
+						:bold="false"
+						size="small"
+						color="text-base"
+					/>
+					<N8nSelect
+						v-model="filters.sourceIds"
+						size="medium"
+						multiple
+						filterable
+						clearable
+						collapse-tags
+						:placeholder="i18n.baseText('settings.context.skills.filter.allSources')"
+						data-test-id="skills-filter-source"
+						@update:model-value="resetPage"
+					>
+						<N8nOption
+							v-for="source in sourceFilterOptions"
+							:key="source.value"
+							:value="source.value"
+							:label="source.label"
+						/>
+					</N8nSelect>
+				</div>
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
+			<N8nPopover
+				v-if="canManageSkillSync"
+				align="end"
+				width="calc(var(--spacing--5xl) + var(--spacing--3xl))"
+			>
+				<template #trigger>
+					<span>
+						<N8nTooltip>
+							<template #content>
+								{{ i18n.baseText('settings.context.skills.settings') }}
+							</template>
+							<N8nButton
+								variant="outline"
+								icon="settings"
+								icon-only
+								size="medium"
+								:aria-label="i18n.baseText('settings.context.skills.settings')"
+								data-test-id="skill-sync-settings-button"
+							/>
+						</N8nTooltip>
+					</span>
+				</template>
+				<template #content>
+					<div :class="$style.skillSync" data-test-id="skill-sync-settings">
+						<div :class="$style.skillSyncHeader">
+							<N8nText bold size="medium" color="text-dark">
+								{{ i18n.baseText('settings.context.skills.skillSync.label') }}
+							</N8nText>
+							<N8nSwitch
+								size="small"
+								:model-value="skillSyncEnabled"
+								:disabled="skillSyncSaving || skillSyncManagedByEnv"
+								:aria-label="i18n.baseText('settings.context.skills.skillSync.label')"
+								data-test-id="skill-sync-enable-toggle"
+								@update:model-value="onSkillSyncEnabledChange"
+							/>
+						</div>
+						<N8nText size="small" color="text-light">
+							{{
+								skillSyncManagedByEnv
+									? i18n.baseText('settings.context.skills.skillSync.managedByEnv')
+									: i18n.baseText('settings.context.skills.skillSync.description')
+							}}
+						</N8nText>
+					</div>
+				</template>
+			</N8nPopover>
 			<N8nActionDropdown
-				v-if="scopeOptions.length > 0"
+				v-if="!showRecommendedEmptyState && scopeOptions.length > 0"
 				:items="createMenuItems"
 				placement="bottom-end"
 				data-test-id="skills-create-menu"
@@ -1027,8 +1390,39 @@ onMounted(async () => {
 				</template>
 			</N8nActionDropdown>
 		</div>
+		<div
+			v-if="showRecommendedEmptyState"
+			:class="$style.empty"
+			data-test-id="skills-recommended-empty-state"
+		>
+			<N8nHeading tag="h2" size="medium" bold>
+				{{ i18n.baseText('experiments.recommendedSkills.empty.title') }}
+			</N8nHeading>
+			<N8nText color="text-light">
+				{{ i18n.baseText('experiments.recommendedSkills.description') }}
+			</N8nText>
+			<RecommendedSkillCards
+				:class="$style.recommended"
+				entry-point="empty_state"
+				@select="onRecommendedSkillSelect('empty_state', $event)"
+			/>
+			<N8nActionDropdown
+				:items="emptyStateCreateMenuItems"
+				placement="bottom"
+				data-test-id="skills-empty-create-menu"
+				@select="onCreateMenuSelect"
+			>
+				<template #activator>
+					<N8nButton data-test-id="skills-empty-create-button">
+						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+						<N8nIcon icon="chevron-down" size="small" />
+					</N8nButton>
+				</template>
+			</N8nActionDropdown>
+		</div>
 
 		<SkillsTable
+			v-if="!showRecommendedEmptyState"
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
@@ -1040,12 +1434,17 @@ onMounted(async () => {
 			:sources="tableSources"
 			:collapsed-source-ids="collapsedSourceIds"
 			:collapsed-sources="skillsStore.collapsedSources"
+			:source-ranges="skillsStore.sourceRanges"
 			:checking-source-ids="checkingSourceIds"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
 			@download="onDownload"
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
+			@move-source="movingSource = $event"
+			@review-source="reviewSource = $event"
+			@delete-source="sourceToDelete = $event"
+			@replace-credential="sourceToReplaceCredential = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1085,12 +1484,44 @@ onMounted(async () => {
 			</template>
 		</SkillsTable>
 
+		<SkillSourceMoveDialog
+			v-if="skillSyncEnabled && movingSource"
+			:open="true"
+			:source="movingSource"
+			:scope-options="scopeOptions"
+			@update:open="!$event && (movingSource = null)"
+			@moved="onSourceMoved"
+		/>
+		<SkillSourceUpdatesDialog
+			v-if="skillSyncEnabled && reviewSource"
+			:source="reviewSource"
+			@close="reviewSource = null"
+			@changed="onSourceUpdatesChanged"
+		/>
+		<RecommendedSkillsDialog
+			v-if="showRecommendedSkills"
+			v-model:open="recommendedOpen"
+			@select="onRecommendedSkillSelect('create_menu', $event)"
+		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
 			@open-source="onOpenSource"
+		/>
+		<SkillSourceDeleteDialog
+			v-if="skillSyncEnabled && sourceToDelete"
+			:source="sourceToDelete"
+			@close="sourceToDelete = undefined"
+			@deleted="onSourceDeleted"
+		/>
+		<SkillSourceCredentialDialog
+			v-if="skillSyncEnabled && sourceToReplaceCredential"
+			:key="sourceToReplaceCredential.id"
+			:source="sourceToReplaceCredential"
+			@close="sourceToReplaceCredential = undefined"
+			@replaced="onSourceCredentialReplaced"
 		/>
 		<input
 			ref="skillFolderInput"
@@ -1115,6 +1546,12 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+.confirmation {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
 /* The settings shell insets the page; the header is pulled to the table's left edge. */
 .layout {
 	padding: 0;
@@ -1139,6 +1576,20 @@ onMounted(async () => {
 	max-width: 20rem;
 }
 
+.skillSync {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--sm);
+}
+
+.skillSyncHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+}
+
 .filter {
 	display: flex;
 	flex-direction: column;
@@ -1156,5 +1607,11 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xl) var(--spacing--md);
 	text-align: center;
+}
+
+// Wide enough to keep the "Based on" source of each card on one line.
+.recommended {
+	max-width: 58rem;
+	margin: var(--spacing--xs) 0;
 }
 </style>

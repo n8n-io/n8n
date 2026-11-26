@@ -1,0 +1,23 @@
+{
+	"properties": {
+		"color": {
+			"type": ["null", "string"]
+		},
+		"id": {
+			"type": "string"
+		},
+		"idBoard": {
+			"type": "string"
+		},
+		"limits": {
+			"type": "object"
+		},
+		"name": {
+			"type": "string"
+		},
+		"uses": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

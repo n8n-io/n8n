@@ -188,6 +188,44 @@ describe('WebhookTriggerRegistrar', () => {
 		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
 	});
 
+	test('removes the stored row when the external cleanup of a failed registration also fails', async () => {
+		const webhookService = mock<WebhookService>();
+		const registrar = new WebhookTriggerRegistrar(
+			logger,
+			mock<ErrorReporter>(),
+			webhookService,
+			mock<WorkflowStaticDataService>(),
+			tracing,
+		);
+		webhookService.createWebhook.mockImplementation(
+			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
+		);
+		webhookService.createWebhookIfNotExists.mockRejectedValueOnce(
+			new Error('external registration failed'),
+		);
+		webhookService.deleteWebhook.mockRejectedValueOnce(new Error('external cleanup failed'));
+		const webhookB = mock<IWebhookData>({
+			node: 'Webhook B',
+			workflowId: 'wf-1',
+			httpMethod: 'POST',
+			path: 'b',
+		});
+		const workflow = createWorkflow([node('b', 'webhook', { name: 'Webhook B' })]);
+
+		await expect(
+			registrar.register({
+				workflow,
+				webhookData: webhookB,
+				mode: 'trigger',
+				activation: 'update',
+			}),
+		).rejects.toThrow('external registration failed');
+
+		expect(webhookService.deleteWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+			'Webhook B',
+		]);
+	});
+
 	test('translates duplicate insert errors', async () => {
 		const webhookService = mock<WebhookService>();
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();

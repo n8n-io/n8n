@@ -5,6 +5,48 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"DELETE /agents/{agentId}": {
+			"status": "gap"
+		},
+		"GET /agents": {
+			"status": "gap"
+		},
+		"GET /agents/{agentId}": {
+			"status": "gap"
+		},
+		"POST /agents": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/archive": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/publish": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/unarchive": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/unpublish": {
+			"status": "gap"
+		},
+		"PUT /agents/{agentId}": {
+			"status": "gap"
+		},
+		"DELETE /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
+		"GET /ai-preferences": {
+			"status": "gap"
+		},
+		"GET /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
+		"PUT /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
+		"POST /ai-preferences": {
+			"status": "gap"
+		},
 		"GET /roles": {
 			"status": "gap"
 		},
@@ -196,6 +238,9 @@
 		"GET /workflows/{workflowId}/dependencies": {
 			"status": "gap"
 		},
+		"POST /workflows/{workflowId}/run": {
+			"status": "gap"
+		},
 		"GET /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
@@ -234,6 +279,12 @@
 			"status": "gap"
 		},
 		"POST /source-control/push": {
+			"status": "gap"
+		},
+		"GET /promotions/settings": {
+			"status": "gap"
+		},
+		"PUT /promotions/settings": {
 			"status": "gap"
 		},
 		"GET /promotions/providers": {
@@ -312,6 +363,12 @@
 			"status": "gap"
 		},
 		"POST /promotions/environments/{promotionEnvironmentId}/apply": {
+			"status": "gap"
+		},
+		"GET /promotions/environments/{promotionEnvironmentId}/changes": {
+			"status": "gap"
+		},
+		"POST /promotions/environments/{promotionEnvironmentId}/changes/details": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

@@ -59,6 +59,7 @@ export class ManualExecutionService {
 		executionId: string,
 		pinData?: IPinData,
 		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
+		resumeToken?: string,
 	): PCancelable<IRun> {
 		if (data.triggerToStartFrom?.data && data.startNodes?.length) {
 			this.logger.debug(
@@ -89,6 +90,7 @@ export class ManualExecutionService {
 			}
 
 			const executionData = createRunExecutionData({
+				binaryDataAccess: data.binaryDataAccess,
 				resultData: {
 					runData,
 					pinData,
@@ -98,6 +100,7 @@ export class ManualExecutionService {
 					waitingExecution,
 					waitingExecutionSource,
 				},
+				resumeToken,
 			});
 
 			if (data.destinationNode) {
@@ -179,7 +182,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
-				undefined,
+				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess, resumeToken }),
 				storedAt,
 			);
 			return workflowExecute.run({
@@ -202,7 +205,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
-				undefined,
+				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess, resumeToken }),
 				storedAt,
 			);
 
