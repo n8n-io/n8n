@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/NextCloud/actions/folder/search.operation.ts
+  s_e48526bb13ba4b::t_0eb5f693a19569 226-228
+packages/nodes-base/nodes/NextCloud/test/search.operation.test.ts
+  s_e48526bb13ba4b::t_0eb5f693a19569 351-362
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "295b86e8ddf5f60ac16b34b28e3682f78b459bd1",
+  "prompts": {},
+  "sessions": {
+    "s_e48526bb13ba4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641211a8-07f9-490c-a870-ae90c9d0a5f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
