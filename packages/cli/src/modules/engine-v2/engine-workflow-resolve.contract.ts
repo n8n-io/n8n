@@ -55,7 +55,6 @@ const subWorkflowRequestSchema = z.object({
 const stepErrorSchema = z.object({
 	name: z.string(),
 	message: z.string(),
-	stack: z.string().optional(),
 	// The body parser produced it, so it is JSON. Only the executor reads into it.
 	details: z.custom<JsonValue>().optional(),
 });
