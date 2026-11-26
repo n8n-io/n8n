@@ -1,14 +1,17 @@
 import {
 	MAX_DECODED_SIZE_BYTES,
-	MAX_RESULT_CHARS,
 	formatSizeLimitMessage,
+	paginateTextContent,
 	type AttachmentInfo,
+	type TextPaginationOptions,
 } from './structured-file-parser';
 
 export interface PdfExtractionResult {
 	text: string;
 	pages: number;
 	truncated: boolean;
+	totalChars: number;
+	nextStartChar?: number;
 }
 
 /**
@@ -16,7 +19,10 @@ export interface PdfExtractionResult {
  *
  * Lazy-imported so the module is only loaded the first time a PDF is parsed.
  */
-export async function extractPdfText(attachment: AttachmentInfo): Promise<PdfExtractionResult> {
+export async function extractPdfText(
+	attachment: AttachmentInfo,
+	options?: TextPaginationOptions,
+): Promise<PdfExtractionResult> {
 	const decoded = Buffer.from(attachment.data, 'base64');
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
 		throw new Error(formatSizeLimitMessage(decoded.length));
@@ -52,13 +58,12 @@ export async function extractPdfText(attachment: AttachmentInfo): Promise<PdfExt
 		);
 	}
 
-	if (text.length > MAX_RESULT_CHARS) {
-		return {
-			text: text.slice(0, MAX_RESULT_CHARS),
-			pages: totalPages,
-			truncated: true,
-		};
-	}
-
-	return { text, pages: totalPages, truncated: false };
+	const page = paginateTextContent(text, options);
+	return {
+		text: page.content,
+		pages: totalPages,
+		truncated: page.truncated,
+		totalChars: page.totalChars,
+		...(page.nextStartChar !== undefined ? { nextStartChar: page.nextStartChar } : {}),
+	};
 }

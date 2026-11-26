@@ -55,22 +55,30 @@ describe('extractPdfText', () => {
 		expect(mockGetText).not.toHaveBeenCalled();
 	});
 
-	it('truncates extracted text beyond MAX_RESULT_CHARS and flags truncated', async () => {
-		const longText = 'a'.repeat(50_000);
+	it('truncates extracted text beyond MAX_RESULT_CHARS and paginates with startChar', async () => {
+		const longText = `${'a'.repeat(40_000)}${'b'.repeat(10_000)}`;
 		mockGetText.mockResolvedValue({
 			text: longText,
 			total: 99,
 		});
 
-		const result = await extractPdfText({
+		const attachment = {
 			data: toBase64('pdf-bytes'),
 			mimeType: 'application/pdf',
 			fileName: 'long.pdf',
-		});
+		};
+		const first = await extractPdfText(attachment);
 
-		expect(result.text.length).toBeLessThanOrEqual(40_000);
-		expect(result.truncated).toBe(true);
-		expect(result.pages).toBe(99);
+		expect(first.text.length).toBe(40_000);
+		expect(first.truncated).toBe(true);
+		expect(first.totalChars).toBe(50_000);
+		expect(first.nextStartChar).toBe(40_000);
+		expect(first.pages).toBe(99);
+
+		const second = await extractPdfText(attachment, { startChar: first.nextStartChar });
+		expect(second.text).toBe('b'.repeat(10_000));
+		expect(second.truncated).toBe(false);
+		expect(second.nextStartChar).toBeUndefined();
 	});
 
 	it('wraps pdf-parse errors with a friendly message', async () => {

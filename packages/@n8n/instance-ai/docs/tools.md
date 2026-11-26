@@ -1335,11 +1335,16 @@ adds one of two versions:
 | `delimiter` | string | no | — | One-character CSV delimiter override |
 | `startRow` | number | no | 0 | Pagination offset for tabular data |
 | `maxRows` | number | no | 20 | Tabular rows to return, from 1 to 100 |
+| `startChar` | number | no | 0 | Character offset for text-like or non-tabular JSON content |
+| `maxChars` | number | no | 40000 | Characters to return for text-like or non-tabular JSON content, from 1 to 40000 |
 
-Tabular results contain normalized column metadata, rows, row counts,
-pagination, truncation state, and warnings. Text-like results contain extracted
-content and can include a title or page count. All results identify the source
-attachment and can contain an error.
+Tabular results (CSV, TSV, XLSX, and flat JSON arrays of flat objects) contain
+normalized column metadata, rows, row counts, pagination (`nextStartRow`),
+truncation state, and warnings. Non-tabular JSON (objects, nested structures,
+primitive arrays, or arrays outside tabular limits) and text-like formats
+contain extracted `content`, `totalChars`, truncation state, `nextStartChar`
+when more characters remain, and can include a title or page count. All results
+identify the source attachment and can contain an error.
 
 ## `import-files`
 

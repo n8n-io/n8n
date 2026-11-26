@@ -51,6 +51,14 @@ describe('extractHtmlContent', () => {
 
 		expect(result.text.length).toBeLessThanOrEqual(40_000);
 		expect(result.truncated).toBe(true);
+		expect(result.totalChars).toBeGreaterThan(40_000);
+		expect(result.nextStartChar).toBe(40_000);
+
+		const nextPage = await extractHtmlContent(makeHtmlAttachment(html), {
+			startChar: result.nextStartChar,
+		});
+		expect(nextPage.text.length).toBeGreaterThan(0);
+		expect(nextPage.totalChars).toBe(result.totalChars);
 	});
 
 	it('handles XHTML correctly', async () => {

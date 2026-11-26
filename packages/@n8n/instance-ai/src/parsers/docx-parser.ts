@@ -1,20 +1,26 @@
 import { assertOoxmlWithinBounds } from './ooxml-guard';
 import {
 	MAX_DECODED_SIZE_BYTES,
-	MAX_RESULT_CHARS,
 	formatSizeLimitMessage,
+	paginateTextContent,
 	type AttachmentInfo,
+	type TextPaginationOptions,
 } from './structured-file-parser';
 
 export interface DocxExtractionResult {
 	text: string;
 	truncated: boolean;
+	totalChars: number;
+	nextStartChar?: number;
 }
 
 /**
  * Extracts plain text from a `.docx` (Office Open XML) attachment using `mammoth`.
  */
-export async function extractDocxText(attachment: AttachmentInfo): Promise<DocxExtractionResult> {
+export async function extractDocxText(
+	attachment: AttachmentInfo,
+	options?: TextPaginationOptions,
+): Promise<DocxExtractionResult> {
 	const decoded = Buffer.from(attachment.data, 'base64');
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
 		throw new Error(formatSizeLimitMessage(decoded.length));
@@ -40,8 +46,11 @@ export async function extractDocxText(attachment: AttachmentInfo): Promise<DocxE
 		throw new Error(`docx "${attachment.fileName}" contains no extractable text.`);
 	}
 
-	if (text.length > MAX_RESULT_CHARS) {
-		return { text: text.slice(0, MAX_RESULT_CHARS), truncated: true };
-	}
-	return { text, truncated: false };
+	const page = paginateTextContent(text, options);
+	return {
+		text: page.content,
+		truncated: page.truncated,
+		totalChars: page.totalChars,
+		...(page.nextStartChar !== undefined ? { nextStartChar: page.nextStartChar } : {}),
+	};
 }
