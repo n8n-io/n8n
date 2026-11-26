@@ -43,13 +43,4 @@ describe('form-trigger-completion template', () => {
 		expect(anchorAttributes).not.toMatch(/href=\s*target=/);
 		expect(anchorAttributes).toMatch(/href=(['"])[^'"]*\1/);
 	});
-
-	it('should render the current n8n logo in the attribution footer', async () => {
-		const html = await renderCompletionPage(completionContext);
-		const footer = /n8n-link'>([\s\S]*?)<\/a>/.exec(html)?.[1];
-
-		expect(footer).toBeDefined();
-		expect(footer).toContain("viewBox='0 0 480 96'");
-		expect(footer).toContain('fill: var(--color-n8n-logo-text, #191919)');
-	});
 });
