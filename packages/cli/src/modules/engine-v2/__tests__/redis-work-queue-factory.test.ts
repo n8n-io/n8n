@@ -48,24 +48,31 @@ describe('createInstanceRedisWorkQueueFactory', () => {
 		expect(redisClientService.createClient).not.toHaveBeenCalled();
 	});
 
-	it('opens a connection as a work queue consumer of this instance for each consumer, which reads its own list', async () => {
-		const workQueueFactory = await createInstanceRedisWorkQueueFactory(publisher);
+	it.each(['step', 'orchestration'])(
+		'opens a connection as a work queue consumer of this instance for each consumer, and the %s consumer reads its own list',
+		async (name) => {
+			const workQueueFactory = await createInstanceRedisWorkQueueFactory(publisher);
+			const names = ['step', 'orchestration'];
+			const consumers = names.map((queue) =>
+				workQueueFactory.createConsumer(queue, consumerOptions),
+			);
+			const started = names.indexOf(name);
+			const [startedConnection, otherConnection] = [connections[started], connections[1 - started]];
 
-		const consumer = workQueueFactory.createConsumer('step', consumerOptions);
-		workQueueFactory.createConsumer('orchestration', consumerOptions);
-		consumer.start(async () => {});
-		await vi.waitFor(() =>
-			expect(connections[0].brpop).toHaveBeenCalledWith('{acme}:engine-v2-queue:step', 1),
-		);
-		await consumer.stop();
+			consumers[started].start(async () => {});
+			await vi.waitFor(() =>
+				expect(startedConnection.brpop).toHaveBeenCalledWith(`{acme}:engine-v2-queue:${name}`, 1),
+			);
+			await consumers[started].stop();
 
-		expect(redisClientService.createClient.mock.calls).toEqual([
-			[{ type: 'work-queue-consumer(n8n)' }],
-			[{ type: 'work-queue-consumer(n8n)' }],
-		]);
-		expect(connections[1].brpop).not.toHaveBeenCalled();
-		expect(connections[0].disconnect).not.toHaveBeenCalled();
-	});
+			expect(redisClientService.createClient.mock.calls).toEqual([
+				[{ type: 'work-queue-consumer(n8n)' }],
+				[{ type: 'work-queue-consumer(n8n)' }],
+			]);
+			expect(otherConnection.brpop).not.toHaveBeenCalled();
+			for (const connection of connections) expect(connection.disconnect).not.toHaveBeenCalled();
+		},
+	);
 
 	it('disconnects each consumer connection once on close, and never the publisher', async () => {
 		const workQueueFactory = await createInstanceRedisWorkQueueFactory(publisher);
