@@ -63,7 +63,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import {
-	findUnarchivedWorkflowIds,
+	findReadableUnarchivedWorkflowIds,
 	findWorkflowToolWorkflows,
 } from './tools/workflow-tool-workflow-resolver';
 import {
@@ -492,13 +492,13 @@ export class AgentValidationService {
 		workflowIds: string[],
 		user: User | undefined,
 	): Promise<Set<string>> {
-		if (!user || workflowIds.length === 0) return new Set();
-		const readableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+		if (!user) return new Set();
+		return await findReadableUnarchivedWorkflowIds(
+			this.workflowFinderService,
+			this.workflowRepository,
 			workflowIds,
 			user,
-			['workflow:read'],
 		);
-		return await findUnarchivedWorkflowIds(this.workflowRepository, [...readableIds]);
 	}
 
 	private async prefetchReferenceLookups(

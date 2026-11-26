@@ -10,7 +10,7 @@ import {
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRepository } from './repositories/agent.repository';
-import { findUnarchivedWorkflowIds } from './tools/workflow-tool-workflow-resolver';
+import { findReadableUnarchivedWorkflowIds } from './tools/workflow-tool-workflow-resolver';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 
 @Service()
@@ -45,12 +45,12 @@ export class AgentSkillWorkflowAccessService {
 			[],
 		);
 		const usableIds = new Set(usable.map(({ id }) => id));
-		const readableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+		const outside = await findReadableUnarchivedWorkflowIds(
+			this.workflowFinderService,
+			this.workflowRepository,
 			workflowIds.filter((workflowId) => !usableIds.has(workflowId)),
 			user,
-			['workflow:read'],
 		);
-		const outside = await findUnarchivedWorkflowIds(this.workflowRepository, [...readableIds]);
 		return [...outside];
 	}
 }
