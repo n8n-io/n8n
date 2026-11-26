@@ -86,10 +86,7 @@ export class KnowledgeCollectionRepository {
 		});
 	}
 
-	/**
-	 * Adds the agent to the collection. A repeat add changes nothing. The foreign
-	 * keys catch an agent or a collection deleted after the caller's checks.
-	 */
+	/** Adds the agent to the collection. A repeat add changes nothing. */
 	async addAgent(collectionId: string, agentId: string, ctx: OperationContext): Promise<void> {
 		try {
 			await this.table
@@ -101,6 +98,7 @@ export class KnowledgeCollectionRepository {
 				.orIgnore()
 				.execute();
 		} catch (error) {
+			// The agent or the collection was deleted after the caller's checks.
 			if (isForeignKeyConstraintError(error)) {
 				throw new NotFoundError('Agent or knowledge collection not found');
 			}
@@ -278,9 +276,8 @@ export class KnowledgeCollectionRepository {
 	}
 
 	/**
-	 * The file count and total size of each collection, in one query. A collection
-	 * without files is not in the map. PostgreSQL returns COUNT and SUM as
-	 * strings, so both go through `Number`.
+	 * The file count and total size of each collection. A collection
+	 * without files is not in the map.
 	 */
 	async findFileTotals(
 		collectionIds: string[],
@@ -304,6 +301,7 @@ export class KnowledgeCollectionRepository {
 				totalFileSizeBytes: number | string;
 			}>();
 
+		// PostgreSQL returns COUNT and SUM as strings.
 		return new Map(
 			rows.map((row) => [
 				row.collectionId,

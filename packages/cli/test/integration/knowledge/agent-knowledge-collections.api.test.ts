@@ -65,7 +65,7 @@ describe('agent knowledge collection routes', () => {
 		agent = await createAgent({ projectId: project.id });
 	});
 
-	it('lists the collections of the project by name, with the file count and the added state', async () => {
+	it('lists the collections of the project by name, with the file count and whether the agent uses each one', async () => {
 		const returns = await createCollection('Returns');
 		await createCollection('Pricing');
 		const files = Container.get(DataSource).getRepository(KnowledgeFile);
@@ -94,14 +94,14 @@ describe('agent knowledge collection routes', () => {
 				name: 'Pricing',
 				description: 'About Pricing',
 				fileCount: 0,
-				added: false,
+				usedByAgent: false,
 			},
 			{
 				id: returns.id,
 				name: 'Returns',
 				description: 'About Returns',
 				fileCount: 2,
-				added: true,
+				usedByAgent: true,
 			},
 		]);
 	});

@@ -265,7 +265,7 @@ describe('AgentKnowledgeService', () => {
 
 		it('lists the collections of an agent of the project', async () => {
 			const collections = [
-				{ id: 'collection-1', name: 'Docs', description: 'd', fileCount: 1, added: true },
+				{ id: 'collection-1', name: 'Docs', description: 'd', fileCount: 1, usedByAgent: true },
 			];
 			collectionCatalogService.listForAgent.mockResolvedValue(collections);
 

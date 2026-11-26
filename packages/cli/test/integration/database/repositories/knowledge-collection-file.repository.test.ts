@@ -110,7 +110,7 @@ describe('Knowledge collection repositories', () => {
 			expect(agentIds.sort()).toEqual([firstAgentId, secondAgentId].sort());
 		});
 
-		it('answers not found when the agent of an add does not exist', async () => {
+		it('throws not found when it adds an agent that does not exist to a collection', async () => {
 			const collectionId = await createCollection();
 
 			await expect(collectionRepo.addAgent(collectionId, 'missing-agent', {})).rejects.toThrow(

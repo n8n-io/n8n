@@ -613,8 +613,8 @@ describe('KnowledgeCollectionCatalogService', () => {
 			);
 
 			await expect(service.listForAgent(user, projectId, 'agent-1')).resolves.toEqual([
-				{ id: 'c-1', name: 'Pricing', description: '', fileCount: 0, added: false },
-				{ id: 'c-2', name: 'Returns', description: 'Refunds', fileCount: 3, added: true },
+				{ id: 'c-1', name: 'Pricing', description: '', fileCount: 0, usedByAgent: false },
+				{ id: 'c-2', name: 'Returns', description: 'Refunds', fileCount: 3, usedByAgent: true },
 			]);
 			expect(collectionRepository.findFileTotals).toHaveBeenCalledOnce();
 			expect(collectionRepository.findFileTotals).toHaveBeenCalledWith(['c-2', 'c-1'], {});

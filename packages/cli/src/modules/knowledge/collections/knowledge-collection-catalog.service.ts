@@ -220,8 +220,7 @@ export class KnowledgeCollectionCatalogService {
 
 	/**
 	 * The collections that the project owns, by name, each with its file count and
-	 * whether the agent uses it. Here and in `addAgent` and `removeAgent`, the
-	 * caller checks that the agent is in the project.
+	 * whether the agent uses it.
 	 */
 	async listForAgent(
 		user: User,
@@ -230,11 +229,11 @@ export class KnowledgeCollectionCatalogService {
 	): Promise<AgentKnowledgeCollectionDto[]> {
 		await this.assertCanAccessProject(user, projectId, 'agent:read');
 
-		const [collections, addedIds] = await Promise.all([
+		const [collections, agentCollectionIds] = await Promise.all([
 			this.collectionRepository.findSharedByProjectId(projectId, {}),
 			this.collectionRepository.findAgentCollectionIds(agentId, {}),
 		]);
-		const added = new Set(addedIds);
+		const usedIds = new Set(agentCollectionIds);
 		const fileTotals = await this.collectionRepository.findFileTotals(
 			collections.map(({ id }) => id),
 			{},
@@ -246,12 +245,15 @@ export class KnowledgeCollectionCatalogService {
 				name,
 				description: description ?? '',
 				fileCount: fileTotals.get(id)?.fileCount ?? 0,
-				added: added.has(id),
+				usedByAgent: usedIds.has(id),
 			}))
 			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
-	/** A repeat add is not an error. The write runs in the fence of the caller. */
+	/**
+	 * Adds the agent to the collection. A repeat add changes nothing. The caller
+	 * checks that the agent is in the project and is not archived.
+	 */
 	async addAgent(
 		user: User,
 		ref: KnowledgeCollectionRef,
@@ -264,7 +266,10 @@ export class KnowledgeCollectionCatalogService {
 		);
 	}
 
-	/** The write runs in the fence of the caller. */
+	/**
+	 * Removes the agent from the collection. The caller checks that the agent is
+	 * in the project and is not archived.
+	 */
 	async removeAgent(
 		user: User,
 		ref: KnowledgeCollectionRef,
