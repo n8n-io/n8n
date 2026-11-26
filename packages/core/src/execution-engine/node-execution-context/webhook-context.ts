@@ -88,7 +88,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			createDeferredPromise,
 			returnJsonArray,
 			...getRequestHelperFunctions(workflow, node, additionalData),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 		};
 
 		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
