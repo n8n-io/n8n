@@ -13,14 +13,14 @@ const user = {
 	state: 'active',
 };
 
-describe('Paddle > Workflows', () => {
-	const credentials = {
-		paddleApi: { vendorId: '12345', vendorAuthCode: 'fake-auth-code', sandbox: false },
-	};
+const credentials = {
+	paddleApi: { vendorId: '12345', vendorAuthCode: 'fake-auth-code', sandbox: false },
+};
+const auth = { vendor_id: '12345', vendor_auth_code: 'fake-auth-code' };
 
+describe('Paddle > Workflows', () => {
 	beforeAll(() => {
 		const mock = nock('https://vendors.paddle.com/api');
-		const auth = { vendor_id: '12345', vendor_auth_code: 'fake-auth-code' };
 		mock
 			.post('/2.0/subscription/payments', { subscription_id: 502198, ...auth })
 			.reply(200, { success: true, response: [payment] });
@@ -50,6 +50,24 @@ describe('Paddle > Workflows', () => {
 	new NodeTestHarness().setupTests({
 		credentials,
 		workflowFiles: ['requests.workflow.json'],
+		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
+	});
+});
+
+describe('Paddle > User JSON parameters', () => {
+	beforeAll(() => {
+		const mock = nock('https://vendors.paddle.com/api');
+		mock
+			.post('/2.0/subscription/users', { state: 'active', results_per_page: 1, ...auth })
+			.reply(200, { success: true, response: [user] });
+		mock
+			.post('/2.0/subscription/users', { plan_id: 9876, results_per_page: 1, ...auth })
+			.reply(200, { success: true, response: [user] });
+	});
+
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['userJsonParameters.workflow.json'],
 		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 	});
 });
