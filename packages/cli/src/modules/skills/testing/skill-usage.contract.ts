@@ -259,6 +259,33 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 		});
 
 		describe('assertRenameKeepsNamesApart', () => {
+			it.each([undefined, 1])(
+				'checks planned names without changing a pin (%s)',
+				async (version) => {
+					const { usage, seed } = subject();
+					const ids = await seed({
+						agents: [{ key: 'agent', name: 'Agent', project: 'p' }],
+						skills: [
+							{ key: 'a', versions: ['A'] },
+							{ key: 'b', versions: ['B'] },
+						],
+						drafts: [
+							{ agent: 'agent', skill: 'a' },
+							{ agent: 'agent', skill: 'b', version },
+						],
+					});
+					const rename = usage.assertRenameKeepsNamesApart(
+						ids.skillId('a'),
+						'A',
+						'New name',
+						ctx,
+						new Map([[ids.skillId('b'), 'New name']]),
+					);
+					if (version === undefined) await expect(rename).rejects.toThrow(SkillAgentNameTakenError);
+					else await expect(rename).resolves.toBeUndefined();
+				},
+			);
+
 			const world: SkillUsageWorld = {
 				agents: [
 					{ key: 'support', name: 'Support', project: 'p' },

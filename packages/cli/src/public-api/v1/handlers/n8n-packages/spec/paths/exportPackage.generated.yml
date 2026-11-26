@@ -1,7 +1,7 @@
 operationId: exportPackage
 tags:
   - N8nPackage
-summary: 'Beta: Export agents, workflows, folders, or projects as an n8n package'
+summary: 'Beta: Export agents, workflows, Skills, folders, or projects as an n8n package'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
@@ -28,8 +28,10 @@ description: |-
   Agent definitions include referenced skills, custom tools, and schedules.
   Knowledge base files and runtime data are excluded.
 
-  Requires one of these API key scopes: `project:export`, `workflow:export`, `agent:export`.
-x-required-scope: project:export,workflow:export,agent:export
+  Use `skillIds` for standalone project or instance Skills. Use `includeSkills` with `projectIds` to include all project Skills. These options require `skill:read`. Skills always export their latest saved content, frontmatter, and supported reference files. Source connections and credentials do not travel. Standalone selection uses package format 2. Older destinations reject that format.
+
+  Requires one of these API key scopes: `project:export`, `workflow:export`, `agent:export`, `skill:read`.
+x-required-scope: project:export,workflow:export,agent:export,skill:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
@@ -39,6 +41,17 @@ requestBody:
       schema:
         type: object
         properties:
+          skillIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            maxItems: 300
+            description: Project or instance Skill IDs to export at their latest saved version. No Agent is required.
+          includeSkills:
+            type: boolean
+            description: Include all Skills owned by the selected projects. Requires projectIds and Skill read access.
           agentIds:
             type: array
             items:

@@ -1,7 +1,7 @@
 import { getN8nVersion, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
@@ -76,7 +76,7 @@ import {
 	type ResolvedImportRequest,
 	createBindings,
 } from './n8n-packages.types';
-import { FORMAT_VERSION } from './spec/constants';
+import { FORMAT_VERSION, STANDALONE_SKILLS_FORMAT_VERSION } from './spec/constants';
 import {
 	packageManifestSchema,
 	type ManifestEntry,
@@ -86,7 +86,7 @@ import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
 	manifest: PackageManifest;
-	counts: ExportPackageEventCounts;
+	counts: ExportPackageEventCounts & { skills?: number };
 	agentIds: string[];
 	workflowIds: string[];
 	folderIds: string[];
@@ -395,12 +395,46 @@ export class N8nPackagesService {
 		});
 
 		const agentEntries = agentExportResult?.agentEntries ?? [];
+		const selectedSkillIds = [...new Set(request.skillIds ?? [])];
+		let standaloneEntries: ManifestEntry[] = [];
+		if (request.includeSkills && !request.projectIds?.length) {
+			throw new BadRequestError('includeSkills requires at least one project ID.');
+		}
+		const exportProjectSkills = request.includeSkills && request.projectIds?.length;
+		const hasSkillSelection = selectedSkillIds.length > 0 || Boolean(exportProjectSkills);
+		if (hasSkillSelection) {
+			const { SkillService, SkillsGate } = await import('../skills/index.js');
+			if (!Container.get(SkillsGate).isEnabled) {
+				throw new BadRequestError(
+					'Skills are unavailable. The requested export cannot be completed.',
+				);
+			}
+			if (exportProjectSkills)
+				selectedSkillIds.push(
+					...(await Container.get(SkillService).findIdsInProjects(request.projectIds ?? [])),
+				);
+			const { SkillExporter } = await import('./entities/skill/skill.exporter.js');
+			standaloneEntries = await Container.get(SkillExporter).export({
+				user: request.user,
+				writer,
+				agents: [],
+				skillIds: selectedSkillIds.filter(
+					(id) => !agentExportResult?.skillEntries.some((entry) => entry.id === id),
+				),
+				projectTargetsById,
+			});
+		}
+		const skillEntries = this.dedupeManifestEntries([
+			...standaloneEntries,
+			...(agentExportResult?.skillEntries ?? []),
+		]);
 		const written = {
-			packageFormatVersion: FORMAT_VERSION,
+			packageFormatVersion: hasSkillSelection ? STANDALONE_SKILLS_FORMAT_VERSION : FORMAT_VERSION,
 			sourceN8nVersion: getN8nVersion(),
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
-			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),
+			...(hasSkillSelection || skillEntries.length ? { skills: skillEntries } : {}),
+			...(hasSkillSelection ? { selectedSkillIds: [...new Set(selectedSkillIds)] } : {}),
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
@@ -420,7 +454,8 @@ export class N8nPackagesService {
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
-		const counts: ExportPackageEventCounts = {
+		const counts: ExportPackageEventCounts & { skills?: number } = {
+			...(hasSkillSelection || skillEntries.length ? { skills: skillEntries.length } : {}),
 			agents: agentEntries.length,
 			workflows: allWorkflowsInPackage.length,
 			folders: allFolders.length,
@@ -620,7 +655,6 @@ export class N8nPackagesService {
 				throw new BadRequestError('The Agents module is not enabled.');
 			}
 		}
-
 		if (!allowAgents && manifest.folders?.length) {
 			const prefixes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
 
@@ -836,6 +870,7 @@ function isProjectPackage(manifest: PackageManifest): boolean {
 function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 	return (
 		[
+			manifest.skills,
 			manifest.workflows,
 			manifest.folders,
 			manifest.credentials,

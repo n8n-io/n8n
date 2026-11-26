@@ -10,6 +10,38 @@ properties:
     required:
       - sourceN8nVersion
       - sourceId
+  skills:
+    type: array
+    items:
+      type: object
+      properties:
+        sourceSkillId:
+          type: string
+        localId:
+          type: string
+        name:
+          type: string
+        projectId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - created
+            - updated
+            - unchanged
+            - skipped
+            - deleted
+        followingAgentCount:
+          type: integer
+          minimum: 0
+      required:
+        - sourceSkillId
+        - localId
+        - name
+        - projectId
+        - status
+        - followingAgentCount
   agents:
     type: array
     items:
@@ -124,6 +156,30 @@ properties:
   counts:
     type: object
     properties:
+      skills:
+        type: object
+        properties:
+          created:
+            type: integer
+            minimum: 0
+          updated:
+            type: integer
+            minimum: 0
+          unchanged:
+            type: integer
+            minimum: 0
+          skipped:
+            type: integer
+            minimum: 0
+          deleted:
+            type: integer
+            minimum: 0
+        required:
+          - created
+          - updated
+          - unchanged
+          - skipped
+          - deleted
       agents:
         type: object
         properties:

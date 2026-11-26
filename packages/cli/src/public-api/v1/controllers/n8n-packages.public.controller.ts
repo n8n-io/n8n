@@ -73,12 +73,15 @@ function assertPackageExportApiKeyScopes(
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
+	skillIds: string[],
+	includeSkills: boolean,
 ): string[] {
 	if (!apiKeyScopes) {
 		throw new ForbiddenError('Forbidden');
 	}
 
 	const requiredScopes: string[] = [];
+	if (skillIds.length || includeSkills) requiredScopes.push('skill:read');
 	if (agentIds.length > 0) {
 		requiredScopes.push('agent:export');
 	}
@@ -107,7 +110,16 @@ export class N8nPackagesPublicController {
 	) {}
 
 	@Post('/import')
-	@ApiKeyScope({ anyOf: ['workflow:import', 'agent:import'] })
+	@ApiKeyScope({
+		anyOf: [
+			'workflow:import',
+			'agent:import',
+			'skill:create',
+			'skill:update',
+			'skill:delete',
+			'skill:read',
+		],
+	})
 	@ApiSummary(IMPORT_SUMMARY)
 	@ApiDescription(IMPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -153,7 +165,9 @@ export class N8nPackagesPublicController {
 	}
 
 	@Post('/import-selection')
-	@ApiKeyScope('workflow:import')
+	@ApiKeyScope({
+		anyOf: ['workflow:import', 'skill:create', 'skill:update', 'skill:delete', 'skill:read'],
+	})
 	@ApiSummary(IMPORT_SELECTION_SUMMARY)
 	@ApiDescription(IMPORT_SELECTION_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -180,6 +194,8 @@ export class N8nPackagesPublicController {
 			package: file,
 			selectedProjectId,
 			selectedWorkflowIds,
+			selectedSkillIds,
+			deletedSkillIds,
 			deletedWorkflowIds,
 			...policies
 		} = body;
@@ -197,6 +213,8 @@ export class N8nPackagesPublicController {
 				{
 					selectedProjectId,
 					selectedWorkflowIds,
+					selectedSkillIds,
+					deletedSkillIds,
 					deletedWorkflowIds,
 				},
 			);
@@ -211,7 +229,7 @@ export class N8nPackagesPublicController {
 	}
 
 	@Post('/export')
-	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export', 'agent:export'] })
+	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export', 'agent:export', 'skill:read'] })
 	@ApiSummary(EXPORT_SUMMARY)
 	@ApiDescription(EXPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -227,7 +245,14 @@ export class N8nPackagesPublicController {
 		_res: Response,
 		@Body({ required: true }) body: ExportPackageRequestDto,
 	): Promise<BinaryResult> {
-		const { agentIds = [], workflowIds = [], folderIds = [], projectIds = [] } = body;
+		const {
+			agentIds = [],
+			workflowIds = [],
+			folderIds = [],
+			projectIds = [],
+			skillIds = [],
+			includeSkills = false,
+		} = body;
 
 		let exportResult: ExportPackageResult;
 
@@ -239,9 +264,11 @@ export class N8nPackagesPublicController {
 				);
 			}
 
-			if (!hasLooseSelection && projectIds.length === 0) {
+			if (includeSkills && !projectIds.length)
+				throw new BadRequestError('includeSkills requires projectIds.');
+			if (!hasLooseSelection && projectIds.length === 0 && skillIds.length === 0) {
 				throw new BadRequestError(
-					'At least one agentId, workflowId, folderId, or projectId is required',
+					'At least one skillId, agentId, workflowId, folderId, or projectId is required',
 				);
 			}
 
@@ -251,12 +278,16 @@ export class N8nPackagesPublicController {
 				workflowIds,
 				folderIds,
 				projectIds,
+				skillIds,
+				includeSkills,
 			);
 
 			exportResult = await this.n8nPackagesService.exportPackage({
 				user: req.user,
 				ctx: req.ctx,
 				agentIds,
+				skillIds,
+				includeSkills,
 				workflowIds,
 				folderIds,
 				projectIds,

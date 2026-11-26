@@ -1,7 +1,7 @@
 import { ConflictError, UnprocessableRequestError } from '@n8n/errors';
 
 import type { BlockingIssue } from '../../n8n-packages.types';
-import { toImportBlockedError } from '../import-blocked.error';
+import { SkillImportFailedError, toImportBlockedError } from '../import-blocked.error';
 
 const folderConflict: BlockingIssue = {
 	type: 'folder-conflict',
@@ -76,6 +76,37 @@ const credentialConflict = (kind: 'differs' | 'divergent'): BlockingIssue => ({
 	sourceIds: ['s1'],
 	name: 'GitHub',
 	usedBy: [{ kind: 'workflow', id: 'w1' }],
+});
+
+describe('SkillImportFailedError', () => {
+	it('keeps an actionable failure and the saved Skill results', () => {
+		const cause = toImportBlockedError([folderConflict]);
+		const error = new SkillImportFailedError(cause, [
+			{
+				sourceSkillId: 's',
+				localId: 's',
+				name: 'Guide',
+				projectId: null,
+				status: 'created',
+				followingAgentCount: 0,
+			},
+		]);
+		expect(error.httpStatusCode).toBe(409);
+		expect(error.message).toBe(cause.message);
+		expect(error.meta).toMatchObject({
+			issues: [folderConflict],
+			counts: { skills: { created: 1 } },
+		});
+		expect(error.cause).toBe(cause);
+	});
+
+	it('keeps unexpected failures as server errors without exposing their message', () => {
+		const cause = new Error('Internal details');
+		const error = new SkillImportFailedError(cause, []);
+		expect(error.httpStatusCode).toBe(500);
+		expect(error.message).toBe('Package import failed after Skill changes were saved.');
+		expect(error.cause).toBe(cause);
+	});
 });
 
 describe('toImportBlockedError', () => {

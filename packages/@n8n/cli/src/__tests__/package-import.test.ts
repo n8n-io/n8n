@@ -2,7 +2,7 @@ import { Config } from '@oclif/core';
 import * as fs from 'node:fs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { N8nClient } from '../client';
+import { ApiError, type N8nClient } from '../client';
 import PackageImport from '../commands/package/import';
 
 vi.mock('node:fs');
@@ -12,6 +12,9 @@ vi.mock('node:fs');
 const packageRoot = process.cwd();
 
 interface ImportFlags {
+	json?: boolean;
+	skillId?: string[];
+	deleteSkillId?: string[];
 	file: string;
 	projectId?: string;
 	folderId?: string;
@@ -61,6 +64,30 @@ function stubCommand(
 describe('package import command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('outputs saved Skill results in JSON and still exits with an error', async () => {
+		const details = {
+			skills: [
+				{
+					sourceSkillId: 'skill',
+					localId: 'skill',
+					name: 'Guide',
+					projectId: null,
+					status: 'created',
+				},
+			],
+			counts: { skills: { created: 1, updated: 0, unchanged: 0, skipped: 0, deleted: 0 } },
+		};
+		const { command, internals } = stubCommand(
+			{ file: '/tmp/export.n8np', json: true },
+			vi.fn().mockRejectedValue(new ApiError(500, 'Import failed', undefined, details)),
+		);
+		await expect(command.run()).rejects.toMatchObject({ oclif: { exit: 1 } });
+		expect(internals.output).toHaveBeenCalledWith(
+			{ message: 'Import failed', statusCode: 500, ...details },
+			expect.objectContaining({ json: true }),
+		);
 	});
 
 	it('forwards publishingPolicy and all sibling options to the import API', async () => {
@@ -305,4 +332,17 @@ describe('package import command', () => {
 			);
 		});
 	});
+});
+
+it('forwards standalone Skill selection and explicit removals', async () => {
+	const { command, importPackage } = stubCommand({
+		file: '/tmp/skills.n8np',
+		skillId: ['one'],
+		deleteSkillId: ['two'],
+	});
+	await command.run();
+	expect(importPackage).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({ skillIds: ['one'], deletedSkillIds: ['two'] }),
+	);
 });

@@ -92,6 +92,7 @@ export class AgentSkillUsage extends SkillUsage {
 		oldName: string,
 		newName: string,
 		ctx: OperationContext,
+		plannedNames?: ReadonlyMap<string, string>,
 	): Promise<void> {
 		const agents = await this.agentSkillRepository.findFollowingAgents(skillId, ctx);
 		const refs = await this.agentSkillRepository.findDependencies(
@@ -105,7 +106,9 @@ export class AgentSkillUsage extends SkillUsage {
 		const nameOf = await this.skillRuntime.runtimeNames(agents.flatMap(otherRefs), ctx);
 		const clashing = agents.filter((agent) =>
 			renameIntroducesClash(
-				otherRefs(agent).flatMap((ref) => nameOf(ref) ?? []),
+				otherRefs(agent).flatMap(
+					(ref) => (ref.versionId ? undefined : plannedNames?.get(ref.id)) ?? nameOf(ref) ?? [],
+				),
 				oldName,
 				newName,
 			),

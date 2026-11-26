@@ -4,6 +4,7 @@ import { ImportOrchestrator, type ImportPlan } from './import-orchestrator';
 import { N8nPackageParser } from './n8n-package-parser';
 import { placeCredentialData } from './package-layout';
 import { credentialMissingModeCreates } from '../entities/credential/credential-missing-mode';
+import type { StandaloneSkillPlan } from '../entities/skill/skill-import.types';
 import type { PackageReader } from '../io/package-reader';
 import type { BlockingIssue, ImportPlanMode } from '../n8n-packages.types';
 
@@ -18,9 +19,10 @@ export class PackageImportPreflight {
 		plans: ImportPlan[],
 		reader: PackageReader,
 		apiKeyScopes: string[] | undefined,
+		skillPlan?: StandaloneSkillPlan,
 	): Promise<ImportPlan[]> {
 		const prepared = await this.withCredentialData(plans, reader);
-		await this.importOrchestrator.assertNotBlocked(prepared, { apiKeyScopes });
+		await this.importOrchestrator.assertNotBlocked(prepared, { apiKeyScopes, skillPlan });
 		return prepared;
 	}
 
@@ -33,9 +35,14 @@ export class PackageImportPreflight {
 		reader: PackageReader,
 		apiKeyScopes: string[] | undefined,
 		mode: ImportPlanMode,
+		skillPlan?: StandaloneSkillPlan,
 	): Promise<{ plans: ImportPlan[]; issues: BlockingIssue[] }> {
 		const prepared = await this.withCredentialData(plans, reader);
-		const issues = await this.importOrchestrator.blockingIssues(prepared, { apiKeyScopes, mode });
+		const issues = await this.importOrchestrator.blockingIssues(prepared, {
+			apiKeyScopes,
+			mode,
+			skillPlan,
+		});
 		return { plans: prepared, issues };
 	}
 

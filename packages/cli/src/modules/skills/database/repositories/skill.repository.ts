@@ -173,7 +173,7 @@ export class SkillRepository {
 		visibility: SkillVisibility,
 		filter: SkillMatchFilter,
 		ctx: OperationContext = {},
-	): Promise<Array<{ sourceId: string | null; count: number }>> {
+	): Promise<{ sourceId: string | null; count: number }[]> {
 		const query = this.filteredQuery(visibility, filter, ctx);
 		if (!query) return [];
 		const rows = await query
@@ -320,7 +320,7 @@ export class SkillRepository {
 	): Promise<{
 		skill: AssistantSkillAccess;
 		version: SkillVersion;
-		files: Array<{ path: string }>;
+		files: { path: string }[];
 	} | null> {
 		const {
 			entities: [version],
@@ -466,7 +466,7 @@ export class SkillRepository {
 	async findLatestNamesInTarget(
 		target: SkillTarget,
 		ctx: OperationContext = {},
-	): Promise<Array<{ skillId: string; name: string }>> {
+	): Promise<{ skillId: string; name: string }[]> {
 		const query = highestVersionsQuery(this.table.managerFor(ctx))
 			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 			.select(['version.skillId', 'version.name']);
@@ -572,7 +572,7 @@ export class SkillRepository {
 	async findVersionList(
 		skillId: string,
 		ctx: OperationContext = {},
-	): Promise<Array<Pick<SkillVersion, 'id' | 'version' | 'createdById' | 'createdAt'>>> {
+	): Promise<Pick<SkillVersion, 'id' | 'version' | 'createdById' | 'createdAt'>[]> {
 		return await this.table.managerFor(ctx).find(SkillVersion, {
 			select: ['id', 'version', 'createdById', 'createdAt'],
 			where: { skillId },
@@ -634,6 +634,17 @@ export class SkillRepository {
 				{ name: project.name, type: project.type, icon: project.icon },
 			]),
 		);
+	}
+
+	/** Skill IDs in the selected projects, in a fixed order. */
+	async findIdsInProjects(projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+		const rows = await this.table.find({
+			select: ['id'],
+			where: { projectId: In(projectIds) },
+			order: { id: 'ASC' },
+		});
+		return rows.map(({ id }) => id);
 	}
 
 	/** Ids of every skill, optionally of one source, in id order. For test fixtures. */

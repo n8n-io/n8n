@@ -1,18 +1,20 @@
 # package
 
-Export and import Agents and workflows as portable n8n packages (`.n8np` archives).
+Export and import Agents, workflows, and Skills as portable n8n packages (`.n8np` archives).
 
 > **Beta feature:** n8n packages are still under development and there may be breaking changes on APIs.
 
 ## `package export`
 
-Export Agents, workflows, folders, or projects into a gzipped `.n8np` archive.
+Export Agents, workflows, Skills, folders, or projects into a gzipped `.n8np` archive.
 Each exported folder includes its nested folders. Combine Agent, workflow, and
 folder IDs in one selection. Use project IDs separately for whole-project exports.
 
 ```bash
 n8n-cli package export --agent-id=reviewer --agent-id=helper --dependency-policy=include-in-package -o agents.n8np
 n8n-cli package export --agent-id=reviewer --workflow-id=tool -o mixed.n8np
+n8n-cli package export --skill-id=guide -o skills.n8np
+n8n-cli package export --project-id=abc --include-skills -o project-with-skills.n8np
 n8n-cli package export --workflow-id=abc --output=export.n8np
 n8n-cli package export -w abc -w def -o team.n8np
 n8n-cli package export --folder-id=xyz -o folders.n8np
@@ -24,6 +26,8 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 
 | Flag | Description |
 |------|-------------|
+| `--skill-id` | Project or instance Skill ID to include. Repeat to select several. No Agent is required. |
+| `--include-skills` | Include all Skills owned by the selected projects. Requires `--project-id`. |
 | `--agent-id` | Agent ID to include. Repeat the flag to export several. |
 | `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
 | `--folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
@@ -36,10 +40,13 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--version-policy` | Which version of each workflow and agent to export. `latest` (default) exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. Skills always export their latest saved version. |
 | `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. A literal value travels only when it decides whether another credential field shows (a toggle or an auth type, for example) and an exported expression sits in that field. No other literal value travels. |
 
-Provide at least one `--agent-id`, `--workflow-id`, `--folder-id`, or `--project-id`.
+Provide at least one `--skill-id`, `--agent-id`, `--workflow-id`, `--folder-id`, or `--project-id`.
 Explicit Agent selections require `agent:export`. Workflow and folder selections
 require `workflow:export`. Mixed selections require both grants. Whole-project
 exports require `project:export`, including projects with Agents.
+Explicit Skill selection and `--include-skills` also require the `skill:read` API-key grant.
+The caller must separately have `projectSkill:read` permission on each selected
+project, or read access to the selected instance Skill.
 
 Export summaries include Agent counts from the server, including added dependencies.
 JSON output includes these counts and the selected Agent IDs.
@@ -59,7 +66,7 @@ the export to fail only when `--dependency-policy` is `fail` or
 requirements.
 
 Skills have no published versions. The package always contains the latest saved
-version of each skill that an exported Agent uses. This also applies under
+version of each selected Skill and each Skill that an exported Agent uses. This also applies under
 `published-strict`. The package does not pin a skill version.
 
 `--dependency-policy` also applies to workflows and agents. Dependencies include
@@ -71,7 +78,7 @@ already exist on the target instance.
 
 ## `package import`
 
-Import Agent-only, mixed Agent/workflow, or whole-project `.n8np` archives.
+Import Skill-only, Agent-only, mixed, or whole-project `.n8np` archives.
 The Agents module must be enabled when the archive contains Agents.
 Use this command for selected-Agent exports. Agent content is not supported by
 `package import-selection`, directory imports, or Promotions.
@@ -88,6 +95,8 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"c
 | Flag | Description |
 |------|-------------|
 | `--file` | Path to the `.n8np` package file. (required) |
+| `--skill-id` | Import only these Skill IDs. Repeat to select several. Omit to use the package selection. |
+| `--delete-skill-id` | Explicitly remove an unused destination Skill. Repeat to remove several. Unselected Skills remain. |
 | `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. The policy also applies to the skills of imported Agents: `new-version` saves a changed skill as a new version, `skip` keeps the existing skill, and `fail` blocks the import when a matched skill has other content. The import creates a skill that does not exist. See [Skills](#skills). |
 | `-p, --project-id` | Target project ID. Defaults to your personal project. (alias: `--project`) |
 | `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
@@ -120,6 +129,11 @@ Requires the API key to hold:
 - `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish` — when the import plans that action. Skipped Agents require no write grants.
 - `skill:create` — when the import creates a project or instance skill. The skills of one Agent need only the Agent grants.
 - `skill:update` — when the import saves a new version of a matched project or instance skill.
+- `skill:delete` — when the import explicitly removes an unused Skill.
+
+A Skill-only import needs no Agent or workflow grants. Instance Skills need no
+destination project. Project Skills from a loose package use `--project-id` or
+the caller’s personal project. A project package keeps its project IDs.
 - `workflow:activate` — when the import publishes a workflow, including a republish under the default `--publishing-policy=preserve-published-state`. Skipped workflows and workflows marked as archived in the package need no activation grant.
 - `workflow:deactivate` — when `--publishing-policy=match-source` or `unpublish-all` unpublishes a workflow. Archiving a workflow needs only `workflow:delete`.
 - `workflow:delete` — when `--conflict-policy=new-version` archives or restores a matched workflow, or when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`) and the import removes a workflow
@@ -198,25 +212,41 @@ are stubbed instead of blocking the import.
 
 ### Skills
 
-The import plans the skills of each imported Agent together with that Agent.
-It does not change the skills of skipped Agents.
+Select Skills independently with `--skill-id`. Whole-project exports include
+all project Skills when `--include-skills` is set. Skills that an exported Agent
+uses remain dependencies. The import preserves Skill IDs, scope, frontmatter,
+instructions, and supported reference files.
 
 Protected instances reject Skill changes during package planning and apply.
 
-- `--conflict-policy` applies to skills too. `new-version` saves a changed skill
-  as a new skill version. `skip` keeps the existing skill. `fail` blocks the
-  import when a matched skill has other content. A matched skill with the same
-  content stays unchanged. The import creates a skill that does not exist.
-- Under every policy, the import is blocked when a package skill ID belongs to
-  another project, another Agent or the instance, or when its scope already has
-  a skill with that name. `skip` does not prevent this.
-- A new version of a project or instance skill applies to all Agents on the
-  instance that follow the skill. This includes Agents that are not in the
-  package, and their drafts.
-- A skill conflict returns HTTP 422, not 409. This also applies under
-  `--conflict-policy=fail`. The import plans a skill as part of each Agent that
-  uses it. It reports every skill problem as an `agent-invalid` issue on that
-  Agent, with the issue path `skills.<skillId>`.
+- `new-version` saves changed content as a new local version. It also applies
+  renames. `skip` keeps existing content. `fail` blocks different content.
+  Identical content creates no version. The import does not merge text.
+- Standalone selection rejects an ID in another scope, a duplicate name, or a
+  source-managed destination. These checks run before content writes.
+- New versions update consumers that follow latest. Published and pinned
+  versions stay unchanged. Plans and results include `followingAgentCount`.
+- Removal is explicit. A missing or empty Skills collection removes nothing.
+  A requested removal fails if an Agent still references the Skill, including
+  a published version.
+- Synced Skills travel as content snapshots. Source connections, credentials,
+  and authentication do not travel. New destination Skills have source `import`.
+- Results include `skills` and `counts.skills` with created, updated, unchanged,
+  skipped, and deleted totals. Standalone conflicts return HTTP 409 with a
+  `skill-conflict` issue and `skillId`. Agent dependency conflicts retain the
+  `agent-invalid` issue and `skills.<skillId>` path. If a later import step fails
+  after Skill writes, the CLI shows the saved Skill outcomes and counts. With
+  `--json`, it also writes them to standard output. The command exits with an
+  error in both modes.
+
+Standalone selections use package format 2. This destination also reads format
+1. Older destinations reject format 2. Skills must be available on the
+destination. Unsupported formats and files fail validation before writes.
+The current file format supports Markdown reference files under `references/`.
+It does not carry arbitrary paths or binary files.
+
+The import plans Agent dependencies with their Agent. It leaves dependencies
+of skipped Agents unchanged unless they are also selected independently.
 
 A package skill holds the Markdown instructions of the skill and its supporting
 files. A supporting file can have any extension, for example `.md`, `.py` or
@@ -239,7 +269,7 @@ binary files, so `load_skill` does not list them or return their contents.
 
 ## `package import-selection`
 
-Import a chosen subset of workflows from a `.n8np` project package. Workflow and
+Import a chosen subset of workflows and Skills from a `.n8np` project package. Workflow and
 folder packages are not supported. The command imports workflows listed in
 `--selected-workflow-ids` and removes workflows listed in `--deleted-workflow-ids`
 (archived by default; see `--overwrite-deletion-policy`). It leaves workflows
@@ -249,6 +279,10 @@ referenced resources under the fixed policies below.
 The selection belongs to one source project (`--selected-project-id`). The command
 writes selected workflows into the target instance project with the same ID.
 It creates that project if it does not exist. There is no separate target option.
+
+Use `--selected-skill-ids` for Skill imports and `--deleted-skill-ids` for
+explicit removals. Both accept comma-separated IDs or repeated flags. Omitted
+Skill lists leave existing Skills unchanged.
 
 These policies are fixed:
 

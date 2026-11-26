@@ -1,6 +1,14 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
 export const exportPackageRequestFieldDocs = {
+	skillIds: {
+		description:
+			'Project or instance Skill IDs to export at their latest saved version. No Agent is required.',
+	},
+	includeSkills: {
+		description:
+			'Include all Skills owned by the selected projects. Requires projectIds and Skill read access.',
+	},
 	agentIds: {
 		description: 'IDs of the agents to include. Requires the agents module.',
 		example: ['uT9LdQx7rK2MvB4f'],

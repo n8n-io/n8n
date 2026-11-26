@@ -807,6 +807,20 @@ describe('SkillService', () => {
 			expect(skills.deleteSkill).toHaveBeenCalledWith('skill_a', TX_CTX);
 		});
 
+		it('uses the transaction for every read after a deletion was authorized', async () => {
+			skills.findLatestSaved.mockResolvedValue(
+				new Map([['skill_a', versionRow(skillRow('skill_a'), 1)]]),
+			);
+			const checked = (await service.findLatest(['skill_a'])).get('skill_a')!;
+			skills.findLatestSaved.mockClear();
+			await service.deleteChecked(checked, TX_CTX);
+			expect(access.requireAccess).not.toHaveBeenCalled();
+			expect(skills.findLatestSaved).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skills.deleteSkill).toHaveBeenCalledWith('skill_a', TX_CTX);
+		});
+
 		it('refuses while agents use the skill, and names only the agents the user may read', async () => {
 			await givenUsers();
 			projectScope.getProjectIds.mockResolvedValue([PROJECT]);

@@ -1,7 +1,9 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	ImportResultDto,
+	ImportBlockedErrorDto,
 	type ExportPackageRequestDto,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
@@ -61,6 +63,7 @@ import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-suppo
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
 import { createSkill, toSkillContent } from '@/modules/skills/testing';
+import { SkillService } from '@/modules/skills';
 import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
@@ -100,6 +103,7 @@ let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -954,3 +958,78 @@ it('rejects Agent content on import-selection while the Agents module is active'
 	expect(response.body.message).toContain('ordinary archive import');
 	expect(await records()).toEqual(before);
 });
+
+it.each([false, true])(
+	'imports standalone Skills with action scopes (refresh fails: %s)',
+	async (refreshFails) => {
+		if (refreshFails) {
+			await createSkill({
+				id: 'standalone',
+				projectId: null,
+				content: {
+					name: 'Standalone',
+					description: 'A guide',
+					instructions: 'Earlier instructions.',
+				},
+			});
+			await Container.get(AgentSkillRefsService).replaceDraftRefs(
+				sourceAgents[0],
+				[{ type: 'skill', id: 'standalone' }],
+				{},
+			);
+		}
+		const writer = new TarPackageWriter();
+		writer.writeFile(
+			'skills/standalone/skill.json',
+			JSON.stringify({
+				id: 'standalone',
+				scope: 'instance',
+				skill: { name: 'Standalone', description: 'A guide', instructions: 'Use short sentences.' },
+				frontmatter: null,
+			}),
+		);
+		writer.writeFile(
+			'manifest.json',
+			JSON.stringify({
+				packageFormatVersion: '2',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				skills: [{ id: 'standalone', name: 'Standalone', target: 'skills/standalone' }],
+				selectedSkillIds: ['standalone'],
+			}),
+		);
+		const buffer = await streamToBuffer(writer.finalize());
+		const reader = await createOwnerWithApiKey({ scopes: ['skill:read'] });
+		const denied = await upload(buffer, { projectId: '' }, reader);
+		expect(denied.statusCode).toBe(403);
+		const writerKey = await createOwnerWithApiKey({
+			scopes: [refreshFails ? 'skill:update' : 'skill:create'],
+		});
+		if (refreshFails)
+			vi.spyOn(Container.get(SkillService), 'refreshFollowingAgents').mockRejectedValueOnce(
+				new Error('Internal refresh failure'),
+			);
+		const imported = await upload(buffer, { projectId: '' }, writerKey);
+		expect(imported.statusCode).toBe(refreshFails ? 500 : 200);
+		if (refreshFails) {
+			expect(ImportBlockedErrorDto.parse(imported.body)).toMatchObject({
+				message: 'Package import failed after Skill changes were saved.',
+				skills: [expect.objectContaining({ localId: 'standalone', status: 'updated' })],
+				counts: { skills: { updated: 1 } },
+			});
+		} else expect(ImportResultDto.parse(imported.body).counts.skills?.created).toBe(1);
+		const unchanged = await upload(buffer, { projectId: '' }, reader);
+		expect(unchanged.statusCode).toBe(200);
+		expect(unchanged.body.counts.skills.unchanged).toBe(1);
+		if (refreshFails)
+			await Container.get(AgentSkillRefsService).replaceDraftRefs(sourceAgents[0], [], {});
+		const remover = await createOwnerWithApiKey({ scopes: ['skill:delete'] });
+		const removed = await upload(
+			buffer,
+			{ projectId: '', skillIds: '[]', deletedSkillIds: '["standalone"]' },
+			remover,
+		);
+		expect(removed.statusCode).toBe(200);
+		expect(removed.body.counts.skills.deleted).toBe(1);
+	},
+);

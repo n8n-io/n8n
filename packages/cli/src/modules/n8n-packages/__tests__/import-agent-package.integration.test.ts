@@ -191,6 +191,7 @@ describe('Agent package import boundary', () => {
 	it('imports a workflow package with an empty Agent collection while Agents are disabled', async () => {
 		const fixture = projectAgentsFixture();
 		fixture.manifest.agents = [];
+		fixture.manifest.skills = [];
 		delete fixture.manifest.requirements;
 		for (const filePath of Object.keys(fixture.files)) {
 			if (filePath.includes('/agents/')) delete fixture.files[filePath];

@@ -1,9 +1,9 @@
+import { ModuleRegistry, LicenseState } from '@n8n/backend-common';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	AgentJsonConfigSchema,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -30,6 +30,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
+import { SkillsGate } from '@/modules/skills';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
@@ -80,6 +81,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	license.mockLicenseState(Container.get(LicenseState));
 	Container.get(ChatIntegrationRegistry).register(Container.get(TeamsIntegration));
 	planner = Container.get(ImportOrchestrator);
@@ -725,6 +727,22 @@ it.each(['create', 'update'] as const)(
 	},
 );
 
+it('reports unavailable Skill dependencies before writes', async () => {
+	vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	const before = await records();
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining('unavailable'),
+		}),
+	]);
+	expect(await records()).toEqual(before);
+});
+
 it.each([
 	['project', 'projectSkill:create'],
 	['instance', 'skill:create'],
@@ -932,7 +950,7 @@ it('reports a rename that clashes with a skill of another Agent that follows the
 	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
 	request.skills = [sharedSkill('skill_shared', 'project', 'Pricing')];
 	const plan = await planner.plan(request);
-	expect(plan.blockingIssues).toEqual([
+	expect(await planner.blockingIssues([plan], { mode: 'check', apiKeyScopes: undefined })).toEqual([
 		expect.objectContaining({
 			type: 'agent-invalid',
 			path: 'skills.skill_shared',

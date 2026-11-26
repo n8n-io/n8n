@@ -1,18 +1,18 @@
 operationId: importPackageSelection
 tags:
   - N8nPackage
-summary: 'Beta: Import a selected subset of workflows from an n8n package'
+summary: 'Beta: Import selected workflows and Skills from an n8n package'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Imports a chosen subset of workflows from one source project of a gzip-compressed tar package (`.n8np`), instead of the whole package. Send the archive as the multipart field `package`. The import is **additive** (cherry-pick): it never removes a workflow the selection omits. It creates or updates only the workflows named in `selectedWorkflowIds`, and deletes only the destination workflows named in `deletedWorkflowIds`.
+  Imports chosen workflows and Skills from one source project of a gzip-compressed tar package (`.n8np`), instead of the whole package. Send the archive as the multipart field `package`. The import is **additive** (cherry-pick): it never removes a workflow the selection omits. It creates or updates only the workflows named in `selectedWorkflowIds`, and deletes only the destination workflows named in `deletedWorkflowIds`. Use `selectedSkillIds` to import standalone Skills and `deletedSkillIds` for explicit removals. These fields are JSON arrays. Omitted Skill lists leave Skills unchanged. Skill actions require `skill:create`, `skill:update`, or `skill:delete`. Unchanged Skills need no write scope. No workflow grant is needed for a Skill-only selection. Instance Skills keep instance scope. Project Skills must belong to the selected project.
 
   `selectedProjectId` names the single source project the selection is scoped to (its id as it appears in the package). The selected workflows are written into the instance project whose id matches that source project, which is created if it does not yet exist; there is no separate target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an absent id is a tolerated no-op, and a delete needs the `workflow:delete` scope. A delete id must not match the destination id of a selected workflow, including when `conflictPolicy=skip`. This overlap returns a 409 before any writes.
 
   The package must be a project package (a workflow package is rejected with a 400). The cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The API key also needs `project:create` when the selected project does not exist. The import never changes an existing project, so it never needs `project:update`. It needs `folder:create` and a license that supports folders only when it creates a folder for a selected workflow, or a folder above it. Packages that contain Agents are rejected before writes. Use the ordinary import endpoint for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and `idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. Publication remains fixed to `match-source`. When `match-source` publishes a selected workflow, the API key also needs `workflow:activate`. When it unpublishes one, the key needs `workflow:deactivate`. Archiving or restoring a matched workflow also needs `workflow:delete`. Restoring and publishing a workflow requires both `workflow:delete` and `workflow:activate`.
 
-  Requires the `workflow:import` API key scope.
-x-required-scope: workflow:import
+  Requires one of these API key scopes: `workflow:import`, `skill:create`, `skill:update`, `skill:delete`, `skill:read`.
+x-required-scope: workflow:import,skill:create,skill:update,skill:delete,skill:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
@@ -26,6 +26,12 @@ requestBody:
             type: string
             description: Gzip-compressed tar package (`.n8np`).
             format: binary
+          selectedSkillIds:
+            type: string
+            description: Source Skill IDs to import as a JSON array. Omit or send an empty array to leave Skills unselected.
+          deletedSkillIds:
+            type: string
+            description: Destination Skill IDs to remove as a JSON array. Consumer references and source-managed destinations block removal.
           selectedProjectId:
             type: string
             minLength: 1
@@ -90,6 +96,67 @@ responses:
               type: array
               items:
                 $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+            skills:
+              type: array
+              items:
+                type: object
+                properties:
+                  sourceSkillId:
+                    type: string
+                  localId:
+                    type: string
+                  name:
+                    type: string
+                  projectId:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                    enum:
+                      - created
+                      - updated
+                      - unchanged
+                      - skipped
+                      - deleted
+                  followingAgentCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - sourceSkillId
+                  - localId
+                  - name
+                  - projectId
+                  - status
+                  - followingAgentCount
+            counts:
+              type: object
+              properties:
+                skills:
+                  type: object
+                  properties:
+                    created:
+                      type: integer
+                      minimum: 0
+                    updated:
+                      type: integer
+                      minimum: 0
+                    unchanged:
+                      type: integer
+                      minimum: 0
+                    skipped:
+                      type: integer
+                      minimum: 0
+                    deleted:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - created
+                    - updated
+                    - unchanged
+                    - skipped
+                    - deleted
+              required:
+                - skills
           required:
             - message
             - issues
@@ -110,6 +177,67 @@ responses:
               type: array
               items:
                 $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+            skills:
+              type: array
+              items:
+                type: object
+                properties:
+                  sourceSkillId:
+                    type: string
+                  localId:
+                    type: string
+                  name:
+                    type: string
+                  projectId:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                    enum:
+                      - created
+                      - updated
+                      - unchanged
+                      - skipped
+                      - deleted
+                  followingAgentCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - sourceSkillId
+                  - localId
+                  - name
+                  - projectId
+                  - status
+                  - followingAgentCount
+            counts:
+              type: object
+              properties:
+                skills:
+                  type: object
+                  properties:
+                    created:
+                      type: integer
+                      minimum: 0
+                    updated:
+                      type: integer
+                      minimum: 0
+                    unchanged:
+                      type: integer
+                      minimum: 0
+                    skipped:
+                      type: integer
+                      minimum: 0
+                    deleted:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - created
+                    - updated
+                    - unchanged
+                    - skipped
+                    - deleted
+              required:
+                - skills
           required:
             - message
             - issues

@@ -21,7 +21,10 @@ import type { PackageManifest } from '../spec/manifest.schema';
 
 export function packageImportScopes(manifest: PackageManifest): Scope[] {
 	const scopes: Scope[] = [];
-	if (manifest.workflows?.length || (!manifest.agents?.length && !manifest.projects?.length)) {
+	if (
+		manifest.workflows?.length ||
+		(!manifest.agents?.length && !manifest.projects?.length && !manifest.skills)
+	) {
 		scopes.push('workflow:import');
 	}
 	if (manifest.agents?.length) scopes.push('agent:import');

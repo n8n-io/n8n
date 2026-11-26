@@ -1,4 +1,8 @@
-import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+import type {
+	ImportedSkillSummary,
+	SerializedCredential,
+	SerializedVariable,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { UnexpectedError } from '@n8n/errors';
@@ -25,6 +29,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportedProjectSummary,
 	ImportPlanMode,
 	ImportSelection,
 	ResolvedImportRequest,
@@ -63,9 +68,17 @@ import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
+import type { StandaloneSkillPlan } from '../entities/skill/skill-import.types';
+import {
+	planStandaloneSkills,
+	applyStandaloneSkills,
+	addSkillResults,
+	throwWithSkillResults,
+} from './package-skill-plan';
 
 /** Everything an import will do, read before its first write. */
 export interface PackageImportPlan {
+	skillPlan?: StandaloneSkillPlan;
 	request: ResolvedImportRequest;
 	manifest: PackageManifest;
 	projectPlan: ProjectImportPlan;
@@ -154,10 +167,7 @@ export class ProjectPackageImporter {
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
 		// Read once: Agents in any project can reference an instance skill.
-		const packageSkills =
-			!request.selection && manifest.agents?.length
-				? await this.packageParser.getSkills(reader)
-				: [];
+		const packageSkills = manifest.skills?.length ? await this.packageParser.getSkills(reader) : [];
 		// Projects match by id, so a package project id is also its destination project id.
 		const updateScope = credentialUpdateScope(selectedProjects.map(({ id }) => id));
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
@@ -189,20 +199,31 @@ export class ProjectPackageImporter {
 			inputs.push(input);
 		}
 		const draftPlans = await this.importOrchestrator.planPackage(inputs, mode);
+		const skillPlan = await planStandaloneSkills(request, manifest, packageSkills, draftPlans, {
+			pendingProjectIds: pendingCreateIds,
+		});
 		const { plans, issues } = await this.importPreflight.check(
 			draftPlans,
 			reader,
 			request.apiKeyScopes,
 			mode,
+			skillPlan,
 		);
 		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
 
-		return { request, manifest, projectPlan, scopes, issues };
+		return {
+			request,
+			manifest,
+			projectPlan,
+			scopes,
+			skillPlan,
+			issues,
+		};
 	}
 
 	/** Writes a plan that has no issues. */
 	async applyPlan(plan: PackageImportPlan): Promise<ImportOutcome> {
-		const { request, manifest, projectPlan, scopes: planned } = plan;
+		const { request, projectPlan, scopes: planned } = plan;
 		if (plan.issues.length > 0) {
 			throw new UnexpectedError('An import plan with blocking issues cannot be applied');
 		}
@@ -210,7 +231,20 @@ export class ProjectPackageImporter {
 		await this.importOrchestrator.assertCanUpdateCredentials(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
+		const skillOutcomes = await applyStandaloneSkills(request, plan.skillPlan, 'writes');
+		try {
+			const outcome = await this.applyProjectContent(plan, projectSummaries, skillOutcomes);
+			return { ...outcome, result: addSkillResults(outcome.result, skillOutcomes, plan.skillPlan) };
+		} catch (error) {
+			throwWithSkillResults(error, skillOutcomes);
+		}
+	}
 
+	private async applyProjectContent(
+		{ request, manifest, scopes: planned, skillPlan }: PackageImportPlan,
+		projectSummaries: ImportedProjectSummary[],
+		skillOutcomes: ImportedSkillSummary[],
+	): Promise<ImportOutcome> {
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.
 		const packageWorkflowBindings: ImportBindingMap = new Map(
@@ -231,6 +265,7 @@ export class ProjectPackageImporter {
 				content: await this.importOrchestrator.apply(plan, packageWorkflowBindings),
 			});
 		}
+		skillOutcomes.push(...(await applyStandaloneSkills(request, skillPlan, 'removals')));
 
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
@@ -427,6 +462,7 @@ export class ProjectPackageImporter {
 			workflows,
 			agents,
 			skills: importWide.packageSkills,
+			standaloneSkillsOnly: !!manifest.skills && workflows.length === 0 && agents.length === 0,
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,
@@ -451,7 +487,11 @@ export class ProjectPackageImporter {
 		request: ResolvedImportRequest,
 		manifest: PackageManifest,
 	): void {
-		if ((manifest.workflows?.length ?? 0) > 0) {
+		if (
+			(request.selection
+				? request.selection.selectedWorkflowIds.length
+				: (manifest.workflows?.length ?? 0)) > 0
+		) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		}
 

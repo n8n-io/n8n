@@ -797,3 +797,24 @@ describe('ImportPackageRequestDto', () => {
 		});
 	});
 });
+
+describe('Skill selection', () => {
+	it('parses explicit IDs and preserves empty selection', () => {
+		expect(
+			ImportPackageRequestDto.parse(
+				withPackageFile({
+					conflictPolicy: 'new-version',
+					skillIds: '[]',
+					deletedSkillIds: '["one"]',
+				}),
+			),
+		).toMatchObject({ skillIds: [], deletedSkillIds: ['one'] });
+	});
+	it.each(['one', '{}', '[42]'])('rejects malformed IDs: %s', (skillIds) => {
+		expect(
+			ImportPackageRequestDto.safeParse(
+				withPackageFile({ conflictPolicy: 'new-version', skillIds }),
+			).success,
+		).toBe(false);
+	});
+});

@@ -10,6 +10,8 @@ vi.mock('node:fs');
 const mockedWriteFileSync = vi.mocked(fs.writeFileSync);
 
 interface ExportFlags {
+	skillId?: string[];
+	includeSkills?: boolean;
 	agentId?: string[];
 	workflowId?: string[];
 	folderId?: string[];
@@ -496,4 +498,31 @@ describe('package export command', () => {
 		const message = vi.mocked(internals.succeed).mock.calls[0][0];
 		expect(message).toBe('Exported 2 workflow(s), 2 tag(s) to /tmp/team.n8np');
 	});
+});
+
+it('exports standalone Skills and includes the saved count', async () => {
+	const { command, internals, exportPackage } = stubCommand(
+		{ skillId: ['one', 'two'], output: '/tmp/skills.n8np' },
+		vi.fn().mockResolvedValue({
+			archive: Buffer.from('package'),
+			counts: { ...DEFAULT_COUNTS, skills: 2 },
+		}),
+	);
+	await command.run();
+	expect(exportPackage).toHaveBeenCalledWith(expect.objectContaining({ skillIds: ['one', 'two'] }));
+	expect(internals.succeed).toHaveBeenCalledWith(
+		'Exported 2 skill(s) to /tmp/skills.n8np',
+		expect.anything(),
+		expect.objectContaining({ skillIds: ['one', 'two'] }),
+	);
+});
+
+it('requires project selection for include-skills', async () => {
+	const { command, exportPackage } = stubCommand({
+		skillId: ['one'],
+		includeSkills: true,
+		output: '/tmp/skills.n8np',
+	});
+	await expect(command.run()).rejects.toThrow('--include-skills requires --project-id');
+	expect(exportPackage).not.toHaveBeenCalled();
 });

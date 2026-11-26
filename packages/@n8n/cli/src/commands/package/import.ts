@@ -3,11 +3,11 @@ import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { toPackagesError } from './package-error';
+import { savedSkillResults, toPackagesError } from './package-error';
 import { BaseCommand } from '../../base-command';
 
 export default class PackageImport extends BaseCommand {
-	static override description = 'Import Agents and workflows from an n8n package (.n8np)';
+	static override description = 'Import Agents, workflows, and Skills from an n8n package (.n8np)';
 
 	static override examples = [
 		'<%= config.bin %> package import --file=export.n8np',
@@ -19,6 +19,16 @@ export default class PackageImport extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
+		skillId: Flags.string({
+			description: 'Skill ID to import (repeat for multiple)',
+			multiple: true,
+			aliases: ['skill-id'],
+		}),
+		deleteSkillId: Flags.string({
+			description: 'Destination Skill ID to remove (repeat for multiple)',
+			multiple: true,
+			aliases: ['delete-skill-id'],
+		}),
 		file: Flags.string({ description: 'Path to the .n8np package file', required: true }),
 		projectId: Flags.string({
 			char: 'p',
@@ -163,6 +173,8 @@ export default class PackageImport extends BaseCommand {
 					{ buffer, filename: path.basename(flags.file) },
 					{
 						projectId: flags.projectId,
+						...(flags.skillId ? { skillIds: flags.skillId } : {}),
+						...(flags.deleteSkillId ? { deletedSkillIds: flags.deleteSkillId } : {}),
 						folderId: flags.folderId,
 						conflictPolicy: flags.conflictPolicy,
 						publishingPolicy: flags.publishingPolicy,
@@ -186,6 +198,8 @@ export default class PackageImport extends BaseCommand {
 					},
 				);
 			} catch (error) {
+				const saved = savedSkillResults(error);
+				if (saved && this.isJsonMode(flags)) this.output(saved, flags);
 				throw toPackagesError(error);
 			}
 			this.output(result, flags);

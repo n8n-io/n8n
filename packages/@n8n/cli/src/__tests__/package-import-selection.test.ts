@@ -2,7 +2,7 @@ import { Config } from '@oclif/core';
 import * as fs from 'node:fs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { N8nClient } from '../client';
+import { ApiError, type N8nClient } from '../client';
 import PackageImportSelection from '../commands/package/import-selection';
 
 vi.mock('node:fs');
@@ -11,6 +11,9 @@ vi.mock('node:fs');
 const packageRoot = process.cwd();
 
 interface ImportSelectionFlags {
+	json?: boolean;
+	selectedSkillIds?: string[];
+	deletedSkillIds?: string[];
 	file: string;
 	selectedProjectId: string;
 	selectedWorkflowIds?: string[];
@@ -45,6 +48,30 @@ function stubCommand(
 describe('package import-selection command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('outputs saved Skill results in JSON and still exits with an error', async () => {
+		const details = {
+			skills: [
+				{
+					sourceSkillId: 'skill',
+					localId: 'skill',
+					name: 'Guide',
+					projectId: 'p1',
+					status: 'updated',
+				},
+			],
+			counts: { skills: { created: 0, updated: 1, unchanged: 0, skipped: 0, deleted: 0 } },
+		};
+		const { command, internals } = stubCommand(
+			{ file: '/tmp/export.n8np', selectedProjectId: 'p1', json: true },
+			vi.fn().mockRejectedValue(new ApiError(409, 'Import failed', undefined, details)),
+		);
+		await expect(command.run()).rejects.toMatchObject({ oclif: { exit: 1 } });
+		expect(internals.output).toHaveBeenCalledWith(
+			{ message: 'Import failed', statusCode: 409, ...details },
+			expect.objectContaining({ json: true }),
+		);
 	});
 
 	it('forwards the selection and options to the client, with the id lists as arrays', async () => {
@@ -136,6 +163,8 @@ describe('package import-selection command', () => {
 				'--selected-project-id=sp-1',
 				'--selected-workflow-ids=w-1,w-2',
 				'--deleted-workflow-ids=w-3,w-4',
+				'--selected-skill-ids=s-1,s-2',
+				'--deleted-skill-ids=s-3,s-4',
 			]);
 
 			expect(importPackageSelection).toHaveBeenCalledWith(
@@ -143,6 +172,8 @@ describe('package import-selection command', () => {
 				expect.objectContaining({
 					selectedWorkflowIds: ['w-1', 'w-2'],
 					deletedWorkflowIds: ['w-3', 'w-4'],
+					selectedSkillIds: ['s-1', 's-2'],
+					deletedSkillIds: ['s-3', 's-4'],
 				}),
 			);
 		});
@@ -153,6 +184,10 @@ describe('package import-selection command', () => {
 				'--selected-project-id=sp-1',
 				'--selected-workflow-ids=w-1',
 				'--selected-workflow-ids=w-2',
+				'--selected-skill-ids=s-1',
+				'--selected-skill-ids=s-2',
+				'--deleted-skill-ids=s-3',
+				'--deleted-skill-ids=s-4',
 				'--conflict-policy=skip',
 				'--id-policy=source',
 			]);
@@ -162,6 +197,8 @@ describe('package import-selection command', () => {
 				expect.objectContaining({
 					selectedWorkflowIds: ['w-1', 'w-2'],
 					conflictPolicy: 'skip',
+					selectedSkillIds: ['s-1', 's-2'],
+					deletedSkillIds: ['s-3', 's-4'],
 					idPolicy: 'source',
 				}),
 			);

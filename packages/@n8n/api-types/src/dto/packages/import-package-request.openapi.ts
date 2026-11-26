@@ -1,6 +1,14 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
 export const importPackageRequestFieldDocs = {
+	skillIds: {
+		description:
+			'Import only these Skills. Send a JSON array. An empty array selects none. Omit to use the package selection.',
+	},
+	deletedSkillIds: {
+		description:
+			'Explicit destination Skill removals as a JSON array. Consumers and source-managed Skills prevent removal.',
+	},
 	package: { description: 'Gzip-compressed tar package (`.n8np`).' },
 	projectId: {
 		description:
@@ -64,7 +72,7 @@ export const importPackageRequestFieldDocs = {
 	},
 	conflictPolicy: {
 		description:
-			'Applies to Agents, workflows and the skills of imported Agents. `new-version` replaces ' +
+			'Applies to Agents, workflows, and Skills. `new-version` replaces ' +
 			'matched definitions and saves a changed skill as a new version. ' +
 			'`fail` rejects the import when an Agent or workflow matches, or when a matched skill ' +
 			'has other content. A matched skill with the same content is kept. ' +
@@ -72,7 +80,7 @@ export const importPackageRequestFieldDocs = {
 			'All policies create entities and skills that have no match. ' +
 			'A new version of a project or instance skill applies to all Agents on the instance that ' +
 			'follow the skill, also Agents that are not in the package. ' +
-			'A skill conflict under `fail` is an `agent-invalid` issue, so it returns 422. ' +
+			'A standalone Skill conflict returns 409 with a `skill-conflict` issue. An Agent Skill dependency conflict returns 422 with an `agent-invalid` issue. ' +
 			'Matched workflows also follow the package ' +
 			'archive state under `new-version`; this change needs `workflow:delete`. ' +
 			'This required field replaces `workflowConflictPolicy`. The old field is rejected.',
@@ -259,6 +267,14 @@ export const importPackageRequestFieldDocs = {
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const importPackageSelectionRequestFieldDocs = {
+	selectedSkillIds: {
+		description:
+			'Source Skill IDs to import as a JSON array. Omit or send an empty array to leave Skills unselected.',
+	},
+	deletedSkillIds: {
+		description:
+			'Destination Skill IDs to remove as a JSON array. Consumer references and source-managed destinations block removal.',
+	},
 	selectedProjectId: {
 		description:
 			'Id of the single source project the selection is scoped to, as it appears in the package.',
