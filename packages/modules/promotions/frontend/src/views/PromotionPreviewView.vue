@@ -287,11 +287,24 @@ const submitLabel = computed(() =>
 const promoteDialogOpen = ref(false);
 // Lives here, not in the dialog, so the typed message survives a failed promote.
 const promoteCommitMessage = ref('');
-// The router reuses this view across projects and directions, so neither a draft nor an open
-// dialog may carry over.
+// A created binding can be the last change of an Apply. The empty preview then says the Apply is
+// done, so the step does not just disappear.
+const createdBindings = ref(0);
+const isAppliedByBindings = computed(
+	() => props.direction === 'apply' && createdBindings.value > 0,
+);
+
+async function onBindingCreated() {
+	createdBindings.value++;
+	await refresh();
+}
+
+// The router reuses this view across projects and directions, so neither a draft, an open
+// dialog nor a count of created bindings may carry over.
 watch([projectId, direction], () => {
 	promoteCommitMessage.value = '';
 	promoteDialogOpen.value = false;
+	createdBindings.value = 0;
 });
 
 async function onSubmit() {
@@ -441,9 +454,20 @@ const treeResizer = useResizablePanel({
 			v-else-if="state === 'empty'"
 			:class="$style.state"
 			:icon="{ type: 'icon', value: 'check' }"
-			:heading="i18n.baseText(`promotions.preview.state.empty.${direction}.title`)"
-			:description="i18n.baseText('promotions.preview.state.empty.description')"
-			data-test-id="promotion-preview-empty"
+			:heading="
+				isAppliedByBindings
+					? i18n.baseText('promotions.preview.state.applied.title')
+					: i18n.baseText(`promotions.preview.state.empty.${direction}.title`)
+			"
+			:description="
+				isAppliedByBindings
+					? i18n.baseText('promotions.preview.state.applied.description', {
+							adjustToNumber: createdBindings,
+							interpolate: { count: String(createdBindings) },
+						})
+					: i18n.baseText('promotions.preview.state.empty.description')
+			"
+			:data-test-id="isAppliedByBindings ? 'promotion-preview-applied' : 'promotion-preview-empty'"
 		/>
 		<template v-else-if="graph">
 			<div v-if="operation.error.value || operation.notice.value" :class="$style.operationNotices">
@@ -548,7 +572,7 @@ const treeResizer = useResizablePanel({
 				:class="$style.blockers"
 				:check="scopedCheck"
 				:busy="operation.isBusy.value"
-				@refresh="refresh"
+				@refresh="onBindingCreated"
 				@inspect="inspectFromBlockers"
 			>
 				<N8nCallout v-if="submitBlockedReason && !operation.error.value" theme="warning" slim>

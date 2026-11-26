@@ -1177,6 +1177,32 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
 	});
 
+	it('should say the Apply is done when the added binding was its last change', async () => {
+		const missing = { ...variable, name: 'API_URL', consumers: consumers('w3') };
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce(previewWithCheck(check({ missingBindings: [missing] })))
+			.mockResolvedValue({ ...previewWithCheck(), resources: [], dependencies: [] });
+		createBinding.mockResolvedValue({
+			kind: 'variable',
+			id: 'v1',
+			name: 'API_URL',
+			scope: { kind: 'global' },
+		});
+
+		const { getByRole, getByTestId, queryByTestId } = await renderApply();
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
+			name: /API_URL/,
+		});
+		await userEvent.click(within(row).getByRole('button', { name: 'Add variable' }));
+		await waitAllPromises();
+
+		expect(getByTestId('promotion-preview-applied')).toHaveTextContent(
+			'You added 1 missing item, and this project now matches the branch.',
+		);
+		expect(queryByTestId('promotion-preview-empty')).not.toBeInTheDocument();
+	});
+
 	describe('whole-instance Apply', () => {
 		// The branch no longer holds the "Sales" project, so Apply deletes it and its workflow.
 		// Apply applies the whole package, so the server marks nothing as selectable.
