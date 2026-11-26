@@ -183,13 +183,13 @@ export function describeSkillSourceClientContract(subject: () => SkillSourceClie
 			const first = await publish([skill('One')]);
 			const second = await publish([skill('Two')]);
 
-			const firstKey = skillSourceIdentityKey(
+			const firstKey = await skillSourceIdentityKey(
 				client.identity(await client.parseLocator(first, auth)),
 			);
-			const againKey = skillSourceIdentityKey(
+			const againKey = await skillSourceIdentityKey(
 				client.identity(await client.parseLocator(first, auth)),
 			);
-			const secondKey = skillSourceIdentityKey(
+			const secondKey = await skillSourceIdentityKey(
 				client.identity(await client.parseLocator(second, auth)),
 			);
 

@@ -1,4 +1,5 @@
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch, type Ref } from 'vue';
 
@@ -80,7 +81,11 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 		const targetProjectId = options.projectId.value;
 		const targetAgentId = options.agentId.value;
 
-		if (!replyId || actions.length === 0 || !testChatId || committingReplyId.value !== null) {
+		if (!replyId || actions.length === 0 || committingReplyId.value !== null) {
+			return false;
+		}
+		if (!testChatId) {
+			commitError.value = i18n.baseText('agents.testRun.holdReplay.confirmModal.sessionMissing');
 			return false;
 		}
 
@@ -115,9 +120,10 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 			return true;
 		} catch (error) {
 			if (activeRequest !== request) return false;
+			// Server messages are not localized, so show our own text.
 			commitError.value =
-				error instanceof Error && error.message
-					? error.message
+				error instanceof ResponseError && error.httpStatusCode === 404
+					? i18n.baseText('agents.testRun.holdReplay.confirmModal.sessionMissing')
 					: i18n.baseText('agents.testRun.holdReplay.confirmModal.error');
 			return false;
 		} finally {

@@ -1,3 +1,4 @@
+import { ResponseError } from '@n8n/rest-api-client/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -286,19 +287,35 @@ describe('AgentHeldActionsTray', () => {
 					committedAt: new Date(2026, 10, 20, 14, 7, 0).toISOString(),
 					results: [
 						{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' },
-						{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'failed' },
+						{
+							actionId: 'call-2',
+							toolName: 'linear__create_issue',
+							status: 'failed',
+							error: 'Team not found',
+						},
 					],
 				},
 			},
 		});
 
 		await waitFor(() => expect(getAllByTestId('agent-held-action-preview')).toHaveLength(2));
+		// Only the failed row opens, so its error shows without a click.
+		await waitFor(() => expect(getAllByTestId('agent-held-action-preview-body')).toHaveLength(1));
+		expect(getByTestId('agent-held-action-preview-body')).toHaveTextContent('Team not found');
+		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
+			'Some actions failed. The rest ran in your real apps at 14:07.',
+		);
 		const rows = getAllByTestId('agent-held-action-preview-toggle');
 		expect(rows[0]).toHaveTextContent('Slack: message sent');
 		expect(rows[1]).toHaveTextContent('Linear: issue');
 		expect(rows[1]).not.toHaveTextContent('Linear: issue saved');
 		expect(getByTestId('agent-held-action-failed')).toHaveTextContent('Failed');
-		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('1 action done');
+		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent(
+			'1 of 2 actions done',
+		);
+		expect(
+			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
+		).not.toBeInTheDocument();
 	});
 
 	it('does not show a replay as a success when every action failed', async () => {
@@ -317,8 +334,12 @@ describe('AgentHeldActionsTray', () => {
 
 		await waitFor(() => expect(getAllByTestId('agent-held-action-failed')).toHaveLength(2));
 		const banner = getByTestId('agent-held-actions-committed-banner');
-		expect(banner).toHaveTextContent('0 actions done');
-		expect(banner).not.toHaveTextContent('2 actions done');
+		expect(banner).toHaveTextContent('2 actions failed');
+		expect(banner).not.toHaveTextContent('done');
+		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
+			'Nothing was sent or saved. See why below.',
+		);
+		await waitFor(() => expect(getAllByTestId('agent-held-action-preview-body')).toHaveLength(2));
 		expect(
 			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
 		).not.toBeInTheDocument();
@@ -453,6 +474,96 @@ describe('useAgentHeldActions', () => {
 		expect(await secondCommit).toBe(true);
 		expect(state.committingReplyId.value).toBeNull();
 		expect(state.committedByReply.value).toEqual({ 'reply-2': response });
+	});
+
+	it('shows an error and keeps the modal open when there is no test chat session', async () => {
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref(undefined),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+
+		expect(commitAgentTestRunActionsMock).not.toHaveBeenCalled();
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(state.commitError.value).toBe(
+			'This test chat is no longer available. Start a new test to run these actions.',
+		);
+	});
+
+	it('shows localized text instead of the server message, and clears it on a retry', async () => {
+		commitAgentTestRunActionsMock.mockRejectedValueOnce(
+			new ResponseError('Request failed with status code 500', { httpStatusCode: 500 }),
+		);
+		const response = { committedAt: new Date().toISOString(), results: [] };
+		commitAgentTestRunActionsMock.mockResolvedValueOnce(response);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+		expect(state.commitError.value).toBe('Could not run these actions. Try again.');
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(state.committingReplyId.value).toBeNull();
+
+		expect(await state.confirmCommit()).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledTimes(2);
+		expect(state.commitError.value).toBeNull();
+		expect(state.confirmModalOpen.value).toBe(false);
+		expect(state.committedByReply.value).toEqual({ 'reply-1': response });
+	});
+
+	it('says the test chat is gone when the server cannot find the session', async () => {
+		commitAgentTestRunActionsMock.mockRejectedValueOnce(
+			new ResponseError('Test chat session not found.', { httpStatusCode: 404 }),
+		);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+		expect(state.commitError.value).toBe(
+			'This test chat is no longer available. Start a new test to run these actions.',
+		);
+	});
+
+	it('ignores a second confirm and a cancel while a commit is in progress', async () => {
+		let resolveCommit: (value: unknown) => void = () => {};
+		commitAgentTestRunActionsMock.mockImplementationOnce(
+			async () =>
+				await new Promise((resolve) => {
+					resolveCommit = resolve;
+				}),
+		);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		const firstCommit = state.confirmCommit();
+
+		expect(await state.confirmCommit()).toBe(false);
+		state.cancelConfirmModal();
+		state.confirmModalOpen.value = false;
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledTimes(1);
+
+		resolveCommit({ committedAt: new Date().toISOString(), results: [] });
+		expect(await firstCommit).toBe(true);
+		expect(state.confirmModalOpen.value).toBe(false);
 	});
 
 	it('counts the actions of the chat that ran, across replies, without failed ones', async () => {

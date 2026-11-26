@@ -13,11 +13,14 @@ import {
 	wrappedComponentBans,
 	type WrappedComponentBan,
 } from './wrapped-component-bans.js';
+import { wrappedModuleBans, type WrappedModuleBan } from './wrapped-module-bans.js';
 
 const REKA_UI = 'reka-ui';
 const ELEMENT_PLUS = 'element-plus';
 
 type CompiledBan = WrappedComponentBan & { readonly allowedPath: RegExp };
+
+type CompiledModuleBan = WrappedModuleBan & { readonly allowedPath: RegExp };
 
 type TemplateElement = TSESTree.Node & { rawName?: string };
 
@@ -29,6 +32,11 @@ type VueParserServices = {
 };
 
 const compiledBans: readonly CompiledBan[] = wrappedComponentBans.map((ban) => ({
+	...ban,
+	allowedPath: designSystemComponentPath(...ban.allowedFolders),
+}));
+
+const compiledModuleBans: readonly CompiledModuleBan[] = wrappedModuleBans.map((ban) => ({
 	...ban,
 	allowedPath: designSystemComponentPath(...ban.allowedFolders),
 }));
@@ -90,7 +98,18 @@ for (const name of elementPlusComponents) {
 type ImportDecision =
 	| { kind: 'allow' }
 	| { kind: 'wrapped'; ban: CompiledBan }
+	| { kind: 'wrappedModule'; ban: CompiledModuleBan }
 	| { kind: 'direct'; library: 'reka-ui' | 'element-plus'; name: string };
+
+/** A wrapped library is banned as a whole, so every import form of it and of its subpaths is reported. */
+const decideWrappedModule = (source: string, filename: string): ImportDecision | undefined => {
+	const ban = compiledModuleBans.find(
+		(entry) => source === entry.library || source.startsWith(`${entry.library}/`),
+	);
+	if (ban === undefined) return undefined;
+	if (ban.allowedPath.test(filename)) return { kind: 'allow' };
+	return { kind: 'wrappedModule', ban };
+};
 
 const decideRekaName = (name: string, filename: string): ImportDecision => {
 	for (const entry of rekaPrefixes) {
@@ -163,9 +182,11 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow a direct Reka UI or Element Plus primitive import. A primitive that is not migrated yet stays on the allowlist.',
+				'Disallow a direct Reka UI or Element Plus primitive import, and any import of a library that a design-system entry wraps. A primitive that is not migrated yet stays on the allowlist.',
 		},
 		messages: {
+			noDirectWrappedModuleImport:
+				'Do not import from `{{library}}`. Import from `{{entry}}` instead.',
 			noDirectWrappedComponentImport:
 				'Do not use `{{name}}` from `{{library}}`. Use {{replacement}} from `@n8n/design-system` instead.',
 			noDirectPrimitiveImport:
@@ -177,6 +198,14 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 	create(context) {
 		const report = (node: TSESTree.Node, decision: ImportDecision, fallbackName: string) => {
 			if (decision.kind === 'allow') return;
+			if (decision.kind === 'wrappedModule') {
+				context.report({
+					node,
+					messageId: 'noDirectWrappedModuleImport',
+					data: { library: decision.ban.library, entry: decision.ban.entry },
+				});
+				return;
+			}
 			if (decision.kind === 'wrapped') {
 				context.report({
 					node,
@@ -209,9 +238,20 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 
 		// A deep component path names one primitive, so every import and re-export form is reported.
 		// Package-root namespace, star, and default forms do not name one primitive and stay out of scope.
+		// A wrapped library is reported for every form: named, default, namespace, type-only,
+		// re-export, star re-export, dynamic `import()`, a type query `import('x').T` and
+		// `import x = require('x')`.
+		const reportWrappedModule = (node: TSESTree.Node, source: string): boolean => {
+			const decision = decideWrappedModule(source, context.filename);
+			if (decision === undefined) return false;
+			report(node, decision, source);
+			return true;
+		};
+
 		const scriptVisitor: RuleListener = {
 			ImportDeclaration(node) {
 				const source = node.source.value;
+				if (reportWrappedModule(node, source)) return;
 				const moduleDecision = decideElementPlusModule(source, context.filename);
 				if (moduleDecision?.kind === 'wrapped' || moduleDecision?.kind === 'direct') {
 					report(node, moduleDecision, source);
@@ -228,6 +268,7 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 			ExportNamedDeclaration(node) {
 				if (!node.source) return;
 				const source = node.source.value;
+				if (reportWrappedModule(node, source)) return;
 				const moduleDecision = decideElementPlusModule(source, context.filename);
 				if (moduleDecision?.kind === 'wrapped' || moduleDecision?.kind === 'direct') {
 					report(node, moduleDecision, source);
@@ -241,10 +282,25 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 				}
 			},
 			ExportAllDeclaration(node) {
+				if (reportWrappedModule(node, node.source.value)) return;
 				const decision = decideElementPlusModule(node.source.value, context.filename);
 				if (decision?.kind === 'wrapped' || decision?.kind === 'direct') {
 					report(node, decision, node.source.value);
 				}
+			},
+			ImportExpression(node) {
+				if (
+					node.source.type === TSESTree.AST_NODE_TYPES.Literal &&
+					typeof node.source.value === 'string'
+				) {
+					reportWrappedModule(node, node.source.value);
+				}
+			},
+			TSImportType(node) {
+				reportWrappedModule(node, node.source.value);
+			},
+			TSExternalModuleReference(node) {
+				reportWrappedModule(node, node.expression.value);
 			},
 		};
 

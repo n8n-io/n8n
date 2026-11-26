@@ -929,13 +929,20 @@ export async function downloadFiles(
 	return elements;
 }
 
-export function extractPageId(page = '') {
+export function extractPageId(page: unknown = ''): string {
+	if (typeof page !== 'string') {
+		return '';
+	}
 	if (page.includes('p=')) {
 		return page.split('p=')[1];
 	} else if (page.includes('-') && page.includes('https')) {
 		return page.split('-')[page.split('-').length - 1];
 	}
 	return page;
+}
+
+export function getCurrentPageId(this: ILoadOptionsFunctions): string {
+	return extractPageId(this.getCurrentNodeParameter('pageId', { extractValue: true }));
 }
 
 export function getPageId(this: IExecuteFunctions, i: number) {
