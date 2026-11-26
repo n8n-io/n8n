@@ -124,7 +124,7 @@ function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
 export type WorkflowInputFieldDef = { name: string; type?: string };
 
 /** Apply the trigger's version-specific default before workflow execution adds node defaults. */
-function getExecuteWorkflowInputSource(triggerNode: INode): string {
+export function getExecuteWorkflowInputSource(triggerNode: INode): string {
 	const params = triggerNode.parameters ?? {};
 	const inputSource = params[INPUT_SOURCE];
 	const defaultInputSource = triggerNode.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;

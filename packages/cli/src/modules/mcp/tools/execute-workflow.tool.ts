@@ -2,11 +2,14 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	type IDataObject,
 	type INode,
 	type IPinData,
 	type IWorkflowExecutionDataProcess,
@@ -64,7 +67,7 @@ const inputSchema = z.object({
 	inputs: workflowInputsSchema
 		.optional()
 		.describe(
-			'Trigger payload. Required for webhook, chat, and form triggers. Must be omitted for schedule and manual triggers. Use get_workflow_details to see the expected payload for each trigger.',
+			'Trigger payload. Required for webhook, chat, form, and "When Executed by Another Workflow" triggers. Must be omitted for schedule and manual triggers. Use get_workflow_details to see the expected payload for each trigger.',
 		),
 });
 
@@ -320,8 +323,13 @@ const buildRunData = async (
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 
 	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
-	const workflowPinData = isManualExecution ? (workflow.pinData ?? {}) : {};
-	runData.pinData = { ...workflowPinData, ...triggerPinData };
+	const { [triggerNode.name]: _editorTriggerPinData, ...workflowPinData } = isManualExecution
+		? (workflow.pinData ?? {})
+		: {};
+	runData.pinData =
+		triggerNode.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE
+			? workflowPinData
+			: { ...workflowPinData, ...triggerPinData };
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
@@ -336,7 +344,7 @@ const buildRunData = async (
 				{
 					node: triggerNode,
 					data: {
-						main: [runData.pinData[triggerNode.name]],
+						main: [triggerPinData[triggerNode.name]],
 					},
 					source: null,
 				},
@@ -387,7 +395,7 @@ const resolveExecuteWorkflowTrigger = (
 		if (!isMcpSupportedTriggerType(named.type, executionMode)) {
 			if (named.type === MANUAL_TRIGGER_NODE_TYPE && executionMode === 'production') {
 				throw new WorkflowAccessError(
-					`Trigger node "${triggerNodeName}" cannot be used in production mode. Use a webhook, form, chat, or schedule trigger, or execute in manual mode.`,
+					`Trigger node "${triggerNodeName}" cannot be used in production mode. Use a webhook, form, chat, schedule, or "When Executed by Another Workflow" trigger, or execute in manual mode.`,
 					'unsupported_trigger',
 				);
 			}
@@ -448,6 +456,8 @@ const inputsMatchTrigger = (nodeType: string, inputs: WorkflowInputs): boolean =
 			return 'formData' in inputs;
 		case WEBHOOK_NODE_TYPE:
 			return 'webhookData' in inputs;
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE:
+			return 'workflowInputs' in inputs;
 		default:
 			return false;
 	}
@@ -539,6 +549,12 @@ const getPinDataForTrigger = async (
 				],
 			};
 		}
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE: {
+			const workflowInputs = inputs && 'workflowInputs' in inputs ? inputs.workflowInputs : {};
+			return {
+				[node.name]: [{ json: isDataObject(workflowInputs) ? workflowInputs : {} }],
+			};
+		}
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			const moment = (await import('moment-timezone')).default;
@@ -567,6 +583,8 @@ const getPinDataForTrigger = async (
 			return { [node.name]: [{ json: {} }] };
 	}
 };
+
+const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
 
 const getSupportedTriggerNamesForMode = (executionMode: ExecutionMode): string[] => {
 	return executionMode === 'production'
@@ -605,6 +623,9 @@ const getInputMetaData = (
 			inputs.webhookData?.query ? Object.keys(inputs.webhookData.query).length : 0,
 			inputs.webhookData?.headers ? Object.keys(inputs.webhookData.headers).length : 0,
 		].reduce((a, b) => a + b, 0);
+	} else if ('workflowInputs' in inputs) {
+		metadata.type = 'workflowInputs';
+		metadata.parameter_count = Object.keys(inputs.workflowInputs).length;
 	}
 	return metadata;
 };
