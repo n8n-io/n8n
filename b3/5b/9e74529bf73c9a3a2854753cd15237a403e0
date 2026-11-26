@@ -1,0 +1,29 @@
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
+  s_4a494bfdece475::t_01c0c415c8e972 564-608
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_4a494bfdece475::t_c64abded21063c 1455-1476
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_4a494bfdece475::t_40b41425e9767c 56,61-62,76
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_4a494bfdece475::t_f628771139788b 154-155,157-164
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_4a494bfdece475::t_3998058460ad73 360-364,368
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_4a494bfdece475::t_09cc03ba7538b1 610-613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b35b9e74529bf73c9a3a2854753cd15237a403e0",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

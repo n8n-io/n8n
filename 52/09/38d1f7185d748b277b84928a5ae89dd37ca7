@@ -1,0 +1,16 @@
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  h_8a472ace01776f 117,540-556
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  h_8a472ace01776f 433,439-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "520938d1f7185d748b277b84928a5ae89dd37ca7",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

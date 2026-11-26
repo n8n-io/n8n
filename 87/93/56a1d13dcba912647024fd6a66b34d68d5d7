@@ -1,0 +1,39 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_b6af11fe672df8::t_8138623b7b75c8 880-883
+  s_b6af11fe672df8::t_e31527d29c9937 601-606
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/MessageFormatter.ts
+  s_b6af11fe672df8::t_4a581feda7e8e3 3
+  s_b6af11fe672df8::t_c16e646a5c541b 10-11,16-17,19,22-26
+  s_b6af11fe672df8::t_eab757c7aacfb8 56-58
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_b6af11fe672df8::t_3c52e28e7898a7 16,20
+  s_b6af11fe672df8::t_68d6bb4e48de3a 335,337,339,341,346
+  s_b6af11fe672df8::t_2a5dfddc3733b5 334,336,338,340,342-345,347-348
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/__tests__/MessageFormatter.test.ts
+  s_b6af11fe672df8::t_d0db6d9cc304b4 211-239
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/utils.ts
+  s_b6af11fe672df8::t_6d7cd397089444 3-7
+  s_b6af11fe672df8::t_eb297e3718aed7 15
+  s_b6af11fe672df8::t_68ad9d3b830c42 78,82-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "879356a1d13dcba912647024fd6a66b34d68d5d7",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6af11fe672df8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4205028a-c6cc-464f-9032-2c08a86aeaab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

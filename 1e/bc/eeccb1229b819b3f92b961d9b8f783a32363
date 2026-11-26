@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Mindee/v2/test/GenericFunctions.test.ts
+  s_537a80d39c6e34::t_58e9285479e882 384,389
+  s_537a80d39c6e34::t_ebe34ecef15ec4 3,8,263-383,385-388,390-391
+packages/nodes-base/nodes/Mindee/v2/test/MindeeV2.execute.test.ts
+  s_537a80d39c6e34::t_ebe34ecef15ec4 7-8,24-44,65-105
+packages/nodes-base/credentials/test/Mindee.credentials.test.ts
+  s_537a80d39c6e34::t_65b38800494fee 1-53
+packages/nodes-base/nodes/Mindee/test/Mindee.node.test.ts
+  s_537a80d39c6e34::t_d2694afb6aba62 1-20
+packages/nodes-base/nodes/Mindee/v1/test/MindeeV1.node.test.ts
+  s_537a80d39c6e34::t_b46c210493daf2 1-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ebceeccb1229b819b3f92b961d9b8f783a32363",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_537a80d39c6e34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d11b10e-2cd9-4bf1-b7fb-8308eb1ca1da",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

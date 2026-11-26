@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/simulation/__tests__/linear-fixture-lifecycle.test.ts
+  s_0bc2e13da46b9c::t_2a39d4393cdec0 1-10,17-18,22-23,28-34,40-42,50,69-89,91-92,101
+  s_0bc2e13da46b9c::t_b9eff680e88782 93-100
+  s_0bc2e13da46b9c::t_e17c76d8a53172 11-13
+  s_0bc2e13da46b9c::t_90bdb86bafdaec 14-16,19-21,24-27,35-39,43-49,51-68,90
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_0bc2e13da46b9c::t_8200fa75748ef4 101,103-104
+  s_0bc2e13da46b9c::t_854a375eac442b 2,24-25,88,97-99,105-107,113-118,144-145,158-159,276,377-379,388-391,393
+  s_0bc2e13da46b9c::t_9d38a50d33263e 72,74,77,79,102
+  s_0bc2e13da46b9c::t_90bdb86bafdaec 50-53,84-85,93-96,108-112,137-143,146-152,192-195,380-387
+  s_0bc2e13da46b9c::t_78260c371d7618 119,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c30160c28c91d6e378e23c56a9e95f35f21410d6",
+  "prompts": {},
+  "sessions": {
+    "s_0bc2e13da46b9c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f985-67c8-74fa-981e-d0d0ed37a264",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

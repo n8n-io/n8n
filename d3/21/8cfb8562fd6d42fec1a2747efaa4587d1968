@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_4e8100d4ba14d2::t_1115006437f7e4 18-19,24,29-37
+  s_4e8100d4ba14d2::t_b5c47411fc0edb 38-40
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunButton.vue
+  s_4e8100d4ba14d2::t_ec571741bd9f52 4,13-17,33-37,41,45-56,60,79
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentNewTestRun.test.ts
+  s_4e8100d4ba14d2::t_fdc12f251567f7 1,3,15-46,53-54,56-58,80-81,122-123,131-157,159-165
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestRunToolsNotice.test.ts
+  s_4e8100d4ba14d2::t_0c939133c71a76 8,54-59,109-125,137-139,159,179-180,198,204
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunToolsNotice.vue
+  s_4e8100d4ba14d2::t_9072a04b3fb157 2,4,6,12,14-15,17,37,43-44,47-48,50-57,59-66,69-70,76,81,83,85-86,89,94,96,111,114,120,126,130-131,133,136,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3218cfb8562fd6d42fec1a2747efaa4587d1968",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

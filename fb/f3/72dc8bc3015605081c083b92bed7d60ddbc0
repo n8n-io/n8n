@@ -1,0 +1,50 @@
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_e94222446f5ba4 338-339,346-350,352
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.vue
+  s_4a494bfdece475::t_eeb7a515dbf7ca 9,31-38
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.test.ts
+  s_4a494bfdece475::t_74eede29f937cd 209-255
+  s_4a494bfdece475::t_651f8ba7314d9e 13,38
+  s_4a494bfdece475::t_2c435d23a973f8 39-57,206-208,256-277
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_4a494bfdece475::t_bee792693998a2 140-151,540-541,598,601
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.vue
+  s_4a494bfdece475::t_eeb7a515dbf7ca 14,28,59,61,63,66-67,88-92
+  s_4a494bfdece475::t_5ab2180dead927 93
+packages/modules/promotions/frontend/src/promotionReviewChanges.ts
+  s_4a494bfdece475::t_eeb7a515dbf7ca 1-21
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_e94222446f5ba4 2898-2918
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_3c463a4b4147a8::t_d1c2f52981c9c7 137-154
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_3c463a4b4147a8::t_10661294e788f0 79-96
+packages/cli/src/modules/n8n-packages/__tests__/n8n-packages.service.test.ts
+  s_4a494bfdece475::t_9c41c9e1e5c67d 1-134
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_4a494bfdece475::t_6a2025760336e0 325-330,333-337,388-391,441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbf372dc8bc3015605081c083b92bed7d60ddbc0",
+  "prompts": {},
+  "sessions": {
+    "s_3c463a4b4147a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86121cb9-37d8-4c50-8dd5-a1674afa2bca",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

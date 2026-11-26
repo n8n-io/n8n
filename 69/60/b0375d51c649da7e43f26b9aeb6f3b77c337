@@ -1,0 +1,35 @@
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_7e504039b73188::t_70fb81f57c3c84 77-82
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_7e504039b73188::t_7c5cc4d79d2a15 649-676
+  s_7e504039b73188::t_a6d134c4b43b13 648
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_7e504039b73188::t_6fdc911d249c5b 225
+  s_7e504039b73188::t_70fb81f57c3c84 221,330,369,501,551-558
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_7e504039b73188::t_70fb81f57c3c84 218
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_7e504039b73188::t_d6d81c622fe863 1577-1578,1580-1581,1584-1585,1587,1590,1592-1596
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7e504039b73188::t_70fb81f57c3c84 1101,1104
+  s_7e504039b73188::t_af5c2ed2aed845 1045-1046,1056,1058,1061,1063,1066-1090
+  s_7e504039b73188::t_5c962b0d4f39ea 1091
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_7e504039b73188::t_427487f0ba1eee 1269-1282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6960b0375d51c649da7e43f26b9aeb6f3b77c337",
+  "prompts": {},
+  "sessions": {
+    "s_7e504039b73188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65dfb1ce-bf47-4b7e-a7af-3adac7fe13d3",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

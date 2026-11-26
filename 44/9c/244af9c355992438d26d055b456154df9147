@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/NextCloud/test/createFromText.operation.test.ts
+  s_26c3093fda678b::t_87adf8b570b99c 295-315
+packages/nodes-base/nodes/NextCloud/actions/file/createFromText.operation.ts
+  s_26c3093fda678b::t_3a6d4c1592b9e9 142,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "449c244af9c355992438d26d055b456154df9147",
+  "prompts": {},
+  "sessions": {
+    "s_26c3093fda678b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa358046-6dbb-42e3-adae-eb0972480fe7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

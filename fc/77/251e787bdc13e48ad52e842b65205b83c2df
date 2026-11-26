@@ -1,0 +1,115 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-dependency.dto.ts
+  s_3dd47ea0104342::t_4f21a4acbd1983 418-420
+  s_3dd47ea0104342::t_b525d6516505f3 99-100,134-135,209-210,276,386-387,393,395-396,403-404,409,415
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3dd47ea0104342::t_2be1b2ccb2c26e 696-698
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3dd47ea0104342::t_4f21a4acbd1983 677
+  s_3dd47ea0104342::t_4ff3348b4a177e 49,179-180,198,201-203,207-208,234,246-247,261,302,304,308,313-314,317-318,325,333,336,338-341,344,349,352-353,356,359-360,366,371,375,668,698-700,704-706,713,741-745
+packages/cli/src/modules/promotions.ee/dependency-check/promote-report.ts
+  s_3dd47ea0104342::t_4f21a4acbd1983 41
+  s_3dd47ea0104342::t_fb73b9e82e3384 40,149-150
+packages/cli/src/workflows/workflow.service.ts
+  s_3dd47ea0104342::t_4f21a4acbd1983 2283
+  s_3dd47ea0104342::t_a49bd5e94a163c 1365,2274-2276,2279
+packages/cli/src/modules/promotions.ee/promotion-dependency-gate.service.ts
+  s_3dd47ea0104342::t_4f21a4acbd1983 665-669,677,710,715,721,725,727-729,732,748-769
+  s_3dd47ea0104342::t_a1a896ff17581e 8-9,27,126,131,170,276-280,479-480,483-486,488,492,586-587,593,598,605,627,630,632,663,771
+packages/cli/src/modules/promotions.ee/dependency-check/apply-report.ts
+  s_3dd47ea0104342::t_47209ae58b16d2 231,245
+  s_3dd47ea0104342::t_b4a019de0c12af 228
+  s_3dd47ea0104342::t_67a5012cb393d3 32,54,118,124,126-127,131,148,156-157,214-215,217,219-220,355,399,404,502-503,508,530,537,550
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3dd47ea0104342::t_47209ae58b16d2 51
+  s_3dd47ea0104342::t_777633849ee28b 202,851-855,857,1930
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_3f16b930922d70 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_3dd47ea0104342::t_60c2ff960faa24 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_3dd47ea0104342::t_55d6b05f8d6d01 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_3dd47ea0104342::t_45bd4c5673312d 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_3dd47ea0104342::t_f5b262a18397fb 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionDependencyReport.generated.yml
+  s_3dd47ea0104342::t_8cb74cdc470e28 338,352,520
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_3dd47ea0104342::t_17b9257c34890f 330,443,457,522
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionDependencyReport.generated.yml
+  s_3dd47ea0104342::t_b7f5b46d3f4314 254,268,436
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionGap.generated.yml
+  s_3dd47ea0104342::t_14fe8c22ef5bfe 119,124
+docs/generated/postgres-schema/README.md
+  s_b7f7b0fdeb2e43::t_8969712cf9bfed 69
+docs/generated/sqlite-schema/README.md
+  s_b7f7b0fdeb2e43::t_a5e5782dce22e4 69
+docs/generated/sqlite-schema/credentials_entity.md
+  s_b7f7b0fdeb2e43::t_b0f05291a1852d 9
+packages/@n8n/cli/src/client.ts
+  s_b7f7b0fdeb2e43::t_038665d7448493 234,239
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_b7f7b0fdeb2e43::t_2dcc6207e05b64 40
+packages/@n8n/cli/src/commands/promotion-environment/dependency-report.ts
+  s_b7f7b0fdeb2e43::t_2376a789082f77 125-126,170-171
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_b7f7b0fdeb2e43::t_3ea1e62a029832 44,59,339-342,344,354,375,383,389-390,407,417,421,435,482,502
+packages/cli/src/credentials/credentials.service.ts
+  s_b7f7b0fdeb2e43::t_cbaf4c419e6877 626-706,1317,2749-2752
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_b7f7b0fdeb2e43::t_bbd6e46c4bbc82 254,392,406-408,413,848-849
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_b7f7b0fdeb2e43::t_89600ff7521413 151,157,159
+packages/cli/src/modules/n8n-packages/entities/credential/credential-dependencies.ts
+  s_b7f7b0fdeb2e43::t_1787dc3c16912f 65-66
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_b7f7b0fdeb2e43::t_9e39b2c0b19280 12,60,86-88
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_b7f7b0fdeb2e43::t_d381a2d5056ed1 12,115-116,138,152,155-158,160,163,170-171,210-213,232-234
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_b7f7b0fdeb2e43::t_750f20824112e9 526-527,530,532,536,1014-1015,1024,1028,1055
+packages/cli/src/modules/promotions.ee/dependency-check/apply-check-facts.service.ts
+  s_b7f7b0fdeb2e43::t_f4f175a095eb35 131
+packages/cli/src/modules/promotions.ee/dependency-check/dependency-check.types.ts
+  s_b7f7b0fdeb2e43::t_08e0680c7662c7 65,149,195-196,200,215
+packages/cli/src/modules/promotions.ee/dependency-check/gap-confirmation.ts
+  s_b7f7b0fdeb2e43::t_b846cdd018aad3 100-101,112-113
+packages/cli/src/modules/promotions.ee/dependency-check/promote-check-facts.service.ts
+  s_b7f7b0fdeb2e43::t_7c62cd1935f93c 150
+packages/cli/src/modules/promotions.ee/dependency-check/promotion-dependency-check.service.ts
+  s_b7f7b0fdeb2e43::t_c56ede3f052a7e 40
+packages/cli/src/modules/promotions.ee/dependency-check/target-lookup.service.ts
+  s_b7f7b0fdeb2e43::t_ecb4dd0768a64f 14,29,66,76-79,89,103
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_b7f7b0fdeb2e43::t_1746156572f310 4,59-60,67-70
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_b7f7b0fdeb2e43::t_97a6c7f0c0aa27 82
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_b7f7b0fdeb2e43::t_369e7b6d10e3f8 102
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_b7f7b0fdeb2e43::t_36a0246b5f86d8 34,71,527-528,530,539-540,542-543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc77251e787bdc13e48ad52e842b65205b83c2df",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7f7b0fdeb2e43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a93c7d62768a54a34",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
