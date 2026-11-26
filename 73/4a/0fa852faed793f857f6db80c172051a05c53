@@ -1,0 +1,35 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_cd7e7352b0ed80::t_e921be3dffad0c 64
+  s_cd7e7352b0ed80::t_1c381d5c04d112 285,323,355,357
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_cd7e7352b0ed80::t_1c381d5c04d112 7
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_cd7e7352b0ed80::t_5d106747423af7 7,27,35,40,65,84,126,130,641-670
+packages/@n8n/cli/docs/commands/promotions.md
+  s_cd7e7352b0ed80::t_1c381d5c04d112 301-302
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_cd7e7352b0ed80::t_968ba54db3d4ba 28
+  s_cd7e7352b0ed80::t_e921be3dffad0c 29-36
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_cd7e7352b0ed80::t_968ba54db3d4ba 438
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_cd7e7352b0ed80::t_1c381d5c04d112 643
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_cd7e7352b0ed80::t_bb5160a2de446f 4,15,48-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "734a0fa852faed793f857f6db80c172051a05c53",
+  "prompts": {},
+  "sessions": {
+    "s_cd7e7352b0ed80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c2556b9-65b4-4831-bbc8-43d9191242d3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
