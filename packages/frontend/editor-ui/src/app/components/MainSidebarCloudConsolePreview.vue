@@ -127,7 +127,9 @@ const NAV_ROW_WIDTHS = [44, 58, 36];
 	width: 100%;
 	height: 184px;
 	overflow: hidden;
-	border-radius: var(--radius);
+	// The coachmark keeps the popovers' 8px corner around a 12px inset, so the inset gets a
+	// tighter corner than the frame to read as nested inside it.
+	border-radius: calc(var(--radius) / 2);
 	background: var(--background--subtle);
 	box-shadow: var(--shadow--outline);
 	isolation: isolate;
@@ -347,7 +349,8 @@ const NAV_ROW_WIDTHS = [44, 58, 36];
 	gap: var(--spacing--3xs);
 	height: 16px;
 	padding: 0 var(--spacing--4xs);
-	border-radius: 4px;
+	// The menu's 6px corner less its 3px padding, so rows nest inside it.
+	border-radius: 3px;
 	color: var(--text-color);
 	font-size: var(--font-size--3xs);
 	line-height: 1;
