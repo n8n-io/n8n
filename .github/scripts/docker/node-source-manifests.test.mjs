@@ -150,13 +150,14 @@ describe('Node source image manifests', () => {
 
 		const buildNeeds = Array.isArray(build.needs) ? build.needs : [build.needs];
 		assert.ok(buildNeeds.includes('prepare'));
-		assert.doesNotMatch(build.if, /\balways\(\)/);
-		assert.match(build.if, /\bneeds\.prepare\.outputs\.changed == 'true'/);
+		assert.equal(build.if, "needs.prepare.outputs.changed == 'true'");
 
 		const manifestNeeds = Array.isArray(manifest.needs) ? manifest.needs : [manifest.needs];
 		assert.ok(manifestNeeds.includes('prepare'));
 		assert.ok(manifestNeeds.includes('build'));
-		assert.match(manifest.if, /\bneeds\.prepare\.result == 'success'/);
-		assert.match(manifest.if, /\bneeds\.prepare\.outputs\.changed == 'true'/);
+		assert.equal(
+			manifest.if,
+			"always() && needs.prepare.result == 'success' && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))",
+		);
 	});
 });
