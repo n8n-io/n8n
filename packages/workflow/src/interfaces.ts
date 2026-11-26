@@ -962,7 +962,7 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
-	getBinaryPath(binaryDataId: string): string;
+	getBinaryPath(binaryDataId: string): Promise<string>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
@@ -3953,6 +3953,8 @@ export type ExecutionTracingContext = {
 };
 
 export interface IWorkflowExecutionDataProcess {
+	/** Binary IDs validated by a trusted execution entry point. */
+	binaryDataAccess?: string[];
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
@@ -4060,6 +4062,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface ExecuteWorkflowOptions {
+	binaryDataAccess?: string[];
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
@@ -4122,6 +4125,11 @@ export interface AiAgentRequest {
 }
 
 export interface IWorkflowExecuteAdditionalData {
+	binaryDataAccess?: {
+		grant(binaryDataId: string): void;
+		isGranted(binaryDataId: string): boolean;
+		isAllowed(binaryDataId: string, workflowId: string, grantedIds?: string[]): Promise<boolean>;
+	};
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
