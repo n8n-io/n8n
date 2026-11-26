@@ -11,6 +11,7 @@ import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
+import { useAgentAttentionFlags } from '@/features/agents/composables/useAgentAttentionFlags';
 import {
 	useAgentTelemetry,
 	type AgentSessionFilterName,
@@ -20,6 +21,7 @@ import type {
 	AgentSessionFilters,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
+import AgentSessionFlagCard from '../components/AgentSessionFlagCard.vue';
 import AgentSessionListItem from '../components/AgentSessionListItem.vue';
 import AgentSessionListItemSkeleton from '../components/AgentSessionListItemSkeleton.vue';
 import AgentTestButton from '@/features/agents/components/AgentTestButton.vue';
@@ -86,10 +88,79 @@ let managesStoreLifecycle = false;
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
 const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
+const {
+	flags: attentionFlags,
+	flaggedSessionIds,
+	count: flaggedSessionCount,
+	dismissAllSessions: dismissAll,
+} = useAgentAttentionFlags(projectId, agentId);
 const hasActiveFilters = computed(() => {
-	const { status, origin, startDate, endDate } = sessionsStore.filters;
-	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
+	const { status, origin, startDate, endDate, sessionIds } = sessionsStore.filters;
+	return (
+		status !== 'all' ||
+		origin !== 'all' ||
+		Boolean(startDate) ||
+		Boolean(endDate) ||
+		sessionIds !== undefined
+	);
 });
+
+/** AgentBuilderView provides the Assistant. It is available when Instance AI is ready. */
+const hasAssistantEnabled = computed(() => sessionAssistant?.isAvailable.value ?? false);
+const hasSentToAssistant = ref(false);
+
+/** Show the Fix errors button again when the set of flags changes. */
+watch(
+	() => attentionFlags.value.map(({ id }) => id).join(','),
+	() => {
+		hasSentToAssistant.value = false;
+	},
+);
+
+const FLAG_CARD_ACTION = {
+	viewSessions: 'viewSessions',
+	dismiss: 'dismiss',
+} as const;
+
+const flagCardActions = computed<Array<DropdownMenuItemProps<string>>>(() => [
+	{
+		id: FLAG_CARD_ACTION.viewSessions,
+		label: i18n.baseText('agentSessions.flagCard.viewSessions'),
+		icon: { type: 'icon', value: 'eye' },
+	},
+	{
+		id: FLAG_CARD_ACTION.dismiss,
+		label: i18n.baseText('agentSessions.flagCard.dismiss'),
+		icon: { type: 'icon', value: 'x' },
+		divided: true,
+	},
+]);
+
+async function onFlagCardAction(actionId: string) {
+	if (actionId === FLAG_CARD_ACTION.viewSessions) {
+		await onFiltersChange({
+			...sessionsStore.filters,
+			sessionIds: [...flaggedSessionIds.value],
+		});
+		return;
+	}
+
+	if (actionId !== FLAG_CARD_ACTION.dismiss) return;
+	try {
+		await dismissAll();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.flagCard.showError.dismiss'));
+	}
+}
+
+function sendFlaggedSessionsToAssistant() {
+	if (!hasAssistantEnabled.value || hasSentToAssistant.value) return;
+	/**
+	 * TODO: Send the flagged sessions to the Assistant. The handoff context binds one session,
+	 * and get-session reads only that transcript. Decide the shape for several sessions first.
+	 * Set hasSentToAssistant to true after the handoff succeeds.
+	 */
+}
 
 /** Keep each label until its session leaves reasoning. Polls must not replace it. */
 const reasoningLabels = ref(new Map<string, BaseTextKey>());
@@ -345,6 +416,14 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			/>
 			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
 		</div>
+		<AgentSessionFlagCard
+			:count="flaggedSessionCount"
+			:actions="flagCardActions"
+			:has-assistant-enabled="hasAssistantEnabled"
+			:has-sent-to-assistant="hasSentToAssistant"
+			@fix-error="sendFlaggedSessionsToAssistant"
+			@action="onFlagCardAction"
+		/>
 		<ul :class="$style.listContainer">
 			<AgentSessionListItemSkeleton v-if="sessionsStore.loading && !sessionsStore.threads.length" />
 			<li v-if="!sessionsStore.threads.length && !sessionsStore.loading">

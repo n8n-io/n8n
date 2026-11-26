@@ -58,6 +58,8 @@ export interface AgentSessionFilters {
 	origin: AgentSessionOrigin | 'all';
 	startDate: string | Date;
 	endDate: string | Date;
+	/** Limits the list to these sessions. An empty list matches no sessions. */
+	sessionIds?: string[];
 }
 
 export function defaultAgentSessionFilters(): AgentSessionFilters {
@@ -160,8 +162,9 @@ export const listThreads = async (
 	const params = new URLSearchParams({ limit: String(options.limit) });
 	if (options.cursor) params.set('cursor', options.cursor);
 	if (options.previewOnly) params.set('previewOnly', 'true');
-	if (options.sessionIds) params.set('sessionIds', options.sessionIds.join(','));
 	const { filters } = options;
+	const sessionIds = options.sessionIds ?? filters?.sessionIds;
+	if (sessionIds) params.set('sessionIds', sessionIds.join(','));
 	if (filters?.status && filters.status !== 'all') params.set('status', filters.status);
 	if (filters?.origin && filters.origin !== 'all') params.set('origin', filters.origin);
 	if (filters?.startDate) {

@@ -49,6 +49,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
+import { useAgentAttentionFlags } from '@/features/agents/composables/useAgentAttentionFlags';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -1117,9 +1118,10 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
+const { hasFlags: hasSessionErrors } = useAgentAttentionFlags(projectId, agentId);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
-	hasFailedSession: computed(() => sessionsStore.hasFailedSession),
+	hasFailedSession: hasSessionErrors,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
