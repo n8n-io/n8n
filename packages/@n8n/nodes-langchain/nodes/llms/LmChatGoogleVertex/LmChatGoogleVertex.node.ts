@@ -22,6 +22,7 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { extractGoogleErrorMessage, makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { sanitizeGenerativeAITools } from '../gemini-common/sanitize-tools';
 import { getVertexEndpoint, vertexLocationField } from '../gemini-common/vertex-location';
 
 import {
@@ -31,6 +32,27 @@ import {
 	resolveGoogleVertexCredentials,
 	searchGoogleProjects,
 } from '@utils/google-vertex';
+
+export class N8nChatVertexAI extends ChatVertexAI {
+	override bindTools(
+		tools: Parameters<ChatVertexAI['bindTools']>[0],
+		kwargs?: Parameters<ChatVertexAI['bindTools']>[1],
+	) {
+		const bound = super.bindTools(tools, kwargs);
+		if (Array.isArray(bound.config?.tools)) {
+			bound.config.tools = sanitizeGenerativeAITools(bound.config.tools);
+		}
+		return bound;
+	}
+
+	override invocationParams(options?: Parameters<ChatVertexAI['invocationParams']>[0]) {
+		const params = super.invocationParams(options);
+		if (Array.isArray(params.tools)) {
+			params.tools = sanitizeGenerativeAITools(params.tools);
+		}
+		return params;
+	}
+}
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -217,7 +239,7 @@ export class LmChatGoogleVertex implements INodeType {
 				modelConfig.thinkingBudget = options.thinkingBudget;
 			}
 
-			const model = new ChatVertexAI(modelConfig);
+			const model = new N8nChatVertexAI(modelConfig);
 
 			return {
 				response: model,
