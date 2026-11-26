@@ -817,7 +817,6 @@ export class AgentRuntime {
 			modelId: this.modelIdString,
 			applyCost: (usage) => this.applyCost(usage),
 			saveToMemory: async (list, options) => await this.memory.saveToMemory(list, options),
-			settleTitle: async () => await this.settleTitle(),
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (patch) => this.updateState(patch),

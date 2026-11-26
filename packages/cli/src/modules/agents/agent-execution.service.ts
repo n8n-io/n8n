@@ -1,3 +1,4 @@
+import type { Thread } from '@n8n/agents';
 import type {
 	AgentExecutionStatus,
 	AgentMessageAuthor,
@@ -767,14 +768,19 @@ export class AgentExecutionService {
 
 	/**
 	 * Copy the title from the SDK memory thread to the execution thread when the
-	 * execution ends. A fallback for a title that the SDK did not report mid-turn.
+	 * execution ends. Workflow-invoked and sub-agent runs do not report titles
+	 * through `onThreadTitle`, so this is their only path to the thread list. For
+	 * chat turns, it retries a live title write that failed.
 	 */
 	private async syncTitleFromMemory(params: RecordMessageParams): Promise<void> {
 		const { projectId, agentId, threadId } = params;
-		const memoryThread = await Promise.resolve()
-			.then(async () => await this.n8nMemory.getImplementation(agentId).getThread(threadId))
+		let memoryThread: Thread | null;
+		try {
+			memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
+		} catch {
 			// Memory thread may not exist (agent without memory configured) — ignore
-			.catch(() => null);
+			return;
+		}
 		if (!memoryThread?.title) return;
 		const emoji =
 			memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'

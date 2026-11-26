@@ -274,6 +274,28 @@ describe('AgentRuntime title generation timing', () => {
 		expect((await memory.getThread(persistence.threadId))?.title).toBe('Berlin rain alert');
 	});
 
+	it('titles the host text again when a resumed run retries the title', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = createRuntime(memory, { sync: true }, [approvalTool]);
+		agentCall.mockResolvedValueOnce(approvalCall);
+		titleCall.mockRejectedValueOnce(new Error('title model unavailable'));
+
+		const first = await runtime.generate(
+			`<thread-context>Today is Monday.</thread-context>\n\n${MESSAGE}`,
+			{ persistence, titleText: MESSAGE },
+		);
+
+		// The resume passes no `titleText`: the checkpoint keeps the one of the first run.
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		agentCall.mockResolvedValueOnce(agentReply);
+		titleCall.mockResolvedValueOnce(titleReply);
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		const [retryArgs] = titleCall.mock.calls[1] as [{ messages: Array<{ content: string }> }];
+		expect(retryArgs.messages[0].content).toContain(MESSAGE);
+		expect(retryArgs.messages[0].content).not.toContain('thread-context');
+	});
+
 	it('makes no title call when the thread already has a title', async () => {
 		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'user-1', title: 'Existing' });

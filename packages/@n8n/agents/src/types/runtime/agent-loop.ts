@@ -105,8 +105,6 @@ export interface RunServices {
 	readonly modelId: string;
 	applyCost(usage: TokenUsage | undefined): TokenUsage | undefined;
 	saveToMemory(list: AgentMessageList, options: RunCallOptions): Promise<void>;
-	/** Waits for the title call that the run started, when title generation is sync. */
-	settleTitle(): Promise<void>;
 	flushTelemetry(options: RunCallOptions): Promise<void>;
 	cleanupRun(): Promise<void>;
 	updateState(patch: Partial<SerializableAgentState>): void;

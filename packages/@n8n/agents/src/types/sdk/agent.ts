@@ -344,6 +344,8 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+	/** The `titleText` of the run, so that a resumed run titles the same text. */
+	titleText?: string;
 }
 
 export interface NativeToolDeferralConfig {
