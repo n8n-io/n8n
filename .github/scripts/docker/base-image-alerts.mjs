@@ -181,6 +181,7 @@ const json = async (path) => await (await github(path, 'application/vnd.github+j
 const REFRESH_BRANCHES = [
 	DAILY_BRANCH,
 	REVIEW_BRANCH,
+	`${REFRESH_BRANCH}rebuild`,
 	...Object.keys(CHAIN).map(
 		(workflow) => `${REFRESH_BRANCH}chain-${workflow.replace(/\.yml$/, '')}`,
 	),
