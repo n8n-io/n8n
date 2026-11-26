@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_f5039c6b6d9dbb 31
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_08ad1fe1d43e02::t_f5039c6b6d9dbb 269
+  s_08ad1fe1d43e02::t_98aaf78748c8f4 226
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_08ad1fe1d43e02::t_93e5567fbd1e0c 1870,1878-1883,1902
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_08ad1fe1d43e02::t_f3a4365ddeb512 3
+  s_08ad1fe1d43e02::t_506966945fae77 138,187-192
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_08ad1fe1d43e02::t_0a4b1f6e1295fe 534-545
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08ad1fe1d43e02::t_367be44c9f9a27 825-827,829-830,846-847
+  s_08ad1fe1d43e02::t_a5b8dfabe5f23c 828
+packages/frontend/editor-ui/src/features/agents/components/AgentItemContextMenu.vue
+  s_08ad1fe1d43e02::t_c2600f209274ca 100
+  s_08ad1fe1d43e02::t_98aaf78748c8f4 2,15-16,90-99,101-102
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_08ad1fe1d43e02::t_e74eb0ff25b927 1020-1023
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_08ad1fe1d43e02::t_624f808740daf3 421-431
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_08ad1fe1d43e02::t_f62df6ad033751 151-154
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_08ad1fe1d43e02::t_a8478f6568aa09 3817-3818,3830-3851
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_08ad1fe1d43e02::t_8c1883bf213bcf 659,669-673,1225-1228
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_08ad1fe1d43e02::t_47f0e8944e62ff 53-64
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_d9920bd6ffb905 2897-2916
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_08ad1fe1d43e02::t_9a48bff87fcd04 742-746
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_08ad1fe1d43e02::t_aaed3decbb51f1 1058-1067
+  s_08ad1fe1d43e02::t_06149bfa60a51d 3396-3415
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08ad1fe1d43e02::t_a0cbd32ecd159f 1321-1322
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_08ad1fe1d43e02::t_d79e4f7bfbc991 81
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_08ad1fe1d43e02::t_ba7eb594cefe2e 282-288
+  s_08ad1fe1d43e02::t_e74eb0ff25b927 257-258,280
+  s_08ad1fe1d43e02::t_220c6bddcc5e38 281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49dff67e6d825fd68d5470c5f2faf6af07d9b8cb",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultCode.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-62
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultImage.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-17
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultTable.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-107
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/toolResultCode.ts
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-60
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 26-27
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultFile.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-28
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/toolResultTable.ts
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-52
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantToolResultTable.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 8-9
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultText.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-18
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 25-26
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultRenderer.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-159
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantCodeToolResults.ts
+  s_cf08597b8e4e18::t_58048ab35c4e19 9
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantToolResultTables.ts
+  s_cf08597b8e4e18::t_58048ab35c4e19 8-11
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultJson.vue
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-22
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultRenderer.test.ts
+  s_cf08597b8e4e18::t_58048ab35c4e19 1-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "139c91b27461d3d577e7b82cd150c492ce840227",
+  "prompts": {},
+  "sessions": {
+    "s_cf08597b8e4e18": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20d77-45f5-7320-9e58-5a91629c58b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
