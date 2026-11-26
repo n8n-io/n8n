@@ -7,7 +7,7 @@ import {
 	isDataTableCallErrorResponse,
 	isDataTableCallResponse,
 } from '../engine-data-tables.contract';
-import { CONTROL_PLANE_PREFIX, DATA_TABLES_CALL_PATH } from '../engine-v2.constants';
+import { CONTROL_PLANE_PREFIX, DATA_TABLES_CALL_PATH } from '../../engine-v2.constants';
 
 const envelope = {
 	execution: { executionId: 'exec-1', workflowId: 'wf-1' },

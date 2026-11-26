@@ -6,7 +6,7 @@ import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 import { EngineLifecycleEventPushRelay } from './engine-lifecycle-event-push-relay';
-import { SUBSCRIBE_TIMEOUT_MS } from './webhook-response/webhook-response-registry.service';
+import { SUBSCRIBE_TIMEOUT_MS } from '../webhook-response/webhook-response-registry.service';
 
 /** Receives the lifecycle events of one execution, one event at a time. */
 export interface LifecycleEventReceiver {

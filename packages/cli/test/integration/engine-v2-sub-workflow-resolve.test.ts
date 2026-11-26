@@ -15,9 +15,9 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
-import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
-import { EngineSubWorkflowClient } from '@/modules/engine-v2/engine-sub-workflow-client';
-import type { ResolveSubWorkflowRequest } from '@/modules/engine-v2/engine-sub-workflow.contract';
+import { EngineControlPlaneServer } from '@/modules/engine-v2/control-plane/engine-control-plane-server';
+import { EngineSubWorkflowClient } from '@/modules/engine-v2/sub-workflows/engine-sub-workflow-client';
+import type { ResolveSubWorkflowRequest } from '@/modules/engine-v2/sub-workflows/engine-sub-workflow.contract';
 import { SUB_WORKFLOWS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
 
 import { createMember } from './shared/db/users';

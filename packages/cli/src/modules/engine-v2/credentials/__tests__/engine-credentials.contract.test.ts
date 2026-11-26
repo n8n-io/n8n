@@ -1,5 +1,5 @@
 import { resolveCredentialRequestSchema } from '../engine-credentials.contract';
-import { CONTROL_PLANE_PREFIX, CREDENTIALS_RESOLVE_PATH } from '../engine-v2.constants';
+import { CONTROL_PLANE_PREFIX, CREDENTIALS_RESOLVE_PATH } from '../../engine-v2.constants';
 
 const fullRequest = {
 	credential: { id: 'cred-1', name: 'Header Auth account', type: 'httpHeaderAuth' },

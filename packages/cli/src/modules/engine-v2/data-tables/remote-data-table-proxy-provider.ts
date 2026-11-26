@@ -27,7 +27,7 @@ import {
 	isDataTableCallResponse,
 } from './engine-data-tables.contract';
 import type { DataTableCall, DataTableCallErrorResponse } from './engine-data-tables.contract';
-import { DATA_TABLES_CALL_PATH, DATA_TABLES_CALL_REFUSED_STATUS } from './engine-v2.constants';
+import { DATA_TABLES_CALL_PATH, DATA_TABLES_CALL_REFUSED_STATUS } from '../engine-v2.constants';
 
 type WireRow = Extract<DataTableCall, { kind: 'insertRows' }>['rows'][number];
 type WireFilter = Extract<DataTableCall, { kind: 'deleteRows' }>['options']['filter'];

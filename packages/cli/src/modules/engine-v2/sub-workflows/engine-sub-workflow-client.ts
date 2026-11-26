@@ -3,13 +3,13 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from '@n8n/errors';
 
-import { EngineControlPlaneTransport } from './engine-control-plane-transport';
+import { EngineControlPlaneTransport } from '../control-plane/engine-control-plane-transport';
 import { isResolveSubWorkflowResponse } from './engine-sub-workflow.contract';
 import type {
 	ResolveSubWorkflowRequest,
 	ResolveSubWorkflowResponse,
 } from './engine-sub-workflow.contract';
-import { SUB_WORKFLOWS_RESOLVE_PATH } from './engine-v2.constants';
+import { SUB_WORKFLOWS_RESOLVE_PATH } from '../engine-v2.constants';
 
 /** The message and hint a control plane error response carries, if any. */
 function errorTextOf(body: unknown): { message?: string; hint?: string } {

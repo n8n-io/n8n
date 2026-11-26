@@ -16,10 +16,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineCredentialsController } from '../engine-credentials.controller';
-import type { EngineDataTablesController } from '../engine-data-tables.controller';
-import { EngineMtls } from '../engine-mtls';
-import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
+import type { EngineCredentialsController } from '../../credentials/engine-credentials.controller';
+import type { EngineDataTablesController } from '../../data-tables/engine-data-tables.controller';
+import { EngineMtls } from '../../engine-mtls';
+import type { EngineSubWorkflowController } from '../../sub-workflows/engine-sub-workflow.controller';
 
 const authSecret = 'a'.repeat(32);
 
