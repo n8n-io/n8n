@@ -60,5 +60,17 @@ describe('ExecuteWorkflow node - GenericFunctions', () => {
 				);
 			});
 		});
+
+		describe('when source is parameter', () => {
+			it('should use the workflow object from the parameter', async () => {
+				const workflow = { name: 'Sub-workflow', nodes: [], connections: {} };
+				executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
+				executeFunctionsMock.getNodeParameter.mockReturnValue(workflow);
+
+				await expect(getWorkflowInfo.call(executeFunctionsMock, 'parameter', 0)).resolves.toEqual({
+					code: workflow,
+				});
+			});
+		});
 	});
 });
