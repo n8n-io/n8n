@@ -10,6 +10,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 
 import { CODE_BLOCK_LANGUAGES, type CodeBlockEmits, type CodeBlockProps } from './CodeBlock.types';
 import { useI18n } from '../../composables/useI18n';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
@@ -31,6 +32,11 @@ const props = withDefaults(defineProps<Omit<CodeBlockProps, 'collapsed'>>(), {
 const emit = defineEmits<Omit<CodeBlockEmits, 'update:collapsed'>>();
 const collapsed = defineModel<boolean>('collapsed', { default: true });
 const preRef = useTemplateRef<HTMLPreElement>('pre');
+const { scrollMaskAttrs, canScrollTop, canScrollBottom } = useScrollEdges(preRef, {
+	axis: 'vertical',
+});
+/** The preview fade stays until the block can scroll. */
+const showsPreviewFade = computed(() => !canScrollTop.value && !canScrollBottom.value);
 const explicitHeight = ref<string>();
 const isCollapsible = ref(false);
 const { t } = useI18n();
@@ -161,7 +167,14 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	<div :class="$style.codeBlock">
 		<pre
 			ref="pre"
-			:class="[$style.pre, { [$style.isExpanded]: !collapsed }]"
+			:class="[
+				$style.pre,
+				{
+					[$style.isExpanded]: !collapsed,
+					[$style.previewFade]: showsPreviewFade,
+				},
+			]"
+			v-bind="scrollMaskAttrs"
 			:style="heightStyle"
 			:aria-label="ariaLabel"
 			:tabindex="ariaLabel ? 0 : undefined"
@@ -211,6 +224,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus.scss';
+@use '../../css/mixins/mixins' as scroll-mask;
 @use '../../css/mixins/motion.scss';
 
 .codeBlock {
@@ -271,12 +285,13 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	tab-size: 4;
 	scrollbar-width: thin;
 	scrollbar-color: gray transparent;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
+	@include scroll-mask.scroll-mask-when-y;
+
+	// A block that does not scroll keeps the collapsed-preview fade.
+	// The edge mask replaces it after the content overflows.
+	&.previewFade {
+		@include scroll-mask.scroll-mask(bottom);
+	}
 
 	code {
 		/** Override background color injected by hjs **/

@@ -45,7 +45,7 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 	USER_SAVED_TYPE_AVAILABILITY_POLICY: {
 		name: 'User saved type availability policy',
 		description:
-			'A type availability policy (node types or credential types, per `kind`) was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy.',
+			'A type availability policy (node types or credential types, per `kind`) was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy. Adding a project policy through `POST /project-policies` also reports here, with `origin: add-project-policy`.',
 		properties: z.object({
 			user_id: userId,
 			source,
@@ -94,6 +94,12 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.describe('Saved rules that name a package or type this instance has not loaded'),
 			version: z.number().describe('The scope version after the write'),
+			origin: z
+				.enum(['save', 'add-project-policy'])
+				.optional()
+				.describe(
+					"'add-project-policy' is the one-call create from the Add project policy dialog. It reports one event for each kind that had no project policy, with no rules and the allow default action",
+				),
 		}),
 	},
 	USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT: {
@@ -126,6 +132,47 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.describe('Attachments that a narrower scope cannot override'),
 			previous_attachment_count: z.number(),
+		}),
+	},
+	USER_OPENED_TYPE_ACCESS_DIALOG: {
+		name: 'User opened type access dialog',
+		description:
+			'An admin opened the access dialog of one node or credential type on the instance policy page. Fires once the page knows the type, so a link to a type that the instance does not have does not fire it.',
+		properties: z.object({
+			kind,
+			type_name: z.string().describe('The node or credential type name, not user data'),
+			source: z
+				.enum(['table', 'link'])
+				.describe("'table' for a click in the policy table, 'link' for a URL that names the type"),
+			current_access: z
+				.enum(['allow', 'deny', 'delegate'])
+				.describe('The instance access of the type when the dialog opened'),
+		}),
+	},
+	USER_REVIEWED_TYPE_RESTRICTION: {
+		name: 'User reviewed type restriction',
+		description:
+			'An admin answered the review that opens before a type that workflows use becomes restricted. A cancel does not reach the backend, so only this event reports it. A type that no workflow uses skips the review and does not fire it.',
+		properties: z.object({
+			kind,
+			type_name: z.string().describe('The node or credential type name, not user data'),
+			decision: z
+				.enum(['confirm', 'cancel'])
+				.describe("'cancel' also covers Escape and a click outside the review"),
+			use_count: z
+				.number()
+				.nullable()
+				.describe('Nodes that use the type. Null when the review could not load the counts'),
+			workflow_count: z
+				.number()
+				.nullable()
+				.describe('Workflows that use the type. Null when the review could not load the counts'),
+			active_workflow_count: z
+				.number()
+				.nullable()
+				.describe(
+					'Active workflows that use the type. Null when the review could not load the counts',
+				),
 		}),
 	},
 });

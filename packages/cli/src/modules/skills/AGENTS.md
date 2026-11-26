@@ -55,6 +55,7 @@ Other modules call the services that `index.ts` exports. A contract (an abstract
 | `SkillAccessService`                                    | Permission checks                                                                         |
 | `SkillRuntimeService`                                   | What agents and n8n Assistant read to run skills                                          |
 | `SkillsGate`, `AssistantSkillsFlagGate`                 | Whether skills are on, and whether n8n Assistant skills are on                            |
+| `WorkflowsInSkillsFlagGate`                             | Whether skills can mention workflows that agents run as tools                             |
 | `SkillUsage`, `SkillUsageProxy`                         | The contract that the agents module implements                                            |
 | `SkillSourceCredentials`, `SkillSourceCredentialsProxy` | The contract for the credentials of skill sources, which cli implements                   |
 | `SkillNameTakenError` and helpers                       | Shared errors, name rules, hashes and types                                               |

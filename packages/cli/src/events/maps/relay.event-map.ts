@@ -2042,6 +2042,8 @@ export type RelayEventMap = ModuleEventMap & {
 		rulesAfter: readonly PolicyRule[];
 		shadowWarningCount: number;
 		notLoadedWarningCount: number;
+		/** `add-project-policy` is the one-call create of an empty project policy. Absent means a composed save. */
+		origin?: 'add-project-policy';
 	};
 
 	'node-type-policy-attachments-updated': {

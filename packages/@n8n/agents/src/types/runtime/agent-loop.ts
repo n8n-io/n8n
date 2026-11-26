@@ -105,7 +105,6 @@ export interface RunServices {
 	readonly modelId: string;
 	applyCost(usage: TokenUsage | undefined): TokenUsage | undefined;
 	saveToMemory(list: AgentMessageList, options: RunCallOptions): Promise<void>;
-	maybeGenerateTitle(list: AgentMessageList, options: RunCallOptions): Promise<void>;
 	flushTelemetry(options: RunCallOptions): Promise<void>;
 	cleanupRun(): Promise<void>;
 	updateState(patch: Partial<SerializableAgentState>): void;

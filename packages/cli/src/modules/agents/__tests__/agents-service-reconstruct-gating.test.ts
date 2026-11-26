@@ -23,6 +23,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type * as ProxyTransport from '@/utils/ai-proxy-fetch';
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -159,6 +160,7 @@ function makeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 }
 
@@ -462,6 +464,46 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		);
 		expect(getInjectedToolNames()).not.toContain('find_file');
 	});
+
+	it.each([true, false])(
+		'forwards config.sandboxEgress=%s to getAgentWorkspace',
+		async (sandboxEgress) => {
+			const knowledgeRetriever = mock<KnowledgeRetrievalService>();
+			const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+				isEnabled: () => true,
+			});
+			const agentWorkspaceService = mock<AgentWorkspaceService>();
+			knowledgeRetriever.hasFiles.mockResolvedValue(false);
+			agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+				workspace: new Workspace({}),
+				handle: mock<AgentSandboxRuntime>(),
+			});
+			const service = makeReconstructionService({
+				agentSandboxRuntimeService,
+				knowledgeRetriever,
+				agentWorkspaceService,
+			});
+			const agent = makeAgentEntity({ sandboxEgress });
+
+			await service.reconstructFromAgentEntity(
+				storedRunSource(agent),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				'manual',
+				principalHash,
+			);
+
+			expect(agentWorkspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				principalHash,
+				{ sandboxEgress },
+			);
+		},
+	);
 
 	it('keeps knowledge tools gated by uploaded files', async () => {
 		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
