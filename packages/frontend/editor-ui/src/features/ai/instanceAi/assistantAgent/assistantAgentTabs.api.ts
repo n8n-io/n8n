@@ -23,3 +23,28 @@ export async function saveAssistantAgentThreadTabs(
 ): Promise<AssistantThreadTabsResponse> {
 	return await makeRestApiRequest(context, 'PUT', `/assistant/threads/${threadId}/tabs`, state);
 }
+
+/** The credential choices that the setup panel saved in the thread metadata. */
+export async function fetchAssistantAgentSetupCredentials(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<{ metadata: Record<string, unknown> }> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/assistant/threads/${threadId}/setup-credentials`,
+	);
+}
+
+export async function saveAssistantAgentSetupCredentials(
+	context: IRestApiContext,
+	threadId: string,
+	metadata: Record<string, unknown>,
+): Promise<{ metadata: Record<string, unknown> }> {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/assistant/threads/${threadId}/setup-credentials`,
+		{ metadata },
+	);
+}

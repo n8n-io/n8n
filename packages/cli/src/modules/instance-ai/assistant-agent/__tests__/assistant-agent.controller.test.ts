@@ -3,6 +3,7 @@ import {
 	AssistantAgentTargetRequestDto,
 	AssistantPreferenceCardEditRequestDto,
 	AssistantPreferenceCardUndoRequestDto,
+	AssistantSetupCredentialMetadataRequestDto,
 	AssistantThreadTabsRequestDto,
 	type AiPreferenceDto,
 	type AssistantPreferenceCard,
@@ -16,6 +17,8 @@ import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
+
+import type { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import { AssistantAgentController } from '../assistant-agent.controller';
 import type { AssistantAgentFeedbackService } from '../assistant-agent-feedback.service';
@@ -32,12 +35,14 @@ describe('AssistantAgentController', () => {
 	const agentTargets = mock<AssistantAgentTargetsService>();
 	const preferenceCards = mock<AssistantPreferenceCardsService>();
 	const feedback = mock<AssistantAgentFeedbackService>();
+	const threadMetadata = mock<SystemAgentThreadMetadataService>();
 	const controller = new AssistantAgentController(
 		threadTabs,
 		threadCredits,
 		agentTargets,
 		preferenceCards,
 		feedback,
+		threadMetadata,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -196,6 +201,42 @@ describe('AssistantAgentController', () => {
 			await expect(
 				controller.saveThreadTabs(req, res, THREAD_ID, new AssistantThreadTabsRequestDto(state)),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('setup credentials', () => {
+		const selectionKey = 'instanceAiSetupCredentialSelection:wf-1:credential:slackApi';
+		const selection = { selectionId: 'sel-1', credentialType: 'slackApi', credentialId: 'cred-1' };
+
+		it('merges the choices into the thread metadata and returns only the setup keys', async () => {
+			threadMetadata.patch.mockImplementation(async (_agentId, _user, _threadId, change) =>
+				change({ assistantTabs: { tabs: [] } }),
+			);
+
+			await expect(
+				controller.saveSetupCredentials(
+					req,
+					res,
+					THREAD_ID,
+					new AssistantSetupCredentialMetadataRequestDto({
+						metadata: { [selectionKey]: selection },
+					}),
+				),
+			).resolves.toEqual({ metadata: { [selectionKey]: selection } });
+			expect(threadMetadata.patch).toHaveBeenCalledWith(
+				'assistant',
+				user,
+				THREAD_ID,
+				expect.any(Function),
+			);
+		});
+
+		it('refuses metadata keys that the setup panel does not own', () => {
+			expect(
+				AssistantSetupCredentialMetadataRequestDto.safeParse({
+					metadata: { [selectionKey]: selection, assistantTabs: null },
+				}).success,
+			).toBe(false);
 		});
 	});
 

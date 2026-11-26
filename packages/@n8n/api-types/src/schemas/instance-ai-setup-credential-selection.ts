@@ -12,6 +12,7 @@ export type InstanceAiSetupCredentialSelection = z.infer<
 >;
 
 const SELECTION_KEY_PREFIX = 'instanceAiSetupCredentialSelection:';
+const APPLIED_KEY_PREFIX = 'instanceAiSetupCredentialApplied:';
 
 export function instanceAiSetupCredentialSelectionKey(itemId: string): string {
 	return `${SELECTION_KEY_PREFIX}${itemId}`;
@@ -19,7 +20,12 @@ export function instanceAiSetupCredentialSelectionKey(itemId: string): string {
 
 /** A marker for each choice keeps reordered saves independent. */
 export function instanceAiSetupCredentialAppliedKey(itemId: string, selectionId: string): string {
-	return `instanceAiSetupCredentialApplied:${itemId}:${selectionId}`;
+	return `${APPLIED_KEY_PREFIX}${itemId}:${selectionId}`;
+}
+
+/** Whether a thread metadata key holds a setup credential choice or its applied marker. */
+export function isInstanceAiSetupCredentialMetadataKey(key: string): boolean {
+	return key.startsWith(SELECTION_KEY_PREFIX) || key.startsWith(APPLIED_KEY_PREFIX);
 }
 
 export function readPendingInstanceAiSetupCredentialSelections(

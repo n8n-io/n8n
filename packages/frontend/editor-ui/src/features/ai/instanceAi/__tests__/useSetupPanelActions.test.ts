@@ -25,6 +25,7 @@ import {
 	type SetupCredentialItem,
 	type SetupCredentialRef,
 	type SetupPanelApplyResult,
+	type SetupPanelMetadataStore,
 } from '../composables/useSetupPanelActions';
 
 vi.mock('@/app/api/workflows', async (importOriginal) => ({
@@ -85,6 +86,7 @@ function createHarness(
 		agentBuilding?: boolean;
 		workflowId?: string | undefined;
 		onFlushResult?: (result: SetupPanelApplyResult, workflowId: string) => void;
+		metadataStore?: SetupPanelMetadataStore;
 	} = {},
 ) {
 	const building = ref(options.agentBuilding ?? false);
@@ -103,6 +105,7 @@ function createHarness(
 
 	const actions = useSetupPanelActions({
 		threadId: 'thread-1',
+		metadataStore: options.metadataStore,
 		workflowId: () => workflowId.value,
 		workflowNodes,
 		isAgentBuilding: () => building.value,
@@ -290,6 +293,32 @@ describe('useSetupPanelActions', () => {
 			}),
 		);
 		expect(onSaved).toHaveBeenCalledExactlyOnceWith(await updateWorkflow.mock.results[0].value);
+	});
+
+	it('saves the credential choice in the metadata store of the thread', async () => {
+		const stored = ref<Record<string, unknown>>();
+		const metadataStore: SetupPanelMetadataStore = {
+			read: () => stored.value,
+			write: (metadata) => {
+				stored.value = metadata;
+			},
+			save: vi.fn(async () => {}),
+			fetch: vi.fn(async () => stored.value),
+		};
+		const { actions } = createHarness({ metadataStore });
+
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
+
+		expect(metadataStore.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				[instanceAiSetupCredentialSelectionKey(credentialItem.id)]: expect.objectContaining({
+					credentialId: 'cred-1',
+				}),
+			}),
+		);
+		expect(metadataStore.fetch).toHaveBeenCalled();
+		expect(updateThreadMetadata).not.toHaveBeenCalled();
+		expect(fetchThread).not.toHaveBeenCalled();
 	});
 
 	it('survives a version conflict: refetches, re-applies the delta, retries once', async () => {

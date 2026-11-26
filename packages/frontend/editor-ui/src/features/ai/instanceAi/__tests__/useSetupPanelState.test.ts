@@ -73,22 +73,8 @@ function createHarness(
 	});
 
 	const thread: SetupPanelThreadSource = reactive({
-		messages: [
-			{
-				agentTree: {
-					agentId: 'root',
-					role: 'orchestrator',
-					status: 'completed',
-					textContent: '',
-					reasoning: '',
-					timeline: [],
-					toolCalls: [],
-					children: [],
-				},
-			},
-		],
-		// The editing check is mocked, so the turns are never read.
-		artifactTurns: [],
+		// The editing check is mocked, so only the first-build check reads the turns.
+		artifactTurns: [{ id: 'turn-1', role: 'assistant', isLive: false, toolCalls: [] }],
 		setupItemsByWorkflowId: { [WORKFLOW_ID]: eventItems },
 	});
 
@@ -128,7 +114,7 @@ describe('useSetupPanelState', () => {
 			hasWorkflowNodes: false,
 			derivedItems: [],
 		});
-		thread.messages[0].agentTree!.toolCalls.push({
+		thread.artifactTurns[0].toolCalls.push({
 			toolCallId: 'setup',
 			toolName: 'credentials',
 			args: { action: 'setup' },
@@ -138,7 +124,7 @@ describe('useSetupPanelState', () => {
 		expect(state.isAwaitingFirstBuild.value).toBe(true);
 		expect(state.rowSource.value).toBe('events');
 		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
-		thread.messages[0].agentTree!.toolCalls.push({
+		thread.artifactTurns[0].toolCalls.push({
 			toolCallId: 'build',
 			toolName: 'workflow_builder_build_workflow',
 			args: {},

@@ -11,6 +11,7 @@ import { isAgentEditingAgent, isAgentEditingWorkflow } from '../../canvasPreview
 import { useResourceRegistry } from '../../useResourceRegistry';
 import {
 	findArchivedAssistantWorkflowIds,
+	findLatestAssistantSetupItems,
 	findLatestAssistantTasks,
 	toArtifactToolCall,
 	toAssistantArtifactTurns,
@@ -400,5 +401,39 @@ describe('findArchivedAssistantWorkflowIds', () => {
 		]);
 
 		expect(ids.size).toBe(0);
+	});
+});
+
+describe('findLatestAssistantSetupItems', () => {
+	it('keeps the latest valid checklist of each workflow', () => {
+		const slack = {
+			id: 'wf-1:credential:slackApi',
+			kind: 'credential',
+			credentialType: 'slackApi',
+		};
+		const setupItems = (id: string, workflowId: string, items: unknown) => ({
+			id,
+			name: 'setup-items',
+			payload: { workflowId, items },
+		});
+
+		const items = findLatestAssistantSetupItems(
+			readonly([
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: '',
+					hostEvents: [setupItems('e1', 'wf-1', []), setupItems('e2', 'wf-2', [slack])],
+				},
+				{
+					id: 'a2',
+					role: 'assistant',
+					content: '',
+					hostEvents: [setupItems('e3', 'wf-1', [slack]), setupItems('e4', 'wf-2', 'bad')],
+				},
+			]),
+		);
+
+		expect(items).toEqual({ 'wf-1': [slack], 'wf-2': [slack] });
 	});
 });

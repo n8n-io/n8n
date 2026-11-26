@@ -37,7 +37,10 @@ import {
 	type AgentToolStepLabeler,
 } from '@/features/agents/components/agentChatInjectionKeys';
 import { mockedStore } from '@/__tests__/utils';
-import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT,
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 import {
@@ -96,6 +99,10 @@ const {
 }));
 
 const { routeQuery } = vi.hoisted(() => ({ routeQuery: {} as Record<string, string> }));
+
+const { setupPanelThread } = vi.hoisted(() => ({
+	setupPanelThread: { current: undefined as ArtifactThread | undefined },
+}));
 
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 	fetchTabs: vi.fn(),
@@ -237,6 +244,21 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 					previewProps.current = { ...attrs };
 					return h('div', { 'data-test-id': 'workflow-preview-stub' });
 				};
+			},
+		}),
+	};
+});
+
+// The real setup panel reads the workflow and credential stores, and has its own tests.
+vi.mock('../../components/setupPanel/InstanceAiSetupPanel.vue', async () => {
+	const { useArtifactThread } = await import('../../artifactThread');
+	return {
+		default: defineComponent({
+			props: { workflowId: { type: String, required: true } },
+			setup(props) {
+				setupPanelThread.current = useArtifactThread();
+				return () =>
+					h('div', { 'data-test-id': 'setup-panel-stub', 'data-workflow-id': props.workflowId });
 			},
 		}),
 	};
@@ -1107,6 +1129,39 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	describe('setup panel', () => {
+		it('shows the setup checklist that the agent announced above the composer', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name
+					? INSTANCE_AI_SETUP_PANEL_EXPERIMENT.variant
+					: undefined,
+			);
+			const slack = {
+				id: 'wf-1:credential:slackApi',
+				kind: 'credential',
+				credentialType: 'slackApi',
+			};
+			chatMessages.value = [
+				{ id: 'u-1', role: 'user', content: 'Build it' },
+				{
+					id: 'a-1',
+					role: 'assistant',
+					content: '',
+					hostEvents: [
+						{ id: 'e-1', name: 'setup-items', payload: { workflowId: 'wf-1', items: [slack] } },
+					],
+				},
+			];
+			const { findByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			isLoadingHistory.value = false;
+
+			expect(await findByTestId('setup-panel-stub')).toHaveAttribute('data-workflow-id', 'wf-1');
+			expect(setupPanelThread.current?.setupItemsByWorkflowId).toEqual({ 'wf-1': [slack] });
+		});
 	});
 
 	describe('credits and limited mode', () => {

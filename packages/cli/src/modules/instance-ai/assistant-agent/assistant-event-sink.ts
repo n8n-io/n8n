@@ -1,4 +1,4 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent, InstanceAiSetupItem } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEventBus } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -38,6 +38,9 @@ const TRANSIENT_EVENT_TYPES: ReadonlySet<InstanceAiEvent['type']> = new Set([
  * them. Other events have no reader on this runtime and are dropped.
  */
 export class AssistantEventSink implements InstanceAiEventBus {
+	/** The setup checklists that this turn recorded, by workflow, oldest first. */
+	private readonly setupItems = new Map<string, InstanceAiSetupItem[]>();
+
 	constructor(
 		private readonly emitters: HostEventEmitters,
 		private readonly logger: Logger,
@@ -55,6 +58,10 @@ export class AssistantEventSink implements InstanceAiEventBus {
 			const payload = toJsonValue('payload' in event ? event.payload : undefined);
 			if (keyOf) this.emitters.emitHostEvent(event.type, payload, { key: keyOf(event) });
 			else this.emitters.emitTransientHostEvent(event.type, payload);
+			if (event.type === 'setup-items') {
+				this.setupItems.delete(event.payload.workflowId);
+				this.setupItems.set(event.payload.workflowId, event.payload.items);
+			}
 		} catch (error) {
 			// An event that is too large or comes after the turn settled is not shown.
 			this.logger.warn('Failed to send an Assistant event to the chat', {
@@ -62,6 +69,14 @@ export class AssistantEventSink implements InstanceAiEventBus {
 				error: getErrorMessage(error),
 			});
 		}
+	}
+
+	/**
+	 * The setup checklists that this turn recorded with its history. The setup
+	 * tools read them back to confirm that the setup panel can show them.
+	 */
+	setupItemsSnapshots(): Array<{ workflowId: string; items: InstanceAiSetupItem[] }> {
+		return [...this.setupItems].map(([workflowId, items]) => ({ workflowId, items }));
 	}
 
 	subscribe(): () => void {

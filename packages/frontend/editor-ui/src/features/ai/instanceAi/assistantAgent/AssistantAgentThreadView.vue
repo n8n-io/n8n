@@ -50,6 +50,8 @@ import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiSetupPanel from '@/features/ai/instanceAi/components/setupPanel/InstanceAiSetupPanel.vue';
+import { useSetupPanelWorkflow } from '@/features/ai/instanceAi/composables/useSetupPanelWorkflow';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
@@ -553,6 +555,13 @@ const preview = useCanvasPreview({
 });
 
 const canvasRunState = draftPreview.useCanvasRunState(preview);
+
+// --- Setup panel (checklist docked above the composer) ---
+const { workflowId: setupPanelWorkflowId, projectId: setupPanelProjectId } = useSetupPanelWorkflow(
+	thread,
+	preview,
+);
+
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -1140,6 +1149,11 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:dismissible="!creditsStore.isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
+							/>
+							<InstanceAiSetupPanel
+								v-if="setupPanelWorkflowId"
+								:workflow-id="setupPanelWorkflowId"
+								:project-id="setupPanelProjectId"
 							/>
 						</template>
 						<template #message-actions="{ executionId }">

@@ -645,16 +645,17 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		setupRoute: AssistantWorkflowSetupRoute,
 	): AssistantTurnRuntime {
 		const lease = turn.workspace;
+		const eventBus = new AssistantEventSink(
+			turn,
+			this.logger,
+			trace ? (event) => trace.observeEvent(event) : undefined,
+		);
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
 			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
-			eventBus: new AssistantEventSink(
-				turn,
-				this.logger,
-				trace ? (event) => trace.observeEvent(event) : undefined,
-			),
+			eventBus,
 			// Keeps the trace open until the observer and reflector of the turn finish.
 			...(trace?.context.onMemoryTaskEvent
 				? { onMemoryTaskEvent: trace.context.onMemoryTaskEvent }
@@ -679,7 +680,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				runId: options.runId,
 				threadId: turn.thread.id,
 			}),
-			readSetupItemsSnapshots: async () => [],
+			// Earlier turns are not read: each announcement sends the whole checklist of its workflow.
+			readSetupItemsSnapshots: async () => eventBus.setupItemsSnapshots(),
 			// The setup panel announces the checklist without suspending the turn.
 			markWorkflowSetupHandled: async (workflowId) =>
 				await setupRoute.markWorkflowSetupHandled(workflowId),
