@@ -627,13 +627,13 @@ export function resolveAgentSandboxEgressEnabled(
 	return agentSetting !== false;
 }
 
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
+
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
-export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
-
 export const AgentJsonConfigBaseSchema = z.object({
 	hitlConfigurations: z
 		.array(AgentHitlConfigurationSchema)
