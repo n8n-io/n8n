@@ -74,6 +74,12 @@ export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
 export const INSTANCE_URLS_OPEN_TAG = '<instance-urls>';
 export const INSTANCE_URLS_CLOSE_TAG = '</instance-urls>';
 /**
+ * The person who sends the turn. On the turn because it differs per user: in the system
+ * prompt it would give every user their own prompt-cache prefix.
+ */
+export const CURRENT_USER_OPEN_TAG = '<current-user>';
+export const CURRENT_USER_CLOSE_TAG = '</current-user>';
+/**
  * Auto approval mode. The system prompt says that an action which needs approval shows a
  * card, but in Auto the review can run the action without one.
  */
@@ -211,6 +217,41 @@ export function buildInstanceUrlsBlock(urls: {
 		`Webhook base URL: ${urls.webhookBaseUrl}`,
 		`Form base URL: ${urls.formBaseUrl}`,
 		INSTANCE_URLS_CLOSE_TAG,
+	].join('\n');
+}
+
+export interface CurrentUserSummary {
+	id: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
+	role?: string;
+	personalProjectId?: string;
+}
+
+/**
+ * Names the user, so the agent does not talk about them in the third person when a
+ * tool result names them, for example as the owner of a credential (AST-2109).
+ */
+export function buildCurrentUserBlock(user: CurrentUserSummary): string {
+	const name = sanitisePromptText([user.firstName, user.lastName].filter(Boolean).join(' '));
+	const details = [
+		user.email ? `email: ${sanitisePromptText(user.email)}` : undefined,
+		`user id: \`${sanitisePromptText(user.id)}\``,
+		user.role ? `role: ${sanitisePromptText(user.role)}` : undefined,
+	].filter(Boolean);
+	const person = name ? `${name} (${details.join(', ')})` : `a user (${details.join(', ')})`;
+
+	return [
+		CURRENT_USER_OPEN_TAG,
+		`You are talking to ${person}.`,
+		...(user.personalProjectId
+			? [
+					`Their personal project has the id \`${sanitisePromptText(user.personalProjectId)}\`. A personal project is named after its owner.`,
+				]
+			: []),
+		'When a tool result names this user or their personal project, it means the person you are talking to. Say "you" and "your", not their name.',
+		CURRENT_USER_CLOSE_TAG,
 	].join('\n');
 }
 

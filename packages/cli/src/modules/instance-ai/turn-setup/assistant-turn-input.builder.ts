@@ -19,7 +19,7 @@ import {
 	type ApplicableAiPreferences,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { type User } from '@n8n/db';
+import { isPerson, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	classifyAttachments,
@@ -67,6 +67,7 @@ import {
 	buildAppTargetsBlock,
 	buildAutoApprovalModeBlock,
 	buildCurrentDateTimeBlock,
+	buildCurrentUserBlock,
 	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
@@ -248,6 +249,7 @@ export class AssistantTurnInputBuilder {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 		private readonly preferencesNoteService: InstanceAiPreferencesNoteService,
+		private readonly projectRepository: ProjectRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -497,9 +499,10 @@ export class AssistantTurnInputBuilder {
 			resumeReason === undefined
 				? await this.resolveAppTargetsBlock(context, thread?.metadata ?? {})
 				: '';
-		const [boundProject, pastConversationsSection] = await Promise.all([
+		const [boundProject, pastConversationsSection, currentUserBlock] = await Promise.all([
 			this.resolveBoundProject(context),
 			isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
+			resumeReason === undefined ? this.resolveCurrentUserBlock(user) : undefined,
 		]);
 		const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
 		// Every user turn, not only the opening one, so a preference saved in another
@@ -525,6 +528,7 @@ export class AssistantTurnInputBuilder {
 			threadArtifactsBlock,
 			appTargetsBlock,
 			projectSection ? buildProjectContextBlock(projectSection) : undefined,
+			currentUserBlock,
 			resumeReason === undefined
 				? buildInstanceUrlsBlock({
 						webhookBaseUrl: this.webhookBaseUrl,
@@ -684,6 +688,33 @@ export class AssistantTurnInputBuilder {
 			});
 			return undefined;
 		}
+	}
+
+	/**
+	 * Names the user on every user turn, so the fact survives when older history is
+	 * compacted. Best-effort: without the personal project the block still names the user.
+	 */
+	private async resolveCurrentUserBlock(user: User): Promise<string | undefined> {
+		if (!isPerson(user)) return undefined;
+
+		let personalProjectId: string | undefined;
+		try {
+			personalProjectId = (await this.projectRepository.getPersonalProjectForUser(user.id))?.id;
+		} catch (error) {
+			this.logger.warn('Assistant could not read the personal project of the user', {
+				userId: user.id,
+				error: getErrorMessage(error),
+			});
+		}
+
+		return buildCurrentUserBlock({
+			id: user.id,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			email: user.email,
+			role: user.role?.displayName,
+			personalProjectId,
+		});
 	}
 
 	/**
