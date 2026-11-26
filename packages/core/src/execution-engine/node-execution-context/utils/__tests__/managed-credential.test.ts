@@ -1,9 +1,9 @@
 import type { INode, INodeProperties } from 'n8n-workflow';
 
 import {
-	addManagedOrdId,
 	fillManagedPlaceholders,
-	readManagedOrdId,
+	findMissingManagedFields,
+	getManagedReferenceData,
 	resolveManagedCredentialType,
 } from '../managed-credential';
 
@@ -39,72 +39,47 @@ describe('managed credential (spike)', () => {
 		});
 	});
 
-	describe('readManagedOrdId', () => {
-		it('reads the ORD ID from the node credential reference, with no stored record', () => {
+	describe('getManagedReferenceData', () => {
+		it("returns the fields that the platform put on the node's reference, without id and name", () => {
 			const slack = {
 				...node(),
 				credentials: {
 					platformManagedApi: { id: null, name: 'Slack', ordId: 'acme:apiResource:SLACK:v1' },
 				},
 			};
-			expect(readManagedOrdId(slack, 'platformManagedApi')).toBe('acme:apiResource:SLACK:v1');
+			expect(getManagedReferenceData(slack, 'platformManagedApi')).toEqual({
+				ordId: 'acme:apiResource:SLACK:v1',
+			});
 		});
 
-		it('returns nothing when the reference has no ORD ID', () => {
-			const noOrdId = {
-				...node(),
-				credentials: { platformManagedApi: { id: null, name: 'Slack' } },
-			};
-			expect(readManagedOrdId(noOrdId, 'platformManagedApi')).toBeUndefined();
-			expect(readManagedOrdId(node(), 'platformManagedApi')).toBeUndefined();
+		it('returns nothing for a node with no managed reference', () => {
+			expect(getManagedReferenceData(node(), 'platformManagedApi')).toEqual({});
 		});
 
-		it('ignores an ORD ID on another credential type', () => {
+		it('ignores fields on another credential type', () => {
 			const other = {
 				...node(),
 				credentials: { slackApi: { id: '1', name: 'Slack', ordId: 'acme:apiResource:SLACK:v1' } },
 			};
-			expect(readManagedOrdId(other, 'platformManagedApi')).toBeUndefined();
+			expect(getManagedReferenceData(other, 'platformManagedApi')).toEqual({});
 		});
 	});
 
-	describe('addManagedOrdId', () => {
-		const ordId = 'acme:apiResource:SLACK:v1';
-		const slack = {
-			...node(),
-			credentials: { platformManagedApi: { id: null, name: 'Slack', ordId } },
-		};
+	describe('findMissingManagedFields', () => {
+		const field = (name: string, extra: Partial<INodeProperties> = {}): INodeProperties =>
+			({ displayName: name, name, type: 'string', default: '', ...extra }) as INodeProperties;
 
-		beforeEach(() => {
-			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+		it('lists required fields that the reference does not fill', () => {
+			const properties = [field('ordId', { required: true }), field('optional')];
+			expect(findMissingManagedFields(properties, {})).toEqual(['ordId']);
+			expect(findMissingManagedFields(properties, { ordId: '' })).toEqual(['ordId']);
+			expect(findMissingManagedFields(properties, { ordId: 'x' })).toEqual([]);
 		});
 
-		it("adds the node's ORD ID", () => {
-			expect(addManagedOrdId(slack, { headers: { a: '1' } })?.headers).toEqual({
-				a: '1',
-				ordID: ordId,
-			});
-		});
-
-		it('adds the ORD ID when the request has no options', () => {
-			expect(addManagedOrdId(slack, undefined)).toEqual({ headers: { ordID: ordId } });
-		});
-
-		it('overrides an ordID header that the node set', () => {
-			expect(addManagedOrdId(slack, { headers: { ordID: 'typed' } })?.headers).toEqual({
-				ordID: ordId,
-			});
-		});
-
-		it('changes nothing for a node with no ORD ID', () => {
-			const options = { headers: { ordID: 'from-workflow' } };
-			expect(addManagedOrdId(node(), options)).toBe(options);
-		});
-
-		it('changes nothing when managed mode is off', () => {
-			delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-			const options = { headers: {} };
-			expect(addManagedOrdId(slack, options)).toBe(options);
+		it('ignores notices', () => {
+			expect(
+				findMissingManagedFields([field('notice', { type: 'notice', required: true })], {}),
+			).toEqual([]);
 		});
 	});
 

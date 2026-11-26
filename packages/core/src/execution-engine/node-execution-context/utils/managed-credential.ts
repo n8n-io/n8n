@@ -1,3 +1,4 @@
+import { NodeOperationError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, INode, INodeProperties } from 'n8n-workflow';
 
 // SPIKE (API-663): one operator-defined credential type that stands in for every
@@ -8,35 +9,58 @@ export function getManagedCredentialType(): string | undefined {
 
 /**
  * In managed mode every credential lookup resolves to the managed type, so a real
- * credential on the node is never used. A node without an ORD ID fails in
- * `_getCredentials` before any request is sent.
+ * credential on the node is never used. A node whose reference misses a required field of
+ * the managed type fails in `_getCredentials` before any request is sent.
  */
 export function resolveManagedCredentialType(_node: INode, requestedType: string): string {
 	return getManagedCredentialType() ?? requestedType;
 }
 
-// SPIKE (API-663): approach A. The ORD ID sits on the node's credential reference in the
-// workflow JSON, with no stored record: `{ id: null, name, ordId }`.
-export function readManagedOrdId(node: INode, managedType: string): string | undefined {
+/**
+ * SPIKE (API-663): no credential is stored. The node's reference to the managed type holds
+ * the platform's data instead, for example `{ id: null, name, ordId }`. That data becomes
+ * `$credentials` for the managed type's `authenticate`, the same way Gateway credits marks a node.
+ */
+export function getManagedReferenceData(
+	node: INode,
+	managedType: string,
+): ICredentialDataDecryptedObject {
 	const reference: object | undefined = node.credentials?.[managedType];
-	if (!reference || !('ordId' in reference)) return undefined;
-	return typeof reference.ordId === 'string' && reference.ordId ? reference.ordId : undefined;
+	if (!reference) return {};
+	const data: ICredentialDataDecryptedObject = {};
+	for (const [key, value] of Object.entries(reference)) {
+		if (key === 'id' || key === 'name' || key === '__aiGatewayManaged') continue;
+		data[key] = value as ICredentialDataDecryptedObject[string];
+	}
+	return data;
 }
 
-/** Adds the node's ORD ID to a request it sends, including requests it builds itself. */
-export function addManagedOrdId<T extends { headers?: object }>(node: INode, options: T): T;
-export function addManagedOrdId<T extends { headers?: object }>(
+/** Required fields of the managed type that the node's reference leaves empty. */
+export function findMissingManagedFields(
+	properties: INodeProperties[],
+	data: ICredentialDataDecryptedObject,
+): string[] {
+	return properties
+		.filter((property) => property.required && property.type !== 'notice')
+		.filter(({ name }) => data[name] === undefined || data[name] === '')
+		.map(({ name }) => name);
+}
+
+/** The node's managed data. Fails before any request when a required field is missing. */
+export function getValidManagedData(
 	node: INode,
-	options: T | undefined,
-): T | undefined;
-export function addManagedOrdId<T extends { headers?: object }>(
-	node: INode,
-	options: T | undefined,
-): T | undefined {
-	const managedType = getManagedCredentialType();
-	const ordId = managedType && readManagedOrdId(node, managedType);
-	if (!ordId) return options;
-	return { ...options, headers: { ...options?.headers, ordID: ordId } } as T;
+	managedType: string,
+	managedProperties: INodeProperties[],
+): ICredentialDataDecryptedObject {
+	const data = getManagedReferenceData(node, managedType);
+	const missing = findMissingManagedFields(managedProperties, data);
+	if (missing.length) {
+		throw new NodeOperationError(
+			node,
+			`Add ${missing.join(', ')} to this node's managed credential`,
+		);
+	}
+	return data;
 }
 
 const PLACEHOLDER_URL = 'https://managed.example.com';

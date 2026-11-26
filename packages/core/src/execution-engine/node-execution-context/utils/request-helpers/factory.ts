@@ -22,7 +22,11 @@ import type {
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
-import { addManagedOrdId, resolveManagedCredentialType } from '../managed-credential';
+import {
+	getManagedCredentialType,
+	getValidManagedData,
+	resolveManagedCredentialType,
+} from '../managed-credential';
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
@@ -69,6 +73,28 @@ export const getRequestHelperFunctions = (
 		return parameterValue;
 	};
 
+	// SPIKE (API-663): requests a node sends without an auth helper (its own auth header) still get
+	// the managed type's `authenticate`, so the platform's data reaches every request.
+	const withManagedAuthentication = async <T extends object | undefined>(
+		options: T,
+	): Promise<T> => {
+		const managedType = getManagedCredentialType();
+		// Nodes without a credential (RSS Read, for example) send their requests unchanged.
+		if (!managedType || !node.credentials?.[managedType]) return options;
+		const data = getValidManagedData(
+			node,
+			managedType,
+			additionalData.credentialsHelper.getCredentialsProperties(managedType),
+		);
+		return (await additionalData.credentialsHelper.authenticate(
+			data,
+			managedType,
+			(options ?? {}) as IHttpRequestOptions,
+			workflow,
+			node,
+		)) as T;
+	};
+
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
@@ -87,7 +113,11 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			return await sendHttpRequest(addManagedOrdId(node, requestOptions), additionalData, node);
+			return await sendHttpRequest(
+				await withManagedAuthentication(requestOptions),
+				additionalData,
+				node,
+			);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -123,7 +153,7 @@ export const getRequestHelperFunctions = (
 			return await httpRequestWithAuthentication.call(
 				this,
 				resolveManagedCredentialType(node, credentialsType),
-				addManagedOrdId(node, requestOptions),
+				requestOptions,
 				workflow,
 				node,
 				additionalData,
@@ -149,10 +179,12 @@ export const getRequestHelperFunctions = (
 			const uriOrObject =
 				typeof uriOrObjectWithTarget === 'string'
 					? uriOrObjectWithTarget
-					: addManagedOrdId(node, toLegacyRequestOptions(uriOrObjectWithTarget));
+					: await withManagedAuthentication(toLegacyRequestOptions(uriOrObjectWithTarget));
 			const legacyOptions = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
 			const options =
-				typeof uriOrObject === 'string' ? addManagedOrdId(node, legacyOptions) : legacyOptions;
+				typeof uriOrObject === 'string'
+					? await withManagedAuthentication(legacyOptions)
+					: legacyOptions;
 			if (evalLlmMock) {
 				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
 				const evalMockResponse = await callEvalMockHandler(
@@ -181,7 +213,7 @@ export const getRequestHelperFunctions = (
 			return await requestWithAuthentication.call(
 				this,
 				resolveManagedCredentialType(node, credentialsType),
-				addManagedOrdId(node, requestOptions),
+				requestOptions,
 				workflow,
 				node,
 				additionalData,
@@ -214,7 +246,7 @@ export const getRequestHelperFunctions = (
 				return await requestWithAuthentication.call(
 					this,
 					resolvedOAuth1Type,
-					addManagedOrdId(node, requestOptions),
+					requestOptions,
 					workflow,
 					node,
 					additionalData,
@@ -249,7 +281,7 @@ export const getRequestHelperFunctions = (
 				return await requestWithAuthentication.call(
 					this,
 					resolvedOAuth2Type,
-					addManagedOrdId(node, requestOptions),
+					requestOptions,
 					workflow,
 					node,
 					additionalData,

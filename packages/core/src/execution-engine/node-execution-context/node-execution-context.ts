@@ -52,7 +52,7 @@ import { getAdditionalKeys } from './utils/get-additional-keys';
 import {
 	fillManagedPlaceholders,
 	getManagedCredentialType,
-	readManagedOrdId,
+	getValidManagedData,
 	resolveManagedCredentialType,
 } from './utils/managed-credential';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
@@ -334,23 +334,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	/**
-	 * SPIKE (API-663): approach A. No credential is stored. The node's credential reference in
-	 * the workflow holds only the ORD ID, the same way Gateway credits marks a node. n8n builds
-	 * the node's data from the requested type's fields, with no secret.
+	 * SPIKE (API-663): no credential is stored. n8n builds the node's data from the requested
+	 * type's fields, with no secret, plus the platform's data from the node's managed reference.
 	 */
 	private getManagedCredentials<T extends object>(managedType: string, requestedType: string): T {
 		const { node, additionalData } = this;
-		const ordId = readManagedOrdId(node, managedType);
-		if (!ordId) {
-			throw new NodeOperationError(node, "Add an ORD ID to this node's managed credential");
-		}
-		let properties: INodeProperties[] = [];
-		try {
-			properties = additionalData.credentialsHelper.getCredentialsProperties(requestedType);
-		} catch (error) {
-			this.logger.warn(`Managed credential: unknown credential type "${requestedType}"`, { error });
-		}
-		return fillManagedPlaceholders(properties, {}) as T;
+		const propertiesOf = (type: string): INodeProperties[] => {
+			try {
+				return additionalData.credentialsHelper.getCredentialsProperties(type);
+			} catch (error) {
+				this.logger.warn(`Managed credential: unknown credential type "${type}"`, { error });
+				return [];
+			}
+		};
+		const managedData = getValidManagedData(node, managedType, propertiesOf(managedType));
+		return fillManagedPlaceholders(propertiesOf(requestedType), managedData) as T;
 	}
 
 	/** Returns the requested decrypted credentials if the node has access to them */
