@@ -111,7 +111,7 @@ describe('Test Airtop, query page operation', () => {
 			...baseNodeParameters,
 			prompt: 'How many products are on the page and what is their price range?',
 			additionalFields: {
-				outputSchema: mockJsonSchema,
+				outputSchema: JSON.parse(mockJsonSchema),
 			},
 		};
 
@@ -140,6 +140,32 @@ describe('Test Airtop, query page operation', () => {
 					sessionId: 'test-session-123',
 					windowId: 'win-123',
 					data: mockResponse.data,
+				},
+			},
+		]);
+	});
+
+	it('should parse the model response when an output schema object is set', async () => {
+		vi.mocked(transport.apiRequest).mockResolvedValueOnce({
+			data: { modelResponse: '{"productCount":5}' },
+		});
+		const nodeParameters = {
+			...baseNodeParameters,
+			prompt: 'How many products are on the page?',
+			additionalFields: {
+				outputSchema: JSON.parse(mockJsonSchema),
+				parseJsonOutput: true,
+			},
+		};
+
+		const result = await query.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: 'test-session-123',
+					windowId: 'win-123',
+					output: { productCount: 5 },
 				},
 			},
 		]);

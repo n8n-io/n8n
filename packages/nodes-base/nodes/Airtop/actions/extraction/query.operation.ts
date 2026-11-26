@@ -77,7 +77,8 @@ export async function execute(
 				experimental: {
 					includeVisualAnalysis: includeVisualAnalysis ? 'enabled' : 'disabled',
 				},
-				...(outputSchema ? { outputSchema } : {}),
+				// The API expects the schema as a JSON string
+				...(outputSchema ? { outputSchema: JSON.stringify(outputSchema) } : {}),
 			},
 		},
 	});

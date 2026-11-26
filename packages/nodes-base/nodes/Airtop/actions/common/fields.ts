@@ -59,6 +59,7 @@ export const outputSchemaField: INodeProperties = {
 	description: 'JSON schema defining the structure of the output',
 	hint: 'If you want to force your output to be JSON, provide a valid JSON schema describing the output. You can generate one automatically in the <a href="https://portal.airtop.ai/" target="_blank">Airtop API Playground</a>.',
 	type: 'json',
+	validateType: 'object',
 	default: '',
 };
 

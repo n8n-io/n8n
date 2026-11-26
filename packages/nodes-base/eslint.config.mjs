@@ -35,7 +35,6 @@ const deprecatedNodes = [
 // A json parameter must set validateType, so that an expression can return an
 // object or an array. Remove a folder from the list when its findings are fixed.
 const jsonValidateTypePending = [
-	'./nodes/Airtop/**',
 	'./nodes/Amqp/**',
 	'./nodes/Beeminder/**',
 	'./nodes/Confluence/**',

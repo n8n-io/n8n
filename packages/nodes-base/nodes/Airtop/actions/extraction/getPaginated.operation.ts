@@ -104,12 +104,13 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', index, '') as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index);
+	const { outputSchema, ...additionalFields } = this.getNodeParameter('additionalFields', index);
 
-	const configFields = ['paginationMode', 'interactionMode', 'outputSchema'];
+	const configFields = ['paginationMode', 'interactionMode'];
 	const configuration = configFields.reduce(
 		(config, key) => (additionalFields[key] ? { ...config, [key]: additionalFields[key] } : config),
-		{},
+		// The API expects the schema as a JSON string
+		outputSchema ? { outputSchema: JSON.stringify(outputSchema) } : {},
 	);
 
 	const result = await executeRequestWithSessionManagement.call(this, index, {

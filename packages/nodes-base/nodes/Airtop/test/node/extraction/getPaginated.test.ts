@@ -119,7 +119,7 @@ describe('Test Airtop, getPaginated operation', () => {
 			...baseNodeParameters,
 			prompt: 'Extract all product titles and prices',
 			additionalFields: {
-				outputSchema: mockJsonSchema,
+				outputSchema: JSON.parse(mockJsonSchema),
 			},
 		};
 

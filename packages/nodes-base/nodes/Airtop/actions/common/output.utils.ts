@@ -15,14 +15,10 @@ export function parseJsonIfPresent(
 	index: number,
 	response: IAirtopResponse,
 ): IAirtopResponse {
-	const parseJsonOutput = this.getNodeParameter('additionalFields.parseJsonOutput', index, false);
-	const outputJsonSchema = this.getNodeParameter(
-		'additionalFields.outputSchema',
-		index,
-		'',
-	) as string;
+	// Read the whole collection, because core validates outputSchema only then
+	const { parseJsonOutput, outputSchema } = this.getNodeParameter('additionalFields', index, {});
 
-	if (!parseJsonOutput || !outputJsonSchema.startsWith('{')) {
+	if (!parseJsonOutput || !outputSchema) {
 		return response;
 	}
 
