@@ -1,7 +1,7 @@
 import { MigrationExecutor, type DataSource } from '@n8n/typeorm';
 
-// Outside the range of `@n8n/db`'s `DbLock` ids, in case the engine shares a database with n8n.
-const MIGRATIONS_LOCK_ID = 2001;
+// In the 2000–2999 range that `DbLock` in `@n8n/db` reserves for the engine.
+export const MIGRATIONS_LOCK_ID = 2001;
 
 /**
  * Runs the pending engine migrations in one process at a time. A
