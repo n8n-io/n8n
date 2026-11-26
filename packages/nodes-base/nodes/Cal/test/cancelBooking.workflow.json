@@ -1,0 +1,36 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "booking",
+				"operation": "cancel",
+				"bookingUid": "bk_one",
+				"cancellationReason": "Rescheduling",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.cal",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "aa11bb22-cc33-4dd4-8ee5-ff6600112233",
+			"name": "Cal.com",
+			"credentials": {
+				"calApi": {
+					"id": "testId",
+					"name": "Cal account"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Cal.com": [
+			{
+				"json": {
+					"uid": "bk_one",
+					"status": "cancelled",
+					"cancellationReason": "Rescheduling"
+				}
+			}
+		]
+	}
+}

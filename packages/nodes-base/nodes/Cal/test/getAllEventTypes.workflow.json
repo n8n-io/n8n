@@ -1,0 +1,40 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "eventType",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"filters": {
+					"username": "tai"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.cal",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "dd44ee55-ff66-4778-8899-aabbccddeeff",
+			"name": "Cal.com",
+			"credentials": {
+				"calApi": {
+					"id": "testId",
+					"name": "Cal account"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Cal.com": [
+			{
+				"json": {
+					"id": 1001,
+					"title": "30 Min Meeting",
+					"slug": "30min",
+					"lengthInMinutes": 30
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,43 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "booking",
+				"operation": "get",
+				"bookingUid": "bk_one",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.cal",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "bb22cc33-dd44-4ee5-9ff6-001122334455",
+			"name": "Cal.com",
+			"credentials": {
+				"calApi": {
+					"id": "testId",
+					"name": "Cal account"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Cal.com": [
+			{
+				"json": {
+					"uid": "bk_one",
+					"title": "30 Min Meeting between Tai and Ada",
+					"status": "upcoming",
+					"start": "2026-09-01T01:00:00.000Z",
+					"end": "2026-09-01T01:30:00.000Z",
+					"attendees": [
+						{
+							"name": "Ada Lovelace",
+							"email": "ada@example.com"
+						}
+					]
+				}
+			}
+		]
+	}
+}
