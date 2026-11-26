@@ -18,11 +18,13 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import isEqual from 'lodash/isEqual';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
+import { usePromotionUnresolvedSummary } from '../composables/usePromotionUnresolvedSummary';
 import { httpUrl, notIncludedNote, warningSegments } from '../promotionResult';
 import { fetchPromoteCheck, promotePackage } from '../promotionsSettings.api';
 import type { PromotedResult } from '../promotions.types';
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
 import PromotionMissingDependencyList from './PromotionMissingDependencyList.vue';
+import PromotionUnresolvedSummary from './PromotionUnresolvedSummary.vue';
 
 const props = defineProps<{
 	open: boolean;
@@ -89,30 +91,23 @@ const reviewed = computed(() => (isChecking.value ? null : check.value));
 // The user confirms these with the Promote. The warnings need no confirmation.
 const unresolved = computed(() => reviewed.value?.missingDependencies ?? []);
 const warnings = computed(() => reviewed.value?.warnings ?? []);
-const unresolvedText = (
-	key:
-		| 'promotions.preview.unresolved.title.promote'
-		| 'promotions.preview.submit.promote.unresolved',
-) =>
-	i18n.baseText(key, {
-		adjustToNumber: unresolved.value.length,
-		interpolate: { count: String(unresolved.value.length) },
-	});
+// The summary names the workflows that cannot be published, and the dependencies that they miss.
+const { lead, rows } = usePromotionUnresolvedSummary(() => unresolved.value, 'promote');
 
-const dialogTitle = computed(() => {
-	if (result.value) return i18n.baseText('settings.promotions.promote.dialog.result.title');
-	return unresolved.value.length > 0
-		? unresolvedText('promotions.preview.unresolved.title.promote')
+// The title never mentions the dependencies. The summary in the dialog says what is missing.
+const dialogTitle = computed(() =>
+	result.value
+		? i18n.baseText('settings.promotions.promote.dialog.result.title')
 		: i18n.baseText('settings.promotions.promote.dialog.title', {
 				interpolate: { environment: props.environmentName },
-			});
-});
-
-const ariaDescription = computed(() =>
-	result.value
-		? dialogTitle.value
-		: i18n.baseText('settings.promotions.promote.dialog.ariaDescription'),
+			}),
 );
+
+const ariaDescription = computed(() => {
+	if (result.value) return dialogTitle.value;
+	const text = i18n.baseText('settings.promotions.promote.dialog.ariaDescription');
+	return unresolved.value.length > 0 ? `${text} ${lead.value}` : text;
+});
 
 const bodyText = computed(() => {
 	if (props.providerType === 'gitlab' && props.createBranchOnPromotion) {
@@ -226,7 +221,7 @@ async function submit() {
 		<template v-if="!result">
 			<N8nDialogBody>
 				<form id="promote-instance-form" :class="$style.body" @submit.prevent="submit">
-					<N8nText color="text-base">{{ bodyText }}</N8nText>
+					<N8nText v-if="unresolved.length === 0" color="text-base">{{ bodyText }}</N8nText>
 
 					<!-- The region is in the page before the list, so a list that arrives later is announced. -->
 					<div
@@ -248,12 +243,7 @@ async function submit() {
 							>
 								{{ i18n.baseText('settings.promotions.promote.dialog.missing.changed') }}
 							</N8nCallout>
-							<template v-if="unresolved.length > 0">
-								<N8nText color="text-base">
-									{{ i18n.baseText('promotions.preview.unresolved.body.promote') }}
-								</N8nText>
-								<PromotionMissingDependencyList :dependencies="unresolved" />
-							</template>
+							<PromotionUnresolvedSummary v-if="unresolved.length > 0" :lead="lead" :rows="rows" />
 							<template v-if="warnings.length > 0">
 								<N8nText color="text-base">
 									{{ i18n.baseText('settings.promotions.promote.dialog.missing.warnings') }}
@@ -287,11 +277,7 @@ async function submit() {
 					:loading="isSubmitting"
 					data-test-id="promote-confirm-button"
 				>
-					{{
-						unresolved.length > 0
-							? unresolvedText('promotions.preview.submit.promote.unresolved')
-							: i18n.baseText('settings.promotions.promote.dialog.confirm')
-					}}
+					{{ i18n.baseText('settings.promotions.promote.dialog.confirm') }}
 				</N8nButton>
 			</N8nDialogFooter>
 		</template>
