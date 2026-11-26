@@ -1,0 +1,89 @@
+{
+	"name": "Airtop query output schema",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "a1b2c3d4-0000-4000-8000-000000000001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "extraction",
+				"operation": "query",
+				"sessionMode": "existing",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"prompt": "What is the page title?",
+				"additionalFields": {
+					"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": { \"title\": { \"type\": \"string\" } }\n}"
+				}
+			},
+			"id": "a1b2c3d4-0000-4000-8000-000000000002",
+			"name": "Query JSON",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "extraction",
+				"operation": "query",
+				"sessionMode": "existing",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"prompt": "What is the page title?",
+				"additionalFields": {
+					"outputSchema": "={{ { \"type\": \"object\", \"properties\": { \"name\": { \"type\": \"string\" } } } }}"
+				}
+			},
+			"id": "a1b2c3d4-0000-4000-8000-000000000003",
+			"name": "Query Expression",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [440, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Query JSON": [
+			{
+				"json": {
+					"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+					"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+					"data": { "modelResponse": "{\"title\":\"Example\"}" }
+				}
+			}
+		],
+		"Query Expression": [
+			{
+				"json": {
+					"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+					"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+					"data": { "modelResponse": "{\"name\":\"Example\"}" }
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Query JSON", "type": "main", "index": 0 }]]
+		},
+		"Query JSON": {
+			"main": [[{ "node": "Query Expression", "type": "main", "index": 0 }]]
+		}
+	}
+}
