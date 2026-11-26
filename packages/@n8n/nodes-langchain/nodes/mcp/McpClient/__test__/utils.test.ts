@@ -339,6 +339,23 @@ describe('utils', () => {
 			]);
 		});
 
+		it('should keep the title of a nullable parameter over the title of its type', () => {
+			const schema = {
+				type: 'object',
+				properties: {
+					sort: {
+						title: 'Sort order',
+						anyOf: [{ title: 'SortOrder', type: 'string', enum: ['newest'] }, { type: 'null' }],
+					},
+				},
+			} as JSONSchema7;
+
+			const [field] = convertJsonSchemaToResourceMapperFields(schema);
+
+			expect(field.displayName).toEqual('Sort order');
+			expect(field.type).toEqual('options');
+		});
+
 		it('should add defaultValue for a nullable array', () => {
 			const schema = {
 				type: 'object',

@@ -228,7 +228,7 @@ function isNullSchema(schema: JSONSchema7Definition): boolean {
 /**
  * A nullable parameter puts its type next to `null`: in `anyOf` or `oneOf` (Pydantic, Zod)
  * or in a `type` array (Go, Rust). Returns the schema of the type that is not null, so the
- * field keeps that type.
+ * field keeps that type. The keywords of the parameter itself, such as `title`, take precedence.
  */
 function withoutNull(schema: JSONSchema7): JSONSchema7 {
 	if (Array.isArray(schema.type)) {
@@ -247,7 +247,7 @@ function withoutNull(schema: JSONSchema7): JSONSchema7 {
 	}
 
 	const { anyOf, oneOf, ...rest } = schema;
-	return { ...rest, ...variant };
+	return { ...variant, ...rest };
 }
 
 export function convertJsonSchemaToResourceMapperFields(
