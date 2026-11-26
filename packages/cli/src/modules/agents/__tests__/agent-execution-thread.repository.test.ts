@@ -67,7 +67,9 @@ describe('AgentExecutionThreadRepository', () => {
 		it('writes the title and emoji only to a thread without a title', async () => {
 			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
-			await repository.setGeneratedTitle('thread-1', 'Weekly digest', '📰');
+			await expect(repository.setGeneratedTitle('thread-1', 'Weekly digest', '📰')).resolves.toBe(
+				true,
+			);
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				AgentExecutionThread,
@@ -79,7 +81,10 @@ describe('AgentExecutionThreadRepository', () => {
 		it('leaves the emoji alone when there is none', async () => {
 			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
 
-			await repository.setGeneratedTitle('thread-1', 'Weekly digest', null);
+			// No row changed: the thread already had a title.
+			await expect(repository.setGeneratedTitle('thread-1', 'Weekly digest', null)).resolves.toBe(
+				false,
+			);
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				AgentExecutionThread,
