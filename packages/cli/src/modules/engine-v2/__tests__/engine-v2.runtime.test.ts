@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { EngineConfig } from '@n8n/config';
+import type { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	mintApprovalCallback,
 	mintResumeToken,
@@ -159,10 +159,12 @@ describe('EngineV2Runtime', () => {
 	const newRuntime = (
 		databaseUrl = 'postgres://engine',
 		config: Partial<EngineConfig> = {},
+		executions: Partial<ExecutionsConfig> = {},
 		logger: Logger = mockLogger(),
 	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
+			mock<ExecutionsConfig>({ pruneData: true, pruneDataMaxAge: 336, ...executions }),
 			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
 			logger,
@@ -236,7 +238,7 @@ describe('EngineV2Runtime', () => {
 			const scopedLogger = mock<Logger>();
 			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-			await newRuntime('postgres://engine', {}, logger).init(initOptions());
+			await newRuntime('postgres://engine', {}, {}, logger).init(initOptions());
 
 			const logged = scopedLogger.info.mock.calls.findIndex(([message]) =>
 				message.includes('migration lock'),
@@ -302,6 +304,21 @@ describe('EngineV2Runtime', () => {
 				expect(SharedSecretIdentityVerifier).toHaveBeenCalledTimes(verifies ? 1 : 0);
 			},
 		);
+
+		it('maps EXECUTIONS_DATA_MAX_AGE to the retention policy', async () => {
+			await newRuntime('postgres://engine', {}, { pruneDataMaxAge: 24 }).init(initOptions());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ retention: { maxAgeMs: 86_400_000 } }),
+			);
+		});
+
+		it('maps EXECUTIONS_DATA_PRUNE=false to no retention policy', async () => {
+			await newRuntime('postgres://engine', {}, { pruneData: false }).init(initOptions());
+
+			const options = mocks.createEngineRuntime.mock.calls[0][0] as { retention?: unknown };
+			expect(options.retention).toBeUndefined();
+		});
 
 		it('starts the engine', async () => {
 			await newRuntime().init(initOptions());

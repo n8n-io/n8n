@@ -1,6 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	EngineRole,
@@ -17,6 +17,7 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	retentionPolicyFromHours,
 	runMigrations,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
@@ -80,6 +81,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
+		private readonly executionsConfig: ExecutionsConfig,
 		private readonly mtls: EngineMtls,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
@@ -146,6 +148,11 @@ export class EngineV2Runtime {
 		this.stopping = stopping;
 		const runsApi = (roles ?? ENGINE_ROLES).includes('api');
 
+		const retention = retentionPolicyFromHours({
+			enabled: this.executionsConfig.pruneData,
+			maxAgeHours: this.executionsConfig.pruneDataMaxAge,
+		});
+
 		this.engine = createEngineRuntime({
 			roles,
 			dataSource: this.dataSource,
@@ -159,6 +166,7 @@ export class EngineV2Runtime {
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
 			queues,
+			retention,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)
