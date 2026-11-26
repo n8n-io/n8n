@@ -129,6 +129,8 @@ export class Bubble implements INodeType {
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const options = this.getNodeParameter('options', i);
 
+					// qs is shared across items, so drop the constraints of the previous item.
+					delete qs.constraints;
 					if (!jsonParameters) {
 						if (options.filters) {
 							const { filter } = options.filters as IDataObject;
