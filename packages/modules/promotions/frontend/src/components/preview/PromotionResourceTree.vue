@@ -210,8 +210,7 @@ function onToggle(resource: PromotionResource) {
 								:class="[
 									$style.label,
 									{
-										[$style.muted]:
-											selectable && (check.disabled || !(check.checked || check.indeterminate)),
+										[$style.muted]: selectable && check.disabled,
 									},
 								]"
 								>{{ item.label }}</N8nText
@@ -366,7 +365,7 @@ function onToggle(resource: PromotionResource) {
 	white-space: nowrap;
 }
 
-/* The checkbox mutes its own label when disabled or unchecked. The name is a separate button, so it needs the same token. */
+/* The checkbox mutes its own label when disabled. The name is a separate button, so it needs the same token. */
 .label.muted {
 	color: var(--checkbox--label--color--disabled);
 }

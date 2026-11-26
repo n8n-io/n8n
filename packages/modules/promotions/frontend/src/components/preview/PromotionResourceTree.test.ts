@@ -51,7 +51,7 @@ describe('PromotionResourceTree', () => {
 		expect(row(getAllByTestId, 'workflow:w4').getByRole('checkbox')).not.toBeChecked();
 	});
 
-	it('should mute the name of a row that is disabled or not selected', () => {
+	it('should mute the name of a disabled row only, whether it is selected or not', () => {
 		const { getAllByTestId } = render(['workflow:w1']);
 
 		const labelOf = (key: string) =>
@@ -60,7 +60,7 @@ describe('PromotionResourceTree', () => {
 				?.querySelector('button span span');
 
 		expect(labelOf('dataTable:t1')?.className).toContain('muted');
-		expect(labelOf('workflow:w4')?.className).toContain('muted');
+		expect(labelOf('workflow:w4')?.className).not.toContain('muted');
 		expect(labelOf('workflow:w1')?.className).not.toContain('muted');
 	});
 
