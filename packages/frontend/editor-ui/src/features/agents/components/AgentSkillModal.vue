@@ -1812,7 +1812,6 @@ function onRemove() {
 						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
 						:agent-context="!!props.data.agentId"
-						:outside-project-workflow-ids="skillOutsideProjectWorkflowIds"
 						read-only
 						@select="selectedPath = $event"
 					/>
