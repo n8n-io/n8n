@@ -20,6 +20,21 @@ describe('Magento 2 > Workflows', () => {
 		mock.put('/rest/V1/customers/42').reply(200, customer);
 		mock.post('/rest/default/V1/order/1001/invoice').reply(200, '"5"');
 		mock.get('/rest/default/V1/orders/1001').reply(200, order);
+		mock
+			.get('/rest/default/V1/orders')
+			.query({
+				search_criteria: {
+					filter_groups: [{ filters: [{ field: 'status', value: 'pending' }] }],
+					page_size: '2',
+				},
+			})
+			.reply(200, { items: [order] });
+		mock
+			.get('/rest/default/V1/products')
+			.query({
+				search_criteria: { sort_orders: [{ field: 'name', direction: 'ASC' }], page_size: '2' },
+			})
+			.reply(200, { items: [product] });
 		mock.post('/rest/default/V1/orders/1001/cancel').reply(200, 'true');
 		mock.post('/rest/default/V1/order/1001/ship').reply(200, '"3"');
 		mock.get('/rest/default/V1/products/24-MB01').reply(200, product);
@@ -30,5 +45,6 @@ describe('Magento 2 > Workflows', () => {
 	new NodeTestHarness().setupTests({
 		credentials,
 		workflowFiles: ['requests.workflow.json'],
+		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 	});
 });

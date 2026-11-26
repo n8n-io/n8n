@@ -397,6 +397,7 @@ export function getSearchFilters(
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
+			validateType: 'object',
 			displayOptions: {
 				show: {
 					resource: [resource],
@@ -514,16 +515,6 @@ export function getFilterQuery(data: {
 	return {
 		search_criteria: {},
 	};
-}
-
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
 }
 
 export function getCustomerOptionalFields(): INodeProperties[] {
