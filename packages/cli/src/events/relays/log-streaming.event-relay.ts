@@ -219,6 +219,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
 			'public-api-rate-limit-updated': (event) => this.publicApiRateLimitUpdated(event),
 			'promotion-settings-updated': (event) => this.promotionSettingsUpdated(event),
+			'promotion-project-environments-allow-list-updated': (event) =>
+				this.promotionProjectEnvironmentsAllowListUpdated(event),
 			'project-workflow-review-settings-updated': (event) =>
 				this.projectWorkflowReviewSettingsUpdated(event),
 			'project-workflow-review-required-by-instance-updated': (event) =>
@@ -1734,6 +1736,21 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.promotion-settings.updated',
 			payload: { ...user, before, after, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private promotionProjectEnvironmentsAllowListUpdated({
+		user,
+		projectId,
+		allowEnvironments,
+		loginId,
+	}: RelayEventMap['promotion-project-environments-allow-list-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: allowEnvironments
+				? 'n8n.audit.promotions.project-environments.project.allowed'
+				: 'n8n.audit.promotions.project-environments.project.disallowed',
+			payload: { ...user, projectId, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 

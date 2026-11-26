@@ -1593,6 +1593,14 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	'promotion-project-environments-allow-list-updated': {
+		user: UserLike;
+		projectId: string;
+		allowEnvironments: boolean;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	// #endregion
 
 	// #region Workflow Reviews
