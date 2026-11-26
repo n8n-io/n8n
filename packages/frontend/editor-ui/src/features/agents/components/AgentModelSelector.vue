@@ -174,10 +174,21 @@ const projectHasOpenAiCredential = computed(() =>
 const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCreditsAndGetCredential } =
 	useFreeAiCredits({ hasOpenAiCredential: projectHasOpenAiCredential });
 
+const agentScopeCredentials = computed(
+	() => credentialsStore.getUsableCredentialsForScope({ projectId, forAgent: true }) ?? [],
+);
+
+// Look in the agent scope first: a fetch for another scope replaces the flat map, and
+// the credential must keep its name and must not read as missing.
+function findCredential(id: string) {
+	return (
+		agentScopeCredentials.value.find((credential) => credential.id === id) ??
+		credentialsStore.getCredentialById(id)
+	);
+}
+
 const selectedCredential = computed(() =>
-	selectedCredentialId.value
-		? credentialsStore.getCredentialById(selectedCredentialId.value)
-		: null,
+	selectedCredentialId.value ? findCredential(selectedCredentialId.value) : null,
 );
 
 // Derived rather than passed in: the selection is already in `credentials`, and a
@@ -198,7 +209,7 @@ const isCredentialsMissing = computed(
 		!isManagedCredential.value &&
 		warnMissingCredentials &&
 		Boolean(selectedModel?.provider) &&
-		!(boundCredentialId && credentialsStore.getCredentialById(boundCredentialId)),
+		!(boundCredentialId && findCredential(boundCredentialId)),
 );
 
 const selectedLabel = computed(
@@ -232,16 +243,14 @@ function getCredentialTypeDisplayName(credentialType: string): string {
 }
 
 function getCredentialsForProvider(provider: AgentModelProvider) {
-	const credentialsById = new Map<
-		string,
-		ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
-	>();
+	// Read the agent scope by key, so a fetch for another scope does not empty the list.
+	const credentials = agentScopeCredentials.value;
+	const credentialTypes = new Set(getProviderCredentialTypes(provider));
+	const credentialsById = new Map<string, (typeof credentials)[number]>();
 
-	for (const credentialType of getProviderCredentialTypes(provider)) {
-		for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
-			if (!credentialsById.has(credential.id)) {
-				credentialsById.set(credential.id, credential);
-			}
+	for (const credential of credentials) {
+		if (credentialTypes.has(credential.type) && !credentialsById.has(credential.id)) {
+			credentialsById.set(credential.id, credential);
 		}
 	}
 

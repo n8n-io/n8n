@@ -115,12 +115,10 @@ describe('useAgentMcpDiscovery', () => {
 
 	it('returns only usable credentials from the current project scope', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
-		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
-		credentialsStore.getUsableCredentialByType = vi
-			.fn()
-			.mockReturnValue([
-				{ id: 'credential-1', name: 'GitHub account', type: 'githubMcpOAuth2Api' },
-			]);
+		credentialsStore.getUsableCredentialsForScope = vi.fn().mockReturnValue([
+			{ id: 'credential-1', name: 'GitHub account', type: 'githubMcpOAuth2Api' },
+			{ id: 'credential-2', name: 'Slack account', type: 'slackOAuth2Api' },
+		]);
 		const adapter = useAgentMcpDiscovery('project-1').createCredentialAdapter(
 			() => server,
 			vi.fn(),
@@ -129,29 +127,23 @@ describe('useAgentMcpDiscovery', () => {
 		expect(adapter.getCredentialsByType('githubMcpOAuth2Api')).toEqual([
 			{ id: 'credential-1', name: 'GitHub account', type: 'githubMcpOAuth2Api' },
 		]);
-		expect(credentialsStore.hasUsableCredentialsForScope).toHaveBeenCalledWith({
+		expect(credentialsStore.getUsableCredentialsForScope).toHaveBeenCalledWith({
 			projectId: 'project-1',
 		});
 	});
 
 	it('does not expose credentials when the project scope has no usable credentials', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
-		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
-		credentialsStore.getUsableCredentialByType = vi
-			.fn()
-			.mockReturnValue([
-				{ id: 'credential-1', name: 'GitHub account', type: 'githubMcpOAuth2Api' },
-			]);
+		credentialsStore.getUsableCredentialsForScope = vi.fn().mockReturnValue(undefined);
 		const adapter = useAgentMcpDiscovery('project-1').createCredentialAdapter(
 			() => server,
 			vi.fn(),
 		);
 
 		expect(adapter.getCredentialsByType('githubMcpOAuth2Api')).toEqual([]);
-		expect(credentialsStore.hasUsableCredentialsForScope).toHaveBeenCalledWith({
+		expect(credentialsStore.getUsableCredentialsForScope).toHaveBeenCalledWith({
 			projectId: 'project-1',
 		});
-		expect(credentialsStore.getUsableCredentialByType).not.toHaveBeenCalled();
 	});
 
 	it('quick-connects one OAuth type and reports the new credential', async () => {

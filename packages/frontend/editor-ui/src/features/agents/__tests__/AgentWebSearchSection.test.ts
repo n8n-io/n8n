@@ -51,11 +51,19 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
+		// The slice holds another scope, as when the tools modal fetched `{ projectId }`.
 		getUsableCredentialByType: (type: string) =>
-			[
-				{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
-				{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
-			].filter((credential) => credential.type === type),
+			[{ id: 'brave-other-scope', name: 'Brave Other Scope', type: 'braveSearchApi' }].filter(
+				(credential) => credential.type === type,
+			),
+		// Only the agent scope holds the credentials the picker must offer.
+		getUsableCredentialsForScope: (scope: { projectId?: string; forAgent?: boolean }) =>
+			scope.projectId && scope.forAgent === true
+				? [
+						{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
+						{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
+					]
+				: undefined,
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 		fetchUsableCredentials: fetchUsableCredentialsMock,
 		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
@@ -225,6 +233,15 @@ describe('AgentWebSearchSection', () => {
 			pill?: { text: string; type: string };
 		} | null;
 	}
+
+	it('reads the fallback credentials from the agent scope, not the single-scope slice', () => {
+		const wrapper = mountWithFallbackPicker();
+
+		const credentials = wrapper.findComponent(AgentCredentialSelect).props('credentials') as Array<{
+			id: string;
+		}>;
+		expect(credentials.map((credential) => credential.id)).toEqual(['brave-1']);
+	});
 
 	it('offers the n8n Connect option when the gateway serves the Brave credential type', () => {
 		aiGatewayState.isEnabled = true;

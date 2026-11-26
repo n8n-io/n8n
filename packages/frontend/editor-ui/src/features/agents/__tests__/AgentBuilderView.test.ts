@@ -168,6 +168,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 		allCredentials: [],
 		getCredentialsByType: () => [],
 		getUsableCredentialByType: () => [],
+		getUsableCredentialsForScope: () => undefined,
 		fetchAllCredentials: fetchAllCredentialsMock,
 		fetchUsableCredentials: fetchUsableCredentialsMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,

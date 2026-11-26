@@ -42,6 +42,9 @@ const credentialsByType = vi.hoisted(() => ({
 	} as Record<string, Credential[]>,
 }));
 
+// A fetch for another scope replaces the store's flat credential map.
+const flatCredentialMap = vi.hoisted(() => ({ replacedByOtherScope: false }));
+
 const freeAiCreditsState = vi.hoisted(() => ({
 	aiCreditsQuota: { value: 100 },
 	userCanClaimOpenAiCredits: { value: false },
@@ -180,10 +183,17 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getCredentialById: (id: string) =>
-			Object.values(credentialsByType.value)
-				.flat()
-				.find((credential) => credential.id === id),
+			flatCredentialMap.replacedByOtherScope
+				? undefined
+				: Object.values(credentialsByType.value)
+						.flat()
+						.find((credential) => credential.id === id),
 		getUsableCredentialByType: (type: string) => credentialsByType.value[type] ?? [],
+		// Answers only for the agent scope, so a wrong scope leaves the picker empty.
+		getUsableCredentialsForScope: (scope: { projectId?: string; forAgent?: boolean }) =>
+			scope.projectId === 'project-1' && scope.forAgent === true
+				? Object.values(credentialsByType.value).flat()
+				: undefined,
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 		fetchUsableCredentials,
 		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
@@ -321,6 +331,7 @@ describe('AgentModelSelector', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		vi.clearAllMocks();
+		flatCredentialMap.replacedByOtherScope = false;
 		credentialsByType.value = {
 			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
 		};
@@ -777,6 +788,18 @@ describe('AgentModelSelector', () => {
 		expect(dropdown.props('credentialsMissing')).toBe(true);
 		expect(dropdown.props('selectedCredentialName')).toBeUndefined();
 		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 5.5');
+	});
+
+	it('keeps the credential name and no warning after another scope replaces the flat map', async () => {
+		flatCredentialMap.replacedByOtherScope = true;
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{ boundCredentialId: 'anthropic-cred' },
+		);
+		const dropdown = getDropdown(wrapper);
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
 	});
 
 	it('reports missing credentials when the picker resolves one the config has not bound', async () => {
