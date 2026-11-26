@@ -1307,7 +1307,7 @@ describe('run', () => {
 			},
 		);
 
-		it('fails the execution when credentials validation fails after activation', async () => {
+		it('fails a lastNode execution when credentials validation fails', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
 			vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
@@ -1330,6 +1330,56 @@ describe('run', () => {
 				error,
 				'credentialAccess',
 				undefined,
+				undefined,
+			);
+		});
+
+		it('fails an onReceived execution when credentials validation fails after activation', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			const error = new Error('credentials denied');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValue(error);
+			const failExecutionSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(
+				data,
+				'execution-id',
+				error,
+				'credentialAccess',
+				undefined,
+			);
+		});
+
+		it('reports an onReceived workflow preparation failure as invalidWorkflow', async () => {
+			mockRunnerStartDeps();
+			const error = new Error('invalid workflow data');
+			vi.spyOn(runner, 'prepareNewExecution').mockRejectedValue(error);
+			const failExecutionSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(
+				data,
+				'execution-id',
+				error,
+				'invalidWorkflow',
 				undefined,
 			);
 		});

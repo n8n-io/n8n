@@ -701,14 +701,29 @@ export class WorkflowRunner {
 				data.userId,
 			);
 			data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
+		} catch (error) {
+			await this.failExecution(
+				data,
+				executionId,
+				error as ExecutionError & { node?: INode },
+				'credentialAccess',
+				responsePromise,
+			);
+			return;
+		}
+
+		try {
 			executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
 		} catch (error) {
+			// A failure here means the workflow could not be prepared, not that a
+			// credential was denied. Keep the reason distinct so the stored run
+			// does not misattribute the block to credential access.
 			const startupError = PreExecuteBlockedError.unwrap(error);
 			await this.failExecution(
 				data,
 				executionId,
 				startupError as ExecutionError & { node?: INode },
-				'credentialAccess',
+				'invalidWorkflow',
 				responsePromise,
 			);
 			return;
