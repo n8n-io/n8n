@@ -47,9 +47,9 @@ export function errorWorkflowPendingMs(thresholds: StalenessThresholds): number 
 
 /** Throws when a threshold is not a positive whole number of milliseconds. */
 export function assertValidStalenessThresholds(thresholds: StalenessThresholds): void {
-	const invalid = Object.entries(thresholds).find(
-		([, ms]) => ms !== undefined && (!Number.isSafeInteger(ms) || ms <= 0),
-	);
+	// Only the optional threshold has a default. A required one must be set.
+	const resolved = { ...thresholds, errorWorkflowPendingMs: errorWorkflowPendingMs(thresholds) };
+	const invalid = Object.entries(resolved).find(([, ms]) => !Number.isSafeInteger(ms) || ms <= 0);
 	if (invalid) {
 		throw new UnexpectedError(
 			`The staleness threshold "${invalid[0]}" must be a positive whole number of milliseconds`,

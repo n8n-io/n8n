@@ -767,6 +767,19 @@ describe('workflow_execution table (integration)', () => {
 			expect((await viewStore.loadExecutionView(sourceId)).errorSource).toBeNull();
 		});
 
+		it('createExecution throws for an error execution whose id another execution has, and keeps the marker', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			const takenId = generateId();
+			await store.createExecution(newRecord(takenId));
+
+			await expect(
+				store.createExecution({ ...errorRecord(sourceId), id: takenId }),
+			).rejects.toThrow('duplicate key');
+
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).not.toBeNull();
+		});
+
 		it('createExecution writes one error execution when two starts race for the same source', async () => {
 			const store = errorStore();
 			const sourceId = await failedSource(store);

@@ -526,7 +526,7 @@ describe('createEngineRuntime', () => {
 		await stopping;
 	});
 
-	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(
+	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5, undefined as unknown as number])(
 		'refuses a staleness threshold of %s',
 		(queuedMs) => {
 			expect(() =>
@@ -541,6 +541,19 @@ describe('createEngineRuntime', () => {
 			).toThrow('The staleness threshold "queuedMs" must be a positive whole number');
 		},
 	);
+
+	it('refuses an error workflow wait that is set but not a positive whole number', () => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				queues: createInMemoryWorkQueues(),
+				staleness: { queuedMs: 1, runningStepMs: 60_000, errorWorkflowPendingMs: 0 },
+			}),
+		).toThrow('The staleness threshold "errorWorkflowPendingMs" must be a positive whole number');
+	});
 
 	it('accepts positive whole staleness thresholds', () => {
 		expect(() =>
