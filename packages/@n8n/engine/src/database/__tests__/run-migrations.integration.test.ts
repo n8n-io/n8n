@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createDataSource } from '../data-source';
 import { migrations } from '../migrations';
-import { runMigrations } from '../run-migrations';
+import { MIGRATIONS_LOCK_ID, runMigrations } from '../run-migrations';
 
 describe('runMigrations (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -67,7 +67,29 @@ describe('runMigrations (integration)', () => {
 		},
 	);
 
-	it('releases the lock when a migration fails, so the next process can migrate', async () => {
+	it('waits while another connection holds the migration lock and migrates after it is released', async () => {
+		const url = await createEmptyDatabase();
+		const [holder, waiting] = await Promise.all([startProcess(url), startProcess(url)]);
+		const lockHolder = holder.createQueryRunner();
+		await lockHolder.startTransaction();
+		await lockHolder.query('SELECT pg_advisory_xact_lock($1)', [MIGRATIONS_LOCK_ID]);
+
+		let settled = false;
+		const migrating = runMigrations(waiting).finally(() => {
+			settled = true;
+		});
+		await new Promise((resolve) => setTimeout(resolve, 500));
+
+		expect(settled).toBe(false);
+
+		await lockHolder.commitTransaction();
+		await lockHolder.release();
+		await migrating;
+
+		expect(await migrationNames(waiting)).toEqual(migrations.map((migration) => migration.name));
+	});
+
+	it('lets the next process migrate after a migration fails', async () => {
 		const url = await createEmptyDatabase();
 		const [failing, next] = await Promise.all([startProcess(url), startProcess(url)]);
 		await failing.query('CREATE TABLE workflow_seeded_step (id int)');
