@@ -155,7 +155,7 @@ describe('AgentTestRunController', () => {
 		expect(realHandler).not.toHaveBeenCalled();
 
 		const sessions = mock<SimulationSessionService>();
-		sessions.getSession.mockReturnValue(session);
+		sessions.getSession.mockResolvedValue(session);
 
 		const agent = {
 			declaredTools: [{ name: 'send_slack', description: 'Send Slack', handler: realHandler }],

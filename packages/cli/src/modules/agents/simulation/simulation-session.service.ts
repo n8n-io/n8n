@@ -74,16 +74,30 @@ export class SimulationSessionService {
 		private readonly telemetry: TelemetryProxy,
 	) {}
 
-	/** Returns the active simulation session bound to this owner, project, agent, and test chat. */
-	getSession(params: {
+	/**
+	 * Returns the active simulation session bound to this owner, project, agent, and test chat.
+	 * Returns nothing when the test chat was removed, so its held actions cannot run.
+	 */
+	async getSession(params: {
 		userId: string;
 		projectId: string;
 		agentId: string;
 		testChatId: string;
-	}): SimulationSession | undefined {
+	}): Promise<SimulationSession | undefined> {
 		const key = sessionKeyFromIds(params);
 		const cached = this.sessions.get(key);
 		if (!cached) return undefined;
+		if (
+			cached.marked &&
+			!(await this.threadRepository.findTestChatState(params.testChatId))?.testChat
+		) {
+			// Delete only the entry this call read: a new turn can replace it during the lookup.
+			if (this.sessions.get(key) === cached) {
+				this.sessions.delete(key);
+				this.closeWorld(cached.session);
+			}
+			return undefined;
+		}
 		this.sessions.touch(key);
 		return cached.session;
 	}
