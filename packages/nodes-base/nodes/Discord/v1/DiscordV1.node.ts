@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -63,6 +64,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Attachments',
 					name: 'attachments',
 					type: 'json',
+					validateType: 'array',
 					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
@@ -76,6 +78,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Components',
 					name: 'components',
 					type: 'json',
+					validateType: 'array',
 					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
@@ -83,6 +86,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Embeds',
 					name: 'embeds',
 					type: 'json',
+					validateType: 'array',
 					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
@@ -96,6 +100,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'JSON Payload',
 					name: 'payloadJson',
 					type: 'json',
+					validateType: 'object',
 					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
@@ -150,33 +155,14 @@ export class DiscordV1 implements INodeType {
 				});
 			}
 			if (options.embeds) {
-				try {
-					//@ts-expect-error
-					body.embeds = JSON.parse(options.embeds);
-					if (!Array.isArray(body.embeds)) {
-						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
-							itemIndex: i,
-						});
-					}
-				} catch (e) {
-					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', {
-						itemIndex: i,
-					});
-				}
+				body.embeds = options.embeds as IDataObject[];
 			}
 			if (options.username) {
 				body.username = options.username as string;
 			}
 
 			if (options.components) {
-				try {
-					//@ts-expect-error
-					body.components = JSON.parse(options.components);
-				} catch (e) {
-					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.', {
-						itemIndex: i,
-					});
-				}
+				body.components = options.components as IDataObject[];
 			}
 
 			if (options.allowed_mentions) {
@@ -197,13 +183,11 @@ export class DiscordV1 implements INodeType {
 			}
 
 			if (options.payloadJson) {
-				//@ts-expect-error
-				body.payload_json = jsonParse(options.payloadJson);
+				body.payload_json = options.payloadJson;
 			}
 
 			if (options.attachments) {
-				//@ts-expect-error
-				body.attachments = jsonParse(options.attachments as DiscordAttachment[]);
+				body.attachments = options.attachments as DiscordAttachment[];
 			}
 
 			//* Not used props, delete them from the payload as Discord won't need them :^

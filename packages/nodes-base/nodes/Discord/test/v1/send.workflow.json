@@ -1,0 +1,57 @@
+{
+	"name": "Discord v1 Send",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4c1a3a8e-0d6b-4f37-9b0e-6b7f3c2a1d01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"webhookUri": "https://discord.com/api/webhooks/123/abc",
+				"text": "From JSON",
+				"options": {
+					"embeds": "[{\"title\": \"JSON embed\"}]",
+					"components": "[{\"type\": 1, \"components\": []}]"
+				}
+			},
+			"id": "4c1a3a8e-0d6b-4f37-9b0e-6b7f3c2a1d02",
+			"name": "Send JSON",
+			"type": "n8n-nodes-base.discord",
+			"typeVersion": 1,
+			"position": [300, 0]
+		},
+		{
+			"parameters": {
+				"webhookUri": "https://discord.com/api/webhooks/123/abc",
+				"text": "From expression",
+				"options": {
+					"embeds": "={{ [{ \"title\": \"Expression embed\" }] }}",
+					"attachments": "={{ [{ \"id\": \"0\", \"filename\": \"a.png\" }] }}"
+				}
+			},
+			"id": "4c1a3a8e-0d6b-4f37-9b0e-6b7f3c2a1d03",
+			"name": "Send Expression",
+			"type": "n8n-nodes-base.discord",
+			"typeVersion": 1,
+			"position": [300, 200]
+		}
+	],
+	"pinData": {
+		"Send JSON": [{ "json": { "success": true } }],
+		"Send Expression": [{ "json": { "success": true } }]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{ "node": "Send JSON", "type": "main", "index": 0 },
+					{ "node": "Send Expression", "type": "main", "index": 0 }
+				]
+			]
+		}
+	}
+}
