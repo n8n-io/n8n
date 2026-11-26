@@ -27,7 +27,6 @@ import {
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
 	simplifyIssueOutput,
-	validateJSON,
 } from './GenericFunctions';
 import { issueAttachmentFields, issueAttachmentOperations } from './IssueAttachmentDescription';
 import { issueCommentFields, issueCommentOperations } from './IssueCommentDescription';
@@ -1137,15 +1136,17 @@ export class Jira implements INodeType {
 							}
 							body.restrict = notificationRecipientsRestrictions;
 						} else {
-							const notificationRecipientsJson = validateJSON(
-								this.getNodeParameter('notificationRecipientsJson', i) as string,
-							);
+							const notificationRecipientsJson = this.getNodeParameter(
+								'notificationRecipientsJson',
+								i,
+							) as IDataObject | undefined;
 							if (notificationRecipientsJson) {
 								body.to = notificationRecipientsJson;
 							}
-							const notificationRecipientsRestrictionsJson = validateJSON(
-								this.getNodeParameter('notificationRecipientsRestrictionsJson', i) as string,
-							);
+							const notificationRecipientsRestrictionsJson = this.getNodeParameter(
+								'notificationRecipientsRestrictionsJson',
+								i,
+							) as IDataObject | undefined;
 							if (notificationRecipientsRestrictionsJson) {
 								body.restrict = notificationRecipientsRestrictionsJson;
 							}
@@ -1537,9 +1538,8 @@ export class Jira implements INodeType {
 								});
 							}
 						} else {
-							const commentJson = this.getNodeParameter('commentJson', i) as string;
-							const json = validateJSON(commentJson);
-							if (json === '') {
+							const json = this.getNodeParameter('commentJson', i) as IDataObject | undefined;
+							if (json === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'Document Format must be a valid JSON',
@@ -1739,9 +1739,8 @@ export class Jira implements INodeType {
 								});
 							}
 						} else {
-							const commentJson = this.getNodeParameter('commentJson', i) as string;
-							const json = validateJSON(commentJson);
-							if (json === '') {
+							const json = this.getNodeParameter('commentJson', i) as IDataObject | undefined;
+							if (json === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'Document Format must be a valid JSON',

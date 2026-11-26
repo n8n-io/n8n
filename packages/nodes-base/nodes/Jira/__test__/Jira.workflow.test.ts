@@ -24,6 +24,26 @@ describe('Jira', () => {
 
 	beforeAll(() => {
 		const api = nock('https://acme.atlassian.net/rest');
+		api
+			.post(`/api/2/issue/${issueKey}/notify`, {
+				to: { reporter: true },
+				restrict: { groups: [{ name: 'dev' }] },
+			})
+			.reply(204);
+		api
+			.post(`/api/2/issue/${issueKey}/notify`, {
+				to: { watchers: true },
+				restrict: { groups: [{ name: 'qa' }] },
+			})
+			.reply(204);
+		api
+			.post(`/api/3/issue/${issueKey}/comment`, {
+				body: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [] }] },
+			})
+			.reply(201, comment);
+		api
+			.post(`/api/3/issue/${issueKey}/comment`, { body: { type: 'doc', version: 1, content: [] } })
+			.reply(201, comment);
 		api.get('/api/2/issuetype').times(2).reply(200, issueTypes);
 		api.post('/api/2/issue').reply(201, { id: '10001', key: issueKey });
 		api.post(`/api/2/issue/${issueKey}/transitions`, { transition: { id: '31' } }).reply(204);
