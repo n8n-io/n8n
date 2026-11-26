@@ -84,11 +84,23 @@ export function isManagedCredentialMode(): boolean {
 	return !!process.env.N8N_MANAGED_CREDENTIAL_TYPE;
 }
 
-/** Spike (API-663): in managed mode n8n builds the credential at run time, so nothing is stored. */
+/**
+ * Spike (API-663): approach A. In managed mode n8n stores no credential. A node's reference
+ * to the managed type holds only an ORD ID, with no record behind it.
+ */
 export function assertManagedCredentialType(_type: string): void {
 	if (isManagedCredentialMode()) {
 		throw new BadRequestError(
 			'Credentials cannot be created on this instance. An external gateway manages them',
 		);
 	}
+}
+
+/**
+ * Spike (API-663): approach A. A reference to the managed type has `id: null` by design, like
+ * a Gateway credits reference. Checks that resolve or reject references must skip it.
+ */
+export function isManagedCredentialReference(credentialType: string): boolean {
+	const managedType = process.env.N8N_MANAGED_CREDENTIAL_TYPE;
+	return !!managedType && credentialType === managedType;
 }

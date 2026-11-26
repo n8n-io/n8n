@@ -35,6 +35,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError, UnexpectedError } from '@n8n/errors';
+import { isManagedCredentialReference } from '@/spike-managed-credential-types';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -301,6 +302,7 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 			}
 			// AI Gateway managed credentials have no real DB record — skip, handled at execution time
 			if (nodeCredentials.__aiGatewayManaged) continue;
+			if (isManagedCredentialReference(nodeCredentialType)) continue;
 
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {

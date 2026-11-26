@@ -8,6 +8,7 @@ import { getActiveCredentialTypes } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import { CredentialsFinderService, type UnusableCredential } from '@n8n/backend-services';
+import { isManagedCredentialReference } from '@/spike-managed-credential-types';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -576,6 +577,7 @@ export class CredentialsPermissionChecker {
 				if (!cred.id) {
 					// AI Gateway managed credentials have no real DB id — skip permission check
 					if (cred.__aiGatewayManaged === true) continue;
+					if (isManagedCredentialReference(credType)) continue;
 					throw new InvalidCredentialError(node);
 				}
 

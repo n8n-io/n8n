@@ -5,6 +5,7 @@ import {
 	applyManagedCredentialToDescription,
 	applyManagedCredentialToTypes,
 	assertManagedCredentialType,
+	isManagedCredentialReference,
 } from '@/spike-managed-credential-types';
 
 const description = (d: Partial<INodeTypeDescription>): INodeTypeDescription =>
@@ -152,13 +153,25 @@ describe('spike managed credential types', () => {
 			expect(() => assertManagedCredentialType('slackApi')).not.toThrow();
 		});
 
-		it('refuses every type when managed mode is on, because n8n builds the credential', () => {
+		it('refuses every type when managed mode is on, the managed type too', () => {
 			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
 			for (const type of ['platformManagedApi', 'slackApi']) {
 				expect(() => assertManagedCredentialType(type)).toThrow(
 					'Credentials cannot be created on this instance',
 				);
 			}
+		});
+	});
+
+	describe('isManagedCredentialReference', () => {
+		it('is false when managed mode is off', () => {
+			expect(isManagedCredentialReference('platformManagedApi')).toBe(false);
+		});
+
+		it('matches only the managed type when managed mode is on', () => {
+			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+			expect(isManagedCredentialReference('platformManagedApi')).toBe(true);
+			expect(isManagedCredentialReference('slackApi')).toBe(false);
 		});
 	});
 });

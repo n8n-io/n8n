@@ -52,6 +52,7 @@ import { getAdditionalKeys } from './utils/get-additional-keys';
 import {
 	fillManagedPlaceholders,
 	getManagedCredentialType,
+	getValidManagedData,
 	resolveManagedCredentialType,
 } from './utils/managed-credential';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
@@ -333,17 +334,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	/**
-	 * SPIKE (API-663): no credential is stored in managed mode. Whatever the node's slot holds
-	 * is ignored, and n8n builds the data from the requested type's fields, with no secret.
+	 * SPIKE (API-663): no credential is stored. n8n builds the node's data from the requested
+	 * type's fields, with no secret, plus the platform's data from the node's managed reference.
 	 */
-	private getManagedCredentials<T extends object>(requestedType: string): T {
-		let properties: INodeProperties[] = [];
-		try {
-			properties = this.additionalData.credentialsHelper.getCredentialsProperties(requestedType);
-		} catch (error) {
-			this.logger.warn(`Managed credential: unknown credential type "${requestedType}"`, { error });
-		}
-		return fillManagedPlaceholders(properties, {}) as T;
+	private getManagedCredentials<T extends object>(managedType: string, requestedType: string): T {
+		const { node, additionalData } = this;
+		const propertiesOf = (type: string): INodeProperties[] => {
+			try {
+				return additionalData.credentialsHelper.getCredentialsProperties(type);
+			} catch (error) {
+				this.logger.warn(`Managed credential: unknown credential type "${type}"`, { error });
+				return [];
+			}
+		};
+		const managedData = getValidManagedData(node, managedType, propertiesOf(managedType));
+		return fillManagedPlaceholders(propertiesOf(requestedType), managedData) as T;
 	}
 
 	/** Returns the requested decrypted credentials if the node has access to them */
@@ -357,7 +362,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 		const type = resolveManagedCredentialType(node, requestedType);
 
-		if (getManagedCredentialType()) return this.getManagedCredentials<T>(requestedType);
+		const managedType = getManagedCredentialType();
+		if (managedType) return this.getManagedCredentials<T>(managedType, requestedType);
 
 		// Eval bypass: only mock when the node is fully unconfigured, so nodes
 		// probing multiple auth types still get production's throw. Handler

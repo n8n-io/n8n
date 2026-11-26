@@ -3,7 +3,8 @@
 // Approach B. Example credential type for N8N_MANAGED_CREDENTIAL_TYPE=platformManagedApi.
 // n8n loads it from the folder in N8N_CUSTOM_EXTENSIONS, like a custom node. It is never
 // stored: n8n builds it at run time with no secret, and the external gateway adds the real one.
-// The platform can change the name, display name and notice.
+// The n8n code is the same as in approach A. This file has no fields and adds nothing to
+// requests. The platform can change the name, display name and notice.
 class PlatformManagedApi {
 	constructor() {
 		this.name = 'platformManagedApi';
