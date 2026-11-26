@@ -7,11 +7,14 @@ import assert from 'node:assert';
 import { Readable } from 'node:stream';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
+
 import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor';
 
 describe('extractWebhookLastNodeResponse', () => {
 	let lastNodeTaskData: MockProxy<ITaskData>;
 	let binaryDataService: MockProxy<BinaryDataService>;
+	let binaryDataAccessService: MockProxy<BinaryDataAccessService>;
 
 	const defaultOptions = {
 		responsePropertyName: undefined,
@@ -22,8 +25,10 @@ describe('extractWebhookLastNodeResponse', () => {
 	beforeEach(() => {
 		lastNodeTaskData = mock<ITaskData>();
 		binaryDataService = mock<BinaryDataService>();
+		binaryDataAccessService = mock<BinaryDataAccessService>();
 
 		Container.set(BinaryDataService, binaryDataService);
+		Container.set(BinaryDataAccessService, binaryDataAccessService);
 	});
 
 	afterEach(() => {
@@ -249,6 +254,7 @@ describe('extractWebhookLastNodeResponse', () => {
 					responsePropertyName: undefined,
 					responseContentType: undefined,
 					responseBinaryPropertyName: 'data',
+					binaryDataAccess: { workflowId: 'workflow-1' },
 				},
 			);
 
@@ -261,6 +267,32 @@ describe('extractWebhookLastNodeResponse', () => {
 				},
 			});
 			assert(binaryDataService.getAsStream.mock.calls[0][0] === 'binary-123');
+		});
+
+		it('should not stream inaccessible binary data', async () => {
+			binaryDataAccessService.assertIsAllowed.mockRejectedValue(new Error('denied'));
+			lastNodeTaskData.data = {
+				main: [
+					[
+						{
+							json: {},
+							binary: {
+								data: { id: 'binary-123', mimeType: 'text/plain', data: '' },
+							},
+						},
+					],
+				],
+			};
+
+			await expect(
+				extractWebhookLastNodeResponse('firstEntryBinary', lastNodeTaskData, false, {
+					responsePropertyName: undefined,
+					responseContentType: undefined,
+					responseBinaryPropertyName: 'data',
+					binaryDataAccess: { workflowId: 'workflow-1' },
+				}),
+			).rejects.toThrow('denied');
+			expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
 		});
 
 		it('should return error when no item found', async () => {

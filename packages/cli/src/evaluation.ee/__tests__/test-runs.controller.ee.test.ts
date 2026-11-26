@@ -55,6 +55,7 @@ describe('TestRunsController', () => {
 			findOne: vi.fn(),
 			getMany: vi.fn(),
 			getTestRunSummaryById: vi.fn(),
+			getTestRunSummaryByWorkflowId: vi.fn(),
 			delete: vi.fn(),
 			createTestRun: vi.fn(),
 		} as unknown as Mocked<TestRunRepository>;
@@ -198,25 +199,26 @@ describe('TestRunsController', () => {
 			expect(mockEvaluationConfigRepository.findByIdAndWorkflowId).toHaveBeenCalledWith(
 				'cfg-1',
 				mockWorkflowId,
+				{},
 			);
 		});
 	});
 
 	describe('getOne', () => {
+		const getOneRequest = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as unknown as TestRunsRequest.GetOne;
+
 		it('attaches metricScales resolved from the run config snapshot', async () => {
-			mockTestRunRepository.findOne.mockResolvedValue({ id: mockTestRunId } as TestRun);
-			mockTestRunRepository.getTestRunSummaryById.mockResolvedValue({
+			mockTestRunRepository.getTestRunSummaryByWorkflowId.mockResolvedValue({
 				id: mockTestRunId,
 				evaluationConfigId: null,
 				evaluationConfigSnapshot: JUDGE_SNAPSHOT,
 			} as any);
 
-			const req = {
-				params: { workflowId: mockWorkflowId, id: mockTestRunId },
-				user: mockUser,
-			} as unknown as TestRunsRequest.GetOne;
-
-			const result = await testRunsController.getOne(req);
+			const result = await testRunsController.getOne(getOneRequest());
 
 			expect(result).toEqual({
 				id: mockTestRunId,
@@ -224,6 +226,81 @@ describe('TestRunsController', () => {
 				evaluationConfigSnapshot: JUDGE_SNAPSHOT,
 				metricScales: { 'Tone Match': 'oneToFive' },
 			});
+		});
+
+		it('loads the summary scoped to the workflow, without full case rows', async () => {
+			mockTestRunRepository.getTestRunSummaryByWorkflowId.mockResolvedValue({
+				id: mockTestRunId,
+			} as any);
+
+			await testRunsController.getOne(getOneRequest());
+
+			expect(mockTestRunRepository.getTestRunSummaryByWorkflowId).toHaveBeenCalledWith(
+				mockTestRunId,
+				mockWorkflowId,
+			);
+			expect(mockTestRunRepository.getTestRunSummaryById).not.toHaveBeenCalled();
+		});
+
+		it('requires only workflow:read, so the summary stays readable without execution:read', async () => {
+			mockTestRunRepository.getTestRunSummaryByWorkflowId.mockResolvedValue({
+				id: mockTestRunId,
+			} as any);
+
+			await testRunsController.getOne(getOneRequest());
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:read'],
+			);
+		});
+
+		it('throws NotFoundError when the run is missing or belongs to another workflow', async () => {
+			mockTestRunRepository.getTestRunSummaryByWorkflowId.mockResolvedValue(null);
+
+			await expect(testRunsController.getOne(getOneRequest())).rejects.toThrow(NotFoundError);
+		});
+
+		it('throws NotFoundError when user has no access to the workflow', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.getOne(getOneRequest())).rejects.toThrow(NotFoundError);
+			expect(mockTestRunRepository.getTestRunSummaryByWorkflowId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getTestCases', () => {
+		const getCasesRequest = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as unknown as TestRunsRequest.GetCases;
+
+		it('returns the cases when the user can read the workflow and its executions', async () => {
+			const cases = [{ id: 'case1', inputs: { a: 1 }, outputs: { b: 2 } }];
+			mockTestCaseExecutionRepository.find.mockResolvedValue(cases as any);
+
+			const result = await testRunsController.getTestCases(getCasesRequest());
+
+			expect(result).toEqual(cases);
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:read', 'execution:read'],
+			);
+			expect(mockTestCaseExecutionRepository.find).toHaveBeenCalledWith({
+				where: { testRun: { id: mockTestRunId } },
+			});
+		});
+
+		it('throws NotFoundError without reading cases when the user lacks execution:read', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.getTestCases(getCasesRequest())).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(mockTestCaseExecutionRepository.find).not.toHaveBeenCalled();
 		});
 	});
 

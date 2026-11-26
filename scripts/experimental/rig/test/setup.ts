@@ -8,6 +8,8 @@ const root = mkdtempSync(join(tmpdir(), 'rig-home-'));
 process.env.RIG_CONFIG_DIR = join(root, 'config');
 process.env.RIG_DATA_DIR = join(root, 'data');
 process.env.RIG_CACHE_DIR = join(root, 'cache');
+// Never touch the OS keystore of the developer.
+process.env.RIG_SECRETS_BACKEND = 'file';
 delete process.env.RIG_LAUNCHER_PATH;
 delete process.env.RIG_ENV;
 

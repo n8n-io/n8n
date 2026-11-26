@@ -67,6 +67,30 @@ describe('AppHostService', () => {
 		expect(hosts.previewNamespace(request('--preview.apps.localhost:5678'))).toBeUndefined();
 	});
 
+	it('allows the full namespace length when the host has no instance name', () => {
+		const hosts = setup();
+
+		expect(hosts.maxNamespaceLength()).toBe(54);
+		expect(hosts.previewOrigin('a'.repeat(54))).not.toBeNull();
+	});
+
+	it('builds callback URLs and host kinds for both hosts', () => {
+		const hosts = setup({ baseUrl: 'http://apps.localhost:5678' });
+		const app = { id: 'app-1', namespace: 'sales' };
+
+		expect(hosts.callbackUrl(app)).toBe(
+			'http://sales.apps.localhost:5678/_n8n/auth/app-1/callback',
+		);
+		expect(hosts.callbackUrl(app, 'preview')).toBe(
+			'http://sales--preview.apps.localhost:5678/_n8n/auth/app-1/callback',
+		);
+		expect(hosts.hostKindFromUrl(new URL('http://sales.apps.localhost:5678'))).toBe('published');
+		expect(hosts.hostKindFromUrl(new URL('http://sales--preview.apps.localhost:5678'))).toBe(
+			'preview',
+		);
+		expect(hosts.hostKindFromUrl(new URL('http://other.example.com'))).toBeUndefined();
+	});
+
 	it('uses the origin of the instance base URL as the editor origin', () => {
 		expect(setup({ instanceBaseUrl: 'https://n8n.example.net/base' }).editorOrigin).toBe(
 			'https://n8n.example.net',
@@ -228,6 +252,25 @@ describe('AppHostService', () => {
 			expect(hosts.previewNamespace(request('sales--preview--preview-foo.apps.example.com'))).toBe(
 				'sales',
 			);
+		});
+
+		it('lowers the namespace length limit by the instance name', () => {
+			const hosts = setup(cloud);
+			const max = hosts.maxNamespaceLength();
+
+			expect(max).toBe(49);
+			expect(hosts.origin('a'.repeat(max))).not.toBeNull();
+			expect(hosts.previewOrigin('a'.repeat(max))).not.toBeNull();
+			expect(hosts.previewOrigin('a'.repeat(max + 1))).toBeNull();
+		});
+
+		it('lowers the namespace length limit for a long parent hostname', () => {
+			const parent = ['a'.repeat(63), 'b'.repeat(63), 'c'.repeat(63), 'd'.repeat(40)].join('.');
+			const hosts = setup({ ...cloud, baseUrl: `https://${parent}` });
+			const max = hosts.maxNamespaceLength();
+
+			expect(hosts.previewOrigin('a'.repeat(max))).not.toBeNull();
+			expect(hosts.previewOrigin('a'.repeat(max + 1))).toBeNull();
 		});
 
 		it('includes the instance suffix in the full hostname length limit', () => {
