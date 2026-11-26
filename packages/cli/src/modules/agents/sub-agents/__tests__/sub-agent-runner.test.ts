@@ -643,6 +643,27 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('passes the service account of the sub-agent to its runtime for log attribution', async () => {
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			agentServiceAccountId: 'sa-child',
+		});
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentServiceAccountId: 'sa-child',
+				parentAgentIdForDelegation: parentAgentId,
+			}),
+		);
+	});
+
 	it('inherits the parent resource id as the child memory scope when provided', async () => {
 		const result = await runner.run(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },

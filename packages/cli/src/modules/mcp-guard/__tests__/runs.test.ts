@@ -79,6 +79,26 @@ describe('RunRegistry', () => {
 		}
 	});
 
+	it('should not extend the check window when a call skips the check', async () => {
+		vi.useFakeTimers();
+		try {
+			await registry.getOrCreate('a-1', 'token', model);
+			// A call every 20 seconds must not keep the window open for ever.
+			for (let i = 0; i < 4; i++) {
+				vi.advanceTimersByTime(20_000);
+				await registry.getOrCreate('a-1', 'token', model);
+			}
+			expect(admin.tenantExists).toHaveBeenCalled();
+			admin.tenantExists.mockResolvedValue(false);
+			vi.advanceTimersByTime(31_000);
+			const run = await registry.getOrCreate('a-1', 'token', model);
+			expect(admin.createTenant).toHaveBeenCalledTimes(2);
+			expect(run.tenant).toBe('guard-a-1');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('should build the run again when someone deleted the tenant', async () => {
 		const first = await registry.getOrCreate('a-1', 'token', model);
 		first.verifiedAt = 0;

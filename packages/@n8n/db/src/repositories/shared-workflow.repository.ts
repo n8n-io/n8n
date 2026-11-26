@@ -6,12 +6,7 @@ import {
 	type WorkflowSharingRole,
 } from '@n8n/permissions';
 import { DataSource, In, Not } from '@n8n/typeorm';
-import type {
-	EntityManager,
-	FindManyOptions,
-	FindOptionsWhere,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import {
@@ -239,15 +234,21 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		);
 	}
 
-	async findWithFields(
-		workflowIds: string[],
-		{ select }: Pick<FindManyOptions<SharedWorkflow>, 'select'>,
-	) {
-		return await this.find({
-			where: {
-				workflowId: In(workflowIds),
-			},
-			select,
+	/** Assigns the imported owner. Returns true only for a transfer from another project. */
+	async syncImportedWorkflowOwner(
+		workflowId: string,
+		targetProjectId: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		return await this.runInTransaction(ctx, async (manager, txCtx) => {
+			const ownerProjectId = await this.getWorkflowOwningProjectId(workflowId, txCtx);
+			if (ownerProjectId === targetProjectId) return false;
+
+			if (ownerProjectId !== undefined) {
+				await this.deleteByIds([workflowId], ownerProjectId, manager);
+			}
+			await this.makeOwner([workflowId], targetProjectId, manager);
+			return ownerProjectId !== undefined;
 		});
 	}
 

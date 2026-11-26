@@ -22,7 +22,8 @@ export interface WorkQueueConsumerClient {
 
 export interface RedisWorkQueueOptions<TMessage> {
 	publisher: WorkQueuePublisherClient;
-	consumer: WorkQueueConsumerClient;
+	/** Called on the first `start()`, so a queue that only publishes holds no consumer connection. */
+	openConsumer: () => WorkQueueConsumerClient;
 	/** The Redis list that holds the messages of this queue. */
 	key: string;
 	/** Checks a message after JSON decoding. A throw drops the message. */
@@ -66,7 +67,9 @@ async function delay(ms: number, signal: AbortSignal): Promise<void> {
 export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	private readonly publisher: WorkQueuePublisherClient;
 
-	private readonly consumer: WorkQueueConsumerClient;
+	private readonly openConsumer: () => WorkQueueConsumerClient;
+
+	private consumer: WorkQueueConsumerClient | undefined;
 
 	private readonly key: string;
 
@@ -98,7 +101,7 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 			);
 		}
 		this.publisher = options.publisher;
-		this.consumer = options.consumer;
+		this.openConsumer = options.openConsumer;
 		this.key = options.key;
 		this.parse = options.parse;
 		this.logger = options.logger ?? createConsoleLogger();
@@ -114,9 +117,12 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		if (this.active) {
 			throw new UnexpectedError('work queue already has a consumer');
 		}
+		const consumer = (this.consumer ??= this.openConsumer());
 		const stopping = new AbortController();
 		// Waits for the loop that `stop()` gave up on, so that only one loop fetches.
-		const loop = this.lastLoop.then(async () => await this.consume(handler, stopping.signal));
+		const loop = this.lastLoop.then(
+			async () => await this.consume(handler, consumer, stopping.signal),
+		);
 		this.lastLoop = loop;
 		this.active = { stopping, loop };
 	}
@@ -141,13 +147,14 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private async consume(
 		handler: (message: TMessage) => Promise<void>,
+		consumer: WorkQueueConsumerClient,
 		signal: AbortSignal,
 	): Promise<void> {
 		while (!signal.aborted) {
 			while (this.inFlight.size >= this.concurrency) await Promise.race(this.inFlight);
 			if (signal.aborted) return;
 
-			const value = await this.fetch(signal);
+			const value = await this.fetch(consumer, signal);
 			if (value === undefined) continue;
 			if (signal.aborted) {
 				await this.giveBack(value);
@@ -160,9 +167,12 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	}
 
 	/** Returns the next value in the list, or `undefined` if none came. */
-	private async fetch(signal: AbortSignal): Promise<string | undefined> {
+	private async fetch(
+		consumer: WorkQueueConsumerClient,
+		signal: AbortSignal,
+	): Promise<string | undefined> {
 		try {
-			const popped = await this.consumer.brpop(this.key, this.blockTimeoutSeconds);
+			const popped = await consumer.brpop(this.key, this.blockTimeoutSeconds);
 			return popped?.[1];
 		} catch (error) {
 			this.logError('fetch failed', error);

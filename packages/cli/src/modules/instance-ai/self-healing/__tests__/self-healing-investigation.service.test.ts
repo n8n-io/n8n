@@ -97,6 +97,7 @@ describe('SelfHealingInvestigationService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
+		configurationService.isEnabled.mockResolvedValue(true);
 		configuration.includeSubWorkflows = false;
 		configurations.findForWorkflow.mockResolvedValue(configuration);
 		configurations.findForUpdate.mockResolvedValue(configuration);
@@ -166,6 +167,16 @@ describe('SelfHealingInvestigationService', () => {
 		await expect(service.start(input)).rejects.toThrow('Self-healing investigations are disabled.');
 		expect(investigations.createInvestigation).not.toHaveBeenCalled();
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('does not admit an investigation when the instance flag is off', async () => {
+		configurationService.isEnabled.mockResolvedValue(false);
+
+		expect(await service.start(input)).toBeNull();
+		expect(configurations.findForWorkflow).not.toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('uses server references and saves the result directly', async () => {

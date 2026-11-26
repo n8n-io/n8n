@@ -1,8 +1,9 @@
-import { configure } from '@testing-library/vue';
+import { configure, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import AgentEvalVoteButtons from '../components/AgentEvalVoteButtons.vue';
 
 configure({ testIdAttribute: 'data-testid' });
@@ -53,13 +54,25 @@ describe('AgentEvalVoteButtons', () => {
 		});
 	});
 
-	it('disables both sides with the reason it was given', () => {
-		const { getByTestId } = renderComponent({
+	it('keeps vote labels and exposes the disabled reason on focus without accepting a vote', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent({
 			props: { vote: null, disabled: true, disabledReason: 'Still running' },
 		});
 
-		expect(getByTestId('agent-eval-vote-up')).toBeDisabled();
-		expect(getByTestId('agent-eval-vote-down')).toBeDisabled();
-		expect(getByTestId('agent-eval-vote-down')).toHaveAttribute('aria-label', 'Still running');
+		const up = getByTestId('agent-eval-vote-up');
+		const down = getByTestId('agent-eval-vote-down');
+		expect(up).toHaveAttribute('aria-disabled', 'true');
+		expect(down).toHaveAttribute('aria-disabled', 'true');
+		expect(up).toHaveAccessibleName('This answer is good');
+		expect(down).toHaveAccessibleName('This answer is wrong');
+		await user.tab();
+		expect(up).toHaveFocus();
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Still running'));
+		expect(up).toHaveAccessibleDescription('Still running');
+		await user.keyboard('{Enter} ');
+		await user.click(up);
+		await user.click(down);
+		expect(emitted('vote')).toBeUndefined();
 	});
 });

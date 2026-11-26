@@ -65,7 +65,11 @@ const WEB_SEARCH_PLAN_INSTRUCTION =
 	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
 
 export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
-export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
+export type FallbackWebSearchHandler = (
+	args: FallbackWebSearchArgs,
+	/** Aborts when the run stops. */
+	options?: { signal?: AbortSignal },
+) => Promise<unknown>;
 
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
@@ -104,6 +108,8 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
 
 export interface BuildFromJsonOptions {
+	/** Routes a gated tool through the configured approval destination. */
+	wrapApproval?: (tool: BuiltTool, ref: AgentJsonToolConfig) => BuiltTool;
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
 	credentialProvider: CredentialProvider;
@@ -133,6 +139,12 @@ export interface BuildFromJsonOptions {
 	 * or credential in the config (eval instrumentation only).
 	 */
 	fallbackWebSearch?: FallbackWebSearchHandler;
+	/**
+	 * Leave out the provider's own tools (native web search and configured
+	 * `providerTools`) and attach the fallback `web_search` tool instead, so
+	 * every call goes through a tool handler.
+	 */
+	disableProviderTools?: boolean;
 	/**
 	 * Attach MCP servers whose credential is still pending instead of skipping
 	 * them. Only safe when MCP traffic cannot reach the real server — set by
@@ -271,7 +283,9 @@ export async function buildFromJson(
 	agent.skills(configuredSkillSource);
 
 	// Provider tools
-	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
+	const providerTools = options.disableProviderTools
+		? undefined
+		: getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
 	if (providerTools) {
 		for (const [name, args] of Object.entries(providerTools)) {
 			const resolved = resolveProviderToolName(name);
@@ -283,6 +297,7 @@ export async function buildFromJson(
 		options.credentialProvider,
 		options.webSearchFetch,
 		options.fallbackWebSearch,
+		options.disableProviderTools,
 	);
 	if (fallbackWebSearchTool) {
 		agent.tool(fallbackWebSearchTool);
@@ -362,18 +377,32 @@ function buildFallbackWebSearchTool(
 	credentialProvider: CredentialProvider & Partial<AiGatewaySearchCredentialResolver>,
 	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
+	disableProviderTools = false,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
-	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (
+		!disableProviderTools &&
+		isNativeWebSearchRequested(config) &&
+		hasNativeWebSearchProvider(config.model)
+	) {
+		return null;
+	}
+	// Provider tools are disabled so that every search goes through a handler the caller owns.
+	// Without that handler, the live search below would run for real, so there is no web search.
+	if (disableProviderTools && !fallbackWebSearch) return null;
 	if (fallbackWebSearch) {
 		return {
 			name: WEB_SEARCH_TOOL_NAME,
 			description: 'Search the web for current information.',
 			systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
 			inputSchema: WEB_SEARCH_INPUT_SCHEMA,
-			handler: async (input) => await fallbackWebSearch(WEB_SEARCH_INPUT_SCHEMA.parse(input)),
+			handler: async (input, ctx) =>
+				await fallbackWebSearch(
+					WEB_SEARCH_INPUT_SCHEMA.parse(input),
+					ctx?.abortSignal ? { signal: ctx.abortSignal } : undefined,
+				),
 		};
 	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
@@ -445,10 +474,11 @@ function getConfiguredSkillSource(
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
-		const linkedFiles = linkedFilesForSkill(skill);
+		const textFiles = (skill.references ?? []).filter((file) => !file.isBinary);
+		const linkedFiles = linkedFilesForSkill(textFiles);
 		referencesBySkillId.set(
 			ref.id,
-			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+			new Map(textFiles.map((reference) => [reference.path, reference])),
 		);
 		configured.push({
 			id: ref.id,
@@ -477,9 +507,11 @@ function getConfiguredSkillSource(
 	};
 }
 
-function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+function linkedFilesForSkill(
+	files: NonNullable<AgentSkill['references']>,
+): RuntimeSkillLinkedFiles {
 	return {
-		references: (skill.references ?? []).map((reference) => ({
+		references: files.map((reference) => ({
 			path: reference.path,
 			bytes: Buffer.byteLength(reference.content, 'utf8'),
 			sha256: createHash('sha256').update(reference.content).digest('hex'),
@@ -509,6 +541,8 @@ async function resolveToolRef(
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
 				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
+				// Lets a test run block custom code even when its name matches a built-in tool.
+				metadata: { customTool: true },
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
@@ -525,7 +559,10 @@ async function resolveToolRef(
 			};
 
 			if (ref.requireApproval) {
-				return wrapToolForApproval(builtTool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(builtTool, ref) ??
+					wrapToolForApproval(builtTool, { requireApproval: true })
+				);
 			}
 			return builtTool;
 		}
@@ -545,7 +582,9 @@ async function resolveToolRef(
 			if (resolved === null) return null;
 			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
-				return wrapToolForApproval(tool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(tool, ref) ?? wrapToolForApproval(tool, { requireApproval: true })
+				);
 			}
 			return tool;
 		}
@@ -561,7 +600,9 @@ async function resolveToolRef(
 			if (resolved === null) return null;
 			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
-				return wrapToolForApproval(tool, { requireApproval: true });
+				return (
+					options.wrapApproval?.(tool, ref) ?? wrapToolForApproval(tool, { requireApproval: true })
+				);
 			}
 			return tool;
 		}

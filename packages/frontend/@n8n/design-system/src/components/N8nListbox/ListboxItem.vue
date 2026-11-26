@@ -37,13 +37,14 @@ function onSelect(event: Event) {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/floating-item' as floating-item;
+@use '@n8n/design-system/css/mixins/utils' as utils;
 
 .item {
 	@include floating-item.floating-item;
 
 	gap: var(--n8n-listbox-item--gap, var(--spacing--2xs));
 	min-height: var(--n8n-listbox-item--min-height, var(--spacing--xl));
-	padding: var(--n8n-listbox-item--padding, var(--spacing--2xs) var(--spacing--xs));
+	padding: var(--n8n-listbox-item--padding, var(--spacing--4xs) var(--spacing--xs));
 	border-radius: var(--n8n-listbox-item--radius, var(--radius));
 
 	&:not([data-disabled]) {
@@ -78,10 +79,22 @@ function onSelect(event: Event) {
 }
 
 .content {
-	display: flex;
+	display: block;
 	flex: 1;
-	flex-direction: column;
 	min-width: 0;
-	gap: var(--n8n-listbox-item--content-gap, var(--spacing--5xs));
+	overflow: hidden;
+	@include utils.utils-ellipsis;
+}
+
+:where(.content) > * {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
+	overflow: hidden;
+	@include utils.utils-ellipsis;
+}
+
+:where(.content) > * + * {
+	margin-top: var(--n8n-listbox-item--content-gap, var(--spacing--5xs));
 }
 </style>

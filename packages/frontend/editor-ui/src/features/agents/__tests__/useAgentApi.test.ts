@@ -12,6 +12,7 @@ import {
 	getAgentBudgetSpend,
 	getAgentChatQueue,
 	getAgentTaskCancellation,
+	getIntegrationAccount,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -48,6 +49,21 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('getIntegrationAccount', () => {
+		it('requests the account of the integration type with GET', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ botName: 'bot' });
+
+			await expect(
+				getIntegrationAccount(restApiContext, 'project-1', 'agent-1', 'slack/x'),
+			).resolves.toEqual({ botName: 'bot' });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/integrations/slack%2Fx/account',
+			);
+		});
 	});
 
 	describe('listAttachableSkills', () => {
@@ -395,6 +411,18 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/p1/agents/v2/a1/n8n-chat/th-1/files',
+			);
+		});
+
+		it('lists the files of a system agent session on the system route, without a project', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'assistant', 'th-1', 'system');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/system/assistant/chat/th-1/files',
 			);
 		});
 	});

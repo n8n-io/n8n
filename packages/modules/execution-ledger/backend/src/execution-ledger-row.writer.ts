@@ -3,6 +3,7 @@ import {
 	type ExecutionLedgerEndedFacts,
 	type ExecutionLedgerStartedFacts,
 	type ExecutionLedgerWriter,
+	type ExecutionLedgerWriteResult,
 	WorkflowProjectService,
 } from '@n8n/backend-services';
 import { isEntityNotFoundError, type OperationContext, SharedWorkflowRepository } from '@n8n/db';
@@ -21,24 +22,35 @@ export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
 		private readonly workflowProjectService: WorkflowProjectService,
 	) {}
 
-	async writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
-		const projectId = facts.projectId ?? (await this.findProjectId(facts.workflowId, ctx));
-		if (!projectId) return false;
-
+	async writeStarted(
+		facts: ExecutionLedgerStartedFacts,
+		ctx: OperationContext,
+	): Promise<ExecutionLedgerWriteResult> {
+		const projectId = await this.resolveProjectId(facts, ctx);
 		await this.repository.append(toStartedRow(facts, projectId, uuidv7()), ctx);
-		return true;
+		return { hasOwnerProject: projectId !== null };
 	}
 
-	async writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean> {
-		const projectId = facts.projectId ?? (await this.findProjectId(facts.workflowId, ctx));
-		if (!projectId) return false;
-
+	async writeEnded(
+		facts: ExecutionLedgerEndedFacts,
+		ctx: OperationContext,
+	): Promise<ExecutionLedgerWriteResult> {
+		const projectId = await this.resolveProjectId(facts, ctx);
 		await this.repository.append(toEndedRow(facts, projectId, uuidv7()), ctx);
-		return true;
+		return { hasOwnerProject: projectId !== null };
 	}
 
 	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
 		return await this.repository.getBacklogStats();
+	}
+
+	/** Null when the workflow has no owner project. An empty ID from a caller counts as none. */
+	private async resolveProjectId(
+		{ projectId, workflowId }: ExecutionLedgerStartedFacts,
+		ctx: OperationContext,
+	): Promise<string | null> {
+		const known = projectId === '' ? undefined : projectId;
+		return known ?? (await this.findProjectId(workflowId, ctx)) ?? null;
 	}
 
 	/**

@@ -1,7 +1,7 @@
+import { EXTENDED_PROMPT_MAX_LENGTH } from '@n8n/api-types';
 import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
-import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import type { AgentFixWithAssistantFailure } from '../types';
 
 export const MAX_FIX_WITH_ASSISTANT_DRAFT_LENGTH = Math.min(16_000, EXTENDED_PROMPT_MAX_LENGTH);

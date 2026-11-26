@@ -16,7 +16,8 @@ import { FileNotFoundError } from '../errors/file-not-found.error';
 const PREFIX_DELETE_CONCURRENCY = 5;
 
 /** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
-const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
+const EXECUTION_PATH_MATCHER =
+	/^workflows\/([^/\\]+)\/executions\/([^/\\]+)\/binary_data\/([^/\\]+)$/;
 
 /**
  * Workflow and execution encoded in a path-format fileId, or null for
@@ -27,7 +28,10 @@ export function parseExecutionFileId(
 	fileId: string,
 ): { workflowId: string; executionId: string } | null {
 	const match = fileId.match(EXECUTION_PATH_MATCHER);
-	return match ? { workflowId: match[1], executionId: match[2] } : null;
+	if (!match || match[1] === '.' || match[1] === '..' || match[2] === '.' || match[2] === '..') {
+		return null;
+	}
+	return { workflowId: match[1], executionId: match[2] };
 }
 
 /**
@@ -62,7 +66,11 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	getPath(fileId: string) {
-		return this.byteStore.getAbsolutePath?.(fileId) ?? fileId;
+		if (!this.byteStore.getAbsolutePath) {
+			throw new UnexpectedError('Binary data storage does not provide filesystem paths.');
+		}
+
+		return this.byteStore.getAbsolutePath(fileId);
 	}
 
 	async getAsBuffer(fileId: string) {

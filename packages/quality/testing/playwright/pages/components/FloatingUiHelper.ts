@@ -18,6 +18,11 @@ export class FloatingUiHelper {
 		);
 	}
 
+	/** Innermost scroll area viewport that contains the given floating content. */
+	getScrollAreaViewport(content: Locator) {
+		return this.page.locator('[data-reka-scroll-area-viewport]').filter({ has: content }).last();
+	}
+
 	/** Tooltip content is teleported out of its trigger, so scope it to the page. */
 	getTooltip() {
 		return this.page.getByTestId('tooltip-content').filter({ visible: true });
@@ -68,14 +73,25 @@ export class FloatingUiHelper {
 	}
 
 	getVisiblePopoverMenuItem(name?: GetByRoleName, options: GetByRoleOptionsWithoutName = {}) {
-		return this.getVisiblePopper()
-			.getByRole('menuitem', { name, ...options })
-			.filter({ visible: true });
+		return this.visiblePopoverRole('menuitem', name, options);
 	}
 
 	getVisiblePopoverOption(name?: GetByRoleName, options: GetByRoleOptionsWithoutName = {}) {
+		return this.visiblePopoverRole('option', name, options);
+	}
+
+	/**
+	 * A dialog marks a teleported Element Plus menu as hidden from assistive tech.
+	 * The menu stays on screen. includeHidden keeps that menu, and the visible
+	 * filter drops menus that are not shown.
+	 */
+	private visiblePopoverRole(
+		role: 'menuitem' | 'option',
+		name: GetByRoleName | undefined,
+		options: GetByRoleOptionsWithoutName,
+	) {
 		return this.getVisiblePopper()
-			.getByRole('option', { name, ...options })
+			.getByRole(role, { name, ...options, includeHidden: true })
 			.filter({ visible: true });
 	}
 }

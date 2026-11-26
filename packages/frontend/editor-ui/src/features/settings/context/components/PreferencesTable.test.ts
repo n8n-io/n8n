@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -147,6 +147,7 @@ describe('PreferencesTable', () => {
 			preference({ id: 'a', source: 'ui', createdBy: jane }),
 			preference({ id: 'b', source: 'aia', createdBy: jane }),
 			preference({ id: 'c', source: 'mcp', createdBy: jane }),
+			preference({ id: 'd', source: 'import', createdBy: jane }),
 		]);
 
 		const authors = getAllByTestId('preference-created-by');
@@ -158,6 +159,7 @@ describe('PreferencesTable', () => {
 		expect(within(authors[0]).queryByTestId('preference-source')).not.toBeInTheDocument();
 		expect(within(authors[1]).getByTestId('preference-source')).toHaveTextContent('n8n assistant');
 		expect(within(authors[2]).getByTestId('preference-source')).toHaveTextContent('MCP');
+		expect(within(authors[3]).getByTestId('preference-source')).toHaveTextContent('Imported');
 	});
 
 	it('names only the surface when the author no longer exists', () => {
@@ -165,12 +167,14 @@ describe('PreferencesTable', () => {
 			preference({ id: 'a', source: 'ui', createdBy: null }),
 			preference({ id: 'b', source: 'aia', createdBy: null }),
 			preference({ id: 'c', source: 'mcp', createdBy: null }),
+			preference({ id: 'd', source: 'import', createdBy: null }),
 		]);
 
 		const authors = getAllByTestId('preference-created-by');
 		expect(authors[0]).toHaveTextContent('Settings');
 		expect(authors[1]).toHaveTextContent('n8n assistant');
 		expect(authors[2]).toHaveTextContent('MCP');
+		expect(authors[3]).toHaveTextContent('Imported');
 	});
 
 	it('shows when each row was last updated', () => {
@@ -187,6 +191,31 @@ describe('PreferencesTable', () => {
 		const toggle = getByTestId('preference-actions');
 		expect(toggle.querySelector('[data-icon="ellipsis-12"]')).not.toBeNull();
 		expect(toggle.querySelector('[data-icon="ellipsis-vertical-12"]')).toBeNull();
+	});
+
+	it('explains read-only actions on focus and blocks activation', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = render([preference({ scopes: READ_ONLY })]);
+
+		const toggle = within(getByTestId('preference-actions')).getByRole('button');
+		toggle.focus();
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent(
+				'You do not have permission to change this preference',
+			),
+		);
+		expect(toggle).toHaveAccessibleDescription(
+			'You do not have permission to change this preference',
+		);
+		await user.keyboard('{Escape}');
+		expect(toggle).toHaveFocus();
+		await user.keyboard('{Enter}');
+		await waitFor(() => expect(menuItem('edit')).toHaveAttribute('data-disabled'));
+		expect(menuItem('delete')).toHaveAttribute('data-disabled');
+		await user.click(menuItem('edit')!);
+		await user.click(menuItem('delete')!);
+		expect(emitted('edit')).toBeUndefined();
+		expect(emitted('delete')).toBeUndefined();
 	});
 
 	it('enables both actions when the row carries write scopes', async () => {

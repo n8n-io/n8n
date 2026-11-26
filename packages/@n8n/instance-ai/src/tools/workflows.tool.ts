@@ -788,6 +788,11 @@ async function readConsistentWorkflowSnapshot(
 	throw new WorkflowSnapshotChangedError(workflowId);
 }
 
+/** A workflow without an engine runs on v1. */
+function workflowEngineOf(json: WorkflowJSON): 'v1' | 'v2' {
+	return json.settings?.engineType === 'v2' ? 'v2' : 'v1';
+}
+
 async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
@@ -804,6 +809,7 @@ async function handleGetAsCode(
 			return {
 				workflowId: input.workflowId,
 				name: json.name,
+				engine: workflowEngineOf(json),
 				nodeCount: json.nodes?.length ?? 0,
 				nodes: await indexSourceNodes(json, code),
 				code,
@@ -813,7 +819,12 @@ async function handleGetAsCode(
 		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
 		const code = await generateWorkflowSource(json);
 		const nodeCount = json.nodes?.length ?? 0;
-		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
+		const base = {
+			workflowId: input.workflowId,
+			name: json.name,
+			engine: workflowEngineOf(json),
+			nodeCount,
+		};
 
 		// A workflow this conversation cannot save stays inline and unbound, so the model
 		// learns before it edits a file that a build would reject.

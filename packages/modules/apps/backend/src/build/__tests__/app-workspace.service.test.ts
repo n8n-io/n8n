@@ -7,6 +7,8 @@ import {
 } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { BadRequestError } from '@n8n/errors';
+import type { InstanceSettings } from 'n8n-core';
+import { v5 as uuidv5 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AppWorkspaceService } from '../app-workspace.service';
@@ -16,6 +18,8 @@ import { AppsConfig } from '../../apps.config';
 import { AppArchive } from '../../app-archive';
 
 const appId = '11111111-1111-4111-8111-111111111111';
+const instanceId = 'instance-1';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
@@ -24,7 +28,13 @@ vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	getWorkspaceRoot: vi.fn(async () => '/workspace'),
 }));
 
-function setup(provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox') {
+function setup(
+	provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox',
+	options: { instanceId?: string; projectId?: string; appId?: string } = {},
+) {
+	const currentInstanceId = options.instanceId ?? instanceId;
+	const currentProjectId = options.projectId ?? 'project';
+	const currentAppId = options.appId ?? appId;
 	const settings = mock<AppSandboxSettings>();
 	settings.resolve.mockResolvedValue(
 		provider === 'daytona'
@@ -55,12 +65,19 @@ function setup(provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox') {
 	});
 	filesystem.readFile.mockResolvedValue(Buffer.from('bundle'));
 	const config = new AppsConfig();
-	const service = new AppWorkspaceService(settings, config, archives, mock<Logger>());
+	const instanceSettings = mock<InstanceSettings>({ instanceId: currentInstanceId });
+	const service = new AppWorkspaceService(
+		settings,
+		config,
+		archives,
+		instanceSettings,
+		mock<Logger>(),
+	);
 	const attempt = { attemptNumber: 1, startedAt: new Date() };
 	const build = async () =>
 		await service.build(
-			'project',
-			appId,
+			currentProjectId,
+			currentAppId,
 			'version',
 			attempt,
 			files,
@@ -72,7 +89,7 @@ function setup(provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox') {
 
 describe('AppWorkspaceService', () => {
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'reconnects to the same app identity through %s',
+		'reconnects to the same derived app identity through %s',
 		async (provider) => {
 			const { build, settings } = setup(provider);
 			await build();
@@ -84,11 +101,78 @@ describe('AppWorkspaceService', () => {
 				enabled: true,
 				provider,
 				ephemeral: true,
-				id: appId,
 			});
-			if (provider === 'daytona') expect(first).toMatchObject({ name: `app-build-${appId}` });
+			const sandboxId = first && 'id' in first ? first.id : undefined;
+			expect(sandboxId).toMatch(UUID_PATTERN);
+			expect(sandboxId).not.toBe(appId);
+			if (provider === 'daytona') {
+				expect(first).toMatchObject({ name: `app-build-${sandboxId}` });
+			}
 		},
 	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'uses the same derived sandbox ID for build and delete on %s',
+		async (provider) => {
+			const { service, build } = setup(provider);
+			await build();
+			const buildConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+			await service.delete('project', appId);
+			const deleteConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+			expect(deleteConfig).toEqual(buildConfig);
+		},
+	);
+
+	it('derives a namespaced sandbox ID distinct from a pre-computed UUIDv5 app ID', async () => {
+		const otherNamespace = '51989c13-3ae7-4167-8e64-d874dd068795';
+		const precomputedId = uuidv5(
+			JSON.stringify([instanceId, 'project', 'agent-1']),
+			otherNamespace,
+		);
+		const { service, build } = setup('n8n-sandbox', { appId: precomputedId });
+
+		await build();
+		const buildConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+		await service.delete('project', precomputedId);
+		const deleteConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+
+		const derivedId = buildConfig && 'id' in buildConfig ? buildConfig.id : undefined;
+		expect(derivedId).toMatch(UUID_PATTERN);
+		expect(derivedId).not.toBe(precomputedId);
+		expect(deleteConfig).toEqual(buildConfig);
+	});
+
+	it('scopes derived sandbox IDs by instance and project', async () => {
+		const first = setup('n8n-sandbox', { instanceId: 'instance-1', projectId: 'project-1' });
+		await first.build();
+		const firstConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+
+		const otherInstance = setup('n8n-sandbox', {
+			instanceId: 'instance-2',
+			projectId: 'project-1',
+		});
+		await otherInstance.build();
+		const otherInstanceConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+
+		const otherProject = setup('n8n-sandbox', {
+			instanceId: 'instance-1',
+			projectId: 'project-2',
+		});
+		await otherProject.build();
+		const otherProjectConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+
+		const firstId = firstConfig && 'id' in firstConfig ? firstConfig.id : undefined;
+		const otherInstanceId =
+			otherInstanceConfig && 'id' in otherInstanceConfig ? otherInstanceConfig.id : undefined;
+		const otherProjectId =
+			otherProjectConfig && 'id' in otherProjectConfig ? otherProjectConfig.id : undefined;
+
+		expect(firstId).toMatch(UUID_PATTERN);
+		expect(otherInstanceId).toMatch(UUID_PATTERN);
+		expect(otherProjectId).toMatch(UUID_PATTERN);
+		expect(otherInstanceId).not.toBe(firstId);
+		expect(otherProjectId).not.toBe(firstId);
+	});
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
 		'blocks builds when %s sandboxes are disabled',
@@ -209,11 +293,15 @@ describe('AppWorkspaceService', () => {
 
 			await service.delete('project', appId);
 			expect(settings.resolve).toHaveBeenCalledExactlyOnceWith('project', { checkEnabled: false });
-			expect(vi.mocked(createSandbox).mock.calls.at(-1)?.[0]).toMatchObject({
+			const deleteConfig = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
+			const sandboxId = deleteConfig && 'id' in deleteConfig ? deleteConfig.id : undefined;
+			expect(sandboxId).toMatch(UUID_PATTERN);
+			expect(sandboxId).not.toBe(appId);
+			expect(deleteConfig).toMatchObject({
 				enabled: true,
 				provider,
-				id: appId,
-				...(provider === 'daytona' ? { name: `app-build-${appId}` } : {}),
+				id: sandboxId,
+				...(provider === 'daytona' ? { name: `app-build-${sandboxId}` } : {}),
 			});
 			expect(sandbox.deleteRemote).toHaveBeenCalledOnce();
 			expect(sandbox._start).not.toHaveBeenCalled();

@@ -21,6 +21,7 @@ import {
 	isLiveSubscription,
 	isSubscriptionResponse,
 	listOwnSubscriptions,
+	parseResourceIds,
 	reconcileSubscriptions,
 	renewSubscriptions,
 	storedSubscriptionsCover,
@@ -568,6 +569,77 @@ describe('Microsoft Teams Helpers Functions', () => {
 			[null, false],
 		])('returns %s for %j', (item, expected) => {
 			expect(isLifecycleNotification(item)).toBe(expected);
+		});
+	});
+
+	describe('parseResourceIds', () => {
+		it.each<[string, unknown, Record<string, string>]>([
+			['new chat', "chats('19:abc@unq.gbl.spaces')", { chatId: '19:abc@unq.gbl.spaces' }],
+			[
+				'chat message, also from Watch All (/me/chats/getAllMessages)',
+				"chats('19:abc@unq.gbl.spaces')/messages('1612289765949')",
+				{ chatId: '19:abc@unq.gbl.spaces', messageId: '1612289765949' },
+			],
+			[
+				'new channel',
+				"teams('fbe2bf47-16c8-47cf-b4a5-4b9b187c508b')/channels('19:4a95f7d8@thread.tacv2')",
+				{ teamId: 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b', channelId: '19:4a95f7d8@thread.tacv2' },
+			],
+			[
+				'channel message, also from Watch All (one subscription per channel)',
+				"teams('fbe2bf47-16c8-47cf-b4a5-4b9b187c508b')/channels('19:4a95f7d8@thread.tacv2')/messages('1612293113399')",
+				{
+					teamId: 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b',
+					channelId: '19:4a95f7d8@thread.tacv2',
+					messageId: '1612293113399',
+				},
+			],
+			[
+				'channel reply',
+				"teams('fbe2bf47-16c8-47cf-b4a5-4b9b187c508b')/channels('19:4a95f7d8@thread.tacv2')/messages('1612293113399')/replies('1612293113500')",
+				{
+					teamId: 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b',
+					channelId: '19:4a95f7d8@thread.tacv2',
+					parentMessageId: '1612293113399',
+					messageId: '1612293113500',
+				},
+			],
+			[
+				'new team member',
+				"teams('fbe2bf47-16c8-47cf-b4a5-4b9b187c508b')/members('MCMjMSMj')",
+				{ teamId: 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b' },
+			],
+			['member id with a slash', "teams('t1')/members('MCMjMSMj/abc==')", { teamId: 't1' }],
+			[
+				'key with a slash',
+				"teams('t')/channels('c')/messages('a/b')",
+				{ teamId: 't', channelId: 'c', messageId: 'a/b' },
+			],
+			['leading slash', "/teams('t1')/channels('c1')", { teamId: 't1', channelId: 'c1' }],
+			['mixed-case names', "Teams('t1')/Channels('c1')", { teamId: 't1', channelId: 'c1' }],
+			['escaped quotes', "chats('a''b''c')", { chatId: "a'b'c" }],
+			['slash form', '/teams/t1/channels/c1/messages/m1', {}],
+			['unknown hierarchy', "users('u1')/messages('m1')", {}],
+			['prototype name', "constructor('x')", {}],
+			['extra segment at the end', "chats('c1')/messages('m1')/hostedContents('h1')", {}],
+			['team only', "teams('t1')", {}],
+			['text before the path', "x/chats('c1')", {}],
+			['single quote in the key', "chats('a'b')", {}],
+			['text after the segment', "chats('c1')x", {}],
+			['trailing slash', "chats('c1')/", {}],
+			['two leading slashes', "//chats('c1')", {}],
+			['empty key', "chats('')", {}],
+			['extra segment after members', "teams('t1')/members('m1')/x", {}],
+			['empty string', '', {}],
+			['slash only', '/', {}],
+			['undefined', undefined, {}],
+			['null', null, {}],
+			['a number', 42, {}],
+			// `chats('` and `')` add 9 characters to the path.
+			['a path at the length limit', `chats('${'a'.repeat(2039)}')`, { chatId: 'a'.repeat(2039) }],
+			['a path over the length limit', `chats('${'a'.repeat(2040)}')`, {}],
+		])('parses %s', (_name, resource, expected) => {
+			expect(parseResourceIds(resource)).toStrictEqual(expected);
 		});
 	});
 

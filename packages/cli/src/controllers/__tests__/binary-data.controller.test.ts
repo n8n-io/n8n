@@ -206,7 +206,7 @@ describe('BinaryDataController', () => {
 		const query = { token: '12344' } as BinaryDataSignedQueryDto;
 
 		it('should return 400 if binary data mode is missing', async () => {
-			binaryDataService.validateSignedToken.mockReturnValueOnce('123');
+			binaryDataService.validateSignedToken.mockReturnValueOnce({ id: '123' });
 			await controller.getSigned(request, response, query);
 
 			expect(response.status).toHaveBeenCalledWith(400);
@@ -214,7 +214,7 @@ describe('BinaryDataController', () => {
 		});
 
 		it('should return 400 if binary data mode is invalid', async () => {
-			binaryDataService.validateSignedToken.mockReturnValueOnce('invalid:123');
+			binaryDataService.validateSignedToken.mockReturnValueOnce({ id: 'invalid:123' });
 
 			await controller.getSigned(request, response, query);
 
@@ -234,7 +234,7 @@ describe('BinaryDataController', () => {
 		});
 
 		it('should return 404 if file is not found', async () => {
-			binaryDataService.validateSignedToken.mockReturnValueOnce('filesystem:123');
+			binaryDataService.validateSignedToken.mockReturnValueOnce({ id: 'filesystem:123' });
 			binaryDataService.getAsStream.mockRejectedValue(new FileNotFoundError('File not found'));
 
 			await controller.getSigned(request, response, query);
@@ -243,15 +243,45 @@ describe('BinaryDataController', () => {
 			expect(response.end).toHaveBeenCalled();
 		});
 
-		it('should return the file stream on a valid signed token', async () => {
-			binaryDataService.validateSignedToken.mockReturnValueOnce('filesystem:123');
+		it('returns the file for a token without a workflow id without an ownership check', async () => {
+			binaryDataService.validateSignedToken.mockReturnValueOnce({ id: 'filesystem:123' });
 			const stream = mock<Readable>();
 			binaryDataService.getAsStream.mockResolvedValue(stream);
 
 			const result = await controller.getSigned(request, response, query);
 
 			expect(result).toBe(stream);
-			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('filesystem:123');
+			expect(binaryDataAccessService.isOwnedByWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('returns the file when its workflow owns it', async () => {
+			binaryDataService.validateSignedToken.mockReturnValueOnce({
+				id: 'filesystem:123',
+				workflowId: 'workflow-1',
+			});
+			binaryDataAccessService.isOwnedByWorkflow.mockResolvedValue(true);
+			const stream = mock<Readable>();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+
+			expect(await controller.getSigned(request, response, query)).toBe(stream);
+			expect(binaryDataAccessService.isOwnedByWorkflow).toHaveBeenCalledWith(
+				'workflow-1',
+				'filesystem:123',
+			);
+		});
+
+		it('returns 404 without reading an unowned binary', async () => {
+			binaryDataService.validateSignedToken.mockReturnValueOnce({
+				id: 'filesystem:123',
+				workflowId: 'workflow-1',
+			});
+			binaryDataAccessService.isOwnedByWorkflow.mockResolvedValue(false);
+
+			await controller.getSigned(request, response, query);
+
+			expect(response.status).toHaveBeenCalledWith(404);
+			expect(binaryDataService.getMetadata).not.toHaveBeenCalled();
+			expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
 		});
 	});
 });

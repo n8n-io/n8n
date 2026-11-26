@@ -25,6 +25,7 @@
   ],
   "dependencies": {
     "@n8n/code-task-contract": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
