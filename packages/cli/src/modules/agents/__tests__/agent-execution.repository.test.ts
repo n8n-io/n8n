@@ -3,6 +3,7 @@ import { mockEntityManager } from '@test/mocking';
 import type { TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentAttentionFlagRepository } from '../repositories/agent-attention-flag.repository';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
@@ -14,7 +15,11 @@ describe('AgentExecutionRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentExecutionRepository(mockDataSource as never, mock<TransactionRunner>());
+		repository = new AgentExecutionRepository(
+			mockDataSource as never,
+			mock<TransactionRunner>(),
+			mock<AgentAttentionFlagRepository>(),
+		);
 	});
 
 	describe('findLatestSuspendedByThreadId', () => {

@@ -1,7 +1,7 @@
 import type { ApplyCheckResult } from './promotions.types';
 
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
-import { billingPreview, billingResources } from './__tests__/preview.fixtures';
+import { billingPreview, billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
 	listBlockers,
@@ -43,7 +43,30 @@ describe('promotion operation', () => {
 				graph,
 				new Set([reminders.key, reconciliation.key, payments.key, project.key]),
 			),
-		).toEqual({ workflowIds: ['w1', 'w2'], folderIds: ['f1'] });
+		).toEqual({ workflowIds: ['w1', 'w2'], folderIds: ['f1'], credentialIds: [] });
+	});
+
+	it('should send only the selected credentials that the project owns', () => {
+		const preview = billingPreview();
+		const owned = resource({
+			key: 'credential:c9',
+			name: 'CRM key',
+			parentKey: 'project:p1',
+			change: 'added',
+			selectable: true,
+		});
+		const graph = buildSelectionGraph(
+			{ ...preview, resources: [...preview.resources, owned] },
+			'promote',
+		);
+		const { stripe } = billingResources;
+
+		// "Stripe" comes with the workflows that use it, so the request does not name it.
+		expect(toOperationRequest(graph, new Set([owned.key, stripe.key]))).toEqual({
+			workflowIds: [],
+			folderIds: [],
+			credentialIds: ['c9'],
+		});
 	});
 
 	it('should block only the workflows that need a missing binding or moved to another project', () => {

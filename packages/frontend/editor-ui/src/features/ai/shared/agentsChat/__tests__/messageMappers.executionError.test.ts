@@ -88,12 +88,7 @@ describe('convertDbMessages — stopped executions', () => {
 
 		const messages = convertDbMessages(dbMessages);
 
-		expect(messages.map(({ content }) => content)).toEqual([
-			'Start',
-			'Working',
-			'More work',
-			'Session stopped',
-		]);
+		expect(messages.map(({ content }) => content)).toEqual(['Start', 'Working', 'More work', '']);
 		expect(messages.at(-1)).toMatchObject({
 			id: 'exec-1:stopped',
 			role: 'assistant',
@@ -118,7 +113,11 @@ describe('convertDbMessages — stopped executions', () => {
 			},
 		]);
 
-		expect(messages.at(-1)).toMatchObject({ content: 'Session stopped', executionId: 'exec-1' });
+		expect(messages.at(-1)).toMatchObject({
+			id: 'exec-1:stopped',
+			content: '',
+			executionId: 'exec-1',
+		});
 	});
 
 	it('settles unfinished tool steps while preserving completed work', () => {
@@ -165,6 +164,6 @@ describe('convertDbMessages — stopped executions', () => {
 			},
 		]);
 
-		expect(messages.map(({ content }) => content)).toEqual(['', 'Session stopped', 'Done']);
+		expect(messages.map(({ id }) => id)).toEqual(['partial', 'exec-1:stopped', 'later']);
 	});
 });

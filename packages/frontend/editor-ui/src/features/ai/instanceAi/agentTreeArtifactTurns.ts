@@ -20,7 +20,7 @@ function collectToolCalls(node: InstanceAiAgentNode, toolCalls: ArtifactToolCall
 
 function treeFields(
 	tree: InstanceAiAgentNode | undefined,
-): Pick<ArtifactTurn, 'isLive' | 'toolCalls' | 'announcedWorkflowId'> {
+): Pick<ArtifactTurn, 'isLive' | 'toolCalls' | 'announcedWorkflowId' | 'runId'> {
 	if (!tree) return { isLive: false, toolCalls: [] };
 	const toolCalls: ArtifactToolCall[] = [];
 	collectToolCalls(tree, toolCalls);
@@ -28,6 +28,7 @@ function treeFields(
 	return {
 		isLive: tree.status === 'active',
 		toolCalls,
+		...(tree.runId ? { runId: tree.runId } : {}),
 		...(announcedWorkflowId ? { announcedWorkflowId } : {}),
 	};
 }

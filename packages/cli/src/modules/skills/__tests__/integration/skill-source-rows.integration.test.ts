@@ -22,6 +22,7 @@ import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.
 import { createSkill, deleteAllSkills } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { FakeGitHub } from '../test-utils/fake-github';
 
@@ -89,7 +90,7 @@ describe('Sources in the skills table', () => {
 		await deleteAllSkills();
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
-		(Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<string, unknown>).clear();
+		(Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<string, unknown>).clear();
 		github.start();
 		github.push('acme/zeta', repo(['z1', 'z2', 'z3']));
 		github.push('acme/alpha', repo(['a1', 'a2']));

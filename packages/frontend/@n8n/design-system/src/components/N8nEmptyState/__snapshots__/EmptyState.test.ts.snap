@@ -35,3 +35,18 @@ exports[`N8nEmptyState > should render correctly with icon 1`] = `
   <!--v-if-->
 </div>"
 `;
+
+exports[`N8nEmptyState > small size > should render correctly 1`] = `
+"<div class="n8n-empty-state container small" data-test-id="empty-state">
+  <!--v-if-->
+  <div class="text">
+    <!--v-if-->
+    <div class="description">
+      <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
+    </div>
+  </div><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><n8n-button-stub label="Clear search and filter" variant="outline" size="small" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" role="button"></n8n-button-stub></span>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+</div>"
+`;

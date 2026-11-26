@@ -2,15 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import { TOOL_CALL_STATE } from '../constants';
 import {
+	findToolFooterRenderer,
+	findToolOutputRenderer,
 	findToolResultRenderer,
 	type AgentsChatInteractionExtension,
 } from '../interactionRegistry';
 import type { ToolCall } from '../types';
 import {
 	TEST_RESULT_EXTENSION_KEY,
+	TEST_OUTPUT_TOOL_NAME,
 	TEST_RESULT_TOOL_NAME,
+	TestToolOutput,
 	TestToolResult,
 	testInteractionExtension,
+	testToolFooterExtension,
+	testToolOutputExtension,
 	testToolResultExtension,
 } from './fixtures/testInteractionExtension';
 
@@ -88,5 +94,54 @@ describe('findToolResultRenderer', () => {
 		expect(findToolResultRenderer(finishedCall, [testToolResultExtension, second])?.key).toBe(
 			TEST_RESULT_EXTENSION_KEY,
 		);
+	});
+
+	it('ignores extensions that only render outputs', () => {
+		expect(
+			findToolResultRenderer({ ...finishedCall, tool: TEST_OUTPUT_TOOL_NAME }, [
+				testToolOutputExtension,
+			]),
+		).toBeUndefined();
+	});
+});
+
+describe('findToolFooterRenderer', () => {
+	it('returns the footer of a finished call, and none while the call runs', () => {
+		expect(findToolFooterRenderer(finishedCall, [testToolFooterExtension])).toEqual({
+			key: 'test_footer',
+			component: TestToolResult,
+		});
+		expect(
+			findToolFooterRenderer({ ...finishedCall, state: TOOL_CALL_STATE.RUNNING }, [
+				testToolFooterExtension,
+			]),
+		).toBeUndefined();
+	});
+});
+
+describe('findToolOutputRenderer', () => {
+	const outputCall: ToolCall = { ...finishedCall, tool: TEST_OUTPUT_TOOL_NAME };
+
+	it('returns the output component of a matching extension for a finished call', () => {
+		expect(findToolOutputRenderer(outputCall, [testToolOutputExtension])).toBe(TestToolOutput);
+	});
+
+	it('returns undefined when no extension matches the call', () => {
+		expect(findToolOutputRenderer(finishedCall, [testToolOutputExtension])).toBeUndefined();
+	});
+
+	it('ignores extensions that render whole results', () => {
+		expect(findToolOutputRenderer(finishedCall, [testToolResultExtension])).toBeUndefined();
+	});
+
+	it.each([
+		['running', { state: TOOL_CALL_STATE.RUNNING }],
+		['failed', { state: TOOL_CALL_STATE.ERROR }],
+		['canceled', { canceled: true }],
+		['without output', { output: undefined }],
+	])('keeps the default output for a call that is %s', (_, change) => {
+		expect(
+			findToolOutputRenderer({ ...outputCall, ...change }, [testToolOutputExtension]),
+		).toBeUndefined();
 	});
 });

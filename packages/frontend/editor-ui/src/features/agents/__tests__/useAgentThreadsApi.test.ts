@@ -75,6 +75,18 @@ describe('useAgentThreadsApi', () => {
 		expect(result).toBe(response);
 	});
 
+	it('gets the thread detail of a system agent from the system agent routes', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ thread: { id: 'x' }, executions: [] });
+
+		await getThreadDetail(restApiContext, 'project-1', 'assistant', 'thread/1', 'system');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/agents/system/assistant/threads/thread%2F1/detail',
+		);
+	});
+
 	it('percent-encodes a rotated session id so the # survives as a URL, not a fragment', async () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ thread: { id: 'x' }, executions: [] });
 

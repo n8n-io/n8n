@@ -1,6 +1,7 @@
 import {
 	countSkippedFiles,
 	isScriptFile,
+	isTextFile,
 	MAX_REPORTED_EXTENSIONS,
 	NO_EXTENSION,
 	OTHER_EXTENSION,
@@ -16,6 +17,27 @@ describe('isScriptFile', () => {
 		['LICENSE', false],
 	])('says whether %s is a script', (path, expected) => {
 		expect(isScriptFile(path)).toBe(expected);
+	});
+});
+
+describe('isTextFile', () => {
+	it.each([
+		['references/guide.md', true],
+		['references/guide.MDX', true],
+		['docs/intro.rst', true],
+		['styles/theme.scss', true],
+		['data/events.jsonl', true],
+		['logs/run.log', true],
+		['schema/api.graphql', true],
+		['schema/service.proto', true],
+		['infra/main.tf', true],
+		['assets/icon.svg', true],
+		['assets/logo.png', false],
+		['docs/manual.pdf', false],
+		['assets/data.bin', false],
+		['LICENSE', false],
+	])('says whether %s is a text file', (path, expected) => {
+		expect(isTextFile(path)).toBe(expected);
 	});
 });
 

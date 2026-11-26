@@ -512,8 +512,8 @@ function handleOpenChange(value: boolean) {
 						:model-value="activeCategory"
 						:options="tabOptions"
 						size="small"
-						variant="modern"
 						justified
+						show-border
 						:class="$style.tabs"
 						data-test-id="tools-connection-tabs"
 						@update:model-value="selectCategory"
@@ -655,11 +655,10 @@ function handleOpenChange(value: boolean) {
 	margin-block-end: var(--spacing--sm);
 }
 
-// N8nTabs owns the tab styling, and the justified strip gives every tab an equal
-// slot, so it cannot overflow at this tab count; this only supplies the divider
-// and stops the strip shrinking.
+// N8nTabs owns the tab styling and divider, and the justified strip gives every
+// tab an equal slot, so it cannot overflow at this tab count; this only stops
+// the strip shrinking.
 .tabs {
-	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
 }
 

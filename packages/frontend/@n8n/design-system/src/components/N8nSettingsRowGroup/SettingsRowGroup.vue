@@ -34,5 +34,12 @@ withDefaults(defineProps<SettingsRowGroupProps>(), {
 	> :last-child > [data-test-id='settings-row-divider'] {
 		display: none;
 	}
+
+	// A hovered or focused row paints its own background, so the dividers on both of its
+	// edges would cross it: its own and the one of the row above.
+	> [data-hoverable]:is(:hover, :focus-visible) > [data-test-id='settings-row-divider'],
+	> :has(+ [data-hoverable]:is(:hover, :focus-visible)) > [data-test-id='settings-row-divider'] {
+		opacity: 0;
+	}
 }
 </style>

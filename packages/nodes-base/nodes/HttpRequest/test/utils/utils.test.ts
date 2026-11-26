@@ -342,6 +342,41 @@ describe('HTTP Node Utils', () => {
 			});
 		});
 
+		it.each([
+			['abc', 'abcdef'],
+			['abcdef', 'abc'],
+		])('should mask overlapping header values with %s first', (first, second) => {
+			const credentials: ICredentialDataDecryptedObject = {
+				headers: {
+					values: [
+						{ name: 'X-First', value: first },
+						{ name: 'X-Second', value: second },
+					],
+				},
+			};
+			const query = {
+				shorter: 'abc',
+				longer: 'abcdef',
+				embedded: 'prefix-abcdef-suffix',
+				keep: 'visible',
+			};
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+				qs: { ...query },
+			};
+			const secrets = getSecrets(credentials);
+
+			expect(sanitizeUiMessage(requestOptions, {}, secrets).qs).toEqual({
+				shorter: REDACTED,
+				longer: REDACTED,
+				embedded: `prefix-${REDACTED}-suffix`,
+				keep: 'visible',
+			});
+			expect(requestOptions.qs).toEqual(query);
+			expect(secrets).toEqual([first, second]);
+		});
+
 		it('should redact secrets in auth fields not tracked by authDataKeys', async () => {
 			const secretValue = '{"username":"testuser","password":"fake-pass-123"}';
 			const requestOptions: IRequestOptions = {
@@ -475,6 +510,49 @@ describe('HTTP Node Utils', () => {
 			expect(secrets).toContain('sensitive-api-key');
 			expect(secrets).toContain('user123');
 		});
+
+		it('should include nested header values without header names', () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'top-level-value',
+				headers: {
+					values: [
+						{ name: 'X-Service-Token', value: 'first-test-value' },
+						{ name: 'X-Account-Key', value: 'second-test-value' },
+					],
+				},
+			};
+
+			expect(getSecrets(credentials)).toEqual([
+				'top-level-value',
+				'first-test-value',
+				'second-test-value',
+			]);
+		});
+
+		it('should skip empty and non-string header values', () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				headers: {
+					values: [
+						null,
+						'not-a-header',
+						{},
+						{ name: 'X-Empty', value: '' },
+						{ name: 'X-Number', value: 123 },
+						{ name: 'X-Boolean', value: false },
+						{ name: 'X-Valid', value: 'valid-test-value' },
+					],
+				},
+			};
+
+			expect(getSecrets(credentials)).toEqual(['valid-test-value']);
+		});
+
+		it.each([null, {}, { values: 'not-an-array' }])(
+			'should skip a header collection without an array: %j',
+			(headers) => {
+				expect(getSecrets({ headers } as ICredentialDataDecryptedObject)).toEqual([]);
+			},
+		);
 
 		it('should not include non-string values', () => {
 			const credentials: ICredentialDataDecryptedObject = {
