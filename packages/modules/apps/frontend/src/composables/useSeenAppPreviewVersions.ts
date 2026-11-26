@@ -1,19 +1,20 @@
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useLocalStorage } from '@vueuse/core';
-import { ref, type Ref } from 'vue';
+import { effectScope, ref, type Ref } from 'vue';
 
 const MAX_SEEN_VERSIONS = 200;
 
 const lists = new Map<string, Ref<string[]>>();
+const scope = effectScope(true);
 
 function seenList(userId: string | null): Ref<string[]> {
 	if (!userId) return ref([]);
 	const key = `${userId}_N8N_APP_PREVIEW_SEEN_VERSIONS`;
-	let list = lists.get(key);
-	if (!list) {
-		list = useLocalStorage<string[]>(key, [], { writeDefaults: false });
-		lists.set(key, list);
-	}
+	const cached = lists.get(key);
+	if (cached) return cached;
+	const list =
+		scope.run(() => useLocalStorage<string[]>(key, [], { writeDefaults: false })) ?? ref([]);
+	lists.set(key, list);
 	return list;
 }
 

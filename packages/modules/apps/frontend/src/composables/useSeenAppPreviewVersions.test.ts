@@ -1,4 +1,5 @@
 import { useUsersStore } from '@n8n/stores/users.store';
+import { effectScope, nextTick } from 'vue';
 
 import { useSeenAppPreviewVersions } from './useSeenAppPreviewVersions';
 
@@ -25,5 +26,17 @@ describe('useSeenAppPreviewVersions', () => {
 		expect(hasSeen('v0')).toBe(false);
 		expect(hasSeen('v1')).toBe(true);
 		expect(hasSeen('v200')).toBe(true);
+	});
+
+	it('keeps saving the versions after the first caller is gone', async () => {
+		useUsersStore().currentUserId = 'scoped-user';
+		const first = effectScope();
+		first.run(() => useSeenAppPreviewVersions());
+		first.stop();
+
+		useSeenAppPreviewVersions().markSeen('v1');
+		await nextTick();
+
+		expect(localStorage.getItem('scoped-user_N8N_APP_PREVIEW_SEEN_VERSIONS')).toBe('["v1"]');
 	});
 });
