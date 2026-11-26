@@ -16,6 +16,7 @@ import {
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
+import { compactTokenFormatter } from '@/features/agents/utils/token-count';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import SessionUsageBreakdown from './timeline-items/SessionUsageBreakdown.vue';
 
@@ -92,11 +93,6 @@ function onMenuSelect(action: string) {
 		emit('delete-session');
 	}
 }
-
-const tokenFormatter = new Intl.NumberFormat('en-US', {
-	notation: 'compact',
-	maximumFractionDigits: 1,
-});
 
 const costFormatter = new Intl.NumberFormat('en-US', {
 	maximumFractionDigits: 4,
@@ -204,7 +200,7 @@ const usagePrice = computed(() => {
 							>
 								<N8nIcon color="text-light" icon="hash" />
 								<N8nText step="xs" bold>
-									{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
+									{{ compactTokenFormatter.format(metadata.totalTokens).toUpperCase() }}
 									<span
 										v-if="metadata.totalCredits !== undefined"
 										:class="$style.innerLabel"

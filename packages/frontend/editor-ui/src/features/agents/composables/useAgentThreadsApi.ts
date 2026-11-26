@@ -9,6 +9,7 @@ import type {
 	AgentSessionStatus,
 	AgentSessionStopResponse,
 	AgentThreadMemoryDto,
+	AgentSessionLatestActivity,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -38,6 +39,7 @@ export interface AgentExecutionThread extends AgentSessionPreviewAccess {
 	source?: string | null;
 	failureSummary?: ThreadFailureSummary | null;
 	status?: AgentSessionStatus | null;
+	latestActivity?: AgentSessionLatestActivity | null;
 }
 
 export type AgentExecutionStatus =
