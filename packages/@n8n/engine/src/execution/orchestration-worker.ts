@@ -1,5 +1,5 @@
 import { UnimplementedError } from '../common';
-import type { OrchestrationMessage, WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueueConsumer } from '../queue';
 import type { ExecutionStartHandler } from './execution-start-handler';
 import type { StepSettledHandler } from './step-settled-handler';
 
@@ -8,7 +8,7 @@ import type { StepSettledHandler } from './step-settled-handler';
  */
 export class OrchestrationWorker {
 	constructor(
-		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly orchestrationQueue: WorkQueueConsumer<OrchestrationMessage>,
 		private readonly startHandler: ExecutionStartHandler,
 		private readonly settledHandler: StepSettledHandler,
 	) {}

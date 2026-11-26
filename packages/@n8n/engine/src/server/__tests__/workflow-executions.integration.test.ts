@@ -24,10 +24,10 @@ import {
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import {
-	createInMemoryWorkQueues,
+	createInMemoryWorkQueueFactory,
 	type OrchestrationMessage,
 	type StepMessage,
-	type WorkQueue,
+	type WorkQueuePublisher,
 } from '../../queue';
 import {
 	LifecycleEventPublisherFactory,
@@ -292,8 +292,8 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 
 let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
-let workQueue: WorkQueue<OrchestrationMessage>;
-let stepQueue: WorkQueue<StepMessage>;
+let workQueue: WorkQueuePublisher<OrchestrationMessage>;
+let stepQueue: WorkQueuePublisher<StepMessage>;
 let lifecycleEventPublisher: LifecycleEventPublisher;
 let responseSender: ExecutionResponseSender;
 let url: string;
@@ -309,8 +309,8 @@ beforeAll(async () => {
 }, 120_000);
 
 beforeEach(async () => {
-	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	workQueue = { publish: vi.fn() };
+	stepQueue = { publish: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
@@ -884,7 +884,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {

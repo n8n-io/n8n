@@ -11,23 +11,19 @@ import {
 	type LifecycleEvent,
 	type LifecycleEventPublisher,
 } from '../../lifecycle-events';
-import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueuePublisher } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
 import { stepKeyId, type StepSlots } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
 
 /** Records what is published and never dispatches it, so each test picks the delivery order. */
-class RecordingQueue<T> implements WorkQueue<T> {
+class RecordingQueue<T> implements WorkQueuePublisher<T> {
 	published: T[] = [];
 
 	async publish(message: T) {
 		this.published.push(message);
 	}
-
-	start() {}
-
-	async stop() {}
 }
 
 class RecordingPublisher implements LifecycleEventPublisher {

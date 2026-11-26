@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { verifyResumeToken, type ResumeTokenClaims } from '../auth/resume-token';
-import type { StepMessage, WorkQueue } from '../queue';
+import type { StepMessage, WorkQueuePublisher } from '../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
@@ -102,7 +102,7 @@ export class ResumeRequestService {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly stepQueue: WorkQueuePublisher<StepMessage>,
 		private readonly secret: string,
 		private readonly hold: ResumeHold = DEFAULT_RESUME_HOLD,
 	) {}

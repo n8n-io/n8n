@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../../queue';
 import {
 	ExecutionNotFoundError,
 	ParentExecutionEndedError,
@@ -29,8 +29,8 @@ const sampleWorkflow: WorkflowDocument = {
 	connections: {},
 };
 
-function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+function makeQueue(): WorkQueuePublisher<OrchestrationMessage> {
+	return { publish: vi.fn() };
 }
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {

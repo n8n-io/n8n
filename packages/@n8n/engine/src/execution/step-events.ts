@@ -1,6 +1,6 @@
 import type { GraphNode } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
-import type { OrchestrationMessage, WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../queue';
 import type { ExecutionRecord } from './execution-store';
 import type { StepError } from './execution.types';
 import type { StepRecord } from './step-store';
@@ -24,7 +24,7 @@ export function stepEventFields(step: StepRecord, node: GraphNode) {
  */
 export async function announceStepFailed(
 	lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
-	orchestrationQueue: WorkQueue<OrchestrationMessage>,
+	orchestrationQueue: WorkQueuePublisher<OrchestrationMessage>,
 	execution: ExecutionRecord,
 	step: StepRecord,
 	node: GraphNode,

@@ -1,5 +1,5 @@
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
-import type { StepMessage, WorkQueue } from '../queue';
+import type { StepMessage, WorkQueuePublisher } from '../queue';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type { ExecutionStatus } from './execution.types';
@@ -25,7 +25,7 @@ export class CancelExecutionService {
 		private readonly stepStore: StepStore,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly stepQueue: WorkQueuePublisher<StepMessage>,
 	) {}
 
 	/** @throws {ExecutionNotFoundError} if absent. */

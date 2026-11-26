@@ -9,7 +9,12 @@ import {
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { EngineLogger } from '../logging';
 import type { ExecutionResponseSender } from '../response-channel';
-import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
+import type {
+	OrchestrationMessage,
+	StepMessage,
+	StepSettledEvent,
+	WorkQueuePublisher,
+} from '../queue';
 import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
 import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
@@ -48,8 +53,8 @@ export class StepSettledHandler {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
-		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly stepQueue: WorkQueuePublisher<StepMessage>,
+		private readonly orchestrationQueue: WorkQueuePublisher<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly cancelExecution: CancelExecutionService,

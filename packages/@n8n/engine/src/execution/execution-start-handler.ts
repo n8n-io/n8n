@@ -1,7 +1,7 @@
 import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
-import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
+import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueuePublisher } from '../queue';
 import type { ExecutionStore } from './execution-store';
 import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
 import type { StepStore } from './step-store';
@@ -18,7 +18,7 @@ export class ExecutionStartHandler {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly orchestrationQueue: WorkQueuePublisher<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 	) {}
 

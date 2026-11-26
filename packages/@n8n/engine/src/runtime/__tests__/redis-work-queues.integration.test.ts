@@ -17,7 +17,12 @@ import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import type { EngineLogger } from '../../logging';
-import { createRedisWorkQueues } from '../../queue';
+import {
+	RedisWorkQueueConsumer,
+	RedisWorkQueuePublisher,
+	type WorkQueueConsumerOptions,
+	type WorkQueueFactory,
+} from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime, ENGINE_ROLES, type EngineRole } from '../create-engine-runtime';
 
@@ -77,17 +82,26 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 		roles?: readonly EngineRole[],
 	) {
 		const publisher = new Redis(redis.getConnectionUrl());
-		let consumersOpened = 0;
-		const workQueues = createRedisWorkQueues({
-			publisher,
-			createConsumer: () => {
-				consumersOpened++;
-				return new Redis(redis.getConnectionUrl());
+		const consumerClients: Redis[] = [];
+		const workQueueFactory: WorkQueueFactory = {
+			createPublisher: <TMessage>(name: string) =>
+				new RedisWorkQueuePublisher<TMessage>(publisher, `${keyPrefix}:${name}`),
+			createConsumer: <TMessage>(
+				name: string,
+				{ concurrency, parse, logger }: WorkQueueConsumerOptions<TMessage>,
+			) => {
+				const client = new Redis(redis.getConnectionUrl());
+				consumerClients.push(client);
+				return new RedisWorkQueueConsumer<TMessage>({
+					client,
+					publisher,
+					key: `${keyPrefix}:${name}`,
+					parse,
+					logger,
+					concurrency,
+				});
 			},
-			keyPrefix,
-			concurrency: { orchestration: 1, step: 1 },
-			logger: silentLogger,
-		});
+		};
 		const runtime = createEngineRuntime({
 			roles,
 			dataSource,
@@ -95,7 +109,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
 			logger: silentLogger,
-			queues: workQueues.queues,
+			workQueueFactory,
 			resumeSecret,
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -111,10 +125,10 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 
 		const stop = async () => {
 			await runtime.stop();
-			workQueues.close();
+			for (const client of consumerClients) client.disconnect();
 			await publisher.quit();
 		};
-		return { app: runtime.app, stop, consumersOpened: () => consumersOpened };
+		return { app: runtime.app, stop, consumersOpened: () => consumerClients.length };
 	}
 
 	it('runs the parallel branches of one execution on two engines and finishes it once', async () => {

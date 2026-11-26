@@ -10,7 +10,7 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
-	createInMemoryWorkQueues,
+	createInMemoryWorkQueueFactory,
 	mintIdentityToken,
 	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
@@ -111,7 +111,7 @@ export class EngineTestRuntime {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(AUTH_SECRET),
 			responseSender: noopExecutionResponseSender,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			logger: this.options.logger,
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);

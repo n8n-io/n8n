@@ -1,5 +1,5 @@
 import { UnimplementedError } from '../common';
-import type { StepMessage, WorkQueue } from '../queue';
+import type { StepMessage, WorkQueueConsumer } from '../queue';
 import type { StepReadyHandler } from './step-ready-handler';
 
 /**
@@ -8,7 +8,7 @@ import type { StepReadyHandler } from './step-ready-handler';
  */
 export class StepWorker {
 	constructor(
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly stepQueue: WorkQueueConsumer<StepMessage>,
 		private readonly readyHandler: StepReadyHandler,
 	) {}
 

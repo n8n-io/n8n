@@ -6,7 +6,7 @@ import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource, runMigrations } from './database';
 import { noopExecutionFilesDeleter } from './dependencies';
 import { createConsoleLogger } from './logging';
-import { createInMemoryWorkQueues } from './queue';
+import { createInMemoryWorkQueueFactory } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
 import { retentionPolicyFromHours } from './retention';
 import { createEngineRuntime } from './runtime';
@@ -52,13 +52,11 @@ async function main(): Promise<void> {
 		responseSender: noopExecutionResponseSender,
 		// Runs no `v1-node` steps, so it writes no binary files.
 		externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
-		queues: createInMemoryWorkQueues({
-			concurrency: {
-				step: config.stepConcurrency,
-				orchestration: config.orchestrationConcurrency,
-			},
-			logger,
-		}),
+		workQueueFactory: createInMemoryWorkQueueFactory(),
+		concurrency: {
+			step: config.stepConcurrency,
+			orchestration: config.orchestrationConcurrency,
+		},
 		retention: retentionPolicyFromHours({ enabled: pruneData, maxAgeHours: pruneDataMaxAge }),
 	});
 	runtime.start();

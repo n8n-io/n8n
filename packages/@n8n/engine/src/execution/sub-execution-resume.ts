@@ -1,5 +1,5 @@
 import { deriveLoops, type WorkflowGraph } from '../graph';
-import type { StepMessage, WorkQueue } from '../queue';
+import type { StepMessage, WorkQueuePublisher } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import type { SubExecutionOutcome, SubExecutionResult } from './execution.types';
 import type { StepRecord, StepStore } from './step-store';
@@ -7,7 +7,7 @@ import type { StepRecord, StepStore } from './step-store';
 export interface SubExecutionResumeDeps {
 	executionStore: ExecutionStore;
 	stepStore: StepStore;
-	stepQueue: WorkQueue<StepMessage>;
+	stepQueue: WorkQueuePublisher<StepMessage>;
 }
 
 /** Resume the parent step with the sub-execution outcome, and announce the step on the work queue. */

@@ -5,7 +5,7 @@ import {
 	LifecycleEventPublisherFactory,
 	type LifecycleEventPublisher,
 } from '../../lifecycle-events';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../../queue';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import type { StepStore } from '../step-store';
@@ -19,7 +19,7 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,
-	queue: WorkQueue<OrchestrationMessage>,
+	queue: WorkQueuePublisher<OrchestrationMessage>,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 ): ExecutionStartHandler {
 	return new ExecutionStartHandler(
@@ -49,8 +49,8 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 	};
 }
 
-function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+function makeOrchestrationQueue(): WorkQueuePublisher<OrchestrationMessage> {
+	return { publish: vi.fn() };
 }
 
 /** Only `createSteps` is exercised here; the rest belong to other handlers. */

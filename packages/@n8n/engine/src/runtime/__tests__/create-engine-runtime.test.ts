@@ -10,10 +10,11 @@ import { generateId } from '../../database/generate-id';
 import { noopExecutionFilesDeleter } from '../../dependencies';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
 import {
-	createInMemoryWorkQueues,
-	type EngineWorkQueues,
+	createInMemoryWorkQueueFactory,
 	type OrchestrationMessage,
 	type StepMessage,
+	type WorkQueueConsumerOptions,
+	type WorkQueueFactory,
 } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { RetentionSweeper } from '../../retention';
@@ -24,11 +25,26 @@ import {
 	type EngineRuntimeOptions,
 } from '../create-engine-runtime';
 
-const fakeQueue = <T>() => ({
-	publish: vi.fn(async (_message: T) => {}),
-	start: vi.fn(),
-	stop: vi.fn(async () => {}),
-});
+const fakePublisher = <T>() => ({ publish: vi.fn(async (_message: T) => {}) });
+const fakeConsumer = () => ({ start: vi.fn(), stop: vi.fn(async () => {}) });
+/** The queues that the runtime asks for, by name, and the factory that it asks. */
+const fakeQueues = () => {
+	const queues = {
+		orchestration: { publisher: fakePublisher<OrchestrationMessage>(), consumer: fakeConsumer() },
+		step: { publisher: fakePublisher<StepMessage>(), consumer: fakeConsumer() },
+	};
+	const workQueueFactory = {
+		createPublisher: vi.fn((name: string) => queues[name as keyof typeof queues].publisher),
+		createConsumer: vi.fn(
+			(name: string, _options: WorkQueueConsumerOptions<unknown>) =>
+				queues[name as keyof typeof queues].consumer,
+		),
+	};
+	return {
+		...queues,
+		workQueueFactory: workQueueFactory as unknown as WorkQueueFactory & typeof workQueueFactory,
+	};
+};
 
 vi.mock('../../retention', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../../retention')>();
@@ -49,7 +65,7 @@ const runtime = (options: Partial<EngineRuntimeOptions> = {}) =>
 		admittance: new AllowAllAdmittance(),
 		identityVerifier,
 		responseSender,
-		queues: createInMemoryWorkQueues(),
+		workQueueFactory: createInMemoryWorkQueueFactory(),
 		...options,
 	});
 
@@ -138,28 +154,58 @@ describe('createEngineRuntime', () => {
 		expect(() => runtime({ roles: roles as EngineRole[] })).toThrow(error);
 	});
 
-	it.each<{ name: string; roles?: EngineRole[]; consumed: Array<keyof EngineWorkQueues> }>([
+	it.each<{
+		name: string;
+		roles?: EngineRole[];
+		consumed: Array<'orchestration' | 'step'>;
+	}>([
 		{ name: 'all roles (default)', roles: undefined, consumed: ['orchestration', 'step'] },
 		{ name: 'api only', roles: ['api'], consumed: [] },
 		{ name: 'orchestrator only', roles: ['orchestrator'], consumed: ['orchestration'] },
 		{ name: 'step-worker only', roles: ['step-worker'], consumed: ['step'] },
 		{ name: 'a role listed twice', roles: ['step-worker', 'step-worker'], consumed: ['step'] },
-	])('starts and stops only the queues its roles consume ($name)', async ({ roles, consumed }) => {
-		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
-		const queues = {
-			orchestration: fakeQueue<OrchestrationMessage>(),
-			step: fakeQueue<StepMessage>(),
-		};
-		const engine = runtime({ roles, queues });
+	])(
+		'creates, starts and stops only the consumers of its roles ($name)',
+		async ({ roles, consumed }) => {
+			vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
+			const queues = fakeQueues();
+			const engine = runtime({ roles, workQueueFactory: queues.workQueueFactory });
 
-		engine.start();
-		await engine.stop();
+			engine.start();
+			await engine.stop();
 
-		for (const name of ['orchestration', 'step'] as const) {
-			const times = consumed.includes(name) ? 1 : 0;
-			expect(queues[name].start, name).toHaveBeenCalledTimes(times);
-			expect(queues[name].stop, name).toHaveBeenCalledTimes(times);
-		}
+			expect(queues.workQueueFactory.createPublisher.mock.calls.map(([name]) => name)).toEqual([
+				'orchestration',
+				'step',
+			]);
+			expect(queues.workQueueFactory.createConsumer.mock.calls.map(([name]) => name)).toEqual(
+				consumed,
+			);
+			for (const name of ['orchestration', 'step'] as const) {
+				const times = consumed.includes(name) ? 1 : 0;
+				expect(queues[name].consumer.start, name).toHaveBeenCalledTimes(times);
+				expect(queues[name].consumer.stop, name).toHaveBeenCalledTimes(times);
+			}
+		},
+	);
+
+	it('creates each consumer at the configured concurrency and with the check for its messages', () => {
+		const queues = fakeQueues();
+		const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+		runtime({ workQueueFactory: queues.workQueueFactory, concurrency: { step: 3 }, logger });
+
+		expect(queues.workQueueFactory.createConsumer.mock.calls).toEqual([
+			['orchestration', { concurrency: 1, parse: expect.any(Function), logger }],
+			['step', { concurrency: 3, parse: expect.any(Function), logger }],
+		]);
+		const [[, orchestration], [, step]] = queues.workQueueFactory.createConsumer.mock.calls;
+		const enqueued = { type: 'execution:enqueued', executionId: 'exec-1' };
+		const ready = { type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' };
+		expect(orchestration.parse(enqueued)).toEqual(enqueued);
+		expect(() => orchestration.parse(ready)).toThrow();
+		expect(step.parse(ready)).toEqual(ready);
+		expect(() => step.parse(enqueued)).toThrow();
 	});
 
 	it.each<{ name: string; roles: EngineRole[]; sweeps: Array<'waits' | 'reconciliation'> }>([
@@ -178,10 +224,7 @@ describe('createEngineRuntime', () => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'findStaleRunningSteps').mockResolvedValue([]);
 		const engine = runtime({
 			roles,
-			queues: {
-				orchestration: fakeQueue<OrchestrationMessage>(),
-				step: fakeQueue<StepMessage>(),
-			},
+			workQueueFactory: fakeQueues().workQueueFactory,
 			waitSweepIntervalMs: 1,
 			reconciliationIntervalMs: 1,
 		});
@@ -210,7 +253,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			externalDependencies: (given) => {
 				stores = given;
 				return {};
@@ -230,7 +273,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			externalDependencies: build,
 		});
 
@@ -246,7 +289,7 @@ describe('createEngineRuntime', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			externalDependencies: () => ({
 				lifecycleEventCallback: vi.fn().mockResolvedValue(undefined),
 			}),
@@ -286,7 +329,8 @@ describe('createEngineRuntime', () => {
 			identityVerifier,
 			responseSender,
 			waitSweepIntervalMs: 1,
-			queues: createInMemoryWorkQueues({ concurrency: { step: 3 } }),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
+			concurrency: { step: 3 },
 		});
 		engine.start();
 
@@ -315,15 +359,14 @@ describe('createEngineRuntime', () => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
 			.mockResolvedValueOnce([{ id: 'step-1', executionId }])
 			.mockResolvedValue([]);
-		const orchestration = fakeQueue<OrchestrationMessage>();
-		const step = fakeQueue<StepMessage>();
+		const { orchestration, step, workQueueFactory } = fakeQueues();
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
 			waitSweepIntervalMs: 1,
-			queues: { orchestration, step },
+			workQueueFactory,
 		});
 		engine.start();
 
@@ -340,24 +383,24 @@ describe('createEngineRuntime', () => {
 				})
 				.expect(201);
 			await vi.waitFor(() =>
-				expect(step.publish).toHaveBeenCalledWith({
+				expect(step.publisher.publish).toHaveBeenCalledWith({
 					type: 'step:ready',
 					executionId,
 					stepId: 'step-1',
 				}),
 			);
-			expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+			expect(orchestration.publisher.publish).toHaveBeenCalledExactlyOnceWith({
 				type: 'execution:enqueued',
 				executionId,
 			});
-			expect(orchestration.start).toHaveBeenCalledOnce();
-			expect(step.start).toHaveBeenCalledOnce();
+			expect(orchestration.consumer.start).toHaveBeenCalledOnce();
+			expect(step.consumer.start).toHaveBeenCalledOnce();
 		} finally {
 			await engine.stop();
 		}
 
-		expect(orchestration.stop).toHaveBeenCalledOnce();
-		expect(step.stop).toHaveBeenCalledOnce();
+		expect(orchestration.consumer.stop).toHaveBeenCalledOnce();
+		expect(step.consumer.stop).toHaveBeenCalledOnce();
 	});
 
 	it('re-announces a stale queued execution on the orchestration queue the host gives it', async () => {
@@ -365,20 +408,20 @@ describe('createEngineRuntime', () => {
 			.mockResolvedValueOnce([{ id: 'exec-1', staleAfter: new Date() }])
 			.mockResolvedValue([]);
 		vi.spyOn(TypeOrmExecutionStore.prototype, 'renewQueuedExecution').mockResolvedValue(true);
-		const orchestration = fakeQueue<OrchestrationMessage>();
+		const queues = fakeQueues();
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
 			reconciliationIntervalMs: 1,
-			queues: { orchestration, step: fakeQueue<StepMessage>() },
+			workQueueFactory: queues.workQueueFactory,
 		});
 		engine.start();
 
 		try {
 			await vi.waitFor(() =>
-				expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+				expect(queues.orchestration.publisher.publish).toHaveBeenCalledExactlyOnceWith({
 					type: 'execution:enqueued',
 					executionId: 'exec-1',
 				}),
@@ -415,7 +458,7 @@ describe('createEngineRuntime', () => {
 				identityVerifier,
 				responseSender,
 				externalDependencies: () => ({ deleteExecutionFiles }),
-				queues: createInMemoryWorkQueues(),
+				workQueueFactory: createInMemoryWorkQueueFactory(),
 				retention: { maxAgeMs: 1_000, intervalMs: 1 },
 			});
 			engine.start();
@@ -516,7 +559,7 @@ describe('createEngineRuntime', () => {
 				identityVerifier,
 				responseSender,
 				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
-				queues: createInMemoryWorkQueues(),
+				workQueueFactory: createInMemoryWorkQueueFactory(),
 				retention,
 			}),
 		).toThrow(UnexpectedError);
@@ -530,7 +573,7 @@ describe('createEngineRuntime', () => {
 				identityVerifier,
 				responseSender,
 				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
-				queues: createInMemoryWorkQueues(),
+				workQueueFactory: createInMemoryWorkQueueFactory(),
 				retention: { maxAgeMs: 0 },
 			}),
 		).not.toThrow();
@@ -552,7 +595,7 @@ describe('createEngineRuntime', () => {
 			identityVerifier,
 			responseSender,
 			externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			retention: { maxAgeMs: 1_000, intervalMs: 1 },
 		});
 		engine.start();
@@ -576,7 +619,7 @@ describe('createEngineRuntime', () => {
 					admittance: new AllowAllAdmittance(),
 					identityVerifier,
 					responseSender,
-					queues: createInMemoryWorkQueues(),
+					workQueueFactory: createInMemoryWorkQueueFactory(),
 					staleness: { queuedMs, runningStepMs: 60_000 },
 				}),
 			).toThrow('The staleness threshold "queuedMs" must be a positive whole number');
@@ -590,7 +633,7 @@ describe('createEngineRuntime', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier,
 				responseSender,
-				queues: createInMemoryWorkQueues(),
+				workQueueFactory: createInMemoryWorkQueueFactory(),
 				staleness: { queuedMs: 1, runningStepMs: 60_000 },
 			}),
 		).not.toThrow();

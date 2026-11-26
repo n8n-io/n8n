@@ -5,9 +5,9 @@ import { Service } from '@n8n/di';
 import type {
 	EngineRole,
 	EngineRuntime,
-	EngineWorkQueues,
 	ExecutionResponseSender,
 	LifecycleEventCallback,
+	WorkQueueFactory,
 } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
@@ -46,8 +46,8 @@ export interface EngineV2RuntimeOptions {
 	responseSender: ExecutionResponseSender;
 	/** Without it, the engine publishes no lifecycle events. */
 	lifecycleEventSender?: { send: LifecycleEventCallback };
-	/** The queues the engine runs on. The caller closes their connections. */
-	queues: EngineWorkQueues;
+	/** Builds the queues the engine runs on. `shutdown()` stops their consumers. The caller closes the connections. */
+	workQueueFactory: WorkQueueFactory;
 	/** The engine roles this process runs. Without it, the process runs every role. */
 	roles?: readonly EngineRole[];
 }
@@ -58,7 +58,7 @@ export interface EngineV2RuntimeOptions {
  * This is the integrated-mode composition root. It chooses the adapters the
  * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
  * executor — and owns the connection and the HTTP listener. Its caller chooses
- * the work queues. The engine owns its own wiring, so this host never sees the
+ * the work queue adapter. The engine owns its own wiring, so this host never sees the
  * workers.
  */
 @Service()
@@ -139,7 +139,7 @@ export class EngineV2Runtime {
 	private initEngine({
 		responseSender,
 		lifecycleEventSender,
-		queues,
+		workQueueFactory,
 		roles,
 	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
@@ -165,7 +165,11 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
-			queues,
+			workQueueFactory,
+			concurrency: {
+				orchestration: this.engineConfig.orchestrationConcurrency,
+				step: this.engineConfig.stepConcurrency,
+			},
 			retention,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender

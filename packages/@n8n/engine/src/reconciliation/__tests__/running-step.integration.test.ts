@@ -11,7 +11,7 @@ import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { StartExecutionResult } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
-import { createInMemoryWorkQueues } from '../../queue';
+import { createInMemoryWorkQueueFactory } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { STALE_RUNNING_STEP_ERROR_NAME } from '../running-step-repair';
@@ -51,7 +51,7 @@ describe('running step with no worker (integration)', () => {
 			responseSender: noopExecutionResponseSender,
 			staleness,
 			reconciliationIntervalMs: 20,
-			queues: createInMemoryWorkQueues(),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
 			externalDependencies: () => ({ v1StepExecutor: executor }),
 		});
 	}

@@ -1,6 +1,6 @@
 import type { EngineLogger } from '../logging';
 import { createConsoleLogger } from '../logging';
-import type { StepMessage, WorkQueue } from '../queue';
+import type { StepMessage, WorkQueuePublisher } from '../queue';
 import type { DueStep, StepStore } from './step-store';
 
 /** v1 resolves waits on a 60-second poll, so timer resolution matches it. */
@@ -31,7 +31,7 @@ export class WaitSweeper {
 
 	constructor(
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly stepQueue: WorkQueuePublisher<StepMessage>,
 		private readonly logger: EngineLogger = createConsoleLogger(),
 		private readonly intervalMs: number = DEFAULT_WAIT_SWEEP_INTERVAL_MS,
 		private readonly batchSize: number = DEFAULT_WAIT_SWEEP_BATCH_SIZE,

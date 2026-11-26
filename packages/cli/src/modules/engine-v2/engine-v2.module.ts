@@ -75,16 +75,13 @@ export class EngineV2Module implements ModuleInterface {
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			Container.get(EngineV2LifecycleSubscriptions).useReceiver(lifecycleEventReceiver);
 
-			const { createInMemoryWorkQueues } = await import('@n8n/engine');
-			const queues = createInMemoryWorkQueues({
-				concurrency: {
-					orchestration: engineConfig.orchestrationConcurrency,
-					step: engineConfig.stepConcurrency,
-				},
-				logger,
-			});
+			const { createInMemoryWorkQueueFactory } = await import('@n8n/engine');
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender, queues });
+			await Container.get(EngineV2Runtime).init({
+				responseSender,
+				lifecycleEventSender,
+				workQueueFactory: createInMemoryWorkQueueFactory(),
+			});
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.

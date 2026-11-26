@@ -25,7 +25,7 @@ import type {
 	LifecycleEventSubscription,
 } from '../../lifecycle-events';
 import {
-	createInMemoryWorkQueues,
+	createInMemoryWorkQueueFactory,
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 } from '../../queue';
@@ -122,7 +122,8 @@ describe('step execution (integration)', () => {
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
 			waitSweepIntervalMs,
-			queues: createInMemoryWorkQueues({ concurrency }),
+			workQueueFactory: createInMemoryWorkQueueFactory(),
+			concurrency,
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);

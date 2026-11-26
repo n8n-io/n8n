@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExecutionRecord, ExecutionStore, StepRecord, StepStore } from '../../execution';
 import { LifecycleEventPublisherFactory } from '../../lifecycle-events';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../../queue';
 import { RunningStepDetector } from '../running-step-detector';
 import { RunningStepRepair } from '../running-step-repair';
 
@@ -43,10 +43,8 @@ function makeRepair(stepStore = makeStepStore()) {
 	const executionStore = {
 		loadExecution: vi.fn<ExecutionStore['loadExecution']>().mockResolvedValue(execution),
 	};
-	const orchestrationQueue: WorkQueue<OrchestrationMessage> = {
+	const orchestrationQueue: WorkQueuePublisher<OrchestrationMessage> = {
 		publish: vi.fn(),
-		start: vi.fn(),
-		stop: vi.fn(),
 	};
 	const publisher: LifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	const repair = new RunningStepRepair(

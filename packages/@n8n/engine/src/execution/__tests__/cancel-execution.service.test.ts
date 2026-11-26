@@ -4,7 +4,7 @@ import {
 	LifecycleEventPublisherFactory,
 	type LifecycleEventPublisher,
 } from '../../lifecycle-events';
-import type { StepMessage, WorkQueue } from '../../queue';
+import type { StepMessage, WorkQueuePublisher } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import { CancelExecutionService } from '../cancel-execution.service';
 import {
@@ -68,7 +68,7 @@ function makeService(executionStore: ExecutionStore) {
 		send: vi.fn(),
 		stop: vi.fn(),
 	};
-	const stepQueue: WorkQueue<StepMessage> = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const stepQueue: WorkQueuePublisher<StepMessage> = { publish: vi.fn() };
 	const service = new CancelExecutionService(
 		executionStore,
 		stepStore,

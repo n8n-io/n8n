@@ -1,5 +1,5 @@
 import type { ExecutionStore } from '../execution';
-import type { OrchestrationMessage, WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../queue';
 import type { Finding, Repair } from './reconciliation.types';
 
 type Kind = 'execution-queued-no-message';
@@ -17,7 +17,7 @@ export class QueuedExecutionRepair implements Repair<Kind> {
 
 	constructor(
 		private readonly executionStore: ExecutionStore,
-		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly orchestrationQueue: WorkQueuePublisher<OrchestrationMessage>,
 	) {}
 
 	async apply({ executionId, staleAfter }: Extract<Finding, { kind: Kind }>): Promise<boolean> {

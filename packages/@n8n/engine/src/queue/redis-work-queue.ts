@@ -1,7 +1,7 @@
 import { UnexpectedError } from '../common';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { checkWorkQueueConcurrency } from './work-queue-concurrency';
-import type { WorkQueue } from './work-queue.types';
+import type { WorkQueueConsumer, WorkQueuePublisher } from './work-queue.types';
 
 /**
  * The commands that write to a work queue list. ioredis `Redis` and `Cluster`
@@ -20,10 +20,14 @@ export interface WorkQueueConsumerClient {
 	brpop(key: string, timeoutSeconds: number): Promise<[string, string] | null>;
 }
 
-export interface RedisWorkQueueOptions<TMessage> {
+export interface RedisWorkQueueConsumerOptions<TMessage> {
+	/**
+	 * The caller owns it. Close it after `stop()` returns, so that a fetch still
+	 * pending fails instead of taking a message.
+	 */
+	client: WorkQueueConsumerClient;
+	/** Gives a message that a fetch returned after `stop()` back to the list. The caller owns it. */
 	publisher: WorkQueuePublisherClient;
-	/** Called on the first `start()`, so a queue that only publishes holds no consumer connection. */
-	openConsumer: () => WorkQueueConsumerClient;
 	/** The Redis list that holds the messages of this queue. */
 	key: string;
 	/** Checks a message after JSON decoding. A throw drops the message. */
@@ -59,17 +63,26 @@ async function delay(ms: number, signal: AbortSignal): Promise<void> {
 	});
 }
 
+/** Publishes to a Redis list: adds to its head (LPUSH). The caller owns the client. */
+export class RedisWorkQueuePublisher<TMessage> implements WorkQueuePublisher<TMessage> {
+	constructor(
+		private readonly client: WorkQueuePublisherClient,
+		private readonly key: string,
+	) {}
+
+	async publish(message: TMessage): Promise<void> {
+		await this.client.lpush(this.key, JSON.stringify(message));
+	}
+}
+
 /**
- * `WorkQueue` on a Redis list. `publish` adds to the head of the list (LPUSH).
- * One fetch loop takes from the tail (BRPOP), and only when a handler slot is
- * free. The caller owns the clients: this class never closes them.
+ * Consumes a Redis list. One fetch loop takes from its tail (BRPOP), and only
+ * when a handler slot is free.
  */
-export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
+export class RedisWorkQueueConsumer<TMessage> implements WorkQueueConsumer<TMessage> {
 	private readonly publisher: WorkQueuePublisherClient;
 
-	private readonly openConsumer: () => WorkQueueConsumerClient;
-
-	private consumer: WorkQueueConsumerClient | undefined;
+	private readonly client: WorkQueueConsumerClient;
 
 	private readonly key: string;
 
@@ -88,7 +101,7 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private readonly inFlight = new Set<Promise<void>>();
 
-	constructor(options: RedisWorkQueueOptions<TMessage>) {
+	constructor(options: RedisWorkQueueConsumerOptions<TMessage>) {
 		const { blockTimeoutSeconds = 1 } = options;
 		// Zero makes BRPOP wait forever, so `stop()` could not end the fetch loop.
 		if (
@@ -101,7 +114,7 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 			);
 		}
 		this.publisher = options.publisher;
-		this.openConsumer = options.openConsumer;
+		this.client = options.client;
 		this.key = options.key;
 		this.parse = options.parse;
 		this.logger = options.logger ?? createConsoleLogger();
@@ -109,20 +122,13 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		this.blockTimeoutSeconds = blockTimeoutSeconds;
 	}
 
-	async publish(message: TMessage): Promise<void> {
-		await this.publisher.lpush(this.key, JSON.stringify(message));
-	}
-
 	start(handler: (message: TMessage) => Promise<void>): void {
 		if (this.active) {
 			throw new UnexpectedError('work queue already has a consumer');
 		}
-		const consumer = (this.consumer ??= this.openConsumer());
 		const stopping = new AbortController();
 		// Waits for the loop that `stop()` gave up on, so that only one loop fetches.
-		const loop = this.lastLoop.then(
-			async () => await this.consume(handler, consumer, stopping.signal),
-		);
+		const loop = this.lastLoop.then(async () => await this.consume(handler, stopping.signal));
 		this.lastLoop = loop;
 		this.active = { stopping, loop };
 	}
@@ -147,14 +153,13 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private async consume(
 		handler: (message: TMessage) => Promise<void>,
-		consumer: WorkQueueConsumerClient,
 		signal: AbortSignal,
 	): Promise<void> {
 		while (!signal.aborted) {
 			while (this.inFlight.size >= this.concurrency) await Promise.race(this.inFlight);
 			if (signal.aborted) return;
 
-			const value = await this.fetch(consumer, signal);
+			const value = await this.fetch(signal);
 			if (value === undefined) continue;
 			if (signal.aborted) {
 				await this.giveBack(value);
@@ -167,12 +172,9 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	}
 
 	/** Returns the next value in the list, or `undefined` if none came. */
-	private async fetch(
-		consumer: WorkQueueConsumerClient,
-		signal: AbortSignal,
-	): Promise<string | undefined> {
+	private async fetch(signal: AbortSignal): Promise<string | undefined> {
 		try {
-			const popped = await consumer.brpop(this.key, this.blockTimeoutSeconds);
+			const popped = await this.client.brpop(this.key, this.blockTimeoutSeconds);
 			return popped?.[1];
 		} catch (error) {
 			this.logError('fetch failed', error);
