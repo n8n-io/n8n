@@ -191,6 +191,32 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 		expect(queryByTestId('last-production-error')).not.toBeInTheDocument();
 	});
 
+	it('ignores a pending response after a switch to an unsaved workflow', async () => {
+		const workflowId = ref('wf-1');
+		let resolveFirst: (value: Awaited<ReturnType<typeof getWorkflowStatisticsTimes>>) => void =
+			() => {};
+		vi.mocked(getWorkflowStatisticsTimes).mockReturnValueOnce(
+			new Promise((resolve) => (resolveFirst = resolve)),
+		);
+		const { queryByTestId } = renderComponent({
+			global: { provide: { [WorkflowIdKey as unknown as string]: workflowId } },
+		});
+		await waitFor(() => expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1));
+
+		workflowId.value = 'wf-new';
+		await flushPromises();
+		resolveFirst({
+			productionSuccess: '2026-10-20T10:00:00.000Z',
+			productionError: '2026-10-21T10:00:00.000Z',
+			manualSuccess: null,
+			manualError: null,
+		});
+		await flushPromises();
+
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1);
+		expect(queryByTestId('last-production-execution-icon')).not.toBeInTheDocument();
+	});
+
 	it('does not load the times again when another workflow is added to the cache', async () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('last-production-execution-icon');
