@@ -611,11 +611,6 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
-/**
- * Unrefined agent config object shape. Use for schema derivation only
- * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
- * {@link AgentJsonConfigSchema} instead.
- */
 export const AGENT_SANDBOX_EGRESS_POLICIES = ['disabled', 'opt-in', 'opt-out'] as const;
 export type AgentSandboxEgressPolicy = (typeof AGENT_SANDBOX_EGRESS_POLICIES)[number];
 
@@ -632,6 +627,11 @@ export function resolveAgentSandboxEgressEnabled(
 	return agentSetting !== false;
 }
 
+/**
+ * Unrefined agent config object shape. Use for schema derivation only
+ * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
+ * {@link AgentJsonConfigSchema} instead.
+ */
 export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 export const AgentJsonConfigBaseSchema = z.object({

@@ -196,7 +196,7 @@ describe('AgentSandboxRuntimeService', () => {
 	);
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'under opt-out policy, keeps %s public sandbox identities by default and lets an agent disable egress',
+		'under opt-out policy, keeps %s public workspace identity by default, lets an agent disable egress, and keeps knowledge egress disabled',
 		async (provider) => {
 			const service = makeService({
 				configOverrides: { sandboxEgressPolicy: 'opt-out' },
@@ -218,20 +218,20 @@ describe('AgentSandboxRuntimeService', () => {
 
 			expect(defaultWorkspace.egressEnabled).toBe(true);
 			expect(optedOutWorkspace.egressEnabled).toBe(false);
-			expect(knowledge.egressEnabled).toBe(true);
+			expect(knowledge.egressEnabled).toBe(false);
 			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
 				'public',
 				'none',
-				'public',
+				'none',
 			]);
 			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
 				provider === 'daytona'
 					? [
 							`agent-ws-${publicWorkspaceSandboxId}`,
 							`agent-ws-${workspaceSandboxId}`,
-							`agent-kb-${publicKnowledgeSandboxId}`,
+							`agent-kb-${knowledgeSandboxId}`,
 						]
-					: [publicWorkspaceSandboxId, workspaceSandboxId, publicKnowledgeSandboxId],
+					: [publicWorkspaceSandboxId, workspaceSandboxId, knowledgeSandboxId],
 			);
 		},
 	);

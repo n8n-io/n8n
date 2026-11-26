@@ -215,7 +215,8 @@ export class AgentSandboxRuntimeService {
 
 	async acquireKnowledgeSandbox(projectId: string, agentId: string): Promise<AgentSandboxRuntime> {
 		const provider = this.sandboxSettingsService.getProvider();
-		const egressEnabled = resolveAgentSandboxEgressEnabled(this.agentsConfig.sandboxEgressPolicy);
+		// Knowledge sandboxes only mirror and search files, so outbound network access is always disabled.
+		const egressEnabled = false;
 		const sandboxId = sandboxIdForEgress(
 			buildKnowledgeSandboxId({
 				instanceId: this.instanceSettings.instanceId,
