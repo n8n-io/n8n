@@ -1,10 +1,16 @@
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { ModuleRegistry } from '@n8n/backend-common';
-import { McpServer, McpServerTool } from '@n8n/backend-module-mcp-servers';
+import {
+	McpServer,
+	McpServerBlock,
+	McpServerConnection,
+	McpServerTool,
+} from '@n8n/backend-module-mcp-servers';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
+import { createMember } from '../shared/db/users';
 import * as utils from '../shared/utils/';
 
 /** The slices of custom MCP servers test their routes on this setup. */
@@ -47,5 +53,44 @@ describe('mcp-servers module', () => {
 			position: 0,
 			toolData: { region: 'emea' },
 		});
+	});
+
+	it('fills the connection and block dates when an insert leaves them out', async () => {
+		const project = await createTeamProject();
+		const member = await createMember();
+		const dataSource = Container.get(DataSource);
+		const serverId = uuidv7();
+		const oauthClientId = uuidv7();
+
+		await dataSource.getRepository(McpServer).insert({
+			id: serverId,
+			projectId: project.id,
+			name: 'Sales tools',
+			slug: 'sales-tools',
+		});
+		await dataSource
+			.createQueryBuilder()
+			.insert()
+			.into('oauth_clients')
+			.values({ id: oauthClientId, name: 'Claude Code', redirectUris: '[]', grantTypes: '[]' })
+			.execute();
+
+		await dataSource.getRepository(McpServerConnection).insert({
+			serverId,
+			userId: member.id,
+			oauthClientId,
+			clientName: 'Claude Code',
+		});
+		await dataSource
+			.getRepository(McpServerBlock)
+			.insert({ serverId, userId: member.id, blockedById: null });
+
+		const connection = await dataSource
+			.getRepository(McpServerConnection)
+			.findOneByOrFail({ serverId });
+		const block = await dataSource.getRepository(McpServerBlock).findOneByOrFail({ serverId });
+		expect(connection.firstUsedAt).toBeInstanceOf(Date);
+		expect(connection.lastUsedAt).toBeInstanceOf(Date);
+		expect(block.blockedAt).toBeInstanceOf(Date);
 	});
 });
