@@ -1,5 +1,6 @@
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import {
 	McpServer,
 	McpServerBlock,
@@ -68,10 +69,12 @@ describe('mcp-servers module', () => {
 			name: 'Sales tools',
 			slug: 'sales-tools',
 		});
+		// The OAuth client entity belongs to the oauth-server module, which this setup does not load.
+		const { tablePrefix } = Container.get(GlobalConfig).database;
 		await dataSource
 			.createQueryBuilder()
 			.insert()
-			.into('oauth_clients')
+			.into(`${tablePrefix}oauth_clients`)
 			.values({ id: oauthClientId, name: 'Claude Code', redirectUris: '[]', grantTypes: '[]' })
 			.execute();
 
