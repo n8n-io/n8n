@@ -2,6 +2,27 @@
 	"name": "Cortex Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "responder",
+				"operation": "execute",
+				"responder": "f6e5d4c3b2a1::Mailer_1_0",
+				"entityType": "case",
+				"jsonObject": true,
+				"objectData": "={{ { \"caseId\": 13, \"title\": \"Spam\" } }}"
+			},
+			"id": "2940ff3a-c408-50a8-9b2a-2b021501a502",
+			"name": "Responder Execute Expression",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [300, 2450],
+			"credentials": {
+				"cortexApi": {
+					"id": "1",
+					"name": "Cortex account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -129,6 +150,11 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Responder Execute Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Analyzer Execute",
 						"type": "main",

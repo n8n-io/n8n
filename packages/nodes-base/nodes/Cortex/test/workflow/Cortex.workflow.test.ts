@@ -19,7 +19,22 @@ describe('Cortex > Workflows', () => {
 		mock.get(`/job/${jobId}/waitreport`).query({ atMost: '10second' }).reply(200, report);
 		mock.get(`/job/${jobId}`).reply(200, job);
 		mock.get(`/job/${jobId}/report`).reply(200, report);
-		mock.post('/responder/f6e5d4c3b2a1/run').reply(200, job);
+		const responderBody = (data: Record<string, string | number>) => ({
+			responderId: 'f6e5d4c3b2a1',
+			label: '',
+			dataType: 'thehive:case',
+			data,
+			tlp: 2,
+			pap: 2,
+			message: '',
+			parameters: [],
+		});
+		mock
+			.post('/responder/f6e5d4c3b2a1/run', responderBody({ caseId: 12, title: 'Phishing' }))
+			.reply(200, job);
+		mock
+			.post('/responder/f6e5d4c3b2a1/run', responderBody({ caseId: 13, title: 'Spam' }))
+			.reply(200, job);
 	});
 
 	afterAll(() => {
