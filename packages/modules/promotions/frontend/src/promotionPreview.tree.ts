@@ -165,7 +165,7 @@ function outsideWorkflowRows(
 	known: ReadonlySet<ResourceKey>,
 	otherProjectsLabel: string,
 ): PreviewTreeItem[] {
-	const dependencyOf = new Map(
+	const dependencyOf = new Map<string, (typeof dependencies)[number]>(
 		dependencies.flatMap((entry) =>
 			entry.kind === 'workflow' && entry.id ? [[`workflow:${entry.id}`, entry] as const] : [],
 		),
