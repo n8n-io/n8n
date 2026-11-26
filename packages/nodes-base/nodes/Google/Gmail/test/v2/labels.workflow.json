@@ -17,7 +17,7 @@
 				"options": {}
 			},
 			"type": "n8n-nodes-base.gmail",
-			"typeVersion": 2.1,
+			"typeVersion": 2.2,
 			"position": [220, -180],
 			"id": "45758452-3b5b-478d-aece-001e117ce69d",
 			"name": "Gmail - Labels - Create",
@@ -32,11 +32,31 @@
 		{
 			"parameters": {
 				"resource": "label",
+				"operation": "create",
+				"name": "Projects",
+				"parentLabelName": "Work",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, -360],
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "Gmail - Labels - Create Nested",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
 				"operation": "delete",
 				"labelId": "test-label-id"
 			},
 			"type": "n8n-nodes-base.gmail",
-			"typeVersion": 2.1,
+			"typeVersion": 2.2,
 			"position": [220, 20],
 			"id": "ed979c3a-b2ea-413e-be63-0392cc1714a5",
 			"name": "Gmail - Labels - Delete",
@@ -55,7 +75,7 @@
 				"labelId": "test-label-id"
 			},
 			"type": "n8n-nodes-base.gmail",
-			"typeVersion": 2.1,
+			"typeVersion": 2.2,
 			"position": [220, 200],
 			"id": "8802fdb5-2741-407b-82a4-ccedc4055076",
 			"name": "Gmail - Labels - Get",
@@ -73,11 +93,33 @@
 				"limit": 2
 			},
 			"type": "n8n-nodes-base.gmail",
-			"typeVersion": 2.1,
+			"typeVersion": 2.2,
 			"position": [220, 400],
 			"id": "bae81586-7641-4fdc-81a4-0006b289bf9d",
 			"name": "Gmail - Labels - Get Many",
 			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "update",
+				"labelId": "test-label-id",
+				"updateFields": {
+					"name": "Updated Label",
+					"labelListVisibility": "labelHide"
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, 580],
+			"id": "c0ffee00-1234-5678-9abc-def012345678",
+			"name": "Gmail - Labels - Update",
 			"credentials": {
 				"gmailOAuth2": {
 					"id": "22",
@@ -95,6 +137,17 @@
 					"messageListVisibility": "hide",
 					"labelListVisibility": "labelHide",
 					"type": "system"
+				}
+			}
+		],
+		"Gmail - Labels - Create Nested": [
+			{
+				"json": {
+					"id": "Label_2",
+					"name": "Work/Projects",
+					"type": "user",
+					"messageListVisibility": "show",
+					"labelListVisibility": "labelShow"
 				}
 			}
 		],
@@ -121,6 +174,17 @@
 				}
 			},
 			{ "json": { "id": "SENT", "name": "SENT", "type": "system" } }
+		],
+		"Gmail - Labels - Update": [
+			{
+				"json": {
+					"id": "Label_1",
+					"name": "Updated Label",
+					"type": "user",
+					"messageListVisibility": "show",
+					"labelListVisibility": "labelHide"
+				}
+			}
 		]
 	},
 	"connections": {
@@ -129,6 +193,11 @@
 				[
 					{
 						"node": "Gmail - Labels - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Labels - Create Nested",
 						"type": "main",
 						"index": 0
 					},
@@ -144,6 +213,11 @@
 					},
 					{
 						"node": "Gmail - Labels - Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Labels - Update",
 						"type": "main",
 						"index": 0
 					}

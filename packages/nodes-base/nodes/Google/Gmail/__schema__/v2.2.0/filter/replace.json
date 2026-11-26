@@ -1,0 +1,61 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"criteria": {
+			"type": "object",
+			"properties": {
+				"from": {
+					"type": "string"
+				},
+				"to": {
+					"type": "string"
+				},
+				"subject": {
+					"type": "string"
+				},
+				"query": {
+					"type": "string"
+				},
+				"negatedQuery": {
+					"type": "string"
+				},
+				"hasAttachment": {
+					"type": "boolean"
+				},
+				"excludeChats": {
+					"type": "boolean"
+				},
+				"size": {
+					"type": "integer"
+				},
+				"sizeComparison": {
+					"type": "string"
+				}
+			}
+		},
+		"action": {
+			"type": "object",
+			"properties": {
+				"addLabelIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"removeLabelIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"forward": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"version": 1
+}
