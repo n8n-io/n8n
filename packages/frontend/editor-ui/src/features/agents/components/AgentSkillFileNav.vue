@@ -440,11 +440,11 @@ function testIdForPath(path: string) {
 .noteIcon {
 	display: inline-flex;
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
-		border-radius: var(--border-radius-base);
+		border-radius: var(--radius--3xs);
 	}
 }
 
