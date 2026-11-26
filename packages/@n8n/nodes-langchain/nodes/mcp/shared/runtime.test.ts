@@ -426,6 +426,53 @@ describe('runtime', () => {
 			);
 		});
 
+		it.each([
+			{
+				shape: 'a map schema',
+				inputSchema: { type: 'object' as const, additionalProperties: { type: 'string' } },
+				args: { env: 'prod', team: 'core' },
+			},
+			{
+				shape: 'a oneOf schema',
+				inputSchema: {
+					type: 'object' as const,
+					oneOf: [
+						{ properties: { id: { type: 'string' } }, required: ['id'] },
+						{ properties: { email: { type: 'string' } }, required: ['email'] },
+					],
+				},
+				args: { email: 'a@example.com' },
+			},
+		])('passes the arguments inside value for $shape', async ({ inputSchema, args }) => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [{ name: 'label', description: '', inputSchema }],
+			});
+			const callTool = vi
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createExecuteCtx([
+				{
+					json: {
+						tool: buildMcpToolName('MCP', 'label'),
+						value: args,
+						chatInput: 'from the trigger item',
+						sessionId: 'session-1',
+					},
+				},
+			]);
+
+			await executeMcpTool(ctx, () => baseConfig);
+
+			expect(callTool).toHaveBeenCalledWith(
+				{ name: 'label', arguments: args },
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
 		it('forwards the abort signal and timeout to client.callTool', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });

@@ -37,6 +37,7 @@ import {
 	createCallTool,
 	getErrorDescriptionFromToolCall,
 	getSelectedTools,
+	getWrappedToolArguments,
 	mcpToolToDynamicTool,
 } from '../McpClientTool/utils';
 
@@ -268,10 +269,11 @@ async function runToolCall(opts: {
 			}
 		}
 		const schema: JSONSchema7 = tool.inputSchema;
-		const sanitizedToolArguments: IDataObject =
-			schema.additionalProperties !== true
+		const sanitizedToolArguments: Record<string, unknown> =
+			getWrappedToolArguments(schema, toolArguments) ??
+			(schema.additionalProperties !== true
 				? pick(toolArguments, Object.keys(schema.properties ?? {}))
-				: toolArguments;
+				: toolArguments);
 
 		const result = await client.callTool(
 			{ name: tool.name, arguments: sanitizedToolArguments },

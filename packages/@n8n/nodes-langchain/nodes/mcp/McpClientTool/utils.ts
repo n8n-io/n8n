@@ -140,6 +140,18 @@ export function isZodObjectSchema(schema: z.ZodTypeAny): schema is z.ZodObject<z
 	return internals._def?.typeName === 'ZodObject';
 }
 
+/**
+ * A tool whose input schema does not convert to a zod object takes its arguments in a `value`
+ * object (see `mcpToolToDynamicTool`). Returns those arguments, or `undefined` for other tools.
+ */
+export function getWrappedToolArguments(
+	inputSchema: McpTool['inputSchema'],
+	args: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	if (isZodObjectSchema(convertJsonSchemaToZod(inputSchema))) return undefined;
+	return isRecord(args.value) ? args.value : undefined;
+}
+
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
@@ -154,7 +166,11 @@ export function mcpToolToDynamicTool(
 		name: tool.name,
 		description: tool.description ?? '',
 		schema: objectSchema,
-		func: onCallTool,
+		// The MCP server expects the arguments themselves, not the `value` object around them.
+		func: isZodObjectSchema(rawSchema)
+			? onCallTool
+			: async (args, runManager, config) =>
+					await onCallTool(isRecord(args.value) ? args.value : args, runManager, config),
 		// The agent reads `attribution` to append it to its final reply.
 		metadata: { isFromToolkit: true, isMcpTool: true, ...(attribution && { attribution }) },
 	});

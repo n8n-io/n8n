@@ -119,6 +119,16 @@ describe('mcpToolToDynamicTool', () => {
 
 		expect(onCallTool.mock.calls[0][0]).toEqual({ url: 'https://example.com' });
 	});
+
+	it('should forward the arguments inside value to the callback for a non-object schema', async () => {
+		vi.mocked(convertJsonSchemaToZod).mockReturnValue(z.record(z.string()));
+		const onCallTool = vi.fn().mockResolvedValue('ok');
+
+		const dynamicTool = mcpToolToDynamicTool(tool, onCallTool);
+		await dynamicTool.invoke({ value: { env: 'prod', team: 'core' } });
+
+		expect(onCallTool.mock.calls[0][0]).toEqual({ env: 'prod', team: 'core' });
+	});
 });
 
 describe('mcpToolToDynamicTool - attribution', () => {
