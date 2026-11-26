@@ -189,6 +189,14 @@ describe('findBreakingChanges', () => {
 		expect(findBreakingChanges(base, current)).toEqual(['tag / getTag: the operation is gone.']);
 	});
 
+	it('should report nothing when the base operation has no default', () => {
+		const base = node([getWorkflow()]).map((property) =>
+			property.name === 'operation' ? { ...property, default: null } : property,
+		);
+
+		expect(findBreakingChanges(base, node([getWorkflow()]))).toEqual([]);
+	});
+
 	it.each<Case>([
 		{
 			when: 'nothing changes',

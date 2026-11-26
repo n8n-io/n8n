@@ -38,6 +38,10 @@ const moduleSchema = z.object({ properties: z.array(z.custom<INodeProperties>(is
 
 const asString = (value: unknown) => (typeof value === 'string' ? value : undefined);
 
+const isOption = (option: NodeOption): option is INodePropertyOptions => 'value' in option;
+
+const isProperty = (option: NodeOption): option is INodeProperties => 'type' in option;
+
 const keyOf = (resource: string, operationId: string) => `${resource} / ${operationId}`;
 
 const typeOf = ({ type, default: value }: INodeProperties) => {
@@ -50,7 +54,7 @@ const typeOf = ({ type, default: value }: INodeProperties) => {
 const valuesOf = ({ type, options = [], modes = [] }: INodeProperties): unknown[] =>
 	type === 'resourceLocator'
 		? modes.map((mode) => mode.name)
-		: options.flatMap((option) => ('value' in option ? [option.value] : []));
+		: options.filter(isOption).map((option) => option.value);
 
 const fieldOf = (property: INodeProperties, place: Place): Field => ({
 	place,
@@ -63,10 +67,6 @@ const shownFor = ({ displayOptions }: INodeProperties) => ({
 	resource: asString(displayOptions?.show?.resource?.[0]),
 	operationId: asString(displayOptions?.show?.operation?.[0]),
 });
-
-const isOption = (option: NodeOption): option is INodePropertyOptions => 'value' in option;
-
-const isProperty = (option: NodeOption): option is INodeProperties => 'type' in option;
 
 function fieldsOf(property: INodeProperties): Array<[string, Field]> {
 	if (property.name !== 'options' || property.type !== 'collection') {
