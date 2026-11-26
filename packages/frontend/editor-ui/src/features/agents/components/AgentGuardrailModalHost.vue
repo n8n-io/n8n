@@ -24,6 +24,8 @@ export interface AgentGuardrailModalData {
 	getTools: () => AgentJsonToolRef[];
 	/** The agent's human-review configurations, for the `review` response target. */
 	getReviewConfigurations?: () => AgentHitlConfiguration[];
+	/** The agent's project: the check workflow picker lists its workflows. */
+	getProjectId?: () => string;
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	/** Reopens the tool modal this one replaced. Runs on every close path. */
 	onExit: () => void;
@@ -65,6 +67,7 @@ function onRemove() {
 		:kind="data.kind ?? 'keywords'"
 		:tools="data.getTools()"
 		:review-configurations="data.getReviewConfigurations?.() ?? []"
+		:project-id="data.getProjectId?.()"
 		:existing-ids="data.getGuardrails().map((guardrail) => guardrail.id)"
 		data-testid="agent-guardrail-modal-host"
 		@update:open="!$event && close()"

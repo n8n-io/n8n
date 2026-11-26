@@ -349,6 +349,7 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
 			getReviewConfigurations: wiring.getReviewConfigurations,
+			getProjectId: wiring.getProjectId,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
 			onExit: () => uiStore.openModal(props.modalName),
 		},

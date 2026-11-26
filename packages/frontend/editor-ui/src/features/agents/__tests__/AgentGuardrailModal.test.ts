@@ -48,6 +48,18 @@ vi.mock('../components/modals/AgentModal.vue', () => ({
 	},
 }));
 
+// The workflow picker is covered by its own suite; the stub keeps this suite off the workflow stores.
+vi.mock('../components/AgentWorkflowPicker.vue', () => ({
+	default: {
+		name: 'AgentWorkflowPicker',
+		props: { modelValue: { type: String, default: '' }, projectId: String, disabled: Boolean },
+		emits: ['update:modelValue'],
+		// The modal's data-testid falls through onto the stub's root input.
+		template:
+			'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	},
+}));
+
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const { defineComponent } = await import('vue');
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();

@@ -38,6 +38,8 @@ export interface ToolGuardrailsWiring {
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	/** The agent's human-review configurations, for the `review` response target. */
 	getReviewConfigurations?: () => AgentHitlConfiguration[];
+	/** The agent's project: the check workflow picker lists its workflows. */
+	getProjectId?: () => string;
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 }
 

@@ -35,6 +35,7 @@ import {
 } from '../utils/guardrails';
 import AgentModal from './modals/AgentModal.vue';
 import AgentTagInput from './AgentTagInput.vue';
+import AgentWorkflowPicker from './AgentWorkflowPicker.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -47,6 +48,8 @@ const props = withDefaults(
 		tools?: AgentJsonToolRef[];
 		/** The agent's human-review configurations, for the review response target. */
 		reviewConfigurations?: AgentHitlConfiguration[];
+		/** The agent's project: the check workflow picker lists its workflows. */
+		projectId?: string;
 		/** Ids of guardrails that already exist, so a create cannot duplicate one. */
 		existingIds?: string[];
 		disabled?: boolean;
@@ -56,6 +59,7 @@ const props = withDefaults(
 		kind: 'keywords',
 		tools: () => [],
 		reviewConfigurations: () => [],
+		projectId: undefined,
 		disabled: false,
 	},
 );
@@ -526,11 +530,9 @@ function onRemove() {
 								{{ i18n.baseText('agents.builder.guardrails.workflow.checkWorkflow.label') }}
 								<N8nText color="primary" bold size="small">*</N8nText>
 							</N8nText>
-							<N8nInput
+							<AgentWorkflowPicker
 								:model-value="checkWorkflowId"
-								:placeholder="
-									i18n.baseText('agents.builder.guardrails.workflow.checkWorkflow.placeholder')
-								"
+								:project-id="projectId"
 								:disabled="disabled"
 								data-testid="agent-guardrail-check-workflow"
 								@update:model-value="checkWorkflowId = $event"
