@@ -20,6 +20,7 @@ on:
       - '.github/scripts/docker/base-image-publisher.mjs'
       - '.github/scripts/docker/base-image-pin-pr.mjs'
       - '.github/scripts/docker/base-image-chain-pr.mjs'
+      - '.github/scripts/docker/base-image-alerts.mjs'
       - 'security/keys/dhi.pub'
   workflow_dispatch:
     inputs:
@@ -51,6 +52,9 @@ jobs:
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -171,6 +175,58 @@ jobs:
             review-pr.md
           if-no-files-found: ignore
           retention-days: 14
+
+      # The alerts keep their state from run to run in an artifact of the last run on master.
+      - name: Download the alert state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=base-image-refresh-state&per_page=20" \
+            --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "master")][0].id // empty')
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > state.zip
+            unzip -o -q state.zip -d previous-state
+            echo "Read the alert state from artifact $id."
+          else
+            echo "Found no alert state. Each alert starts as new."
+          fi
+
+      - name: Plan the alerts
+        id: alerts
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          args=(--candidates base-image-candidates.json --state previous-state/base-image-refresh-state.json
+            --state-out base-image-refresh-state.json --text alerts.txt --actor "$ACTOR")
+          if [ "$EVENT" = workflow_dispatch ]; then args+=(--manual); fi
+          node .github/scripts/docker/base-image-alerts.mjs "${args[@]}"
+
+      - name: Send the alerts
+        if: steps.alerts.outputs.alert == 'true' && steps.mode.outputs.preview == 'false'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: node .github/scripts/slack/notify.mjs --channel '#updates-security' --text "$(cat alerts.txt)"
+
+      # A preview sends no alert, so it keeps no state.
+      - name: Upload the alert state
+        if: steps.mode.outputs.preview == 'false'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: base-image-refresh-state
+          path: base-image-refresh-state.json
+          retention-days: 30
+          # A re-run of the job uploads the state again.
+          overwrite: true
+
+      - name: Alert on failure
+        if: failure() && github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs --channel '#updates-security' \
+            --text "<${RUN_URL}|Base image refresh failed>. Check which steps of the run completed."
 
   chain:
     name: Pin the images that master published
