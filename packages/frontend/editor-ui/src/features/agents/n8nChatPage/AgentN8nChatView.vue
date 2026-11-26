@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import type { AgentN8nChatAgentDetails } from '@n8n/api-types';
 import { N8nEmptyState, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
@@ -80,8 +80,6 @@ const mintedSessionId = ref<string>();
 // `||`, not `??`: an absent optional route param resolves to `''`.
 const continueSessionId = computed(() => props.agentThreadId || mintedSessionId.value);
 const isNewSession = computed(() => !props.agentThreadId);
-
-const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
 watch(
 	() => props.agentId,
@@ -221,7 +219,6 @@ const agentPageRoute = computed(() => {
 		/>
 		<AgentChatPanel
 			v-else-if="agent"
-			ref="panel"
 			:project-id="projectId"
 			:agent-id="agentId"
 			mode="inline"

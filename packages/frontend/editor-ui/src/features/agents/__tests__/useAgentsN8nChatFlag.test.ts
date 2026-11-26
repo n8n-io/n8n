@@ -30,6 +30,7 @@ describe('useAgentsN8nChatVariant', () => {
 
 	it.each([
 		['variant-a', true],
+		['variant-b', false],
 		['control', false],
 		[undefined, false],
 	])('for %s, isVariantA=%s', (value, expected) => {
