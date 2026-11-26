@@ -140,6 +140,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project_workflow_review_settings](project_workflow_review_settings.md) | 5 |  | table |
 | [promotion_environment](promotion_environment.md) | 9 |  | table |
 | [promotion_environment_project](promotion_environment_project.md) | 5 |  | table |
+| [promotion_project_settings](promotion_project_settings.md) | 4 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
 | [promotion_review](promotion_review.md) | 10 |  | table |
 | [promotion_run](promotion_run.md) | 8 |  | table |
@@ -410,6 +411,7 @@ erDiagram
 "promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "promotion_environment_project" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_project_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_review" }o--o| "user" : "FOREIGN KEY (approvedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_review" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_review" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1862,6 +1864,12 @@ erDiagram
   datetime_3_ createdAt
   varchar_16_ direction PK
   varchar environmentId FK
+  varchar_36_ projectId PK
+  datetime_3_ updatedAt
+}
+"promotion_project_settings" {
+  boolean allowEnvironments
+  datetime_3_ createdAt
   varchar_36_ projectId PK
   datetime_3_ updatedAt
 }

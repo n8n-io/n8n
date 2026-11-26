@@ -105,6 +105,11 @@
 			"reason": "Promotion configuration for the project (which environment it uses for each direction), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
 		},
 		{
+			"name": "PromotionProjectSettings",
+			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-project-settings.entity.ts",
+			"reason": "Instance-admin configuration for a team project (whether it can have its own environments), not user data. Dropped via the projectId FK cascade when the project is deleted."
+		},
+		{
 			"name": "Skill",
 			"path": "packages/cli/src/modules/skills/database/entities/skill.entity.ts",
 			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. Instance skills carry no projectId."
