@@ -51,16 +51,17 @@ describe('PromotionResourceTree', () => {
 		expect(row(getAllByTestId, 'workflow:w4').getByRole('checkbox')).not.toBeChecked();
 	});
 
-	it('should mute the name of a row that users cannot change', () => {
+	it('should mute the name of a row that is disabled or not selected', () => {
 		const { getAllByTestId } = render(['workflow:w1']);
 
-		const rowOf = (key: string) =>
-			getAllByTestId('promotion-preview-tree-row').find(
-				(element) => element.dataset.resourceKey === key,
-			);
+		const labelOf = (key: string) =>
+			getAllByTestId('promotion-preview-tree-row')
+				.find((element) => element.dataset.resourceKey === key)
+				?.querySelector('button span span');
 
-		expect(rowOf('dataTable:t1')?.className).toContain('muted');
-		expect(rowOf('workflow:w4')?.className).not.toContain('muted');
+		expect(labelOf('dataTable:t1')?.className).toContain('muted');
+		expect(labelOf('workflow:w4')?.className).toContain('muted');
+		expect(labelOf('workflow:w1')?.className).not.toContain('muted');
 	});
 
 	it('should say "a personal project" in a blocker tooltip, because the server leaves out its name', async () => {

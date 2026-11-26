@@ -181,7 +181,6 @@ function onToggle(resource: PromotionResource) {
 						{
 							[$style.inspected]: inspectedKey === item.id,
 							[$style.blocked]: marker.blocked,
-							[$style.muted]: selectable && check.disabled,
 						},
 					]"
 					data-test-id="promotion-preview-tree-row"
@@ -205,7 +204,18 @@ function onToggle(resource: PromotionResource) {
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
-							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText
+								step="xs"
+								color="text-dark"
+								:class="[
+									$style.label,
+									{
+										[$style.muted]:
+											selectable && (check.disabled || !(check.checked || check.indeterminate)),
+									},
+								]"
+								>{{ item.label }}</N8nText
+							>
 							<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
 								{{ marker.meta }}
 							</N8nText>
@@ -356,8 +366,8 @@ function onToggle(resource: PromotionResource) {
 	white-space: nowrap;
 }
 
-/* The checkbox mutes its own label when disabled. The name is a separate button, so it needs the same token. */
-.muted .label {
+/* The checkbox mutes its own label when disabled or unchecked. The name is a separate button, so it needs the same token. */
+.label.muted {
 	color: var(--checkbox--label--color--disabled);
 }
 
