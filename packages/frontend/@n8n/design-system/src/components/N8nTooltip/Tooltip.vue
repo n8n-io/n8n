@@ -201,6 +201,11 @@ const handleOpenChange = (open: boolean) => {
 		fill: currentColor;
 		opacity: 0.7;
 	}
+
+	a:not([class]) {
+		color: inherit;
+		text-decoration: underline;
+	}
 }
 
 :global(.n8n-tooltip[data-state='closed']) {
