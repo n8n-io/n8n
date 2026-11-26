@@ -63,6 +63,18 @@ describe('AgentSkillFileNav', () => {
 		expect(byTestId(container, 'picker-stub')).toHaveAttribute('data-ids', 'wf1,wf2');
 	});
 
+	it('shows the workflow ID when a mention has no name', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: {
+				skill: { ...MENTIONING_SKILL, instructions: 'Run [](n8n://workflow/wf3).', references: [] },
+				selectedPath: 'SKILL.md',
+			},
+		});
+
+		expect(byTestId(container, 'agent-skill-workflow-link')).toHaveTextContent('wf3');
+	});
+
 	it('links each listed workflow to its page in a new tab', () => {
 		flag.enabled = true;
 		const { container } = renderComponent({
