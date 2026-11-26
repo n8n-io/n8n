@@ -1777,16 +1777,34 @@ describe('AgentValidationService — structured issues', () => {
 			]);
 		});
 
-		it('does not report a published mentioned workflow without a supported trigger', async () => {
-			const { service, workflowRepository } = mentionSetup();
-			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
-				{ ...draftWorkflow, activeVersionId: 'version-1', nodes: [] },
-			] as never);
+		it.each([
+			{ state: 'published', activeVersionId: 'version-1' },
+			{ state: 'unpublished', activeVersionId: null },
+		])(
+			'reports a $state mentioned workflow without a supported trigger only as that',
+			async ({ activeVersionId }) => {
+				const { service, workflowRepository } = mentionSetup();
+				workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+					{ ...draftWorkflow, activeVersionId, nodes: [] },
+				] as never);
 
-			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+				const result = await service.validateAgentConfiguration(
+					agentId,
+					projectId,
+					credentials,
+					'publish',
+				);
 
-			expect(result.status).toBe('valid');
-		});
+				expect(result.issues).toEqual([
+					{
+						code: 'incompatible_reference',
+						path: 'skills.lucky.workflows.wf-mentioned',
+						capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+						reason: 'no_supported_trigger',
+					},
+				]);
+			},
+		);
 
 		it('reports a workflow that a legacy direct tool attaches by name only on that tool', async () => {
 			const { service, workflowRepository } = mentionSetup({
