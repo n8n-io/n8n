@@ -71,6 +71,7 @@ describe('ProjectService', () => {
 	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectMutationHooks = mock<ProjectMutationHooksProxy>();
+	projectMutationHooks.beforeProjectDeleted.mockResolvedValue(async () => {});
 	const transactions = mock<TransactionRunner>();
 	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const projectService = new ProjectService(
@@ -1261,6 +1262,22 @@ describe('ProjectService', () => {
 					ctx,
 				);
 				expect(credentialDelete).toHaveBeenCalledWith(user, 'credential-1', {}, ctx);
+			});
+
+			it('runs the deletion hooks as the caller, then their callback', async () => {
+				const afterProjectDeleted = vi.fn();
+				projectMutationHooks.beforeProjectDeleted.mockResolvedValueOnce(afterProjectDeleted);
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await projectService.deleteProject(user, 'project-1', {}, ctx);
+
+				expect(projectMutationHooks.beforeProjectDeleted).toHaveBeenCalledExactlyOnceWith(
+					{ projectId: 'project-1', userId: user.id, loginId: 'login-1' },
+					expect.anything(),
+				);
+				expect(afterProjectDeleted).toHaveBeenCalledOnce();
 			});
 
 			it('passes an empty operation context when none is given', async () => {
