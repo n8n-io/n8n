@@ -245,6 +245,59 @@ describe('userHasScopes', () => {
 				userHasScopes(user, ['agent:delete'], false, { agentId: 'agent123' }),
 			).rejects.toThrow(NotFoundError);
 		});
+
+		it('should authorize an agent scope from the agent project when a credential is also in the URL', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([
+				{ credentialsId: 'cred123', projectId: 'projectId', role: 'credential:owner' },
+			]);
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+
+			const result = await userHasScopes(user, ['agent:update'], false, {
+				agentId: 'agent123',
+				credentialId: 'cred123',
+			});
+
+			expect(result).toBe(true);
+			expect(findByCredentialMock).not.toHaveBeenCalled();
+		});
+
+		it('should not let credential access satisfy an agent scope', async () => {
+			agentFindByIdMock.mockResolvedValue({ ...agent, projectId: 'otherProjectId' });
+			findByCredentialMock.mockResolvedValue([
+				{ credentialsId: 'cred123', projectId: 'projectId', role: 'credential:owner' },
+			]);
+			roleServiceMock.mockResolvedValue(['credential:owner']);
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+
+			const result = await userHasScopes(user, ['agent:update'], false, {
+				agentId: 'agent123',
+				credentialId: 'cred123',
+			});
+
+			expect(result).toBe(false);
+			expect(findByCredentialMock).not.toHaveBeenCalled();
+		});
+
+		it('should keep checking credential access for credential scopes on composite routes', async () => {
+			findByCredentialMock.mockResolvedValue([
+				{ credentialsId: 'cred123', projectId: 'projectId', role: 'credential:owner' },
+			]);
+			roleServiceMock.mockResolvedValue(['credential:owner']);
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+
+			const result = await userHasScopes(user, ['credential:read'], false, {
+				agentId: 'agent123',
+				credentialId: 'cred123',
+			});
+
+			expect(result).toBe(true);
+			expect(findByCredentialMock).toHaveBeenCalledWith({ credentialsId: 'cred123' });
+			expect(agentFindByIdMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('RoleService integration', () => {

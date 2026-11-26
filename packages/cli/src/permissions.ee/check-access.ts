@@ -123,7 +123,10 @@ export async function userHasScopes(
 			? await roleService.rolesWithScope(namespace, scopes, loadRoles)
 			: await roleService.rolesWithScope(namespace, scopes);
 
-	if (credentialId) {
+	const isAgentScopeRequest =
+		Boolean(agentId) && scopes.every((scope) => scope.startsWith('agent:'));
+
+	if (credentialId && !isAgentScopeRequest) {
 		const credentialRepo = entityManager
 			? entityManager.getRepository(SharedCredentials)
 			: Container.get(SharedCredentialsRepository);
