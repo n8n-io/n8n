@@ -144,6 +144,7 @@ async function show(force = false) {
 	const isLatest = latestFetch.next();
 	if (!version || !canRun(version)) {
 		granting.value = false;
+		grantFailed.value = false;
 		showPreview(null);
 		return;
 	}

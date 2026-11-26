@@ -174,6 +174,23 @@ describe('AppPreview', () => {
 			expect(await findByTestId('app-preview-frame')).toBeInTheDocument();
 		});
 
+		it('replaces a failed preview with the confirmation for a new version', async () => {
+			useSeenAppPreviewVersions().markSeen('v2');
+			vi.mocked(createAppPreview).mockRejectedValue(new Error('denied'));
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId, queryByTestId } = renderComponent();
+			await findByTestId('app-preview-error');
+
+			vi.mocked(listAppVersions).mockResolvedValue([
+				version('v3', 'succeeded'),
+				version('v2', 'succeeded'),
+			]);
+			await versions.refresh();
+
+			expect(await findByTestId('app-preview-confirm')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-error')).not.toBeInTheDocument();
+		});
+
 		it('runs the version when it becomes seen while the confirmation shows', async () => {
 			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
 			const { findByTestId } = renderComponent();
