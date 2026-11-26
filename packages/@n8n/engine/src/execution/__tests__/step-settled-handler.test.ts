@@ -9,6 +9,7 @@ import type { EngineLogger } from '../../logging';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
+import type { ErrorWorkflowStarter } from '../error-workflow-starter';
 import {
 	ExecutionNotFoundError,
 	type ExecutionRecord,
@@ -207,6 +208,10 @@ function makeHandler(
 		responseSender = makeResponseSender(),
 		subExecutionCanceller = { cancelSubExecutions: vi.fn() } as SubExecutionCanceller,
 		logger = makeLogger(),
+		errorWorkflowStarter = { startAfterFailure: vi.fn() } as Pick<
+			ErrorWorkflowStarter,
+			'startAfterFailure'
+		>,
 	} = {},
 ) {
 	return {
@@ -219,6 +224,7 @@ function makeHandler(
 			responseSender,
 			subExecutionCanceller as CancelExecutionService,
 			logger,
+			errorWorkflowStarter as ErrorWorkflowStarter,
 		),
 		executionStore,
 		stepQueue,
@@ -227,6 +233,7 @@ function makeHandler(
 		responseSender,
 		subExecutionCanceller,
 		logger,
+		errorWorkflowStarter,
 	};
 }
 
@@ -699,6 +706,34 @@ describe('StepSettledHandler', () => {
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
+	});
+
+	it('starts the error workflow last, after the sub-executions are cancelled', async () => {
+		const stepStore = makeStepStore({ status: 'failed' });
+		const { handler, subExecutionCanceller, errorWorkflowStarter } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore(
+				{},
+				{ finishExecution: vi.fn().mockResolvedValue({ finishedAt: new Date() }) },
+			),
+		});
+
+		await handler.handle(event);
+
+		expect(errorWorkflowStarter.startAfterFailure).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		).toBeLessThan(vi.mocked(errorWorkflowStarter.startAfterFailure).mock.invocationCallOrder[0]);
+	});
+
+	it('starts no error workflow when another worker won the failure write', async () => {
+		const stepStore = makeStepStore({ status: 'failed' });
+		const { handler, errorWorkflowStarter } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({}, { finishExecution: vi.fn().mockResolvedValue(null) }),
+		});
+
+		await handler.handle(event);
+
+		expect(errorWorkflowStarter.startAfterFailure).not.toHaveBeenCalled();
 	});
 
 	it('cancels queued steps again on a redelivered failure event', async () => {

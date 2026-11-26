@@ -16,7 +16,7 @@ export interface CancelExecutionResult {
 /**
  * Ends an execution on request. No more steps will be planned, and every
  * sub-execution that has not ended is cancelled with it, whether or not a
- * step waits for it.
+ * step waits for it. Unlike v1, a cancel starts no error workflow.
  * TODO(CAT-4757): interrupt already-running steps through their executor.
  */
 export class CancelExecutionService {

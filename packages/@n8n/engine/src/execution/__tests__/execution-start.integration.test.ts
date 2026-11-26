@@ -25,6 +25,7 @@ import {
 } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
+import type { ErrorWorkflowStarter } from '../error-workflow-starter';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -86,6 +87,7 @@ describe('execution start (integration)', () => {
 				noopExecutionResponseSender,
 				{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 				{ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+				{ startAfterFailure: vi.fn() } as unknown as ErrorWorkflowStarter,
 			),
 		);
 		worker.start();

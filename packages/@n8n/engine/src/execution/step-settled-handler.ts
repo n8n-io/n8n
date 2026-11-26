@@ -12,6 +12,7 @@ import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
+import type { ErrorWorkflowStarter } from './error-workflow-starter';
 import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
@@ -54,6 +55,7 @@ export class StepSettledHandler {
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly cancelExecution: CancelExecutionService,
 		private readonly logger: EngineLogger,
+		private readonly errorWorkflowStarter: ErrorWorkflowStarter,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -170,13 +172,15 @@ export class StepSettledHandler {
 				});
 			}
 			await this.cancelExecution.cancelSubExecutions(execution.id);
+			// Last, and it never throws, so it cannot hold up the work above.
+			await this.errorWorkflowStarter.startAfterFailure(execution.id);
 		}
 	}
 
 	/**
 	 * The error to report for a failed execution: the failed step that settled
-	 * first, as the read path reports it. Not the step that ended the run,
-	 * because parallel branches can fail in any order.
+	 * first, as the read path and the error workflow report it. Not the step
+	 * that ended the run, because parallel branches can fail in any order.
 	 */
 	private async failureOf(execution: ExecutionRecord): Promise<StepError> {
 		const [failed] = await this.stepStore.loadFailedSteps(execution.id);
@@ -316,7 +320,10 @@ export class StepSettledHandler {
 							},
 				);
 			}
-			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
+			if (failed) {
+				await this.cancelExecution.cancelSubExecutions(execution.id);
+				await this.errorWorkflowStarter.startAfterFailure(execution.id);
+			}
 		}
 	}
 

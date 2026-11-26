@@ -1,5 +1,10 @@
 export { noopExecutionFilesDeleter } from './external-dependencies';
 export type {
+	ErrorWorkflowNone,
+	ErrorWorkflowResolution,
+	ErrorWorkflowResolver,
+	ErrorWorkflowSource,
+	ErrorWorkflowStart,
 	ExecutionFilesDeleter,
 	ExecutionLocation,
 	ExternalDependencies,
