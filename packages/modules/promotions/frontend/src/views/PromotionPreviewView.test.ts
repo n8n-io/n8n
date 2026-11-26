@@ -1238,6 +1238,11 @@ describe('PromotionPreviewView', () => {
 			expect(queryByTestId('promotion-preview-blockers')).not.toBeVisible();
 			expect(queryAllByTestId('promotion-preview-tree-dependencies')).toHaveLength(0);
 			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Promote \d+ changes$/);
+			// The open Issues tab says that nothing is wrong, as the Apply review does.
+			await userEvent.click(getAllByRole('tab')[1]);
+			expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
+				'No issues. You can promote the selected changes.',
+			);
 		});
 
 		it('should list the missing dependencies of the selection in one section for each group', async () => {

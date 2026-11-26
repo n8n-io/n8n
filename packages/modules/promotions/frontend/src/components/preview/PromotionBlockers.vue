@@ -603,6 +603,17 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 			{{ i18n.baseText('promotions.preview.blockers.none') }}
 		</N8nCallout>
 
+		<!-- Promote has no check. It has no issue when nothing is missing and nothing warns. -->
+		<N8nCallout
+			v-else-if="!check && missingDependencies.length === 0 && warningCount === 0"
+			theme="success"
+			slim
+			role="status"
+			data-test-id="promotion-preview-blockers-status"
+		>
+			{{ i18n.baseText('promotions.preview.blockers.none.promote') }}
+		</N8nCallout>
+
 		<N8nCallout v-if="bindings.error.value?.kind === 'creationMismatch'" theme="danger">
 			{{ i18n.baseText('promotions.bindings.error.creationMismatch') }}
 		</N8nCallout>
