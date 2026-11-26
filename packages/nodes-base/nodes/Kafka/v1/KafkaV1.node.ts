@@ -1,5 +1,5 @@
 import type { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
+import type { IHeaders, KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 import type {
 	IExecuteFunctions,
@@ -178,6 +178,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Headers (JSON)',
 			name: 'headerParametersJson',
 			type: 'json',
+			validateType: 'object',
 			displayOptions: {
 				show: {
 					jsonParameters: [true],
@@ -400,12 +401,8 @@ export class KafkaV1 implements INodeType {
 				let headers;
 
 				if (jsonParameters) {
-					headers = this.getNodeParameter('headerParametersJson', i) as string;
-					try {
-						headers = JSON.parse(headers);
-					} catch (exception) {
-						throw new NodeOperationError(this.getNode(), 'Headers must be a valid json');
-					}
+					headers =
+						(this.getNodeParameter('headerParametersJson', i) as IHeaders | undefined) ?? {};
 				} else {
 					const values = (this.getNodeParameter('headersUi', i) as IDataObject)
 						.headerValues as IDataObject[];

@@ -238,7 +238,7 @@ describe('Kafka Node', () => {
 			topic: 'test-topic',
 			jsonParameters: true,
 			useKey: false,
-			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+			headerParametersJson: { headerKey: 'headerValue' },
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }, { json: { success: true } }];
 
@@ -291,7 +291,7 @@ describe('Kafka Node', () => {
 			topic: 'cred-test-topic',
 			jsonParameters: true,
 			useKey: false,
-			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+			headerParametersJson: { headerKey: 'headerValue' },
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }];
 

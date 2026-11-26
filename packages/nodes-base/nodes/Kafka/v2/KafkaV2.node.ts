@@ -10,7 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '@utils/utilities';
 
@@ -260,6 +260,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Headers (JSON)',
 			name: 'headerParametersJson',
 			type: 'json',
+			validateType: 'object',
 			displayOptions: {
 				show: {
 					jsonParameters: [true],
@@ -377,15 +378,9 @@ export class KafkaV2 implements INodeType {
 				let headers: KafkaJS.IHeaders;
 
 				if (jsonParameters) {
-					try {
-						headers = jsonParse<KafkaJS.IHeaders>(
-							this.getNodeParameter('headerParametersJson', i) as string,
-						);
-					} catch {
-						throw new NodeOperationError(this.getNode(), 'Headers must be valid JSON', {
-							itemIndex: i,
-						});
-					}
+					headers =
+						(this.getNodeParameter('headerParametersJson', i) as KafkaJS.IHeaders | undefined) ??
+						{};
 				} else {
 					// `Object.fromEntries` builds the object in one step rather than assigning
 					// user-supplied names as computed keys.
