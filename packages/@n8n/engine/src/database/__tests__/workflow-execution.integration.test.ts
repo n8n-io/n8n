@@ -768,6 +768,22 @@ describe('workflow_execution table (integration)', () => {
 			expect((await viewStore.loadExecutionView(sourceId)).errorSource).toBeNull();
 		});
 
+		it('createExecution keeps updated_at of the source when it clears the marker', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			// A time in the past, so a write that sets `updated_at` to now changes it.
+			const endedAt = new Date('2026-01-01T00:00:00.000Z');
+			await dataSource
+				.getRepository(WorkflowExecution)
+				.update({ id: sourceId }, { updatedAt: () => `'${endedAt.toISOString()}'::timestamptz` });
+
+			await store.createExecution(errorRecord(sourceId));
+
+			const source = await loadRow(sourceId);
+			expect(source.errorWorkflowDueAt).toBeNull();
+			expect(source.updatedAt).toEqual(endedAt);
+		});
+
 		it('createExecution throws for an error execution whose id another execution has, and keeps the marker', async () => {
 			const store = errorStore();
 			const sourceId = await failedSource(store);

@@ -1,7 +1,15 @@
-import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
+import {
+	In,
+	IsNull,
+	LessThanOrEqual,
+	Not,
+	type EntityManager,
+	type Repository,
+} from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import { toErrorSourceColumns } from './error-source-columns';
+import { KEEP_UPDATED_AT } from './keep-updated-at';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
@@ -73,10 +81,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			if (errorSource) {
 				const inserted = await this.insertErrorExecution(manager, execution as InsertValues);
 				// Cleared even when another start won, so a stray marker cannot outlive it.
+				// The source has ended, so the write keeps its `updated_at`.
 				await manager.update(
 					this.repo.target,
-					{ id: errorSource.executionId },
-					{ errorWorkflowDueAt: null },
+					{ id: errorSource.executionId, errorWorkflowDueAt: Not(IsNull()) },
+					{ errorWorkflowDueAt: null, ...KEEP_UPDATED_AT },
 				);
 				if (!inserted) return { errorExecutionAlreadyExists: true };
 			} else {
