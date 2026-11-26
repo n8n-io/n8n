@@ -194,6 +194,14 @@ function onToggle(resource: PromotionResource) {
 					:class="[$style.row, $style.resource]"
 					data-test-id="promotion-preview-tree-label-row"
 				>
+					<!-- The same checkbox as the project rows, so the names line up. Users cannot select this row. -->
+					<N8nCheckbox
+						v-if="selectable"
+						:model-value="false"
+						disabled
+						:aria-label="item.label"
+						data-test-id="promotion-preview-tree-checkbox"
+					/>
 					<span :class="[$style.name, $style.static]" :style="{ '--preview-tree--indent': indent }">
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">

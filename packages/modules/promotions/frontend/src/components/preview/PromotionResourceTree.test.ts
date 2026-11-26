@@ -307,6 +307,15 @@ describe('PromotionResourceTree', () => {
 			expect(await findByTestId('tooltip-content')).toHaveTextContent(reason);
 		});
 
+		it('should line up the row of other projects with the project rows, with a disabled checkbox', () => {
+			const { getAllByTestId } = renderLocked();
+
+			const label = getAllByTestId('promotion-preview-tree-label-row')[0];
+			expect(within(label).getByText('Other projects')).toBeInTheDocument();
+			expect(within(label).getByRole('checkbox')).toBeDisabled();
+			expect(within(label).getByRole('checkbox')).not.toBeChecked();
+		});
+
 		it('should lock a sub-workflow of another project and keep its checkbox off', () => {
 			const { getAllByTestId } = renderLocked();
 
