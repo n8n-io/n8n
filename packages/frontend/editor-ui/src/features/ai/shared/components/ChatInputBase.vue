@@ -28,6 +28,8 @@ const props = withDefaults(
 		canSubmit: boolean;
 		disabled?: boolean;
 		showVoice?: boolean;
+		/** Tab in the input emits `tab` instead of moving focus. Set it only when Tab has something to accept. */
+		acceptsTab?: boolean;
 		showAttach?: boolean;
 		/**
 		 * Shows the built-in attach button. A host that renders its own attach
@@ -228,7 +230,7 @@ function handleKeydown(e: KeyboardEvent) {
 	// Only the textarea gets tab-to-autocomplete; other focusable children
 	// (attach/mic buttons, leading-slot chips) must keep normal Tab navigation.
 	const isTextareaFocused = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
-	if (e.key === 'Tab' && !e.shiftKey && isTextareaFocused) {
+	if (props.acceptsTab && e.key === 'Tab' && !e.shiftKey && isTextareaFocused) {
 		e.preventDefault();
 		emit('tab');
 	}
