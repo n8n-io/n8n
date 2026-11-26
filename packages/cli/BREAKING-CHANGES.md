@@ -4,6 +4,14 @@ This list shows all the versions which include breaking changes and how to upgra
 
 # Unreleased
 
+## MongoDB nodes
+
+The MongoDB, MongoDB Chat Memory, and MongoDB Atlas Vector Store nodes now use version 7.9.1 of the MongoDB Node.js driver.
+This driver does not support MongoDB server 4.2 or earlier.
+Connections to these servers fail with `MongoServerSelectionError`.
+Upgrade your MongoDB server to version 4.4 or later before you upgrade n8n.
+MongoDB 4.2 reached end of life in April 2023.
+
 ## SAML
 
 n8n now checks that each SAML response is for this instance.

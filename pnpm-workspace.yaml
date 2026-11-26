@@ -253,6 +253,7 @@ catalog:
   mime-types: 3.0.2
   mocha: ^11.8.0
   moment-timezone: 0.5.48
+  mongodb: 7.9.1
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
@@ -535,6 +536,8 @@ overrides:
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   'toml@<5.0.1': 5.0.1
+  # @langchain/mongodb still asks for mongodb 6.
+  mongodb: 'catalog:'
   # get-uri still asks for basic-ftp 5. Version 6 only blocks separate transfer hosts by default.
   'get-uri>basic-ftp': 6.2.6
   # Keep the copies that langchain brings in on the catalog version.

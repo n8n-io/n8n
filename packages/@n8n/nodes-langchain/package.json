@@ -314,7 +314,7 @@
     "lodash": "catalog:",
     "mammoth": "1.12.3",
     "mime-types": "catalog:",
-    "mongodb": "^6.17.0",
+    "mongodb": "catalog:",
     "mysql2": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
