@@ -2,8 +2,8 @@
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { ref, computed, watch, onUnmounted } from 'vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
-import { useThread } from '../instanceAi.store';
-import { useSteadyRunActivity } from '../composables/useRunActivity';
+import { useThread } from '@/features/ai/instanceAi/instanceAi.store';
+import { useSteadyRunActivity } from '@/features/ai/instanceAi/composables/useRunActivity';
 
 const thread = useThread();
 
@@ -31,7 +31,10 @@ function hasDetachedWork(messages: InstanceAiMessage[]): boolean {
  * A pending confirmation hides the bar, because the card is the prompt.
  */
 const isVisible = computed(
-	() => !thread.isAwaitingConfirmation && hasDetachedWork(thread.messages),
+	() =>
+		!thread.isAwaitingConfirmation &&
+		!thread.messages.some((message) => message.role === 'assistant' && message.isStreaming) &&
+		hasDetachedWork(thread.messages),
 );
 
 const formattedElapsed = computed(() => {

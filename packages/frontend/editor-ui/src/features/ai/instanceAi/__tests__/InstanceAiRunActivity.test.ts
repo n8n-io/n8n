@@ -103,6 +103,23 @@ describe('InstanceAiRunActivity, visibility', () => {
 		expect(queryByTestId('instance-ai-run-activity')).not.toBeInTheDocument();
 	});
 
+	it.each([false, true])(
+		'stays hidden during a streaming follow-up with an agent tree: %s',
+		(withAgentTree) => {
+			const previous = messageWithActiveBuilder({ title: 'Building workflow' });
+			const followUp: InstanceAiMessage = {
+				...messageWithActiveBuilder({ title: 'Researching' }),
+				id: 'msg-2',
+				isStreaming: true,
+				agentTree: withAgentTree ? makeAgentNode() : undefined,
+			};
+
+			const { queryByTestId } = renderThread([previous, followUp], { isStreaming: true });
+
+			expect(queryByTestId('instance-ai-run-activity')).not.toBeInTheDocument();
+		},
+	);
+
 	it('stays hidden at run start, before any agent tree exists', () => {
 		const { queryByTestId } = renderThread([], { isStreaming: true });
 
