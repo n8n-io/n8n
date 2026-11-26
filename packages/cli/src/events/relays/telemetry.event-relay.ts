@@ -230,9 +230,11 @@ function getStartingTriggerNodeType(
 function getExecutionCaller(
 	runData: IRun | undefined,
 	parentAgentRun: RelatedAgentRun | undefined,
+	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ExecutionCaller | undefined {
 	if (parentAgentRun) return 'agent';
 	if (runData?.data.parentExecution) return 'workflow';
+	if (telemetryMetadata?.startedByPublicApi) return 'public_api';
 	return undefined;
 }
 
@@ -2080,7 +2082,7 @@ export class TelemetryEventRelay extends EventRelay {
 			telemetryProperties.user_id = userId;
 		}
 
-		const executionCaller = getExecutionCaller(runData, parentAgentRun);
+		const executionCaller = getExecutionCaller(runData, parentAgentRun, telemetryMetadata);
 		if (executionCaller) {
 			telemetryProperties.execution_caller = executionCaller;
 		}

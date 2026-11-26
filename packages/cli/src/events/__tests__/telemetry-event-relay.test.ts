@@ -5384,6 +5384,19 @@ describe('TelemetryEventRelay', () => {
 				expect(getTrackedProperties().execution_caller).toBe('workflow');
 			});
 
+			it('should set the caller to public_api when a public API call started the run', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({ Webhook: [{ startTime: 1000 }] }),
+					telemetryMetadata: { startedByPublicApi: true },
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().execution_caller).toBe('public_api');
+			});
+
 			it('should not set a caller when the run started on its own', async () => {
 				eventService.emit('workflow-post-execute', {
 					workflow: workflowWithTwoTriggers,

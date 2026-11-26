@@ -556,6 +556,19 @@ describe('ExecutionService', () => {
 			);
 		});
 
+		it('should pass the telemetry metadata to the run', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry({ ...retryArgs(), telemetryMetadata: { startedByPublicApi: true } });
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ telemetryMetadata: { startedByPublicApi: true } }),
+			);
+		});
+
 		it('should not carry the root execution mode of the original run into the retry', async () => {
 			const { service, workflowRunner } = buildRetryService();
 			const execution = buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} });

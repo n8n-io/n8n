@@ -35,6 +35,7 @@ import type {
 	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	IWorkflowExecutionTelemetryMetadata,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
@@ -293,11 +294,13 @@ export class ExecutionService {
 			options = {},
 			sharedWorkflowIds,
 			user,
+			telemetryMetadata,
 		}: {
 			executionId: string;
 			options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
 			sharedWorkflowIds: string[];
 			user: User;
+			telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 		},
 		ctx: OperationContext = {},
 	): Promise<RetriedExecution> {
@@ -366,6 +369,7 @@ export class ExecutionService {
 			userId: user.id,
 			// The retry caller awaits the result below, so a worker must not park it.
 			callerAwaitsOutcome: 'completion',
+			...(telemetryMetadata ? { telemetryMetadata } : {}),
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;

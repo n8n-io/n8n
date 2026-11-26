@@ -254,11 +254,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	execution_mode?: WorkflowExecuteMode;
 	/** Type of the trigger node that started the run. Absent when no trigger node ran. */
 	trigger_node_type?: string;
-	/** The agent or the parent workflow that started the run. Absent when neither started it. */
+	/** The agent, parent workflow or public API call that started the run. Absent when none did. */
 	execution_caller?: ExecutionCaller;
 }
 
-export type ExecutionCaller = 'agent' | 'workflow';
+export type ExecutionCaller = 'agent' | 'workflow' | 'public_api';
 
 // ----------------------------------
 //               license
