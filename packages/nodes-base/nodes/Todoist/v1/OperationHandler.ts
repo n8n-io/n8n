@@ -292,8 +292,8 @@ export class SyncHandler implements OperationHandler {
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		}) as number;
-		const sections = await getSectionIds(ctx, projectId);
 		const commands = (ctx.getNodeParameter('commands', itemIndex) as Command[] | undefined) ?? [];
+		const sections = await getSectionIds(ctx, projectId);
 		const tempIdMapping = new Map<string, string>();
 
 		for (let i = 0; i < commands.length; i++) {

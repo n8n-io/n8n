@@ -44,3 +44,10 @@ describe('Todoist > Request URLs', () => {
 		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 	});
 });
+
+describe('Todoist > Sync with invalid commands', () => {
+	new NodeTestHarness().setupTests({
+		credentials: { todoistApi: { apiKey: 'fake-api-key' } },
+		workflowFiles: ['syncError.workflow.json'],
+	});
+});
