@@ -6,6 +6,7 @@ import type {
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
+	StepOutputSources,
 } from './execution.types';
 
 /**
@@ -36,6 +37,8 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	/** The wait this step declared; `null` unless it has suspended. */
 	waitDeclaration: WaitDeclaration | null;
 	/** What resumed this step's current dispatch; `null` on a first run. */
@@ -72,7 +75,41 @@ export interface DueStep {
 	executionId: string;
 }
 
-/** Persistence interface for step records. */
+/** A step that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedStep {
+	id: string;
+	executionId: string;
+	staleAfter: Date;
+}
+
+/** A step that is still `running` after its `stale_after` time. */
+export interface StaleRunningStep {
+	id: string;
+	staleAfter: Date;
+}
+
+/**
+ * A settled step that still has its `stale_after` time after that time: the
+ * orchestration worker did not handle its `step:settled` message.
+ */
+export interface StaleSettledStep {
+	id: string;
+	executionId: string;
+	staleAfter: Date;
+}
+
+/**
+ * Persistence interface for step records.
+ *
+ * Every transition into `queued` or `running` also records when the engine
+ * treats the step as stuck in that status (see `StalenessThresholds`).
+ *
+ * Every transition into `completed`, `failed` or `skipped` records when the
+ * engine treats the `step:settled` message of the step as lost. That time
+ * stays on the row until `acknowledgeSettledStep` clears it.
+ *
+ * Every other transition clears the time.
+ */
 export interface StepStore {
 	/**
 	 * Persist new step records for one execution, batched so planning a fan-out
@@ -115,14 +152,21 @@ export interface StepStore {
 	 * Record a successful run: persist `outputs` and mark the step completed.
 	 * A compare-and-set on `running`, so it returns `false` if the caller no
 	 * longer holds the claim — the outcome and the status are written together,
-	 * so they can't be observed apart.
+	 * so they can't be observed apart. `outputSources` is what the step states
+	 * about where its items came from; `null` when it states nothing.
 	 */
-	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
+	completeStep(
+		id: string,
+		outputs: StepSlots,
+		outputSources: StepOutputSources | null,
+	): Promise<boolean>;
 
 	/**
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
 	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 * If the execution has ended, the step is cancelled instead and the call
+	 * returns `false`: nothing resumes a wait in an ended execution.
 	 */
 	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
 
@@ -168,6 +212,55 @@ export interface StepStore {
 	 * resume, so a stale or lost answer costs precision and nothing else.
 	 */
 	nextWaitDeadline(): Promise<Date | null>;
+
+	/**
+	 * The steps that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]>;
+
+	/**
+	 * Gives a `queued` step a new `stale_after` time. A compare-and-set on the
+	 * status and on the `staleAfter` value that the caller read, so only one of
+	 * several concurrent callers gets `true`.
+	 */
+	renewQueuedStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * The steps that are `running` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleRunningSteps(at: Date, limit: number): Promise<StaleRunningStep[]>;
+
+	/**
+	 * Fail a step that no worker settled in time. As `failStep`, but the
+	 * compare-and-set also tests the `staleAfter` value that the caller read. A
+	 * step that settled, or that was claimed again, after that read is not
+	 * changed.
+	 */
+	failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean>;
+
+	/**
+	 * The steps that are `completed`, `failed` or `skipped`, and whose
+	 * `stale_after` time is `at` or earlier, oldest first, at most `limit`. A
+	 * plain read: it locks no row.
+	 */
+	findStaleSettledSteps(at: Date, limit: number): Promise<StaleSettledStep[]>;
+
+	/**
+	 * Gives a settled step a new `stale_after` time. As `renewQueuedStep`, a
+	 * compare-and-set on the `staleAfter` value that the caller read. A step that
+	 * `acknowledgeSettledStep` cleared after that read is not changed.
+	 */
+	renewSettledStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * Clears the `stale_after` time of a settled step. The orchestration worker
+	 * calls this after it handled the `step:settled` message of the step, so
+	 * `findStaleSettledSteps` does not return the step. A second call changes
+	 * nothing.
+	 */
+	acknowledgeSettledStep(id: string): Promise<void>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;

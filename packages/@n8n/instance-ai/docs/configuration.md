@@ -15,10 +15,12 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-5-5` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. To keep Opus 4.8: `anthropic/claude-opus-4-8`. Vertex Claude: `google-vertex-anthropic/claude-opus-5-5`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | Explicit API key for the environment-selected model. It works with built-in providers and custom endpoints. When it is empty, built-in providers can use their standard API-key environment variable. Some local endpoints do not require a key. |
+| `N8N_INSTANCE_AI_UTILITY_MODEL` | string | `''` | Smaller model for background and helper calls: observational memory, thread titles, and the verification helpers (destructiveness classifier and simulation fixtures). Same format as `N8N_INSTANCE_AI_MODEL`. It runs on the main model's provider and credentials. When unset, an Anthropic main model uses `claude-haiku-5-5` and an OpenAI main model uses `gpt-6-luna`, but only when the main model calls the provider's own API. Other providers, custom base URLs, and pre-built clients use the main model. |
 | `N8N_INSTANCE_AI_VERTEX_PROJECT_ID` | string | `''` | Google Cloud project for `google-vertex-anthropic/*`. Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON. |
 | `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `google-vertex-anthropic/*` (e.g. `global`, `us-east5`). Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
 | `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
-| `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
+| `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. For OpenRouter, an explicit effort takes precedence. Otherwise, n8n sends the configured value (`low`, `medium`, `high`, `xhigh`, or `max`). If the variable is unset or unrecognized, n8n omits the `reasoning` field. |
+| `N8N_INSTANCE_AI_REPLAY_REASONING` | string | unset | Set to `conversation` to send a `custom/*` model the reasoning of earlier turns as well. Unset = reasoning is sent back within the current tool chain only. Use it when the model's chat template keeps earlier reasoning. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated; removal is planned for v4. Allow Instance AI to receive workflow and node parameter values. The effective value is `true` only when this variable and the "Send actual data values" setting in Settings > AI usage are both on. Instance AI reads it at the start of each run. When it is `false`, the adapter hides parameter values and execution data, and the Assistant runs in a limited mode: it cannot create or edit workflows. After it is turned on, the Assistant must read a workflow again before it can rebuild or save it. This is a global n8n AI setting. |
@@ -47,6 +49,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `list_workflows`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Browser Use tooling, used for credential setup. |
+| `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL` | string | `''` | Judge model of Auto approval mode, in `provider/model` format, for example `anthropic/claude-haiku-5-5`. It runs on the main model's provider and credentials. Empty, or a name that can't be resolved, uses the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`). See [tools](./tools.md#approval-modes). |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
@@ -66,7 +69,7 @@ the wizard.
 | `N8N_INSTANCE_AI_EVAL_MODEL` | string | unset | Optional model override for evaluation helper agents. Falls back to `N8N_INSTANCE_AI_MODEL`. |
 | `N8N_INSTANCE_AI_EVAL_MODEL_URL` | string | unset | Base URL for `N8N_INSTANCE_AI_EVAL_MODEL` when it differs from the builder model, for example a `custom/*` OpenAI-compatible endpoint. A judge or helper with a fixed model id uses this URL only when its id equals `N8N_INSTANCE_AI_EVAL_MODEL`. |
 | `N8N_INSTANCE_AI_EVAL_MODEL_API_KEY` | string | unset | API key for `N8N_INSTANCE_AI_EVAL_MODEL_URL`. A `custom/*` eval model may omit it. Other keys are never sent to that URL. |
-| `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Used by eval helpers (`createEvalAgent`, mock generation, verification) with `N8N_INSTANCE_AI_MODEL_URL`. |
+| `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Used by eval helpers (`createEvalAgent`, mock generation) with `N8N_INSTANCE_AI_MODEL_URL`. |
 
 ### Web Research
 
@@ -127,17 +130,7 @@ reclaim idle remote sandboxes.
 | `N8N_INSTANCE_AI_REFLECTION_MODE` | `background` \| `afterObserve` | `background` | When the Reflector condenses the summary |
 | `N8N_INSTANCE_AI_HISTORY_RECALL` | boolean | `true` | Let the agent read earlier messages that the summary replaced (`read_history` tool) |
 
-Observer and Reflector use the same model as the orchestrator agent (see `@n8n/agents` observational memory defaults).
-
-### Builder templates
-
-These environment variables are read directly by `BuilderTemplatesService`.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_TEMPLATES_URL` | string | `https://sdk-templates.n8n.io` | Override the builder-template CDN base URL |
-| `N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS` | number | `24` | Refresh interval in hours. Invalid or non-positive values use 24 hours |
-| `N8N_INSTANCE_AI_TEMPLATES_DISABLED` | boolean | `false` | Disable remote builder templates |
+Observer and Reflector run on the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`, see Core). Without a utility model they use the orchestrator agent's model.
 
 ### Lifecycle & Housekeeping
 

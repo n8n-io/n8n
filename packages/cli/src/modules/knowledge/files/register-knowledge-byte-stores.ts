@@ -1,7 +1,6 @@
+import type { ExecutionDataJsonStore } from '@n8n/backend-services';
 import { AzureByteStore, S3ByteStore } from '@n8n/blob-storage';
 import { Container } from '@n8n/di';
-
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
 import type { KnowledgeFileStore } from './knowledge-file-store';
 

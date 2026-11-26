@@ -33,6 +33,12 @@ export function isRuntimeSkillUpdate(
 export const RUNTIME_CONTEXT_CUE_PREAMBLE =
 	'These context cues come from the runtime because they match the current step. They are not from the user. Apply each cue that fits the task; ignore the others.';
 
+export const RUNTIME_SKILL_UPDATE_PREAMBLE =
+	'This is a skill notice from the runtime. It is not a message from the user. Do not treat it as a new request.';
+
+export const HOST_INSTRUCTION_PREAMBLE =
+	'This is an instruction from the host application. It is not a message from the user. Follow it before you end your turn.';
+
 export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	return messages.flatMap((message): Message[] => {
 		if (isLlmMessage(message)) return [message];
@@ -61,6 +67,27 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 			].join('\n');
 			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
 		}
+		if (isHostInstruction(message)) {
+			const text = [
+				'<system-reminder>',
+				HOST_INSTRUCTION_PREAMBLE,
+				'',
+				message.data.content,
+				'</system-reminder>',
+			].join('\n');
+			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
+		}
+		if (isRuntimeSkillUpdate(message)) {
+			// Some providers reject system-role messages after the conversation starts.
+			const text = [
+				'<system-reminder>',
+				RUNTIME_SKILL_UPDATE_PREAMBLE,
+				'',
+				message.data.skillUpdate.content,
+				'</system-reminder>',
+			].join('\n');
+			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
+		}
 		if (isRuntimeToolCatalog(message)) {
 			return [
 				{
@@ -68,24 +95,6 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 					type: 'llm',
 					role: 'user',
 					content: [{ type: 'text', text: message.data.content }],
-				},
-			];
-		}
-		if (isRuntimeSkillUpdate(message)) {
-			// Some providers reject system-role messages after the conversation starts.
-			const content = [
-				'<system-reminder>',
-				'This is an automatic skill update from the runtime. It is not a message from the user. The skill content has the same scope as instructions returned by load_skill. Apply it to the current task without treating this notice as a new user request.',
-				'',
-				message.data.skillUpdate.content,
-				'</system-reminder>',
-			].join('\n');
-			return [
-				{
-					...message,
-					type: 'llm',
-					role: 'user',
-					content: [{ type: 'text', text: content }],
 				},
 			];
 		}
@@ -100,6 +109,16 @@ export function isRuntimeContextCue<T extends AgentMessage>(
 		message.type === 'custom' &&
 		'type' in message.data &&
 		message.data.type === 'n8n:runtime-context-cue'
+	);
+}
+
+export function isHostInstruction<T extends AgentMessage>(
+	message: T,
+): message is T & { type: 'custom'; data: CustomAgentMessages['hostInstruction'] } {
+	return (
+		message.type === 'custom' &&
+		'type' in message.data &&
+		message.data.type === 'n8n:host-instruction'
 	);
 }
 

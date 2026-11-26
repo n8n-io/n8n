@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import type { AgentApproval } from '@n8n/api-types';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentApproval,
+	AgentConfigValidationIssue,
+	AgentTaskDto,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
+import { AGENT_TASK_NAME_MAX_LENGTH, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -25,7 +30,10 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
+import AgentTaskForm from './AgentTaskForm.vue';
+import AgentTestButton from './AgentTestButton.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import { AGENT_SCHEDULE_VIEW_TYPE } from '../constants';
 
 export type ChannelView = AgentChannelView;
 
@@ -42,6 +50,15 @@ interface Props {
 	savedDescription?: string;
 	/** Persists n8n Chat's description. It skips the request when nothing changed. */
 	saveDescription?: (description: string) => Promise<void>;
+	/** Shows the schedule row and the schedule views. */
+	showSchedule?: boolean;
+	/** The task that the schedule edit view shows. */
+	task?: AgentTaskDto | null;
+	/** The saved enabled state of `task`. */
+	taskEnabled?: boolean;
+	isRunnable?: boolean;
+	validationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -49,6 +66,12 @@ const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
+	showSchedule: false,
+	task: null,
+	taskEnabled: true,
+	isRunnable: false,
+	validationIssues: () => [],
+	previewDisabledReason: undefined,
 });
 
 const emit = defineEmits<{
@@ -57,6 +80,8 @@ const emit = defineEmits<{
 	'channel-connected': [channelType: string];
 	'channel-disconnected': [channelType: string];
 	'agent-changed': [];
+	'tasks-changed': [];
+	'preview-task': [instructions: string];
 }>();
 
 const i18n = useI18n();
@@ -66,6 +91,7 @@ const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const {
 	fetchStatus,
+	n8nChatPublishedEnabled,
 	connectedCredentials,
 	integrationSettings,
 	integrationApproval,
@@ -115,6 +141,23 @@ const selectedChannelType = computed(() => {
 const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
 const isEditMode = computed(() => currentView.value.endsWith('_edit'));
 const isN8nChatSelected = computed(() => selectedChannelType.value === N8N_CHAT_INTEGRATION_TYPE);
+const isScheduleSelected = computed(
+	() => props.showSchedule && selectedChannelType.value === AGENT_SCHEDULE_VIEW_TYPE,
+);
+
+const scheduleIntegration = computed<ChatIntegrationDescriptor>(() => ({
+	type: AGENT_SCHEDULE_VIEW_TYPE,
+	label: i18n.baseText('agents.builder.tasks.title'),
+	icon: 'clock',
+	credentialTypes: [],
+}));
+const taskFormRef = ref<InstanceType<typeof AgentTaskForm>>();
+const taskName = ref('');
+/** The task the schedule view shows. Setup always starts a new task. */
+const scheduleTask = computed(() => (isEditMode.value ? props.task : null));
+const taskBusy = computed(
+	() => taskFormRef.value?.saving === true || taskFormRef.value?.deleting === true,
+);
 
 const { withN8nChat } = useN8nChatChannel();
 const channelList = computed(() => withN8nChat(catalog.value ?? []));
@@ -261,6 +304,7 @@ const channelViewLoading = computed(() => channelViewRef.value?.loading === true
 const actionInFlight = computed(
 	() =>
 		channelActionInFlight.value ||
+		taskBusy.value ||
 		removingChannel.value ||
 		channelViewLoading.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
@@ -327,7 +371,9 @@ const setupCanFinish = computed(
 const showFooterActions = computed(
 	() =>
 		selectedChannelType.value !== null &&
-		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value)),
+		(isScheduleSelected.value ||
+			isEditMode.value ||
+			(isSetupMode.value && isN8nChatSelected.value)),
 );
 
 const currentChannelCredentialId = computed(() =>
@@ -340,10 +386,11 @@ const credentialMissing = computed(
 const headerText = computed(() => {
 	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
+	if (isScheduleSelected.value) return taskName.value;
 	if (channel && !isListMode) {
 		return currentIntegration.value?.label ?? channel;
 	}
-	return i18n.baseText('agents.channels.modal.title');
+	return i18n.baseText('agents.builder.addTrigger.modal.title');
 });
 const currentStep = computed(() => (currentView.value === 'list' ? 'list' : 'configure'));
 
@@ -377,6 +424,12 @@ function connectAction(channelType: string) {
 		{ text: (key) => i18n.baseText(key) },
 		runtimeFor(channelType),
 	);
+}
+
+function listDescription(channelType: string): string | undefined {
+	return getAgentChannelPlatform(channelType).getListDescription?.({
+		text: (key) => i18n.baseText(key),
+	});
 }
 
 function goToSetup(channelType: string) {
@@ -468,7 +521,12 @@ async function writeChannelConfig(): Promise<boolean> {
 	if (actionInFlight.value) return false;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
-	const credentialId = currentChannelCredentialId.value;
+	// The lookup falls back to the connected credential. A channel that needs none
+	// (an API channel switched to none) must keep a cleared selection empty.
+	const credentialId =
+		channelType && channelViewRef.value?.credentialRequired === false
+			? (selectedCredentials.value[channelType] ?? '')
+			: currentChannelCredentialId.value;
 	if (!channelType || credentialMissing.value) return false;
 	if (channelViewRef.value?.validationError) return false;
 	if (!channelApprovalValid.value) return false;
@@ -611,6 +669,25 @@ function restartSetup(channelType: string, restart: AgentChannelRestart) {
 	goToSetup(channelType);
 }
 
+async function saveTask() {
+	if (!(await taskFormRef.value?.save())) return;
+	emit('tasks-changed');
+	completeAndClose();
+}
+
+async function removeTask() {
+	if (!(await taskFormRef.value?.remove())) return;
+	emit('tasks-changed');
+	completeAndClose();
+}
+
+function previewTask() {
+	const objective = taskFormRef.value?.previewObjective();
+	if (!objective || props.previewDisabledReason) return;
+	completeAndClose();
+	emit('preview-task', objective);
+}
+
 /** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */
 function handleChannelRemove(channelType: string) {
 	void requestDisconnect(channelType, '');
@@ -651,6 +728,12 @@ watch(
 		:open="open"
 		:step="currentStep"
 		:title="headerText"
+		:editable-title="isScheduleSelected"
+		:title-placeholder="
+			isScheduleSelected ? i18n.baseText('agents.builder.tasks.name.placeholder') : ''
+		"
+		:title-max-length="AGENT_TASK_NAME_MAX_LENGTH"
+		:title-error="isScheduleSelected ? (taskFormRef?.visibleNameError ?? '') : ''"
 		:show-back="currentView !== 'list' && openedFromList"
 		:show-footer="showFooterActions"
 		:show-cancel="!isN8nChatSelected"
@@ -659,6 +742,7 @@ watch(
 		:disable-outside-pointer-events="!credentialModalOpen"
 		@interact-outside="handleInteractOutside"
 		@update:open="handleModalOpenUpdate"
+		@update:title="taskName = $event"
 		@back="goBackToList"
 	>
 		<template #headerActions>
@@ -677,6 +761,7 @@ watch(
 						v-for="integration in channelList"
 						:key="integration.type"
 						:integration="integration"
+						:description="listDescription(integration.type)"
 						:configured="isConfigured(integration.type)"
 						:connected="isConnected(integration.type)"
 						:not-running="hasRuntimeError(integration.type)"
@@ -693,7 +778,32 @@ watch(
 						@edit="goToEdit"
 						@remove="handleChannelRemove"
 					/>
+					<AgentChannelListItem
+						v-if="showSchedule"
+						:integration="scheduleIntegration"
+						:description="i18n.baseText('agents.builder.tasks.description')"
+						:configured="false"
+						:connected="false"
+						:loading="listLoading"
+						:connect-action="{ label: i18n.baseText('generic.add') }"
+						data-testid="agent-channel-schedule-row"
+						@setup="goToSetup"
+					/>
 				</ul>
+			</div>
+
+			<div v-if="isScheduleSelected" :class="$style.editView">
+				<AgentTaskForm
+					:key="`${currentView}-${viewSession}-${scheduleTask?.id ?? 'new'}`"
+					ref="taskFormRef"
+					v-model:name="taskName"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:task="scheduleTask"
+					:is-published="isPublished"
+					:enabled="isEditMode ? taskEnabled : true"
+					:ensure-agent-persisted="ensureAgentPersisted"
+				/>
 			</div>
 
 			<div
@@ -703,6 +813,7 @@ watch(
 			>
 				<component
 					:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
+					v-bind="isN8nChatSelected ? { availableInChat: n8nChatPublishedEnabled } : {}"
 					:key="viewSession"
 					ref="channelViewRef"
 					v-model="selectedCredentials[currentIntegration.type]"
@@ -767,7 +878,20 @@ watch(
 			</div>
 		</div>
 
-		<template v-if="showFooterActions && isEditMode" #footerLeft>
+		<template v-if="isScheduleSelected && isEditMode" #footerLeft>
+			<N8nButton
+				variant="ghost"
+				size="medium"
+				:loading="taskFormRef?.deleting"
+				:disabled="disabled || actionInFlight"
+				data-testid="agent-task-delete"
+				@click="removeTask"
+			>
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.tasks.delete') }}
+			</N8nButton>
+		</template>
+		<template v-else-if="showFooterActions && isEditMode && !isScheduleSelected" #footerLeft>
 			<N8nButton
 				variant="ghost"
 				size="medium"
@@ -780,8 +904,29 @@ watch(
 				{{ removeChannelLabel }}
 			</N8nButton>
 		</template>
+		<template v-if="isScheduleSelected" #footerBeforeCancel>
+			<AgentTestButton
+				:disabled-reason="previewDisabledReason"
+				:is-runnable="isRunnable"
+				:validation-issues="validationIssues"
+				variant="ghost"
+				test-id="agent-task-preview"
+				@open-preview="previewTask"
+			/>
+		</template>
 		<template v-if="showFooterActions" #footerActions>
-			<template v-if="isN8nChatSelected">
+			<N8nButton
+				v-if="isScheduleSelected"
+				variant="solid"
+				size="medium"
+				:loading="taskFormRef?.saving"
+				:disabled="actionInFlight"
+				data-testid="agent-task-save"
+				@click="saveTask"
+			>
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
+			<template v-else-if="isN8nChatSelected">
 				<N8nButton
 					variant="ghost"
 					size="medium"

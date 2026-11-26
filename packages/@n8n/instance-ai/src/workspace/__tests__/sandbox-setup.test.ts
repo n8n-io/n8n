@@ -68,10 +68,8 @@ import { join } from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builder-templates-archive.fixtures';
 import { buildKnowledgeBaseWorkspaceBundle } from '../../knowledge-base/materialize-knowledge-base';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
-import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import {
 	isSandboxWorkspaceInitialized,
@@ -102,9 +100,7 @@ function restoreLinkWorkspaceSdkEnv(value: string | undefined): void {
 	}
 }
 
-function createSetupContext(
-	templatesBundle: BuilderTemplatesBundle | null = null,
-): InstanceAiContext {
+function createSetupContext(): InstanceAiContext {
 	return {
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		nodeService: {
@@ -114,14 +110,6 @@ function createSetupContext(
 			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 			get: vi.fn(),
 		},
-		...(templatesBundle
-			? {
-					templatesService: {
-						getBundle: vi.fn().mockResolvedValue(templatesBundle),
-						getVersion: vi.fn().mockReturnValue(templatesBundle.version),
-					},
-				}
-			: {}),
 	} as unknown as InstanceAiContext;
 }
 
@@ -274,6 +262,36 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
 		expect(packageJson.dependencies.tsx).toBeDefined();
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
+	});
+
+	it('should use local tarballs for snapshot workspace packages', async () => {
+		const { buildSnapshotPackageJson } = await import('../sandbox-setup.js');
+
+		const packageJson = jsonParse<{ dependencies: Record<string, string> }>(
+			buildSnapshotPackageJson([
+				{
+					filename: 'n8n-utils-1.55.0.tgz',
+					packageName: '@n8n/utils',
+					packagePath: '/repo/packages/@n8n/utils',
+					tarball: Buffer.from('utils'),
+					version: '1.55.0',
+				},
+				{
+					filename: 'n8n-workflow-sdk-0.41.0.tgz',
+					packageName: '@n8n/workflow-sdk',
+					packagePath: '/repo/packages/@n8n/workflow-sdk',
+					tarball: Buffer.from('sdk'),
+					version: '0.41.0',
+				},
+			]),
+		);
+
+		expect(packageJson.dependencies).toMatchObject({
+			'@n8n/utils': 'file:.n8n-packages/n8n-utils-1.55.0.tgz',
+			'@n8n/workflow-sdk': 'file:.n8n-packages/n8n-workflow-sdk-0.41.0.tgz',
+			tsx: expect.any(String),
+			typescript: '7.0.2',
+		});
 	});
 });
 describe('BUILD_MJS', () => {
@@ -476,7 +494,8 @@ describe('setupSandboxWorkspace', () => {
 
 		await setup(workspace, createSetupContext());
 
-		expect(writeFiles).toHaveBeenCalledTimes(1);
+		// One batch for the setup files, one for the knowledge base.
+		expect(writeFiles).toHaveBeenCalledTimes(2);
 		expect(writeFiles.mock.calls[0][0].map(({ path }) => path).sort()).toEqual([
 			'/home/daytona/workspace/build.mjs',
 			'/home/daytona/workspace/node-types/index.txt',
@@ -484,6 +503,12 @@ describe('setupSandboxWorkspace', () => {
 			'/home/daytona/workspace/tsconfig.json',
 			'/home/daytona/workspace/workflow-diagnostics.mts',
 		]);
+		expect(writeFiles.mock.calls[1][0].length).toBeGreaterThan(0);
+		expect(
+			writeFiles.mock.calls[1][0].every(({ path }) =>
+				path.startsWith('/home/daytona/workspace/knowledge-base/'),
+			),
+		).toBe(true);
 		const singleWrites = writeFile.mock.calls.map(([path]) => path);
 		expect(singleWrites).not.toContain('/home/daytona/workspace/package.json');
 		expect(singleWrites).not.toContain('/home/daytona/workspace/node-types/index.txt');
@@ -546,7 +571,7 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('upgrades the knowledge base when sandbox was initialized before templates existed', async () => {
+	it('replaces a stale knowledge base in an initialized sandbox', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -577,20 +602,17 @@ describe('setupSandboxWorkspace', () => {
 			return await Promise.reject(new Error(`ENOENT: ${path}`));
 		});
 
-		const bundle: BuilderTemplatesBundle = {
-			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
-			version: 'test-sha',
-		};
 		const initialized = await setupSandboxWorkspace(
 			createLocalWorkspace(writeFile, undefined, readFile),
-			createSetupContext(bundle),
+			createSetupContext(),
 		);
 
 		expect(initialized).toBe(false);
 		expect(installCommandsFrom(runInSandbox)).toEqual([]);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
-		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+		expect(writtenPaths).toContain('/sandbox/knowledge-base/.manifest.json');
+		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(false);
 	});
 
 	it('reads only the knowledge base manifest when the prebaked bundle matches', async () => {
@@ -638,35 +660,6 @@ describe('setupSandboxWorkspace', () => {
 		]);
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(verifiedBundles.get(knowledgeBase.manifestPath)).toBe(knowledgeBase.contentHash);
-	});
-
-	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const writeFile = vi.fn<
-			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => {});
-
-		const bundle: BuilderTemplatesBundle = {
-			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
-			version: 'test-sha',
-		};
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext(bundle));
-
-		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
 	});
 
 	it.each(['mkdir', 'writeFile'])(

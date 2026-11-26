@@ -1,0 +1,21 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"payload": {
+			"additionalProperties": true,
+			"properties": {
+				"exp": {
+					"type": "number"
+				},
+				"iat": {
+					"type": "number"
+				},
+				"iss": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

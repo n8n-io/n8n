@@ -1,4 +1,5 @@
 import {
+	AGENT_BUILDER_TOOL_NAMES,
 	buildDataTablesSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -7,19 +8,23 @@ import {
 	buildWorkflowActionSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	getDataTableCallAction,
 	getExecutionCallAction,
 	getWorkspaceCallAction,
 	isFormerWorkflowsTool,
+	isSessionGrantableDataTableAction,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
+	type DataTableWriteToolAction,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-/** Workflow tool actions whose approval the backend stores as a per-workflow grant. */
+/** Workflow tool actions whose approval the backend stores as a thread grant. */
 const WORKFLOW_GRANT_ACTIONS = new Set([
 	'delete',
 	'unarchive',
@@ -61,21 +66,49 @@ function resolveAlwaysAllowWorkflowId(
 	return '';
 }
 
+/** The distinct actions of a `change_data_tables` call that the backend grants for the session. */
+function grantableBatchActions(args: Record<string, unknown>): DataTableWriteToolAction[] {
+	const changes: unknown[] = Array.isArray(args.changes) ? args.changes : [];
+	const actions = new Set(changes.map((change) => (isRecord(change) ? change.action : undefined)));
+	return DATA_TABLE_WRITE_TOOL_ACTIONS.filter(
+		(action) => actions.has(action) && isSessionGrantableDataTableAction(action),
+	);
+}
+
 /**
- * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
- * generic `workflow_builder_build_workflow:` key would auto-approve later foreign edits.
+ * The session keys that approving a call with "Always allow" grants. A batch of
+ * data table changes grants one key for each action, so it returns a list.
+ * Returns an empty list when the grant cannot be scoped, such as an edit
+ * without a workflow ID: a generic `workflow_builder_build_workflow:` key would
+ * auto-approve later foreign edits.
  */
-export function buildAlwaysAllowKey(
+export function buildAlwaysAllowKeys(
+	rawToolName: string,
+	args: Record<string, unknown>,
+	confirmationWorkflowId?: string,
+): string[] {
+	if (rawToolName === CHANGE_DATA_TABLES_TOOL_NAME) {
+		return grantableBatchActions(args).map(buildDataTablesSessionGrantKey);
+	}
+	const key = buildSingleAlwaysAllowKey(rawToolName, args, confirmationWorkflowId);
+	return key === null ? [] : [key];
+}
+
+function buildSingleAlwaysAllowKey(
 	rawToolName: string,
 	args: Record<string, unknown>,
 	confirmationWorkflowId?: string,
 ): string | null {
 	const toolName = resolveBuilderToolName(rawToolName);
+	// Going live is always the user's decision, so publishing an agent asks every time and
+	// never offers a grant that would approve the next card on its own (TRUST-1197).
+	if (toolName === AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT) return null;
 	if (toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) {
 		const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 		return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
 	}
 	const action = typeof args.action === 'string' ? args.action : '';
+	if (toolName === 'skills' && action === 'import-from-source') return null;
 	const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 	// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 	// workflow the user approved. Without a workflow ID, refuse to store a key (fail closed).
@@ -104,7 +137,8 @@ export function buildAlwaysAllowKey(
 		return buildUpdateWorkflowSessionGrantKey(workflowId);
 	}
 	// Other gated workflow actions, such as publish, are per-workflow too, matching the
-	// backend `workflows:<action>:<id>` thread grant. Without an ID, fail closed.
+	// backend `workflows:<action>:<id>` thread grant. Archive and unpublish cover every
+	// workflow of the thread. Without an ID, fail closed.
 	const grantAction = workflowGrantAction(toolName, action);
 	if (grantAction) {
 		if (!workflowId) return null;

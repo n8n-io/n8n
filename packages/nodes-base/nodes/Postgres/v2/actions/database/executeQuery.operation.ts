@@ -8,7 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { evaluateResolvables, resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type {
 	PgpDatabase,
@@ -66,15 +66,15 @@ export async function execute(
 	replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 	for (let index = 0; index < items.length; index++) {
 		await yieldToEventLoop();
-		let query = this.getNodeParameter('query', index) as string;
+		const nodeVersion = nodeOptions.nodeVersion as number;
 
-		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
-		}
+		let query = resolveExpressions(
+			this.getNodeParameter('query', index) as string,
+			(resolvable) => this.evaluateExpression(resolvable, index),
+			{ legacy: nodeVersion < 2.9 },
+		);
 
 		let values: QueryValue[] = [];
-
-		const nodeVersion = nodeOptions.nodeVersion as number;
 
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
@@ -90,11 +90,11 @@ export async function execute(
 			if (rawReplacements) {
 				if (nodeVersion >= 2.5) {
 					const rawValues = rawReplacements.replace(/^=+/, '');
-					const resolvables = getResolvables(rawValues);
-					if (resolvables.length) {
-						for (const resolvable of resolvables) {
-							const rawEvaluated = this.evaluateExpression(`${resolvable}`, index);
-
+					const evaluatedResolvables = evaluateResolvables(rawValues, (resolvable) =>
+						this.evaluateExpression(resolvable, index),
+					);
+					if (evaluatedResolvables.length) {
+						for (const rawEvaluated of evaluatedResolvables) {
 							if (Array.isArray(rawEvaluated)) {
 								for (const item of rawEvaluated) {
 									if (item === undefined) {
@@ -139,12 +139,12 @@ export async function execute(
 						.map((entry) => entry.trim());
 
 					for (const rawValue of rawValues) {
-						const resolvables = getResolvables(rawValue);
+						const evaluatedValues = evaluateResolvables(rawValue, (resolvable) =>
+							this.evaluateExpression(resolvable, index),
+						);
 
-						if (resolvables.length) {
-							for (const resolvable of resolvables) {
-								values.push(this.evaluateExpression(`${resolvable}`, index) as IDataObject);
-							}
+						if (evaluatedValues.length) {
+							values.push(...(evaluatedValues as IDataObject[]));
 						} else {
 							values.push(rawValue);
 						}
@@ -169,7 +169,10 @@ export async function execute(
 			}
 		}
 
-		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+		if (
+			nodeVersion < 2.9 &&
+			(!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText)
+		) {
 			let nextValueIndex = values.length + 1;
 			const literals = query.match(/'\$[0-9]+'/g) ?? [];
 			for (const literal of literals) {

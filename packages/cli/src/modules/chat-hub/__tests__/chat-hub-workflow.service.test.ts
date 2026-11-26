@@ -1,6 +1,7 @@
 import type { ChatHubConversationModel, ChatProviderSettingsDto } from '@n8n/api-types';
 import type { PolicyCleared } from '@n8n/decorators';
-import type { Logger } from '@n8n/backend-common';
+import type { Logger, ModuleName, ModuleRegistry } from '@n8n/backend-common';
+import { WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import type { Project, WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Cipher, BinaryDataService } from 'n8n-core';
@@ -42,6 +43,9 @@ describe('ChatHubWorkflowService', () => {
 	const mockCipher = mock<Cipher>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
+	const workflowVersionedSettings = new WorkflowVersionedSettingsService(moduleRegistry);
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -77,6 +81,7 @@ describe('ChatHubWorkflowService', () => {
 			mockCipher,
 			policyEnforcementService,
 			deprecatedNodesValidationService,
+			workflowVersionedSettings,
 		);
 
 		// Mock repository methods
@@ -1208,6 +1213,64 @@ describe('ChatHubWorkflowService', () => {
 		});
 	});
 
+	describe('engine of a workflow agent run', () => {
+		const chatTrigger = {
+			id: 'chat-trigger',
+			name: 'Chat Trigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
+			typeVersion: 1.4,
+			position: [0, 0],
+			parameters: { availableInChat: true, options: { responseMode: 'lastNode' } },
+		} as INode;
+
+		afterEach(() => {
+			eligibleModules.length = 0;
+		});
+
+		const runEngine = async (manual: boolean) => {
+			// A plain object: a deep mock answers every unknown key, which fails the trigger parameter check.
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({
+				id: 'agent-workflow',
+				nodes: [chatTrigger],
+				connections: {},
+				settings: { engineType: 'v2' },
+				activeVersion: { nodes: [chatTrigger], connections: {}, settings: { engineType: 'v1' } },
+			} as never);
+
+			const prepared = await service.prepareReplyWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'session-1',
+				{},
+				{ provider: 'n8n', workflowId: 'agent-workflow' },
+				[],
+				'Hello',
+				[],
+				[],
+				'UTC',
+				{},
+				{ authToken: 'token', browserId: undefined, method: 'POST', endpoint: '/chat' },
+				manual,
+			);
+			return prepared.workflowData.settings?.engineType;
+		};
+
+		it('runs on the engine of the published version with the engine-v2 module', async () => {
+			eligibleModules.push('engine-v2');
+
+			expect(await runEngine(false)).toBe('v1');
+		});
+
+		it('runs a manual chat on the draft engine', async () => {
+			eligibleModules.push('engine-v2');
+
+			expect(await runEngine(true)).toBe('v2');
+		});
+
+		it('runs on the draft engine without the engine-v2 module, as before', async () => {
+			expect(await runEngine(false)).toBe('v2');
+		});
+	});
+
 	describe('prepareExecutionData', () => {
 		it('should encrypt executionMetadata before adding to trigger item', async () => {
 			const triggerNode = {
@@ -1318,6 +1381,70 @@ describe('ChatHubWorkflowService', () => {
 		});
 	});
 
+	describe('binary data access', () => {
+		const attachment = {
+			id: 'filesystem-v2:chat-hub/file-1',
+			data: 'filesystem-v2',
+			mimeType: 'image/png',
+			fileName: 'cat.png',
+		} satisfies IBinaryData;
+
+		it('keeps attachment access in a generated chat execution', async () => {
+			const result = await service.createChatWorkflow(
+				'user-123',
+				'session-456',
+				'project-789',
+				[],
+				'Hello',
+				[attachment],
+				{},
+				{ provider: 'openai', model: 'gpt-4' },
+				undefined,
+				[],
+				'UTC',
+				null,
+				defaultExecutionMetadata,
+			);
+
+			expect(result.executionData.binaryDataAccess).toEqual([attachment.id]);
+		});
+
+		it('keeps attachment access in a custom workflow execution', async () => {
+			const chatTrigger = {
+				id: 'chat-trigger',
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { options: { responseMode: 'streaming' }, availableInChat: true },
+			} satisfies INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({
+				id: 'workflow-1',
+				name: 'Custom chat',
+				nodes: [chatTrigger],
+				connections: {},
+				settings: {},
+				activeVersion: { nodes: [chatTrigger], connections: {} },
+			} as never);
+
+			const result = await service.prepareReplyWorkflow(
+				mock<User>({ id: 'user-123' }),
+				'session-456',
+				{},
+				{ provider: 'n8n', workflowId: 'workflow-1' },
+				[],
+				'Hello',
+				[],
+				[attachment],
+				'UTC',
+				{},
+				defaultExecutionMetadata,
+			);
+
+			expect(result.executionData.binaryDataAccess).toEqual([attachment.id]);
+		});
+	});
+
 	describe('createEmbeddingsInsertionWorkflow', () => {
 		const SEMANTIC_SEARCH_OPTIONS: SemanticSearchOptions = {
 			embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },
@@ -1395,6 +1522,7 @@ describe('ChatHubWorkflowService', () => {
 				mockCipher,
 				policyEnforcementService,
 				deprecatedNodesValidationService,
+				workflowVersionedSettings,
 			);
 
 			const mockTrx = mock<EntityManager>();

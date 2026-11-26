@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
-import { AgentTagMapping, LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
+import {
+	AgentTagMapping,
+	LIKE_ESCAPE_CLAUSE,
+	type FolderRepository,
+	type ServiceAccountRepository,
+	type TransactionRunner,
+} from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,6 +22,7 @@ const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 
 describe('AgentRepository', () => {
 	let repository: AgentRepository;
+	const folderRepository = mock<FolderRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -24,6 +31,8 @@ describe('AgentRepository', () => {
 			mockDataSource as never,
 			mock<TransactionRunner>(),
 			globalConfig,
+			folderRepository,
+			mock<ServiceAccountRepository>(),
 		);
 	});
 
@@ -158,6 +167,7 @@ describe('AgentRepository', () => {
 				'agent.activeVersionId',
 				'agent.availableInMCP',
 				'agent.updatedAt',
+				'agent.parentFolderId',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
@@ -229,9 +239,9 @@ describe('AgentRepository', () => {
 
 		it('returns { count: 0, data: [] } immediately when projectIds is empty', async () => {
 			const result = await repository.findByProjectIdsPaginated([], {
-				skip: 0,
-				take: 10,
-			} as never);
+				offset: 0,
+				limit: 10,
+			});
 
 			expect(result).toEqual({ count: 0, data: [] });
 		});
@@ -242,10 +252,10 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			const result = await repository.findByProjectIdsPaginated(['project-1'], {
-				skip: 0,
-				take: 25,
+				offset: 0,
+				limit: 25,
 				sortBy: 'name:asc',
-			} as never);
+			});
 
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
@@ -256,14 +266,24 @@ describe('AgentRepository', () => {
 			expect(result).toEqual({ count: 1, data: agents });
 		});
 
+		it('applies the default limit when the caller omits it', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], { offset: 0 });
+
+			expect(mockQb.skip).toHaveBeenCalledWith(0);
+			expect(mockQb.take).toHaveBeenCalledWith(10);
+		});
+
 		it('omits the project filter when project access is global', async () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(null, {
-				skip: 0,
-				take: 25,
-			} as never);
+				offset: 0,
+				limit: 25,
+			});
 
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
 			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
@@ -277,10 +297,10 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1', 'p2'], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { query: 'support' },
-			} as never);
+			});
 
 			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
 				query: '%support%',
@@ -291,7 +311,7 @@ describe('AgentRepository', () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
-			await repository.findByProjectIdsPaginated(['p1'], { skip: 0, take: 10 } as never);
+			await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
 
 			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.tags', 'tags');
 		});
@@ -301,7 +321,7 @@ describe('AgentRepository', () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
-			await repository.findByProjectIdsPaginated(['p1'], { skip: 0, take: 10 } as never);
+			await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
 
 			expect(mockQb.leftJoinAndSelect).not.toHaveBeenCalledWith('agent.tags', 'tags');
 		});
@@ -311,10 +331,10 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1'], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { tags: ['tag-1', 'tag-2'] },
-			} as never);
+			});
 
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.id IN (SUBQUERY_SQL)');
 			expect(mockQb.setParameters).toHaveBeenCalledWith({
@@ -328,10 +348,10 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1'], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { tags: ['tag-1', 'tag-1', 'tag-2'] },
-			} as never);
+			});
 
 			expect(mockQb.setParameters).toHaveBeenCalledWith({
 				tagIds: ['tag-1', 'tag-2'],
@@ -344,10 +364,10 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1'], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { query: 'support' },
-			} as never);
+			});
 
 			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
 				'agent.id IN (SUBQUERY_SQL)',
@@ -361,10 +381,10 @@ describe('AgentRepository', () => {
 				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 				await repository.findByProjectIdsPaginated(['p1'], {
-					skip: 0,
-					take: 10,
+					offset: 0,
+					limit: 10,
 					filter: { availableInChat: true },
-				} as never);
+				});
 
 				expect(mockQb.andWhere).toHaveBeenCalledWith(
 					"EXISTS (SELECT 1 FROM json_each(COALESCE(json_extract(\"activeVersion\".\"schema\", '$.integrations'), '[]')) AS integration WHERE json_extract(integration.value, '$.type') = :n8nChatType)",
@@ -377,10 +397,10 @@ describe('AgentRepository', () => {
 				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 				await repository.findByProjectIdsPaginated(['p1'], {
-					skip: 0,
-					take: 10,
+					offset: 0,
+					limit: 10,
 					filter: { availableInChat: false },
-				} as never);
+				});
 
 				expect(mockQb.andWhere).toHaveBeenCalledWith(
 					"NOT (EXISTS (SELECT 1 FROM json_each(COALESCE(json_extract(\"activeVersion\".\"schema\", '$.integrations'), '[]')) AS integration WHERE json_extract(integration.value, '$.type') = :n8nChatType))",
@@ -395,10 +415,10 @@ describe('AgentRepository', () => {
 
 				try {
 					await repository.findByProjectIdsPaginated(['p1'], {
-						skip: 0,
-						take: 10,
+						offset: 0,
+						limit: 10,
 						filter: { availableInChat: true },
-					} as never);
+					});
 				} finally {
 					Object.assign(entityManager.connection, { options: { type: 'sqlite' } });
 				}
@@ -414,13 +434,80 @@ describe('AgentRepository', () => {
 				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 				await repository.findByProjectIdsPaginated(['p1'], {
-					skip: 0,
-					take: 10,
+					offset: 0,
+					limit: 10,
 					filter: { query: 'support' },
-				} as never);
+				});
 
 				expect(mockQb.andWhere).not.toHaveBeenCalledWith(
 					expect.stringContaining('n8nChatType'),
+					expect.anything(),
+				);
+			});
+		});
+
+		describe('active filter', () => {
+			it('adds the published clause when true', async () => {
+				const mockQb = makePaginationQb();
+				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+				await repository.findByProjectIdsPaginated(['p1'], {
+					offset: 0,
+					limit: 10,
+					filter: { active: true },
+				});
+
+				expect(mockQb.andWhere).toHaveBeenCalledWith('agent.activeVersionId IS NOT NULL');
+			});
+
+			it('adds the unpublished clause when false', async () => {
+				const mockQb = makePaginationQb();
+				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+				await repository.findByProjectIdsPaginated(['p1'], {
+					offset: 0,
+					limit: 10,
+					filter: { active: false },
+				});
+
+				expect(mockQb.andWhere).toHaveBeenCalledWith('agent.activeVersionId IS NULL');
+			});
+
+			it('adds no published-state clause when undefined', async () => {
+				const mockQb = makePaginationQb();
+				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+				await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
+
+				expect(mockQb.andWhere).not.toHaveBeenCalledWith('agent.activeVersionId IS NOT NULL');
+				expect(mockQb.andWhere).not.toHaveBeenCalledWith('agent.activeVersionId IS NULL');
+			});
+		});
+
+		describe('projectId filter', () => {
+			it('narrows the list to the given project', async () => {
+				const mockQb = makePaginationQb();
+				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+				await repository.findByProjectIdsPaginated(['p1', 'p2'], {
+					offset: 0,
+					limit: 10,
+					filter: { projectId: 'p2' },
+				});
+
+				expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId = :filterProjectId', {
+					filterProjectId: 'p2',
+				});
+			});
+
+			it('adds no clause when undefined', async () => {
+				const mockQb = makePaginationQb();
+				vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+				await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
+
+				expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+					'agent.projectId = :filterProjectId',
 					expect.anything(),
 				);
 			});
@@ -443,6 +530,8 @@ describe('AgentRepository', () => {
 				mockDataSource as never,
 				transactionRunner,
 				globalConfig,
+				folderRepository,
+				mock<ServiceAccountRepository>(),
 			);
 
 			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
@@ -463,6 +552,8 @@ describe('AgentRepository', () => {
 				mockDataSource as never,
 				makeTransactionRunner(),
 				globalConfig,
+				folderRepository,
+				mock<ServiceAccountRepository>(),
 			);
 
 			await repository.overwriteTagMappings('agent-1', []);
@@ -475,7 +566,8 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findN8nChatListPaginated', () => {
-		it('excludes archived agents when the filter requests them', async () => {
+		it('includes descendant folders while excluding archived chat agents', async () => {
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['child-folder']);
 			const mockQb = {
 				leftJoinAndSelect: vi.fn().mockReturnThis(),
 				where: vi.fn().mockReturnThis(),
@@ -489,14 +581,41 @@ describe('AgentRepository', () => {
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findN8nChatListPaginated(null, ['p1'], {
-				skip: 0,
-				take: 10,
-				filter: { availableInChat: true, includeArchived: true },
-			} as never);
+				offset: 0,
+				limit: 10,
+				filter: {
+					availableInChat: true,
+					includeArchived: true,
+					parentFolderId: 'parent-folder',
+					includeDescendants: true,
+				},
+			});
 
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.parentFolderId IN (:...folderIds)', {
+				folderIds: ['parent-folder', 'child-folder'],
+			});
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
 				isArchived: false,
 			});
+		});
+
+		it('applies the default limit when the caller omits it', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findN8nChatListPaginated(null, ['p1'], { offset: 5 });
+
+			expect(mockQb.skip).toHaveBeenCalledWith(5);
+			expect(mockQb.take).toHaveBeenCalledWith(10);
 		});
 	});
 

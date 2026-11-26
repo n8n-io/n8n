@@ -2,6 +2,7 @@ import type { SuspensionInfo } from '../../../src/utils/stream-helpers';
 import { discoveryTestCaseSchema } from '../../data/discovery';
 import {
 	buildConfirmationPolicy,
+	declaresAnswer,
 	resolveConfirmation,
 	unmatchedConfirmations,
 } from '../confirmation-policy';
@@ -168,6 +169,15 @@ describe('resolveConfirmation', () => {
 			approved: true,
 			answer: 'yes',
 		});
+	});
+});
+
+describe('declaresAnswer', () => {
+	const policy = buildConfirmationPolicy(scenario({ confirmations: { ask_user: 'approve' } }));
+
+	it('is true only for a tool that the scenario answers', () => {
+		expect(declaresAnswer(suspension('ask_user'), policy)).toBe(true);
+		expect(declaresAnswer(suspension('mcp-servers'), policy)).toBe(false);
 	});
 });
 

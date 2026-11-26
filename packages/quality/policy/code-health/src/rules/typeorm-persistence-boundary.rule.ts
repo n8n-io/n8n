@@ -32,9 +32,12 @@ const DEFAULT_ALLOWED_FILES = [
 	// This adapter manages dynamic user-table schemas.
 	'packages/modules/data-table/backend/src/persistence/data-table-ddl.ts',
 	'packages/cli/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts',
+	// Cleanup must read storage references while AgentFile entity metadata is absent.
+	'packages/cli/src/modules/knowledge/repositories/knowledge-file-cleanup.repository.ts',
 	// Engine v2 keeps its persistence infrastructure and composition root in one package.
 	'packages/@n8n/engine/src/database/create-stores.ts',
 	'packages/@n8n/engine/src/database/data-source.ts',
+	'packages/@n8n/engine/src/database/run-migrations.ts',
 	'packages/@n8n/engine/src/database/typeorm-execution-store.ts',
 	'packages/@n8n/engine/src/database/typeorm-execution-view-store.ts',
 	'packages/@n8n/engine/src/database/typeorm-step-store.ts',

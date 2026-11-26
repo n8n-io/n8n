@@ -347,6 +347,7 @@ describe('workflows tool', () => {
 			expect(result).toEqual({
 				workflowId: 'w1',
 				name: 'Test WF',
+				engine: 'v1',
 				nodeCount: 0,
 				nodes: [],
 				code: '// generated code',
@@ -1269,6 +1270,35 @@ describe('workflows tool', () => {
 				expect.objectContaining({ includeNodeIds: true, includePositions: false }),
 			);
 		});
+
+		it.each([
+			{ settings: { engineType: 'v2' }, engine: 'v2' },
+			{ settings: { engineType: 'v1' }, engine: 'v1' },
+			{ settings: undefined, engine: 'v1' },
+		])('returns engine $engine for settings $settings', async ({ settings, engine }) => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+				name: 'Test WF',
+				nodes: [],
+				connections: {},
+				settings,
+			});
+			const tool = createWorkflowToolRouter(context);
+
+			const current = await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+			const past = await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v-old' },
+				{} as never,
+			);
+
+			expect(current).toEqual(expect.objectContaining({ engine }));
+			expect(past).toEqual(expect.objectContaining({ engine }));
+		});
 	});
 
 	describe('get-as-code source file materialization', () => {
@@ -1916,12 +1946,30 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('stores a per-workflow grant for unarchive and skips the next approval', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			const tool = toolFor(context, 'unarchive');
+
+			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith('workflows:unarchive:wf1');
+			expect(context.workflowService.unarchive).toHaveBeenCalledWith('wf1');
+
+			context.sessionApprovedToolKeys = new Set(['workflows:unarchive:wf1']);
+			const suspend = vi.fn();
+			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, { suspend } as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it.each([
 			['delete', 'archive'],
-			['unarchive', 'unarchive'],
 			['unpublish', 'unpublish'],
 		] as const)(
-			'stores a per-workflow grant for %s and skips the next approval',
+			'stores one grant for %s that skips the approval for other workflows',
 			async (action, serviceMethod) => {
 				const context = createMockContext();
 				context.grantSessionToolApproval = vi.fn(async () => {});
@@ -1931,14 +1979,14 @@ describe('workflows tool', () => {
 					resumeData: { approved: true, scope: 'session' },
 				} as never);
 
-				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(`workflows:${action}:wf1`);
-				expect(context.workflowService[serviceMethod]).toHaveBeenCalledWith('wf1');
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(`workflows:${action}`);
 
-				context.sessionApprovedToolKeys = new Set([`workflows:${action}:wf1`]);
+				context.sessionApprovedToolKeys = new Set([`workflows:${action}`]);
 				const suspend = vi.fn();
-				await executeTool(tool, { action, workflowId: 'wf1' }, { suspend } as never);
+				await executeTool(tool, { action, workflowId: 'wf2' }, { suspend } as never);
 
 				expect(suspend).not.toHaveBeenCalled();
+				expect(context.workflowService[serviceMethod]).toHaveBeenCalledWith('wf2');
 			},
 		);
 	});
@@ -2035,6 +2083,127 @@ describe('workflows tool', () => {
 	});
 
 	describe('publish action', () => {
+		describe('when a review blocks the publish', () => {
+			function contextWithReviewBlock(
+				reason: 'review_required' | 'review_pending' | 'changes_requested' | undefined,
+			) {
+				const context = createMockContext({ permissions: { publishWorkflow: 'always_allow' } });
+				context.workflowService.getPublishReviewBlock = vi.fn().mockResolvedValue(reason);
+				return context;
+			}
+
+			it('should point to Submit for review instead of publishing when a review is required', async () => {
+				const context = contextWithReviewBlock('review_required');
+				const suspend = vi.fn();
+
+				const tool = createWorkflowToolRouter(context);
+				const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: undefined,
+				} as never);
+
+				expect(context.workflowService.publish).not.toHaveBeenCalled();
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					success: false,
+					denied: true,
+					reason: 'review_required',
+					workflowId: 'wf1',
+					guidance: expect.stringContaining('Submit for review'),
+				});
+			});
+
+			it('should say that a review is open when the workflow has one', async () => {
+				const context = contextWithReviewBlock('changes_requested');
+
+				const tool = createWorkflowToolRouter(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'publish', workflowId: 'wf1' },
+					{} as never,
+				);
+
+				expect(context.workflowService.publish).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					success: false,
+					reason: 'changes_requested',
+					guidance: expect.stringContaining('review is open'),
+				});
+			});
+
+			it('should check the requested version', async () => {
+				const context = contextWithReviewBlock(undefined);
+
+				const tool = createWorkflowToolRouter(context);
+				await executeTool(
+					tool,
+					{ action: 'publish', workflowId: 'wf1', versionId: 'version-1' },
+					{} as never,
+				);
+
+				expect(context.workflowService.getPublishReviewBlock).toHaveBeenCalledWith(
+					'wf1',
+					'version-1',
+				);
+			});
+
+			it('should refuse when a supporting workflow needs a review', async () => {
+				const context = createMockContext({ permissions: { publishWorkflow: 'always_allow' } });
+				(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+					name: 'Test WF',
+					nodes: [
+						{
+							name: 'Run Sub',
+							type: 'n8n-nodes-base.executeWorkflow',
+							parameters: { source: 'database', workflowId: 'sub-1' },
+						},
+					],
+					connections: {},
+				});
+				context.workflowService.getPublishReviewBlock = vi
+					.fn()
+					.mockImplementation(async (id: string) =>
+						id === 'sub-1' ? 'review_required' : undefined,
+					);
+
+				const tool = createWorkflowToolRouter(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'publish', workflowId: 'wf1' },
+					{} as never,
+				);
+
+				expect(context.workflowService.publish).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ reason: 'review_required', workflowId: 'sub-1' });
+			});
+
+			it('should leave the decision to the publish when the check fails', async () => {
+				const context = createMockContext({ permissions: { publishWorkflow: 'always_allow' } });
+				context.workflowService.getPublishReviewBlock = vi
+					.fn()
+					.mockRejectedValue(new Error('Workflow not found'));
+
+				const tool = createWorkflowToolRouter(context);
+				await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
+
+				expect(context.workflowService.publish).toHaveBeenCalled();
+			});
+
+			it('should publish as before when no review blocks it', async () => {
+				const context = contextWithReviewBlock(undefined);
+
+				const tool = createWorkflowToolRouter(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'publish', workflowId: 'wf1' },
+					{} as never,
+				);
+
+				expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', expect.anything());
+				expect(result).toMatchObject({ success: true });
+			});
+		});
+
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({
 				permissions: { publishWorkflow: 'blocked' },

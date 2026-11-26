@@ -263,6 +263,15 @@ const tagNote = computed(() => {
 					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
 						{{ tagNote }}
 					</N8nText>
+					<N8nText
+						v-if="resource.type === 'credential' && direction === 'promote'"
+						step="2xs"
+						color="text-light"
+						:class="$style.padded"
+						data-test-id="promotion-preview-card-credential-values"
+					>
+						{{ i18n.baseText('promotions.preview.card.credential.valuesNotPromoted') }}
+					</N8nText>
 				</template>
 
 				<footer v-if="footer || scope" :class="$style.footer">

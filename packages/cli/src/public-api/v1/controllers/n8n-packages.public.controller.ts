@@ -5,7 +5,7 @@ import {
 	ImportPackageSelectionRequestDto,
 	ImportResultDto,
 } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -36,9 +36,11 @@ import {
 	IMPORT_PACKAGE_MAX_PARTS,
 	IMPORT_PACKAGE_SELECTION_MAX_PARTS,
 } from '@/modules/n8n-packages/utils/import-package-upload';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 import {
 	EXPORT_200_DESCRIPTION,
+	EXPORT_422_DESCRIPTION,
 	EXPORT_COUNTS_HEADER_DESCRIPTION,
 	EXPORT_DESCRIPTION,
 	EXPORT_SUMMARY,
@@ -114,7 +116,7 @@ export class N8nPackagesPublicController {
 	@ApiErrorResponse(409, { dto: ImportBlockedErrorDto, description: IMPORT_409_DESCRIPTION })
 	@ApiErrorResponse(422, { dto: ImportBlockedErrorDto, description: IMPORT_422_DESCRIPTION })
 	async importPackage(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body({
 			mediaType: 'multipart/form-data',
@@ -127,7 +129,9 @@ export class N8nPackagesPublicController {
 		try {
 			return await this.n8nPackagesService.importPackage({
 				user: req.user,
+				ctx: req.ctx,
 				apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+				publicApi: req.publicApiClient,
 				projectId,
 				folderId,
 				bindings: {
@@ -142,6 +146,7 @@ export class N8nPackagesPublicController {
 				reason: classifyPackageFailure(error),
 				...(projectId ? { projectId } : {}),
 				...(folderId ? { folderId } : {}),
+				loginId: loginIdOf(req.ctx),
 			});
 			throw error;
 		}
@@ -163,7 +168,7 @@ export class N8nPackagesPublicController {
 		description: IMPORT_SELECTION_422_DESCRIPTION,
 	})
 	async importPackageSelection(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body({
 			mediaType: 'multipart/form-data',
@@ -183,7 +188,9 @@ export class N8nPackagesPublicController {
 			return await this.n8nPackagesService.importPackageSelection(
 				{
 					user: req.user,
+					ctx: req.ctx,
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+					publicApi: req.publicApiClient,
 					packageBuffer: Buffer.from(file.buffer),
 					...policies,
 				},
@@ -197,6 +204,7 @@ export class N8nPackagesPublicController {
 			this.eventService.emit('n8n-package-import-failed', {
 				user: req.user,
 				reason: classifyPackageFailure(error),
+				loginId: loginIdOf(req.ctx),
 			});
 			throw error;
 		}
@@ -213,6 +221,7 @@ export class N8nPackagesPublicController {
 		headers: { [EXPORT_COUNTS_HEADER]: { description: EXPORT_COUNTS_HEADER_DESCRIPTION } },
 	})
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(422, { description: EXPORT_422_DESCRIPTION })
 	async exportPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -246,6 +255,7 @@ export class N8nPackagesPublicController {
 
 			exportResult = await this.n8nPackagesService.exportPackage({
 				user: req.user,
+				ctx: req.ctx,
 				agentIds,
 				workflowIds,
 				folderIds,
@@ -266,6 +276,7 @@ export class N8nPackagesPublicController {
 				...(workflowIds.length ? { workflowIds } : {}),
 				...(folderIds.length ? { folderIds } : {}),
 				...(projectIds.length ? { projectIds } : {}),
+				loginId: loginIdOf(req.ctx),
 			});
 
 			if (

@@ -96,7 +96,7 @@ The backend half is a built workspace package at `packages/modules/<name>/backen
 its runtime dependency and lazy registration to `packages/cli`. It also adds the module id to the
 validated list in `@n8n/backend-common`.
 
-Read `scripts/backend-module/backend-module-guide.md` before you add backend behavior.
+Read `docs/backend/how-to/build-a-backend-module.md` before you add backend behavior.
 
 ## File structure
 
@@ -183,16 +183,17 @@ you use a surface.
 
 ### Live — the shell registers these, and a reader shows them
 
-| Field                   | Register function               | Reader                                   |
-| ----------------------- | ------------------------------- | ---------------------------------------- |
-| `routes`                | `registerModuleRoutes`          | vue-router                               |
-| `projectTabs`           | `registerModuleProjectTabs`     | `ProjectHeader`                          |
-| `resources`             | `registerModuleResources`       | `ResourcesListLayout`                    |
-| `modals`                | `registerModuleModals`          | `DynamicModalLoader`                     |
-| `adHocModalKeyPrefixes` | `registerModuleModals`          | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`   | `SettingsSidebar`                        |
-| `pushHandlers`          | `registerModulePushHandlers`    | `useModulePushDispatcher`, in `App.vue`  |
-| `parameterInputs`       | `registerModuleParameterInputs` | `ParameterInput`, `ParameterInputFull`   |
+| Field                   | Register function                   | Reader                                   |
+| ----------------------- | ----------------------------------- | ---------------------------------------- |
+| `routes`                | `registerModuleRoutes`              | vue-router                               |
+| `projectTabs`           | `registerModuleProjectTabs`         | `ProjectHeader`                          |
+| `resources`             | `registerModuleResources`           | `ResourcesListLayout`                    |
+| `modals`                | `registerModuleModals`              | `DynamicModalLoader`                     |
+| `adHocModalKeyPrefixes` | `registerModuleModals`              | `modalRegistry` (keys minted at runtime) |
+| `settingsPages`         | `registerModuleSettingsPages`       | `SettingsSidebar`                        |
+| `pushHandlers`          | `registerModulePushHandlers`        | `useModulePushDispatcher`, in `App.vue`  |
+| `parameterInputs`       | `registerModuleParameterInputs`     | `ParameterInput`, `ParameterInputFull`   |
+| `runDataDisplayModes`   | `registerModuleRunDataDisplayModes` | `RunData` and its display mode select    |
 
 ### Position of a settings link
 
@@ -208,8 +209,9 @@ its section. Two links with the same `order` keep their registration order. A li
 `section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
-`main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
-after the login.
+`main.ts` registers `routes` before the mount. `app/init/index.ts` registers
+`runDataDisplayModes` before the login check, so a visitor in preview mode sees run data. It
+registers the other surfaces after the login.
 
 `pushHandlers` has one more rule. Only an **active** module registers its handlers. A module
 handler also stops the built-in handler of the shell for that push type. A handler from an
@@ -227,9 +229,6 @@ composables. The registry keeps your `commands` array, but the command bar never
 
 The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
 error, no warning, no behaviour.
-
-`runDataDisplayModes` is also types-only for now. The shell support lands with **CAP-327**. See
-[Run data display modes](#run-data-display-modes) for the contract.
 
 Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
 The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
@@ -254,18 +253,21 @@ runDataDisplayModes: [
 ],
 ```
 
-- `id` is also the saved display mode and the telemetry `view` value. Do not change it after a
-  release. The ids in `BUILT_IN_DISPLAY_MODES` are reserved.
+- `id` must be lowercase kebab-case, such as `chart` or `geo-map`. It is also the saved display
+  mode and the telemetry `view` value. Do not change it after a release. The ids in
+  `BUILT_IN_DISPLAY_MODES` are reserved.
 - `canRender` decides if the select offers the mode. It gets all items of the selected run, not
-  filtered by search. It must be synchronous and cheap, because it runs on every data change.
+  filtered by search. It must be synchronous and cheap, because it runs on every data change. When
+  it returns false for the saved mode, the pane shows its default view and keeps the saved mode.
 - `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
-  if `canRender` is true.
+  if `canRender` is true. When the node opens, it wins over the automatic switch to Binary or
+  Rendered (AI).
 - `supports.search: true` shows the search field. Without it, the search field is hidden and
   `search` is always `''`.
 
 The component gets `RunDataDisplayModeProps`: `data`, `node`, `pane`, `runIndex`, `outputIndex`,
 `search` and `compact`. `data` is never paginated, so a component that can get many items must
-handle that itself. Pinned data needs no code: `data` holds the pinned items when the node has them.
+handle that itself. The shell's too-much-data check measures only the current page. Pinned data needs no code: `data` holds the pinned items when the node has them.
 
 ### Route names are yours, and a check guards them
 
@@ -780,7 +782,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
 - **Do I need a backend module also?** Only if your feature needs a gate on the backend. If a
   backend twin exists, the two ids **must** be the same, because `isModuleActive` and
   `/rest/module-settings` use the same string. See
-  `scripts/backend-module/backend-module-guide.md`.
+  `docs/backend/how-to/build-a-backend-module.md`.
 - **Must every new feature be a module?** Yes, after the wave-1 pilots prove the pattern. Each new
   feature then starts as a package. The editor core — canvas, NDV and the node creator — stays in
   the shell for now. See the modularization roadmap on CAT-3680.

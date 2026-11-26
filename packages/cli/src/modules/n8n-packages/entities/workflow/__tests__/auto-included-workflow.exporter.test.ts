@@ -15,6 +15,7 @@ import { VariableRequirementsExtractor } from '../../variable/variable-requireme
 import type { AutoIncludedWorkflow } from '../auto-included-workflow-resolver';
 import { AutoIncludedWorkflowExporter } from '../auto-included-workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	return {
@@ -90,6 +91,22 @@ describe('AutoIncludedWorkflowExporter', () => {
 			{ id: 'wf_triage', name: 'Triage', target: 'workflows/triage-wf_triage', isArchived: false },
 		]);
 		expect(writer.files.map((f) => f.path)).toContain('workflows/triage-wf_triage/workflow.json');
+	});
+
+	it('throws a 422 that names the workflow when its stored data fails the schema', async () => {
+		const exporter = makeExporter();
+		const workflow = makeWorkflow({
+			id: 'wf_bad',
+			nodes: [{ id: 'n1', name: 'Node', type: 'x', typeVersion: 1, parameters: {} }] as never,
+		});
+
+		const error = await exporter
+			.export(emptyRequest(new CapturingWriter(), [includedWorkflow({ workflow })]))
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).message).toContain('wf_bad');
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('skips a workflow already present in the existing workflow entries', async () => {

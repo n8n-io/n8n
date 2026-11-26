@@ -175,6 +175,16 @@ describe('setStaticSubworkflowId', () => {
 });
 
 describe('subWorkflowNodeReference', () => {
+	it('skips a null node and a node without parameters', () => {
+		const wf = workflow([
+			null,
+			{ type: EXECUTE_WORKFLOW } as unknown as INode,
+		] as unknown as INode[]);
+
+		expect(subWorkflowNodeReference.extract(wf)).toEqual([]);
+		expect(() => subWorkflowNodeReference.apply(wf, bindings(new Map([['a', 'b']])))).not.toThrow();
+	});
+
 	it('extracts referenced ids from selector nodes as requirements', () => {
 		const wf = workflow([
 			node(EXECUTE_WORKFLOW, 1.2, { workflowId: resourceLocator('child-a', 'id') }),

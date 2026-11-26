@@ -33,6 +33,8 @@ import { resolveContentSecurityPolicies } from '@/security/content-security-poli
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
 import * as requestPath from '@/utils/request-path';
+import { setImmutableAssetHeaders } from '@/utils/static-asset-cache';
+import { rejectUnknownWebSocketPaths } from '@/websocket-paths';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -41,6 +43,7 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/ai-preference.controller';
+import '@/controllers/ai-preference-settings.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -176,6 +179,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller.js');
+			await import('@/controllers/page-hide-telemetry.controller.js');
 			await import('@/controllers/posthog.controller.js');
 		}
 
@@ -374,7 +378,8 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions: { maxAge?: number } = inE2ETests || inDevelopment ? {} : { maxAge };
+		const cacheOptions: { maxAge?: number; setHeaders?: typeof setImmutableAssetHeaders } =
+			inE2ETests || inDevelopment ? {} : { maxAge, setHeaders: setImmutableAssetHeaders };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		this.protectTypeFiles(staticCacheDir);
@@ -552,6 +557,7 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			await this.mountExtensionRoutes();
 			this.app.use(
 				'/',
 				historyApiHandler,
@@ -559,6 +565,7 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
+			await this.mountExtensionRoutes();
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
 	}
@@ -619,10 +626,20 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
-		Container.get(Push).setupPushServer(restEndpoint, server, app);
-		Container.get(ChatServer).setup(server, app);
-		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
-			Container.get(BrowserUseServer).setup(server, app);
-		}
+		const push = Container.get(Push);
+		const chat = Container.get(ChatServer);
+		const browserUse = Container.get(ModuleRegistry).isActive('instance-ai')
+			? Container.get(BrowserUseServer)
+			: undefined;
+		push.setupPushServer(restEndpoint, server, app);
+		chat.setup(server, app);
+		browserUse?.setup(server, app);
+		rejectUnknownWebSocketPaths(
+			server,
+			(path) =>
+				push.isWebSocketPath(path, restEndpoint) ||
+				chat.isWebSocketPath(path) ||
+				(browserUse?.isWebSocketPath(path) ?? false),
+		);
 	}
 }

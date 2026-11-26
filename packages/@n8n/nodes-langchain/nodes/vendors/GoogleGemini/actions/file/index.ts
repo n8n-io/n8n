@@ -16,6 +16,7 @@ export const description: INodeProperties[] = [
 				value: 'upload',
 				action: 'Upload a media file',
 				description: 'Upload a file to the Google Gemini API for later use',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'upload',

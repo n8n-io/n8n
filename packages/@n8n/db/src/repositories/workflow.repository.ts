@@ -1,3 +1,5 @@
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { randomUUID } from 'node:crypto';
 import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -43,6 +45,12 @@ import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
+import {
+	getWithWorkflowCollections,
+	joinsSeveralRows,
+	splitWorkflowRelations,
+	type WorkflowCollections,
+} from '../utils/workflow-collections';
 
 export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
 
@@ -225,15 +233,88 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return availability;
 	}
 
+	/** `tags` and `shared` come back as JSON arrays in the same statement instead of joined. */
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
 		ctx: OperationContext = {},
-	) {
-		return await this.managerFor(ctx).findOne(WorkflowEntity, {
-			where,
-			relations: options?.relations,
+	): Promise<WorkflowEntity | null> {
+		const manager = this.managerFor(ctx);
+		const { relations, collections } = splitWorkflowRelations(options?.relations, where);
+		const qb = manager
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.setFindOptions({ where, relations });
+		if (joinsSeveralRows(qb.expressionMap.mainAlias!.metadata, relations)) qb.take(1);
+		else qb.limit(1);
+
+		const [workflow] = await getWithWorkflowCollections(qb, collections);
+		return workflow ?? null;
+	}
+
+	/**
+	 * Workflows to export, with their tags and shares, in one statement. `projectId` keeps the
+	 * workflows shared with that project and, as the export always has, only that project's
+	 * share.
+	 */
+	async findForExport({ workflowId, projectId }: { workflowId?: string; projectId?: string } = {}) {
+		const where: FindOptionsWhere<WorkflowEntity> = workflowId
+			? { id: workflowId }
+			: projectId
+				? { shared: { projectId } }
+				: {};
+		return await this.findWithCollections(
+			{ where },
+			{ tags: true, shared: { project: true }, sharedProjectId: projectId },
+		);
+	}
+
+	/** Workflows matching `options`, with the requested tags and shares, in one statement. */
+	private async findWithCollections(
+		options: Pick<FindManyOptions<WorkflowEntity>, 'where' | 'select' | 'relations'>,
+		collections: WorkflowCollections,
+	): Promise<WorkflowEntity[]> {
+		return await getWithWorkflowCollections(
+			this.createQueryBuilder('workflow').setFindOptions(options),
+			collections,
+		);
+	}
+
+	/**
+	 * Workflows with the given ids that `user` can reach with `sharingOptions`, in no particular
+	 * order. The access check and the workflow come from one statement per batch of ids, so a
+	 * share revoked mid-read cannot return the workflow. Tags come back as a JSON array.
+	 */
+	async findAccessibleByIds(
+		user: User,
+		sharingOptions: { scopes: Scope[]; projectRoles: string[]; workflowRoles: string[] },
+		workflowIds: string[],
+		options: {
+			includeParentFolder?: boolean;
+			includeActiveVersion?: boolean;
+			includeTags?: boolean;
+		},
+	): Promise<WorkflowEntity[]> {
+		const accessible = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
+			...sharingOptions,
+			globalScopes: sharingOptions.scopes,
 		});
+		const workflows: WorkflowEntity[] = [];
+
+		// Unique ids, so a repeated id in two batches does not return the workflow twice.
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const qb = this.createBaseQuery(chunk)
+				.andWhere(`workflow.id IN (${accessible.getQuery()})`)
+				.setParameters(accessible.getParameters());
+			if (options.includeParentFolder) {
+				qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+			}
+			if (options.includeActiveVersion) {
+				qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+			}
+			workflows.push(...(await getWithWorkflowCollections(qb, { tags: options.includeTags })));
+		}
+
+		return workflows;
 	}
 
 	/**
@@ -253,7 +334,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
-	/** The settings of a workflow, or `undefined` when it has none or no longer exists. */
 	async findSettings(workflowId: string): Promise<IWorkflowSettings | undefined> {
 		const workflow = await this.findOne({ select: ['settings'], where: { id: workflowId } });
 		return workflow?.settings;
@@ -362,6 +442,27 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 					return saved;
 				}),
 		);
+	}
+
+	/** Create an empty private owner. Execution snapshots still pass the workflowStart policy. */
+	async createPrivateExecutionOwner(ctx: OperationContext): Promise<string> {
+		const id = generateNanoId();
+		const workflow = this.create({
+			id,
+			name: `Internal execution owner ${id}`,
+			isArchived: true,
+			// oxlint-disable-next-line typescript/no-deprecated -- Initialize the required legacy column for this unpublished workflow.
+			active: false,
+			activeVersionId: null,
+			versionId: randomUUID(),
+			nodes: [],
+			connections: {},
+			settings: { callerPolicy: 'none' },
+		});
+		await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).insert(WorkflowEntity, workflow),
+		);
+		return workflow.id;
 	}
 
 	/**
@@ -600,11 +701,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.execute();
 	}
 
-	async findById(workflowId: string) {
-		return await this.findOne({
-			where: { id: workflowId },
-			relations: { shared: { project: true }, activeVersion: true },
-		});
+	async findById(workflowId: string): Promise<WorkflowEntity | null> {
+		// The id is unique and the join has one row, so no LIMIT is needed.
+		const qb = this.createQueryBuilder('workflow')
+			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
+			.where('workflow.id = :workflowId', { workflowId });
+
+		const [workflow] = await getWithWorkflowCollections(qb, { shared: { project: true } });
+		return workflow ?? null;
 	}
 
 	async findByIdInContext(workflowId: string, ctx: OperationContext) {
@@ -675,17 +779,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		for (const chunk of chunkIds(folderIds)) {
 			workflows.push(
-				...(await this.find({
-					select: [
-						'id',
-						'name',
-						'activeVersionId',
-						'shared',
-						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
-					],
-					relations: ['shared', 'shared.project', ...(withNodes ? ['activeVersion'] : [])],
-					where: { parentFolder: { id: In(chunk) } },
-				})),
+				...(await this.findWithCollections(
+					{
+						select: [
+							'id',
+							'name',
+							'activeVersionId',
+							...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+						],
+						relations: { activeVersion: withNodes },
+						where: { parentFolder: { id: In(chunk) } },
+					},
+					{ shared: { project: true } },
+				)),
 			);
 		}
 
@@ -734,6 +840,25 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return await this.find({
 			select: MIGRATION_SCAN_FIELDS,
 			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/**
+	 * One page of unarchived workflows for the engine v2 eligibility report, keyset-paged like
+	 * `getIdsAfter`. It returns the draft only.
+	 */
+	async findEngineEligibilityScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: ['id', 'nodes', 'connections', 'settings'],
+			where:
+				afterId === undefined
+					? { isArchived: false }
+					: { isArchived: false, id: MoreThan(afterId) },
 			take,
 			order: { id: 'ASC' },
 		});
@@ -1273,22 +1398,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		};
 	}
 
-	async getAllWorkflowIdsInHierarchy(folderId: string, projectId: string): Promise<string[]> {
-		const subFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
-			folderId,
-			projectId,
-		);
-
-		const query = this.createQueryBuilder('workflow');
-
-		this.applySelect(query, { id: true });
-		this.applyParentFolderFilter(query, { parentFolderIds: [folderId, ...subFolderIds] });
-
-		const workflowIds = (await query.getMany()).map((workflow) => workflow.id);
-
-		return workflowIds;
-	}
-
 	private getFolderIds(workflowsAndFolders: WorkflowFolderUnionRow[]) {
 		return workflowsAndFolders.filter((item) => item.resource === 'folder').map((item) => item.id);
 	}
@@ -1374,12 +1483,22 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		/**
+		 * Tags and shares to return as JSON arrays in the same statement, instead of selecting
+		 * them through `options.select`, which joins them and repeats each workflow per row.
+		 */
+		collections?: WorkflowCollections,
 	): Promise<WorkflowListResult> {
 		await this.expandParentFolderToSubtree(options, { onSearch: false });
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
-		const [workflows, count] = await query.getManyAndCount();
-		return { workflows, count };
+		if (!collections) {
+			const [workflows, count] = await query.getManyAndCount();
+			return { workflows, count };
+		}
+
+		const workflows = await getWithWorkflowCollections(query, collections);
+		return { workflows, count: await query.getCount() };
 	}
 
 	/**
@@ -2041,11 +2160,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				.update(WorkflowEntity)
 				.set({
 					activeVersionId: () => 'versionId',
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: true,
 				})
 				.where('id = :workflowId', { workflowId })
 				.execute();
 		} else {
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 			return await this.update({ id: workflowId }, { active: false, activeVersionId: null });
 		}
 	}
@@ -2054,26 +2175,63 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return await this.findBy({ activeVersionId: activeState ? Not(IsNull()) : IsNull() });
 	}
 
-	async moveAllToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
-		await tx.update(
+	async findIdsInFolders(folderIds: string[]): Promise<string[]> {
+		const ids: string[] = [];
+
+		for (const batch of chunkIds(folderIds)) {
+			const workflows = await this.find({
+				where: { parentFolder: { id: In(batch) } },
+				select: { id: true },
+			});
+			ids.push(...workflows.map(({ id }) => id));
+		}
+
+		return ids;
+	}
+
+	async countByFolder(folderIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+
+		for (const batch of chunkIds(folderIds)) {
+			const rows = await this.createQueryBuilder('workflow')
+				.select('workflow.parentFolderId', 'folderId')
+				.addSelect('COUNT(workflow.id)', 'count')
+				.where('workflow.parentFolderId IN (:...folderIds)', { folderIds: batch })
+				.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
+				.groupBy('workflow.parentFolderId')
+				.getRawMany<{ folderId: string; count: string }>();
+
+			for (const row of rows) {
+				counts.set(row.folderId, Number(row.count));
+			}
+		}
+
+		return counts;
+	}
+
+	async relocateFolderContents(
+		fromFolderId: string,
+		toFolderId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
 			WorkflowEntity,
 			{ parentFolder: { id: fromFolderId } },
-			{
-				parentFolder:
-					toFolderId === PROJECT_ROOT
-						? null
-						: {
-								id: toFolderId,
-							},
-			},
+			{ parentFolder: toFolderId === null ? null : { id: toFolderId } },
 		);
 	}
 
-	async moveToFolder(workflowIds: string[], toFolderId: string) {
-		await this.update(
-			{ id: In(workflowIds) },
-			{ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } },
-		);
+	async moveArchivedFolderContentsToRoot(
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const batch of chunkIds(folderIds)) {
+			await this.managerFor(ctx).update(
+				WorkflowEntity,
+				{ parentFolder: { id: In(batch) }, isArchived: true },
+				{ parentFolder: null },
+			);
+		}
 	}
 
 	async findWorkflowsWithNodeType(nodeTypes: string[], includeNodes: boolean = false) {
@@ -2222,6 +2380,23 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 
 		return await qb.getMany();
+	}
+
+	/** Read the canonical published versions for publication status checks. */
+	async findActiveVersionIds(
+		workflowIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string | null>> {
+		const versions = new Map<string, string | null>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const workflows = await this.managerFor(ctx).find(WorkflowEntity, {
+				where: { id: In(chunk) },
+				select: ['id', 'activeVersionId'],
+				loadEagerRelations: false,
+			});
+			for (const workflow of workflows) versions.set(workflow.id, workflow.activeVersionId);
+		}
+		return versions;
 	}
 
 	/**

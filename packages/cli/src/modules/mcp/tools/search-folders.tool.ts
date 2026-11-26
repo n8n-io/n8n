@@ -1,9 +1,10 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { folderResourceTypeSchema, type FolderResourceType } from '@n8n/api-types';
 import z from 'zod';
 
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -13,6 +14,7 @@ import { trackAndReturnToolError } from './tool-error.utils';
 const MAX_RESULTS = 100;
 
 const inputSchema = {
+	resourceType: folderResourceTypeSchema.default('workflow'),
 	projectId: z.string().describe('The ID of the project to search folders in'),
 	query: z.string().optional().describe('Filter folders by name (case-insensitive partial match)'),
 	limit: createLimitSchema(MAX_RESULTS),
@@ -23,6 +25,7 @@ const outputSchema = {
 		.array(
 			z.object({
 				id: z.string().describe('The unique identifier of the folder'),
+				resourceType: folderResourceTypeSchema,
 				name: z.string().describe('The name of the folder'),
 				parentFolderId: z
 					.string()
@@ -47,7 +50,7 @@ export const createSearchFoldersTool = (
 	user: User,
 	folderService: FolderService,
 	projectService: ProjectService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'search_folders',
 	config: {
@@ -67,10 +70,12 @@ export const createSearchFoldersTool = (
 		projectId,
 		query,
 		limit = MAX_RESULTS,
+		resourceType,
 	}: {
 		projectId: string;
 		query?: string;
 		limit?: number;
+		resourceType?: FolderResourceType;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
@@ -93,17 +98,23 @@ export const createSearchFoldersTool = (
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 
+			if (resourceType === 'agent') {
+				await folderService.assertAgentContentAccess(user, projectId, 'read');
+			}
+
 			const [folders, count] = await folderService.getManyAndCount(projectId, {
+				resourceType,
 				filter: query ? { name: query } : {},
 				// updatedAt backs the repository's default ORDER BY; with `take`,
 				// TypeORM's distinct wrapper can only sort on selected columns.
-				select: { name: true, parentFolder: true, path: true, updatedAt: true },
+				select: { resourceType: true, name: true, parentFolder: true, path: true, updatedAt: true },
 				take: safeLimit,
 			});
 
 			const data = folders.map((folder) => ({
 				id: folder.id,
 				name: folder.name,
+				resourceType: folder.resourceType,
 				parentFolderId: folder.parentFolder?.id ?? null,
 				path: folder.path ?? [folder.name],
 			}));

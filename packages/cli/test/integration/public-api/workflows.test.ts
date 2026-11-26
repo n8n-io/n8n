@@ -1,4 +1,5 @@
-import { EventService } from '@n8n/backend-services';
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -11,8 +12,9 @@ import {
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
 import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
-import type { Person, Project, TagEntity, WorkflowHistory } from '@n8n/db';
+import type { Person, Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import {
+	ExecutionRepository,
 	WorkflowRepository,
 	ProjectRepository,
 	WorkflowHistoryRepository,
@@ -24,17 +26,21 @@ import {
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import type { IConnections, IDataObject, INode, ITaskData } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import { saveCredential } from '../shared/db/credentials';
+import { getAllExecutions } from '../shared/db/executions';
 import { createFolder } from '../shared/db/folders';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createTag } from '../shared/db/tags';
@@ -1605,16 +1611,18 @@ describe('DELETE /workflows/:id', () => {
 		expect(response.body.activeVersionId).toBe(workflow.versionId);
 	});
 
-	test('should mark the workflow-deleted event as public API', async () => {
+	test('should report the calling client on the workflow-deleted event', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		try {
-			await authMemberAgent.delete(`/workflows/${workflow.id}`);
+			await authMemberAgent
+				.delete(`/workflows/${workflow.id}`)
+				.set(N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI);
 
 			expect(emit).toHaveBeenCalledWith(
 				'workflow-deleted',
-				expect.objectContaining({ workflowId: workflow.id, publicApi: true }),
+				expect.objectContaining({ workflowId: workflow.id, publicApi: 'editor_ui' }),
 			);
 		} finally {
 			emit.mockRestore();
@@ -1671,10 +1679,16 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 
 	test('should set workflow as active', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+		);
+		emit.mockRestore();
 
 		const {
 			id,
@@ -1905,10 +1919,16 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(deactivateResponse.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+		);
+		emit.mockRestore();
 		expect(deactivateResponse.body.active).toBe(false);
 		expect(deactivateResponse.body.activeVersionId).toBe(null);
 
@@ -3298,6 +3318,35 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
 	});
 
+	test('should publish a pending engine change with the draft', async () => {
+		const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, member);
+		// An engine change saved in the editor is a draft version with the new engine.
+		const engineDraft = await createWorkflowHistoryItem(workflow.id, {
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			versionId: engineDraft.versionId,
+			settings: { engineType: 'v2' },
+		});
+
+		const updateResponse = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			staticData: workflow.staticData,
+			settings: {},
+		});
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.activeVersionId).not.toBe(workflow.versionId);
+		const activeVersion = await Container.get(WorkflowHistoryRepository).findOneByOrFail({
+			versionId: updateResponse.body.activeVersionId,
+		});
+		expect(activeVersion.settings).toEqual({ engineType: 'v2' });
+	});
+
 	test('should save as draft without republishing when publishIfActive=false', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
@@ -4402,6 +4451,278 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('POST /workflows/:workflowId/run', () => {
+	const TRIGGER_NODE_NAME = 'When clicking Execute';
+	const SET_NAME_NODE_NAME = 'Edit Fields';
+	const SET_LAST_NAME_NODE_NAME = 'Edit Fields 2';
+	const WEBHOOK_NODE_NAME = 'Webhook';
+
+	const toLastNode = { nodeName: SET_LAST_NAME_NODE_NAME, mode: 'inclusive' };
+
+	const taskData = (json: IDataObject): ITaskData[] => [
+		{ startTime: 0, executionTime: 0, executionIndex: 0, source: [], data: { main: [[{ json }]] } },
+	];
+
+	const createManualTriggerNode = (): INode => ({
+		id: uuid(),
+		name: TRIGGER_NODE_NAME,
+		type: 'n8n-nodes-base.manualTrigger',
+		parameters: {},
+		typeVersion: 1,
+		position: [0, 0],
+	});
+
+	const createSetFieldNode = (name: string, position: [number, number]): INode => ({
+		id: uuid(),
+		name,
+		type: 'n8n-nodes-base.set',
+		parameters: {},
+		typeVersion: 3.4,
+		position,
+	});
+
+	const workflowConnections: IConnections = {
+		[TRIGGER_NODE_NAME]: { main: [[{ node: SET_NAME_NODE_NAME, type: 'main', index: 0 }]] },
+		[SET_NAME_NODE_NAME]: { main: [[{ node: SET_LAST_NAME_NODE_NAME, type: 'main', index: 0 }]] },
+	};
+
+	const createMockWorkflow = async (userOrProject: User | Project = ownerPersonalProject) =>
+		await createWorkflow(
+			{
+				nodes: [
+					createManualTriggerNode(),
+					createSetFieldNode(SET_NAME_NODE_NAME, [200, 0]),
+					createSetFieldNode(SET_LAST_NAME_NODE_NAME, [400, 0]),
+				],
+				connections: workflowConnections,
+			},
+			userOrProject,
+		);
+
+	const waitForExecution = async (executionId: string) => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		if (activeExecutions.has(executionId)) {
+			await activeExecutions.getPostExecutePromise(executionId);
+		}
+	};
+
+	const fetchExecutionsForWorkflow = async (workflowId: string) => {
+		const executions = await getAllExecutions();
+		return executions.filter((execution) => execution.workflowId === workflowId);
+	};
+
+	afterEach(async () => {
+		await testDb.truncate(['ExecutionEntity']);
+	});
+
+	describe('starting an execution', () => {
+		test('should start a manual execution from run data', async () => {
+			const workflow = await createMockWorkflow();
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: { [TRIGGER_NODE_NAME]: taskData({}) },
+				destinationNode: toLastNode,
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			const { executionId } = response.body;
+			expect(executionId).toMatch(/^\d+$/);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ workflowId: workflow.id, executionId, source: 'user-manual' }),
+			);
+
+			await waitForExecution(executionId);
+
+			const executions = await fetchExecutionsForWorkflow(workflow.id);
+			expect(executions).toEqual([expect.objectContaining({ id: executionId, mode: 'manual' })]);
+		});
+
+		test('should accept dirty node names', async () => {
+			const workflow = await createMockWorkflow();
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: {
+					[TRIGGER_NODE_NAME]: taskData({}),
+					[SET_NAME_NODE_NAME]: taskData({ stale: true }),
+				},
+				destinationNode: toLastNode,
+				dirtyNodeNames: [SET_NAME_NODE_NAME],
+			});
+
+			expect(response.statusCode).toBe(200);
+			const { executionId } = response.body;
+
+			await waitForExecution(executionId);
+		});
+
+		// The suite mocks ExecutionService, so read the stored data instead of GET /executions/:id.
+		test('should reuse run data from an earlier execution', async () => {
+			const workflow = await createMockWorkflow();
+
+			const firstRun = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: { [TRIGGER_NODE_NAME]: taskData({ from: 'earlier' }) },
+				destinationNode: toLastNode,
+			});
+
+			expect(firstRun.statusCode).toBe(200);
+
+			await waitForExecution(firstRun.body.executionId);
+
+			const earlierExecution = await Container.get(ExecutionRepository).findSingleExecution(
+				firstRun.body.executionId,
+				{ includeData: true, unflattenData: true },
+			);
+			const reusedRunData = earlierExecution?.data.resultData.runData;
+			const secondRun = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/run`)
+				.send({ runData: reusedRunData, destinationNode: toLastNode });
+
+			expect(secondRun.statusCode).toBe(200);
+
+			await waitForExecution(secondRun.body.executionId);
+
+			const executions = await fetchExecutionsForWorkflow(workflow.id);
+			expect(executions).toHaveLength(2);
+		});
+	});
+
+	test('should return 400 when the destination node is not in the workflow', async () => {
+		const workflow = await createMockWorkflow();
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+			runData: {},
+			destinationNode: { nodeName: 'Missing node', mode: 'inclusive' },
+		});
+
+		expect(response.statusCode).toBe(400);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 404 for a workflow that does not exist', async () => {
+		const response = await authOwnerAgent.post(`/workflows/${uuid()}/run`).send({
+			runData: {},
+			destinationNode: toLastNode,
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test("should return 403 for a workflow in another user's personal project", async () => {
+		const workflow = await createMockWorkflow(ownerPersonalProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/run`).send({
+			runData: {},
+			destinationNode: toLastNode,
+		});
+
+		expect(response.statusCode).toBe(403);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 403 when the API key lacks workflow:execute', async () => {
+		const readOnlyKeyOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+		const workflow = await createMockWorkflow(readOnlyKeyOwner);
+
+		const response = await testServer
+			.publicApiAgentFor(readOnlyKeyOwner)
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ runData: {}, destinationNode: toLastNode });
+
+		expect(response.statusCode).toBe(403);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 403 for a user who is only a viewer of the project', async () => {
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createMockWorkflow(teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/run`).send({
+			runData: {},
+			destinationNode: toLastNode,
+		});
+
+		expect(response.statusCode).toBe(403);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 403 on a read-only instance', async () => {
+		const workflow = await createMockWorkflow();
+
+		const instanceWriteAccess = Container.get(InstanceWriteAccessService);
+		instanceWriteAccess.setReadOnly(true);
+
+		try {
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: {},
+				destinationNode: toLastNode,
+			});
+
+			expect(response.statusCode).toBe(403);
+
+			const executions = await fetchExecutionsForWorkflow(workflow.id);
+			expect(executions).toHaveLength(0);
+		} finally {
+			instanceWriteAccess.setReadOnly(false);
+		}
+	});
+
+	describe('when the run must wait for a trigger event', () => {
+		test('should return 409, register no test webhook, and start no execution', async () => {
+			const webhookId = uuid();
+			const webhookWorkflow = await createWorkflow(
+				{
+					nodes: [
+						{
+							id: uuid(),
+							name: WEBHOOK_NODE_NAME,
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 2,
+							position: [0, 0],
+							webhookId,
+							parameters: { httpMethod: 'POST', path: webhookId, options: {} },
+						},
+						createSetFieldNode(SET_NAME_NODE_NAME, [200, 0]),
+					],
+					connections: {
+						[WEBHOOK_NODE_NAME]: { main: [[{ node: SET_NAME_NODE_NAME, type: 'main', index: 0 }]] },
+					},
+				},
+				ownerPersonalProject,
+			);
+			const registerWebhooks = vi.spyOn(Container.get(TestWebhooks), 'registerWebhooks');
+			const cancelWebhook = vi.spyOn(Container.get(TestWebhooks), 'cancelWebhook');
+
+			const response = await authOwnerAgent.post(`/workflows/${webhookWorkflow.id}/run`).send({
+				runData: {},
+				destinationNode: { nodeName: SET_NAME_NODE_NAME, mode: 'inclusive' },
+			});
+
+			expect(response.statusCode).toBe(409);
+			expect(registerWebhooks).not.toHaveBeenCalled();
+			expect(cancelWebhook).not.toHaveBeenCalled();
+
+			const executions = await fetchExecutionsForWorkflow(webhookWorkflow.id);
+			expect(executions).toHaveLength(0);
+
+			registerWebhooks.mockRestore();
+			cancelWebhook.mockRestore();
+		});
 	});
 });
 

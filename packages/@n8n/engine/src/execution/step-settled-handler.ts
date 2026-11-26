@@ -7,10 +7,12 @@ import {
 	type GraphNode,
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
+import type { EngineLogger } from '../logging';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
+import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
@@ -22,7 +24,7 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { StepRecord, StepStore } from './step-store';
+import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
 	resumeAwaitingParent,
@@ -50,15 +52,51 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly cancelExecution: CancelExecutionService,
+		private readonly logger: EngineLogger,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
-		const [step, execution] = await Promise.all([
+		const [stepLoad, executionLoad] = await Promise.allSettled([
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
+		// Test the execution first: its deletion also deletes the step row.
+		if (executionLoad.status === 'rejected') {
+			if (isMissingExecution(executionLoad.reason, event.executionId)) {
+				if (stepLoad.status === 'rejected') {
+					if (stepLoad.reason instanceof StepNotFoundError) return;
+					throw stepLoad.reason;
+				}
+				// A step of another execution means a wrong message, which must still fail.
+				if (stepLoad.value.executionId === event.executionId) return;
+			}
+			throw executionLoad.reason;
+		}
+		if (stepLoad.status === 'rejected') throw stepLoad.reason;
+		const step = stepLoad.value;
+		const execution = executionLoad.value;
 		const node = validateStepContext(step, execution);
 
+		await this.advanceExecution(execution, step, node);
+
+		// We acknowledge the settled step once its successors have been planned.
+		// Not awaited, so the next message does not wait for this write.
+		void this.stepStore.acknowledgeSettledStep(step.id).catch((error: unknown) => {
+			this.logger.warn('Acknowledgement of a settled step failed', {
+				executionId: execution.id,
+				stepId: step.id,
+				error,
+			});
+		});
+	}
+
+	/** Applies the consequences of the settled step to its execution. */
+	private async advanceExecution(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
@@ -114,6 +152,7 @@ export class StepSettledHandler {
 					error: await this.failureOf(execution, step),
 				});
 			}
+			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 
@@ -158,9 +197,8 @@ export class StepSettledHandler {
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
 		// returned, so it isn't announced twice either.
-		// TODO(CAT-2938): a crash between the insert and the publishes strands
-		// the rows forever; the reconciler re-announces stale queued steps and
-		// settled steps whose decidable successors have no rows.
+		// If we crash after creating the steps but before announcing them, the
+		// reconciler re-announces them.
 		const created = await this.stepStore.createSteps(execution.id, [
 			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
 			...toSeed.map((key) => ({
@@ -260,6 +298,7 @@ export class StepSettledHandler {
 							},
 				);
 			}
+			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 

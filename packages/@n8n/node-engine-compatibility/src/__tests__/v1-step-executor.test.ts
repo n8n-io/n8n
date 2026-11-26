@@ -1,5 +1,11 @@
-import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { mintApprovalCallback } from '@n8n/engine';
+import type {
+	JsonValue,
+	StepExecutionResult,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
+import { mintApprovalCallback, stepErrorDetails } from '@n8n/engine';
 import {
 	parseHitlCallbackReference,
 	prepareUrlForSigning,
@@ -15,6 +21,7 @@ import {
 	CHAT_NODE_TYPE,
 	Expression,
 	ExpressionError,
+	NodeOperationError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
@@ -32,7 +39,17 @@ import {
 import { EXECUTE_WORKFLOW_TYPE } from '../constants';
 import type { SubWorkflowResolver, V1StepExecutorDeps } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
+
+/** Items as a node sees and passes them on: each linked to its position in the input. */
+function linked(slots: StepSlots): StepSlots {
+	return slots.map((items) =>
+		Array.isArray(items)
+			? items.map((item, index) => ({ ...(item as object), pairedItem: { item: index } }))
+			: items,
+	);
+}
 import { V1WorkflowConverter } from '../v1-workflow-converter';
+import { realNodeTypes, splitOutNode } from './acceptance-fixtures';
 import {
 	items,
 	noSubWorkflows,
@@ -180,6 +197,53 @@ describe('V1StepExecutor', () => {
 		expect(result.outputs).toEqual([[{ json: { message: 'solo' } }]]);
 	});
 
+	it('keeps an empty first input empty when another input has items', async () => {
+		// ┌────────┐  ┌───────────┐  ┌───────────┐ i0 ┌───────┐
+		// │ Manual ├─►│ SplitOut1 ├┬►│ SplitOut2 ├───►│       │
+		// └────────┘  └───────────┘│ └───────────┘    │ Merge │
+		//                          └─────────────────►│       │
+		//                                          i1 └───────┘
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					splitOutNode('s1', 'SplitOut1', 'list'),
+					splitOutNode('s2', 'SplitOut2', 'n'),
+					{
+						id: 'm',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						parameters: {},
+					},
+				],
+				{
+					Manual: { main: [[{ node: 'SplitOut1', type: 'main', index: 0 }]] },
+					SplitOut1: {
+						main: [
+							[
+								{ node: 'SplitOut2', type: 'main', index: 0 },
+								{ node: 'Merge', type: 'main', index: 1 },
+							],
+						],
+					},
+					SplitOut2: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
+			nodeTypes: realNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+
+		// SplitOut2 made no items, so the engine marks its edge into Merge dead.
+		const result = await executor.execute(stepRequest(graph, 'm', [null, ...items({ list: 0 })]));
+
+		expect(result.outputs).toEqual([[expect.objectContaining({ json: { list: 0 } })]]);
+	});
+
 	it('rejects non-v1-node steps', async () => {
 		const graph = graphWith('n8n-nodes-base.noOp');
 		const triggerStep = stepRequest(graph, 't', []);
@@ -236,6 +300,20 @@ describe('V1StepExecutor', () => {
 				itemIndex: 0,
 				timestamp: expect.any(Number),
 			},
+		});
+	});
+
+	it('hands the structured part of a node error to the engine', async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+
+		const error: unknown = await testStepExecutor(graph)
+			.execute(request)
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(stepErrorDetails(error as Error)).toMatchObject({
+			description: 'The service rejected the request',
 		});
 	});
 
@@ -299,7 +377,7 @@ describe('V1StepExecutor', () => {
 		request.respond = respond;
 
 		const result = await testStepExecutor(graph).execute(request);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
 		expect(chunks).toContainEqual(expect.objectContaining({ type: 'error' }));
 		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
@@ -359,7 +437,10 @@ describe('V1StepExecutor', () => {
 		);
 
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({ a: 1 })));
-		expect(result.outputs).toEqual([[{ json: { a: 1 } }], [{ json: { a: 1, second: true } }]]);
+		expect(result.outputs).toEqual([
+			[{ json: { a: 1 }, pairedItem: { item: 0 } }],
+			[{ json: { a: 1, second: true } }],
+		]);
 	});
 
 	it('rejects batch steps until the engine iterates loops natively', async () => {
@@ -424,6 +505,156 @@ describe('V1StepExecutor', () => {
 			expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
 		});
 
+		describe('a slot fed by two edges', () => {
+			// Manual fans out to A and B, which both feed N's only input.
+			const convergingWorkflow = (nType: string, nParameters: IDataObject = {}) =>
+				converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{ id: 'n', name: 'N', type: nType, parameters: nParameters },
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'A', type: 'main', index: 0 },
+										{ node: 'B', type: 'main', index: 0 },
+									],
+								],
+							},
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+			// A's item links to the trigger's first item, B's to its second.
+			const outputsByNodeId: Record<string, StepSlots> = {
+				t: items({ seed: 1 }, { seed: 2 }),
+				a: [[{ json: { message: 'from-A' }, pairedItem: { item: 0 } }]],
+				b: [[{ json: { message: 'from-B' }, pairedItem: { item: 1 } }]],
+			};
+			const inputs: StepSlots = [
+				[{ json: { message: 'from-A' } }, { json: { message: 'from-B' } }],
+			];
+			const inputSources: StepInputSources = [
+				[
+					{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+					{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+				],
+			];
+
+			it('resolves $(...).item through the edge that fed each item', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 1 } }, { json: { message: 2 } }]]);
+			});
+
+			it('resolves $(...).item through a later edge when the first edge is dead', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+				const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+				const result = await testStepExecutor(graph, onlyB).execute(
+					stepRequest(graph, 'n', [[{ json: { message: 'from-B' } }]], [[inputSources[0][1]]]),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 2 } }]]);
+			});
+
+			describe('$prevNode', () => {
+				// B's connections come first, but A comes first in node order.
+				const edgesListedBFirst = converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{
+								id: 'n',
+								name: 'N',
+								type: 'test.echoParam',
+								parameters: { message: '={{ $prevNode.name }}' },
+							},
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'B', type: 'main', index: 0 },
+										{ node: 'A', type: 'main', index: 0 },
+									],
+								],
+							},
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+
+				it('names the first source in node order, not in edge order', async () => {
+					const result = await testStepExecutor(edgesListedBFirst, outputsByNodeId).execute(
+						stepRequest(edgesListedBFirst, 'n', inputs, inputSources),
+					);
+
+					expect(result.outputs).toEqual([
+						[{ json: { message: 'A' } }, { json: { message: 'A' } }],
+					]);
+				});
+
+				it('keeps naming the first source when its edge is dead', async () => {
+					const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+					const result = await testStepExecutor(edgesListedBFirst, onlyB).execute(
+						stepRequest(
+							edgesListedBFirst,
+							'n',
+							[[{ json: { message: 'from-B' } }]],
+							[[inputSources[0][1]]],
+						),
+					);
+
+					expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
+				});
+			});
+
+			it('links output items from every edge to their own source', async () => {
+				const graph = convergingWorkflow('test.linksToInput');
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([
+					[
+						{
+							json: { message: 'from-A' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'A', previousNodeOutput: 0, previousNodeRun: 0 },
+							},
+						},
+						{
+							json: { message: 'from-B' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0, previousNodeRun: 0 },
+							},
+						},
+					],
+				]);
+			});
+		});
+
 		it('rejects a reference to an unexecuted node', async () => {
 			const graph = expressionWorkflow({ message: "={{ $('A').first().json.message }}" });
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'b', items({})));
@@ -483,7 +714,7 @@ describe('V1StepExecutor', () => {
 				expect(result).toEqual({
 					wait: {
 						resumeAt: '2026-10-01T12:00:00.000Z',
-						outputsAtDeadline: input,
+						outputsAtDeadline: linked(input),
 						...binding,
 					},
 				});
@@ -735,7 +966,7 @@ describe('V1StepExecutor', () => {
 		const result = await testStepExecutor(graph).execute(
 			stepRequest(graph, 'n', items({ keep: 'me' })),
 		);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
 	});
 });
 
@@ -803,7 +1034,10 @@ describe('sub-workflows', () => {
 				node: { id: 'n', name: 'Subject', type: EXECUTE_WORKFLOW_TYPE, typeVersion: 1 },
 			},
 			context: { userId: undefined, projectId: undefined },
-			items: [{ json: { a: 1 } }, { json: { a: 2 } }],
+			items: [
+				{ json: { a: 1 }, pairedItem: { item: 0 } },
+				{ json: { a: 2 }, pairedItem: { item: 1 } },
+			],
 		});
 	});
 
@@ -923,7 +1157,7 @@ describe('sub-workflows', () => {
 
 		// The node's own outcome stands: its input passes through, and no sub-execution is owed.
 		expect(result.subExecution).toBeUndefined();
-		expect(result.outputs).toEqual(input);
+		expect(result.outputs).toEqual(linked(input));
 		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 });

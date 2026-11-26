@@ -1,12 +1,17 @@
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	CodeExecutionBackend,
+	EventService,
+	toCodeTaskRequest,
+	UrlService,
+} from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
+import { UnexpectedError } from '@n8n/errors';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
 
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import type {
 	DataTableProxyProvider,
 	ICredentialsHelper,
@@ -90,7 +95,7 @@ export class EngineAdditionalDataBuilder {
 		private readonly eventService: EventService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
-		private readonly taskRequester: TaskRequester,
+		private readonly codeExecutionBackend: CodeExecutionBackend,
 	) {}
 
 	build(
@@ -98,6 +103,11 @@ export class EngineAdditionalDataBuilder {
 		credentialsHelper: ICredentialsHelper,
 		dataTableProxyProvider: DataTableProxyProvider,
 	): IWorkflowExecuteAdditionalData {
+		// DI injects `undefined` when the process started no code execution backend.
+		if (!this.codeExecutionBackend) {
+			throw new UnexpectedError('Code execution backend is not set');
+		}
+
 		const webhookBase = this.urlService.getWebhookBaseUrl();
 		const testWebhookBase = this.urlService.getTestWebhookBaseUrl();
 		const { endpoints } = this.globalConfig;
@@ -132,9 +142,10 @@ export class EngineAdditionalDataBuilder {
 			logHitlResponse: (payload) => {
 				eventService.emit('hitl-response-actioned', payload);
 			},
-			// The Code node's work goes to the task broker this process hosts, as on v1.
-			getRunnerStatus: (taskType) => this.taskRequester.getRunnerStatus(taskType),
-			startRunnerTask: async (...args) => await this.taskRequester.startTask(...args),
+			// The Code node's work goes to the code execution backend of this process, as on v1.
+			getRunnerStatus: (taskType) => this.codeExecutionBackend.getStatus(taskType),
+			startRunnerTask: async (...args) =>
+				await this.codeExecutionBackend.runTask(toCodeTaskRequest(...args)),
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),

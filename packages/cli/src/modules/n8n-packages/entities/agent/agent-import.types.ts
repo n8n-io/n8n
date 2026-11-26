@@ -14,6 +14,8 @@ import type { WorkflowArchiveTransition } from '../workflow/workflow-archive-tra
 
 export type AgentPlanItem = PreparedAgent & {
 	publishingAction: PublishingAction;
+	/** Set when an update follows the package layout. Null means the project root. */
+	moveToFolderId?: string | null;
 	/** The archive step that makes the destination match the package. */
 	archiveTransition: WorkflowArchiveTransition | null;
 	channels: ImportedChannel[];
@@ -50,11 +52,12 @@ export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${str
 export interface PreparedAgent extends Omit<SerializedAgent, 'id' | 'isArchived'> {
 	/** The package omits the key for an agent that is not archived. */
 	isArchived: boolean;
+	parentFolderId?: string | null;
 	sourceAgentId: string;
 	metadata: SerializedAgentMetadata;
 }
 
-export interface AgentImportMatchContext extends Pick<ImportContext, 'user' | 'projectId'> {
+export interface AgentImportMatchContext extends Pick<ImportContext, 'user' | 'ctx' | 'projectId'> {
 	/** Set only after the project planner authorizes creation of this destination. */
 	projectPendingCreation?: boolean;
 }

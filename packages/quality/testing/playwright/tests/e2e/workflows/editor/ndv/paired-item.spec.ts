@@ -6,7 +6,8 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('maps paired input and output items', async ({ n8n }) => {
+		// TODO(CET-1206): engine v2 does not add the links that a Code node leaves out of its output, so the editor cannot pair the items behind it.
+		test('maps paired input and output items @engine:v2-pending', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 
@@ -78,7 +79,10 @@ test.describe(
 			);
 		});
 
-		test('maps paired input and output items based on selected input node', async ({ n8n }) => {
+		// Engine v2 runs a node that two branches feed once, so the node shows one run, not one for each branch.
+		test('maps paired input and output items based on selected input node @engine:v1-only', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
@@ -116,7 +120,10 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 		});
 
-		test('maps paired input and output items based on selected run', async ({ n8n }) => {
+		// Engine v2 runs Set2 once, though two branches feed it. So Set3 shows one run, not two.
+		test('maps paired input and output items based on selected run @engine:v1-only', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
@@ -177,7 +184,10 @@ test.describe(
 			);
 		});
 
-		test('can pair items between input and output across branches and runs', async ({ n8n }) => {
+		// Engine v2 runs a node that two branches feed once, so the node shows one run, not one for each branch.
+		test('can pair items between input and output across branches and runs @engine:v1-only', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
@@ -243,7 +253,8 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('8888');
 		});
 
-		test('should auto-fix pairedItem when multiple inputs create single output', async ({
+		// TODO(CET-1206): engine v2 does not add the links that a Code node leaves out of its output.
+		test('should auto-fix pairedItem when multiple inputs create single output @engine:v2-pending', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('Test_workflow_ndv_paired_item_single_output.json');
@@ -254,7 +265,9 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.get()).toContainText('Jay Gatsby');
 		});
 
-		test('can resolve expression with paired item in multi-input node', async ({ n8n }) => {
+		test('can resolve expression with paired item in multi-input node @engine:v2', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow('expression_with_paired_item_in_multi_input_node.json');
 
 			await n8n.canvas.clickZoomToFitButton();

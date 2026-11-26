@@ -4,7 +4,6 @@ import {
 	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
-	buildSkillInstructionCacheOptions,
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 	getPromptCacheRetentionMs,
@@ -28,68 +27,9 @@ function makeTool(providerOptions?: Record<string, unknown>): ToolSet[string] {
 	return { inputSchema: {}, providerOptions } as ToolSet[string];
 }
 
-describe('buildSkillInstructionCacheOptions', () => {
-	it('reuses the instruction cache options', () => {
-		expect(
-			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, { a: makeTool() }, [
-				makeUserMessage('hi'),
-			]),
-		).toEqual(ANTHROPIC_CACHE_CONTROL);
-	});
-
-	it('returns undefined when the instructions carry no Anthropic breakpoint', () => {
-		expect(buildSkillInstructionCacheOptions(undefined, {}, [])).toBeUndefined();
-		expect(
-			buildSkillInstructionCacheOptions({ openai: { promptCacheKey: 'key' } }, {}, []),
-		).toBeUndefined();
-	});
-
-	it('keeps a slot for the conversation breakpoint next to caller tool breakpoints', () => {
-		expect(
-			buildSkillInstructionCacheOptions(
-				ANTHROPIC_CACHE_CONTROL,
-				{ a: makeTool(ANTHROPIC_CACHE_CONTROL) },
-				[],
-			),
-		).toEqual(ANTHROPIC_CACHE_CONTROL);
-		expect(
-			buildSkillInstructionCacheOptions(
-				ANTHROPIC_CACHE_CONTROL,
-				{ a: makeTool(ANTHROPIC_CACHE_CONTROL), b: makeTool(ANTHROPIC_CACHE_CONTROL) },
-				[],
-			),
-		).toBeUndefined();
-	});
-
-	it('counts caller breakpoints on messages and content parts', () => {
-		const markedPart = {
-			role: 'user',
-			content: [{ type: 'text', text: 'b', providerOptions: ANTHROPIC_CACHE_CONTROL }],
-		} as ModelMessage;
-		expect(
-			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, {}, [
-				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
-			]),
-		).toEqual(ANTHROPIC_CACHE_CONTROL);
-		expect(
-			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, {}, [
-				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
-				markedPart,
-			]),
-		).toBeUndefined();
-		expect(
-			buildSkillInstructionCacheOptions(
-				ANTHROPIC_CACHE_CONTROL,
-				{ a: makeTool(ANTHROPIC_CACHE_CONTROL) },
-				[makeUserMessage('a', ANTHROPIC_CACHE_CONTROL)],
-			),
-		).toBeUndefined();
-	});
-});
-
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 	it.each([
-		'anthropic/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
 		'google-vertex-anthropic/claude-opus-4-8',
 		'google-vertex/claude-opus-5@default',
 		'azure-openai/anthropic/my-claude',
@@ -103,7 +43,7 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 		expect(
 			buildInstructionPromptCacheOptions(
 				{ anthropic: { ttl: '5m' } },
-				'anthropic/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
 			),
 		).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
@@ -119,19 +59,19 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 
 	it('returns undefined when config is disabled', () => {
 		expect(
-			buildInstructionPromptCacheOptions({ enabled: false }, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions({ enabled: false }, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 
 	it('returns undefined when anthropic scope is disabled', () => {
 		expect(
-			buildInstructionPromptCacheOptions({ anthropic: false }, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions({ anthropic: false }, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 
 	it('returns undefined when config is not set', () => {
 		expect(
-			buildInstructionPromptCacheOptions(undefined, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions(undefined, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 });
@@ -147,6 +87,41 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 		expect(typeof (result.openai as { promptCacheKey: string }).promptCacheKey).toBe('string');
 	});
 
+	it.each([
+		'openai/gpt-4.1',
+		'openai/gpt-5.1',
+		'openai/gpt-5.5',
+		'openai/gpt-5.6-luna',
+		'openai/my-finetune',
+	])('keeps the 24h default for %s', (modelId) => {
+		expect(buildCallPromptCacheOptions({ enabled: true }, modelId, context)?.openai).toMatchObject({
+			promptCacheRetention: '24h',
+		});
+	});
+
+	it.each(['openai/gpt-6-luna', 'openai/gpt-6-sol', 'openai/gpt-6.1-sol'])(
+		'sends no promptCacheRetention by default for %s, which rejects it',
+		(modelId) => {
+			const openai = buildCallPromptCacheOptions({ enabled: true }, modelId, context)?.openai;
+
+			expect(openai).not.toHaveProperty('promptCacheRetention');
+			expect(openai).toHaveProperty('promptCacheKey');
+		},
+	);
+
+	it.each(['24h', 'in_memory'] as const)(
+		'omits a configured promptCacheRetention of %s for GPT-6, which would only log a warning',
+		(promptCacheRetention) => {
+			expect(
+				buildCallPromptCacheOptions(
+					{ openai: { promptCacheKey: 'assistant-v1', promptCacheRetention } },
+					'openai/gpt-6.1-sol',
+					context,
+				),
+			).toEqual({ openai: { promptCacheKey: 'assistant-v1' } });
+		},
+	);
+
 	it('passes through an explicit promptCacheKey and promptCacheRetention unchanged', () => {
 		expect(
 			buildCallPromptCacheOptions(
@@ -161,7 +136,7 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 
 	it('returns undefined for a non-OpenAI model', () => {
 		expect(
-			buildCallPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-4-5', context),
+			buildCallPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-5-5', context),
 		).toBeUndefined();
 	});
 
@@ -220,26 +195,26 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 
 describe('getEffectiveAnthropicCacheTtl', () => {
 	it.each([
-		'anthropic/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
 		'google-vertex/claude-opus-5@default',
-		'openrouter/anthropic/claude-sonnet-4.5',
+		'openrouter/anthropic/claude-sonnet-5.5',
 	])('returns the default 1h TTL for %s with caching enabled', (modelId) => {
 		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, modelId)).toBe('1h');
 	});
 
 	it('returns an explicit 5m override for an Anthropic model', () => {
 		expect(
-			getEffectiveAnthropicCacheTtl({ anthropic: { ttl: '5m' } }, 'anthropic/claude-sonnet-4-5'),
+			getEffectiveAnthropicCacheTtl({ anthropic: { ttl: '5m' } }, 'anthropic/claude-sonnet-5-5'),
 		).toBe('5m');
 	});
 
 	it('returns undefined for an Anthropic model with no promptCaching config', () => {
-		expect(getEffectiveAnthropicCacheTtl(undefined, 'anthropic/claude-sonnet-4-5')).toBeUndefined();
+		expect(getEffectiveAnthropicCacheTtl(undefined, 'anthropic/claude-sonnet-5-5')).toBeUndefined();
 	});
 
 	it('returns undefined when the anthropic scope is disabled', () => {
 		expect(
-			getEffectiveAnthropicCacheTtl({ anthropic: false }, 'anthropic/claude-sonnet-4-5'),
+			getEffectiveAnthropicCacheTtl({ anthropic: false }, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 
@@ -278,7 +253,7 @@ describe('mergeProviderOptions', () => {
 });
 
 describe('applyRuntimeCacheBreakpoints', () => {
-	it.each(['anthropic/claude-sonnet-4-5', 'google-vertex/claude-opus-5@default'])(
+	it.each(['anthropic/claude-sonnet-5-5', 'google-vertex/claude-opus-5@default'])(
 		'marks the last conversation message with an Anthropic cache breakpoint for %s',
 		(modelId) => {
 			const messages = [makeUserMessage('hi'), makeUserMessage('there')];
@@ -320,7 +295,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages: [],
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -355,7 +330,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools: {},
 			promptCaching: { anthropic: false },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: undefined,
 		});
 
@@ -378,7 +353,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -397,7 +372,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -423,7 +398,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -451,7 +426,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 				messages,
 				aiTools,
 				promptCaching: { enabled: true },
-				modelId: 'anthropic/claude-sonnet-4-5',
+				modelId: 'anthropic/claude-sonnet-5-5',
 				staticToolCacheName: 'tool_b',
 			});
 
@@ -480,7 +455,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -498,10 +473,10 @@ describe('getPromptCacheRetentionMs', () => {
 		expect(
 			getPromptCacheRetentionMs(
 				{ enabled: true, anthropic: { ttl: '5m' } },
-				'anthropic/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
 			),
 		).toBe(5 * 60_000);
-		expect(getPromptCacheRetentionMs({ enabled: true }, 'anthropic/claude-sonnet-4-5')).toBe(HOUR);
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'anthropic/claude-sonnet-5-5')).toBe(HOUR);
 	});
 
 	it('uses the OpenAI retention, which defaults to 24 hours', () => {
@@ -510,6 +485,31 @@ describe('getPromptCacheRetentionMs', () => {
 			getPromptCacheRetentionMs(
 				{ enabled: true, openai: { promptCacheRetention: 'in_memory' } },
 				'openai/gpt-5',
+			),
+		).toBe(HOUR);
+	});
+
+	it('assumes the 30 minute minimum lifetime for GPT-6 and later, which take no retention', () => {
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-6.1-sol')).toBe(30 * 60_000);
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-5.6-luna')).toBe(24 * HOUR);
+		// A configured retention is not sent to GPT-6, so it does not change the assumed lifetime.
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: '24h' } },
+				'openai/gpt-6.1-sol',
+			),
+		).toBe(30 * 60_000);
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: 'in_memory' } },
+				'openai/gpt-6-luna',
+			),
+		).toBe(30 * 60_000);
+		// Up to GPT-5.6 a configured retention still decides.
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: 'in_memory' } },
+				'openai/gpt-5.6-luna',
 			),
 		).toBe(HOUR);
 	});

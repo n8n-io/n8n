@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentConnect extends BaseCommand {
 	static override description =
-		'Connect an environment on the instance. For Git, this clones the configured branch into local storage. Safe to run again, and connecting one environment does not make another ready.';
+		'Connect an environment on the instance. For Git, this clones the configured branch into local storage. Safe to run again. This command is optional: other commands prepare the environment when they need it.';
 
 	static override examples = ['<%= config.bin %> promotion-environment connect env-1'];
 

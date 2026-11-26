@@ -13,6 +13,7 @@ import { AppHostService } from '../../serving/app-host.service';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const url = `https://sales.apps.example.com/_n8n/auth/${id}/callback`;
+const previewUrl = `https://sales--preview.apps.example.com/_n8n/auth/${id}/callback`;
 
 function setup(deploymentType = 'default') {
 	const app = mock<App>({
@@ -66,7 +67,9 @@ describe('AppProtectedResource', () => {
 		await expect(registry.getByResourceUrl(mainUrl)).resolves.toBeUndefined();
 		expect(apps.findById).not.toHaveBeenCalled();
 
-		expect((await registry.getByResourceUrl(url))?.getResourceUrl()).toBe(url);
+		const descriptor = await registry.getByResourceUrl(url);
+		expect(descriptor?.getResourceUrl()).toBe(url);
+		expect(descriptor?.skipConsent).toBe(false);
 		expect(apps.findById).toHaveBeenCalledExactlyOnceWith(id);
 	});
 
@@ -140,6 +143,32 @@ describe('AppProtectedResource', () => {
 		expect(await resource.canRead(app, user)).toBe(false);
 	});
 
+	it('offers a grant that requires app:read in the project of a project app', async () => {
+		const { resource, app } = setup();
+
+		expect(resource.forApp(app).getGrant?.()).toEqual({
+			audiences: [url],
+			projectAccess: { projectId: 'project', scopes: ['app:read'] },
+		});
+	});
+
+	it('offers a grant without a project requirement for an instance app', async () => {
+		const { resource, app } = setup();
+		app.visibility = 'instance';
+
+		expect(resource.forApp(app).getGrant?.()).toEqual({ audiences: [url] });
+	});
+
+	it('uses the given app without a lookup when revalidation is off', async () => {
+		const { resource, app, apps } = setup();
+		const user = mock<ResourcePrincipal>({ id: 'user' });
+		const descriptor = resource.forApp(app, { revalidate: false });
+
+		expect(await descriptor.isAvailable?.()).toBe(true);
+		expect(await descriptor.authorize(user)).toBe(true);
+		expect(apps.findById).not.toHaveBeenCalled();
+	});
+
 	it('makes old resources unavailable after unpublish or rename', async () => {
 		const { resource, app, apps } = setup();
 		const descriptor = resource.forApp(app);
@@ -148,5 +177,47 @@ describe('AppProtectedResource', () => {
 		apps.findById.mockResolvedValue(mock<App>({ ...app, publishedVersionId: null }));
 		expect(await descriptor.isAvailable?.()).toBe(false);
 		expect(await resource.resolveByUrl(url)).toBeUndefined();
+	});
+
+	describe('preview resource', () => {
+		const user = mock<ResourcePrincipal>({ id: 'user' });
+
+		it('resolves by the preview callback URL without a published version', async () => {
+			const { registry, apps, app } = setup();
+			apps.findById.mockResolvedValue(mock<App>({ ...app, publishedVersionId: null }));
+
+			const descriptor = await registry.getByResourceUrl(previewUrl);
+
+			expect(descriptor?.id).toBe(`app-preview:${id}`);
+			expect(descriptor?.skipConsent).toBe(true);
+			expect(descriptor?.getAudiences()).toEqual([previewUrl]);
+			expect(descriptor?.getGrant?.()).toEqual({
+				audiences: [previewUrl],
+				projectAccess: { projectId: 'project', scopes: ['app:read'] },
+			});
+			expect(await descriptor?.isAvailable?.()).toBe(true);
+		});
+
+		it('requires read access even for an instance app', async () => {
+			const { resource, app, projectScope } = setup();
+			app.visibility = 'instance';
+			const descriptor = resource.forApp(app, { kind: 'preview' });
+
+			expect(await descriptor.authorize(user)).toBe(true);
+			projectScope.hasScopes.mockResolvedValue(false);
+			expect(await descriptor.authorize(user)).toBe(false);
+			expect(descriptor.getGrant?.()).toEqual({
+				audiences: [previewUrl],
+				projectAccess: { projectId: 'project', scopes: ['app:read'] },
+			});
+		});
+
+		it('becomes unavailable after a rename', async () => {
+			const { resource, app, apps } = setup();
+			const descriptor = resource.forApp(app, { kind: 'preview' });
+			apps.findById.mockResolvedValue(mock<App>({ ...app, namespace: 'renamed' }));
+
+			expect(await descriptor.isAvailable?.()).toBe(false);
+		});
 	});
 });

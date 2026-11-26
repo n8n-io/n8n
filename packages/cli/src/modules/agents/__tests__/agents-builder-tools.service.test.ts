@@ -17,8 +17,13 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
+import type {
+	CredentialsFinderService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -28,12 +33,10 @@ import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -51,6 +54,10 @@ import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import { SkillNameTakenError } from '@/modules/skills';
 import * as checkAccess from '@/permissions.ee/check-access';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import type { BuilderCredentialService } from '../builder/builder-session';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
@@ -102,7 +109,7 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const nodeTypes = mock<NodeTypesProxy>();
@@ -113,8 +120,16 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
-	const collaborationService = mock<CollaborationService>();
+	const agentWriteLockService = mock<AgentWriteLockService>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	chatIntegrationRegistry.get.mockImplementation(
+		(type) => ({ displayLabel: type === 'slack' ? 'Slack' : type }) as AgentChatIntegration,
+	);
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -136,14 +151,17 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		collaborationService,
+		agentWriteLockService,
 		createAgentSkillRefsService(),
+		credentialsFinderService,
 		credentialsPermissionChecker,
+		chatIntegrationRegistry,
 	);
 
 	return {
 		service,
-		collaborationService,
+		credentialsFinderService,
+		agentWriteLockService,
 		credentialsPermissionChecker,
 		builderModelLiveLookupService,
 		agentsService: purposeServices,
@@ -159,7 +177,7 @@ function makeService() {
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Agent One',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'Anthropic Key',
 	instructions: 'Help the user.',
 	tools: [],
@@ -330,8 +348,8 @@ describe('AgentsBuilderToolsService', () => {
 				});
 
 				it('leaves a lock failure without a stage to its error message', async () => {
-					const { service, collaborationService } = makeService();
-					collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+					const { service, agentWriteLockService } = makeService();
+					agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 					const tool = getJsonTool(service, toolName);
 
 					const result = await tool.handler!(
@@ -392,6 +410,35 @@ describe('AgentsBuilderToolsService', () => {
 			).json;
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+		});
+
+		it('rejects MCP verification with a credential that the user can only read', async () => {
+			const { service, credentialsFinderService, outboundHttp } = makeService();
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					scopes.includes('credential:connect')
+						? null
+						: ({ id, isGlobal: false, isResolvable: false } as never),
+			);
+			const member = { id: 'user-1', role: GLOBAL_MEMBER_ROLE } as User;
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, credentialService, member)
+				.json.find((candidate) => candidate.name === BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			const transportCalls = outboundHttp.transport.mock.calls.length;
+
+			const result = await tool!.handler!(
+				{
+					name: 'docs',
+					url: 'https://mcp.example.test/mcp',
+					authentication: 'headerAuth',
+					credential: 'credential-1',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({ ok: false, error: 'Credential not found or not accessible' });
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+			expect(outboundHttp.transport.mock.calls.length).toBe(transportCalls);
 		});
 
 		it('registers the agent_builder_finish_setup interactive tool in the builder toolset', () => {
@@ -633,9 +680,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_write_config returns a locked failure while a user holds the builder write lock', async () => {
-			const { service, agentsService, collaborationService } = makeService();
+			const { service, agentsService, agentWriteLockService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
@@ -653,9 +700,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_patch_config reports stage "locked" while a user holds the builder write lock', async () => {
-			const { service, agentsService, collaborationService } = makeService();
+			const { service, agentsService, agentWriteLockService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
@@ -1837,9 +1884,9 @@ describe('AgentsBuilderToolsService', () => {
 
 		describe('prompt caching defaults', () => {
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config enables caching for %s when omitted', async (model) => {
 				const { service, agentsService } = makeService();
 				const currentConfig = { ...baseConfig, model, integrations: [] };
@@ -1939,13 +1986,13 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				const normalizedConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
@@ -2019,9 +2066,9 @@ describe('AgentsBuilderToolsService', () => {
 			});
 
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config preserves the cache TTL for %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
@@ -3312,15 +3359,587 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
 		}
 
+		/** An unpublished agent whose draft has no saved version, which `approvedCtx` approves. */
+		const unpublishedAgent = {
+			id: agentId,
+			versionId: null,
+			activeVersionId: null,
+			revision: 0,
+		} as unknown as ProjectAgent;
+
+		/** An approved card for `unpublishedAgent`'s draft. */
+		const approvedCtx = {
+			...ctx,
+			resumeData: { approved: true },
+			continuation: {
+				confirmedVersionId: null,
+				selectedVersion: false,
+				liveVersionId: null,
+				revision: 0,
+			},
+		};
+
 		function getUnpublishTool(service: AgentsBuilderToolsService) {
 			return service
 				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.UNPUBLISH_AGENT)!;
 		}
 
-		it('publishes the bound agent draft when the user has agent:publish', async () => {
-			const { service, agentPublishService } = makeService();
+		it('asks the user to go live first, with what might get sent, and publishes nothing yet', async () => {
+			const { service, agentsService, agentPublishService, agentTaskService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft',
+				activeVersionId: 'v-live',
+				revision: 3,
+				integrations: [
+					{ type: 'slack', credentialId: 'cred-1' },
+					{ type: 'telegram', credentialId: '' },
+					{ type: 'n8n_chat', credentialId: '' },
+				],
+				schema: {
+					...baseConfig,
+					tools: [{ type: 'node', name: 'gmail' }],
+					mcpServers: [
+						{
+							name: 'Linear',
+							url: 'https://mcp.linear.app',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+					tasks: [
+						{ type: 'task', id: 'digest', enabled: true },
+						{ type: 'task', id: 'paused', enabled: false },
+					],
+				},
+			} as unknown as ProjectAgent);
+			agentTaskService.list.mockResolvedValue([
+				{ id: 'digest', name: 'Daily digest' },
+				{ id: 'paused', name: 'Paused task' },
+			] as never);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: {
+					confirmedVersionId: 'v-draft',
+					selectedVersion: false,
+					liveVersionId: 'v-live',
+					revision: 3,
+				},
+			});
+			expect(result).toEqual({
+				message:
+					'Republish Support agent and go live. These might get sent for real: replies in Slack, runs the scheduled task "Daily digest", calls tools from Linear, uses its 1 tool.',
+				severity: 'warning',
+				resourceName: 'Support agent',
+				approvalDetails: {
+					action: 'publish-agent',
+					liveAvailability: 'changed',
+					selectedVersion: false,
+					sendTargets: [
+						{ kind: 'channel', name: 'Slack' },
+						{ kind: 'task', name: 'Daily digest' },
+						{ kind: 'mcp-server', name: 'Linear' },
+						{ kind: 'tools', count: 1 },
+					],
+				},
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('asks again instead of publishing when the draft changed while the card was open', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: null,
+				revision: 4,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{
+					...ctx,
+					suspend,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-draft-1',
+						selectedVersion: false,
+						liveVersionId: null,
+						revision: 0,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: {
+					confirmedVersionId: 'v-draft-2',
+					selectedVersion: false,
+					liveVersionId: null,
+					revision: 4,
+				},
+			});
+			expect(result).toMatchObject({
+				approvalDetails: {
+					action: 'publish-agent',
+					liveAvailability: 'unpublished',
+					changedSinceAsked: true,
+				},
+			});
+		});
+
+		it('passes a stale-card suspension through instead of reporting an error', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: null,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspended = new Error('suspended');
+			const suspend = vi.fn(async () => {
+				throw suspended;
+			});
+
+			await expect(
+				getPublishTool(service).handler!(
+					{},
+					{
+						...ctx,
+						suspend,
+						resumeData: { approved: true },
+						continuation: {
+							confirmedVersionId: 'v-draft-1',
+							selectedVersion: false,
+							liveVersionId: null,
+							revision: 0,
+						},
+					},
+				),
+			).rejects.toBe(suspended);
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('publishes at the draft revision the card showed', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				versionId: 'v-draft',
+				activeVersionId: null,
+				revision: 5,
+			} as unknown as ProjectAgent);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
+			});
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{
+					...ctx,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-draft',
+						selectedVersion: false,
+						liveVersionId: null,
+						revision: 5,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				{ by: 'builder', trigger: 'explicit' },
+				undefined,
+				undefined,
+				5,
+			);
+			expect(result).toMatchObject({ ok: true, activeVersionId: 'v-draft' });
+		});
+
+		it('reports an agent deleted while the card was open instead of publishing', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found.' }] });
+		});
+
+		it('reports a missing agent instead of asking to publish it', async () => {
+			const { service, agentsService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found.' }] });
+		});
+
+		it('asks again when an approval does not say which version the card showed', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft',
+				activeVersionId: null,
+				revision: 4,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{ ...ctx, suspend, resumeData: { approved: true }, continuation: undefined },
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: {
+					confirmedVersionId: 'v-draft',
+					selectedVersion: false,
+					liveVersionId: null,
+					revision: 4,
+				},
+			});
+			expect(result).toMatchObject({ approvalDetails: { action: 'publish-agent' } });
+			expect(result).not.toHaveProperty('approvalDetails.changedSinceAsked');
+		});
+
+		it('guards a publish that names the current draft by the draft revision', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				versionId: 'v-draft',
+				activeVersionId: null,
+				revision: 7,
+			} as unknown as ProjectAgent);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
+			});
+
+			await getPublishTool(service).handler!(
+				{ versionId: 'v-draft' },
+				{
+					...ctx,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-draft',
+						selectedVersion: false,
+						liveVersionId: null,
+						revision: 7,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				{ by: 'builder', trigger: 'explicit' },
+				undefined,
+				undefined,
+				7,
+			);
+		});
+
+		it('asks again when a call named the draft and the draft changed since', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: null,
+				revision: 8,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			agentPublishService.getVersion.mockResolvedValue({
+				definition: { schema: baseConfig, tasks: new Map() },
+			} as never);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-draft' },
+				{
+					...ctx,
+					suspend,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-draft',
+						selectedVersion: false,
+						liveVersionId: null,
+						revision: 7,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledTimes(1);
+			// Still a draft card, about the current draft, not the old draft as a history version.
+			expect(agentPublishService.getVersion).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				approvalDetails: { selectedVersion: false, changedSinceAsked: true },
+			});
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: expect.objectContaining({
+					confirmedVersionId: 'v-draft-2',
+					selectedVersion: false,
+				}),
+			});
+		});
+
+		it('asks again when a channel was connected while a history card was open', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: 'v-live',
+				revision: 8,
+				integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			agentPublishService.getVersion.mockResolvedValue({
+				definition: { schema: baseConfig, tasks: new Map() },
+			} as never);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-history' },
+				{
+					...ctx,
+					suspend,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-history',
+						selectedVersion: true,
+						liveVersionId: 'v-live',
+						revision: 7,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				approvalDetails: { sendTargets: [{ kind: 'channel', name: 'Slack' }] },
+			});
+		});
+
+		it('publishes a history version at the revision the card showed', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				versionId: 'v-draft',
+				activeVersionId: 'v-draft',
+				revision: 7,
+			} as unknown as ProjectAgent);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: { activeVersionId: 'v-history', versionId: 'v-draft' } as ProjectAgent,
+			});
+
+			await getPublishTool(service).handler!(
+				{ versionId: 'v-history' },
+				{
+					...ctx,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-history',
+						selectedVersion: true,
+						liveVersionId: 'v-draft',
+						revision: 7,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				{ by: 'builder', trigger: 'explicit' },
+				'v-history',
+				undefined,
+				7,
+			);
+		});
+
+		it('asks again when the live version changed while the card was open', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft',
+				activeVersionId: 'v-draft',
+				revision: 0,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{
+					...ctx,
+					suspend,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-draft',
+						selectedVersion: false,
+						liveVersionId: null,
+						revision: 0,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			// The draft went live elsewhere, so there is nothing left to confirm.
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-draft',
+				versionId: 'v-draft',
+				changed: false,
+			});
+		});
+
+		it('publishes nothing when the user cancels, even if the editor got locked meanwhile', async () => {
+			const { service, agentPublishService, agentWriteLockService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{ ...ctx, resumeData: { approved: false } },
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				denied: true,
+				reason:
+					'The user declined to publish. Nothing was published. Do not call this tool again unless the user asks.',
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['a history version, with its own config', 'v-history', 'changed', true],
+			['a changed draft', undefined, 'changed', false],
+		] as const)(
+			'asks before going live with %s',
+			async (_name, versionId, liveAvailability, selectedVersion) => {
+				const { service, agentsService, agentPublishService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentsService.findById.mockResolvedValue({
+					id: agentId,
+					name: 'Support agent',
+					versionId: 'v-draft',
+					activeVersionId: 'v-live',
+					revision: 2,
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+					schema: baseConfig,
+				} as unknown as ProjectAgent);
+				agentPublishService.getVersion.mockResolvedValue({
+					definition: {
+						schema: { ...baseConfig, tasks: [{ type: 'task', id: 'digest', enabled: true }] },
+						tasks: new Map([['digest', { name: 'Daily digest' }]]),
+					},
+				} as never);
+				const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+				const result = await getPublishTool(service).handler!({ versionId }, { ...ctx, suspend });
+
+				expect(result).toMatchObject({
+					approvalDetails: {
+						action: 'publish-agent',
+						liveAvailability,
+						selectedVersion,
+						sendTargets: selectedVersion
+							? [
+									{ kind: 'channel', name: 'Slack' },
+									{ kind: 'task', name: 'Daily digest' },
+								]
+							: [{ kind: 'channel', name: 'Slack' }],
+					},
+				});
+			},
+		);
+
+		it('does not ask when the version is already live, because nothing would change', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-live',
+				activeVersionId: 'v-live',
+				revision: 2,
+				integrations: [],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-live',
+				versionId: 'v-live',
+				changed: false,
+			});
+		});
+
+		it('reports an unknown history version before asking', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
+			agentPublishService.getVersion.mockRejectedValue(new Error('Version "v-x" not found'));
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-x' },
+				{ ...ctx, suspend },
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Version "v-x" not found' }] });
+		});
+
+		it('publishes the bound agent draft when the user has agent:publish', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-active',
@@ -3328,7 +3947,7 @@ describe('AgentsBuilderToolsService', () => {
 				} as ProjectAgent,
 			});
 
-			const result = await getPublishTool(service).handler!({}, ctx);
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
 
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:publish'], false, {
 				projectId,
@@ -3339,6 +3958,8 @@ describe('AgentsBuilderToolsService', () => {
 				user,
 				{ by: 'builder', trigger: 'explicit' },
 				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -3350,8 +3971,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('forwards an optional versionId to publishAgent', async () => {
-			const { service, agentPublishService } = makeService();
+			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-history',
@@ -3359,7 +3981,18 @@ describe('AgentsBuilderToolsService', () => {
 				} as ProjectAgent,
 			});
 
-			const result = await getPublishTool(service).handler!({ versionId: 'v-history' }, ctx);
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-history' },
+				{
+					...approvedCtx,
+					continuation: {
+						confirmedVersionId: 'v-history',
+						selectedVersion: true,
+						liveVersionId: null,
+						revision: 0,
+					},
+				},
+			);
 
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 				agentId,
@@ -3367,6 +4000,8 @@ describe('AgentsBuilderToolsService', () => {
 				user,
 				{ by: 'builder', trigger: 'explicit' },
 				'v-history',
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -3383,11 +4018,23 @@ describe('AgentsBuilderToolsService', () => {
 			const publishedAgent = {
 				activeVersionId: 'v-active',
 				versionId: 'v-active',
+				revision: 0,
 			} as ProjectAgent;
 			agentsService.findById.mockResolvedValue(publishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({ agent: publishedAgent });
 
-			const result = await getPublishTool(service).handler!({}, ctx);
+			const result = await getPublishTool(service).handler!(
+				{},
+				{
+					...approvedCtx,
+					continuation: {
+						confirmedVersionId: 'v-active',
+						selectedVersion: false,
+						liveVersionId: 'v-active',
+						revision: 0,
+					},
+				},
+			);
 
 			expect(result).toEqual({
 				ok: true,
@@ -3412,9 +4059,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('returns a locked failure on publish while a user holds the builder write lock', async () => {
-			const { service, agentPublishService, collaborationService } = makeService();
+			const { service, agentPublishService, agentWriteLockService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getPublishTool(service).handler!({}, ctx);
 
@@ -3426,13 +4073,14 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('surfaces publish service errors to the model', async () => {
-			const { service, agentPublishService } = makeService();
+			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
 			agentPublishService.publishAgent.mockRejectedValue(
 				new Error('Cannot publish agent with missing custom tools: my_tool'),
 			);
 
-			const result = await getPublishTool(service).handler!({}, ctx);
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
 
 			expect(result).toEqual({
 				ok: false,
@@ -3495,8 +4143,8 @@ describe('AgentsBuilderToolsService', () => {
 
 	describe('MCP credential apply path', () => {
 		it('returns { applied: false } when a user holds the builder write lock', async () => {
-			const { service, collaborationService } = makeService();
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			const { service, agentWriteLockService } = makeService();
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			// applyCredentialToMcpServer is private but called from the
 			// agent_builder_verify_mcp_server tool context; invoke it directly to test the

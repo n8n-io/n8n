@@ -15,6 +15,7 @@
 | resumeFromMessageId | varchar(36) |  | true |  |  | Last message replaced by resumeNotes; later requests start after it |
 | resumeNotes | text |  | true |  |  | Observation notes as sent to the model at the resume point |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workingSet | text |  | true |  |  | Plan checklist and working commands the Observer last wrote; each write replaces it |
 
 ## Constraints
 
@@ -57,15 +58,19 @@ erDiagram
   varchar_36_ resumeFromMessageId
   text resumeNotes
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision

@@ -35,6 +35,7 @@ import {
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type ExecutionBlockedReason,
 	WorkflowExpression,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -50,6 +51,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import type { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -765,7 +767,7 @@ describe('JobProcessor', () => {
 	});
 
 	// A plain run, since a deep mock answers every flag with a truthy function.
-	test.each([true as const, undefined])(
+	test.each(['policy', 'startFailed', undefined] as const)(
 		'should report failedBeforeStart=%s in job-finished',
 		async (flag) => {
 			const executionPersistence = mock<ExecutionPersistence>();
@@ -806,7 +808,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			const finished = job.progress.mock.calls
-				.map(([msg]) => msg as { kind: string; failedBeforeStart?: true })
+				.map(([msg]) => msg as { kind: string; failedBeforeStart?: ExecutionBlockedReason })
 				.find((msg) => msg.kind === 'job-finished');
 			expect(finished?.failedBeforeStart).toBe(flag);
 		},
@@ -828,6 +830,7 @@ describe('JobProcessor', () => {
 					pinData,
 				},
 				executionData: undefined,
+				resumeToken: 'stored-token',
 			}),
 		});
 		const executionPersistence = mock<ExecutionPersistence>();
@@ -868,7 +871,43 @@ describe('JobProcessor', () => {
 			executionId,
 			pinData,
 			's3',
+			'stored-token',
 		);
+	});
+
+	it('should restore persisted binary grants for a reconstructed manual execution', async () => {
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+				data: createRunExecutionData({
+					binaryDataAccess: ['binary-id'],
+					executionData: null,
+				}),
+			}),
+		);
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock(),
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect([
+			...(vi.mocked(manualExecutionService.runManually).mock.calls[0][0].binaryDataAccess ?? []),
+		]).toEqual(['binary-id']);
 	});
 
 	it('should set restartExecutionId on additionalData when provided in job data', async () => {
@@ -908,6 +947,44 @@ describe('JobProcessor', () => {
 		);
 
 		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
+	});
+
+	it('should restore the root execution mode on additionalData from the execution data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			data: mock<IRunExecutionData>({
+				resultData: { runData: {} },
+				executionData: undefined,
+				rootExecutionMode: 'manual',
+			}),
+		});
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect(additionalData.rootExecutionMode).toBe('manual');
 	});
 
 	it('should rehydrate the manual-execution identity onto additionalData from job data', async () => {
@@ -1333,6 +1410,7 @@ describe('JobProcessor', () => {
 				mcpType: 'trigger',
 				sessionId: 'session-tool',
 				messageId: 'msg-tool',
+				toolName: 'test-tool',
 				workerId: 'worker-host-123',
 			});
 		});
@@ -4023,6 +4101,91 @@ describe('JobProcessor', () => {
 
 			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 			expect(binaryDataService.store).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('user of the pushRef', () => {
+		const PUSH_REF = 'push-ref';
+		const EDITOR_ID = 'editor';
+		const push = mockInstance(Push);
+
+		beforeEach(() => {
+			push.send.mockClear();
+		});
+
+		const sendToUIFromJob = async (
+			mode: WorkflowExecuteMode,
+			storedData: IRunExecutionData,
+			jobData: Partial<Job['data']> = {},
+		) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode,
+					workflowData: { nodes: [], staticData: {} },
+					data: storedData,
+				}),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			await jobProcessor.processJob(
+				mock<Job>({
+					data: {
+						executionId: 'execution-id',
+						loadStaticData: false,
+						pushRef: PUSH_REF,
+						pushRefUserId: undefined,
+						...jobData,
+					},
+				}),
+			);
+			additionalData.sendDataToUI?.('sendConsoleMessage', { message: 'hi' });
+		};
+
+		const storedRunData = (overrides: { manualUserId?: string; pushRefUserId?: string }) =>
+			Object.assign(
+				createRunExecutionData({
+					resultData: { runData: {} },
+					executionData: null,
+					manualData: overrides.manualUserId ? { userId: overrides.manualUserId } : undefined,
+				}),
+				{ pushRefUserId: overrides.pushRefUserId },
+			);
+
+		it('uses the stored user of the pushRef on a worker', async () => {
+			await sendToUIFromJob(
+				'manual',
+				storedRunData({ manualUserId: 'publisher', pushRefUserId: EDITOR_ID }),
+			);
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'sendConsoleMessage' }),
+				PUSH_REF,
+				EDITOR_ID,
+			);
+		});
+
+		it('uses the user of the pushRef from the job on a worker', async () => {
+			await sendToUIFromJob('trigger', storedRunData({}), { pushRefUserId: EDITOR_ID });
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'sendConsoleMessage' }),
+				PUSH_REF,
+				EDITOR_ID,
+			);
 		});
 	});
 });

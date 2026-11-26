@@ -4,6 +4,7 @@ import type {
 	StepExecutionRequest,
 	StepExecutionResult,
 } from '@n8n/engine';
+import { attachStepErrorDetails } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import {
@@ -27,6 +28,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { convergingSlots, itemLinks, relinkOutputItems } from './item-links';
 import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
@@ -37,6 +39,7 @@ import type {
 	V1StepExecutorDeps,
 } from './types';
 import type { DurableWaitExecuteContext } from './v1-adapters';
+import { toV1ErrorDetails } from './v1-error-details';
 import {
 	toAdditionalDataContext,
 	toV1ExecuteContext,
@@ -45,6 +48,7 @@ import {
 	toV1Sources,
 	toV1Workflow,
 } from './v1-adapters';
+import { nodeNamesById } from './v1-run-data';
 
 /**
  * Turns what the node recorded into a wait declaration.
@@ -117,6 +121,7 @@ export class V1StepExecutor implements IStepExecutor {
 			stepData.outputsByNode,
 			request.node.id,
 			request.context.iteration,
+			stepData.outputSourcesByNode,
 		);
 		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
 
@@ -125,14 +130,25 @@ export class V1StepExecutor implements IStepExecutor {
 		);
 		attachResponseHooks(additionalData, request);
 
+		const links = itemLinks(
+			request.inputSources,
+			convergingSlots(stepData.graph, request.node.id),
+			nodeNamesById(stepData.graph),
+		);
 		const context = toV1ExecuteContext({
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source: toV1Sources(
+				stepData.graph,
+				stepData.outputsByNode,
+				node.id,
+				request.context.iteration,
+			),
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
+			itemLinks: links,
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
 			subExecutionResume: request.resume,
@@ -144,7 +160,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context, nodeResult);
+			return toStepResult(context, relinkOutputItems(nodeResult, links));
 		});
 	}
 
@@ -225,7 +241,7 @@ export class V1StepExecutor implements IStepExecutor {
 			// The node failed, so do not start a sub-execution it may have declared
 			// before failing. This holds for continueOnFail too.
 			context.subWorkflowCalls.declaration = undefined;
-			if (!context.continueOnFail()) throw result.error;
+			if (!context.continueOnFail()) throw withV1ErrorDetails(result.error);
 			return [context.getInputData()];
 		}
 
@@ -256,4 +272,11 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return 'Node execution failed';
 	}
+}
+
+/** A v1 error has more to tell the editor than its message; any other error crosses as it is. */
+function withV1ErrorDetails(error: unknown): unknown {
+	if (!(error instanceof Error)) return error;
+	const details = toV1ErrorDetails(error);
+	return details === undefined ? error : attachStepErrorDetails(error, details);
 }

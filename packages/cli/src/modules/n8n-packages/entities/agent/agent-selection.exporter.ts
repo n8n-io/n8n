@@ -1,5 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { FolderFinderService, ProjectScopeService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
@@ -25,6 +25,8 @@ import { ProjectShellExporter } from '../project/project-shell.exporter';
 import { addRequirementUsage } from '../requirement-source';
 import { mergeRequirements } from '../requirements.types';
 import { needsActiveVersion } from '../workflow/workflow-version-policy';
+import { FolderSerializer } from '../folder/folder.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 
 interface PreparedSelection {
 	snapshot: PreparedAgentExport;
@@ -39,6 +41,8 @@ export class AgentSelectionExporter {
 		private readonly projectService: ProjectService,
 		private readonly projectShellExporter: ProjectShellExporter,
 		private readonly requirementsExtractor: AgentRequirementsExtractor,
+		private readonly folderFinder: FolderFinderService,
+		private readonly folderSerializer: FolderSerializer,
 	) {}
 
 	async export(request: AgentSelectionExportRequest): Promise<AgentSelectionExportResult> {
@@ -57,6 +61,7 @@ export class AgentSelectionExporter {
 		const agentIds = request.agentIds ?? [];
 		if (
 			agentIds.length === 0 &&
+			!request.folderIds?.length &&
 			(projectIds.length === 0 || request.projectWorkflowIds !== undefined)
 		) {
 			return result;
@@ -86,8 +91,68 @@ export class AgentSelectionExporter {
 		if (projectIds.length > 0) {
 			await this.addProjectShells(request, prepared, result, selectedProjects);
 		}
+
+		const folderTargets = new Map(
+			(request.existingFolderEntries ?? []).map((entry) => [entry.id, entry.target]),
+		);
+		result.folderEntries = [];
+		const folderIds = [
+			...new Set(
+				prepared.flatMap(({ snapshot }) =>
+					snapshot.parentFolderId ? [snapshot.parentFolderId] : [],
+				),
+			),
+		];
+		const chains = await this.folderFinder.findFolderAncestorChainsForUser(
+			folderIds,
+			request.user,
+			['folder:read'],
+		);
+
 		for (const { snapshot } of prepared) {
-			const prefix = projectIds.length > 0 ? result.projectTargetsById.get(snapshot.projectId) : '';
+			let prefix = projectIds.length > 0 ? result.projectTargetsById.get(snapshot.projectId) : '';
+
+			if (snapshot.parentFolderId) {
+				const chain = chains.get(snapshot.parentFolderId);
+
+				if (!chain?.length || chain[0].parentFolderId !== null) {
+					throw new PackageExportBlockedError('The Agent folder is not accessible');
+				}
+
+				if (
+					chain.some(
+						(folder) =>
+							folder.resourceType !== 'agent' || folder.homeProject.id !== snapshot.projectId,
+					)
+				) {
+					throw new PackageExportBlockedError(
+						'The Agent folder has an invalid resource type or project',
+					);
+				}
+
+				// Reuse the selected subtree's location without adding its excluded ancestors.
+				const existingAncestorIndex = chain.findLastIndex((folder) => folderTargets.has(folder.id));
+
+				for (const folder of chain.slice(Math.max(0, existingAncestorIndex))) {
+					let target = folderTargets.get(folder.id);
+
+					if (!target) {
+						const entry = await writeManifestEntry(
+							request.writer,
+							'folders',
+							folder.parentFolderId ? (prefix ?? '') : packageDirectory('folders', prefix),
+							folder,
+							this.folderSerializer.serialize(folder, folder.parentFolderId),
+						);
+						result.folderEntries.push(entry);
+						target = entry.target;
+						folderTargets.set(folder.id, target);
+					}
+
+					prefix = target;
+				}
+			}
+
 			result.agentEntries.push(await exporter.write(snapshot, request.writer, prefix));
 		}
 		const { SkillExporter } = await import('../skill/skill.exporter.js');
@@ -114,16 +179,26 @@ export class AgentSelectionExporter {
 		repository: AgentRepository,
 		exporter: AgentExporter,
 	): Promise<PreparedSelection[]> {
-		const projectIds = request.projectIds ?? [];
-		const projectAgentIds = await repository.findIdsInProjectsForExport(projectIds, {
-			includeArchived: request.includeArchived,
-		});
-		const pending = [...new Set([...(request.agentIds ?? []), ...projectAgentIds])];
-		const seen = new Set(pending);
-		const prepared: PreparedSelection[] = [];
 		const exportableProjects = await this.projectScopeService.getProjectIds(request.user, [
 			'agent:export',
 		]);
+		const projectIds = request.projectIds ?? [];
+		const projectAgentIds =
+			request.projectWorkflowIds === undefined
+				? await repository.findIdsInProjectsForExport(projectIds, {
+						includeArchived: request.includeArchived,
+					})
+				: [];
+		const folderAgentIds = request.folderIds?.length
+			? await repository.findIdsInFoldersForExport(request.folderIds, exportableProjects, {
+					includeArchived: request.includeArchived,
+				})
+			: [];
+		const pending = [
+			...new Set([...(request.agentIds ?? []), ...projectAgentIds, ...folderAgentIds]),
+		];
+		const seen = new Set(pending);
+		const prepared: PreparedSelection[] = [];
 		const policy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		while (pending.length > 0) {
 			const ids = pending.splice(0);

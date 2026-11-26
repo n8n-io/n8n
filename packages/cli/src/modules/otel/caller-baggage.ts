@@ -7,7 +7,7 @@ import {
 } from '@opentelemetry/api';
 import { W3CBaggagePropagator } from '@opentelemetry/core';
 
-import { isReservedBaggageKey } from './otel.constants';
+import { isReservedKey } from './otel.constants';
 
 const baggagePropagator = new W3CBaggagePropagator();
 
@@ -23,7 +23,7 @@ export function toCallerBaggage(header: string | string[] | undefined): Baggage 
 	if (!baggage) return undefined;
 
 	const entries = baggage.getAllEntries();
-	const reserved = entries.map(([key]) => key).filter(isReservedBaggageKey);
+	const reserved = entries.map(([key]) => key).filter(isReservedKey);
 	if (reserved.length === entries.length) return undefined;
 
 	return reserved.length ? baggage.removeEntries(...reserved) : baggage;

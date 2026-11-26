@@ -1,5 +1,12 @@
-import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
+import {
+	applyWorkflowDraft,
+	applyWorkflowDraftIssues,
+	dismissWorkflowDrafts,
+	settleWorkflowDraft,
+	type WorkflowDraftsByFilePath,
+} from './instanceAi.workflowDrafts';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
@@ -9,6 +16,7 @@ import {
 	isSafeObjectKey,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiApprovalMode,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -32,7 +40,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { buildAlwaysAllowKey } from './alwaysAllow';
+import { buildAlwaysAllowKeys } from './alwaysAllow';
 import {
 	redactTelemetryProperties,
 	TELEMETRY_EVENT,
@@ -69,7 +77,11 @@ import { createArtifactPreviewMemory } from './artifactPreviewMemory';
 import { toArtifactTurns } from './agentTreeArtifactTurns';
 import { getLatestBuildResult } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
-import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
+import {
+	buildThreadArtifactsContext,
+	createDisplayedExecutionReader,
+	type OpenThreadTab,
+} from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
@@ -90,7 +102,10 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
-import { instanceAiResponseNow } from './instanceAi.responseTiming';
+import {
+	instanceAiResponseNow,
+	observeInstanceAiResponseRender,
+} from './instanceAi.responseTiming';
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -280,6 +295,24 @@ export function getPendingAppTargetFromThreadMetadata(
 		return undefined;
 	}
 	return { appId: target.appId, projectId: target.projectId };
+}
+
+/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	return (
+		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
+		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
+		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
+	);
+}
+
+/** The approval mode that the backend uses for the run of a message sent now. */
+export function messageApprovalMode(
+	settings: { approvalModesAvailable: boolean; approvalMode: InstanceAiApprovalMode },
+	buildsAgent: boolean,
+): InstanceAiApprovalMode | 'unavailable' {
+	if (!settings.approvalModesAvailable) return 'unavailable';
+	return buildsAgent ? 'manual' : settings.approvalMode;
 }
 
 export function getAgentPreviewViewFromThreadMetadata(
@@ -552,6 +585,8 @@ export function createThreadRuntime(
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
+	/** Unsaved workflows the builder wrote in this session. Live only: drafts are never replayed. */
+	const workflowDrafts = ref<WorkflowDraftsByFilePath>({});
 	/**
 	 * What the latest turn reported as applied, from the durable fact on restore and from
 	 * the live event after that. `null` means no turn has reported yet, which differs from
@@ -744,21 +779,12 @@ export function createThreadRuntime(
 		return event.payload.status === 'completed' ? 'completed' : null;
 	}
 
-	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
-		await nextTick();
-		const tabVisible = document.visibilityState === 'visible';
-		if (tabVisible) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-		}
-		return { atEpochMs: instanceAiResponseNow(), tabVisible };
-	}
-
 	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
 		if (responseKind === null) return { kind: 'discard' };
 		return {
 			kind: 'received',
 			responseKind,
-			rendered: observeResponseRender(),
+			rendered: observeInstanceAiResponseRender(),
 		};
 	}
 
@@ -825,6 +851,11 @@ export function createThreadRuntime(
 
 	// Scoped to the active run's message (not all messages) so a stale
 	// confirmation left on an older message can't suppress stall detection.
+	/**
+	 * True while the active run is paused until the user resolves a confirmation of
+	 * any kind, including the ones that the timeline renders inline. Unlike
+	 * `isAwaitingConfirmation`, it is false once the run has ended.
+	 */
 	const isAwaitingUserInput = computed(() => {
 		const runId = activeRunId.value;
 		if (runId === null) return false;
@@ -942,11 +973,9 @@ export function createThreadRuntime(
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): void {
-		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
-		if (key === null) return;
-		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(key);
-		sessionAlwaysAllowKeys.value = next;
+		const keys = buildAlwaysAllowKeys(toolName, args, confirmationWorkflowId);
+		if (keys.length === 0) return;
+		sessionAlwaysAllowKeys.value = new Set([...sessionAlwaysAllowKeys.value, ...keys]);
 	}
 
 	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
@@ -955,7 +984,7 @@ export function createThreadRuntime(
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): boolean {
-		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
+		return buildAlwaysAllowKeys(toolName, args, confirmationWorkflowId).length > 0;
 	}
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
@@ -977,12 +1006,13 @@ export function createThreadRuntime(
 	function hasSessionAlwaysAllowGrant(item: PendingConfirmationItem): boolean {
 		if (!isGenericApprovalEligible(item)) return false;
 		const confirmation = item.toolCall.confirmation;
-		const key = buildAlwaysAllowKey(
+		const keys = buildAlwaysAllowKeys(
 			item.toolCall.toolName,
 			item.toolCall.args ?? {},
 			confirmation.workflowId,
 		);
-		return key !== null && sessionAlwaysAllowKeys.value.has(key);
+		// A batch needs a grant for every action it contains.
+		return keys.length > 0 && keys.every((key) => sessionAlwaysAllowKeys.value.has(key));
 	}
 
 	// In-flight guard for the auto-approve watcher. We can't rely on
@@ -1015,6 +1045,7 @@ export function createThreadRuntime(
 							input_thread_id: conf.inputThreadId ?? '',
 							instance_id: rootStore.instanceId,
 							type: 'approval',
+							runtime: 'instance-ai',
 							provided_inputs: [
 								{
 									label: conf.message,
@@ -1120,6 +1151,22 @@ export function createThreadRuntime(
 					...latestSetupItems.value,
 					[parsed.data.payload.workflowId]: parsed.data.payload.items,
 				};
+			}
+			if (parsed.data.type === 'workflow-draft') {
+				workflowDrafts.value = applyWorkflowDraft(
+					workflowDrafts.value,
+					parsed.data.payload,
+					parsed.data.runId,
+				);
+			}
+			if (parsed.data.type === 'workflow-draft-issues') {
+				workflowDrafts.value = applyWorkflowDraftIssues(workflowDrafts.value, parsed.data.payload);
+			}
+			if (parsed.data.type === 'tool-result') {
+				workflowDrafts.value = settleWorkflowDraft(
+					workflowDrafts.value,
+					parsed.data.payload.result,
+				);
 			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
@@ -1342,6 +1389,7 @@ export function createThreadRuntime(
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
+		workflowDrafts.value = {};
 		appliedPreferences.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
@@ -1597,6 +1645,10 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(
+				instanceAiSettingsStore,
+				threadTargetsAgent(hooks.getThreadMetadata?.(threadId)),
+			),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 			selected_element_count: selectedElementCount,
@@ -1625,6 +1677,7 @@ export function createThreadRuntime(
 							producedArtifacts.values(),
 							activeArtifactId.value,
 							openTabs.value,
+							createDisplayedExecutionReader(artifactTurns.value, getRememberedManualExecution),
 						),
 			);
 
@@ -1874,11 +1927,16 @@ export function createThreadRuntime(
 		currentTasks,
 		setupItemsByWorkflowId,
 		latestSetupWorkflowId,
+		workflowDrafts,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
+		isAwaitingUserInput,
 
 		// actions
+		dismissWorkflowDrafts: (workflowId: string) => {
+			workflowDrafts.value = dismissWorkflowDrafts(workflowDrafts.value, workflowId);
+		},
 		setPendingHandoff,
 		consumePendingHandoff,
 		pendingWorkflowAttachment,

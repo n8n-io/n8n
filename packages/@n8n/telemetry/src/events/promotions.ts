@@ -3,10 +3,10 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 const failureKind = z
-	.enum(['user', 'git_remote', 'unexpected'])
+	.enum(['user', 'git_remote', 'unexpected', 'busy'])
 	.optional()
 	.describe(
-		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, and a TLS, DNS or network-policy failure report as 'user', because the provider settings need a fix. A malformed merge request response from the Git host reports as 'unexpected'",
+		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, and a TLS, DNS or network-policy failure report as 'user', because the provider settings need a fix. A malformed merge request response from the Git host reports as 'unexpected'. 'busy' = another operation held the environment lock, so nothing ran",
 	);
 
 const scope = z
@@ -120,18 +120,36 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			scope,
 			project_id: z.string().optional().describe("Set only when the scope is 'project'"),
 			outcome: z
-				.enum(['success', 'success_with_warnings', 'failed'])
+				.enum(['success', 'success_with_warnings', 'preview_changed', 'failed'])
 				.describe(
-					"'success_with_warnings' = the push worked, but a follow-up step, such as opening the merge request, failed",
+					"'success_with_warnings' = the push worked, but a follow-up step, such as opening the merge request, failed; 'preview_changed' = the project or its branch changed after the user reviewed the preview, so nothing was pushed",
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
-			workflow_count: z.number().optional().describe('Set when the outcome is not failed'),
-			folder_count: z.number().optional().describe('Set when the outcome is not failed'),
-			credential_count: z.number().optional().describe('Set when the outcome is not failed'),
-			data_table_count: z.number().optional().describe('Set when the outcome is not failed'),
-			variable_count: z.number().optional().describe('Set when the outcome is not failed'),
-			tag_count: z.number().optional().describe('Set when the outcome is not failed'),
+			workflow_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			folder_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			credential_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			data_table_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			variable_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			tag_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
 			selected_workflow_count: z
 				.number()
 				.optional()
@@ -143,7 +161,9 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			opened_review: z
 				.boolean()
 				.optional()
-				.describe('Set when the outcome is not failed. True when the push opened a merge request'),
+				.describe(
+					"Set when the outcome is 'success' or 'success_with_warnings'. True when the push opened a merge request",
+				),
 		}),
 	},
 	USER_APPLIED_PROMOTION_CHANGES: {

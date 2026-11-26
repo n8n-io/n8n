@@ -174,6 +174,16 @@ export type AgentSseEvent =
 			payload: unknown;
 	  }
 	| {
+			/**
+			 * A short-lived event from a system-agent provider during a turn, such
+			 * as a live preview. The runtime does not record it, so history does not
+			 * return it. A client that does not know the name ignores it.
+			 */
+			type: 'transient-host-event';
+			name: string;
+			payload: unknown;
+	  }
+	| {
 			/** A warning message from the MCP server when it fails to connect or initialize. */
 			type: 'warning';
 			message: string;

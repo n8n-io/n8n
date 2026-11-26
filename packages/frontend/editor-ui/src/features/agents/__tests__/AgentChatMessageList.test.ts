@@ -11,10 +11,12 @@ import type {
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
 import { computed } from 'vue';
 import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { createStoppedMessage } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	TEST_HOST_EVENT,
 	TEST_RESULT_TOOL_NAME,
 	testHostEventExtensions,
+	testToolFooterExtension,
 	testToolResultExtension,
 } from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
@@ -55,6 +57,7 @@ vi.mock('@n8n/design-system', () => ({
 		</div>`,
 	},
 	N8nIcon: { template: '<i />' },
+	N8nSpinner: { template: '<span />' },
 	N8nLink: { props: ['to', 'theme', 'size', 'underline'], template: '<a :href="to"><slot /></a>' },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
@@ -93,8 +96,8 @@ vi.mock('@/features/ai/shared/components/AiThinkingBlock.vue', () => ({
 	default: {
 		name: 'AiThinkingBlock',
 		template:
-			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec"><slot /></section>',
-		props: ['segments', 'active', 'durationSec'],
+			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec" :data-idle-label="idleLabel"><slot /></section>',
+		props: ['segments', 'active', 'durationSec', 'idleLabel'],
 	},
 }));
 
@@ -120,7 +123,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 				endedAt: 1250
 			}])"
 		/>`,
-		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
+		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId', 'hostEvents'],
 		emits: ['fixWithAssistant'],
 	},
 }));
@@ -493,54 +496,34 @@ describe('AgentChatMessageList', () => {
 		wrapper.unmount();
 	});
 
-	it.each([true, false])(
-		'follows a resized status only when near the bottom: %s',
-		async (nearBottom) => {
-			let resizeStatus: (() => void) | undefined;
-			vi.stubGlobal(
-				'ResizeObserver',
-				class {
-					constructor(onResize: () => void) {
-						resizeStatus = onResize;
-					}
-
-					observe() {}
-
-					disconnect() {}
+	it('renders the references of a user message in its attachment group, above the bubble', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'u-1', role: 'user', content: 'Explain it', references: [{ type: 'workflow' }] },
+				],
+				messagingState: 'idle',
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			slots: { 'user-message-references': '<span data-testid="reference">Orders</span>' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						template: '<div data-testid="message-attachments"><slot /></div>',
+					},
 				},
-			);
-			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
-				onFrame(0);
+			},
+		});
 
-				return 0;
-			});
-			const wrapper = mount(AgentChatMessageList, {
-				props: { messages: [], messagingState: 'idle' },
-				slots: { status: '<div role="status">Stopping all tasks…</div>' },
-			});
+		const group = wrapper.get('[data-testid="message-attachments"]').element;
+		const bubble = wrapper.get('[data-testid="chat-message-shell"]').element;
+		expect(group.contains(wrapper.get('[data-testid="reference"]').element)).toBe(true);
+		expect(bubble.contains(group)).toBe(false);
+		expect(group.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-			try {
-				await flushPromises();
-				const scroller = wrapper.element as HTMLElement;
-				Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
-				Object.defineProperty(scroller, 'clientHeight', { value: 100 });
-				scroller.scrollTop = nearBottom ? 400 : 0;
-				await wrapper.trigger('scroll');
-
-				Object.defineProperty(scroller, 'scrollHeight', { value: 600 });
-
-				expect(resizeStatus).toBeDefined();
-
-				resizeStatus?.();
-				await flushPromises();
-
-				expect(scroller.scrollTop).toBe(nearBottom ? 600 : 0);
-			} finally {
-				wrapper.unmount();
-				vi.unstubAllGlobals();
-			}
-		},
-	);
+		wrapper.unmount();
+	});
 
 	it('uses shared message shells without merging consecutive assistant output', () => {
 		const wrapper = mount(AgentChatMessageList, {
@@ -1018,6 +1001,71 @@ describe('AgentChatMessageList', () => {
 			'Inspect the request. Then answer.',
 		);
 		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+	});
+
+	describe('thinking label', () => {
+		const streamingMessage = {
+			id: 'assistant-reasoning',
+			role: 'assistant',
+			content: '',
+			thinkingSegments: [{ id: 'reasoning-1', content: 'Inspect the request.' }],
+			status: 'streaming',
+		} satisfies ChatMessage;
+		const toolRunMessage = {
+			id: 'assistant-tool',
+			role: 'assistant',
+			content: '',
+			thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+			toolCalls: [{ tool: 'lookup', toolCallId: 'tool-1', state: 'running' }],
+			status: 'streaming',
+		} satisfies ChatMessage;
+
+		it.each([
+			['a message', streamingMessage],
+			['a tool run', toolRunMessage],
+		])('gives the thinking block of %s the label of the host', (_name, message) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [message],
+					messagingState: 'receiving',
+					thinkingLabel: 'Joining the dots',
+				},
+			});
+
+			expect(
+				wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-idle-label'),
+			).toBe('Joining the dots');
+		});
+
+		it('gives the thinking block no label when the host sets none', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [streamingMessage], messagingState: 'receiving' },
+			});
+
+			expect(
+				wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-idle-label'),
+			).toBeUndefined();
+		});
+	});
+
+	it.each([
+		['the generic label', undefined, 'agentSessions.stopped'],
+		['the label of the host', 'You stopped this run', 'You stopped this run'],
+	])('shows a stopped turn as a status line with %s', (_name, stoppedLabel, expected) => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'answer', executionId: 'exec-1', role: 'assistant', content: 'Partial answer' },
+					createStoppedMessage('exec-1'),
+				],
+				messagingState: 'idle',
+				stoppedLabel,
+			},
+		});
+
+		expect(
+			wrapper.findAll('[data-testid="agent-chat-stopped"]').map((line) => line.text()),
+		).toEqual([expected]);
 	});
 
 	it('renders thinking below standalone assistant output', () => {
@@ -2061,6 +2109,28 @@ describe('AgentChatMessageList', () => {
 			wrapper.unmount();
 		});
 
+		it.each([
+			[
+				'keeps the default step and renders a host footer after the steps',
+				[testToolFooterExtension],
+				['tc-http', 'tc-note'],
+			],
+			[
+				'renders no footer for a call that a host result replaces',
+				[testToolResultExtension, testToolFooterExtension],
+				['tc-http'],
+			],
+		])('%s', (_, extensions, steps) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [assistantMessage([httpCall, savedNote])], messagingState: 'idle' },
+				global: { provide: { [AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => extensions) } },
+			});
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(stepToolCallIds(wrapper)).toEqual(steps);
+			wrapper.unmount();
+		});
+
 		it('hides the tool steps when the host renders every call', () => {
 			const wrapper = mountList([assistantMessage([savedNote])]);
 
@@ -2187,54 +2257,6 @@ describe('AgentChatMessageList', () => {
 			wrapper.unmount();
 		});
 
-		it('scrolls to the bottom when a host event arrives on the last message', async () => {
-			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
-				onFrame(0);
-				return 0;
-			});
-			const streaming = assistantMessage([], { content: '', status: 'streaming' });
-			const wrapper = mountList([streaming]);
-			await flushPromises();
-			const scroller = wrapper.element as HTMLElement;
-			Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
-			scroller.scrollTop = 0;
-
-			await wrapper.setProps({
-				messages: [{ ...streaming, hostEvents: [hostEvent(TEST_HOST_EVENT.TRANSIENT, 't')] }],
-			});
-			await flushPromises();
-
-			expect(scroller.scrollTop).toBe(500);
-			wrapper.unmount();
-			vi.unstubAllGlobals();
-		});
-
-		it('scrolls to the bottom when a keyed host event updates its payload', async () => {
-			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
-				onFrame(0);
-				return 0;
-			});
-			const progress = (done: number): AgentsChatHostEvent => ({
-				id: 'progress',
-				name: TEST_HOST_EVENT.END,
-				key: 'build',
-				payload: { done },
-			});
-			const streaming = assistantMessage([progress(1)], { content: '', status: 'streaming' });
-			const wrapper = mountList([streaming]);
-			await flushPromises();
-			const scroller = wrapper.element as HTMLElement;
-			Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
-			scroller.scrollTop = 0;
-
-			await wrapper.setProps({ messages: [{ ...streaming, hostEvents: [progress(2)] }] });
-			await flushPromises();
-
-			expect(scroller.scrollTop).toBe(500);
-			wrapper.unmount();
-			vi.unstubAllGlobals();
-		});
-
 		it('keeps a run with only hidden plan calls when a host event in it renders', () => {
 			const wrapper = mountList([
 				planMessage(planView()),
@@ -2321,6 +2343,41 @@ describe('AgentChatMessageList', () => {
 			expect(rendered.find('em').text()).toBe('assistant-1');
 			wrapper.unmount();
 		});
+
+		it.each([
+			{ name: 'a message', content: 'Answer text', final: [] },
+			{
+				name: 'a tool run',
+				content: '',
+				final: [
+					{ id: 'assistant-2', role: 'assistant', content: 'Done', status: 'success' } as const,
+				],
+			},
+		])(
+			'passes tool-call events to the step of their call in $name, and shows the rest at the start',
+			({ content, final }) => {
+				const toolCallEvent = (id: string, toolCallId: string): AgentsChatHostEvent => ({
+					id,
+					name: TEST_HOST_EVENT.TOOL_CALL,
+					payload: { id, toolCallId },
+				});
+				const wrapper = mountList([
+					assistantMessage([toolCallEvent('approval', 'tc-1'), toolCallEvent('orphan', 'tc-9')], {
+						content,
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+					}),
+					...final,
+				]);
+
+				const hostEvents = wrapper
+					.findComponent({ name: 'AgentChatToolSteps' })
+					.props('hostEvents') as Map<string, Array<{ event: AgentsChatHostEvent }>>;
+				expect([...hostEvents.keys()]).toEqual(['tc-1']);
+				expect(hostEvents.get('tc-1')?.map(({ event }) => event.id)).toEqual(['approval']);
+				expect(renderOrder(wrapper)).toEqual(['start:orphan', 'text']);
+				wrapper.unmount();
+			},
+		);
 
 		it('renders start events before the tool steps of a tool run', () => {
 			const wrapper = mountList([

@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Bubble.
@@ -15,7 +17,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function bubbleApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	qs: IDataObject,
 ) {
@@ -27,15 +29,20 @@ export async function bubbleApiRequest(
 		hosting: 'bubbleHosted' | 'selfHosted';
 	}>('bubbleApi');
 
-	const rootUrl = hosting === 'bubbleHosted' ? `https://${appName}.bubbleapps.io` : domain;
-	const urlSegment = environment === 'development' ? '/version-test/api/1.1' : '/api/1.1';
+	const path =
+		environment === 'development'
+			? requestPath`/version-test/api/1.1${endpoint}`
+			: requestPath`/api/1.1${endpoint}`;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
-		uri: `${rootUrl}${urlSegment}${endpoint}`,
+		uri:
+			hosting === 'bubbleHosted'
+				? requestUrl`https://${appName}.bubbleapps.io${path}`
+				: requestUrl`${domain}${path}`,
 		qs,
 		body,
 		json: true,
@@ -62,7 +69,7 @@ export async function bubbleApiRequest(
 export async function bubbleApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	qs: IDataObject,
 ) {

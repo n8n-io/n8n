@@ -936,6 +936,111 @@ describe('Expression - fast native evaluation parity', () => {
 		},
 	);
 
+	// CET-672: a Filter node reads an RSS attribute that the XML parser stores
+	// under a `$` key.
+	test.each(['={{ $json["media:thumbnail"]?.$?.url ?? "" }}', '={{ $node.$.json }}'])(
+		'%s rejects a `$` property read like the engine',
+		(expr) => {
+			const items = [
+				{
+					json: { 'media:thumbnail': { $: { url: 'https://example.com/a.jpg' } } },
+					pairedItem: { item: 0 },
+				},
+			] as unknown as Array<ReturnType<typeof makeItem>>;
+			const data = runDataFor(items);
+			const capture = (native: boolean) => {
+				try {
+					return { value: evaluate(expr, native, data, items) };
+				} catch (error) {
+					return { error: error as Error };
+				}
+			};
+
+			const viaEngine = capture(false);
+			const viaNative = capture(true);
+
+			expect(viaEngine.error).toBeInstanceOf(ExpressionError);
+			expect(viaNative.error).toBeInstanceOf(ExpressionError);
+			expect(viaNative.error?.message).toBe(viaEngine.error?.message);
+		},
+	);
+
+	// CET-805: an Execute Workflow input reads `$('Agent').item.json.toJsonString()`.
+	// With intermediate steps on, the AI Agent output holds LangChain messages,
+	// which are class instances with a `toJSON` method.
+	test('toJsonString over a node output that holds a toJSON instance matches the engine', () => {
+		class SerializableMessage {
+			lc_serializable = true;
+			lc_kwargs = { content: 'hello' };
+			content = 'hello';
+			toJSON() {
+				return { lc: 1, type: 'constructor', id: ['AIMessageChunk'], kwargs: this.lc_kwargs };
+			}
+		}
+		const json = {
+			output: 'answer',
+			intermediateSteps: [{ action: { messageLog: [new SerializableMessage()] } }],
+		};
+		const items = [{ json, pairedItem: { item: 0 } }] as unknown as Array<
+			ReturnType<typeof makeItem>
+		>;
+		const data = runDataFor(items);
+		const expr = "={{ $('Source').item.json.toJsonString() }}";
+
+		expect(nativeOutcome(expr, { data, items })).toMatchObject({
+			handled: false,
+			fallbackReason: 'unsupported_type',
+		});
+		expect(evaluate(expr, true, data, items)).toBe(evaluate(expr, false, data, items));
+	});
+
+	test('toJsonString over a node output that holds a Date stays native', () => {
+		const items = [{ json: { when: new Date(0) }, pairedItem: { item: 0 } }] as unknown as Array<
+			ReturnType<typeof makeItem>
+		>;
+		const data = runDataFor(items);
+		const expr = "={{ $('Source').item.json.toJsonString() }}";
+
+		expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
+		expect(evaluate(expr, true, data, items)).toBe(evaluate(expr, false, data, items));
+	});
+
+	test.each([
+		[
+			'an Array',
+			() => {
+				class Steps extends Array {
+					toJSON() {
+						return 'steps';
+					}
+				}
+				return Steps.from([1]);
+			},
+		],
+		[
+			'a Date',
+			() => {
+				class Day extends Date {
+					override toJSON() {
+						return 'day';
+					}
+				}
+				return new Day(0);
+			},
+		],
+	])('toJsonString over a subclass of %s hands off to the engine', (_, makeValue) => {
+		const items = [{ json: { value: makeValue() }, pairedItem: { item: 0 } }] as unknown as Array<
+			ReturnType<typeof makeItem>
+		>;
+		const data = runDataFor(items);
+		const expr = "={{ $('Source').item.json.toJsonString() }}";
+
+		expect(nativeOutcome(expr, { data, items })).toMatchObject({
+			handled: false,
+			fallbackReason: 'unsupported_type',
+		});
+	});
+
 	test('keeps a named array key that is above the largest array index', () => {
 		const expr = "={{ $('Source').first().json['4294967295'] }}";
 		const json = Object.assign([{ role: 'assistant' }], { '4294967295': 'session-1' });

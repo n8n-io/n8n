@@ -46,6 +46,23 @@ describe('agent-context tool', () => {
 		expect(resolveDefaultAgentId).not.toHaveBeenCalled();
 	});
 
+	it('passes the path and offset for the next part of a skill reference', async () => {
+		const reader = { lookup: vi.fn().mockResolvedValue({}) };
+		const tool = makeTool(reader);
+		const input = {
+			type: 'skill',
+			skillId: 'skill_a',
+			referencePaths: ['reference/guide.md'],
+			referenceOffset: 262_144,
+		};
+
+		await executeTool(tool, input);
+
+		expect(reader.lookup).toHaveBeenCalledWith({ ...input, agentId: 'agent-1' });
+		await expect(executeTool(tool, { ...input, referenceOffset: -1 })).rejects.toThrow();
+		expect(reader.lookup).toHaveBeenCalledTimes(1);
+	});
+
 	it('passes session filters to the reader', async () => {
 		const reader = { lookup: vi.fn().mockResolvedValue({ sessions: [], nextCursor: null }) };
 
@@ -61,6 +78,19 @@ describe('agent-context tool', () => {
 			status: 'error',
 			limit: 5,
 		});
+	});
+
+	it('passes session page options to the reader', async () => {
+		const reader = { lookup: vi.fn().mockResolvedValue({ transcript: '', nextCursor: null }) };
+		const tool = makeTool(reader);
+		const input = { type: 'session', threadId: 'thread-1', maxToolValueLength: 0, cursor: 'c' };
+
+		await executeTool(tool, input);
+
+		expect(reader.lookup).toHaveBeenCalledWith({ ...input, agentId: 'agent-1' });
+		await expect(executeTool(tool, { ...input, maxToolValueLength: -1 })).rejects.toThrow();
+		await expect(executeTool(tool, { ...input, cursor: '' })).rejects.toThrow();
+		expect(reader.lookup).toHaveBeenCalledTimes(1);
 	});
 
 	it('wraps returned context as untrusted data', async () => {

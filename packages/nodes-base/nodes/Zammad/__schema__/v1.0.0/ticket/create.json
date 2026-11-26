@@ -1,0 +1,225 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"ai_agent_running": {
+			"type": "boolean"
+		},
+		"ai_stored_result_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"article_count": {
+			"type": "number"
+		},
+		"article_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"articles": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"ai_stored_result_ids": {
+						"items": {},
+						"type": "array"
+					},
+					"ai_stored_results": {
+						"items": {},
+						"type": "array"
+					},
+					"attachments": {
+						"items": {},
+						"type": "array"
+					},
+					"body": {
+						"type": "string"
+					},
+					"body_rendering_error": {
+						"type": "boolean"
+					},
+					"cc": {
+						"type": ["null", "string"]
+					},
+					"content_type": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string"
+					},
+					"created_by": {
+						"type": "string"
+					},
+					"created_by_id": {
+						"type": "number"
+					},
+					"detected_language": {
+						"type": ["null", "string"]
+					},
+					"from": {
+						"type": "string"
+					},
+					"id": {
+						"type": "number"
+					},
+					"in_reply_to": {},
+					"internal": {
+						"type": "boolean"
+					},
+					"message_id": {
+						"type": ["null", "string"]
+					},
+					"message_id_md5": {
+						"type": ["null", "string"]
+					},
+					"origin_by_id": {
+						"type": ["null", "number"]
+					},
+					"preferences": {
+						"type": "object"
+					},
+					"reply_to": {
+						"type": ["null", "string"]
+					},
+					"sender": {
+						"type": "string"
+					},
+					"sender_id": {
+						"type": "number"
+					},
+					"subject": {
+						"type": "string"
+					},
+					"ticket_id": {
+						"type": "number"
+					},
+					"time_unit": {},
+					"to": {
+						"type": ["null", "string"]
+					},
+					"type": {
+						"type": "string"
+					},
+					"type_id": {
+						"type": "number"
+					},
+					"updated_at": {
+						"type": "string"
+					},
+					"updated_by": {
+						"type": "string"
+					},
+					"updated_by_id": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"checklist_id": {},
+		"close_at": {},
+		"close_diff_in_min": {},
+		"close_escalation_at": {
+			"type": ["null", "string"]
+		},
+		"close_in_min": {},
+		"create_article_sender_id": {
+			"type": "number"
+		},
+		"create_article_type_id": {
+			"type": "number"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"created_by_id": {
+			"type": "number"
+		},
+		"customer_id": {
+			"type": "number"
+		},
+		"daily_event_lock_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"escalation_at": {
+			"type": ["null", "string"]
+		},
+		"first_response_at": {
+			"type": ["null", "string"]
+		},
+		"first_response_diff_in_min": {},
+		"first_response_escalation_at": {
+			"type": ["null", "string"]
+		},
+		"first_response_in_min": {},
+		"group_id": {
+			"type": "number"
+		},
+		"id": {
+			"type": "number"
+		},
+		"last_close_at": {},
+		"last_contact_agent_at": {
+			"type": ["null", "string"]
+		},
+		"last_contact_at": {
+			"type": ["null", "string"]
+		},
+		"last_contact_customer_at": {
+			"type": ["null", "string"]
+		},
+		"last_owner_update_at": {
+			"type": ["null", "string"]
+		},
+		"note": {},
+		"number": {
+			"type": "string"
+		},
+		"organization_id": {
+			"type": ["null", "number"]
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"pending_time": {},
+		"preferences": {
+			"type": "object"
+		},
+		"priority_id": {
+			"type": "number"
+		},
+		"referencing_checklist_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"state_id": {
+			"type": "number"
+		},
+		"ticket_time_accounting_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"time_unit": {},
+		"title": {
+			"type": "string"
+		},
+		"type": {
+			"type": ["null", "string"]
+		},
+		"update_diff_in_min": {},
+		"update_escalation_at": {
+			"type": ["null", "string"]
+		},
+		"update_in_min": {},
+		"updated_at": {
+			"type": "string"
+		},
+		"updated_by_id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

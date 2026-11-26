@@ -1,3 +1,5 @@
+import type { NodeTypeAvailability } from './node-type-availability';
+
 /** The scope whose policy decided a credential type's availability. */
 export type CredentialTypeAvailabilityScope = 'instance' | 'project';
 
@@ -19,3 +21,11 @@ export type CredentialTypeAvailability = {
 
 /** Response of `GET /projects/:projectId/available-credential-types`. */
 export type AvailableCredentialTypesResponse = CredentialTypeAvailability[];
+
+export type CredentialRestriction =
+	| { reason: 'typeRestricted'; restriction: CredentialTypeAvailability }
+	| {
+			reason: 'nodesRestricted';
+			restriction: NodeTypeAvailability;
+			nodeTypes: string[];
+	  };

@@ -1,17 +1,21 @@
 <script lang="ts" setup>
 /**
  * One thread of the embedded panel on the Assistant agent. It sends the
- * subject agent with each message, so the Assistant knows which agent the
- * user builds. It exposes the same calls as `InstanceAiConversation`, so the
- * panel treats both runtimes the same.
+ * subject agent with each message: as an attachment, so the Assistant knows
+ * which agent the user builds, and as the subject, which binds the thread. A
+ * pending agent that the user saved since then binds as saved. It exposes the
+ * same calls as `InstanceAiConversation`, so the panel treats both runtimes
+ * the same.
  */
-import type {
-	AgentJsonConfig,
-	InstanceAiAgentAttachment,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiPrefillPayload,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type InstanceAiAgentAttachment,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import { N8nChatRating } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
@@ -27,8 +31,25 @@ import {
 	ASSISTANT_AGENT_THREAD_ID,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
+import { assistantAnsweredQuestionsExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
-import { useAssistantAgentMessageTelemetry } from '../assistantAgent/useAssistantAgentMessageTelemetry';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from '../assistantAgent/assistantPreferenceCards';
+import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import { provideAssistantArtifactCards } from '@/features/ai/instanceAi/assistantAgent/assistantArtifactCards';
+import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
+import {
+	useAssistantAgentMessageTelemetry,
+	type AssistantAgentSendingMessage,
+} from '../assistantAgent/useAssistantAgentMessageTelemetry';
+import { useAssistantAgentTurnTelemetry } from '../assistantAgent/useAssistantAgentTurnTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from '../assistantAgent/useAssistantAgentSetupSavedTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
@@ -95,7 +116,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 // The host stashes a starter message before it opens a new thread.
@@ -115,6 +135,7 @@ function clientContext(): Record<string, unknown> {
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		attachments: [...starterReferences, props.subject],
+		subject: props.subject,
 		...(handoffContext.value ? { context: handoffContext.value } : {}),
 	};
 }
@@ -154,6 +175,23 @@ const handoffChip = computed(() => {
 });
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const feedback = useAssistantAgentFeedback({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
+const turnTelemetry = useAssistantAgentTurnTelemetry({
+	threadId: props.threadId,
+	isStreaming: () => panel.value?.isStreaming ?? false,
+	isStreamAttached: () => panel.value?.isStreamAttached ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
+	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
+});
+
+function onMessageSending(message: AssistantAgentSendingMessage): void {
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message));
+}
 watch(panel, (current, previous) => {
 	if (!current || previous) return;
 	if (starter) {
@@ -184,6 +222,12 @@ function onStreamingChange(streaming: boolean): void {
 	wasStreaming = streaming;
 }
 
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
+
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,
 	projectId: props.subject.projectId,
@@ -211,7 +255,22 @@ watch(
 	{ immediate: true },
 );
 
-const interactionExtensions = [assistantConfirmationExtension];
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
+	assistantPreferenceCardExtension,
+	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
+];
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.subject.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
 
 defineExpose({
 	focus: () => panel.value?.focusInput(),
@@ -246,6 +305,7 @@ defineExpose({
 		:continue-session-id="props.threadId"
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
+		empty-state-icon="n8n-assistant"
 		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 		agent-status="production"
 		:connected-triggers="[]"
@@ -258,10 +318,12 @@ defineExpose({
 		:visible="props.visible"
 		autofocus
 		:composer-height="props.composerHeight"
+		:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 		data-test-id="instance-ai-embed-assistant-agent-thread"
 		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
-		@message-sending="messageTelemetry.trackSend"
+		@message-sending="onMessageSending"
+		@stream-event="turnTelemetry.handleStreamEvent"
 		@draft-cleared="messageTelemetry.setPrefill(null)"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"
@@ -271,7 +333,14 @@ defineExpose({
 				<slot name="empty" />
 			</div>
 		</template>
-		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
+		<template #message-actions="{ executionId }">
+			<N8nChatRating
+				v-if="feedback.isRateable(executionId)"
+				:rating="feedback.ratingOf(executionId)"
+				@rate="feedback.rate(executionId, $event)"
+			/>
+		</template>
+		<template v-if="handoffChip" #composer-attachments>
 			<InstanceAiResourceChip
 				:label="handoffChip.label"
 				:icon="handoffChip.icon"
@@ -280,20 +349,6 @@ defineExpose({
 				remove-test-id="instance-ai-handoff-context-chip-dismiss"
 				removable
 				@remove="dismissHandoff"
-			/>
-			<!-- The slot replaces the default chips, so render them too. -->
-			<InstanceAiResourceChip
-				v-for="chip in chips"
-				:key="chip.id"
-				:label="chip.label"
-				:icon="chip.icon"
-				removable
-				:remove-label="
-					i18n.baseText('agents.chat.composer.removeChip', { interpolate: { label: chip.label } })
-				"
-				test-id="agent-chat-composer-chip"
-				remove-test-id="agent-chat-composer-chip-remove"
-				@remove="removeChip(chip.id)"
 			/>
 		</template>
 		<template v-if="slots['composer-start']" #composer-start>

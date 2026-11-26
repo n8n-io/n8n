@@ -3,6 +3,8 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
@@ -236,6 +238,23 @@ export async function executeActionToolOperation(params: {
 		};
 	}
 
+	// Refuse before the approval gate, so nobody approves a send that cannot go out.
+	const recipientRefusal = actionExecutor.checkRecipient?.({
+		descriptor,
+		action: operation.action,
+		input: actionInput,
+		resourceId: persistence?.resourceId,
+		currentMessageContext:
+			params.currentMessageContext ??
+			(persistence ? getOptionalCurrentContext({ descriptor, persistence }) : undefined),
+	});
+	if (recipientRefusal) {
+		return {
+			ok: false,
+			error: { code: INTEGRATION_ERROR_CODES.ACTION_DECLINED, message: recipientRefusal },
+		};
+	}
+
 	const needsApproval =
 		operation.action !== approvedAction &&
 		actionNeedsApproval(descriptor.approval, operation.action) &&
@@ -260,6 +279,7 @@ export async function executeActionToolOperation(params: {
 			{
 				type: 'approval',
 				toolName: operation.action,
+				...(ctx.approvalDescription ? { description: ctx.approvalDescription } : {}),
 				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
 				displayName: describeActionForApproval(operation),
 				args: ctx.approvalContext?.getDisplayArgs
@@ -293,6 +313,7 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		resourceId: persistence?.resourceId,
 		...(projectId && persistence
 			? { fileScope: { projectId, threadId: persistence.threadId } }
 			: {}),
@@ -320,9 +341,23 @@ export async function executeActionToolOperation(params: {
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)
 		) {
-			await messageContextStore.bindSession(
-				`${descriptor.agentId}:${messageContext.target.threadId}`,
-				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+			// The send already worked. An error here must not tell the agent the send
+			// failed, or it can send the message again.
+			await logSessionWriteFailure(
+				'bind task session',
+				async () =>
+					await messageContextStore.bindSession(
+						`${descriptor.agentId}:${messageContext.target.threadId}`,
+						{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+						{
+							recipientId: getRecipientId(descriptor, messageContext.target),
+							outboundText:
+								getOutboundText(message) ??
+								(operation.action === 'send_template'
+									? getTemplateText(operation.input)
+									: undefined),
+						},
+					),
 			);
 		}
 		// A delivery failure arrives later and names only the message. This lets
@@ -336,15 +371,15 @@ export async function executeActionToolOperation(params: {
 			messageContext.messageId &&
 			messageContext.target.threadId
 		) {
-			try {
+			const { messageId } = messageContext;
+			// Without the record, a delivery failure goes to the bound session.
+			await logSessionWriteFailure('record sent message', async () => {
 				await messageContextStore.recordSentMessage(
 					`${descriptor.agentId}:${messageContext.target.threadId}`,
-					messageContext.messageId,
+					messageId,
 					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 				);
-			} catch {
-				// The send worked. Without the record, a failure goes to the bound session.
-			}
+			});
 		}
 		actionResult = { ...result, messageContext };
 	}
@@ -367,6 +402,17 @@ export async function executeActionToolOperation(params: {
 	);
 }
 
+/** Runs a session write that follows a successful send, and logs its error. */
+async function logSessionWriteFailure(step: string, write: () => Promise<void>): Promise<void> {
+	try {
+		await write();
+	} catch (error) {
+		Container.get(Logger).warn(`Failed to ${step} after an integration send`, {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
 /**
  * Label for the approval card. The card only shows this line, so it has to name
  * the destination — approving a bare `send_channel_message` tells the user
@@ -387,6 +433,77 @@ function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
 		query === 'get_current_user' ||
 		query === 'get_current_channel_info'
 	);
+}
+
+/**
+ * The person or channel a message went to, whatever thread it started. The
+ * connection is part of the key, as two connections can share platform IDs.
+ */
+function getRecipientId(
+	descriptor: IntegrationToolConnectionDescriptor,
+	target: IntegrationMessageTarget,
+): string | undefined {
+	const scope = descriptor.integrationConnectionId;
+	if (target.type === 'channel') return `${scope}:channel:${target.channelId}`;
+	if (target.userId) return `${scope}:user:${target.userId}`;
+	return target.type === 'thread' && target.channelId
+		? `${scope}:channel:${target.channelId}`
+		: undefined;
+}
+
+/** A template send has no message body, so the reply session gets a summary of the payload. */
+function getTemplateText(input: Record<string, unknown>): string | undefined {
+	const { templateName, parameters } = input;
+	if (typeof templateName !== 'string' || templateName.length === 0) return undefined;
+	const values = isRecord(parameters)
+		? Object.entries(parameters).map(([key, value]) => `${key}: ${String(value)}`)
+		: [];
+	return [`Template message: ${templateName}`, ...values].join('\n');
+}
+
+/**
+ * Plain-text copy of a sent message, stored so a split reply session can see
+ * what the recipient received. A card carries its content in `components`, so
+ * every component is rendered, not only the title and message.
+ */
+function getOutboundText(message: z.infer<typeof messageSchema> | undefined): string | undefined {
+	const card = message?.card;
+	const lines = [
+		message?.text,
+		card?.title,
+		card?.message,
+		...(card?.components.flatMap(describeCardComponent) ?? []),
+	].filter((line): line is string => typeof line === 'string' && line.length > 0);
+	return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+function describeCardComponent(component: IntegrationCardComponent): string[] {
+	switch (component.type) {
+		case 'section':
+			return [component.text, ...(component.button ? [describeButton(component.button)] : [])];
+		case 'fields':
+			return (component.fields ?? component.items ?? []).map(
+				({ label, value }) => `${label}: ${value}`,
+			);
+		case 'image':
+			return [component.alt ?? component.altText ?? ''];
+		case 'button':
+			return [describeButton(component)];
+		case 'select':
+		case 'radio_select':
+			return [
+				component.label ?? '',
+				...component.options.map((option) =>
+					option.description ? `- ${option.label}: ${option.description}` : `- ${option.label}`,
+				),
+			];
+		default:
+			return [];
+	}
+}
+
+function describeButton(button: { label?: string; text?: string; value: string }): string {
+	return `[${button.label ?? button.text ?? button.value}]`;
 }
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
@@ -434,6 +551,14 @@ function withPreviousSubject(
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
+			: {}),
+		// A reply in the same thread keeps the user who started the run. A send to
+		// another thread does not, because that thread belongs to another user.
+		...(!context.interactingUserId &&
+		previousContext.interactingUserId &&
+		context.target.threadId !== undefined &&
+		context.target.threadId === previousContext.target.threadId
+			? { interactingUserId: previousContext.interactingUserId }
 			: {}),
 		...(replyExpectation ? { replyExpectation } : {}),
 		...(replyTarget ? { replyTarget } : {}),

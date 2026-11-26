@@ -1,10 +1,19 @@
+import { ExecutionRetentionService } from '@n8n/backend-services';
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { EventService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type ExecutionLedger,
+	CorruptedExecutionDataError,
+	type ExecutionDataJsonStore,
+	type ExecutionDataPayload,
+} from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
+	In,
+	Not,
 	type CreateExecutionPayload,
 	type EntityManager,
 	type ExecutionRepository,
@@ -19,13 +28,12 @@ import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import type { DbStore } from '@/executions/execution-data/db-store';
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
-import type { ExecutionDataPayload } from '@/executions/execution-data/types';
 import { UnreadableRunDataError } from '@/executions/execution-data/unreadable-run-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+
+const affected = (count: number) => ({ affected: count, raw: [], generatedMaps: [] });
 
 describe('ExecutionPersistence', () => {
 	const executionRepository = mock<ExecutionRepository>();
@@ -34,6 +42,8 @@ describe('ExecutionPersistence', () => {
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
 	const eventService = mock<EventService>();
+	const disabledLedger = mock<ExecutionLedger>({ isEnabled: false });
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: true });
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -79,16 +89,23 @@ describe('ExecutionPersistence', () => {
 	const createMockTx = (tx: EntityManager) =>
 		vi.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
+	const txCtx: OperationContext = { trx: mock<Transaction>() };
+
 	const createMockRunInTransaction = (tx: EntityManager) =>
 		vi
 			.fn()
 			.mockImplementation(
-				async <T>(_ctx: OperationContext, cb: (em: EntityManager) => Promise<T>) => await cb(tx),
+				async <T>(
+					_ctx: OperationContext,
+					cb: (em: EntityManager, ctx: OperationContext) => Promise<T>,
+				) => await cb(tx, txCtx),
 			) as unknown as typeof executionRepository.runInTransaction;
 
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
+		ledger = disabledLedger,
+		retention = new ExecutionRetentionService(),
 	) =>
 		new ExecutionPersistence(
 			executionRepository,
@@ -98,9 +115,61 @@ describe('ExecutionPersistence', () => {
 			mock<StorageConfig>({ modeTag }),
 			executionsConfig,
 			mock<DatabaseConfig>({ type: dbType }),
+			retention,
 			errorReporter,
 			eventService,
+			ledger,
 		);
+
+	it('keeps retained execution payloads when deletion is requested', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['123']);
+		const service = createPersistenceService('fs', 'postgresdb', disabledLedger, retention);
+		await expect(
+			service.hardDelete({ executionId: '123', workflowId: 'workflow', storedAt: 'fs' }),
+		).rejects.toThrow('required by pending work');
+		expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+		expect(jsonStore.delete).not.toHaveBeenCalled();
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('checks retention for every target before the first batch of a criteria delete', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['exec-2']);
+		const service = createPersistenceService('db', 'postgresdb', disabledLedger, retention);
+		const { hardDeletionBatchSize } = executionRepository;
+		Object.assign(executionRepository, { hardDeletionBatchSize: 1 });
+		onTestFinished(() => {
+			Object.assign(executionRepository, { hardDeletionBatchSize });
+		});
+		executionRepository.findExecutionsToDelete.mockResolvedValue([
+			{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' },
+			{ workflowId: 'wf-1', executionId: 'exec-2', storedAt: 'db' },
+		]);
+
+		await expect(
+			service.hardDeleteBy({
+				filters: {},
+				accessibleWorkflowIds: ['wf-1'],
+				deleteConditions: { ids: ['exec-1', 'exec-2'] },
+			}),
+		).rejects.toThrow('required by pending work');
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('checks retention for the workflow before the first batch of a workflow delete', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['exec-2']);
+		const service = createPersistenceService('db', 'postgresdb', disabledLedger, retention);
+		executionRepository.hasWorkflowExecutionAmong.mockResolvedValue(true);
+
+		await expect(service.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+			'required by pending work',
+		);
+		expect(executionRepository.hasWorkflowExecutionAmong).toHaveBeenCalledWith('wf-1', ['exec-2']);
+		expect(executionRepository.findForDeletionByWorkflowId).not.toHaveBeenCalled();
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
 
 	describe('create', () => {
 		const createPayload: CreateExecutionPayload = {
@@ -530,6 +599,83 @@ describe('ExecutionPersistence', () => {
 				expect(jsonStore.delete).not.toHaveBeenCalled();
 			});
 		});
+
+		describe('execution ledger', () => {
+			const persistence = createPersistenceService('db', 'postgresdb', executionLedger);
+			let mockTx: ReturnType<typeof createMockTransaction>;
+
+			beforeEach(() => {
+				mockTx = createMockTransaction();
+				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
+			});
+
+			it('passes the new row to the ledger in its transaction', async () => {
+				const stoppedAt = new Date('2026-11-10T10:00:00Z');
+
+				await persistence.create(
+					{ ...createPayload, status: 'error', stoppedAt },
+					{},
+					{ source: 'instance_ai', skipLedger: true },
+				);
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					{
+						started: {
+							executionId: 'exec-1',
+							workflowId: 'workflow-123',
+							workflowName: 'Test Workflow',
+							mode: 'manual',
+							source: 'instance_ai',
+							occurredAt: expect.any(Date),
+						},
+						status: 'error',
+						startedAt: undefined,
+						stoppedAt,
+						isCopy: true,
+						reclaimedTombstone: null,
+					},
+					txCtx,
+				);
+			});
+
+			it.each([
+				['the owner project of the caller', 'project-1', 'project-1'],
+				['no project for an empty id', '', undefined],
+			])('passes %s to the ledger', async (_case, projectId, expected) => {
+				await persistence.create(createPayload, {}, { projectId });
+
+				const [facts] = executionLedger.recordCreated.mock.calls[0];
+				expect(facts.started.projectId).toBe(expected);
+			});
+
+			it('passes the reclaimed tombstone to the ledger', async () => {
+				mockTx.findOne.mockResolvedValue({
+					id: 'exec-old',
+					workflowId: 'workflow-123',
+					storedAt: 'db',
+					mode: 'trigger',
+				} as unknown as ExecutionEntity);
+
+				await persistence.create({ ...createPayload, deduplicationKey: 'wf-1:node-1:1' });
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						reclaimedTombstone: expect.objectContaining({
+							executionId: 'exec-old',
+							workflowId: 'workflow-123',
+							mode: 'trigger',
+						}),
+					}),
+					txCtx,
+				);
+			});
+
+			it('does not call the ledger when the module is off', async () => {
+				await createPersistenceService('db').create(createPayload);
+
+				expect(disabledLedger.recordCreated).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('updateExistingExecution', () => {
@@ -682,6 +828,165 @@ describe('ExecutionPersistence', () => {
 				expect(executionRepository.update).toHaveBeenCalledWith(
 					{ id: executionId },
 					{ status: 'running' },
+				);
+			});
+		});
+
+		describe('saveExecutionOutcome', () => {
+			const unfinished = In(['new', 'running', 'unknown', 'waiting']);
+
+			it('should report ended when the write on an unfinished run matches', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValueOnce(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toEqual({ updated: true, ended: true });
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: unfinished },
+					{ status: 'success' },
+				);
+			});
+
+			it('should fall back to the plain write when the run already finished', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update
+					.mockResolvedValueOnce(affected(0))
+					.mockResolvedValueOnce(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toEqual({ updated: true, ended: false });
+				expect(executionRepository.update).toHaveBeenLastCalledWith(
+					{ id: executionId, status: Not('canceled') },
+					{ status: 'success' },
+				);
+			});
+
+			it('should report neither when no write matches', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(0));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toEqual({ updated: false, ended: false });
+			});
+
+			it('should write once when the required status is unfinished', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(0));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'canceled' },
+					{ requireStatus: 'running' },
+				);
+
+				expect(result).toEqual({ updated: false, ended: false });
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: 'running' },
+					{ status: 'canceled' },
+				);
+			});
+
+			it('should end the run only from the required statuses', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValueOnce(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'crashed' },
+					{ requireStatuses: ['new', 'running'] },
+				);
+
+				expect(result).toEqual({ updated: true, ended: true });
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: In(['new', 'running']) },
+					{ status: 'crashed' },
+				);
+			});
+
+			it('should use the plain write when every required status is terminal', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'error' },
+					{ requireStatuses: ['success', 'error'] },
+				);
+
+				expect(result).toEqual({ updated: true, ended: false });
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: In(['success', 'error']) },
+					{ status: 'error' },
+				);
+			});
+
+			it('should never report ended for a status that is not terminal', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(executionId, {
+					status: 'waiting',
+				});
+
+				expect(result).toEqual({ updated: true, ended: false });
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'waiting' },
+				);
+			});
+
+			it('should report ended from the write in the data transaction', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(123);
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.saveExecutionOutcome(executionId, {
+					data: runData,
+					workflowData,
+					status: 'error',
+				});
+
+				expect(result).toEqual({ updated: true, ended: true });
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId, status: unfinished },
+					{ status: 'error' },
+				);
+			});
+
+			it('should keep updateExistingExecution on the plain write', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(1));
+
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					status: 'success',
+				});
+
+				expect(result).toBe(true);
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'success' },
 				);
 			});
 		});
@@ -2220,6 +2525,10 @@ describe('ExecutionPersistence', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 		const outcome = { status: 'success' as const, finished: true, stoppedAt: new Date() };
 
+		beforeEach(() => {
+			executionRepository.update.mockReset();
+		});
+
 		it('should soft-delete with backdated `deletedAt` and the final state when pruning is enabled', async () => {
 			vi.useFakeTimers();
 			const now = Date.now();
@@ -2227,10 +2536,11 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneData = true;
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
-			executionRepository.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
+			executionRepository.update.mockResolvedValueOnce(affected(1));
 
-			await executionPersistence.deleteInFlightExecution(target, outcome);
+			const result = await executionPersistence.deleteInFlightExecution(target, outcome);
 
+			expect(result).toEqual({ ended: true });
 			expect(executionRepository.update).toHaveBeenCalledTimes(1);
 			expect(executionRepository.update).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'exec-1' }),
@@ -2241,14 +2551,72 @@ describe('ExecutionPersistence', () => {
 			vi.useRealTimers();
 		});
 
-		it('should hard-delete immediately when pruning is disabled', async () => {
+		it('should not report ended when another write already finished the run', async () => {
+			executionsConfig.pruneData = true;
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update
+				.mockResolvedValueOnce(affected(0))
+				.mockResolvedValueOnce(affected(1));
+
+			const result = await executionPersistence.deleteInFlightExecution(target, outcome);
+
+			expect(result).toEqual({ ended: false });
+			expect(executionRepository.update).toHaveBeenCalledTimes(2);
+		});
+
+		it('should write the final state, then hard-delete, when pruning is disabled', async () => {
 			executionsConfig.pruneData = false;
 			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValueOnce(affected(1));
 
-			await executionPersistence.deleteInFlightExecution(target, outcome);
+			const result = await executionPersistence.deleteInFlightExecution(target, outcome);
 
+			expect(result).toEqual({ ended: true });
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: 'exec-1', status: In(['new', 'running', 'unknown', 'waiting']) },
+				outcome,
+			);
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			const [writeOrder] = executionRepository.update.mock.invocationCallOrder;
+			const [deleteOrder] = executionRepository.deleteByIds.mock.invocationCallOrder;
+			expect(writeOrder).toBeLessThan(deleteOrder);
+		});
+	});
+
+	describe('softDeleteWithOutcome', () => {
+		const outcome = { status: 'error' as const, finished: false, stoppedAt: new Date() };
+
+		beforeEach(() => {
+			executionRepository.update.mockReset();
+		});
+
+		it('should soft-delete and write the final state in one statement', async () => {
+			vi.useFakeTimers();
+			const now = new Date();
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValueOnce(affected(1));
+
+			const result = await executionPersistence.softDeleteWithOutcome('exec-1', outcome);
+
+			expect(result).toEqual({ ended: true });
+			expect(executionRepository.update).toHaveBeenCalledTimes(1);
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: 'exec-1', status: In(['new', 'running', 'unknown', 'waiting']) },
+				{ deletedAt: now, ...outcome },
+			);
+			expect(executionRepository.softDelete).not.toHaveBeenCalled();
+
+			vi.useRealTimers();
+		});
+
+		it('should only soft-delete a canceled run', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValue(affected(0));
+
+			const result = await executionPersistence.softDeleteWithOutcome('exec-1', outcome);
+
+			expect(result).toEqual({ ended: false });
+			expect(executionRepository.softDelete).toHaveBeenCalledWith('exec-1');
 		});
 	});
 

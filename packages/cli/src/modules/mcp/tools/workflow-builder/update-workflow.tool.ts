@@ -1,7 +1,12 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import {
+	type OperationContext,
+	type User,
+	type SharedWorkflowRepository,
+	WorkflowEntity,
+} from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import {
@@ -26,8 +31,7 @@ import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
@@ -59,6 +63,8 @@ import {
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
+	VERSION_DESCRIPTION_GUIDANCE,
+	VERSION_NAME_GUIDANCE,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
@@ -284,10 +290,10 @@ const inputSchema = {
 			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves. An existing group that these ops leave invalid is removed and reported in removedGroups.`,
 		),
 	versionName: versionNameInputSchema.describe(
-		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+		`Short title of what this update changes, shown in the workflow's version history (e.g. "Added Slack failure alert"). ${VERSION_NAME_GUIDANCE}`,
 	),
 	versionDescription: versionDescriptionInputSchema.describe(
-		'Longer description of what changed and why, shown in the version history alongside the version name.',
+		`Detailed description of what this update changes, shown in the version history below the title. ${VERSION_DESCRIPTION_GUIDANCE}`,
 	),
 } satisfies z.ZodRawShape;
 // The MCP SDK publishes this schema with `additionalProperties: false` and
@@ -1120,7 +1126,7 @@ export const createUpdateWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	urlService: UrlService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
@@ -1147,6 +1153,7 @@ export const createUpdateWorkflowTool = (
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => {
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
@@ -1392,13 +1399,19 @@ export const createUpdateWorkflowTool = (
 						: undefined;
 				expectedTagNames = result.tagNames;
 				updateAttempted = true;
-				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-					aiBuilderAssisted: hasNonTagOperations,
-					source: 'n8n-mcp',
-					versionName: versionMetadata.name,
-					versionDescription: versionMetadata.description,
-					...(tagIds !== undefined ? { tagIds } : {}),
-				});
+				const updatedWorkflow = await workflowService.update(
+					user,
+					workflowUpdateData,
+					workflowId,
+					{
+						aiBuilderAssisted: hasNonTagOperations,
+						source: 'n8n-mcp',
+						versionName: versionMetadata.name,
+						versionDescription: versionMetadata.description,
+						...(tagIds !== undefined ? { tagIds } : {}),
+					},
+					ctx,
+				);
 
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;

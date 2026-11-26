@@ -1,0 +1,27 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"payload": {
+			"additionalProperties": true,
+			"properties": {
+				"aud": {
+					"items": {
+						"type": "string"
+					},
+					"type": ["string", "array"]
+				},
+				"exp": {
+					"type": "number"
+				},
+				"iat": {
+					"type": "number"
+				},
+				"iss": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

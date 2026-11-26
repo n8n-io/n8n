@@ -24,7 +24,10 @@ import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { formatTriggerActionName } from '../nodeCreator.utils';
+import {
+	formatTriggerActionName,
+	isNodeItemRestricted,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
@@ -447,8 +450,13 @@ export function useActionsGenerator() {
 				const triggerActions = generateNodeActions(trigger);
 				const appActions = actions?.[normalizedName] || [];
 				const app = mergedNodes.find((node) => node.name === normalizedName);
-
-				if (app && appActions?.length > 0) {
+				// Restriction checks read the item key, so a merged item would give the trigger the
+				// app's verdict. Keep them apart when a policy allows one and restricts the other.
+				if (
+					app &&
+					appActions?.length > 0 &&
+					isNodeItemRestricted(app.name) === isNodeItemRestricted(trigger.name)
+				) {
 					// merge triggers into regular nodes that match
 					const mergedActions = filterActions([...appActions, ...triggerActions]);
 					actions[normalizedName] = mergedActions;

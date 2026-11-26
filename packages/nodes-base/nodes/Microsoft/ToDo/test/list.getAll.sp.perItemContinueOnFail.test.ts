@@ -10,7 +10,7 @@ import { credentials } from './credentials';
 describe('Test MicrosoftToDo, Service Principal list:getAll fails only the bad item under continueOnFail', () => {
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get('/users/jane%40contoso.com/todo/lists')
+		.get('/users/jane@contoso.com/todo/lists')
 		.query({ $top: 50 })
 		.reply(200, { value: [{ id: 'list-jane', displayName: 'Jane Tasks' }] });
 

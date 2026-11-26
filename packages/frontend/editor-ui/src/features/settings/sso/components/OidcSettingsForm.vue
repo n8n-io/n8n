@@ -4,12 +4,13 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
@@ -234,13 +235,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 }
 
 function sendTrackingEvent(config: OidcConfigDto) {
-	const trackingMetadata = {
+	telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
 		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.OIDC,
 		discovery_endpoint: config.discoveryEndpoint,
 		is_active: config.loginEnabled,
-	};
-	telemetry.track('User updated single sign on settings', trackingMetadata);
+	});
 }
 
 const isTestEnabled = computed(
@@ -269,7 +269,15 @@ const hasUnsavedChanges = computed(
 		(!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
 );
 
-defineExpose({ hasUnsavedChanges, onSave: onOidcSettingsSave });
+// The SSO page saves through its save bar, so it needs these.
+// The SSO page shows the test button below the SCIM section, so it needs these.
+defineExpose({
+	hasUnsavedChanges,
+	onSave: onOidcSettingsSave,
+	saving: savingForm,
+	isTestEnabled,
+	onTest,
+});
 
 onMounted(async () => {
 	await loadOidcConfig();
@@ -452,28 +460,6 @@ onMounted(async () => {
 					</N8nSelect>
 				</div>
 			</div>
-		</div>
-
-		<div :class="$style.buttons">
-			<N8nButton
-				v-if="!isSsoManagedByEnv || isRulesMappingInN8n"
-				data-test-id="sso-oidc-save"
-				size="large"
-				:loading="savingForm"
-				:disabled="savingForm || cannotSaveOidcSettings"
-				@click="onOidcSettingsSave(false)"
-			>
-				{{ i18n.baseText('settings.sso.settings.save') }}
-			</N8nButton>
-			<N8nButton
-				variant="outline"
-				:disabled="!isTestEnabled"
-				size="large"
-				data-test-id="sso-oidc-test"
-				@click="onTest"
-			>
-				{{ i18n.baseText('settings.sso.settings.test') }}
-			</N8nButton>
 		</div>
 	</div>
 </template>

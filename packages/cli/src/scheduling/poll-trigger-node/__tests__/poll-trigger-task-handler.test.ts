@@ -20,6 +20,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowCrashJournal } from '@/crash-loop/workflow-crash-journal';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
@@ -41,6 +42,7 @@ describe('PollTriggerTaskHandler', () => {
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 	const eventService = mock<EventService>();
+	const crashJournal = mock<WorkflowCrashJournal>();
 
 	const handler = new PollTriggerTaskHandler(
 		rootLogger,
@@ -50,6 +52,7 @@ describe('PollTriggerTaskHandler', () => {
 		errorReporter,
 		pollBackoffService,
 		eventService,
+		crashJournal,
 	);
 
 	const onDispatch = vi.fn();
@@ -128,6 +131,7 @@ describe('PollTriggerTaskHandler', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		crashJournal.recordStart.mockReturnValue(() => {});
 
 		const workflowData = buildWorkflowData();
 		workflow = buildWorkflow(workflowData);
@@ -530,6 +534,31 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
+		test('keeps a timed-out poll in flight in the crash journal until it settles', async () => {
+			const settle = vi.fn();
+			crashJournal.recordStart.mockReturnValue(settle);
+			let resolvePoll: (value: null) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePoll = resolve;
+				}),
+			);
+			const run = new AbortController();
+
+			const settled = handler.execute(buildTask(), report, runOf(run.signal));
+			await vi.waitFor(() =>
+				expect(crashJournal.recordStart).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'task-1', leaseEpoch: 1 }),
+				),
+			);
+			run.abort(new TaskTimeoutError(45));
+			await settled;
+
+			expect(settle).not.toHaveBeenCalled();
+			resolvePoll(null);
+			await vi.waitFor(() => expect(settle).toHaveBeenCalledTimes(1));
+		});
+
 		test('records no failure for a workflow deactivated during a timed-out poll', async () => {
 			const run = new AbortController();
 			workflowRepository.isActive.mockResolvedValue(false);
@@ -610,6 +639,7 @@ describe('PollTriggerTaskHandler', () => {
 				errorReporter,
 				pollBackoffService,
 				eventService,
+				crashJournal,
 			);
 
 			const settled = expect(
@@ -766,6 +796,16 @@ describe('PollTriggerTaskHandler', () => {
 				expect.stringContaining('no published version'),
 				expect.objectContaining({ taskId: 'task-1', workflowId: 'wf-1', nodeId: 'node-1' }),
 			);
+		});
+
+		test('skips the occurrence without polling when the workflow is unpublished but its published version remains', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ activeVersionId: null }),
+			);
+
+			await handler.execute(buildTask(), report, runOf(leaseSignal));
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});
 
 		test.each([

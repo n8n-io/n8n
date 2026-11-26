@@ -6,7 +6,8 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { useResourceRegistry } from '../useResourceRegistry';
+import { turnHasArtifact, useResourceRegistry } from '../useResourceRegistry';
+import type { ArtifactTurn } from '../artifactTurns';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -1046,14 +1047,14 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-get',
-								toolName: 'apps',
-								args: { action: 'get', appId: 'app-2' },
+								toolName: 'get_app',
+								args: { appId: 'app-2' },
 								result: { app: { ...app, id: 'app-2' } },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-commit',
-								toolName: 'apps',
-								args: { action: 'commit', appId: 'app-1', label: 'Add list' },
+								toolName: 'commit_app',
+								args: { appId: 'app-1', label: 'Add list' },
 								result: { app, versionId: 'v1', buildStatus: 'succeeded' },
 							}),
 						],
@@ -1081,8 +1082,8 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'apps',
-								args: { action: 'commit', appId: 'app-1' },
+								toolName: 'commit_app',
+								args: { appId: 'app-1' },
 								result: {
 									app: { id: 'app-1', name: 'New name', projectId: 'project-1' },
 									versionId: 'v1',
@@ -1469,6 +1470,48 @@ describe('useResourceRegistry', () => {
 		);
 	});
 
+	describe('batch data table changes', () => {
+		const table = (id: string, name: string) => ({ id, name, projectId: 'proj-1' });
+
+		test('registers each changed table as a built artifact and skips deleted tables', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex, producedArtifactOrigins } =
+				setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'change_data_tables',
+								args: { changes: [] },
+								result: {
+									success: false,
+									applied: [
+										{ index: 0, action: 'create', table: table('dt-a', 'Leads'), result: {} },
+										{ index: 1, action: 'insert-rows', table: table('dt-b', 'Orders'), result: {} },
+										{ index: 2, action: 'add-column', table: table('dt-c', 'Old'), result: {} },
+										{ index: 3, action: 'delete', table: table('dt-c', 'Old'), result: {} },
+									],
+									failed: { index: 4, action: 'update-rows', error: 'Bad filter' },
+									skipped: [5],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect([...producedArtifacts.keys()]).toEqual(['dt-a', 'dt-b']);
+			expect(producedArtifacts.get('dt-b')).toEqual({
+				type: 'data-table',
+				...table('dt-b', 'Orders'),
+			});
+			expect(linkableResourceNameIndex.get('leads')?.id).toBe('dt-a');
+			expect(producedArtifactOrigins.get('dt-a')).toBe('built');
+		});
+	});
+
 	describe('in-place reactivity contract', () => {
 		function setupWithArtifact() {
 			const result = setup();
@@ -1790,5 +1833,80 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifactOrigins.has('wf-1')).toBe(false);
 		});
+	});
+});
+
+describe('turnHasArtifact', () => {
+	function turn(overrides: Partial<ArtifactTurn> = {}): ArtifactTurn {
+		return { id: 'turn-1', role: 'assistant', isLive: false, toolCalls: [], ...overrides };
+	}
+
+	test('is true when the agent built a workflow in the turn', () => {
+		const built = turn({
+			toolCalls: [
+				{
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: {},
+					result: { workflowId: 'wf-1', workflowName: 'My Workflow' },
+					isLoading: false,
+				},
+			],
+		});
+
+		expect(turnHasArtifact(built)).toBe(true);
+	});
+
+	test('is true when the agent opened an existing workflow in the turn', () => {
+		const opened = turn({
+			toolCalls: [
+				{
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_workflows',
+					args: { action: 'get-json', workflowId: 'wf-existing' },
+					result: { id: 'wf-existing', name: 'Existing Workflow', nodes: [], connections: {} },
+					isLoading: false,
+				},
+			],
+		});
+
+		expect(turnHasArtifact(opened)).toBe(true);
+	});
+
+	test('is false when the turn has no tool calls', () => {
+		expect(turnHasArtifact(turn())).toBe(false);
+	});
+
+	test('is false when no tool call produces an artifact', () => {
+		const other = turn({
+			toolCalls: [{ toolCallId: 'tc-1', toolName: 'some-tool', args: {}, isLoading: false }],
+		});
+
+		expect(turnHasArtifact(other)).toBe(false);
+	});
+
+	test('is false when the build failed and returned no result', () => {
+		const failed = turn({
+			toolCalls: [
+				{
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: {},
+					error: 'The build failed',
+					isLoading: false,
+				},
+			],
+		});
+
+		expect(turnHasArtifact(failed)).toBe(false);
+	});
+
+	test('is false for a resource that the user attached to the message', () => {
+		const attached = turn({
+			role: 'user',
+			attachments: [{ type: 'workflow', id: 'wf-attached', name: 'Attached' }],
+		});
+
+		expect(turnHasArtifact(attached)).toBe(false);
 	});
 });

@@ -12,6 +12,7 @@ export const subWorkflowNodeReference: EntityReference<WorkflowSubWorkflowRequir
 	extract(workflow) {
 		const requirements: WorkflowSubWorkflowRequirement[] = [];
 		for (const node of workflow.nodes ?? []) {
+			if (!node?.parameters) continue;
 			const referencedWorkflowId = getStaticSubworkflowId(node);
 			if (referencedWorkflowId) {
 				requirements.push({ workflowId: workflow.id, referencedWorkflowId });
@@ -21,6 +22,7 @@ export const subWorkflowNodeReference: EntityReference<WorkflowSubWorkflowRequir
 	},
 	apply(workflow, bindings) {
 		for (const node of workflow.nodes ?? []) {
+			if (!node?.parameters) continue;
 			const currentId = getStaticSubworkflowId(node);
 			if (!currentId) continue;
 			const targetId = bindings.workflows.get(currentId);

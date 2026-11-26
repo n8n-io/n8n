@@ -1,7 +1,11 @@
 name: 'Test: E2E Helm Chart'
-run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: E2E Helm Chart (mode={0}, branch={1}, chart={2})', inputs.mode, inputs.branch || 'default', inputs['helm-chart-ref']) || '' }}"
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: E2E Helm Chart (branch={0}, chart={1})', inputs.branch || 'default', inputs['helm-chart-ref'] || 'pinned') || '' }}"
+
+# Scope and design: packages/quality/environments/containers/HELM-TESTING.md
 
 on:
+  schedule:
+    - cron: '0 3 * * *'
   pull_request:
     paths:
       - '.github/workflows/test-e2e-helm.yml'
@@ -14,21 +18,16 @@ on:
         required: false
         default: ''
       helm-chart-ref:
-        description: 'n8n-hosting branch/tag for Helm chart'
+        description: 'n8n-hosting branch/tag for Helm chart. Empty uses the tag pinned in helm-stack.ts.'
         required: false
-        default: 'main'
-      mode:
-        description: 'Deployment mode to test'
-        required: true
-        type: choice
-        options:
-          - standalone
-          - queue
-        default: 'queue'
+        default: ''
+
+permissions:
+  contents: read
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
-  HELM_CHART_REF: ${{ inputs.helm-chart-ref || 'main' }}
+  HELM_CHART_REF: ${{ inputs.helm-chart-ref }}
 
 jobs:
   build:
@@ -64,12 +63,16 @@ jobs:
           RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
 
   helm-e2e:
-    name: "Helm E2E (${{ inputs.mode || 'queue' }})"
+    name: 'Helm E2E (${{ matrix.example }})'
     needs: build
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [standalone, minimal]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -101,9 +104,9 @@ jobs:
           # shamefully-hoist was removed).
           pnpm --filter n8n-containers exec tsx helm-start-stack.ts \
             --env E2E_TESTS=true --env NODE_ENV=development \
-            --mode "${{ inputs.mode || 'queue' }}" \
+            --example "${{ matrix.example }}" \
             --image "${{ env.DOCKER_IMAGE }}" \
-            --chart-ref "${{ env.HELM_CHART_REF }}" \
+            ${HELM_CHART_REF:+--chart-ref "$HELM_CHART_REF"} \
             --url-file /tmp/n8n-helm-url.txt \
             --kubeconfig-file /tmp/n8n-helm-kubeconfig.txt
 
@@ -114,14 +117,14 @@ jobs:
           KUBECONFIG_PATH=$(cat /tmp/n8n-helm-kubeconfig.txt)
           echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "$GITHUB_ENV"
 
-      - name: Run Building Blocks E2E Tests
+      - name: Run Code node execution test
         working-directory: packages/quality/testing/playwright
         run: |
           N8N_BASE_URL="${{ env.N8N_BASE_URL }}" \
           RESET_E2E_DB=true \
           npx playwright test \
             --project=e2e \
-            tests/e2e/building-blocks/ \
+            tests/e2e/nodes/code-node-api.spec.ts \
             --workers=1 \
             --retries=2 \
             --reporter=list
@@ -139,7 +142,7 @@ jobs:
           kubectl get events --sort-by=.lastTimestamp | tail -30
           echo ""
           echo "=== n8n Pod Logs (last 100 lines) ==="
-          kubectl logs -l app.kubernetes.io/name=n8n --tail=100 || true
+          kubectl logs -l app.kubernetes.io/name=n8n --all-containers --tail=100 || true
           echo ""
           echo "=== Health Check ==="
           curl -s -o /dev/null -w "HTTP %{http_code}" "${{ env.N8N_BASE_URL }}/healthz/readiness" || echo "UNREACHABLE"
@@ -148,7 +151,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: helm-e2e-report-${{ inputs.mode || 'queue' }}
+          name: helm-e2e-report-${{ matrix.example }}
           path: |
             packages/quality/testing/playwright/test-results/
             packages/quality/testing/playwright/playwright-report/
@@ -176,3 +179,24 @@ jobs:
           GHCR_ORG: ${{ github.repository_owner }}
           GHCR_REPO: ${{ github.event.repository.name }}
         run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}
+
+  notify-on-failure:
+    name: Notify Slack on nightly failure
+    needs: [build, helm-e2e]
+    if: always() && contains(needs.*.result, 'failure') && github.event_name == 'schedule'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-catalysts' \
+            --text 'Nightly Helm chart E2E failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
