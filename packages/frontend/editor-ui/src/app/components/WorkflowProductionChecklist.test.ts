@@ -577,6 +577,32 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
+		it('should not open popover or record first activation when auto-open is disabled', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			renderComponent({ pinia: createTestingPinia(), props: { disableAutoOpen: true } });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
+			expect(workflowsCache.getWorkflowSettings).not.toHaveBeenCalled();
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+		});
+
 		it('should not open popover automatically if workflow was previously activated', async () => {
 			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},

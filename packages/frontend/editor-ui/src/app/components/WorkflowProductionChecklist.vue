@@ -29,8 +29,9 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowEvaluationState } from '@/features/ai/evaluation.ee/composables/useWorkflowEvaluationState';
 
-defineProps<{
+const props = defineProps<{
 	hideTrigger?: boolean;
+	disableAutoOpen?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -323,7 +324,13 @@ const isConfirmedActive = computed(() => {
 });
 
 // Watch for workflow activation
+// Skipped entirely while auto-open is disabled, so firstActivatedAt stays unset
+// and the checklist can still open on the next Editor visit.
 watch(isConfirmedActive, async (isActive, wasActive) => {
+	if (props.disableAutoOpen) {
+		return;
+	}
+
 	if (isActive && !wasActive) {
 		const workflowId = workflowDocumentStore?.value?.workflowId ?? '';
 		// Make sure the checklist opens only on the first activation, also when the
