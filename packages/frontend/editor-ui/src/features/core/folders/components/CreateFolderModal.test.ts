@@ -96,6 +96,18 @@ describe('CreateFolderModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(CREATE_FOLDER_MODAL_KEY);
 	});
 
+	it('shows the folder name rules while the name is edited', async () => {
+		const { getByRole, getByText, queryByText } = renderResult;
+		const nameInput = getByRole('textbox', { name: /Name/ });
+
+		await userEvent.type(nameInput, 'folder/test');
+		expect(getByText(/Folder name cannot contain the following characters:/)).toBeInTheDocument();
+		expect(queryByText('This field is required')).not.toBeInTheDocument();
+
+		await userEvent.clear(nameInput);
+		expect(getByText('Folder name cannot be empty')).toBeInTheDocument();
+	});
+
 	it('creates the folder when Enter is pressed in the name field', async () => {
 		const { getByRole } = renderResult;
 

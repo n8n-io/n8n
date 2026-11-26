@@ -621,6 +621,8 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	// The select teleports this list outside the NDV.
+	// Callers pass part of the run label, for example "(2 items)".
+	// The option name is the full label, for example "2 of 2 (2 items)".
 	// A pointer click misses this option: the menu hides it before the click lands.
 	// The option stays mounted on this control's list. Send the click there.
 	private async chooseRunSelectorOption(selector: Locator, value: string) {
@@ -633,7 +635,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 			const option = this.page.locator(`[id="${listId}"]`).getByRole('option', {
 				name: value,
-				exact: true,
 				includeHidden: true,
 			});
 			await option.dispatchEvent('click', {}, { timeout: 2_000 });

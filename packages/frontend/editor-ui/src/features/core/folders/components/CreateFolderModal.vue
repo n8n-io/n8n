@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nButton,
@@ -48,6 +48,12 @@ const folderNameValidator: IValidator = {
 	},
 };
 
+// Show the folder-name rule as soon as the value changes. An empty name uses
+// that rule. The generic required message would replace it.
+watch(folderName, () => {
+	showNameError.value = true;
+});
+
 function onNameBlur() {
 	if (folderName.value) showNameError.value = true;
 }
@@ -94,7 +100,6 @@ function onDialogOpenUpdate(open: boolean) {
 					v-model="folderName"
 					name="folderName"
 					:label="i18n.baseText('generic.name')"
-					required
 					:validate-on-blur="false"
 					:show-validation-warnings="showNameError"
 					:validators="{ VALID_FOLDER_NAME: folderNameValidator }"
