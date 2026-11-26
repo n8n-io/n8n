@@ -109,6 +109,35 @@ describe('InstanceAiSandboxService', () => {
 	});
 
 	describe('config resolution', () => {
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it.each(['daytona', 'n8n-sandbox'] as const)(
+			'keeps %s network access independent of the Agent egress setting',
+			async (sandboxProvider) => {
+				const { service } = createSandboxService({
+					config: {
+						sandboxEnabled: true,
+						sandboxProvider,
+						n8nSandboxServiceUrl: 'https://sandbox.test',
+					},
+					settingsService: {
+						resolveN8nSandboxConfig: vi.fn(async () => ({ serviceUrl: 'https://sandbox.test' })),
+					},
+				});
+
+				for (const value of ['disabled', 'opt-in', 'opt-out']) {
+					vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', value);
+
+					const config = await service.resolveSandboxConfig(fakeUser);
+
+					expect(config).toMatchObject({ enabled: true, provider: sandboxProvider });
+					expect(config).not.toHaveProperty('egress', 'none');
+				}
+			},
+		);
+
 		it('returns a disabled config when sandboxes are not enabled', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: false, sandboxProvider: 'daytona', sandboxTimeout: 42 },

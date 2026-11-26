@@ -1597,7 +1597,7 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(sortInput()).toHaveValue('Sort by most runs'));
 
-			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await userEvent.click(screen.getByRole('button', { name: 'Owner' }));
 
 			await waitFor(() => expect(sortInput()).toHaveValue(''));
 		});

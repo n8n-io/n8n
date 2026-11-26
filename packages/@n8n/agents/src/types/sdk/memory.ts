@@ -404,7 +404,11 @@ export interface TitleGenerationConfig {
 	model?: ModelConfig;
 	/** Custom instructions for the title generation prompt. Replaces the defaults entirely. */
 	instructions?: string;
-	/** When true, title generation is awaited before returning the result. Default: false (fire-and-forget). */
+	/**
+	 * The title call starts with each fresh run, beside the agent loop. When true,
+	 * the run waits for that call before it completes or suspends, so the title is
+	 * stored when the run ends. Default: false (the run does not wait).
+	 */
 	sync?: boolean;
 }
 

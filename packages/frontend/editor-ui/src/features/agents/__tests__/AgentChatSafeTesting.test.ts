@@ -13,7 +13,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { mockedStore } from '@/__tests__/utils';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
-import AgentChatToolSteps from '@/features/agents/components/AgentChatToolSteps.vue';
+import AgentChatActivity from '@/features/agents/components/AgentChatActivity.vue';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { TOOL_CALL_STATE } from '@/features/agents/constants';
 import {
@@ -34,7 +34,7 @@ vi.mock('@/features/agents/composables/useAgentApi', async (importOriginal) => {
 	};
 });
 
-const renderToolSteps = createComponentRenderer(AgentChatToolSteps);
+const renderToolSteps = createComponentRenderer(AgentChatActivity);
 const renderChatPanel = createComponentRenderer(AgentChatPanel);
 
 describe('Safe testing labels, previews, reload persistence, and fresh test runs', () => {

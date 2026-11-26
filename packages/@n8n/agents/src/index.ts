@@ -99,6 +99,7 @@ export type {
 	AgentExecutionCounter,
 	SideCallTask,
 	SideCallUsageReport,
+	ThreadTitleUpdate,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,

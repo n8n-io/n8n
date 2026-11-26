@@ -12,7 +12,8 @@ export type ConnectionItemKind =
 	| 'agent'
 	| 'data-store'
 	| 'service'
-	| 'skill';
+	| 'skill'
+	| 'collection';
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
@@ -147,6 +148,15 @@ export interface SkillConnectionItem extends BaseConnectionItem {
 	attaching?: boolean;
 }
 
+/** A knowledge collection. The row adds it, or shows it as added with a Remove action. */
+export interface CollectionConnectionItem extends BaseConnectionItem {
+	kind: 'collection';
+	collectionId: string;
+	attached: boolean;
+	/** A short line about the contents, such as "3 files", shown before the action. */
+	summary: string;
+}
+
 export type ToolConnectionItem =
 	| NodeConnectionItem
 	| WorkflowConnectionItem
@@ -154,7 +164,8 @@ export type ToolConnectionItem =
 	| AgentConnectionItem
 	| DataStoreConnectionItem
 	| ServiceConnectionItem
-	| SkillConnectionItem;
+	| SkillConnectionItem
+	| CollectionConnectionItem;
 
 /**
  * One tab in the modal. Consumers declare the subset they support. `data` has
@@ -186,6 +197,7 @@ export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
 	agent: 'agents',
 	'data-store': 'data',
 	skill: 'project',
+	collection: 'project',
 };
 
 /**

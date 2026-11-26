@@ -3,6 +3,7 @@ import type { Scope } from '@n8n/permissions';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -14,13 +15,16 @@ import { accessFilter } from '../__tests__/table';
 import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
-const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
-	route: { query: {} as Record<string, string> },
-	push: vi.fn(),
-	replace: vi.fn(),
-	fetchInstancePolicy: vi.fn(),
-	fetchInstanceAccess: vi.fn(),
-}));
+const { route, push, replace, track, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(
+	() => ({
+		route: { query: {} as Record<string, string> },
+		track: vi.fn(),
+		push: vi.fn(),
+		replace: vi.fn(),
+		fetchInstancePolicy: vi.fn(),
+		fetchInstanceAccess: vi.fn(),
+	}),
+);
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy,
@@ -34,6 +38,10 @@ vi.mock('../type-availability-policies.api', () => ({
 	),
 	fetchCredentialTypeUsage: vi.fn(async () => ({})),
 	fetchNodeTypeUsage: vi.fn(async () => ({})),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
 }));
 
 // Reactive, so that a test can change the query of a mounted page.
@@ -485,5 +493,87 @@ describe('InstancePolicyView', () => {
 		unmount();
 
 		expect(cancelAll).toHaveBeenCalledTimes(1);
+	});
+
+	describe('telemetry', () => {
+		const openedEvent = TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_TYPE_ACCESS_DIALOG;
+
+		it('reports a dialog that a link opens once the server lists the type', async () => {
+			setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(openedEvent, {
+					kind: 'credential-types',
+					type_name: 'airtableApi',
+					source: 'link',
+					current_access: 'allow',
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not report a link to a type that the server does not list', async () => {
+			setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+			expect(track).not.toHaveBeenCalledWith(openedEvent, expect.anything());
+		});
+
+		it('reports a dialog that a click in the table opens', async () => {
+			replace.mockImplementationOnce(({ query }: { query: Record<string, string> }) => {
+				reactiveRoute.query = query;
+			});
+			fetchInstanceAccess.mockResolvedValue({
+				scopeId: null,
+				version: 0,
+				defaultAction: 'allow',
+				types: [{ name: 'n8n-nodes-base.notion', access: 'deny', matchedRuleId: 'rule-1' }],
+			});
+			const { findByText } = setup(BOTH_SCOPES, { tab: 'node' });
+
+			await fireEvent.click(await findByText('Notion'));
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(openedEvent, {
+					kind: 'node-types',
+					type_name: 'n8n-nodes-base.notion',
+					source: 'table',
+					current_access: 'deny',
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports each opening of the same type, and a link after a table click as a link', async () => {
+			const followReplace = ({ query }: { query: Record<string, string> }) => {
+				reactiveRoute.query = query;
+			};
+			replace.mockImplementationOnce(followReplace).mockImplementationOnce(followReplace);
+			fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi', 'airtableApi']));
+			const { findByTestId } = setup(BOTH_SCOPES, { tab: 'credential' });
+
+			await fireEvent.click(await findByTestId('instance-policy-open-bitlyApi'));
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(1));
+			reactiveRoute.query = { tab: 'credential' };
+			await nextTick();
+			await fireEvent.click(await findByTestId('instance-policy-open-bitlyApi'));
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(2));
+			reactiveRoute.query = { tab: 'credential', details: 'airtableApi' };
+
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(3));
+			expect(track.mock.calls.map(([, { type_name, source }]) => [type_name, source])).toEqual([
+				['bitlyApi', 'table'],
+				['bitlyApi', 'table'],
+				['airtableApi', 'link'],
+			]);
+		});
+
+		it('does not report a link that only the access of an earlier visit lists', async () => {
+			fetchInstanceAccess.mockResolvedValue(credentialAccess([]));
+			await setupAfterEarlierVisit({ tab: 'credential', details: 'bitlyApi' });
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+			expect(track).not.toHaveBeenCalledWith(openedEvent, expect.anything());
+		});
 	});
 });
