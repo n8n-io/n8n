@@ -191,6 +191,7 @@ describe('PromotionsService', () => {
 		logger.scoped.mockReturnValue(logger);
 		publisher.publishCommand.mockResolvedValue();
 		folderService.getFoldersByIds.mockResolvedValue([]);
+		resolver.findProjectIdsOutsideInstanceEnvironment.mockResolvedValue(new Set());
 		// Projects p1 and p2 exist on this instance.
 		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
 			ids.filter((id) => ['p1', 'p2'].includes(id)).map((id) => ({ id, type: 'team' as const })),
@@ -2818,6 +2819,7 @@ describe('PromotionsService', () => {
 					tagConflictPolicy: 'rename',
 					layoutConflictPolicy: 'follow-package',
 					credentialPersonalRoute: 'exclude',
+					excludedProjectIds: new Set(),
 					ctx: {},
 				},
 				expect.any(GitCommitPackageReader),
@@ -3071,6 +3073,24 @@ describe('PromotionsService', () => {
 				{ publicApi: false },
 				ctx,
 			);
+		});
+
+		it('deletes no project when the read of the left-out projects fails before the deletion', async () => {
+			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2', 'p3']);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([
+				{ id: 'p3', name: 'Gamma' },
+			] as never);
+			resolver.findProjectIdsOutsideInstanceEnvironment
+				.mockResolvedValueOnce(new Set())
+				.mockRejectedValueOnce(new Error('Settings read failed'));
+
+			await expect(
+				service.continueApply(ENVIRONMENT_ID, actor, {
+					...request,
+					confirmDestructiveChanges: true,
+				}),
+			).rejects.toThrow('Settings read failed');
+			expect(projectService.deleteProject).not.toHaveBeenCalled();
 		});
 
 		it('keeps importer errors and does not reconcile projects after failure', async () => {

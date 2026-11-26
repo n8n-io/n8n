@@ -1163,6 +1163,7 @@ export class PromotionsService {
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
 		await this.ensureCheckout(input, signal);
+		const leftOutProjectIds = await this.resolver.findProjectIdsOutsideInstanceEnvironment('apply');
 
 		const tip = await this.readApplyTip(input, expectedSource);
 		if (tip.status === 'source-changed') return tip;
@@ -1172,7 +1173,8 @@ export class PromotionsService {
 		const previewChanged = await this.previewChanged(
 			identity,
 			expectedPreviewRevision,
-			async () => await this.applyPreviewService.buildInstance({ user: actor, files }),
+			async () =>
+				await this.applyPreviewService.buildInstance({ user: actor, files, leftOutProjectIds }),
 		);
 		if (previewChanged) return previewChanged;
 
@@ -1180,13 +1182,16 @@ export class PromotionsService {
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		const plan = await this.n8nPackagesService.planPackage(
-			{ ...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...instanceApplyRequest(actor, publicApi, leftOutProjectIds, confirmDestructiveChanges),
+				ctx,
+			},
 			reader,
 			'enforce',
 		);
 		const check = blockingCheck(
 			this.applyPreviewService.check(plan, inventory, undefined, moves),
-			await this.applyPreviewService.projectDeletions(inventory),
+			await this.applyPreviewService.projectDeletions(inventory, leftOutProjectIds),
 		);
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
 			return { status: 'blocked', ...identity, check };
@@ -1774,11 +1779,19 @@ export class PromotionsService {
 			(projectId) => confirmed.has(projectId) && !imported.has(projectId),
 		);
 
+		const deletedProjectIds: string[] = [];
 		for (const projectId of removedProjectIds) {
+			// Read for each project: a project can get its own Apply environment while another one is deleted.
+			const leftOut = await this.resolver.findProjectIdsOutsideInstanceEnvironment('apply');
+			if (leftOut.has(projectId)) {
+				this.logger.info('Apply kept a project that got its own Apply environment', { projectId });
+				continue;
+			}
 			await this.projectService.deleteProject(actor, projectId, { publicApi }, ctx);
+			deletedProjectIds.push(projectId);
 		}
 
-		return { deletedProjectIds: removedProjectIds };
+		return { deletedProjectIds };
 	}
 
 	private commitAuthor(user: User): { name: string; email: string } {

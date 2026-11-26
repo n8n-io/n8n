@@ -121,12 +121,14 @@ const INSTANCE_IMPORT_POLICY: Omit<ImportRequest, 'user' | 'publicApi'> = {
 export function instanceApplyRequest(
 	user: User,
 	publicApi: PublicApiCaller,
+	leftOutProjectIds: ReadonlySet<string>,
 	confirmDestructiveChanges = false,
 ): Parameters<N8nPackagesService['planPackage']>[0] {
 	// Both Apply flows share the policies of a selection.
 	return {
 		...INSTANCE_IMPORT_POLICY,
 		...applySelectionRequest(user, publicApi, confirmDestructiveChanges),
+		excludedProjectIds: leftOutProjectIds,
 	};
 }
 
@@ -204,19 +206,21 @@ export class ApplyPreviewService {
 	async buildInstance({
 		user,
 		files,
+		leftOutProjectIds,
 	}: {
 		user: User;
 		files: ReadonlyMap<string, Buffer>;
+		leftOutProjectIds: ReadonlySet<string>;
 	}): Promise<ApplyPreview> {
 		const { reader, inventory } = await this.readPackage(files);
-		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
+		const teamProjectIds = await this.coveredTeamProjectIds(leftOutProjectIds);
 		const [moves, deletedProjects, instance] = await Promise.all([
 			this.findCrossProjectMoves(inventory),
 			this.deletionsOf(inventory, teamProjectIds),
 			exportInstancePackage(this.packagesService, user, teamProjectIds),
 		]);
 		const plan = await this.packagesService.planPackage(
-			instanceApplyRequest(user, false),
+			instanceApplyRequest(user, false, leftOutProjectIds),
 			reader,
 			'check',
 		);
@@ -237,7 +241,12 @@ export class ApplyPreviewService {
 					...owned.map(({ key }) => key),
 				]),
 			},
-			projectIds: [...new Set([...teamProjectIds, ...inventory.projects.map(({ id }) => id)])],
+			projectIds: [
+				...new Set([
+					...teamProjectIds,
+					...inventory.projects.map(({ id }) => id).filter((id) => !leftOutProjectIds.has(id)),
+				]),
+			],
 			instance,
 			files,
 			manifest: plan.manifest,
@@ -254,8 +263,14 @@ export class ApplyPreviewService {
 	/** A whole-instance Apply deletes the team projects that the package does not hold. */
 	async projectDeletions(
 		inventory: PackageDirectoryInventory,
+		leftOutProjectIds: ReadonlySet<string>,
 	): Promise<PromotionBindingConflict[]> {
-		return await this.deletionsOf(inventory, await this.projectRepository.findTeamProjectIds());
+		return await this.deletionsOf(inventory, await this.coveredTeamProjectIds(leftOutProjectIds));
+	}
+
+	private async coveredTeamProjectIds(leftOutProjectIds: ReadonlySet<string>) {
+		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
+		return teamProjectIds.filter((id) => !leftOutProjectIds.has(id));
 	}
 
 	private async deletionsOf(
@@ -335,7 +350,8 @@ export class ApplyPreviewService {
 	}
 
 	/**
-	 * What stops the Apply of a plan. Without a selection, it checks the whole package. It reads
+	 * What stops the Apply of a plan. Without a selection, it checks the whole package, except the
+	 * projects that the plan leaves out. It reads
 	 * credential and variable references only from the workflows that the plan imports.
 	 */
 	check(
@@ -345,11 +361,13 @@ export class ApplyPreviewService {
 		moves: CrossProjectMoves,
 	): PromotionPreviewCheck {
 		const selected = selection && new Set(selection.selectedWorkflowIds);
+		const excluded = plan.request.excludedProjectIds;
 		const scoped = {
 			...inventory,
-			workflows: inventory.workflows.filter(
-				({ id, projectId }) =>
-					!selection || (projectId === selection.selectedProjectId && selected?.has(id)),
+			workflows: inventory.workflows.filter(({ id, projectId }) =>
+				selection
+					? projectId === selection.selectedProjectId && selected?.has(id)
+					: !excluded?.has(projectId),
 			),
 		};
 		return toPreviewCheck({

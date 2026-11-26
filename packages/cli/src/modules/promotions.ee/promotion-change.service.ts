@@ -126,7 +126,13 @@ export class PromotionChangeService {
 	): Promise<PromotionInstanceApplyPreview> {
 		const { commitSha, source, environment, files } =
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
-		const preview = await this.applyPreviewService.buildInstance({ user, files });
+		const leftOutProjectIds =
+			await this.environmentResolver.findProjectIdsOutsideInstanceEnvironment('apply');
+		const preview = await this.applyPreviewService.buildInstance({
+			user,
+			files,
+			leftOutProjectIds,
+		});
 		return { commitSha, source, environment, ...preview };
 	}
 
