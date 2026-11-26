@@ -90,7 +90,9 @@ export const IMPORT_DESCRIPTION =
 	'explicit shared UUIDs. Personal Preferences, missing collections, and unselected rows stay local. ' +
 	'Preferences must be available, and protected environments reject ordinary shared writes. ' +
 	'Each planned action needs its aiPreference API key scope. Results include `preferences` and ' +
-	'`counts.preferences`. Conflicts appear as `preference-conflict` issues.\n\n' +
+	'`counts.preferences`. Conflicts appear as `preference-conflict` issues. Preferences are validated ' +
+	'before package writes and applied after other content writes. Later failures retain earlier ' +
+	'changes and return completed Preference results and counts.\n\n' +
 	'Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, ' +
 	'`publishingPolicy=match-source`, ' +
 	'and `bindings={"credentials":{"source-credential":"target-credential"}}`.';

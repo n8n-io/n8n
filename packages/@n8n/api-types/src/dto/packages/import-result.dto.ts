@@ -384,8 +384,10 @@ export const importResultSchema = z.object({
 
 export class ImportResultDto extends Z.class(importResultSchema.shape) {}
 
-/** Body of the 409/422 responses a blocked import returns. */
+/** Completed Preference changes remain saved when an import fails. */
 export class ImportBlockedErrorDto extends Z.class({
 	message: z.string(),
-	issues: z.array(importBlockingIssueSchema),
+	issues: z.array(importBlockingIssueSchema).optional(),
+	preferences: importResultSchema.shape.preferences,
+	counts: importResultSchema.shape.counts.pick({ preferences: true }).optional(),
 }) {}

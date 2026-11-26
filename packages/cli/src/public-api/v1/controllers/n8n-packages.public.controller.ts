@@ -124,6 +124,7 @@ export class N8nPackagesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409, { dto: ImportBlockedErrorDto, description: IMPORT_409_DESCRIPTION })
 	@ApiErrorResponse(422, { dto: ImportBlockedErrorDto, description: IMPORT_422_DESCRIPTION })
+	@ApiErrorResponse(500, { dto: ImportBlockedErrorDto })
 	async importPackage(
 		req: PublicApiRequest,
 		_res: Response,
@@ -184,6 +185,7 @@ export class N8nPackagesPublicController {
 		dto: ImportBlockedErrorDto,
 		description: IMPORT_SELECTION_422_DESCRIPTION,
 	})
+	@ApiErrorResponse(500, { dto: ImportBlockedErrorDto })
 	async importPackageSelection(
 		req: PublicApiRequest,
 		_res: Response,

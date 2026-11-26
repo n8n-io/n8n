@@ -2,6 +2,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { AiPreferenceService, InstanceWriteAccessService } from '@n8n/backend-services';
 import { AiPreferenceRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
@@ -23,7 +24,12 @@ beforeEach(async () => {
 });
 afterEach(() => Container.get(InstanceWriteAccessService).setReadOnly(false));
 
-async function archive(id = randomUUID(), content = 'Use clear names') {
+async function archive(
+	id = randomUUID(),
+	content = 'Use clear names',
+	additional: { id: string; content: string }[] = [],
+) {
+	const items = [{ id, content }, ...additional];
 	const writer = new TarPackageWriter();
 	writer.writeFile(
 		'manifest.json',
@@ -31,13 +37,15 @@ async function archive(id = randomUUID(), content = 'Use clear names') {
 			packageFormatVersion: '3',
 			sourceId: 'source',
 			sourceN8nVersion: '2.50.0',
-			preferences: [{ id, name: 'Preference', target: `preferences/${id}` }],
+			preferences: items.map(({ id }) => ({ id, name: 'Preference', target: `preferences/${id}` })),
 		}),
 	);
-	writer.writeFile(
-		`preferences/${id}/preference.json`,
-		JSON.stringify({ id, scope: 'instance', content }),
-	);
+	for (const { id, content } of items) {
+		writer.writeFile(
+			`preferences/${id}/preference.json`,
+			JSON.stringify({ id, scope: 'instance', content }),
+		);
+	}
 	return await streamToBuffer(writer.finalize());
 }
 
@@ -135,4 +143,37 @@ it('rejects malformed Preference fields and protected writes', async () => {
 		.send({ scope: 'instance', content: 'Protected' });
 	expect(ordinary.statusCode).toBe(403);
 	expect(await repository().count()).toBe(0);
+});
+
+it.each([409, 500])('returns completed Preference results after HTTP %i', async (status) => {
+	const firstId = randomUUID();
+	const secondId = randomUUID();
+	const buffer = await archive(firstId, 'First', [{ id: secondId, content: 'Second' }]);
+	const create = repository().createPreference.bind(repository());
+	const error =
+		status === 409 ? new ConflictError('Preference changed') : new Error('Database detail');
+	const write = vi
+		.spyOn(repository(), 'createPreference')
+		.mockImplementationOnce(create)
+		.mockRejectedValueOnce(error);
+	try {
+		const result = await server
+			.publicApiAgentFor(owner)
+			.post('/n8n-packages/import')
+			.field('conflictPolicy', 'fail')
+			.attach('package', buffer, 'preferences.n8np');
+		expect(result.statusCode, JSON.stringify(result.body)).toBe(status);
+		expect(result.body.preferences).toEqual([{ id: firstId, scope: 'instance', status: 'create' }]);
+		expect(result.body.counts.preferences).toEqual({
+			created: 1,
+			updated: 0,
+			removed: 0,
+			skipped: 0,
+		});
+		expect(JSON.stringify(result.body)).not.toContain('Database detail');
+		expect(await repository().existsBy({ id: firstId })).toBe(true);
+		expect(await repository().existsBy({ id: secondId })).toBe(false);
+	} finally {
+		write.mockRestore();
+	}
 });

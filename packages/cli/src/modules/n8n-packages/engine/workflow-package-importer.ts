@@ -19,6 +19,7 @@ import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
 import { isPreferenceOnlyPackage, packageImportScopes } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
+import { PreferenceImportError } from './preference-import.error';
 import { PreferenceImporter } from '../entities/preference/preference.importer';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
@@ -170,19 +171,26 @@ export class WorkflowPackageImporter {
 
 		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
 
+		if (preferencePlan) await this.preferenceImporter.check(request, preferencePlan);
+		const content = await this.importOrchestrator.apply(plan);
+
 		const preferences = preferencePlan
 			? await this.preferenceImporter.apply(request, preferencePlan)
 			: undefined;
-		const content = await this.importOrchestrator.apply(plan);
 
-		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
-			user: request.user,
-			publicApi: request.publicApi,
-			ctx: request.ctx,
-			content: [content],
-			policy: request.publishingPolicy,
-			subWorkflowRequirements: plan.input.subWorkflowRequirements,
-		});
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator
+			.publishPackage({
+				user: request.user,
+				publicApi: request.publicApi,
+				ctx: request.ctx,
+				content: [content],
+				policy: request.publishingPolicy,
+				subWorkflowRequirements: plan.input.subWorkflowRequirements,
+			})
+			.catch((error: unknown) => {
+				if (preferences) throw new PreferenceImportError(error, preferences);
+				throw error;
+			});
 
 		const scopes: PackageImportScope[] = [
 			{

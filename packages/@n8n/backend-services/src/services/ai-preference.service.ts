@@ -494,16 +494,7 @@ export class AiPreferenceService {
 	async applySharedChanges(user: User, plan: SharedPreferencePlan, ctx: OperationContext = {}) {
 		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
 		if (plan.items.length === 0) return [];
-		for (const item of plan.items) {
-			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx);
-			if (
-				item.projectId &&
-				plan.newProjectIds.includes(item.projectId) &&
-				!(await this.projectRepository.isTeamProjectCreator(item.projectId, user.id, ctx))
-			) {
-				throw new ForbiddenError('The new destination project is not owned by this user.');
-			}
-		}
+		for (const item of plan.items) await this.authorizeSharedChange(user, item, [], ctx);
 		await this.validateSharedChanges(plan, ctx);
 		const outcomes: SharedPreferenceOutcome[] = [];
 		for (const item of plan.items) {

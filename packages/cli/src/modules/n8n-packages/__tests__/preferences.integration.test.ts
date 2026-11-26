@@ -13,13 +13,14 @@ import {
 import {
 	AiPreferenceRepository,
 	ProjectRepository,
+	ProjectRelationRepository,
 	WorkflowRepository,
 	Person,
 	Role,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ProjectService } from '@/services/project.service.ee';
@@ -582,7 +583,7 @@ it('requires project Preference access for a Preference-only import', async () =
 });
 
 it.each([false, true])(
-	'rejects a concurrent Preference edit before content writes in a project package=%s',
+	'keeps content and rejects a later Preference edit in a project package=%s',
 	async (projectPackage) => {
 		const project = await createTeamProject('Shared project', owner);
 		const row = await preferences.create(owner, { scope: 'instance', content: 'Before' }, 'ui');
@@ -615,9 +616,9 @@ it.each([false, true])(
 				),
 			).rejects.toThrow('Import blocked');
 			expect(apply).toHaveBeenCalledOnce();
-			expect(applyContent).not.toHaveBeenCalled();
+			expect(applyContent).toHaveBeenCalledOnce();
 			expect(publish).not.toHaveBeenCalled();
-			expect(await Container.get(WorkflowRepository).existsBy({ id: workflow.id })).toBe(false);
+			expect(await Container.get(WorkflowRepository).existsBy({ id: workflow.id })).toBe(true);
 			expect(await repository.findOneByOrFail({ id: row.id })).toMatchObject({
 				content: 'Concurrent edit',
 			});
@@ -729,3 +730,113 @@ it.each([false, true])(
 		});
 	},
 );
+
+it.each([false, true])(
+	'keeps existing Preferences when content fails in a project package=%s',
+	async (projectPackage) => {
+		const project = await createTeamProject('Destination', owner);
+		const row = await preferences.create(owner, { scope: 'instance', content: 'Keep' }, 'ui');
+		const { buffer } = await bundle([], projectPackage ? project.id : undefined, true, {
+			workflow: serializedWorkflow({ id: randomUUID(), nodes: [] }),
+		});
+		const failure = new Error('Content write failed');
+		const apply = vi
+			.spyOn(Container.get(ImportOrchestrator), 'apply')
+			.mockRejectedValueOnce(failure);
+		try {
+			await expect(
+				service.importPackage(
+					importPackageRequest({
+						user: owner,
+						packageBuffer: buffer,
+						...(projectPackage ? {} : { projectId: project.id }),
+						deletedPreferenceIds: [row.id],
+					}),
+				),
+			).rejects.toBe(failure);
+			expect(await repository.findOneByOrFail({ id: row.id })).toMatchObject({ content: 'Keep' });
+		} finally {
+			apply.mockRestore();
+		}
+	},
+);
+
+it.each([false, true])(
+	'reports saved Preferences when publication fails in a project package=%s',
+	async (projectPackage) => {
+		const project = await createTeamProject('Destination', owner);
+		const id = randomUUID();
+		const { buffer } = await bundle(
+			[{ id, scope: 'instance', content: 'Imported' }],
+			projectPackage ? project.id : undefined,
+			true,
+			{
+				workflow: serializedWorkflow({ id: randomUUID(), nodes: [] }),
+			},
+		);
+		const failure = new ForbiddenError('Publication refused');
+		const publish = vi
+			.spyOn(Container.get(ImportOrchestrator), 'publishPackage')
+			.mockRejectedValueOnce(failure);
+		try {
+			await expect(
+				service.importPackage(
+					importPackageRequest({
+						user: owner,
+						packageBuffer: buffer,
+						...(projectPackage ? {} : { projectId: project.id }),
+					}),
+				),
+			).rejects.toMatchObject({
+				httpStatusCode: 403,
+				cause: failure,
+				meta: {
+					preferences: [{ id, scope: 'instance', status: 'create' }],
+					counts: { preferences: { created: 1, updated: 0, removed: 0, skipped: 0 } },
+				},
+			});
+			expect(await repository.existsBy({ id })).toBe(true);
+		} finally {
+			publish.mockRestore();
+		}
+	},
+);
+
+it('checks current project access after creating the destination', async () => {
+	const actor = Object.assign(new Person(), owner);
+	actor.role = Object.assign(new Role(), owner.role, {
+		scopes: owner.role.scopes.filter(({ slug }) => !slug.startsWith('projectAiPreference:')),
+	});
+	const projectId = randomUUID();
+	const id = randomUUID();
+	const { buffer } = await bundle(
+		[{ id, scope: 'project', projectId, content: 'Imported' }],
+		projectId,
+	);
+	const projects = Container.get(ProjectService);
+	const create = projects.createTeamProject.bind(projects);
+	const createSpy = vi
+		.spyOn(projects, 'createTeamProject')
+		.mockImplementationOnce(async (...args) => {
+			const project = await create(...args);
+			await Container.get(ProjectRelationRepository).delete({
+				projectId: project.id,
+				userId: actor.id,
+			});
+			return project;
+		});
+	try {
+		await expect(
+			service.importPackage(importPackageRequest({ user: actor, packageBuffer: buffer })),
+		).rejects.toMatchObject({
+			httpStatusCode: 422,
+			meta: { issues: [expect.objectContaining({ kind: 'forbidden' })] },
+		});
+		expect(await Container.get(ProjectRepository).findOneByOrFail({ id: projectId })).toMatchObject(
+			{ creatorId: actor.id },
+		);
+		expect(await repository.existsBy({ id })).toBe(false);
+	} finally {
+		createSpy.mockRestore();
+	}
+});

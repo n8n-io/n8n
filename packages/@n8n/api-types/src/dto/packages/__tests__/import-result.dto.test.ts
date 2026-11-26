@@ -154,6 +154,17 @@ describe('ImportResultDto', () => {
 });
 
 describe('ImportBlockedErrorDto', () => {
+	it('retains completed Preference results on a failure without blocking issues', () => {
+		const response = {
+			message: 'Package import failed.',
+			preferences: [
+				{ id: '09c33210-d8be-43a8-859f-1fec0501c035', scope: 'instance', status: 'create' },
+			],
+			counts: { preferences: { created: 1, updated: 0, removed: 0, skipped: 0 } },
+		};
+		expect(ImportBlockedErrorDto.parse(response)).toEqual(response);
+	});
+
 	it.each([
 		{ kind: 'task-id', sourceTaskId: 'task-1', success: true },
 		{ kind: 'task-id', sourceTaskId: undefined, success: false },

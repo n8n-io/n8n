@@ -166,9 +166,43 @@ function issuesHint(details: unknown): string | undefined {
 	return ['Blocking issues:', ...issues.map((issue) => `  - ${formatIssue(issue)}`)].join('\n');
 }
 
+function preferenceResultsHint(details: unknown): string | undefined {
+	if (typeof details !== 'object' || details === null || !('preferences' in details))
+		return undefined;
+	if (!Array.isArray(details.preferences)) return undefined;
+	const results = details.preferences.flatMap((item: unknown) => {
+		if (
+			typeof item !== 'object' ||
+			item === null ||
+			!('id' in item) ||
+			typeof item.id !== 'string' ||
+			!('status' in item) ||
+			typeof item.status !== 'string' ||
+			!('scope' in item) ||
+			typeof item.scope !== 'string'
+		)
+			return [];
+		const project =
+			item.scope === 'project' && 'projectId' in item && typeof item.projectId === 'string'
+				? ` ${item.projectId}`
+				: '';
+		return [`  - ${item.status}: ${item.id} (${item.scope}${project})`];
+	});
+	const counts =
+		'counts' in details &&
+		typeof details.counts === 'object' &&
+		details.counts !== null &&
+		'preferences' in details.counts
+			? [`Counts: ${JSON.stringify(details.counts.preferences)}`]
+			: [];
+	return ['Completed Preference results (changes remain saved):', ...results, ...counts].join('\n');
+}
+
 export function toPackagesError(error: unknown): unknown {
 	if (!(error instanceof ApiError)) return error;
-	const hint = issuesHint(error.details);
+	const hint = [issuesHint(error.details), preferenceResultsHint(error.details)]
+		.filter(Boolean)
+		.join('\n');
 	if (hint) {
 		return new ApiError(error.statusCode, error.message, hint, error.details);
 	}

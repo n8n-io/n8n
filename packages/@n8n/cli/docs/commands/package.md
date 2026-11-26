@@ -358,9 +358,10 @@ at the same time. A rejected Preference plan reports
 `conflict`, `forbidden`, `invalid`, or `unavailable`. Only `conflict` issues use
 HTTP 409. Other Preference issue kinds use HTTP 422. Successful results include
 `preferences` and `counts.preferences` with created, updated, removed, and skipped
-counts. Preferences are saved individually, as workflows are. A later failure keeps
-earlier changes, including new projects. A Preference write conflict includes the
-completed Preference outcomes in the error metadata. Reload before retrying.
+counts. Preferences are validated before package writes. They are saved individually
+after other content writes and before publication. A later failure keeps earlier
+changes, including new projects. Errors after Preference writes include completed
+Preference outcomes and counts. The CLI prints these results. Reload before retrying.
 
 Export needs the `aiPreference:read` and `aiPreference:list` API key scopes.
 Import checks the scope for each planned action: `aiPreference:create`,

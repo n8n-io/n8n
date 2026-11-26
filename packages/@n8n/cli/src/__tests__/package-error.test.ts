@@ -4,6 +4,22 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it.each([409, 500])('shows completed Preference results after HTTP %i', (status) => {
+		const details = {
+			preferences: [{ id: 'preference-id', scope: 'project', projectId: 'team', status: 'create' }],
+			counts: { preferences: { created: 1, updated: 0, removed: 0, skipped: 0 } },
+			...(status === 409 ? { issues: [{ type: 'preference-conflict', kind: 'conflict' }] } : {}),
+		};
+		const result = toPackagesError(new ApiError(status, 'Import failed', undefined, details));
+		if (!(result instanceof ApiError)) throw new Error('Expected an API error');
+		expect(result.details).toBe(details);
+		expect(result.statusCode).toBe(status);
+		expect(result.hint).toContain('changes remain saved');
+		expect(result.hint).toContain('create: preference-id (project team)');
+		expect(result.hint).toContain('"created":1');
+		if (status === 409) expect(result.hint).toContain('Blocking issues:');
+	});
+
 	it('explains Agent blockers and retains their structured details', () => {
 		const details = {
 			issues: [

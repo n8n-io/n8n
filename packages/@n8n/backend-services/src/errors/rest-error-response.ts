@@ -1,4 +1,5 @@
 import {
+	ImportBlockedErrorDto,
 	isWorkflowPublishBlockedDetails,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 } from '@n8n/api-types';
@@ -28,6 +29,17 @@ export function serializePublicApiError(descriptor: RestErrorDescriptor): {
 			// clients can see every blocker; the rest of `meta` stays internal.
 			if (descriptor.meta?.issues !== undefined) {
 				body.issues = descriptor.meta.issues;
+			}
+			if (descriptor.meta?.preferences !== undefined) {
+				const partial = ImportBlockedErrorDto.safeParse({
+					message: descriptor.message,
+					preferences: descriptor.meta.preferences,
+					counts: descriptor.meta.counts,
+				});
+				if (partial.success) {
+					body.preferences = partial.data.preferences;
+					body.counts = partial.data.counts;
+				}
 			}
 			// Same reasoning for policy violations: the caller is the one who has to fix
 			// them, so the whole list travels with the response rather than the message alone.

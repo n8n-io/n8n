@@ -11,11 +11,15 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { assertPackageImportApiKeyScopes } from '../../engine/import-gates';
-import { countPreferenceStatuses } from '../../engine/import-result';
 import { toImportBlockedError } from '../../engine/import-blocked.error';
+import { PreferenceImportError } from '../../engine/preference-import.error';
 import { N8nPackageParser } from '../../engine/n8n-package-parser';
 import type { PackageReader } from '../../io/package-reader';
-import type { BlockingIssue, ResolvedImportRequest } from '../../n8n-packages.types';
+import type {
+	BlockingIssue,
+	ImportedPreferenceSummary,
+	ResolvedImportRequest,
+} from '../../n8n-packages.types';
 import type { PackageManifest } from '../../spec/manifest.schema';
 
 export interface PreferenceImportPlan {
@@ -134,7 +138,10 @@ export class PreferenceImporter {
 		}
 	}
 
-	async apply(request: ResolvedImportRequest, plan: PreferenceImportPlan) {
+	async apply(
+		request: ResolvedImportRequest,
+		plan: PreferenceImportPlan,
+	): Promise<ImportedPreferenceSummary[]> {
 		if (plan.issues.length) throw toImportBlockedError(plan.issues);
 		this.assertAvailable(plan);
 		this.assertApiKeyScopes(request, plan.changes);
@@ -165,23 +172,19 @@ export class PreferenceImporter {
 	}
 
 	private blocked(error: unknown) {
-		if (error instanceof SharedPreferenceApplyError) {
-			return toImportBlockedError(
-				[
-					{
-						type: 'preference-conflict',
-						...toSharedPreferenceIssue(error.cause),
-						preferenceId: error.preferenceId,
-					},
-				],
+		const partial = error instanceof SharedPreferenceApplyError ? error : undefined;
+		let failure: unknown = partial ? partial.cause : error;
+		try {
+			failure = toImportBlockedError([
 				{
-					preferences: error.completed,
-					counts: { preferences: countPreferenceStatuses(error.completed) },
+					type: 'preference-conflict',
+					...toSharedPreferenceIssue(failure),
+					...(partial ? { preferenceId: partial.preferenceId } : {}),
 				},
-			);
+			]);
+		} catch (cause) {
+			failure = cause;
 		}
-		return toImportBlockedError([
-			{ type: 'preference-conflict', ...toSharedPreferenceIssue(error) },
-		]);
+		return partial ? new PreferenceImportError(failure, partial.completed) : failure;
 	}
 }

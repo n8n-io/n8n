@@ -17,7 +17,7 @@ description: |-
 
   Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, directory imports, and Promotions before writes.
 
-  Shared Preferences keep their UUIDs. Identical content is a no-op. Changed content requires `preferenceConflictPolicy=replace`; the default is `fail`. `deletedPreferenceIds` removes only explicit shared UUIDs. Personal Preferences, missing collections, and unselected rows stay local. Preferences must be available, and protected environments reject ordinary shared writes. Each planned action needs its aiPreference API key scope. Results include `preferences` and `counts.preferences`. Conflicts appear as `preference-conflict` issues.
+  Shared Preferences keep their UUIDs. Identical content is a no-op. Changed content requires `preferenceConflictPolicy=replace`; the default is `fail`. `deletedPreferenceIds` removes only explicit shared UUIDs. Personal Preferences, missing collections, and unselected rows stay local. Preferences must be available, and protected environments reject ordinary shared writes. Each planned action needs its aiPreference API key scope. Results include `preferences` and `counts.preferences`. Conflicts appear as `preference-conflict` issues. Preferences are validated before package writes and applied after other content writes. Later failures retain earlier changes and return completed Preference results and counts.
 
   Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, `publishingPolicy=match-source`, and `bindings={"credentials":{"source-credential":"target-credential"}}`.
 
@@ -229,9 +229,76 @@ responses:
               type: array
               items:
                 $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+            preferences:
+              type: array
+              items:
+                oneOf:
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      scope:
+                        type: string
+                        enum:
+                          - project
+                      projectId:
+                        type: string
+                        minLength: 1
+                      status:
+                        type: string
+                        enum:
+                          - create
+                          - update
+                          - delete
+                          - skip
+                    required:
+                      - id
+                      - scope
+                      - projectId
+                      - status
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      scope:
+                        type: string
+                        enum:
+                          - instance
+                      status:
+                        type: string
+                        enum:
+                          - create
+                          - update
+                          - delete
+                          - skip
+                    required:
+                      - id
+                      - scope
+                      - status
+                type: object
+            counts:
+              type: object
+              properties:
+                preferences:
+                  type: object
+                  properties:
+                    created:
+                      type: number
+                    updated:
+                      type: number
+                    removed:
+                      type: number
+                    skipped:
+                      type: number
+                  required:
+                    - created
+                    - updated
+                    - removed
+                    - skipped
           required:
             - message
-            - issues
   '413':
     $ref: ../../../../shared/spec/responses/contentTooLarge.yml
   '415':
@@ -249,10 +316,158 @@ responses:
               type: array
               items:
                 $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+            preferences:
+              type: array
+              items:
+                oneOf:
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      scope:
+                        type: string
+                        enum:
+                          - project
+                      projectId:
+                        type: string
+                        minLength: 1
+                      status:
+                        type: string
+                        enum:
+                          - create
+                          - update
+                          - delete
+                          - skip
+                    required:
+                      - id
+                      - scope
+                      - projectId
+                      - status
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      scope:
+                        type: string
+                        enum:
+                          - instance
+                      status:
+                        type: string
+                        enum:
+                          - create
+                          - update
+                          - delete
+                          - skip
+                    required:
+                      - id
+                      - scope
+                      - status
+                type: object
+            counts:
+              type: object
+              properties:
+                preferences:
+                  type: object
+                  properties:
+                    created:
+                      type: number
+                    updated:
+                      type: number
+                    removed:
+                      type: number
+                    skipped:
+                      type: number
+                  required:
+                    - created
+                    - updated
+                    - removed
+                    - skipped
           required:
             - message
-            - issues
   '429':
     $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '500':
-    $ref: ../../../../shared/spec/responses/internalServerError.yml
+    description: Internal server error.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            issues:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+            preferences:
+              type: array
+              items:
+                oneOf:
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      scope:
+                        type: string
+                        enum:
+                          - project
+                      projectId:
+                        type: string
+                        minLength: 1
+                      status:
+                        type: string
+                        enum:
+                          - create
+                          - update
+                          - delete
+                          - skip
+                    required:
+                      - id
+                      - scope
+                      - projectId
+                      - status
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      scope:
+                        type: string
+                        enum:
+                          - instance
+                      status:
+                        type: string
+                        enum:
+                          - create
+                          - update
+                          - delete
+                          - skip
+                    required:
+                      - id
+                      - scope
+                      - status
+                type: object
+            counts:
+              type: object
+              properties:
+                preferences:
+                  type: object
+                  properties:
+                    created:
+                      type: number
+                    updated:
+                      type: number
+                    removed:
+                      type: number
+                    skipped:
+                      type: number
+                  required:
+                    - created
+                    - updated
+                    - removed
+                    - skipped
+          required:
+            - message

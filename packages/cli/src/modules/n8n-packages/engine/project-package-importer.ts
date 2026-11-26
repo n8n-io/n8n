@@ -39,6 +39,7 @@ import type {
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertProjectWritesAllowed } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
+import { PreferenceImportError } from './preference-import.error';
 import {
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
@@ -233,9 +234,6 @@ export class ProjectPackageImporter {
 		if (plan.preferences) await this.preferenceImporter.check(request, plan.preferences);
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
-		const preferences = plan.preferences
-			? await this.preferenceImporter.apply(request, plan.preferences)
-			: undefined;
 
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.
@@ -258,14 +256,23 @@ export class ProjectPackageImporter {
 			});
 		}
 
-		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
-			user: request.user,
-			publicApi: request.publicApi,
-			ctx: request.ctx,
-			content: applied.map(({ content }) => content),
-			policy: request.publishingPolicy,
-			subWorkflowRequirements: manifest.requirements?.workflows,
-		});
+		const preferences = plan.preferences
+			? await this.preferenceImporter.apply(request, plan.preferences)
+			: undefined;
+
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator
+			.publishPackage({
+				user: request.user,
+				publicApi: request.publicApi,
+				ctx: request.ctx,
+				content: applied.map(({ content }) => content),
+				policy: request.publishingPolicy,
+				subWorkflowRequirements: manifest.requirements?.workflows,
+			})
+			.catch((error: unknown) => {
+				if (preferences) throw new PreferenceImportError(error, preferences);
+				throw error;
+			});
 
 		const workflows: ImportedWorkflowSummary[] = [];
 		const removedWorkflows: RemovedWorkflowSummary[] = [];
