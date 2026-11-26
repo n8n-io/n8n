@@ -322,7 +322,6 @@ export class FrontendService {
 			aiAssistant: {
 				enabled: false,
 				setup: false,
-				cloudUbbEnabled: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -647,8 +646,6 @@ export class FrontendService {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
-			this.settings.aiAssistant.cloudUbbEnabled =
-				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
 		}
 
 		if (isAskAiEnabled) {
