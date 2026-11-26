@@ -725,7 +725,7 @@ describe('WorkflowExecutionService', () => {
 			);
 			workflowRunner.run.mockResolvedValue('execution-id');
 
-			await workflowExecutionService.executeManually({ workflowData, payload: runPayload, user });
+			await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run.mock.calls[0][0].binaryDataAccess).toEqual([
 				'readable-id',
@@ -771,7 +771,7 @@ describe('WorkflowExecutionService', () => {
 			);
 			workflowRunner.run.mockResolvedValue('execution-id');
 
-			await workflowExecutionService.executeManually({ workflowData, payload: runPayload, user });
+			await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run.mock.calls[0][0].binaryDataAccess).toEqual(['binary-id']);
 		});
