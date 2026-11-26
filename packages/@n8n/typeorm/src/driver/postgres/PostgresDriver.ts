@@ -59,11 +59,6 @@ export class PostgresDriver implements Driver {
 	slaves: any[] = [];
 
 	/**
-	 * Pooled clients whose session settings (search_path, statement_timeout) are already applied.
-	 */
-	private sessionInitializedClients = new WeakSet<object>();
-
-	/**
 	 * We store all created query runners because we need to release them.
 	 */
 	connectedQueryRunners: QueryRunner[] = [];
@@ -1058,29 +1053,34 @@ export class PostgresDriver implements Driver {
 		}
 
 		const connection = await this.master.connect();
-		try {
-			// Apply per-connection session settings (schema creation moved to afterConnect).
-			// In `per-connection` mode, skip them on later checkouts of the same client:
-			// they persist on a direct connection, but not behind a transaction-mode pooler.
-			const perConnection = this.options.sessionSettingsMode === 'per-connection';
-			if (!perConnection || !this.sessionInitializedClients.has(connection)) {
-				const { schema, statementTimeout } = this.options;
-				if (schema && schema !== 'public') {
-					await connection.query(`SET search_path TO "${schema}",public`);
-				} else {
-					await connection.query('SET search_path TO public');
-				}
-				if (statementTimeout) {
-					await connection.query(`SET statement_timeout = ${statementTimeout}`);
-				}
-				if (perConnection) this.sessionInitializedClients.add(connection);
+		// In `per-connection` mode the pool's `onConnect` hook applies the session settings
+		// once per new client (see createPool). They persist on a direct connection, but not
+		// behind a transaction-mode pooler, so `per-query` sends them on every checkout.
+		if (this.options.sessionSettingsMode !== 'per-connection') {
+			try {
+				await this.applySessionSettings(connection);
+			} catch (error) {
+				connection.release(error);
+				throw error;
 			}
-		} catch (error) {
-			connection.release(error);
-			throw error;
 		}
 
 		return [connection, (err?: Error) => connection.release(err)];
+	}
+
+	/**
+	 * Sends `search_path` and `statement_timeout` in one query, so it costs one round trip.
+	 */
+	protected async applySessionSettings(client: { query(sql: string): Promise<unknown> }) {
+		const { schema, statementTimeout } = this.options;
+		const statements =
+			schema && schema !== 'public'
+				? [`SET search_path TO "${schema}",public`]
+				: ['SET search_path TO public'];
+		if (statementTimeout) {
+			statements.push(`SET statement_timeout = ${statementTimeout}`);
+		}
+		await client.query(statements.join('; '));
 	}
 
 	/**
@@ -1367,6 +1367,12 @@ export class PostgresDriver implements Driver {
 			query_timeout: options.queryTimeout,
 			...options.extra,
 		};
+
+		// Set after `extra` so that it cannot replace the hook. The pool waits for the hook
+		// before it hands out a new client, and closes the client if the hook fails.
+		if (options.sessionSettingsMode === 'per-connection') {
+			connectionOptions.onConnect = async (client) => await this.applySessionSettings(client);
+		}
 
 		if (options.parseInt8 !== undefined) {
 			if (

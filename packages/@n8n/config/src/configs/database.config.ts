@@ -106,9 +106,9 @@ class PostgresConfig {
 	statementTimeoutMs: number = DEFAULT_STATEMENT_TIMEOUT_MS;
 
 	/**
-	 * When n8n sends Postgres session settings (`search_path` and `statement_timeout`).
-	 * One of `per-query`, `per-connection`.
-	 * Set to `per-connection` to send them once for each pooled connection instead of before every query; behind a pooler in transaction mode, such as PgBouncer, first set them as defaults on the database role and reconnect the pooler.
+	 * How often n8n sends the `search_path` and `statement_timeout` session settings to Postgres.
+	 * Use `per-query` to send them before every query, or `per-connection` to send them once for each new connection, which saves round trips.
+	 * With `per-connection` behind a pooler in transaction mode, such as PgBouncer, first set these values as defaults on the database role that n8n uses, then restart the pooler so it opens new connections.
 	 */
 	@Env('DB_POSTGRESDB_SESSION_SETTINGS_MODE', postgresSessionSettingsModeSchema)
 	sessionSettingsMode: PostgresSessionSettingsMode = 'per-query';
