@@ -1,0 +1,16 @@
+packages/@n8n/db/src/migrations/common/1795698661898-AddTestChatToAgentExecutionThreads.ts
+  h_8a472ace01776f 8
+packages/cli/test/migration/1795698661898-add-test-chat-to-agent-execution-threads.test.ts
+  h_8a472ace01776f 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68b48baa87e33ed2895af4d5b895e4bb6f6b0c0f",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_184fb5b0649b68::t_3eeda23458131a 5542,5544-5552,5554-5559
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_184fb5b0649b68::t_b67351031e7624 3663
+  s_184fb5b0649b68::t_b04065c2db7eb5 2336
+  s_184fb5b0649b68::t_07a0f70a469a0a 2007-2015
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bc8e8a2032aa7940e0198cb8828145a439a044a",
+  "prompts": {},
+  "sessions": {
+    "s_184fb5b0649b68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a4cca85-4198-4b8d-97a4-32b80a10083c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
