@@ -1,5 +1,13 @@
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import type { INode, ISupplyDataFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import { SupplyDataContext } from 'n8n-core';
+import type {
+	INode,
+	INodeTypes,
+	ISupplyDataFunctions,
+	IWorkflowDataProxyData,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { RetrieverWorkflow } from '../RetrieverWorkflow.node';
@@ -45,5 +53,59 @@ describe('RetrieverWorkflow', () => {
 			workflowSource: 'parameter',
 			workflowId: 'workflow-id',
 		});
+	});
+
+	it.each([
+		{ case: 'a JSON string', workflowJson: '{"nodes": [], "connections": {}}' },
+		{ case: 'an expression', workflowJson: '={{ { "nodes": [], "connections": {} } }}' },
+	])('should run the workflow from $case through core', async ({ workflowJson }) => {
+		const node = new RetrieverWorkflow();
+		const coreNode: INode = {
+			id: 'retriever-workflow',
+			name: 'Workflow Retriever',
+			type: '@n8n/n8n-nodes-langchain.retrieverWorkflow',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: { source: 'parameter', workflowJson },
+		};
+		const nodeTypes = mock<INodeTypes>();
+		nodeTypes.getByNameAndVersion.mockReturnValue(node);
+		const workflow = new Workflow({
+			id: 'workflow-id',
+			nodes: [coreNode],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+		const ctx = new SupplyDataContext(
+			workflow,
+			coreNode,
+			mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'https://example.com/webhook-waiting',
+				formWaitingBaseUrl: 'https://example.com/form-waiting',
+			}),
+			'manual',
+			createRunExecutionData(),
+			0,
+			[],
+			{ main: [[{ json: {} }]] },
+			NodeConnectionTypes.AiRetriever,
+			{ node: coreNode, data: {}, source: null },
+			[],
+		);
+		const executeWorkflow = vi.spyOn(ctx, 'executeWorkflow').mockResolvedValue({
+			data: [[{ json: { text: 'doc' } }]],
+			executionId: 'sub-exec',
+		});
+
+		const { response } = await node.supplyData.call(ctx, 0);
+		await (response as BaseRetriever).invoke('hello');
+
+		expect(executeWorkflow).toHaveBeenCalledWith(
+			{ code: { nodes: [], connections: {} } },
+			expect.anything(),
+			undefined,
+			expect.anything(),
+		);
 	});
 });
