@@ -318,7 +318,9 @@ function toMinimalTaskMetadata(taskData: ITaskData): Omit<ITaskData, 'data'> {
 		const { subNodeExecutionData: ___, ...safeMetadata } = metadata;
 		result.metadata = safeMetadata;
 	}
-	if (error) result.redactedError = redactExecutionError(error);
+	if (error) {
+		result.redactedError = redactExecutionError(error);
+	}
 	return result;
 }
 
@@ -415,8 +417,9 @@ function hookFunctionsPush(
 				nodeName,
 				userId: pushRefUserId,
 			});
-			if (!memoryStoppedExecutions.isStopped(executionId))
+			if (!memoryStoppedExecutions.isStopped(executionId)) {
 				sendMetadata(toMinimalTaskMetadata(data));
+			}
 			return;
 		}
 
