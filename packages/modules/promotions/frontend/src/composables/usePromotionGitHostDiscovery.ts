@@ -59,6 +59,7 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 			options.value = pageOptions;
 		} catch (cause) {
 			if (requestGeneration !== generation) return;
+			options.value = [];
 			error.value =
 				cause instanceof Error
 					? cause.message

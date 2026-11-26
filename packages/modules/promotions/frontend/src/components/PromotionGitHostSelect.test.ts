@@ -262,3 +262,28 @@ it('keeps loaded results visible while a search for a term outside them loads', 
 
 	expect(screen.getByRole('option', { name: 'team/other' })).toBeInTheDocument();
 });
+
+it('clears the previous results when a search fails', async () => {
+	const user = setupSearchUser();
+	let failSearch: (error: Error) => void = () => {};
+	api.fetchPromotionRepositories
+		.mockResolvedValueOnce({ data: [repository], nextCursor: null })
+		.mockReturnValueOnce(
+			new Promise<PromotionRepositoryListPublicDto>((_resolve, reject) => {
+				failSearch = reject;
+			}),
+		);
+	renderSelect();
+	await flushPromises();
+
+	await user.type(screen.getByRole('combobox'), 'sprint');
+	await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH);
+
+	expect(screen.getByRole('option', { name: 'team/workflows' })).toBeInTheDocument();
+
+	failSearch(new Error('GitLab is unavailable.'));
+	await flushPromises();
+
+	expect(screen.getByRole('alert')).toHaveTextContent('GitLab is unavailable.');
+	expect(screen.queryByRole('option', { name: 'team/workflows' })).not.toBeInTheDocument();
+});
