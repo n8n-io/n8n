@@ -211,6 +211,7 @@ export const boardItemFields: INodeProperties[] = [
 		displayName: 'Column Values',
 		name: 'columnValues',
 		type: 'json',
+		validateType: 'object',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -296,6 +297,7 @@ export const boardItemFields: INodeProperties[] = [
 				displayName: 'Column Values',
 				name: 'columnValues',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},

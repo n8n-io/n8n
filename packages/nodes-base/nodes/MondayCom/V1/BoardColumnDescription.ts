@@ -180,6 +180,7 @@ export const boardColumnFields: INodeProperties[] = [
 				displayName: 'Defauls',
 				name: 'defaults',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
