@@ -104,7 +104,7 @@ function onSelectedNodeChange(val: string) {
 // reach the dialog body, so forward that gesture to the body.
 const rowScrollCleanups = new Map<HTMLElement, () => void>();
 
-function bindHorizontalRow(element: Element | null) {
+function bindHorizontalRow(element: unknown) {
 	if (!(element instanceof HTMLElement) || rowScrollCleanups.has(element)) return;
 
 	const onWheel = (event: WheelEvent) => {
