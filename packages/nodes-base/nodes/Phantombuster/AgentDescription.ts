@@ -294,6 +294,7 @@ export const agentFields: INodeProperties[] = [
 				displayName: 'Arguments (JSON)',
 				name: 'argumentsJson',
 				type: 'json',
+				validateType: 'object',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [true],
@@ -381,6 +382,7 @@ export const agentFields: INodeProperties[] = [
 				displayName: 'Bonus Argument (JSON)',
 				name: 'bonusArgumentJson',
 				type: 'string',
+				validateType: 'object',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [true],

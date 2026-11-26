@@ -2,6 +2,30 @@
 	"name": "Phantombuster Launch With JSON Arguments Test",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "launch",
+				"agentId": "test-agent-456",
+				"jsonParameters": true,
+				"resolveData": false,
+				"additionalFields": {
+					"argumentsJson": "={{ { \"complexKey\": \"expressionValue\" } }}",
+					"bonusArgumentJson": "{\"bonusKey\":\"bonusValue\"}"
+				}
+			},
+			"id": "080bfd02-d8f3-5efd-a885-7dc2d682b663",
+			"name": "Phantombuster Expression",
+			"type": "n8n-nodes-base.phantombuster",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"credentials": {
+				"phantombusterApi": {
+					"id": "test-cred-id",
+					"name": "Phantombuster API"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 			"name": "When clicking 'Execute Workflow'",
@@ -46,6 +70,11 @@
 		"When clicking 'Execute Workflow'": {
 			"main": [
 				[
+					{
+						"node": "Phantombuster Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Phantombuster",
 						"type": "main",

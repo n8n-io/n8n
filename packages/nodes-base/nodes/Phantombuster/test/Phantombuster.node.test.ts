@@ -85,6 +85,13 @@ describe('Phantombuster Node', () => {
 					);
 				})
 				.reply(200, { containerId: 'container-456' });
+			mock
+				.post('/api/v2/agents/launch', {
+					id: 'test-agent-456',
+					arguments: { complexKey: 'expressionValue' },
+					bonusArgument: { bonusKey: 'bonusValue' },
+				})
+				.reply(200, { containerId: 'container-789' });
 		});
 
 		new NodeTestHarness().setupTests({

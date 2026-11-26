@@ -12,11 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { agentFields, agentOperations } from './AgentDescription';
-import {
-	phantombusterApiRequest,
-	phantombusterStreamingRequest,
-	validateJSON,
-} from './GenericFunctions';
+import { phantombusterApiRequest, phantombusterStreamingRequest } from './GenericFunctions';
 
 // import {
 // 	sentenceCase,
@@ -217,20 +213,12 @@ export class Phantombuster implements INodeType {
 
 						if (jsonParameters) {
 							if (additionalFields.argumentsJson) {
-								body.arguments = validateJSON(
-									this,
-									additionalFields.argumentsJson as string,
-									'Arguments',
-								);
+								body.arguments = additionalFields.argumentsJson;
 
 								delete additionalFields.argumentsJson;
 							}
 							if (additionalFields.bonusArgumentJson) {
-								body.bonusArgument = validateJSON(
-									this,
-									additionalFields.bonusArgumentJson as string,
-									'Bonus Argument',
-								);
+								body.bonusArgument = additionalFields.bonusArgumentJson;
 								delete additionalFields.bonusArgumentJson;
 							}
 						} else {

@@ -10,7 +10,7 @@ import type {
 	RequestUrl,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 import { StringDecoder } from 'node:string_decoder';
 import type { Readable } from 'stream';
 
@@ -39,16 +39,6 @@ export async function phantombusterApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-}
-
-export function validateJSON(self: IExecuteFunctions, json: string | undefined, name: string) {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		throw new NodeOperationError(self.getNode(), `${name} must provide a valid JSON`);
-	}
-	return result;
 }
 
 /**
