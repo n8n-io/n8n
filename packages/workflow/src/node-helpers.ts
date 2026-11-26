@@ -23,6 +23,7 @@ import type {
 	FieldType,
 	IContextObject,
 	ICredentialsDisplayOptions,
+	IDisplayOptions,
 	INode,
 	INodeCredentialDescription,
 	INodeIssueObjectProperty,
@@ -2764,7 +2765,7 @@ export function resolveSupportedCredentialActivation(
 	return undefined;
 }
 
-const pickVersionRules = (rules: object | undefined) =>
+const pickVersionRules = (rules: IDisplayOptions['show']) =>
 	Object.fromEntries(Object.entries(rules ?? {}).filter(([key]) => key.startsWith('@')));
 
 /** Returns the entries that a version can show. Only the `@` rules count, not the node values. */
@@ -2822,9 +2823,10 @@ export function getNodeVersionAdditions(
 			additions.set(path, { kind: 'parameter', path, displayName });
 			return;
 		}
-		const oldValues = new Set(
-			oldVariants.flatMap((old) => dropdownChoices(old, oldVersion, oldType)).map((c) => c.value),
-		);
+		const oldChoices = oldVariants.flatMap((old) => dropdownChoices(old, oldVersion, oldType));
+		// No static choices to compare with (another type, or choices loaded at run time).
+		if (oldChoices.length === 0) return;
+		const oldValues = new Set(oldChoices.map((c) => c.value));
 		for (const choice of dropdownChoices(property, newVersion, newType)) {
 			if (oldValues.has(choice.value)) continue;
 			additions.set(`${path}=${choice.value}`, {

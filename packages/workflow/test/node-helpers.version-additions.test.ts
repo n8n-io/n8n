@@ -160,6 +160,12 @@ describe('getNodeVersionAdditions', () => {
 			expect(getNewParameterPaths(type([]), 1, newType, 2)).toEqual(['resource']);
 		});
 
+		it('returns no values when the old parameter had no static choices', () => {
+			const newType = type([dropdown('toDelete', ['rows', 'columns'])]);
+
+			expect(getNewParameterPaths(type([text('toDelete')]), 1, newType, 2)).toEqual([]);
+		});
+
 		it('does not return a value that another same-named parameter had', () => {
 			const forResource = (resource: string) => ({
 				displayOptions: { show: { resource: [resource] } },

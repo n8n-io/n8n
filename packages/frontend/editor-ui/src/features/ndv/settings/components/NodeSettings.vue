@@ -278,22 +278,21 @@ const versionChange = computed(() =>
 
 const newParameterPaths = computed(() => {
 	if (!isVersionPickerEnabled.value || !versionChange.value || !node.value || !nodeType.value) {
-		return [];
+		return new Set<string>();
 	}
 	const { fromVersion } = versionChange.value;
 	const oldType = nodeTypesStore.getNodeType(node.value.type, fromVersion);
-	if (!oldType) return [];
+	if (!oldType) return new Set<string>();
 
-	return getNewParameterPaths(oldType, fromVersion, nodeType.value, node.value.typeVersion);
+	// The prefix is required: the node settings list has no prefix and must never match.
+	return new Set(
+		getNewParameterPaths(oldType, fromVersion, nodeType.value, node.value.typeVersion).map(
+			(path) => `parameters.${path}`,
+		),
+	);
 });
 
-// The prefix is required: the node settings list has no prefix and must never match.
-provide(
-	NodeVersionNewParameterKey,
-	(path) =>
-		path.startsWith('parameters.') &&
-		newParameterPaths.value.includes(path.slice('parameters.'.length)),
-);
+provide(NodeVersionNewParameterKey, (path) => newParameterPaths.value.has(path));
 
 const hasNewerVersion = computed(() => {
 	const { latest } = versionChoices.value;

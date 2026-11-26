@@ -79,6 +79,7 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	NodeVersionNewParameterKey,
 	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
@@ -194,6 +195,8 @@ const emit = defineEmits<{
 
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+// Checked here so that a dropdown option only mounts a tag when it is new.
+const isNewParameter = inject(NodeVersionNewParameterKey, undefined);
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const workflowHelpers = useWorkflowHelpers();
@@ -2152,7 +2155,11 @@ onUpdated(async () => {
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option)
-							}}<ParameterNewTag class="option-new-tag" :path="`${path}=${option.value}`" />
+							}}<ParameterNewTag
+								v-if="isNewParameter?.(`${path}=${option.value}`)"
+								class="option-new-tag"
+								:path="`${path}=${option.value}`"
+							/>
 						</div>
 						<div
 							v-if="option.description"
@@ -2189,7 +2196,11 @@ onUpdated(async () => {
 					<div class="list-option">
 						<div class="option-headline">
 							{{ getOptionsOptionDisplayName(option)
-							}}<ParameterNewTag class="option-new-tag" :path="`${path}=${option.value}`" />
+							}}<ParameterNewTag
+								v-if="isNewParameter?.(`${path}=${option.value}`)"
+								class="option-new-tag"
+								:path="`${path}=${option.value}`"
+							/>
 						</div>
 						<div
 							v-if="option.description"
