@@ -210,7 +210,8 @@ function setPrefill(prefill: InstanceAiPrefillPayload): void {
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
-	void threadsStore.loadThread(props.threadId);
+	const firstMessage = panel.value?.messages.find((message) => message.role === 'user')?.content;
+	void threadsStore.loadThread(props.threadId, firstMessage || undefined);
 	emit('session-created');
 }
 

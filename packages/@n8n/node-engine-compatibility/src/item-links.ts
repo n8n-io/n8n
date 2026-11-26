@@ -20,8 +20,8 @@ export function convergingSlots(graph: WorkflowGraph, nodeId: string): Set<numbe
 
 /**
  * Links for the items of each slot that several edges feed, from the sources
- * the engine reports. v1 records one source per input slot: the first edge into
- * it. So each such item names its own source as `pairedItem.sourceOverwrite`,
+ * the engine reports. v1 records one source per input slot. So each such item
+ * names its own source as `pairedItem.sourceOverwrite`,
  * which the data proxy reads before the slot's source.
  */
 export function itemLinks(

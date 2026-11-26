@@ -9,7 +9,7 @@ import {
 
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
- * Used by `AgentChatToolSteps` to show the user's answer beside the tool name
+ * Used by `AgentChatActivity` to show the user's answer beside the tool name
  * (e.g. "→ n8n_chat_action · Approve & Send") so resolved cards leave a compact
  * trace in scrollback instead of vanishing.
  *
