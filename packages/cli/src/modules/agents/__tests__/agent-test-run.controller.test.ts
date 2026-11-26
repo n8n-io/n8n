@@ -6,6 +6,8 @@ import type { Response } from 'express';
 import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import type { AgentRuntime, AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTestRunController } from '../agent-test-run.controller';
 import { HeldActionCommitService } from '../simulation/held-action-commit.service';
@@ -14,9 +16,17 @@ import { SimulationSession } from '../simulation/simulation-session';
 import type { SimulationSessionService } from '../simulation/simulation-session.service';
 import type { SimulationWorld } from '../simulation/tool-simulation.contracts';
 
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
+
 describe('AgentTestRunController', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest<{ projectId: string }>>({ user });
+
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+	});
 
 	it('lists which tools can run in a test run', async () => {
 		const sessions = mock<SimulationSessionService>();
@@ -139,6 +149,7 @@ describe('AgentTestRunController', () => {
 
 		const agent = {
 			declaredTools: [{ name: 'send_slack', description: 'Send Slack', handler: realHandler }],
+			listMcpTools: vi.fn().mockResolvedValue([]),
 		} as unknown as RuntimeAgent;
 		const runtimeCache = mock<AgentRuntimeCacheService>();
 		runtimeCache.getRuntime.mockResolvedValue(mock<AgentRuntime>({ agent }));
@@ -166,7 +177,7 @@ describe('AgentTestRunController', () => {
 		expect(realHandler).toHaveBeenCalledTimes(1);
 		expect(realHandler).toHaveBeenCalledWith(
 			{ channel: '#general', text: 'Hi' },
-			{ toolCallId: 'tc-1', toolName: 'send_slack', runId: 'exec-1' },
+			expect.objectContaining({ toolCallId: 'tc-1', toolName: 'send_slack', runId: 'exec-1' }),
 		);
 
 		const second = await controller.commitHeldActions(

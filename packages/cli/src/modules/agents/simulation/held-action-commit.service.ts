@@ -3,11 +3,16 @@ import type { AgentTestRunCommitActionResult, AgentTestRunCommitResponse } from 
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 import { redactText } from '@n8n/utils/redaction/redact-text';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { isPolicyRefusal } from '@/policy/policy-violation.error';
 
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { draftChatMemoryResourceId } from '../utils/agent-memory-scope';
 import type { HeldActionDescriptor } from './simulation-session';
 import { SimulationSessionService } from './simulation-session.service';
 
@@ -46,6 +51,11 @@ export class HeldActionCommitService {
 	) {}
 
 	async commitHeldActions(input: CommitHeldActionsInput): Promise<AgentTestRunCommitResponse> {
+		// The replay runs the unpublished draft, so it needs `agent:read` like a draft test run.
+		if (!(await userHasScopes(input.user, ['agent:read'], false, { projectId: input.projectId }))) {
+			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
+		}
+
 		const session = this.simulationSessions.getSession({
 			userId: input.user.id,
 			projectId: input.projectId,
@@ -118,9 +128,19 @@ export class HeldActionCommitService {
 			}
 
 			try {
-				const toolsByName = new Map<string, BuiltTool>(
-					runtime.agent.declaredTools.map((tool) => [tool.name, tool]),
-				);
+				let toolsByName: Map<string, BuiltTool>;
+				try {
+					// MCP tools are not declared tools: the agent lists them from its MCP clients.
+					const mcpTools = await runtime.agent.listMcpTools();
+					toolsByName = new Map(
+						[...runtime.agent.declaredTools, ...mcpTools].map((tool) => [tool.name, tool]),
+					);
+				} catch (error) {
+					for (const item of pending) {
+						session.abortCommitAction(item.action.actionId);
+					}
+					throw error;
+				}
 
 				for (const item of pending) {
 					const { action, index } = item;
@@ -137,11 +157,29 @@ export class HeldActionCommitService {
 					}
 
 					try {
-						await tool.handler(action.input, {
+						const output = await tool.handler(action.input, {
 							toolCallId: action.actionId,
 							toolName: action.toolName,
 							...(input.executionId ? { runId: input.executionId } : {}),
+							// The test chat thread, so file inputs and outputs resolve as in the chat.
+							persistence: {
+								threadId: input.testChatId,
+								resourceId: draftChatMemoryResourceId(input.user.id),
+							},
 						});
+						// A policy refusal is returned, not thrown. Nothing was sent, so release the claim.
+						if (isPolicyRefusal(output)) {
+							session.abortCommitAction(action.actionId);
+							results[index] = {
+								actionId: action.actionId,
+								toolName: action.toolName,
+								status: 'failed',
+								error: toSafeErrorMessage(
+									isRecord(output) && typeof output.message === 'string' ? output.message : '',
+								),
+							};
+							continue;
+						}
 						session.completeCommitAction(action.actionId, committedAt);
 						results[index] = {
 							actionId: action.actionId,
