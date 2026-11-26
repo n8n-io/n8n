@@ -126,9 +126,14 @@ export class SystemAgentChatController {
 			...(cursor ? { before: decodeThreadCursor(cursor) } : {}),
 		});
 		const last = page.threads.at(-1);
-		const metadata = await this.memory.getThreadsMetadata(page.threads.map(({ id }) => id));
+		const [metadata, previews] = await Promise.all([
+			this.memory.getThreadsMetadata(page.threads.map(({ id }) => id)),
+			this.executionService.findFirstMessagePreviews(page.threads),
+		]);
 		return {
-			data: page.threads.map((thread) => toThreadSummary(thread, metadata.get(thread.id))),
+			data: page.threads.map((thread) =>
+				toThreadSummary(thread, metadata.get(thread.id), previews.get(thread.id)),
+			),
 			nextCursor: page.hasMore && last ? encodeThreadCursor(last) : null,
 		};
 	}
@@ -140,8 +145,11 @@ export class SystemAgentChatController {
 	): Promise<SystemAgentThreadSummary> {
 		const { agentId, threadId } = req.params;
 		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
-		const metadata = await this.memory.getThreadsMetadata([thread.id]);
-		return toThreadSummary(thread, metadata.get(thread.id));
+		const [metadata, previews] = await Promise.all([
+			this.memory.getThreadsMetadata([thread.id]),
+			this.executionService.findFirstMessagePreviews([thread]),
+		]);
+		return toThreadSummary(thread, metadata.get(thread.id), previews.get(thread.id));
 	}
 
 	/**
@@ -462,10 +470,12 @@ export class SystemAgentChatController {
 function toThreadSummary(
 	thread: AgentExecutionThread,
 	metadata: Record<string, unknown> | undefined,
+	firstMessage: string | undefined,
 ): SystemAgentThreadSummary {
 	return {
 		id: thread.id,
 		title: thread.title,
+		firstMessage: firstMessage ?? null,
 		updatedAt: thread.updatedAt.toISOString(),
 		projectId: thread.projectId,
 		...(metadata ? { metadata } : {}),

@@ -305,6 +305,23 @@ describe('useAssistantAgentThreadsStore', () => {
 		expect(runtimeOf('overtaken')).toBeUndefined();
 	});
 
+	it('keeps the sent text as the preview of a new thread that the server has no preview for yet', async () => {
+		vi.mocked(getSystemAgentThread)
+			.mockResolvedValueOnce({ ...thread('queued', '2026-01-02T00:00:00.000Z'), title: null })
+			.mockResolvedValueOnce({
+				...thread('admitted', '2026-01-02T00:00:00.000Z'),
+				title: null,
+				firstMessage: 'Server preview',
+			});
+		const store = useAssistantAgentThreadsStore();
+
+		await store.loadThread('queued', 'Build a digest');
+		await store.loadThread('admitted', 'Build a digest');
+
+		expect(store.threadsById.get('queued')?.firstMessage).toBe('Build a digest');
+		expect(store.threadsById.get('admitted')?.firstMessage).toBe('Server preview');
+	});
+
 	it('adds a thread that the route view looked up, so the thread view does not load it again', async () => {
 		const store = useAssistantAgentThreadsStore();
 

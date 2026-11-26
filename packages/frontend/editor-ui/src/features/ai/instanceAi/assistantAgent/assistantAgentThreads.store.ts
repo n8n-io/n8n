@@ -105,13 +105,20 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		openedThreads.value.push(thread);
 	}
 
-	/** Loads and adds a thread that the store does not hold yet. */
-	async function loadThread(threadId: string): Promise<void> {
+	/**
+	 * Loads and adds a thread that the store does not hold yet. A new thread can load
+	 * while its first message is still queued, before the server has its preview. Pass
+	 * the sent text as `firstMessage` so that the lists show it until the title arrives.
+	 */
+	async function loadThread(threadId: string, firstMessage?: string): Promise<void> {
 		if (threadsById.value.has(threadId)) return;
 		try {
-			addOpenedThread(
-				await getSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId),
+			const thread = await getSystemAgentThread(
+				rootStore.restApiContext,
+				ASSISTANT_AGENT_ID,
+				threadId,
 			);
+			addOpenedThread({ ...thread, firstMessage: thread.firstMessage ?? firstMessage ?? null });
 		} catch (error) {
 			console.error('Failed to load Assistant agent thread', error);
 		}

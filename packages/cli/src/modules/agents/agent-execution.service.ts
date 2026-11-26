@@ -979,7 +979,11 @@ export class AgentExecutionService {
 				agentIds,
 				options,
 			);
-		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
+		const previews = await this.findFirstMessagePreviews(threads);
+		return {
+			data: threads.map((thread) => toN8nChatThreadSummary(thread, previews.get(thread.id))),
+			nextCursor,
+		};
 	}
 
 	/**
@@ -998,7 +1002,28 @@ export class AgentExecutionService {
 			agentIds,
 			threadId,
 		);
-		return thread ? toN8nChatThreadSummary(thread) : null;
+		if (!thread) return null;
+		const previews = await this.findFirstMessagePreviews([thread]);
+		return toN8nChatThreadSummary(thread, previews.get(thread.id));
+	}
+
+	/**
+	 * A short preview of the first visible user message of each thread. Thread
+	 * lists show it until the thread has a title. One query for the whole page:
+	 * the lists do not load the thread history.
+	 */
+	async findFirstMessagePreviews(
+		threads: Array<Pick<AgentExecutionThread, 'id' | 'agentName'>>,
+	): Promise<Map<string, string>> {
+		const messages = await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
+			threads.map(({ id }) => id),
+		);
+		const previews = new Map<string, string>();
+		for (const { id, agentName } of threads) {
+			const preview = toFirstMessagePreview(messages.get(id) ?? null, agentName);
+			if (preview) previews.set(id, preview);
+		}
+		return previews;
 	}
 
 	/** How many of the user's own n8n Chat threads reference each agent, for the usage sort. */
@@ -1015,8 +1040,8 @@ export class AgentExecutionService {
 	): Promise<ThreadListItem[]> {
 		if (threads.length === 0) return [];
 		const threadIds = threads.map((t) => t.id);
-		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
-			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
+		const [previews, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
+			this.findFirstMessagePreviews(threads),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
 			this.agentExecutionRepository.findFailureSummariesByThreadIds(threadIds),
 			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
@@ -1033,7 +1058,7 @@ export class AgentExecutionService {
 					source,
 					this.systemAgents.has(thread.agentId),
 				),
-				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
+				firstMessage: previews.get(t.id) ?? null,
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
 				status: toSessionStatus(latestStatusMap.get(t.id)),
@@ -1666,6 +1691,17 @@ export function toSessionStatus(
 	return latestStatus;
 }
 
+/** Lists truncate the preview again for display. This cap only keeps the responses small. */
+const FIRST_MESSAGE_PREVIEW_MAX_CHARS = 200;
+
+function toFirstMessagePreview(message: string | null, agentName: string): string | null {
+	const cleaned = cleanUserMessage(message, agentName)?.replace(/\s+/g, ' ');
+	if (!cleaned) return null;
+	return cleaned.length > FIRST_MESSAGE_PREVIEW_MAX_CHARS
+		? `${cleaned.slice(0, FIRST_MESSAGE_PREVIEW_MAX_CHARS - 1).trimEnd()}…`
+		: cleaned;
+}
+
 function cleanUserMessage(message: string | null, agentName: string): string | null {
 	if (message === null) return null;
 	const cleaned = message
@@ -1707,7 +1743,10 @@ function isApprovalSuspension(event: TimelineEvent): boolean {
 
 /** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the
  *  cross-agent n8n Chat thread list shape. */
-function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThreadSummary {
+function toN8nChatThreadSummary(
+	thread: AgentExecutionThread,
+	firstMessage: string | undefined,
+): AgentN8nChatThreadSummary {
 	// The callers narrow `agentIds` to chat-reachable project agents.
 	if (!isProjectAgent(thread.agent)) {
 		throw new UnexpectedError(`Thread ${thread.id} does not belong to a project agent`);
@@ -1715,6 +1754,7 @@ function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThrea
 	return {
 		id: thread.id,
 		title: thread.title,
+		firstMessage: firstMessage ?? null,
 		updatedAt: thread.updatedAt.toISOString(),
 		agent: { ...toAgentRef(thread.agent), projectId: thread.agent.projectId },
 	};
