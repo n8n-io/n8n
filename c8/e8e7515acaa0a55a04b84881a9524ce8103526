@@ -1,0 +1,22 @@
+packages/cli/test/integration/agents/agent-attention-flags.test.ts
+  s_08ad1fe1d43e02::t_43bb9379abca63 3-9,79-81,85-86,88,91
+packages/cli/test/migration/1795609783977-add-test-task-id-to-agent-execution-threads.test.ts
+  s_08ad1fe1d43e02::t_7514b9d0545261 1-18,20-31,33-36,38,44-105
+  s_08ad1fe1d43e02::t_a96db7be24cdc9 19,32,37,39-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8e8e7515acaa0a55a04b84881a9524ce8103526",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
