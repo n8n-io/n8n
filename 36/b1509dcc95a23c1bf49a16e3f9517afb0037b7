@@ -1,0 +1,19 @@
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_1a3b6572805f97::t_c63623a87d3f95 2381-2398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36b1509dcc95a23c1bf49a16e3f9517afb0037b7",
+  "prompts": {},
+  "sessions": {
+    "s_1a3b6572805f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "197b7d45-f2ec-48eb-9390-e0472d670832",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

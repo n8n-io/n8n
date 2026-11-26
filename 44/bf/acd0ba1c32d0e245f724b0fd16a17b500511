@@ -1,0 +1,14 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  h_52a137d26d774c 1860-1884
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44bfacd0ba1c32d0e245f724b0fd16a17b500511",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

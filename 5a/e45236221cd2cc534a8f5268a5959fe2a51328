@@ -1,0 +1,18 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 987-989,994-1005
+.github/scripts/workflow-validation.test.mjs
+  h_52a137d26d774c 143-198
+.github/workflows/ci-owners-assign-reviewers.yml
+  h_52a137d26d774c 27-28,31,46,48-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ae45236221cd2cc534a8f5268a5959fe2a51328",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+spike/api-663/README.md
+  s_f93f6dff9520ae::t_70ce157c0ec560 143
+packages/core/src/execution-engine/node-execution-context/utils/managed-credential.ts
+  s_f93f6dff9520ae::t_247652f830d556 28-29
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/factory-managed-credential.test.ts
+  s_f93f6dff9520ae::t_237616f995ef04 92-112
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/managed-credential.test.ts
+  s_f93f6dff9520ae::t_16ff9a15891b86 59-61,63-66
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_f93f6dff9520ae::t_2b091be32b3bc5 367-371,373-391,394,396-437
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_f93f6dff9520ae::t_c520962d6a113d 2089-2094,2096-2105,2107-2114
+packages/cli/src/__tests__/spike-managed-credential-types.test.ts
+  s_f93f6dff9520ae::t_f37717fbc41a68 149-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d41de63b0c70099e1623b51209177d13efcb6e51",
+  "prompts": {},
+  "sessions": {
+    "s_f93f6dff9520ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00622748-5e28-4f20-9f3f-2a773a82a768",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
