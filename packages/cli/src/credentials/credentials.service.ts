@@ -198,6 +198,9 @@ type InstanceCredentialWriteOptions = {
 	encryptedData?: ICredentialsDb;
 };
 
+export const RUNTIME_CREDENTIAL_LOCKED_MESSAGE =
+	'This credential is created from run-time input rules and cannot be changed.';
+
 type InstanceCredentialHookPayload = ICredentialsDb &
 	Partial<
 		Pick<
@@ -237,6 +240,7 @@ type WorkflowCredentialResult = {
 	isManaged: boolean;
 	isGlobal: boolean;
 	isResolvable: boolean;
+	isRuntime: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
@@ -753,6 +757,7 @@ export class CredentialsService {
 			isManaged: c.isManaged,
 			isGlobal: c.isGlobal,
 			isResolvable: c.isResolvable,
+			isRuntime: c.isRuntime,
 			homeProject: c.homeProject,
 			sharedWithProjects: c.sharedWithProjects,
 			currentUserHasAccess: true,
@@ -1066,6 +1071,7 @@ export class CredentialsService {
 	 * fixed OAuth credential needs this dedicated path.
 	 */
 	async clearOauthTokenData(credential: CredentialsEntity, actor: PolicyActor): Promise<void> {
+		this.assertNotRuntime(credential);
 		// Decrypt via the core credential so a decryption failure aborts the
 		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
 		// which would otherwise overwrite the whole credential with empty data.
@@ -1148,6 +1154,16 @@ export class CredentialsService {
 		return await createCredentialsFromCredentialsEntity(credential).getData();
 	}
 
+	/** Run-time stubs come from instance config. Nobody changes, tests, or removes them by hand. */
+	assertNotRuntime(credential: Pick<CredentialsEntity, 'isRuntime'> | null | undefined): void {
+		if (credential?.isRuntime === true)
+			throw new BadRequestError(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+	}
+
+	async assertNotRuntimeById(credentialId: string): Promise<void> {
+		this.assertNotRuntime(await this.credentialsRepository.findOneBy({ id: credentialId }));
+	}
+
 	async updateDescription(
 		user: User,
 		credentialId: string,
@@ -1165,6 +1181,7 @@ export class CredentialsService {
 			{ includeInstanceCredentials: true },
 		);
 		if (!credential) throw new CredentialNotFoundError(credentialId);
+		this.assertNotRuntime(credential);
 
 		const owningProject =
 			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
@@ -1221,6 +1238,7 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
+		await this.assertNotRuntimeById(credentialId);
 		// One flag lookup for the whole update, reused for the write payload and the response.
 		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
@@ -1556,6 +1574,7 @@ export class CredentialsService {
 		if (!credential) {
 			return false;
 		}
+		this.assertNotRuntime(credential);
 
 		// Read before the delete cascades away the `shared_credentials` rows that name it. An
 		// instance-scoped credential has no such row and resolves to nothing, which is expected.
@@ -1614,6 +1633,7 @@ export class CredentialsService {
 		const credential =
 			await this.credentialsRepository.findProjectCredentialWithoutOwner(credentialId);
 		if (!credential) return;
+		this.assertNotRuntime(credential);
 
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 		// `delete()` rather than `remove()`: `remove()` clears the entity id, which the event needs.
@@ -1673,6 +1693,7 @@ export class CredentialsService {
 		if (!storedCredential || storedCredential.usageScope !== 'project') {
 			throw new CredentialNotFoundError(credentialId);
 		}
+		this.assertNotRuntime(storedCredential);
 
 		const { credentials } = await this.prepareCredentialsForUse({ storedCredential, user });
 		return await this.test(user.id, credentials);
@@ -1695,6 +1716,8 @@ export class CredentialsService {
 			}
 			throw new CredentialNotFoundError(credentials.id);
 		}
+
+		this.assertNotRuntime(storedCredential);
 
 		const { credentials: mergedCredentials } = await this.prepareCredentialsForUse({
 			storedCredential,
@@ -1722,6 +1745,8 @@ export class CredentialsService {
 		if (!storedCredential) {
 			throw new CredentialNotFoundError(credentialId);
 		}
+
+		this.assertNotRuntime(storedCredential);
 
 		const data = await this.decryptForUse(storedCredential, { kind: 'user', user });
 

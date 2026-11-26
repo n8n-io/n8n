@@ -3,6 +3,7 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import { CredentialsEntity } from '@n8n/db';
 import type { OperationContext } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -30,6 +31,7 @@ describe('CredentialsPublicController', () => {
 		isManaged: false,
 		isGlobal: false,
 		isResolvable: false,
+		isRuntime: false,
 		usageScope: 'project',
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		updatedAt: new Date('2024-01-02T00:00:00.000Z'),
@@ -37,6 +39,7 @@ describe('CredentialsPublicController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		credentialsService.assertNotRuntime.mockReset();
 		credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 		credentialDescriptions.isEnabled.mockResolvedValue(false);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ ...credential, scopes: [] });
@@ -113,6 +116,39 @@ describe('CredentialsPublicController', () => {
 			expect(emittedLoginId(route.event)).toBeUndefined();
 		},
 	);
+
+	describe('run-time credentials', () => {
+		it('refuses to update one', async () => {
+			credentialsFinderService.findById.mockResolvedValue(
+				Object.assign(new CredentialsEntity(), credential, { isRuntime: true }),
+			);
+			credentialsService.assertNotRuntime.mockImplementation(() => {
+				throw new BadRequestError('This credential is created from run-time input rules.');
+			});
+
+			await expect(
+				controller.updateCredential(requestWith(undefined), mock<Response>(), 'credential-id', {
+					name: 'Renamed',
+				} as UpdateCredentialPublicDto),
+			).rejects.toThrow(BadRequestError);
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it.each([true, false])('maps isRuntime=%s into the response', async (isRuntime) => {
+			credentialsService.update.mockResolvedValue(
+				Object.assign(new CredentialsEntity(), credential, { isRuntime }),
+			);
+
+			const result = await controller.updateCredential(
+				requestWith(undefined),
+				mock<Response>(),
+				'credential-id',
+				{ name: 'Renamed' } as UpdateCredentialPublicDto,
+			);
+
+			expect(result.isRuntime).toBe(isRuntime);
+		});
+	});
 
 	describe('deleteCredential', () => {
 		it('passes the operation context of the request to the service', async () => {

@@ -11,8 +11,14 @@ export class RuntimeCredentialsModule implements ModuleInterface {
 		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_RUNTIME_CREDENTIALS')) return;
 
 		const { RuntimeCredentialsService } = await import('./runtime-credentials.service.js');
-		Container.get(RuntimeCredentialsService).init();
+		const rulesService = Container.get(RuntimeCredentialsService);
+		rulesService.init();
+		await rulesService.loadDatabaseRules();
 
+		const { RuntimeCredentialStubSeeder } = await import('./runtime-credential-stub.seeder.js');
+		await Container.get(RuntimeCredentialStubSeeder).seed();
+
+		await import('./runtime-credential-rules.controller.js');
 		await import('./runtime-credentials-context-hook.js');
 		await import('./runtime-credentials.config.js');
 		const { RuntimeCredentialsAccessService } = await import(

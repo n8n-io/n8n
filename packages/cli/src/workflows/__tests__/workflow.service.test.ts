@@ -1814,6 +1814,7 @@ describe('WorkflowService', () => {
 				_detectWebhookConflicts: () => Promise<void>;
 				_validateNodes: () => Promise<void>;
 				_validateDynamicCredentials: () => Promise<void>;
+				_validateRuntimeCredentials: () => Promise<void>;
 				_validatePublisherCredentialAccess: () => Promise<void>;
 				_validateSubWorkflowReferences: () => Promise<void>;
 				_validateTriggerNodeIds: () => void;
@@ -1821,6 +1822,7 @@ describe('WorkflowService', () => {
 			vi.spyOn(internals, '_detectWebhookConflicts').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateNodes').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validateRuntimeCredentials').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validatePublisherCredentialAccess').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateTriggerNodeIds').mockReturnValue(undefined);

@@ -1368,6 +1368,46 @@ describe('CredentialsController', () => {
 		});
 	});
 
+	describe('run-time credentials', () => {
+		const runtimeCredential = mock<CredentialsEntity>({
+			id: 'runtime-stub',
+			type: 'httpBearerAuth',
+			isManaged: false,
+			isRuntime: true,
+		});
+
+		beforeEach(() => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(runtimeCredential);
+		});
+
+		it('refuses PATCH', async () => {
+			await expect(
+				credentialsController.updateCredentials({
+					user: { id: 'u1' },
+					params: { credentialId: runtimeCredential.id },
+					body: { name: 'renamed' },
+				} as unknown as CredentialRequest.Update),
+			).rejects.toThrow('cannot be changed');
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('refuses share changes', async () => {
+			await expect(
+				credentialsController.shareCredentials({
+					user: { id: 'u1' },
+					params: { credentialId: runtimeCredential.id },
+					body: { shareWithIds: ['project-1'] },
+				} as unknown as CredentialRequest.Share),
+			).rejects.toThrow('cannot be changed');
+		});
+
+		it('refuses OAuth disconnect', async () => {
+			await expect(
+				credentialsController.disconnectOauthToken(req, res, runtimeCredential.id),
+			).rejects.toThrow('cannot be changed');
+		});
+	});
+
 	describe('deleteCredentials', () => {
 		const credentialId = 'cred-del-1';
 

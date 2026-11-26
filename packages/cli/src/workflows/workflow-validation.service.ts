@@ -1,7 +1,8 @@
 import { NODE_ID_MAX_LENGTH, isNodeIdTooLong } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { RuntimeCredentialProxyService } from '@n8n/backend-services';
+import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
@@ -519,6 +520,44 @@ export class WorkflowValidationService {
 		return error
 			? { isValid: false, error: `Cannot publish workflow: ${error}` }
 			: { isValid: true };
+	}
+
+	/**
+	 * Validates that a workflow using a run-time credential has a trigger that a
+	 * run-time input rule applies to. Without one, the credential never gets a value.
+	 */
+	async validateRuntimeCredentials(
+		nodes: INode[],
+		nodeTypes: INodeTypes,
+	): Promise<WorkflowValidationResult> {
+		const credentialIds = this.collectCredentialIds(nodes);
+		if (credentialIds.size === 0) return { isValid: true };
+
+		const runtimeCredentials = await this.credentialsRepository.find({
+			where: { id: In([...credentialIds]), isRuntime: true },
+			select: ['id', 'name'],
+		});
+		if (runtimeCredentials.length === 0) return { isValid: true };
+
+		const proxy = Container.get(RuntimeCredentialProxyService);
+		const triggerTypes = nodes
+			.filter((node) => !node.disabled)
+			.filter((node) => {
+				const description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description;
+				return description !== undefined && isTriggerNode(description);
+			})
+			.map((node) => node.type);
+
+		const unfed = runtimeCredentials.filter(
+			({ id }) => !triggerTypes.some((type) => proxy.hasCredentialRuleForTrigger(id, type)),
+		);
+		if (unfed.length === 0) return { isValid: true };
+
+		const names = formatCredentialNames(unfed);
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: credential ${names} gets its value from the incoming request, but no run-time input rule applies to this workflow's triggers. Ask an instance admin to add a rule.`,
+		};
 	}
 
 	/** A published workflow runs as its publisher, so the publisher must be able to use every credential it references. */

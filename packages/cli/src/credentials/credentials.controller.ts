@@ -349,6 +349,8 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
+		this.credentialsService.assertNotRuntime(credential);
+
 		const isChangingAuthType = body.type !== undefined && body.type !== credential.type;
 
 		if (credential.usageScope === 'instance' && isChangingAuthType) {
@@ -527,6 +529,8 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
+		this.credentialsService.assertNotRuntime(credential);
+
 		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
 			throw new BadRequestError('Only OAuth credentials can be disconnected');
 		}
@@ -592,6 +596,8 @@ export class CredentialsController {
 		if (!credential) {
 			throw new ForbiddenError();
 		}
+
+		this.credentialsService.assertNotRuntime(credential);
 
 		const currentProjectIds = credential.shared
 			.filter((sc) => sc.role === 'credential:user')

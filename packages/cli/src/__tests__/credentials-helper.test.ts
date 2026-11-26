@@ -4,6 +4,7 @@ import {
 	type SecretsProviderConnectionRepository,
 	type CredentialsRepository,
 } from '@n8n/db';
+import { EventService, RuntimeCredentialProxyService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { type InstanceSettings, type Credentials, Cipher, EncryptionKeyProxy } from 'n8n-core';
@@ -16,6 +17,7 @@ import type {
 	ICredentialsExpressionResolveValues,
 	ICredentialType,
 	IExecuteData,
+	IExecutionContext,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
@@ -48,6 +50,7 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { RequestFedCredentialTypePolicy } from '@/modules/type-availability-policies/request-fed-credential-type-policy';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -3568,6 +3571,7 @@ describe('CredentialsHelper', () => {
 			type: 'testApi',
 			data: cipher.encryptWithInstanceKey({ apiKey: 'test' }),
 			isResolvable: false,
+			isRuntime: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
 
@@ -3665,6 +3669,286 @@ describe('CredentialsHelper', () => {
 					},
 					{ kind: 'system', reason: 'execution' },
 				);
+			});
+		});
+
+		describe('run-time credentials', () => {
+			const executionContext = { secureArtifacts: 'encrypted' } as IExecutionContext;
+			const useCredential = (isRuntime: boolean) =>
+				credentialsRepository.findOneByOrFail.mockResolvedValue(
+					mock<CredentialsEntity>({ ...credentialEntity, isRuntime }),
+				);
+			const getRuntimeData = () =>
+				vi.spyOn(Container.get(RuntimeCredentialProxyService), 'getRuntimeCredentialData');
+
+			afterEach(() => vi.restoreAllMocks());
+
+			test('overlays the request data on the placeholder data without marking the run as end-user', async () => {
+				useCredential(true);
+				const runtimeData = getRuntimeData().mockResolvedValue({
+					oauthTokenData: { access_token: 'abc' },
+				});
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: 'proj-1',
+					executionContext,
+				});
+
+				const result = await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'manual',
+					executeDataFor('n8n-nodes-base.slack'),
+					true,
+				);
+
+				expect(result).toEqual({ apiKey: 'test', oauthTokenData: { access_token: 'abc' } });
+				expect(runtimeData).toHaveBeenCalledWith(executionContext, 'cred-policy', 'testApi');
+				// A stub is not an end-user credential, so the run is not marked as using one.
+				expect(additionalData.currentNodeUsedDynamicCredentials).not.toBe(true);
+			});
+
+			describe('allowed domains of the rule', () => {
+				const getAllowedDomains = () =>
+					vi.spyOn(Container.get(RuntimeCredentialProxyService), 'getAllowedDomainsForStub');
+				const decrypt = async (raw: boolean) =>
+					await helper.getDecrypted(
+						mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1', executionContext }),
+						nodeCredentials,
+						'testApi',
+						'manual',
+						executeDataFor('n8n-nodes-base.slack'),
+						raw,
+					);
+
+				test('sets the domain fields from the rule', async () => {
+					useCredential(true);
+					getRuntimeData().mockResolvedValue({ token: 'abc' });
+					const allowed = getAllowedDomains().mockReturnValue('api.example.com');
+
+					const result = await decrypt(true);
+
+					expect(allowed).toHaveBeenCalledWith('cred-policy');
+					expect(result).toEqual({
+						apiKey: 'test',
+						token: 'abc',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					});
+				});
+
+				test('keeps the domain fields when the defaults and overwrites run', async () => {
+					useCredential(true);
+					getRuntimeData().mockResolvedValue({ token: 'abc' });
+					getAllowedDomains().mockReturnValue('api.example.com');
+
+					const result = await decrypt(false);
+
+					expect(result).toMatchObject({
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					});
+				});
+
+				test('keeps several domains and a wildcard as one list', async () => {
+					useCredential(true);
+					getRuntimeData().mockResolvedValue({ token: 'abc' });
+					getAllowedDomains().mockReturnValue('api.example.com, *.example.org');
+
+					const result = await decrypt(true);
+
+					expect(result.allowedDomains).toBe('api.example.com, *.example.org');
+				});
+
+				test('does not let a request value replace the domain fields', async () => {
+					useCredential(true);
+					getRuntimeData().mockResolvedValue({
+						token: 'abc',
+						allowedHttpRequestDomains: 'all',
+						allowedDomains: 'evil.example.net',
+					});
+					getAllowedDomains().mockReturnValue('api.example.com');
+
+					const result = await decrypt(true);
+
+					expect(result).toMatchObject({
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					});
+				});
+
+				test('adds no domain fields when the rule has no list', async () => {
+					useCredential(true);
+					getRuntimeData().mockResolvedValue({ token: 'abc' });
+					getAllowedDomains().mockReturnValue(undefined);
+
+					const result = await decrypt(true);
+
+					expect(result).toEqual({ apiKey: 'test', token: 'abc' });
+				});
+			});
+
+			describe('audit event', () => {
+				const decrypt = async (additionalData: IWorkflowExecuteAdditionalData) =>
+					await helper.getDecrypted(
+						additionalData,
+						nodeCredentials,
+						'testApi',
+						'webhook',
+						executeDataFor('n8n-nodes-base.slack'),
+						true,
+					);
+
+				test('records the use once for each execution and node, without the value', async () => {
+					useCredential(true);
+					getRuntimeData().mockResolvedValue({ token: 'secret-value-123' });
+					vi.spyOn(
+						Container.get(RuntimeCredentialProxyService),
+						'getRuleAliasForStub',
+					).mockReturnValue('tenantKey');
+					const emit = vi.spyOn(Container.get(EventService), 'emit');
+					const additionalData = mock<IWorkflowExecuteAdditionalData>({
+						projectId: 'proj-1',
+						executionContext,
+						workflowId: 'wf-1',
+						executionId: 'audit-exec-1',
+						currentNodeRuntimeCredentialAliases: [],
+					});
+
+					await decrypt(additionalData);
+					await decrypt(additionalData);
+
+					const calls = emit.mock.calls.filter(([name]) => name === 'runtime-credential-used');
+					expect(calls).toHaveLength(1);
+					expect(calls[0][1]).toMatchObject({
+						alias: 'tenantKey',
+						credentialId: 'cred-policy',
+						credentialType: 'testApi',
+						workflowId: 'wf-1',
+						executionId: 'audit-exec-1',
+						nodeType: 'n8n-nodes-base.slack',
+					});
+					expect(JSON.stringify(calls)).not.toContain('secret-value-123');
+					expect([...(additionalData.currentNodeRuntimeCredentialAliases ?? [])]).toEqual([
+						'tenantKey',
+					]);
+				});
+
+				test('sends no event for a credential without the flag', async () => {
+					useCredential(false);
+					const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+					await decrypt(mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' }));
+
+					expect(emit).not.toHaveBeenCalledWith('runtime-credential-used', expect.anything());
+				});
+			});
+
+			test('leaves a credential without the flag untouched', async () => {
+				useCredential(false);
+				const runtimeData = getRuntimeData();
+
+				const result = await helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1', executionContext }),
+					nodeCredentials,
+					'testApi',
+					'manual',
+					executeDataFor('n8n-nodes-base.slack'),
+					true,
+				);
+
+				expect(result).toEqual({ apiKey: 'test' });
+				expect(runtimeData).not.toHaveBeenCalled();
+			});
+
+			test('throws instead of falling back to the placeholder when the request gave no value', async () => {
+				useCredential(true);
+				getRuntimeData().mockRejectedValue(new Error('no value'));
+
+				await expect(
+					helper.getDecrypted(
+						mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' }),
+						nodeCredentials,
+						'testApi',
+						'manual',
+						executeDataFor('n8n-nodes-base.slack'),
+						true,
+					),
+				).rejects.toThrow('no value');
+			});
+
+			describe('request-fed credential type policy', () => {
+				const policyCheck = () => {
+					const policy = mock<RequestFedCredentialTypePolicy>();
+					Container.set(RequestFedCredentialTypePolicy, policy);
+					RequestFedCredentialTypePolicy.isActive = true;
+					return policy.assertAllowed;
+				};
+				afterEach(() => {
+					RequestFedCredentialTypePolicy.isActive = false;
+				});
+				const decrypt = async () =>
+					await helper.getDecrypted(
+						mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1', executionContext }),
+						nodeCredentials,
+						'testApi',
+						'manual',
+						executeDataFor('n8n-nodes-base.slack'),
+						true,
+					);
+
+				test('asks the policy for the credential type and the executing project', async () => {
+					useCredential(true);
+					const check = policyCheck().mockResolvedValue();
+					getRuntimeData().mockResolvedValue({ token: 'abc' });
+
+					const result = await decrypt();
+
+					expect(check).toHaveBeenCalledWith('testApi', 'proj-1');
+					expect(result).toEqual({ apiKey: 'test', token: 'abc' });
+				});
+
+				test('throws a denied type before it reads any request value', async () => {
+					useCredential(true);
+					policyCheck().mockRejectedValue(new Error('blocked by an instance policy'));
+					const runtimeData = getRuntimeData();
+
+					await expect(decrypt()).rejects.toThrow('blocked by an instance policy');
+					expect(runtimeData).not.toHaveBeenCalled();
+				});
+
+				test('skips the policy while the policy module is not active', async () => {
+					useCredential(true);
+					const check = policyCheck();
+					RequestFedCredentialTypePolicy.isActive = false;
+					getRuntimeData().mockResolvedValue({ token: 'abc' });
+
+					await decrypt();
+
+					expect(check).not.toHaveBeenCalled();
+				});
+
+				test('does not ask the policy for a credential without the flag', async () => {
+					useCredential(false);
+					const check = policyCheck().mockResolvedValue();
+
+					await decrypt();
+
+					expect(check).not.toHaveBeenCalled();
+				});
+			});
+
+			test('does not write a refreshed OAuth token to the row', async () => {
+				useCredential(true);
+
+				await helper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'testApi',
+					{ oauthTokenData: { access_token: 'abc' } },
+					mock<IWorkflowExecuteAdditionalData>({ executionContext }),
+				);
+
+				expect(credentialsRepository.update).not.toHaveBeenCalled();
 			});
 		});
 

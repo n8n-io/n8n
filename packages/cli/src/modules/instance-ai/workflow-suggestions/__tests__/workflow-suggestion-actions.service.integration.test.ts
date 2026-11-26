@@ -84,6 +84,7 @@ beforeEach(() => {
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	validation.validateForActivation.mockResolvedValue({ isValid: true });
 	validation.validateDynamicCredentials.mockResolvedValue({ isValid: true });
+	validation.validateRuntimeCredentials.mockResolvedValue({ isValid: true });
 	validation.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	validation.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	validation.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });

@@ -20,6 +20,7 @@ type CredentialPackageKeyHandling = {
 	isManaged: 'exclude';
 	isGlobal: 'exclude';
 	isResolvable: 'exclude';
+	isRuntime: 'exclude';
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';

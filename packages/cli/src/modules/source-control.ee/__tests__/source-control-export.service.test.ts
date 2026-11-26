@@ -99,6 +99,7 @@ describe('SourceControlExportService', () => {
 			name: 'Test Credential',
 			type: 'oauth2',
 			data: cipher.encryptWithInstanceKey(credentialData),
+			isRuntime: false,
 		});
 
 		it('should export credentials to work folder', async () => {
@@ -144,6 +145,26 @@ describe('SourceControlExportService', () => {
 					personalEmail: 'user@example.com',
 				},
 			});
+		});
+
+		it('should not export run-time credentials', async () => {
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentialsId: mockCredentials.id,
+					credentials: { ...mockCredentials, isRuntime: true },
+				} as never) as SharedCredentials,
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+				new Map([[mockCredentials.id, personalProject]]),
+			);
+			projectRelationRepository.findPersonalOwnerEmails.mockResolvedValue(new Map());
+
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'cred1' }),
+			]);
+
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
 		});
 
 		it('should handle team project credentials', async () => {
@@ -205,6 +226,7 @@ describe('SourceControlExportService', () => {
 		it('should export global credentials with isGlobal flag set to true', async () => {
 			// Arrange
 			const mockGlobalCredential = mock({
+				isRuntime: false,
 				id: 'global-cred1',
 				name: 'Global Test Credential',
 				type: 'oauth2',
@@ -264,6 +286,7 @@ describe('SourceControlExportService', () => {
 		it('should export non-global credentials with isGlobal flag set to false', async () => {
 			// Arrange
 			const mockNonGlobalCredential = mock({
+				isRuntime: false,
 				id: 'non-global-cred1',
 				name: 'Non-Global Test Credential',
 				type: 'oauth2',
@@ -326,6 +349,7 @@ describe('SourceControlExportService', () => {
 		it('should export isResolvable and resolvableAllowFallback for private credentials', async () => {
 			// Arrange
 			const mockResolvableCredential = mock({
+				isRuntime: false,
 				id: 'resolvable-cred1',
 				name: 'Resolvable Credential',
 				type: 'oauth2',
@@ -364,6 +388,7 @@ describe('SourceControlExportService', () => {
 		it('should default isGlobal to false when not specified', async () => {
 			// Arrange
 			const mockCredentialWithoutIsGlobal = mock({
+				isRuntime: false,
 				id: 'cred-no-flag',
 				name: 'Credential Without Flag',
 				type: 'oauth2',
@@ -409,6 +434,7 @@ describe('SourceControlExportService', () => {
 			mock<SharedCredentials>({
 				credentialsId,
 				credentials: mock({
+					isRuntime: false,
 					id: credentialsId,
 					name: `Credential ${credentialsId}`,
 					type: 'httpBasicAuth',

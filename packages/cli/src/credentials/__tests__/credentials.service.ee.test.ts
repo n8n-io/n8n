@@ -11,7 +11,9 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { RUNTIME_CREDENTIAL_LOCKED_MESSAGE } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { BadRequestError } from '@n8n/errors';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -50,6 +52,19 @@ describe('EnterpriseCredentialsService', () => {
 	});
 
 	describe('shareWithProjects', () => {
+		it('refuses to share a run-time credential', async () => {
+			credentialsService.assertNotRuntimeById.mockRejectedValue(
+				new BadRequestError(RUNTIME_CREDENTIAL_LOCKED_MESSAGE),
+			);
+			const manager = { exists: vi.fn(), find: vi.fn(), save: vi.fn() };
+
+			await expect(
+				// @ts-expect-error - Mocking manager for testing
+				service.shareWithProjects(mock<User>(), 'runtime-stub', ['project-1'], manager),
+			).rejects.toThrow(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
+			expect(manager.save).not.toHaveBeenCalled();
+		});
+
 		it('rejects credentials that are not available to workflows', async () => {
 			const manager = {
 				exists: vi.fn().mockResolvedValue(false),
@@ -118,6 +133,7 @@ describe('EnterpriseCredentialsService', () => {
 			type: 'testApi',
 			data: 'encrypted-data',
 			shared: [ownerSharing],
+			isRuntime: false,
 		});
 
 		beforeEach(() => {
@@ -125,6 +141,27 @@ describe('EnterpriseCredentialsService', () => {
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			externalSecretsConfig.externalSecretsForProjects = true;
 			licenseState.isExternalSecretsLicensed.mockReturnValue(true);
+		});
+
+		it('refuses to transfer a run-time credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: credentialId, isRuntime: true }),
+			);
+
+			await expect(service.transferOne(user, credentialId, destinationProjectId)).rejects.toThrow(
+				RUNTIME_CREDENTIAL_LOCKED_MESSAGE,
+			);
+			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
+		});
+
+		it('refuses to preview a transfer of a run-time credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: credentialId, isRuntime: true }),
+			);
+
+			await expect(
+				service.previewTransfer(user, credentialId, destinationProjectId),
+			).rejects.toThrow(RUNTIME_CREDENTIAL_LOCKED_MESSAGE);
 		});
 
 		describe('policy', () => {
@@ -238,6 +275,7 @@ describe('EnterpriseCredentialsService', () => {
 						type: 'testApi',
 						shared: [ownerSharing],
 						isResolvable: true,
+						isRuntime: false,
 					}),
 				);
 				const refusal = new Error('cannot manage end-user credentials');
@@ -281,6 +319,7 @@ describe('EnterpriseCredentialsService', () => {
 						type: 'testApi',
 						data: 'encrypted-data',
 						shared: [ownerSharing, sharee],
+						isRuntime: false,
 					}),
 				);
 				const trx = mockTransactionManager();
@@ -307,6 +346,7 @@ describe('EnterpriseCredentialsService', () => {
 				type: 'oAuth2Api',
 				data: 'encrypted',
 				isResolvable,
+				isRuntime: false,
 				shared: [],
 			});
 

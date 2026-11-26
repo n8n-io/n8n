@@ -1,7 +1,7 @@
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 
-import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
+import { isCredentialTypeKind, NODE_TYPES_KIND } from './constants';
 import {
 	nodeTypePackageResolver,
 	type PackageResolver,
@@ -47,7 +47,7 @@ export function packageResolverFor(
 	kind: string,
 	loadNodesAndCredentials: LoadNodesAndCredentials,
 ): PackageResolver {
-	return kind === CREDENTIAL_TYPES_KIND
+	return isCredentialTypeKind(kind)
 		? credentialTypePackageResolver(loadNodesAndCredentials)
 		: nodeTypePackageResolver;
 }

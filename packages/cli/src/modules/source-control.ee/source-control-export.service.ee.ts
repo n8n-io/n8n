@@ -530,10 +530,13 @@ export class SourceControlExportService {
 			const files: ExportResult['files'] = [];
 
 			for (const credentialIdChunk of chunk(credentialIds, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE)) {
-				const credentialsToBeExported = await this.sharedCredentialsRepository.findByCredentialIds(
-					credentialIdChunk,
-					'credential:owner',
-				);
+				// Run-time stubs come from instance config, so they never leave the instance.
+				const credentialsToBeExported = (
+					await this.sharedCredentialsRepository.findByCredentialIds(
+						credentialIdChunk,
+						'credential:owner',
+					)
+				).filter((sharing) => !sharing.credentials.isRuntime);
 				await this.writeExportableCredentialsToExportFolder(
 					credentialsToBeExported,
 					ownerProjects,

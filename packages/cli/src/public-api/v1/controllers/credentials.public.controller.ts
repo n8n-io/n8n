@@ -74,6 +74,7 @@ type CredentialPublicDtoSource = Pick<
 	| 'isManaged'
 	| 'isGlobal'
 	| 'isResolvable'
+	| 'isRuntime'
 	| 'resolvableAllowFallback'
 	| 'resolverId'
 	| 'createdAt'
@@ -92,6 +93,7 @@ function toCredentialPublicDto(
 		isManaged: credential.isManaged,
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		isRuntime: credential.isRuntime,
 		resolvableAllowFallback: credential.resolvableAllowFallback ?? false,
 		resolverId: credential.resolverId ?? null,
 		createdAt: credential.createdAt.toISOString(),
@@ -295,6 +297,8 @@ export class CredentialsPublicController {
 		if (existingCredential.isManaged) {
 			throw new BadRequestError('Managed credentials cannot be updated.');
 		}
+
+		this.credentialsService.assertNotRuntime(existingCredential);
 
 		if (body.isGlobal !== undefined && body.isGlobal !== existingCredential.isGlobal) {
 			if (!this.licenseState.isSharingLicensed()) {

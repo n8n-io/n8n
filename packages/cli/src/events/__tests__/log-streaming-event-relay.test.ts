@@ -2005,6 +2005,25 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `runtime-credential-used` event', () => {
+			const event: RelayEventMap['runtime-credential-used'] = {
+				alias: 'tenantKey',
+				credentialId: 'runtime-abc',
+				credentialType: 'httpBearerAuth',
+				workflowId: 'wf1',
+				executionId: 'exec1',
+				nodeName: 'HTTP Request',
+				nodeType: 'n8n-nodes-base.httpRequest',
+			};
+
+			eventService.emit('runtime-credential-used', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.runtime-credential.used',
+				payload: event,
+			});
+		});
+
 		it('should log on `credentials-list-data-read` event', () => {
 			const event: RelayEventMap['credentials-list-data-read'] = {
 				user: {

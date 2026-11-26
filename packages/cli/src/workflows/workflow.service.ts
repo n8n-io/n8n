@@ -1398,6 +1398,7 @@ export class WorkflowService {
 
 		await this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
+		await this._validateRuntimeCredentials(workflowId, versionToActivate.nodes);
 		if (versionIdToActivate !== previousActiveVersionId) {
 			await this._validatePublisherCredentialAccess(workflowId, user, versionToActivate.nodes);
 		}
@@ -2310,6 +2311,23 @@ export class WorkflowService {
 			});
 			throw new WorkflowValidationError(
 				validation.error ?? 'Dynamic credentials validation failed',
+			);
+		}
+	}
+
+	private async _validateRuntimeCredentials(workflowId: string, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validateRuntimeCredentials(
+			nodes,
+			this.nodeTypes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed run-time credentials validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Run-time credentials validation failed',
 			);
 		}
 	}
