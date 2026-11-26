@@ -1,8 +1,12 @@
+import { parseOnboardingHandoff } from '@/features/ai/instanceAi/onboardingHandoff';
+
 // Strips an existing `redirect` query param to avoid infinite-redirect nesting.
 export function getSanitizedCurrentPath(route: { fullPath: string }): string {
 	const url = new URL(route.fullPath, 'http://placeholder');
 	url.searchParams.delete('redirect');
-	return `${url.pathname}${url.search}`;
+	// Cloud handoffs need their opaque ID after sign-in. Drop all other fragments.
+	const hash = url.pathname === '/assistant' && parseOnboardingHandoff(url.hash) ? url.hash : '';
+	return `${url.pathname}${url.search}${hash}`;
 }
 
 // The backend stores the return path in the OIDC state cookie. Browsers drop a cookie that is

@@ -2104,6 +2104,8 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
 	'handoff_migration_report',
+	'cloud_onboarding_build',
+	'cloud_onboarding_draft',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

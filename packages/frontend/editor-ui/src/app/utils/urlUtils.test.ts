@@ -15,6 +15,22 @@ describe('getSanitizedCurrentPath', () => {
 		).toBe('/signin?sessionExpired=true');
 	});
 
+	it('preserves only validated Assistant handoffs through sign-in', () => {
+		const id = '21000000-0000-4000-8000-000000000000';
+		for (const kind of ['Draft', 'Build']) {
+			const destination = `/assistant#onboarding${kind}=${id}`;
+			const path = getSanitizedCurrentPath({ fullPath: destination });
+			expect(path).toBe(destination);
+			expect(getSsoRedirectPath(encodeURIComponent(path))).toBe(destination);
+		}
+		expect(getSanitizedCurrentPath({ fullPath: '/assistant#onboardingDraft=private-text' })).toBe(
+			'/assistant',
+		);
+		expect(getSanitizedCurrentPath({ fullPath: `/home/workflows#onboardingDraft=${id}` })).toBe(
+			'/home/workflows',
+		);
+	});
+
 	it('returns just the path when there is no query string', () => {
 		expect(getSanitizedCurrentPath({ fullPath: '/workflow/1' })).toBe('/workflow/1');
 	});

@@ -37,11 +37,18 @@ import {
 } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { ResponseError } from '@n8n/rest-api-client';
+import { claimOnboardingBuild, reserveOnboardingBuildSend } from './onboardingBuild';
+import { parseOnboardingHandoff } from './onboardingHandoff';
+import { clearOnboardingDraftEdits, openOnboardingDraftEdits } from './onboardingDraftEdits';
+import { useInstanceAiReady } from './composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useAssistantCreditsStore } from './assistantCredits.store';
 import type { InstanceAiMessageAuthorship } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
+	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_PENDING_APP_ID_QUERY,
 	INSTANCE_AI_PROJECT_ID_QUERY,
@@ -129,7 +136,10 @@ import {
 } from './assistantAgent/assistantAgentThreads';
 import { base64ToFile, resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
-import { provisionSubjectThread } from './composables/useInstanceAiHandoff';
+import {
+	ensurePersonalProjectId,
+	provisionSubjectThread,
+} from './composables/useInstanceAiHandoff';
 import {
 	INSTANCE_AI_APP_SUGGESTIONS,
 	INSTANCE_AI_APP_SUGGESTIONS_VERSION,
@@ -698,11 +708,140 @@ watch(chatInputRef, () => {
 	composerHasContent.value = false;
 });
 const isStartingThread = ref(false);
+const isClaimingOnboardingBuild = ref(false);
+const assistantReady = useInstanceAiReady();
 // Blocks switching the recipient while a send targeting the current one is being
 // prepared (e.g. a file still encoding), so it cannot land with the wrong agent.
 const isChatAgentPickerDisabled = computed(
-	() => isStartingThread.value || !!chatInputRef.value?.isPreparingSubmission,
+	() =>
+		isStartingThread.value ||
+		isClaimingOnboardingBuild.value ||
+		!!chatInputRef.value?.isPreparingSubmission,
 );
+
+// Only the authenticated Cloud owner endpoint supplies the prompt and confirms its intent.
+let isOnEmptyView = true;
+let activeDraft:
+	| {
+			hash: string;
+			source: string;
+			owner: string;
+			instanceId: string;
+			edits?: ReturnType<typeof openOnboardingDraftEdits>;
+	  }
+	| undefined;
+function dismissOnboardingDraft() {
+	if (!activeDraft) return;
+	activeDraft.edits?.clear();
+	if (window.history.state?.cloudOnboardingBuild === activeDraft.hash) {
+		window.history.replaceState({ ...window.history.state, cloudOnboardingBuild: null }, '');
+	}
+	activeDraft = undefined;
+}
+
+function updateOnboardingDraft(text: string) {
+	if (!activeDraft) return;
+	if (
+		!text.trim() ||
+		activeDraft.owner !== useUsersStore().currentUserId ||
+		activeDraft.instanceId !== rootStore.instanceId
+	) {
+		dismissOnboardingDraft();
+	} else if (text === activeDraft.source) {
+		activeDraft.edits?.clear();
+	} else {
+		activeDraft.edits?.save(text);
+	}
+}
+
+onUnmounted(() => {
+	isOnEmptyView = false;
+	// A normal navigation discards the tab's edits. Reloads do not unmount the Vue application.
+	if (route.name !== INSTANCE_AI_VIEW) dismissOnboardingDraft();
+});
+async function openOnboardingBuild() {
+	if (!appSettingsStore.isCloudDeployment || Object.keys(route.query).length) return;
+	const recoveryHash: unknown = window.history.state?.cloudOnboardingBuild;
+	const hash = route.hash || (typeof recoveryHash === 'string' ? recoveryHash : '');
+	const handoff = parseOnboardingHandoff(hash);
+	if (!handoff || !chatInputRef.value) return;
+	const users = useUsersStore();
+	const owner = users.currentUserId;
+	if (!owner || !users.isInstanceOwner) return;
+	const originalPath = route.fullPath;
+	const isCurrent = () => isOnEmptyView && users.currentUserId === owner;
+	isClaimingOnboardingBuild.value = true;
+	try {
+		const project = selectedProject.value ?? (await ensurePersonalProjectId());
+		if (!isCurrent() || route.fullPath !== originalPath) return;
+		if (!project) throw new Error('No personal project');
+		const { prompt, intent } = await claimOnboardingBuild(
+			rootStore.restApiContext.baseUrl,
+			handoff.id,
+		);
+		const isDraft = handoff.isDraft || intent === 'draft';
+		if (
+			!isCurrent() ||
+			route.fullPath !== originalPath ||
+			selectedChatAgent.value ||
+			chatInputRef.value?.isDirty() ||
+			(selectedProject.value && selectedProject.value !== project)
+		)
+			return;
+		// Keep a reload recovery pointer in this history entry. The prompt never enters the URL or history.
+		if (
+			route.hash &&
+			(await router.replace({ hash: '', state: { cloudOnboardingBuild: route.hash } }))
+		)
+			return;
+		if (!isCurrent()) return;
+		selectedProject.value = project;
+		const maySend = !isDraft && (await reserveOnboardingBuildSend(handoff.id));
+		isClaimingOnboardingBuild.value = false;
+		await nextTick();
+		const input = chatInputRef.value;
+		if (
+			!isCurrent() ||
+			!input ||
+			input.isDirty() ||
+			selectedChatAgent.value ||
+			selectedProject.value !== project
+		)
+			return;
+		if (isDraft) {
+			const instanceId = rootStore.instanceId;
+			activeDraft = {
+				hash,
+				source: prompt,
+				owner,
+				instanceId,
+				edits: instanceId ? openOnboardingDraftEdits(instanceId, owner, handoff.id) : undefined,
+			};
+		}
+		input.setPrefill({
+			text: prompt,
+			prefillType: isDraft ? 'cloud_onboarding_draft' : 'cloud_onboarding_build',
+		});
+		if (isDraft && activeDraft?.edits?.text) input.setText(activeDraft.edits.text);
+		if (maySend && assistantReady.value) await input.submitPrefill();
+	} catch (error) {
+		if (!isCurrent()) return;
+		const expired = error instanceof ResponseError && error.httpStatusCode === 404;
+		if (expired) {
+			clearOnboardingDraftEdits(rootStore.instanceId, owner, handoff.id);
+			await router.replace({ hash: '', state: { cloudOnboardingBuild: null } });
+		}
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('instanceAi.onboardingBuild.loadFailed'),
+			message: i18n.baseText(
+				expired ? 'instanceAi.onboardingBuild.expired' : 'instanceAi.onboardingBuild.retry',
+			),
+		});
+	} finally {
+		isClaimingOnboardingBuild.value = false;
+	}
+}
 
 watch(
 	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
@@ -759,6 +898,7 @@ function handleWorkflowPreview(workflowFile: string | null) {
 
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
+	void openOnboardingBuild();
 });
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
@@ -1023,13 +1163,14 @@ async function handleWorkflowPreviewExampleUse(
 					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
-						:is-submitting="isStartingThread"
+						:is-submitting="isStartingThread || isClaimingOnboardingBuild"
 						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
+						@onboarding-draft-edited="updateOnboardingDraft"
 					>
 						<template #footer-after-menu>
 							<ApprovalModeSelector />
@@ -1108,7 +1249,7 @@ async function handleWorkflowPreviewExampleUse(
 					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
-						:is-submitting="isStartingThread"
+						:is-submitting="isStartingThread || isClaimingOnboardingBuild"
 						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="isComposerAvailable"
 						:mentions-enabled="inputMentionsEnabled"
@@ -1126,6 +1267,7 @@ async function handleWorkflowPreviewExampleUse(
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
+						@onboarding-draft-edited="updateOnboardingDraft"
 					>
 						<!-- Variant B can start an Agent chat, where Assistant approval modes don't apply. -->
 						<template v-if="!selectedChatAgent" #footer-after-menu>

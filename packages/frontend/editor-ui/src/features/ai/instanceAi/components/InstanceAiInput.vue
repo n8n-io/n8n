@@ -159,6 +159,7 @@ const emit = defineEmits<{
 	'workflow-preview': [workflowFile: string | null];
 	// Placeholder previews pause for draft content.
 	'content-change': [hasContent: boolean];
+	'onboarding-draft-edited': [text: string];
 }>();
 
 const i18n = useI18n();
@@ -278,6 +279,12 @@ function clearTextIfMatches(text: string) {
 	if (inputText.value === text) inputText.value = '';
 }
 
+function handleUserTextChange(text: string) {
+	if (activePrefill.value?.prefillType === 'cloud_onboarding_draft')
+		emit('onboarding-draft-edited', text);
+	void mentions.handleTextChange(text);
+}
+
 function isDirty() {
 	return inputText.value.trim().length > 0 || hasAttachments.value;
 }
@@ -287,6 +294,7 @@ defineExpose({
 	appendText,
 	setText,
 	setPrefill,
+	submitPrefill: handleSubmit,
 	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
@@ -938,7 +946,7 @@ const resizable = computed(() => {
 			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
 			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
-			@update:model-value="mentions.handleTextChange"
+			@update:model-value="handleUserTextChange"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
