@@ -1826,8 +1826,8 @@ async function onNewTestRun() {
 			if (!isCurrentTarget()) return;
 			emit('new-test-run');
 		} else {
-			await clearHistory();
-			if (!isCurrentTarget()) return;
+			// A failed clear shows its own error and starts no new test run.
+			if (!(await clearHistory()) || !isCurrentTarget()) return;
 		}
 		agentTelemetry.trackStartedNewTestRun({ agentId: target.agentId, hadMessages });
 		void refreshTestRunTools();
