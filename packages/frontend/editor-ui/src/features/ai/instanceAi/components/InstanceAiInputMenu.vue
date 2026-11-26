@@ -125,10 +125,13 @@ const menuAnchor = useTemplateRef<HTMLElement>('menuAnchor');
 				</div>
 			</template>
 		</N8nPopover>
+		<!-- The "Open" submenu can list 40 resources. The same cap as the preview tab picker
+		makes them scroll under the search field. -->
 		<N8nDropdownMenu
 			:model-value="isOpen"
 			:items="menuItems"
 			placement="top-start"
+			sub-menu-max-height="320px"
 			:disabled="props.disabled"
 			data-test-id="instance-ai-input-menu"
 			@select="handleSelect"
