@@ -48,14 +48,13 @@ export const CHAIN = {
 export const REFRESH_TITLES = [
 	'build: Update base image digests with fewer OS findings',
 	'build: Update base image digests that need a review',
-	CHAIN['build-base-image.yml'].title,
 ];
 
 export const isRefreshCommit = (subject) =>
 	REFRESH_TITLES.some((title) => subject.startsWith(title));
 
 /** The master commit in the tag of a pin that n8n published, or null. */
-export const commitOf = (ref) => /-([0-9a-f]{40})(?:-dev)?@/.exec(ref)?.[1] ?? null;
+export const commitOf = (ref) => /-([0-9a-f]{40})@/.exec(ref)?.[1] ?? null;
 
 /**
  * The pins to change. `publishedHcl` is the bake file at `sha`: the tags use
