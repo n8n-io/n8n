@@ -8,6 +8,7 @@ import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
+import RuntimeCredentialIndicator from './RuntimeCredentialIndicator.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '../credentials.store';
@@ -353,12 +354,7 @@ function moveResource() {
 				:class="$style.privateCredentialIndicator"
 				data-test-id="credential-card-runtime"
 			>
-				<N8nTooltip placement="top">
-					<template #content>{{ locale.baseText('credentials.runtime.tooltip') }}</template>
-					<N8nBadge variant="outline">
-						{{ locale.baseText('credentials.runtime.label') }}
-					</N8nBadge>
-				</N8nTooltip>
+				<RuntimeCredentialIndicator :credential-name="data.name" />
 			</span>
 			<span
 				v-if="isPrivateCredentialsEnabled && data.isResolvable"

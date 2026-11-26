@@ -79,6 +79,7 @@ import {
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
+import RuntimeCredentialIndicator from './RuntimeCredentialIndicator.vue';
 import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
 import {
 	ContactAdminModal,
@@ -1966,16 +1967,16 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										/>
 										<div :class="$style.credentialOptionName">
 											<N8nText :class="$style.optionName">{{ row.option.name }}</N8nText>
-											<N8nTooltip v-if="row.option.isRuntime" placement="top">
-												<template #content>{{
-													i18n.baseText('credentials.runtime.tooltip')
-												}}</template>
-												<N8nIcon
-													icon="arrow-down-to-line"
-													size="small"
-													data-test-id="credential-option-runtime-badge"
+											<span
+												v-if="row.option.isRuntime"
+												:class="$style.runtimeIndicator"
+												data-test-id="credential-option-runtime-badge"
+											>
+												<RuntimeCredentialIndicator
+													:credential-name="row.option.name"
+													variant="icon"
 												/>
-											</N8nTooltip>
+											</span>
 											<N8nTooltip
 												v-if="isPrivateCredentialsEnabled && row.option.isResolvable"
 												placement="top"
@@ -2403,6 +2404,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .entryPill {
 	margin-left: auto;
+}
+
+.runtimeIndicator {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
 }
 
 // Give the menu a comfortable floor width (wider than the compact trigger) so

@@ -1,4 +1,4 @@
-import { shallowRef, ref, computed, nextTick, watchSyncEffect } from 'vue';
+import { shallowRef, ref, computed, nextTick, watchSyncEffect, defineComponent } from 'vue';
 import { describe, it, vi, beforeEach, afterEach } from 'vitest';
 import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -26,6 +26,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
@@ -1150,6 +1151,37 @@ describe('NodeCredentials', () => {
 
 			expect(screen.getByTestId('credential-option-runtime-badge')).toBeInTheDocument();
 			expect(screen.getByText('Provided at run time')).toBeInTheDocument();
+		});
+
+		it('should link the dropdown mark to the rule for users who manage security settings', async () => {
+			vi.spyOn(useRBACStore(), 'hasScope').mockImplementation(
+				(scope) => scope === 'securitySettings:manage',
+			);
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ isRuntime: true, name: 'Request value: slack-bot' }),
+			};
+
+			renderComponent({
+				global: {
+					stubs: {
+						RouterLink: defineComponent({
+							name: 'RouterLink',
+							props: { to: { type: [String, Object], required: true } },
+							template: '<a :data-to="JSON.stringify(to)"><slot /></a>',
+						}),
+					},
+				},
+			});
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.hover(screen.getByTestId('credential-runtime-badge'));
+
+			const tooltip = await screen.findByTestId('tooltip-content');
+			const link = within(tooltip).getByTestId('credential-runtime-manage-rule');
+			expect(JSON.parse(link.dataset.to ?? '')).toEqual({
+				path: '/settings/runtime-inputs',
+				query: { rule: 'slack-bot' },
+			});
 		});
 
 		it('should not label regular credentials', async () => {

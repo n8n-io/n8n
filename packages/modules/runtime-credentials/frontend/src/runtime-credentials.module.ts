@@ -7,6 +7,7 @@ import {
 	RUNTIME_INPUTS_MANAGE_SCOPE,
 	RUNTIME_INPUTS_PROJECT_SCOPE,
 	RUNTIME_INPUTS_PROJECT_VIEW,
+	RUNTIME_INPUTS_SETTINGS_ICON,
 	RUNTIME_INPUTS_SETTINGS_ORDER,
 	RUNTIME_INPUTS_SETTINGS_VIEW,
 } from './runtime-credentials.constants';
@@ -49,7 +50,7 @@ export const RuntimeCredentialsModule = defineFrontendModule({
 			id: 'settings-runtime-inputs',
 			order: RUNTIME_INPUTS_SETTINGS_ORDER,
 			section: 'security',
-			icon: 'key-round',
+			icon: RUNTIME_INPUTS_SETTINGS_ICON,
 			get label() {
 				return useI18n().baseText('runtimeCredentials.settings.title');
 			},

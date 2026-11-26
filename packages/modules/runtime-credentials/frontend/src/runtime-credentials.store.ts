@@ -1,19 +1,13 @@
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 
-import {
-	createRule,
-	deleteRule,
-	fetchInstancePolicy,
-	fetchProjectPolicy,
-	fetchRules,
-	saveProjectPolicy,
-	updateRule,
-} from './runtime-credentials.api';
+import { fetchCredentialTypeCatalog, fetchNodeTypeCatalog } from './runtime-credentials.catalog';
+import type { CredentialTypeInfo, NodeTypeInfo } from './runtime-credentials.catalog';
+
+import { createRule, deleteRule, fetchRules, updateRule } from './runtime-credentials.api';
 import type {
 	CreateRuntimeCredentialRule,
-	RequestFedPolicy,
 	RuntimeCredentialRule,
 	UpdateRuntimeCredentialRule,
 } from './runtime-credentials.api';
@@ -25,10 +19,11 @@ export const useRuntimeCredentialsStore = defineStore('runtimeCredentials', () =
 	const isLoading = ref(false);
 	const hasLoadError = ref(false);
 
-	const instancePolicy = ref<RequestFedPolicy | null>(null);
-	const projectPolicy = ref<RequestFedPolicy | null>(null);
-	const isPolicyLoading = ref(false);
-	const hasPolicyLoadError = ref(false);
+	// Type lists come from the static type files. They are large and never change after load.
+	const credentialTypes = shallowRef<ReadonlyMap<string, CredentialTypeInfo>>(new Map());
+	const nodeTypes = shallowRef<ReadonlyMap<string, NodeTypeInfo>>(new Map());
+	const hasCatalogLoadError = ref(false);
+	let catalogRequest: Promise<void> | undefined;
 
 	async function loadRules() {
 		isLoading.value = true;
@@ -40,6 +35,25 @@ export const useRuntimeCredentialsStore = defineStore('runtimeCredentials', () =
 		} finally {
 			isLoading.value = false;
 		}
+	}
+
+	/** Loads the credential and node type lists once. A failed load tries again on the next call. */
+	async function loadCatalogs() {
+		catalogRequest ??= (async () => {
+			try {
+				const [credentials, nodes] = await Promise.all([
+					fetchCredentialTypeCatalog(rootStore.baseUrl),
+					fetchNodeTypeCatalog(rootStore.baseUrl),
+				]);
+				credentialTypes.value = credentials;
+				nodeTypes.value = nodes;
+				hasCatalogLoadError.value = credentials.size === 0;
+			} catch {
+				hasCatalogLoadError.value = true;
+			}
+			if (hasCatalogLoadError.value) catalogRequest = undefined;
+		})();
+		await catalogRequest;
 	}
 
 	async function addRule(rule: CreateRuntimeCredentialRule) {
@@ -57,53 +71,17 @@ export const useRuntimeCredentialsStore = defineStore('runtimeCredentials', () =
 		await loadRules();
 	}
 
-	async function loadPolicies(projectId: string) {
-		isPolicyLoading.value = true;
-		hasPolicyLoadError.value = false;
-		try {
-			const [instance, project] = await Promise.all([
-				fetchInstancePolicy(rootStore.restApiContext),
-				fetchProjectPolicy(rootStore.restApiContext, projectId),
-			]);
-			instancePolicy.value = instance;
-			projectPolicy.value = project;
-		} catch {
-			hasPolicyLoadError.value = true;
-		} finally {
-			isPolicyLoading.value = false;
-		}
-	}
-
-	/** Adds a deny rule for one credential type name to the project policy. */
-	async function denyCredentialType(projectId: string, credentialType: string) {
-		const current = projectPolicy.value;
-		if (!current) return;
-		projectPolicy.value = await saveProjectPolicy(rootStore.restApiContext, projectId, {
-			...current,
-			rules: [
-				...current.rules,
-				{
-					id: globalThis.crypto.randomUUID(),
-					action: 'deny',
-					selector: { kind: 'name', value: credentialType },
-				},
-			],
-		});
-	}
-
 	return {
 		rules,
 		isLoading,
 		hasLoadError,
-		instancePolicy,
-		projectPolicy,
-		isPolicyLoading,
-		hasPolicyLoadError,
+		credentialTypes,
+		nodeTypes,
+		hasCatalogLoadError,
 		loadRules,
+		loadCatalogs,
 		addRule,
 		editRule,
 		removeRule,
-		loadPolicies,
-		denyCredentialType,
 	};
 });

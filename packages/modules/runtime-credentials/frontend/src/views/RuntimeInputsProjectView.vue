@@ -1,162 +1,113 @@
 <script setup lang="ts">
 import { useToast } from '@n8n/composables/useToast';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nHeading,
-	N8nInput,
-	N8nInputLabel,
-	N8nLoading,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nLoading, N8nSettingsSection } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
-import RulesTable from '../components/RulesTable.vue';
-import type { PolicyRule } from '../runtime-credentials.api';
-import { useRuntimeCredentialsStore } from '../runtime-credentials.store';
-import { getHttpStatus } from '../runtime-credentials.utils';
+import ProjectAccessTable from '../components/project/ProjectAccessTable.vue';
+import { useProjectRuntimeInputs } from '../components/project/useProjectRuntimeInputs';
 
 const i18n = useI18n();
 const toast = useToast();
 const route = useRoute();
-const store = useRuntimeCredentialsStore();
+const ProjectHeader = computed(() => componentRegistry.get('project-header'));
 
 const projectId = computed(() => String(route.params.projectId ?? ''));
-const credentialType = ref('');
-const saving = ref(false);
-const saveError = ref('');
+const inputs = useProjectRuntimeInputs(() => projectId.value);
 
 onMounted(async () => {
-	await Promise.all([store.loadRules(), store.loadPolicies(projectId.value)]);
+	await inputs.load();
 });
 
-function ruleLabel(key: 'instanceRule' | 'projectRule', rule: PolicyRule): string {
-	return i18n.baseText(`runtimeCredentials.project.policy.${key}`, {
-		interpolate: {
-			action: i18n.baseText(
-				`runtimeCredentials.project.policy.action.${rule.action === 'deny' ? 'deny' : 'allow'}`,
-			),
-			selector: rule.selector.value,
-		},
-	});
-}
+const isInitialLoad = computed(() => inputs.loading.value && inputs.rows.value.length === 0);
+const hasNoRules = computed(
+	() => !inputs.loading.value && !inputs.loadFailure.value && inputs.rows.value.length === 0,
+);
+const loadErrorKey = computed(() =>
+	inputs.loadFailure.value === 'forbidden'
+		? 'runtimeCredentials.project.error.forbidden'
+		: 'runtimeCredentials.project.error.load',
+);
+const saveErrorKey = computed(() =>
+	inputs.saveFailure.value === 'conflict'
+		? 'runtimeCredentials.project.error.conflict'
+		: 'runtimeCredentials.project.error.generic',
+);
 
-async function onDeny() {
-	const value = credentialType.value.trim();
-	if (!value) return;
-	saving.value = true;
-	saveError.value = '';
-	try {
-		await store.denyCredentialType(projectId.value, value);
-		credentialType.value = '';
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('runtimeCredentials.project.policy.toast.denied'),
-		});
-	} catch (error) {
-		saveError.value =
-			getHttpStatus(error) === 409
-				? i18n.baseText('runtimeCredentials.project.policy.error.conflict')
-				: i18n.baseText('runtimeCredentials.project.policy.error.generic');
-	} finally {
-		saving.value = false;
-	}
+async function onChange(credentialType: string, access: 'allow' | 'deny', displayName: string) {
+	const saved = await inputs.setAccess(credentialType, access);
+	if (!saved) return;
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText(
+			access === 'allow'
+				? 'runtimeCredentials.project.toast.allowed'
+				: 'runtimeCredentials.project.toast.blocked',
+			{ interpolate: { name: displayName } },
+		),
+	});
 }
 </script>
 
 <template>
 	<div :class="$style.page" data-test-id="runtime-inputs-project">
-		<section :class="$style.section">
-			<N8nHeading tag="h2" size="medium">
-				{{ i18n.baseText('runtimeCredentials.project.rules.title') }}
-			</N8nHeading>
-			<N8nText color="text-light">
-				{{ i18n.baseText('runtimeCredentials.project.rules.description') }}
-			</N8nText>
-			<N8nLoading v-if="store.isLoading && store.rules.length === 0" :rows="3" />
-			<N8nCallout v-else-if="store.hasLoadError" theme="danger" data-test-id="runtime-rules-error">
-				{{ i18n.baseText('runtimeCredentials.rules.loadError') }}
-			</N8nCallout>
-			<N8nText v-else-if="store.rules.length === 0" data-test-id="runtime-rules-empty">
-				{{ i18n.baseText('runtimeCredentials.rules.empty.title') }}
-			</N8nText>
-			<RulesTable v-else :rules="store.rules" readonly />
-		</section>
-
-		<section :class="$style.section">
-			<N8nHeading tag="h2" size="medium">
-				{{ i18n.baseText('runtimeCredentials.project.policy.title') }}
-			</N8nHeading>
-			<N8nText color="text-light">
-				{{ i18n.baseText('runtimeCredentials.project.policy.description') }}
-			</N8nText>
-			<N8nLoading v-if="store.isPolicyLoading" :rows="2" />
+		<component :is="ProjectHeader" v-if="ProjectHeader" />
+		<N8nSettingsSection :description="i18n.baseText('runtimeCredentials.project.description')">
+			<N8nLoading v-if="isInitialLoad" :rows="4" data-test-id="runtime-project-loading" />
 			<N8nCallout
-				v-else-if="store.hasPolicyLoadError"
+				v-else-if="inputs.loadFailure.value"
 				theme="danger"
-				data-test-id="runtime-policy-error"
+				data-test-id="runtime-project-error"
 			>
-				{{ i18n.baseText('runtimeCredentials.project.policy.loadError') }}
-				<template #trailingContent>
+				{{ i18n.baseText(loadErrorKey) }}
+				<template v-if="inputs.loadFailure.value !== 'forbidden'" #trailingContent>
 					<N8nButton
 						variant="ghost"
 						size="small"
 						:label="i18n.baseText('generic.retry')"
-						@click="store.loadPolicies(projectId)"
+						data-test-id="runtime-project-retry"
+						@click="inputs.load"
 					/>
 				</template>
 			</N8nCallout>
-			<template v-else-if="store.instancePolicy && store.projectPolicy">
-				<ul :class="$style.list" data-test-id="runtime-policy-list">
-					<li>
-						{{
-							i18n.baseText('runtimeCredentials.project.policy.instanceDefault', {
-								interpolate: {
-									action: i18n.baseText(
-										`runtimeCredentials.project.policy.action.${store.instancePolicy.defaultAction}`,
-									),
-								},
-							})
-						}}
-					</li>
-					<li v-for="rule in store.instancePolicy.rules" :key="`instance-${rule.id}`">
-						{{ ruleLabel('instanceRule', rule) }}
-					</li>
-					<li v-for="rule in store.projectPolicy.rules" :key="`project-${rule.id}`">
-						{{ ruleLabel('projectRule', rule) }}
-					</li>
-				</ul>
-				<N8nText v-if="store.projectPolicy.rules.length === 0" data-test-id="runtime-policy-empty">
-					{{ i18n.baseText('runtimeCredentials.project.policy.empty') }}
-				</N8nText>
-				<form :class="$style.form" @submit.prevent="onDeny">
-					<N8nInputLabel
-						:label="i18n.baseText('runtimeCredentials.project.policy.deny.label')"
-						input-name="runtime-policy-credential-type"
-					>
-						<N8nInput
-							id="runtime-policy-credential-type"
-							v-model="credentialType"
-							:placeholder="i18n.baseText('runtimeCredentials.project.policy.deny.placeholder')"
-							data-test-id="runtime-policy-input"
-						/>
-					</N8nInputLabel>
-					<N8nButton
-						variant="solid"
-						:label="i18n.baseText('runtimeCredentials.project.policy.deny.button')"
-						:disabled="credentialType.trim() === ''"
-						:loading="saving"
-						data-test-id="runtime-policy-deny"
-						@click="onDeny"
-					/>
-				</form>
-				<N8nCallout v-if="saveError" theme="danger" slim data-test-id="runtime-policy-save-error">
-					{{ saveError }}
+			<N8nCallout v-else-if="hasNoRules" theme="info" data-test-id="runtime-project-no-rules">
+				{{ i18n.baseText('runtimeCredentials.project.noRules') }}
+			</N8nCallout>
+			<template v-else>
+				<N8nCallout
+					v-if="inputs.instanceUnavailable.value"
+					theme="secondary"
+					slim
+					data-test-id="runtime-project-instance-unavailable"
+				>
+					{{ i18n.baseText('runtimeCredentials.project.instanceUnavailable') }}
 				</N8nCallout>
+				<N8nCallout
+					v-if="inputs.saveFailure.value"
+					theme="danger"
+					slim
+					data-test-id="runtime-project-save-error"
+				>
+					{{ i18n.baseText(saveErrorKey) }}
+					<template v-if="inputs.saveFailure.value === 'conflict'" #trailingContent>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:label="i18n.baseText('runtimeCredentials.project.error.refresh')"
+							data-test-id="runtime-project-refresh"
+							@click="inputs.load"
+						/>
+					</template>
+				</N8nCallout>
+				<ProjectAccessTable
+					:rows="inputs.rows.value"
+					:saving-type="inputs.savingType.value"
+					@change="onChange"
+				/>
 			</template>
-		</section>
+		</N8nSettingsSection>
 	</div>
 </template>
 
@@ -164,24 +115,8 @@ async function onDeny() {
 .page {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xl);
-	padding-block: var(--spacing--lg);
-}
-
-.section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.list {
-	margin: 0;
-	padding-inline-start: var(--spacing--md);
-}
-
-.form {
-	display: flex;
-	align-items: flex-end;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--lg);
+	/* The project header pads itself; the section needs the same bottom room as other project tabs. */
+	padding-bottom: var(--spacing--2xl);
 }
 </style>

@@ -4,30 +4,48 @@ import {
 	N8nAlertDialog,
 	N8nButton,
 	N8nCallout,
-	N8nEmptyState,
 	N8nLoading,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import RuleModal from '../components/RuleModal.vue';
-import type { RuleFormValue } from '../components/RuleModal.vue';
-import RulesTable from '../components/RulesTable.vue';
+import EmptyRules from '../components/EmptyRules.vue';
+import RuleDetailDialog from '../components/RuleDetailDialog.vue';
+import RuleWizard from '../components/RuleWizard.vue';
+import type { RuleDraft, RuleFormValue, WizardError } from '../components/RuleWizard.vue';
+import RulesList from '../components/RulesList.vue';
+import RulesSummaryStrip from '../components/RulesSummaryStrip.vue';
 import type { RuntimeCredentialRule } from '../runtime-credentials.api';
+import { findTemplate } from '../runtime-credentials.presets';
+import type { RuleTemplateId } from '../runtime-credentials.presets';
 import { useRuntimeCredentialsStore } from '../runtime-credentials.store';
-import { getHttpStatus } from '../runtime-credentials.utils';
+import { getHttpStatus, stepForServerReason } from '../runtime-credentials.utils';
+import type { WizardStepId } from '../runtime-credentials.utils';
 
 const i18n = useI18n();
 const toast = useToast();
 const store = useRuntimeCredentialsStore();
+const route = useRoute();
+const router = useRouter();
 
-const modalOpen = ref(false);
+const wizardOpen = ref(false);
 const editingRule = ref<RuntimeCredentialRule>();
+const wizardDraft = ref<RuleDraft>();
+const wizardStep = ref<WizardStepId>('source');
 const saving = ref(false);
-const saveError = ref('');
+const saveError = ref<WizardError>();
+
+const detailRule = ref<RuntimeCredentialRule>();
+const detailOpen = computed({
+	get: () => detailRule.value !== undefined,
+	set: (open) => {
+		if (!open) closeDetail();
+	},
+});
 
 const ruleToDelete = ref<RuntimeCredentialRule>();
 const deleting = ref(false);
@@ -39,46 +57,131 @@ const deleteDialogOpen = computed({
 	},
 });
 
+const aliases = computed(() => store.rules.map((rule) => rule.alias));
+
+const ready = ref(false);
+
 onMounted(async () => {
+	void store.loadCatalogs();
 	await store.loadRules();
+	ready.value = true;
 });
+
+/** Removes the deep link parameters, so a reload does not open the wizard again. */
+async function clearDeepLink() {
+	if (route.query.rule === undefined && route.query.new === undefined) return;
+	const query = { ...route.query };
+	delete query.rule;
+	delete query.new;
+	await router.replace({ query });
+}
 
 function openAdd() {
 	editingRule.value = undefined;
-	saveError.value = '';
-	modalOpen.value = true;
+	wizardDraft.value = undefined;
+	wizardStep.value = 'source';
+	saveError.value = undefined;
+	wizardOpen.value = true;
 }
 
-function openEdit(rule: RuntimeCredentialRule) {
+function openTemplate(id: RuleTemplateId) {
+	const template = findTemplate(id);
+	if (!template) return;
+	editingRule.value = undefined;
+	wizardDraft.value = template;
+	wizardStep.value = 'source';
+	saveError.value = undefined;
+	wizardOpen.value = true;
+}
+
+function openEdit(rule: RuntimeCredentialRule, step: WizardStepId = 'source') {
+	if (rule.source === 'environment') {
+		openView(rule);
+		return;
+	}
 	editingRule.value = rule;
-	saveError.value = '';
-	modalOpen.value = true;
+	wizardDraft.value = undefined;
+	wizardStep.value = step;
+	saveError.value = undefined;
+	wizardOpen.value = true;
 }
 
-function errorMessage(error: unknown, alias: string): string {
+function openDuplicate(rule: RuntimeCredentialRule) {
+	editingRule.value = undefined;
+	wizardDraft.value = {
+		alias: `${rule.alias}-copy`,
+		nodeType: rule.nodeType,
+		path: rule.path,
+		credentialType: rule.credentialType,
+		transform: rule.transform,
+		allowedDomains: rule.allowedDomains,
+	};
+	wizardStep.value = 'source';
+	saveError.value = undefined;
+	wizardOpen.value = true;
+}
+
+function openView(rule: RuntimeCredentialRule) {
+	detailRule.value = rule;
+}
+
+function closeDetail() {
+	detailRule.value = undefined;
+	void clearDeepLink();
+}
+
+function onWizardOpenChange(open: boolean) {
+	wizardOpen.value = open;
+	if (!open) void clearDeepLink();
+}
+
+// A link such as `?rule=alias` or `?new=gmail` opens the matching dialog once the rules load.
+watch(
+	() => [ready.value, route.query.rule, route.query.new] as const,
+	([isReady, ruleAlias, templateId]) => {
+		if (!isReady || wizardOpen.value || detailRule.value) return;
+		if (typeof ruleAlias === 'string') {
+			const rule = store.rules.find(({ alias }) => alias === ruleAlias);
+			if (rule) openEdit(rule);
+			else void clearDeepLink();
+		} else if (typeof templateId === 'string') {
+			if (findTemplate(templateId)) openTemplate(templateId as RuleTemplateId);
+			else void clearDeepLink();
+		}
+	},
+);
+
+function errorFor(error: unknown, alias: string): WizardError {
 	switch (getHttpStatus(error)) {
 		case 409:
-			return i18n.baseText('runtimeCredentials.rules.error.duplicate', { interpolate: { alias } });
+			return {
+				message: i18n.baseText('runtimeCredentials.rules.error.duplicate', {
+					interpolate: { alias },
+				}),
+			};
 		case 400: {
 			// Show the reason from the server when it is short and readable, for example an unsafe path.
 			const reason = error instanceof Error ? error.message.trim() : '';
 			const readable = reason.length > 0 && reason.length <= 160 && !/^[[{]/.test(reason);
 			return readable
-				? i18n.baseText('runtimeCredentials.rules.error.invalidWithReason', {
-						interpolate: { reason },
-					})
-				: i18n.baseText('runtimeCredentials.rules.error.invalid');
+				? {
+						step: stepForServerReason(reason),
+						message: i18n.baseText('runtimeCredentials.rules.error.invalidWithReason', {
+							interpolate: { reason },
+						}),
+					}
+				: { message: i18n.baseText('runtimeCredentials.rules.error.invalid') };
 		}
 		case 403:
-			return i18n.baseText('runtimeCredentials.rules.error.forbidden');
+			return { message: i18n.baseText('runtimeCredentials.rules.error.forbidden') };
 		default:
-			return i18n.baseText('runtimeCredentials.rules.error.generic');
+			return { message: i18n.baseText('runtimeCredentials.rules.error.generic') };
 	}
 }
 
 async function onSave(value: RuleFormValue) {
 	saving.value = true;
-	saveError.value = '';
+	saveError.value = undefined;
 	try {
 		if (editingRule.value) {
 			await store.editRule(editingRule.value.alias, {
@@ -99,9 +202,9 @@ async function onSave(value: RuleFormValue) {
 				title: i18n.baseText('runtimeCredentials.rules.toast.added'),
 			});
 		}
-		modalOpen.value = false;
+		onWizardOpenChange(false);
 	} catch (error) {
-		saveError.value = errorMessage(error, value.alias);
+		saveError.value = errorFor(error, value.alias);
 	} finally {
 		saving.value = false;
 	}
@@ -119,7 +222,7 @@ async function onConfirmDelete() {
 		});
 		ruleToDelete.value = undefined;
 	} catch (error) {
-		toast.showError(error, errorMessage(error, rule.alias));
+		toast.showError(error, errorFor(error, rule.alias).message);
 	} finally {
 		deleting.value = false;
 	}
@@ -127,24 +230,25 @@ async function onConfirmDelete() {
 </script>
 
 <template>
-	<N8nSettingsLayout>
+	<N8nSettingsLayout data-test-id="runtime-inputs-view">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('runtimeCredentials.settings.title')"
 			:description="i18n.baseText('runtimeCredentials.settings.description')"
 			:show-docs-link="false"
-		/>
-
-		<div :class="$style.actions">
-			<N8nButton
-				variant="solid"
-				:label="i18n.baseText('runtimeCredentials.rules.add')"
-				data-test-id="runtime-rule-add"
-				@click="openAdd"
-			/>
-		</div>
+		>
+			<template #titleTrailing>
+				<N8nButton
+					variant="solid"
+					icon="plus"
+					:label="i18n.baseText('runtimeCredentials.rules.add')"
+					data-test-id="runtime-rule-add"
+					@click="openAdd"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 
 		<N8nLoading
-			v-if="store.isLoading && store.rules.length === 0"
+			v-if="!ready || (store.isLoading && store.rules.length === 0)"
 			:rows="3"
 			data-test-id="runtime-rules-loading"
 		/>
@@ -162,41 +266,50 @@ async function onConfirmDelete() {
 			</template>
 		</N8nCallout>
 
-		<N8nEmptyState
-			v-else-if="store.rules.length === 0"
-			:heading="i18n.baseText('runtimeCredentials.rules.empty.title')"
-			data-test-id="runtime-rules-empty"
-		>
-			<template #description>
-				{{ i18n.baseText('runtimeCredentials.rules.empty.description') }}
-			</template>
-		</N8nEmptyState>
+		<EmptyRules v-else-if="store.rules.length === 0" @template="openTemplate" @scratch="openAdd" />
 
 		<template v-else>
-			<N8nCallout theme="warning" data-test-id="runtime-rules-warning">
-				<N8nText bold>{{ i18n.baseText('runtimeCredentials.rules.warning.title') }}</N8nText>
-				<N8nText>{{ i18n.baseText('runtimeCredentials.rules.warning.description') }}</N8nText>
-				<N8nText bold>{{ i18n.baseText('runtimeCredentials.rules.warning.paths') }}</N8nText>
-				<ul :class="$style.paths">
-					<li v-for="rule in store.rules" :key="rule.alias">
-						<code>{{
-							i18n.baseText('runtimeCredentials.rules.warning.path', {
-								interpolate: { path: rule.path, nodeType: rule.nodeType },
-							})
-						}}</code>
-					</li>
-				</ul>
+			<RulesSummaryStrip :rules="store.rules" />
+			<RulesList
+				:rules="store.rules"
+				@edit="openEdit"
+				@view="openView"
+				@duplicate="openDuplicate"
+				@delete="ruleToDelete = $event"
+			/>
+			<N8nCallout theme="warning" slim data-test-id="runtime-rules-warning">
+				<div :class="$style.warning">
+					<N8nText bold>{{ i18n.baseText('runtimeCredentials.rules.warning.title') }}</N8nText>
+					<N8nText>{{ i18n.baseText('runtimeCredentials.rules.warning.description') }}</N8nText>
+					<details>
+						<summary>{{ i18n.baseText('runtimeCredentials.rules.warning.paths') }}</summary>
+						<ul :class="$style.paths">
+							<li v-for="rule in store.rules" :key="rule.alias">
+								<code>{{
+									i18n.baseText('runtimeCredentials.rules.warning.path', {
+										interpolate: { path: rule.path, nodeType: rule.nodeType },
+									})
+								}}</code>
+							</li>
+						</ul>
+					</details>
+				</div>
 			</N8nCallout>
-			<RulesTable :rules="store.rules" @edit="openEdit" @delete="ruleToDelete = $event" />
 		</template>
 
-		<RuleModal
-			v-model:open="modalOpen"
+		<RuleWizard
+			:open="wizardOpen"
 			:rule="editingRule"
+			:draft="wizardDraft"
+			:initial-step="wizardStep"
+			:existing-aliases="aliases"
 			:saving="saving"
 			:error="saveError"
+			@update:open="onWizardOpenChange"
 			@save="onSave"
 		/>
+
+		<RuleDetailDialog v-model:open="detailOpen" :rule="detailRule" />
 
 		<N8nAlertDialog
 			v-model:open="deleteDialogOpen"
@@ -215,10 +328,10 @@ async function onConfirmDelete() {
 </template>
 
 <style lang="scss" module>
-.actions {
+.warning {
 	display: flex;
-	justify-content: flex-end;
-	margin-block-end: var(--spacing--sm);
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .paths {

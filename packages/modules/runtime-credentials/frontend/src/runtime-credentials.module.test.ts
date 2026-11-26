@@ -3,12 +3,12 @@ import { capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { RuntimeCredentialsModule } from './runtime-credentials.module';
 
 describe('RuntimeCredentialsModule', () => {
-	it('puts the settings page in the security section after the shell link', () => {
+	it('puts the settings page in the security section after the credential resolvers', () => {
 		const [page] = RuntimeCredentialsModule.settingsPages;
 
 		expect(page.section).toBe('security');
-		expect(page.order).toBeGreaterThan(10);
-		expect(page.order).toBeLessThan(20);
+		expect(page.order).toBe(35);
+		expect(page.icon).toBe('arrow-down-to-line');
 	});
 
 	it('adds a project tab and two routes', () => {
