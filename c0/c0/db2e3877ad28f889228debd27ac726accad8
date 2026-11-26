@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_e4ec57d5135b66::t_c22aeb3135c7dc 83,1008
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityThinkingStep.vue
+  s_dc341bad3084aa::t_2771590c2a0648 74-75,90
+  s_e4ec57d5135b66::t_a1ae7d19031e7b 89,91
+  s_e4ec57d5135b66::t_bfda249266649f 83-86,96
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.activity.test.ts
+  s_e4ec57d5135b66::t_6c7c892527ffe9 1,20,23,28,38-40,42,45-46,48
+packages/frontend/editor-ui/src/features/ai/instanceAi/builderAgents.ts
+  s_e4ec57d5135b66::t_0e0831c69ca32f 77-86,97,100
+  s_e4ec57d5135b66::t_7832a8171ce282 76
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_e4ec57d5135b66::t_c75b2926ccfe53 338,349
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_e4ec57d5135b66::t_c22aeb3135c7dc 3063,3074,3078,3088
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiRunActivity.test.ts
+  s_e4ec57d5135b66::t_c22aeb3135c7dc 5,11,50,68,74,78,98-99,107-108
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_e4ec57d5135b66::t_412e79e4dbc5a0 34,321,323,337-340
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiRunActivity.vue
+  s_e4ec57d5135b66::t_5c8344f6a0b6fa 2,6,43,48,81-86,90-92,94-98,102-105
+  s_e4ec57d5135b66::t_c22aeb3135c7dc 93
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_e4ec57d5135b66::t_0e56ffabdb13d4 25-26,40,272,374-375
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_e4ec57d5135b66::t_16d4e8e9673c7b 265,361,489,692,712,716,721,730,757,767,1016
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0c0db2e3877ad28f889228debd27ac726accad8",
+  "prompts": {},
+  "sessions": {
+    "s_dc341bad3084aa": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dac-fddf-7320-9e58-5a92c534ad5d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e4ec57d5135b66": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dc9-9e03-7320-9e58-5a94cf4d6513",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
