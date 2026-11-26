@@ -28,6 +28,9 @@ withDefaults(defineProps<Props>(), {
 		>
 			{{ title }}
 		</N8nText>
+		<span v-if="$slots.titleSuffix" :class="$style.titleSuffix">
+			<slot name="titleSuffix" />
+		</span>
 		<div v-if="$slots.actions" :class="$style.actions">
 			<slot name="actions" />
 		</div>
@@ -49,6 +52,17 @@ withDefaults(defineProps<Props>(), {
 
 .title {
 	flex: 0 0 auto;
+}
+
+.titleSuffix {
+	display: inline-flex;
+	align-items: center;
+	margin-inline: var(--spacing--3xs) auto;
+
+	// A consumer can pass the slot and render nothing in it
+	&:empty {
+		display: none;
+	}
 }
 
 .actions {
