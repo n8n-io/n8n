@@ -9,7 +9,6 @@ const props = defineProps<{
 	projectId: string;
 	appId: string;
 	refreshKey: number;
-	/** The Assistant works on this app in the current turn, so a build may be on its way. */
 	assistantWorking?: boolean;
 }>();
 

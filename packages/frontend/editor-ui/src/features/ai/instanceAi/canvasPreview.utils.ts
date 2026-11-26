@@ -498,7 +498,6 @@ export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | 
 	return { appId: id, name, projectId };
 }
 
-/** The app tools that take the ID of the app they work on. */
 const APP_TARGET_TOOL_NAMES = new Set<string>([
 	SHARED_BUILDER_TOOL_NAMES.OPEN_APP,
 	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,

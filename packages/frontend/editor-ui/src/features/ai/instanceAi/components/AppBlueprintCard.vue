@@ -131,6 +131,7 @@ function cancel() {
 							<N8nBadge
 								v-if="binding.status === 'new'"
 								variant="secondary"
+								size="xxsmall"
 								data-test-id="instance-ai-app-blueprint-binding-status"
 							>
 								{{ i18n.baseText('instanceAi.appBlueprint.bindings.new') }}

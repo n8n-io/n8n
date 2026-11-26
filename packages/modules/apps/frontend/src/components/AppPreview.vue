@@ -61,7 +61,6 @@ const props = defineProps<{
 	versions: AppVersions;
 	inspectable?: boolean;
 	elementSelected?: boolean;
-	/** The Assistant is working on this app, so a first build is on its way. */
 	assistantWorking?: boolean;
 }>();
 
@@ -282,7 +281,6 @@ onBeforeUnmount(() => {
 						{{ i18n.baseText('apps.preview.inspect.selectLabel') }}
 					</N8nButton>
 				</N8nTooltip>
-				<!-- A wider gap separates the page actions from Select. -->
 				<N8nTooltip :content="i18n.baseText('apps.preview.reload')">
 					<N8nIconButton
 						icon="refresh-cw"
@@ -291,7 +289,7 @@ onBeforeUnmount(() => {
 						:class="$style.groupStart"
 						:aria-label="i18n.baseText('apps.preview.reload')"
 						:loading="loading"
-						:disabled="firstBuild && !preview"
+						:disabled="firstBuild && !preview && !failed"
 						data-test-id="app-preview-reload"
 						@click="reload"
 					/>

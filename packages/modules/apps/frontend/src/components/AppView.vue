@@ -23,7 +23,6 @@ const props = defineProps<{
 	appId: string;
 	inspectable?: boolean;
 	elementSelected?: boolean;
-	/** The Assistant is working on this app. */
 	assistantWorking?: boolean;
 }>();
 

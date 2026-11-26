@@ -151,6 +151,22 @@ describe('AppPreview', () => {
 		expect(getByTestId('app-preview-reload')).toBeDisabled();
 	});
 
+	it('keeps Reload on when the versions fail to load during a first build', async () => {
+		vi.mocked(listAppVersions).mockRejectedValueOnce(new Error('offline'));
+		const { findByTestId, getByTestId } = renderComponent({
+			props: { app: app(null), assistantWorking: true },
+		});
+
+		expect(await findByTestId('app-preview-error')).toBeInTheDocument();
+		expect(getByTestId('app-preview-reload')).toBeEnabled();
+
+		vi.mocked(listAppVersions).mockResolvedValueOnce([]);
+		await userEvent.click(getByTestId('app-preview-reload'));
+
+		expect(await findByTestId('app-preview-first-build')).toBeInTheDocument();
+		expect(listAppVersions).toHaveBeenCalledTimes(2);
+	});
+
 	it('shows the empty state again when the Assistant stops before a build', async () => {
 		vi.mocked(listAppVersions).mockResolvedValue([]);
 		const { findByTestId, queryByTestId, rerender } = renderComponent({

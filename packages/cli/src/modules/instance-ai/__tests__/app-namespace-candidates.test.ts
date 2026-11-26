@@ -36,4 +36,15 @@ describe('appNamespaceCandidates', () => {
 		expect(candidates[1]).toBe('a'.repeat(51) + '-2');
 		expect(candidates.every((candidate) => !candidate.includes('--'))).toBe(true);
 	});
+
+	it('cuts the proposed namespace to a lower limit', () => {
+		const candidates = appNamespaceCandidates('a'.repeat(45) + '-bcde', 49);
+
+		expect(candidates[0]).toBe('a'.repeat(45) + '-bcd');
+		expect(candidates.every((candidate) => candidate.length <= 49)).toBe(true);
+	});
+
+	it('does not end the cut proposed namespace with a hyphen', () => {
+		expect(appNamespaceCandidates('a'.repeat(48) + '-bc', 49)[0]).toBe('a'.repeat(48));
+	});
 });

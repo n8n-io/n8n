@@ -1544,9 +1544,8 @@ the `apps` tool group, which the skill lists in `recommended_tool_groups`.
 | `commit_app` | `app:update` | Save the folder as one version and wait for its build |
 | `discard_app_changes` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
 
-Only `create_app` suspends. The plan card shows the app title only, and an
-approval from the plan card sets the visibility to `project`. The tool itself
-uses the visibility of the approved blueprint. When the namespace is taken, n8n
+Only `create_app` suspends. The plan card shows the app title only. When the
+namespace is too long for the instance, n8n cuts it. When the namespace is taken, n8n
 uses the next free numbered namespace (`todos-2`, `todos-3` and so on), within
 the namespace length limit of the instance. When all of them are taken, the tool
 returns an error result.
