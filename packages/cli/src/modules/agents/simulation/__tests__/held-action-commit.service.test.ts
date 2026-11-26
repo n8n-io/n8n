@@ -551,7 +551,12 @@ describe('HeldActionCommitService', () => {
 			{ kind: 'keywords', id: 'no-deploy', stage: 'before', keywords: ['deploy'] },
 		];
 		runtime.toolRegistry = new Map();
-		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const service = new HeldActionCommitService(
+			mock<Logger>(),
+			simulationSessions,
+			runtimeCache,
+			mock<TelemetryProxy>(),
+		);
 		const request = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
