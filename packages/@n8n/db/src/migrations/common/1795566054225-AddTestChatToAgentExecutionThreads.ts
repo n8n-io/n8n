@@ -19,6 +19,8 @@ export class AddTestChatToAgentExecutionThreads1795566054225 implements Reversib
 	}
 
 	async down({ runQuery, escape }: MigrationContext) {
+		// Data loss: the drop forgets which threads were test chats. The threads stay.
+		// After a new upgrade, they are real chats: their tool calls go to real services.
 		await runQuery(
 			`ALTER TABLE ${escape.tableName('agent_execution_threads')} DROP COLUMN ${escape.columnName('testChat')}`,
 		);
