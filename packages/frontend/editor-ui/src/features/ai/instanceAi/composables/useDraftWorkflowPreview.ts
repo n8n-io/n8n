@@ -7,7 +7,10 @@ import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWor
 import type { ArtifactTurn } from '../artifactTurns';
 import { getDraftWorkflowId, type WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
 import { toStagingNodeTypeInfo } from '../instanceAi.workflowStaging';
-import { ThinkingWordKey, useThinkingWordRotation } from './useThinkingWords';
+import {
+	ThinkingWordKey,
+	useThinkingWordRotation,
+} from '../../shared/composables/useThinkingWords';
 import { useWorkflowStaging } from './useWorkflowStaging';
 
 /** What the run shows on a workflow canvas: the building wave, or a pill that asks for the chat. */
