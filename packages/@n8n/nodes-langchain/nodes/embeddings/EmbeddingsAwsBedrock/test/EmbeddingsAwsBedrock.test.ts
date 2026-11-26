@@ -2,10 +2,19 @@ import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 import { createResultError } from '@n8n/utils/result';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { SupplyDataContext } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INode,
+	INodeTypes,
+	ISupplyDataFunctions,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
@@ -264,6 +273,56 @@ describe('EmbeddingsAwsBedrock', () => {
 
 			expect(MockedBedrockInvokeModelEmbeddings).toHaveBeenCalledWith(
 				expect.objectContaining({ additionalModelRequestFields: undefined }),
+			);
+		});
+	});
+
+	describe('additional model request fields through core', () => {
+		it.each([
+			{ case: 'a JSON string', additionalModelRequestFields: '{"dimensions": 512}' },
+			{ case: 'an expression', additionalModelRequestFields: '={{ { "dimensions": 512 } }}' },
+		])('passes the fields from $case', async ({ additionalModelRequestFields }) => {
+			mockedResolveAwsCredentials.mockResolvedValue({
+				region: 'us-east-1',
+				credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+			});
+			const node = new EmbeddingsAwsBedrock();
+			const coreNode: INode = {
+				...mockNode,
+				parameters: {
+					model: 'amazon.titan-embed-text-v2:0',
+					options: { additionalModelRequestFields },
+				},
+			};
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(node);
+			const workflow = new Workflow({
+				nodes: [coreNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const ctx = new SupplyDataContext(
+				workflow,
+				coreNode,
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'https://example.com/webhook-waiting',
+					formWaitingBaseUrl: 'https://example.com/form-waiting',
+				}),
+				'manual',
+				createRunExecutionData(),
+				0,
+				[],
+				{ main: [[{ json: {} }]] },
+				NodeConnectionTypes.AiEmbedding,
+				{ node: coreNode, data: {}, source: null },
+				[],
+			);
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedBedrockInvokeModelEmbeddings).toHaveBeenCalledWith(
+				expect.objectContaining({ additionalModelRequestFields: { dimensions: 512 } }),
 			);
 		});
 	});
