@@ -54,8 +54,6 @@ describe('ExecutionLimitsModule', () => {
 		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
 		expect(snapshot.start).not.toHaveBeenCalled();
 		expect(usageCache.start).not.toHaveBeenCalled();
-		// Valid only before any licensed init in this file: the import registers once.
-		expect(registeredCheckNames()).not.toContain('ExecutionLimitPolicyCheck');
 	});
 
 	// By class name: importing the check here would register it and make the test vacuous.

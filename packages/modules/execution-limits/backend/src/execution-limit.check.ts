@@ -99,12 +99,11 @@ export class ExecutionLimitPolicyCheck implements RegisteredPolicyCheck {
 		if (usage.executions < max) return null;
 
 		const resetsAt = usage.period.resetsAt.toISOString();
-		const owner = scope.type === 'project' ? 'this project' : 'this instance';
 
 		return {
 			kind: POLICY_VIOLATION_KIND.executionLimit,
 			checkId: this.id,
-			message: `The execution limit of ${owner} is reached (${usage.executions} of ${max}). It resets at ${resetsAt}.`,
+			message: `The execution limit of this ${scope.type} is reached (${usage.executions} of ${max}). It resets at ${resetsAt}.`,
 			scope: scope.type,
 			...(context.projectId === null ? {} : { projectId: context.projectId }),
 			limit: max,
