@@ -1,4 +1,5 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
+import { UnexpectedError } from '../common';
 import {
 	createNodeLabeler,
 	deriveLoops,
@@ -16,11 +17,13 @@ import type { ResponseExpectation } from '../response-channel';
 import {
 	ExecutionNotFoundError,
 	ParentExecutionEndedError,
+	type CreateExecutionResult,
 	type ExecutionStore,
 } from './execution-store';
 import {
 	isLiveExecutionStatus,
 	type CallerContext,
+	type ErrorSourceLink,
 	type ExecutionMode,
 	type ParentLink,
 	type SeededSteps,
@@ -56,10 +59,28 @@ export interface StartExecutionRequest {
 	executionId: string;
 	/** The execution and step that asked for this one. Absent for a top-level run. */
 	parent?: ParentLink;
+	/**
+	 * The execution this error execution reports on. Only the engine's error
+	 * start sets it. A request cannot set it together with `parent`.
+	 */
+	errorSource?: ErrorSourceLink;
+	/**
+	 * Whether the engine asks the host to resolve an error workflow when this
+	 * execution fails. A cancellation never resolves one, unlike in v1. The host
+	 * decides from the error workflow settings, the mode and the suppression,
+	 * which the engine does not read. `true` is no promise: the resolver can
+	 * still answer `none`. Defaults to `false`.
+	 */
+	resolveErrorWorkflowOnFailure?: boolean;
 }
 
 export interface StartExecutionResult {
 	executionId: string;
+	/**
+	 * Set when the request named an error source that already has an error
+	 * execution. Nothing was written and nothing starts.
+	 */
+	sourceHasErrorExecution?: true;
 }
 
 /** The parent link names a missing row, or a row that cannot start a sub-execution now. */
@@ -95,7 +116,15 @@ export class StartExecutionService {
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
 		validateSeededSteps(request.graph, request.seededSteps ?? {});
+		if (request.parent && request.errorSource) {
+			throw new UnexpectedError('An execution cannot have both a parent link and an error source');
+		}
 		if (request.parent) await this.validateParent(request.parent);
+		// The source has ended, so only its existence is checked. No lock is
+		// needed: an ended execution does not change status again.
+		if (request.errorSource) {
+			await this.executionStore.loadExecutionStatus(request.errorSource.executionId);
+		}
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -106,8 +135,9 @@ export class StartExecutionService {
 		// against it, so the store never gets to rename the run.
 		const { executionId } = request;
 
+		let created: CreateExecutionResult;
 		try {
-			await this.executionStore.createExecution({
+			created = await this.executionStore.createExecution({
 				id: executionId,
 				workflowId: request.workflowId,
 				// admitted; a worker flips this to 'running' when it starts
@@ -120,11 +150,15 @@ export class StartExecutionService {
 				callerContext: request.callerContext,
 				responseExpectation: request.responseExpectation ?? { kind: 'none' },
 				parent: request.parent ?? null,
+				errorSource: request.errorSource ?? null,
+				resolveErrorWorkflowOnFailure: request.resolveErrorWorkflowOnFailure ?? false,
 				lifecycleEventSubscription: request.lifecycleEventSubscription,
 			});
 		} catch (error) {
 			endedParentAsInvalid(error);
 		}
+		// Only an error execution can lose to an earlier start for the same source.
+		if (created.sourceHasErrorExecution) return { executionId, sourceHasErrorExecution: true };
 
 		// The persist above and this publish aren't atomic. A crash between them
 		// leaves the execution 'queued' until the reconciliation sweeper

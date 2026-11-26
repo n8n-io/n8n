@@ -112,6 +112,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			parent: null,
+			errorSource: null,
 			createdAt: expect.any(Date) as Date,
 			updatedAt: expect.any(Date) as Date,
 			finishedAt,
@@ -172,6 +173,8 @@ describe('workflow_execution table (integration)', () => {
 				callerContext: { hostMode: 'manual' },
 				responseExpectation: { kind: 'none' },
 				parent: null,
+				errorSource: null,
+				resolveErrorWorkflowOnFailure: false,
 				lifecycleEventSubscription,
 			});
 
@@ -465,6 +468,8 @@ describe('workflow_execution table (integration)', () => {
 			callerContext: { hostMode: 'manual' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 
 		// Only the keys asked for, and nothing for a key that was never seeded.
@@ -670,6 +675,151 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 
+	describe('error workflow columns', () => {
+		const staleness = { queuedMs: 10_000, runningStepMs: 50_000, errorWorkflowPendingMs: 30_000 };
+
+		function errorStore(): TypeOrmExecutionStore {
+			return new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution), staleness);
+		}
+
+		async function loadRow(id: string): Promise<WorkflowExecution> {
+			return await dataSource.getRepository(WorkflowExecution).findOneOrFail({ where: { id } });
+		}
+
+		/** A failed execution that expects an error workflow, with its marker set. */
+		async function failedSource(store: TypeOrmExecutionStore): Promise<string> {
+			const id = generateId();
+			await store.createExecution({
+				...newRecord(id),
+				status: 'running',
+				resolveErrorWorkflowOnFailure: true,
+			});
+			await store.finishExecution(id, 'failed');
+			return id;
+		}
+
+		function errorRecord(sourceId: string): NewExecutionRecord {
+			return {
+				...newRecord(generateId()),
+				errorSource: { executionId: sourceId, workflowId: 'wf-8' },
+			};
+		}
+
+		it('finishExecution sets the marker when an execution that expects an error workflow fails', async () => {
+			const store = errorStore();
+			const id = generateId();
+			await store.createExecution({
+				...newRecord(id),
+				status: 'running',
+				resolveErrorWorkflowOnFailure: true,
+			});
+
+			const before = Date.now();
+			await store.finishExecution(id, 'failed');
+			const after = Date.now();
+
+			const dueAt = (await loadRow(id)).errorWorkflowDueAt;
+			expect(dueAt?.getTime()).toBeGreaterThanOrEqual(before + staleness.errorWorkflowPendingMs);
+			expect(dueAt?.getTime()).toBeLessThanOrEqual(after + staleness.errorWorkflowPendingMs);
+		});
+
+		it.each([
+			{ resolveErrorWorkflowOnFailure: false, end: 'failed' },
+			{ resolveErrorWorkflowOnFailure: true, end: 'completed' },
+			{ resolveErrorWorkflowOnFailure: true, end: 'cancelled' },
+		] as const)(
+			'sets no marker for resolveErrorWorkflowOnFailure $resolveErrorWorkflowOnFailure and an end of $end',
+			async ({ resolveErrorWorkflowOnFailure, end }) => {
+				const store = errorStore();
+				const id = generateId();
+				await store.createExecution({
+					...newRecord(id),
+					status: 'running',
+					resolveErrorWorkflowOnFailure,
+				});
+
+				const ended =
+					end === 'cancelled'
+						? await store.cancelExecution(id)
+						: await store.finishExecution(id, end);
+
+				expect(ended).not.toBeNull();
+				expect((await loadRow(id)).errorWorkflowDueAt).toBeNull();
+			},
+		);
+
+		it('createExecution stores the error source, clears the marker of the source, and the views report the link', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).not.toBeNull();
+			const record = errorRecord(sourceId);
+
+			expect(await store.createExecution(record)).toEqual({ sourceHasErrorExecution: false });
+
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).toBeNull();
+			const viewStore = new TypeOrmExecutionViewStore(
+				dataSource.getRepository(WorkflowExecution),
+				dataSource.getRepository(WorkflowStepExecution),
+			);
+			expect((await viewStore.loadExecutionView(record.id)).errorSource).toEqual(
+				record.errorSource,
+			);
+			expect((await viewStore.loadExecutionView(sourceId)).errorSource).toBeNull();
+		});
+
+		it('createExecution writes one error execution when two starts race for the same source', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+
+			const results = await Promise.all([
+				store.createExecution(errorRecord(sourceId)),
+				store.createExecution(errorRecord(sourceId)),
+			]);
+
+			expect(results.map((result) => result.sourceHasErrorExecution).sort()).toEqual([false, true]);
+			const errorExecutions = await dataSource
+				.getRepository(WorkflowExecution)
+				.find({ where: { errorSourceExecutionId: sourceId } });
+			expect(errorExecutions).toHaveLength(1);
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).toBeNull();
+		});
+
+		it.each([
+			{
+				constraint: 'chk_workflow_execution_one_link',
+				columns: {
+					parentExecutionId: generateId(),
+					parentStepId: generateId(),
+					parentAwaited: false,
+					errorSourceExecutionId: generateId(),
+					errorSourceWorkflowId: 'wf-8',
+				},
+			},
+			{
+				constraint: 'chk_workflow_execution_error_source',
+				columns: { errorSourceExecutionId: generateId(), errorSourceWorkflowId: null },
+			},
+		])('the schema rejects a row that breaks $constraint', async ({ constraint, columns }) => {
+			// Straight to the table: the store checks the parent before it writes.
+			const repo = dataSource.getRepository(WorkflowExecution);
+			await expect(
+				repo.save(
+					repo.create({
+						id: generateId(),
+						workflowId: 'wf-8',
+						status: 'queued',
+						mode: 'production',
+						callerContext: { hostMode: 'error' },
+						responseExpectation: { kind: 'none' },
+						graph: { nodes: [], edges: [] },
+						workflow: {},
+						...columns,
+					}),
+				),
+			).rejects.toThrow(constraint);
+		});
+	});
+
 	it('carries the parent CHECK and the partial parent index in the schema', async () => {
 		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
 			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
@@ -723,6 +873,8 @@ function newRecord(id: string): NewExecutionRecord {
 		callerContext: { hostMode: 'integrated' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 	};
 }
 
