@@ -21,7 +21,7 @@ describe('AgentsPublicController route metadata', () => {
 	);
 	const routes = new Map(metadata.routes);
 
-	it('registers the create, read, list, update, delete, archive, and unarchive routes', () => {
+	it('registers the agent routes', () => {
 		expect([...routes.keys()].sort()).toEqual([
 			'archiveAgent',
 			'createAgent',
@@ -30,7 +30,9 @@ describe('AgentsPublicController route metadata', () => {
 			'getAgentVersion',
 			'listAgentVersions',
 			'listAgents',
+			'publishAgent',
 			'unarchiveAgent',
+			'unpublishAgent',
 			'updateAgent',
 		]);
 	});
@@ -150,6 +152,39 @@ describe('AgentsPublicController route metadata', () => {
 
 	it('updateAgent answers 200 with the public agent DTO and declares the conflict', () => {
 		const route = routes.get('updateAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
+	});
+
+	it('publishAgent requires the agent:publish API key scope and project RBAC check', () => {
+		expect(routes.get('publishAgent')?.apiKeyScope).toBe('agent:publish');
+		expect(routes.get('publishAgent')?.accessScope).toEqual({
+			scope: 'agent:publish',
+			globalOnly: false,
+		});
+	});
+
+	it('publishAgent answers 200 and declares not-found, conflict, and unprocessable responses', () => {
+		const route = routes.get('publishAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 422)).toBe(true);
+	});
+
+	it('unpublishAgent requires the agent:unpublish API key scope and project RBAC check', () => {
+		expect(routes.get('unpublishAgent')?.apiKeyScope).toBe('agent:unpublish');
+		expect(routes.get('unpublishAgent')?.accessScope).toEqual({
+			scope: 'agent:unpublish',
+			globalOnly: false,
+		});
+	});
+
+	it('unpublishAgent answers 200 and declares not-found and conflict responses', () => {
+		const route = routes.get('unpublishAgent');
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);

@@ -16,8 +16,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
+import ProjectPoliciesSection from './ProjectPoliciesSection.vue';
 import { useInstancePolicyCounts } from './useInstancePolicyCounts';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
+import { useProjectPolicies } from '../composables/useProjectPolicies';
 import {
 	INSTANCE_POLICY_DOCS_URL,
 	INSTANCE_POLICY_VIEW,
@@ -29,16 +31,18 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { entryRouteName } = usePolicyAdminAccess();
 const { counts, load: loadCounts } = useInstancePolicyCounts();
+const { projects, load: loadProjects } = useProjectPolicies();
 
 const countsText = computed(() => {
 	const loaded = counts.value;
 	if (!loaded) return null;
 	return (['node', 'credential'] as const)
 		.map((kind) => {
-			const { restricted, total } = loaded[kind];
-			return i18n.baseText(`typeAvailabilityPolicies.landing.${kind}Count`, {
+			const { restricted, optIn, total } = loaded[kind];
+			const suffix = optIn > 0 ? 'CountWithOptIn' : 'Count';
+			return i18n.baseText(`typeAvailabilityPolicies.landing.${kind}${suffix}`, {
 				adjustToNumber: total,
-				interpolate: { restricted, total },
+				interpolate: { restricted, optIn, total },
 			});
 		})
 		.join(' · ');
@@ -60,6 +64,7 @@ onMounted(() => {
 	}
 	documentTitle.set(i18n.baseText('typeAvailabilityPolicies.landing.title'));
 	void loadCounts();
+	void loadProjects();
 });
 </script>
 
@@ -118,6 +123,7 @@ onMounted(() => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+		<ProjectPoliciesSection v-if="projects" :projects="projects" @reload="loadProjects" />
 	</N8nSettingsLayout>
 </template>
 

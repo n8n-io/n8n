@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	INSTANCE_POLICY_VIEW,
 	POLICIES_LANDING_VIEW,
+	PROJECT_POLICY_VIEW,
 } from './type-availability-policies.constants';
 import { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 
@@ -16,6 +17,11 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	describe.each([
 		['landing', POLICIES_LANDING_VIEW, 'security/node-and-credential-policies'],
 		['instance policy', INSTANCE_POLICY_VIEW, 'security/node-and-credential-policies/instance'],
+		[
+			'project policy',
+			PROJECT_POLICY_VIEW,
+			'security/node-and-credential-policies/project/:teamProjectId',
+		],
 	])('%s route', (_label, name, path) => {
 		const route = () => TypeAvailabilityPoliciesModule.routes?.find((r) => r.name === name);
 
@@ -34,6 +40,10 @@ describe('TypeAvailabilityPoliciesModule', () => {
 
 		it('has no projects segment, so the rbac middleware checks only global scopes', () => {
 			expect(route()?.path.split('/')).not.toContain('projects');
+		});
+
+		it('has no projectId param, so the shell does not load a current project', () => {
+			expect(route()?.path.split('/')).not.toContain(':projectId');
 		});
 	});
 });

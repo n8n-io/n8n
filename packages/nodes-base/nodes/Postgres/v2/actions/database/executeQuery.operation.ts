@@ -169,7 +169,10 @@ export async function execute(
 			}
 		}
 
-		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+		if (
+			nodeVersion < 2.9 &&
+			(!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText)
+		) {
 			let nextValueIndex = values.length + 1;
 			const literals = query.match(/'\$[0-9]+'/g) ?? [];
 			for (const literal of literals) {

@@ -1619,12 +1619,15 @@ export class AgentRuntimeReconstructionService {
 		}
 		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
-		agent.volatileInstructionsProvider(async ({ persistence }) => {
-			if (!persistence?.threadId) return undefined;
+		// Append updates as context cues instead of volatile system instructions so the
+		// conversation prompt cache stays valid when background jobs settle mid-turn.
+		agent.contextCueProvider(async ({ persistence, sentCueIds }) => {
+			if (!persistence?.threadId) return [];
 			const { AgentWakeService } = await import('./background/agent-wake.service.js');
-			return await Container.get(AgentWakeService).getBackgroundUpdates(
+			return await Container.get(AgentWakeService).getBackgroundUpdateCues(
 				persistence.threadId,
 				persistence.resourceId,
+				sentCueIds,
 			);
 		});
 	}

@@ -1,8 +1,15 @@
-import type { ToolContext } from '@n8n/agents';
+import {
+	EPISODIC_SCOPE_METADATA_KEY,
+	encodeEpisodicScopeMetadata,
+	readEpisodicScopeDecision,
+	type EpisodicScopeDecision,
+	type ToolContext,
+} from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { toJsonValue } from '@n8n/utils/json/to-json-value';
 import { jsonParse } from 'n8n-workflow';
 
 import type {
@@ -26,9 +33,11 @@ const OUTBOUND_METADATA_KEY = 'outboundMessages';
 const MAX_OUTBOUND_MESSAGES = 5;
 const MAX_OUTBOUND_TEXT_LENGTH = 2000;
 const SENT_MESSAGES_METADATA_KEY = 'sentMessages';
+const EPISODIC_SCOPES_METADATA_KEY = 'episodicScopesByResource';
 
 /** Older entries drop out, so the metadata of a busy thread stays small. */
 const MAX_SENT_MESSAGES_PER_THREAD = 50;
+const MAX_EPISODIC_SCOPES_PER_THREAD = 50;
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -89,6 +98,40 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	): Promise<void> {
 		await this.writeMetadata(threadId, resourceId, {
 			[MESSAGE_CONTEXT_METADATA_KEY]: context,
+		});
+	}
+
+	async setEpisodicScope(
+		threadId: string,
+		resourceId: string,
+		decision: EpisodicScopeDecision,
+	): Promise<void> {
+		const encoded = encodeEpisodicScopeMetadata(decision)[EPISODIC_SCOPE_METADATA_KEY];
+
+		await this.updateMetadata(threadId, resourceId, (metadata) => {
+			const previous = metadata[EPISODIC_SCOPES_METADATA_KEY];
+			const entries = isRecord(previous) ? Object.entries(previous) : [];
+			const next = Object.fromEntries(
+				[...entries.filter(([key]) => key !== resourceId), [resourceId, encoded]].slice(
+					-MAX_EPISODIC_SCOPES_PER_THREAD,
+				),
+			);
+			return { ...metadata, [EPISODIC_SCOPES_METADATA_KEY]: next };
+		});
+	}
+
+	async getEpisodicScope(
+		threadId: string,
+		resourceId: string,
+	): Promise<EpisodicScopeDecision | undefined> {
+		const thread = await this.threadRepository.findOneBy({ id: threadId });
+		const scopes = this.parseMetadata(thread?.metadata)[EPISODIC_SCOPES_METADATA_KEY];
+		if (!isRecord(scopes) || !(resourceId in scopes)) return undefined;
+
+		// Delegate validation to `@n8n/agents` so stored entries stay aligned with the
+		// canonical schema and malformed entries fail closed to `{ disabled: true }`.
+		return readEpisodicScopeDecision({
+			[EPISODIC_SCOPE_METADATA_KEY]: toJsonValue(scopes[resourceId]),
 		});
 	}
 
