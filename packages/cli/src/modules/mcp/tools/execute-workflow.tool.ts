@@ -317,8 +317,9 @@ const buildRunData = async (
 		mcpMessageId,
 	};
 
-	// Set the trigger node as the start node and pin data for it
-	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
+	// Set the trigger node as the start node and pin data for it, so the workflow runs
+	// with the provided inputs without waiting for an actual trigger event. The Execute
+	// Workflow Trigger is not pinned: it runs on the inputs, as in a real sub-workflow call.
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 
 	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
@@ -494,7 +495,7 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 };
 
 /**
- * Constructs pin data for the trigger node based on provided inputs.
+ * Constructs the trigger items from the provided inputs, keyed by node name.
  * Callers must validate inputs against the trigger before this runs.
  */
 const getPinDataForTrigger = async (
