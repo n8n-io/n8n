@@ -10719,7 +10719,7 @@
 	"agents.builder.skills.workflowMentions.loadError": "Couldn't load workflows. Try again.",
 	"agents.builder.skills.workflowMentions.noResults": "No workflows found",
 	"agents.builder.skills.workflowMentions.note.agentTrigger": "To use this workflow in agents, add an 'Execute Workflow Trigger' (When Executed by Another Workflow).",
-	"agents.builder.skills.workflowMentions.note.archived": "This workflow is archived. Restore this workflow, then publish it.",
+	"agents.builder.skills.workflowMentions.note.archived": "This workflow is archived. Restore it, then publish it.",
 	"agents.builder.skills.workflowMentions.note.instanceAccess": "Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
 	"agents.builder.skills.workflowMentions.note.mcpTrigger": "To run this workflow from MCP, add a Schedule, Webhook, Form, or Chat trigger.",
 	"agents.builder.skills.workflowMentions.note.notFound": "This workflow was deleted or you can't access it. Remove the mention or pick a different workflow.",

@@ -13,7 +13,6 @@ import { useSkillWorkflowNoteData } from '@/features/agents/composables/useSkill
 import {
 	AGENT_BLOCKING_NOTES,
 	getSkillWorkflowNotes,
-	UNUSABLE_WORKFLOW_NOTES,
 	type SkillWorkflowNote,
 } from '@/features/agents/utils/skillWorkflowNotes';
 import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
@@ -106,8 +105,7 @@ const workflowRows = computed(() =>
 						projectId: props.agentContext ? undefined : props.mentionProjectId,
 					});
 		const isWarning = (note: SkillWorkflowNote) =>
-			UNUSABLE_WORKFLOW_NOTES.includes(note) ||
-			(props.agentContext && AGENT_BLOCKING_NOTES.includes(note));
+			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
 		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
 		return {
 			...workflow,

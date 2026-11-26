@@ -13,10 +13,9 @@ export type SkillWorkflowNote =
 	| 'outsideProject'
 	| 'instanceAccess';
 
-export const UNUSABLE_WORKFLOW_NOTES: readonly SkillWorkflowNote[] = ['notFound', 'archived'];
-
 export const AGENT_BLOCKING_NOTES: readonly SkillWorkflowNote[] = [
-	...UNUSABLE_WORKFLOW_NOTES,
+	'notFound',
+	'archived',
 	'agentTrigger',
 	'unpublished',
 ];
