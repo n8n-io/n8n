@@ -90,7 +90,7 @@ describe('AgentSkillFileNav', () => {
 		expect(searchWorkflows).toHaveBeenCalledTimes(1);
 		expect(searchWorkflows).toHaveBeenCalledWith({
 			ids: ['wf1', 'wf2'],
-			select: ['id', 'nodes', 'activeVersionId', 'settings', 'isArchived', 'ownedBy'],
+			select: ['id', 'nodes', 'activeVersionId', 'settings', 'isArchived', 'ownedBy', 'updatedAt'],
 			options: { take: 2, includeScopes: false },
 		});
 		const [weeklyRow, archiveRow] = container.querySelectorAll(
@@ -289,6 +289,15 @@ describe('AgentSkillFileNav', () => {
 		)) {
 			expect(note.getAttribute('aria-label')).not.toContain("skill's project");
 		}
+	});
+
+	it('selects the column that the server sorts by, so the server can page workflows with their projects', async () => {
+		flag.enabled = true;
+		renderComponent({ props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' } });
+
+		await waitFor(() => expect(searchWorkflows).toHaveBeenCalledTimes(1));
+		const [{ select, options }] = searchWorkflows.mock.calls[0];
+		expect(select).toContain((options.sortBy ?? 'updatedAt').split(':')[0]);
 	});
 
 	it('sends no request for notes while the flag is off', () => {
