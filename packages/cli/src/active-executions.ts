@@ -40,22 +40,6 @@ import type {
 import { isWorkflowIdValid } from '@/utils';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
-function getErrorMessage(error: unknown): string {
-	if (error instanceof Error && error.message !== undefined) {
-		return error.message;
-	}
-
-	if (typeof error === 'string') {
-		return error;
-	}
-
-	try {
-		return JSON.stringify(error);
-	} catch {
-		return String(error);
-	}
-}
-
 const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
 @Service()
@@ -241,7 +225,7 @@ export class ActiveExecutions {
 		this.attachCleanupHandlers(executionId, execution, capacityReservation);
 
 		if (shouldActivateInBackground && tempReservationId) {
-			const activationCancellationPromise = createDeferredPromise<void>();
+			const activationCancellationPromise = createDeferredPromise();
 			this.activationCancellationPromises.set(executionId, activationCancellationPromise);
 			// Replace temporary reservation with actual activation promise
 			const activationPromise = this.reserveCapacityAndActivate(
@@ -251,7 +235,7 @@ export class ActiveExecutions {
 				shouldReserveCapacity,
 			)
 				.catch((error: unknown) => {
-					const executionError = error instanceof Error ? error : new Error(getErrorMessage(error));
+					const executionError = ensureError(error);
 					this.responseModes.delete(executionId);
 					this.logger.error('Failed to reserve capacity for onReceived execution', {
 						executionId,
@@ -267,6 +251,11 @@ export class ActiveExecutions {
 			// Replace temp reservation with real promise using executionId
 			this.activationPromises.delete(tempReservationId);
 			this.activationPromises.set(executionId, activationPromise);
+			// Guard stored promises against unobserved rejections. Callers of
+			// waitForActivation() attach their own handlers; this no-op catch
+			// only prevents Node's unhandledRejection when nobody waits.
+			activationCancellationPromise.promise.catch(() => {});
+			activationPromise.catch(() => {});
 		}
 
 		this.logger.debug('Execution added', { executionId });
@@ -421,7 +410,7 @@ export class ActiveExecutions {
 			} catch (error) {
 				this.logger.error('Error closing streaming response', {
 					executionId,
-					error: getErrorMessage(error),
+					error: ensureError(error).message,
 				});
 			}
 		}

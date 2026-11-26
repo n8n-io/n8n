@@ -28,6 +28,7 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
@@ -495,6 +496,7 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		responseMode?: WebhookResponseMode,
 	): Promise<string> {
 		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
@@ -508,8 +510,9 @@ export class WorkflowRunner {
 		}
 
 		const establishContextError = await this.establishContextForPersistence(data);
+		const deferOnReceivedStartup = responseMode === 'onReceived' && existingExecution === undefined;
 
-		if (!establishContextError) {
+		if (!establishContextError && !deferOnReceivedStartup) {
 			try {
 				const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
@@ -520,7 +523,7 @@ export class WorkflowRunner {
 				// set, so a reused `data` object cannot keep the count of an earlier run.
 				data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
 			} catch (error) {
-				const executionId = await this.activeExecutions.add(data, existingExecution);
+				const executionId = await this.activeExecutions.add(data, existingExecution, responseMode);
 				await this.failExecution(
 					data,
 					executionId,
@@ -534,7 +537,7 @@ export class WorkflowRunner {
 		}
 
 		let executionWorkflow: Workflow | undefined;
-		if (!existingExecution && !establishContextError) {
+		if (!deferOnReceivedStartup && !existingExecution && !establishContextError) {
 			try {
 				executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
 			} catch (error) {
@@ -543,7 +546,24 @@ export class WorkflowRunner {
 		}
 
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, existingExecution);
+		const executionId = await this.activeExecutions.add(data, existingExecution, responseMode);
+
+		if (deferOnReceivedStartup) {
+			void this.startOnReceivedExecution(
+				data,
+				executionId,
+				loadStaticData,
+				realtime,
+				responsePromise,
+				establishContextError,
+			).catch((error) => {
+				this.logger.error('Background execution start failed for onReceived webhook', {
+					executionId,
+					error,
+				});
+			});
+			return executionId;
+		}
 
 		if (establishContextError) {
 			await this.failExecution(
@@ -587,6 +607,7 @@ export class WorkflowRunner {
 					shouldReloadStaticData,
 					existingExecution,
 					executionWorkflow,
+					this.executionsConfig.mode === 'regular' || existingExecution !== undefined,
 				);
 			}
 		} catch (error) {
@@ -639,6 +660,113 @@ export class WorkflowRunner {
 		return new StreamingWebhookResponseHeartbeat(data.httpResponse);
 	}
 
+	private async startOnReceivedExecution(
+		data: IWorkflowExecutionDataProcess,
+		executionId: string,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		establishContextError?: ExecutionError & { node?: INode },
+	): Promise<void> {
+		try {
+			await this.activeExecutions.waitForActivation(executionId);
+		} catch (error) {
+			await this.failExecution(
+				data,
+				executionId,
+				error as ExecutionError & { node?: INode },
+				'startFailed',
+				responsePromise,
+			);
+			return;
+		}
+		if (!this.activeExecutions.has(executionId)) return;
+
+		if (establishContextError) {
+			await this.failExecution(
+				data,
+				executionId,
+				establishContextError,
+				'contextHook',
+				responsePromise,
+			);
+			return;
+		}
+
+		let executionWorkflow: Workflow | undefined;
+		try {
+			const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
+				data.workflowData.id,
+				data.workflowData.nodes,
+				data.userId,
+			);
+			data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
+			executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
+		} catch (error) {
+			const startupError = PreExecuteBlockedError.unwrap(error);
+			await this.failExecution(
+				data,
+				executionId,
+				startupError as ExecutionError & { node?: INode },
+				'credentialAccess',
+				responsePromise,
+			);
+			return;
+		}
+
+		if (responsePromise) this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+		const heartbeat = this.setupV1StreamingHeartbeat(data);
+		const workflowId = data.workflowData.id;
+		const shouldEnqueue = runsOnQueueWorker(this.executionsConfig, data.executionMode);
+
+		try {
+			if (shouldEnqueue) {
+				await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
+			} else {
+				await this.runMainProcess(
+					executionId,
+					data,
+					false,
+					undefined,
+					executionWorkflow,
+					this.executionsConfig.mode === 'regular',
+				);
+			}
+		} catch (error) {
+			heartbeat?.stop();
+			await this.failExecution(
+				data,
+				executionId,
+				error as ExecutionError & { node?: INode },
+				'startFailed',
+				responsePromise,
+			);
+			return;
+		}
+
+		if (
+			this.executionsConfig.mode !== 'queue' ||
+			this.instanceSettings.instanceType === 'worker' ||
+			data.executionMode === 'manual' ||
+			data.executionMode === 'chat'
+		) {
+			void this.activeExecutions.getPostExecutePromise(executionId).catch((error) => {
+				if (error instanceof ExecutionCancelledError) return;
+				this.errorReporter.error(error, { extra: { executionId, workflowId } });
+				this.logger.error('There was an error in the post-execution promise', {
+					error,
+					executionId,
+					workflowId,
+					workflowName: data.workflowData.name,
+				});
+			});
+		}
+
+		if (heartbeat) {
+			void this.activeExecutions.getPostExecutePromise(executionId).finally(() => heartbeat.stop());
+		}
+	}
+
 	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
 		if (['manual', 'evaluation'].includes(data.executionMode)) {
 			return data.pinData ?? data.workflowData.pinData;
@@ -672,6 +800,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
+		executionAlreadyMarkedRunning = false,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
@@ -727,7 +856,9 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		await this.executionRepository.setRunning(executionId); // write
+		if (!executionAlreadyMarkedRunning) {
+			await this.executionRepository.setRunning(executionId);
+		}
 
 		try {
 			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);

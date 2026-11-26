@@ -956,6 +956,7 @@ describe('executeWebhook', () => {
 		expect(responseCallback).toHaveBeenCalledWith(null, {
 			data: { message: 'Too many pending onReceived executions' },
 			responseCode: 429,
+			headers: { 'Retry-After': '5' },
 		});
 	});
 });

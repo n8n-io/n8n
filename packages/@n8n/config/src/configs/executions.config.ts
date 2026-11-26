@@ -174,7 +174,7 @@ export class ExecutionsConfig {
 	 * Max number of pending onReceived webhook executions allowed in the queue.
 	 * When reached, new onReceived executions are rejected with AdmissionLimitError.
 	 */
-	@Env('N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT')
+	@Env('N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT', positiveIntSchema)
 	onReceivedWebhookQueueLimit: number = 10000;
 	/**
 	 * Max byte size of execution run data to load for display.

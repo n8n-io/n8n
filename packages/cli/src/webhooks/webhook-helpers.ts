@@ -568,10 +568,11 @@ export function setupResponseNodePromise(
 			// setupResponseNodePromise() is only wired up for responseMode === 'responseNode'.
 			// It is kept here as defensive belt-and-suspenders protection in case the
 			// call-site changes in the future.
-			if (error instanceof AdmissionLimitError) {
+			if (error instanceof AdmissionLimitError && !responder.hasResponded) {
 				responder.respondWith({
 					data: { message: error.message },
 					responseCode: 429,
+					headers: { 'Retry-After': '5' },
 				});
 				return;
 			}
@@ -1716,6 +1717,7 @@ export async function executeWebhook(
 				responder.respondWith({
 					data: { message: error.message },
 					responseCode: 429,
+					headers: { 'Retry-After': '5' },
 				});
 			}
 			return;

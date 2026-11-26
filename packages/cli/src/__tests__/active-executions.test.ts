@@ -1563,44 +1563,47 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('shutdown with queued onReceived execution does not cause unhandled promise rejections', async () => {
-			const realConcurrencyControl = buildProductionConcurrencyControl(1);
-			const removeAllSpy = vi.spyOn(realConcurrencyControl, 'removeAll');
-			activeExecutions = new ActiveExecutions(
-				mock(),
-				executionRepository,
-				executionPersistence,
-				realConcurrencyControl,
-				mock(),
-				executionsConfig,
-				instanceSettings,
-				unsavedManualExecutionService,
-			);
-			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
+			const unhandledRejections: unknown[] = [];
+			const onUnhandledRejection = (reason: unknown) => {
+				unhandledRejections.push(reason);
+			};
+			process.on('unhandledRejection', onUnhandledRejection);
 
-			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
-			await flushPromises();
-			const activationPromise = activeExecutions.waitForActivation(executionId);
-			const activationRejection = activationPromise.catch((error: unknown) => error);
+			try {
+				const realConcurrencyControl = buildProductionConcurrencyControl(1);
+				const removeAllSpy = vi.spyOn(realConcurrencyControl, 'removeAll');
+				activeExecutions = new ActiveExecutions(
+					mock(),
+					executionRepository,
+					executionPersistence,
+					realConcurrencyControl,
+					mock(),
+					executionsConfig,
+					instanceSettings,
+					unsavedManualExecutionService,
+				);
+				await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
 
-			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+				const executionId = await activeExecutions.add(
+					webhookExecutionData,
+					undefined,
+					'onReceived',
+				);
+				await flushPromises();
 
-			// Grab the post-execute promise before shutdown
-			const postExecutePromise = activeExecutions.getPostExecutePromise(executionId);
-			const postExecuteRejection = postExecutePromise.catch((error: unknown) => error);
+				expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 
-			// Trigger shutdown while execution is queued in concurrency throttle
-			vi.mocked(sleep).mockResolvedValue();
-			await activeExecutions.shutdown();
-			expect(await activationRejection).toBeInstanceOf(SystemShutdownExecutionCancelledError);
+				// Trigger shutdown while execution is queued without attaching any promise handlers
+				vi.mocked(sleep).mockResolvedValue();
+				await activeExecutions.shutdown();
+				await flushPromises();
 
-			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
-			expect(removeAllSpy).toHaveBeenCalledWith([]);
-
-			// The post-execute promise should be rejected with shutdown error, not hang
-			expect(await postExecuteRejection).toBeInstanceOf(SystemShutdownExecutionCancelledError);
-
-			// Verify no unhandled rejections occurred by checking all promises are settled
-			// This test passes if we reach here without unhandled rejection errors
+				expect(unhandledRejections).toEqual([]);
+				expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+				expect(removeAllSpy).toHaveBeenCalledWith([]);
+			} finally {
+				process.off('unhandledRejection', onUnhandledRejection);
+			}
 		});
 	});
 });
