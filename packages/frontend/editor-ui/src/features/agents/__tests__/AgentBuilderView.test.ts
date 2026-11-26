@@ -1715,6 +1715,29 @@ describe('AgentBuilderView — preview routing', () => {
 			await expect(beforeNewThread()).resolves.toBeUndefined();
 			expect(createAgentMock).toHaveBeenCalled();
 		});
+
+		// The usual path: the debounced save fails first, so later flushes find no queued
+		// edit and must still report the failure instead of resolving as if all was saved.
+		it('starts a thread and asks before leaving after the debounced save already failed', async () => {
+			const wrapper = await renderWithFailedCreate();
+			await vi.waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.builder.saveError'),
+			);
+			createAgentMock.mockClear();
+
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+			await expect(navigation).resolves.toBe(true);
+
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads node types when the page opens', async () => {
