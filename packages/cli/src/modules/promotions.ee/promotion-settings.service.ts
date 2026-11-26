@@ -46,9 +46,12 @@ export class PromotionSettingsService {
 
 		await this.txRunner.run(ctx, async (trxCtx) => {
 			for (const setting of PROMOTION_PROJECT_ACCESS_SETTINGS) {
+				const value = settings[setting];
+				// A setting that the request leaves out keeps its value.
+				if (value === undefined) continue;
 				await this.settingsRepository.upsertByKey(
 					PROMOTION_PROJECT_ACCESS_SETTING_KEYS[setting],
-					settings[setting],
+					value,
 					false,
 					trxCtx,
 				);
