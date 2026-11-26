@@ -126,7 +126,7 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		Manage: 'instanceRoles.description.app.manage',
 	},
 	mcpServer: {
-		Use: 'instanceRoles.description.mcpServer.use',
+		View: 'instanceRoles.description.mcpServer.view',
 		Manage: 'instanceRoles.description.mcpServer.manage',
 	},
 	insights: { View: 'instanceRoles.description.insights.view' },
