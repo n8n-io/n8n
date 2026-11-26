@@ -20,6 +20,13 @@ describe('Paddle > Workflows', () => {
 
 	beforeAll(() => {
 		const mock = nock('https://vendors.paddle.com/api');
+		const auth = { vendor_id: '12345', vendor_auth_code: 'fake-auth-code' };
+		mock
+			.post('/2.0/subscription/payments', { subscription_id: 502198, ...auth })
+			.reply(200, { success: true, response: [payment] });
+		mock
+			.post('/2.1/product/update_coupon', { coupon_code: 'EXPR10', allowed_uses: 5, ...auth })
+			.reply(200, { success: true, response: { updated: 1 } });
 		mock
 			.post('/2.1/product/create_coupon')
 			.reply(200, { success: true, response: { coupon_codes: ['SAVE10'] } });
@@ -43,6 +50,6 @@ describe('Paddle > Workflows', () => {
 	new NodeTestHarness().setupTests({
 		credentials,
 		workflowFiles: ['requests.workflow.json'],
-		customAssertions: () => expect(nock.isDone()).toBe(true),
+		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 	});
 });

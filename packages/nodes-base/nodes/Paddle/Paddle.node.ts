@@ -12,7 +12,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { couponFields, couponOperations } from './CouponDescription';
-import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { paddleApiRequest, paddleApiRequestAllItems } from './GenericFunctions';
 import { paymentFields, paymentOperations } from './PaymentDescription';
 import { planFields, planOperations } from './PlanDescription';
 import { productFields, productOperations } from './ProductDescription';
@@ -179,22 +179,10 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const discountType = this.getNodeParameter('discountType', i) as string;
 							const couponType = this.getNodeParameter('couponType', i) as string;
@@ -271,22 +259,10 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const updateBy = this.getNodeParameter('updateBy', i) as string;
 
@@ -352,22 +328,10 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -475,22 +439,10 @@ export class Paddle implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
