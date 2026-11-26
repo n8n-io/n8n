@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import { expect, request, test, type APIRequestContext, type APIResponse } from '@playwright/test';
@@ -86,6 +87,7 @@ export interface DeploymentCellOptions<TProbeOutput = unknown> {
 	stack?: N8NConfig;
 	probe: (ctx: DeploymentCellContext) => Promise<TProbeOutput>;
 	check: (ctx: DeploymentCellContext & { probeOutput: TProbeOutput }) => Promise<void>;
+	cleanup?: (stack: N8NStack) => Promise<void>;
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -950,6 +952,7 @@ export async function runDeploymentCell<TProbeOutput = unknown>(
 
 	let stack: N8NStack | undefined;
 	let probe: DeploymentProbe | undefined;
+	let cleanupError: Error | undefined;
 
 	try {
 		await test.step('Start stack', async () => {
@@ -983,7 +986,18 @@ export async function runDeploymentCell<TProbeOutput = unknown>(
 		await attachFailureLogs(stack, error);
 		throw error;
 	} finally {
+		if (stack && options.cleanup) {
+			try {
+				await options.cleanup(stack);
+			} catch (error) {
+				cleanupError = ensureError(error);
+			}
+		}
 		await probe?.dispose().catch(() => undefined);
 		await stack?.stop().catch(() => undefined);
+	}
+
+	if (cleanupError !== undefined) {
+		throw cleanupError;
 	}
 }
