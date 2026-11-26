@@ -1,0 +1,14 @@
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  h_52a137d26d774c 728,774
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "425fc073aa0a8e3f2052f7c7b16bb5f34ee34cc1",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
