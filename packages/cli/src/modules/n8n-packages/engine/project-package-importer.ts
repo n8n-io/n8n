@@ -111,15 +111,14 @@ export class ProjectPackageImporter {
 	): Promise<PackageImportPlan> {
 		this.assertAdequatePermissions(request, manifest);
 
-		const { selection } = request;
-		const selectedProjects = selection
-			? (manifest.projects ?? []).filter((project) => project.id === selection.selectedProjectId)
-			: (manifest.projects ?? []);
-
-		const allProjects = await this.packageParser.getProjects(reader);
-		const projects = selection
-			? allProjects.filter((project) => project.sourceProjectId === selection.selectedProjectId)
-			: allProjects;
+		const { selection, excludedProjectIds } = request;
+		const included = (projectId: string) =>
+			(!selection || projectId === selection.selectedProjectId) &&
+			!excludedProjectIds?.has(projectId);
+		const selectedProjects = (manifest.projects ?? []).filter(({ id }) => included(id));
+		const projects = (await this.packageParser.getProjects(reader)).filter(({ sourceProjectId }) =>
+			included(sourceProjectId),
+		);
 		const projectPlan = await this.projectImporter.plan(
 			request.user,
 			projects,
