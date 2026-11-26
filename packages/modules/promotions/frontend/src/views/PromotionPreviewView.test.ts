@@ -1453,7 +1453,7 @@ describe('PromotionPreviewView', () => {
 					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
 				}),
 			);
-			const { getAllByTestId, getByRole, queryByRole, queryByText } = await render();
+			const { getAllByTestId, getByRole, queryByText } = await render();
 
 			// Only "Weekly KPI report" (w3) uses "Personal Gmail".
 			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
