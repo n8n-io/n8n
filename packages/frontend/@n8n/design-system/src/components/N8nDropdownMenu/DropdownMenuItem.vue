@@ -44,6 +44,7 @@ const props = withDefaults(
 		checkbox: false,
 		closeOnSelect: true,
 		searchMode: 'internal',
+		iconSize: 'large',
 	},
 );
 const slots = defineSlots<DropdownMenuItemSlots<T, D>>();
@@ -286,7 +287,7 @@ onBeforeUnmount(() => {
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="iconSize"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 						{{ icon.value }}
@@ -493,7 +494,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -533,7 +534,7 @@ onBeforeUnmount(() => {
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="iconSize"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 						{{ icon.value }}

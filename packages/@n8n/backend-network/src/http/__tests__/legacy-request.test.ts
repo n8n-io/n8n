@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
 import { binaryToString } from '../binary-string';
 import { OutboundHttp } from '../outbound-http';
+import { startRecordingProxy, type RecordingProxy } from './fixtures/recording-proxy';
 
 // A given `bridge` is installed as the instance's protection service, so
 // clients pick it up through the default safe mode.
@@ -366,6 +367,51 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				expect(body).toBe('ok');
 			},
 		);
+
+		describe('with a proxy', () => {
+			let proxy: RecordingProxy;
+
+			beforeEach(async () => {
+				nock.restore();
+				proxy = await startRecordingProxy();
+			});
+
+			afterEach(async () => {
+				await proxy.close();
+				nock.activate();
+			});
+
+			it('blocks a proxy that is not in allowedDomains', async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy({
+						url: 'http://example.com/data',
+						headers: { Authorization: 'Bearer token' },
+						proxy: proxy.url,
+						allowedDomains: 'example.com',
+					}),
+				).rejects.toThrow('Domain not allowed');
+
+				expect(proxy.received).toHaveLength(0);
+			});
+
+			it.each([['example.com, 127.0.0.1'], [undefined]])(
+				'uses the proxy when allowedDomains is %s',
+				async (allowedDomains) => {
+					const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+					const body = await client.requestLegacy({
+						url: 'http://example.com/data',
+						proxy: proxy.url,
+						allowedDomains,
+					});
+
+					expect(body).toBe('ok');
+					expect(proxy.received).toHaveLength(1);
+				},
+			);
+		});
 
 		it('blocks redirects to disallowed domains', async () => {
 			nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://not-allowed.com/data' });

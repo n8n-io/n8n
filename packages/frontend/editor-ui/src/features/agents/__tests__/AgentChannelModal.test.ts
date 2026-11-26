@@ -45,6 +45,7 @@ const slackIntegration = {
 const statuses = ref<
 	Record<string, 'configured' | 'starting' | 'connected' | 'error' | 'disconnected'>
 >({});
+const n8nChatPublishedEnabled = ref(false);
 const connectedCredentials = ref<Record<string, string>>({});
 const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
@@ -164,13 +165,13 @@ vi.mock('../channels/registry', async () => {
 	// n8n Chat has no credential and drives its footer from the modal itself, so
 	// its view only needs to hold a description, not the connect/beforeSave flow.
 	const n8nChatView = defineComponent({
-		props: ['savedDescription'],
+		props: ['savedDescription', 'availableInChat'],
 		setup(props: { savedDescription?: string }) {
 			const description = ref(props.savedDescription ?? '');
 			return { description };
 		},
 		template: `
-			<div data-testid="n8n-chat-view">
+			<div data-testid="n8n-chat-view" :data-available-in-chat="availableInChat">
 				<button data-testid="set-description" @click="description = 'New description'" />
 			</div>
 		`,
@@ -213,6 +214,7 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 vi.mock('../composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
 		fetchStatus: mocks.fetchStatus,
+		n8nChatPublishedEnabled,
 		connectedCredentials,
 		integrationSettings: ref({ example: { accessMode: 'all' } }),
 		integrationApproval,
@@ -363,6 +365,7 @@ describe('AgentChannelModal', () => {
 		platformCredentialRequired.value = undefined;
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
+		n8nChatPublishedEnabled.value = false;
 		connectedCredentials.value = {};
 		integrationApproval.value = {};
 		selectedCredentials.value = {};
@@ -388,6 +391,13 @@ describe('AgentChannelModal', () => {
 		mocks.afterSave.mockResolvedValue(undefined);
 		mocks.ensureAgentPersisted.mockResolvedValue(undefined);
 		mocks.saveDescription.mockResolvedValue(undefined);
+	});
+
+	it('uses the Add trigger title in the trigger picker', async () => {
+		const wrapper = mountModal('list');
+		await flushPromises();
+
+		expect(wrapper.get('h3').text()).toBe('agents.builder.addTrigger.modal.title');
 	});
 
 	it('uses registry metadata and setup rendering without platform checks', async () => {
@@ -1271,6 +1281,17 @@ describe('AgentChannelModal', () => {
 	});
 
 	describe('n8n Chat', () => {
+		it('passes published chat availability to the setup view after removal from the draft', () => {
+			statuses.value.n8n_chat = 'disconnected';
+			n8nChatPublishedEnabled.value = true;
+
+			const wrapper = mountModal('n8n_chat_setup', true);
+
+			expect(
+				wrapper.get('[data-testid="n8n-chat-view"]').attributes('data-available-in-chat'),
+			).toBe('true');
+		});
+
 		it('hides n8n Chat when its feature flag is off', async () => {
 			n8nChatFlag.value = false;
 			const wrapper = mountModal('list');

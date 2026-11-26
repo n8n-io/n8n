@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { toArtifactTurns } from '../agentTreeArtifactTurns';
+import type { ArtifactToolCall, ArtifactTurn } from '../artifactTurns';
 import * as utils from '../canvasPreview.utils';
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from '../canvasPreview.utils';
 
@@ -1609,28 +1610,24 @@ describe('getAppArtifactFromToolCall', () => {
 	const expected = { appId: 'app-1', name: 'Todos', projectId: 'project-1' };
 
 	test.each([
-		['create', { action: 'create', name: 'Todos', namespace: 'todos' }, { app }],
-		['commit', { action: 'commit', appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
-	])('returns the app of a successful %s', (_label, args, result) => {
-		expect(getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result }))).toEqual(
-			expected,
-		);
+		['create_app', { blueprint: { name: 'Todos', namespace: 'todos' } }, { app }],
+		['commit_app', { appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
+	])('returns the app of a successful %s', (toolName, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName, args, result }))).toEqual(expected);
 	});
 
 	test.each([
-		['a get', { action: 'get', appId: 'app-1' }, { app }],
-		['an open', { action: 'open', appId: 'app-1' }, { app, path: 'apps/app-1' }],
-		['an error', { action: 'commit', appId: 'app-1' }, { error: 'There are no staged changes.' }],
-	])('returns undefined for %s', (_label, args, result) => {
-		expect(
-			getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result })),
-		).toBeUndefined();
+		['get_app', { appId: 'app-1' }, { app }],
+		['open_app', { appId: 'app-1' }, { app, path: 'apps/app-1' }],
+		['commit_app', { appId: 'app-1' }, { error: 'There are no staged changes.' }],
+	])('returns undefined for a %s call without a written app', (toolName, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName, args, result }))).toBeUndefined();
 	});
 
 	test('returns undefined for a call that is still running', () => {
 		expect(
 			getAppArtifactFromToolCall(
-				makeToolCall({ toolName: 'apps', args: { action: 'create' }, isLoading: true }),
+				makeToolCall({ toolName: 'create_app', args: {}, isLoading: true }),
 			),
 		).toBeUndefined();
 	});
@@ -1642,8 +1639,8 @@ describe('getLatestAppArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-create',
-					toolName: 'apps',
-					args: { action: 'create' },
+					toolName: 'create_app',
+					args: {},
 					result: { app: { id: 'app-1', name: 'One', projectId: 'project-1' } },
 				}),
 			],
@@ -1653,8 +1650,8 @@ describe('getLatestAppArtifactResult', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: 'tc-commit',
-							toolName: 'apps',
-							args: { action: 'commit', appId: 'app-2' },
+							toolName: 'commit_app',
+							args: { appId: 'app-2' },
 							result: { app: { id: 'app-2', name: 'Two', projectId: 'project-1' } },
 						}),
 					],
@@ -1668,5 +1665,62 @@ describe('getLatestAppArtifactResult', () => {
 			projectId: 'project-1',
 			toolCallId: 'tc-commit',
 		});
+	});
+});
+
+describe('isAppInLiveTurn', () => {
+	const call = (
+		toolName: string,
+		args: Record<string, unknown>,
+		result?: unknown,
+		isLoading = false,
+	): ArtifactToolCall => ({ toolCallId: `${toolName}-1`, toolName, args, result, isLoading });
+	const turn = (isLive: boolean, toolCalls: ArtifactToolCall[]): ArtifactTurn => ({
+		id: 'turn-1',
+		role: 'assistant',
+		isLive,
+		toolCalls,
+	});
+	const created = call(
+		'create_app',
+		{ blueprint: {} },
+		{ app: { id: 'app-1', name: 'Todos', projectId: 'project-1' } },
+	);
+
+	test('is true when the live turn created the app', () => {
+		expect(utils.isAppInLiveTurn([turn(true, [created])], 'app-1')).toBe(true);
+	});
+
+	test('is true while the live turn commits the app', () => {
+		const committing = call('commit_app', { appId: 'app-1', label: 'Add tasks' }, undefined, true);
+
+		expect(utils.isAppInLiveTurn([turn(true, [committing])], 'app-1')).toBe(true);
+	});
+
+	test.each(['open_app', 'bind_app_resource', 'unbind_app_resource', 'discard_app_changes'])(
+		'is true while the live turn works on the app with %s',
+		(toolName) => {
+			expect(
+				utils.isAppInLiveTurn([turn(true, [call(toolName, { appId: 'app-1' })])], 'app-1'),
+			).toBe(true);
+		},
+	);
+
+	test('is false for another app', () => {
+		expect(utils.isAppInLiveTurn([turn(true, [created])], 'app-2')).toBe(false);
+	});
+
+	test('is false when only a finished turn worked on the app', () => {
+		const unrelated = call('list_workflows', {});
+
+		expect(utils.isAppInLiveTurn([turn(false, [created]), turn(true, [unrelated])], 'app-1')).toBe(
+			false,
+		);
+	});
+
+	test('is false while the plan card waits for approval', () => {
+		const waiting = call('create_app', { blueprint: {} }, undefined, true);
+
+		expect(utils.isAppInLiveTurn([turn(true, [waiting])], 'app-1')).toBe(false);
 	});
 });

@@ -101,9 +101,9 @@ describe('Sources in the skills table', () => {
 	});
 
 	/** Imports every skill of the repository into the team, and answers the source id. */
-	const connect = async (repository: string) => {
+	const connect = async (repository: string, path = '') => {
 		const scope = { scope: 'project', projectId: team.id };
-		const url = `https://github.com/${repository}`;
+		const url = `https://github.com/${repository}${path ? `/tree/main/${path}` : ''}`;
 		const discovery = (
 			await editor
 				.post('/skill-sources/discover')
@@ -125,6 +125,18 @@ describe('Sources in the skills table', () => {
 	const namesOf = (page: SkillListResponse) => page.data.map(({ name }) => name);
 
 	describe('GET /skill-sources', () => {
+		it('names sibling sources by their folders for source actions and filters', async () => {
+			const first = await connect('acme/zeta', 'skills/z1');
+			const second = await connect('acme/zeta', 'skills/z2');
+			const sources = (await editor.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+
+			expect(sources).toEqual([
+				expect.objectContaining({ id: first, label: 'acme/zeta / skills/z1', path: 'skills/z1' }),
+				expect.objectContaining({ id: second, label: 'acme/zeta / skills/z2', path: 'skills/z2' }),
+			]);
+		});
+
 		it('lists the sources the user can see, with their skills and updates', async () => {
 			const zeta = await connect('acme/zeta');
 			github.push('acme/zeta', {
@@ -288,6 +300,41 @@ describe('Sources in the skills table', () => {
 			expect(page.count).toBe(6);
 			expect(page.collapsedSources).toEqual([]);
 		});
+
+		it.each([false, true])(
+			'orders root, legacy, and folder sources before pagination (project filter: %s)',
+			async (filtered) => {
+				const legacy = await connect('acme/zeta', 'skills/z1');
+				await db().update(
+					SkillSourceConnection,
+					{ id: legacy },
+					{ identityKey: 'github:github.com/acme/zeta' },
+				);
+				const sibling = await connect('acme/zeta', 'skills/z2');
+				const alpha = await connect('acme/alpha');
+				github.push('acme/beta', repo(['b1']));
+				const beta = await connect('acme/beta', 'skills/b1');
+				const query = {
+					groupBy: 'source',
+					sortBy: 'name:asc',
+					take: 3,
+					projectId: filtered ? team.id : undefined,
+				};
+
+				const first = await list(editor, query);
+				expect(namesOf(first)).toEqual(['a1', 'a2', 'b1']);
+				expect(first.data.map(({ sourceId }) => sourceId)).toEqual([alpha, alpha, beta]);
+				const second = await list(editor, { ...query, page: 1 });
+				expect(namesOf(second)).toEqual(['z1', 'z2']);
+				expect(second.data.map(({ sourceId }) => sourceId)).toEqual([legacy, sibling]);
+				const folded = await list(editor, { ...query, collapsedSourceIds: beta });
+				expect(namesOf(folded)).toEqual(['a1', 'a2']);
+				expect(folded.collapsedSources).toEqual([{ sourceId: beta, index: 2, skillCount: 1 }]);
+				const focused = await list(editor, { ...query, focusSourceId: sibling });
+				expect(focused.page).toBe(1);
+				expect(namesOf(focused)).toEqual(['z1', 'z2']);
+			},
+		);
 
 		it('splits a large source across pages and repeats its source id', async () => {
 			const zeta = await connect('acme/zeta');

@@ -155,6 +155,7 @@ interface DispatcherView {
 			reason: string;
 			incomplete?: boolean;
 			attribution?: string;
+			observed?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
@@ -516,6 +517,7 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 					expectation,
 					pass: true,
 					reason: 'Route agent from build-agent call. Judge: It builds an Agent.',
+					observed: 'agent',
 				},
 			],
 			[
@@ -524,6 +526,7 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 					pass: false,
 					reason: 'Route workflow from build-workflow call.',
 					attribution: 'builder_issue',
+					observed: 'workflow',
 				},
 			],
 			[

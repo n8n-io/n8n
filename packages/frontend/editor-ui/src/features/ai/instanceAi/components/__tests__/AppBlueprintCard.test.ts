@@ -30,14 +30,11 @@ const blueprint: AppBlueprint = {
 const renderComponent = createComponentRenderer(AppBlueprintCard);
 
 describe('AppBlueprintCard', () => {
-	it('starts building with the edited blueprint', async () => {
+	it('starts building with the edited title', async () => {
 		const { emitted, getByTestId } = renderComponent({ props: { blueprint } });
 		const name = getByTestId('instance-ai-app-blueprint-name');
 		await userEvent.clear(name);
 		await userEvent.type(name, 'Project planner');
-		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
-		await userEvent.clear(namespace);
-		await userEvent.type(namespace, 'project-planner');
 
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
 
@@ -45,7 +42,32 @@ describe('AppBlueprintCard', () => {
 			{
 				kind: 'appBlueprint',
 				approved: true,
-				blueprint: { ...blueprint, name: 'Project planner', namespace: 'project-planner' },
+				blueprint: { ...blueprint, name: 'Project planner' },
+			},
+		]);
+	});
+
+	it('shows the app title as the only field', () => {
+		const { getByTestId, queryByTestId } = renderComponent({ props: { blueprint } });
+
+		expect(getByTestId('instance-ai-app-blueprint-name')).toHaveValue('Weekly planner');
+		expect(queryByTestId('instance-ai-app-blueprint-namespace')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-app-blueprint-visibility')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-app-blueprint-theme')).not.toBeInTheDocument();
+	});
+
+	it('keeps the proposed namespace and theme and makes the app available to the project only', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: { blueprint: { ...blueprint, visibility: 'instance', theme: 'dark' } },
+		});
+
+		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
+
+		expect(emitted().submit?.[0]).toEqual([
+			{
+				kind: 'appBlueprint',
+				approved: true,
+				blueprint: { ...blueprint, visibility: 'project', theme: 'dark' },
 			},
 		]);
 	});
@@ -70,57 +92,18 @@ describe('AppBlueprintCard', () => {
 
 	it('cancels without starting a build', async () => {
 		const { emitted, getByTestId } = renderComponent({ props: { blueprint } });
-		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
-		await userEvent.clear(namespace);
-		await userEvent.type(namespace, 'Not valid');
+		await userEvent.clear(getByTestId('instance-ai-app-blueprint-name'));
 
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-cancel'));
 
 		expect(emitted().submit?.[0]).toEqual([{ kind: 'appBlueprint', approved: false, blueprint }]);
 	});
 
-	it('disables approval when a required field is invalid', async () => {
+	it('disables approval when the app title is empty', async () => {
 		const { getByTestId } = renderComponent({ props: { blueprint } });
-		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
-		await userEvent.clear(namespace);
-		await userEvent.type(namespace, 'Not valid');
+		await userEvent.clear(getByTestId('instance-ai-app-blueprint-name'));
 
 		expect(getByTestId('instance-ai-app-blueprint-start')).toBeDisabled();
-	});
-
-	it('shows a taken namespace and blocks approval until the user changes it', async () => {
-		const { emitted, getByTestId, queryByTestId } = renderComponent({
-			props: { blueprint, errors: { namespace: 'taken' } },
-		});
-		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
-
-		expect(getByTestId('instance-ai-app-blueprint-namespace-error')).toHaveTextContent(
-			'Another app already uses this namespace. Choose a different one.',
-		);
-		expect(namespace).toHaveAttribute('aria-invalid', 'true');
-		expect(getByTestId('instance-ai-app-blueprint-start')).toBeDisabled();
-
-		await userEvent.clear(namespace);
-		await userEvent.type(namespace, 'weekly-planner-2');
-
-		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
-		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
-		expect(emitted().submit?.[0]).toEqual([
-			{
-				kind: 'appBlueprint',
-				approved: true,
-				blueprint: { ...blueprint, namespace: 'weekly-planner-2' },
-			},
-		]);
-	});
-
-	it('shows no namespace error after resolution', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: { blueprint, errors: { namespace: 'taken' }, readOnly: true },
-		});
-
-		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
-		expect(getByTestId('instance-ai-app-blueprint-namespace')).not.toHaveAttribute('aria-invalid');
 	});
 
 	it('shows that n8n could not create the app', () => {
@@ -129,8 +112,17 @@ describe('AppBlueprintCard', () => {
 		});
 
 		expect(getByTestId('instance-ai-app-blueprint-failed')).toHaveTextContent(
-			"Couldn't create this app.",
+			"Couldn't create this app",
 		);
+	});
+
+	it('shows the title and the instructions placeholder', () => {
+		const { getByText, getByPlaceholderText } = renderComponent({ props: { blueprint } });
+
+		expect(getByText('Review the app plan')).toBeVisible();
+		expect(
+			getByPlaceholderText('Need tweaks? Remove a connection or change what the app shows'),
+		).toBeVisible();
 	});
 
 	it('shows the description as read-only text', () => {
@@ -150,8 +142,9 @@ describe('AppBlueprintCard', () => {
 		expect(bindings[1]).toHaveAttribute('data-binding-kind', 'agent');
 		expect(getByText('Weekly tasks')).toBeVisible();
 		expect(getByText('Stores tasks and their completion status.')).toBeVisible();
+		expect(getByText('Connections')).toBeVisible();
 		expect(getByText('Existing')).toBeVisible();
-		expect(getByText('New')).toBeVisible();
+		expect(getByText('To be created')).toBeVisible();
 		expect(queryByText('table-1')).not.toBeInTheDocument();
 	});
 
@@ -160,7 +153,7 @@ describe('AppBlueprintCard', () => {
 			props: { blueprint: { ...blueprint, bindings: undefined } },
 		});
 
-		expect(queryByText('Runs on')).not.toBeInTheDocument();
+		expect(queryByText('Connections')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-app-blueprint-binding')).not.toBeInTheDocument();
 	});
 

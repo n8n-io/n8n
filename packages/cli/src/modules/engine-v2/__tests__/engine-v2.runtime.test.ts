@@ -5,6 +5,7 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	SharedSecretIdentityVerifier,
 	type EngineWorkQueues,
 	type ExecutionResponseSender,
 } from '@n8n/engine';
@@ -20,7 +21,7 @@ import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import type { EngineSubWorkflowClient } from '../engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
@@ -247,6 +248,40 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
+		it('passes the roles it is given to the engine', async () => {
+			await newRuntime().init({ ...initOptions(), roles: ['orchestrator'] });
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ roles: ['orchestrator'] }),
+			);
+		});
+
+		it('leaves the roles to the engine default when it is given none', async () => {
+			await newRuntime().init(initOptions());
+
+			const [options] = mocks.createEngineRuntime.mock.calls[0] as [{ roles?: unknown }];
+			expect(options.roles).toBeUndefined();
+		});
+
+		it.each([
+			{ roles: undefined, verifies: true },
+			{ roles: ['api'] as const, verifies: true },
+			{ roles: ['api', 'step-worker'] as const, verifies: true },
+			{ roles: ['orchestrator'] as const, verifies: false },
+			{ roles: ['orchestrator', 'step-worker'] as const, verifies: false },
+		])(
+			'with roles $roles, gives the engine an identity verifier: $verifies',
+			async ({ roles, verifies }) => {
+				await newRuntime().init({ ...initOptions(), roles });
+
+				const [options] = mocks.createEngineRuntime.mock.calls[0] as [
+					{ identityVerifier?: unknown },
+				];
+				expect(options.identityVerifier !== undefined).toBe(verifies);
+				expect(SharedSecretIdentityVerifier).toHaveBeenCalledTimes(verifies ? 1 : 0);
+			},
+		);
+
 		it('starts the engine', async () => {
 			await newRuntime().init(initOptions());
 
@@ -466,6 +501,17 @@ describe('EngineV2Runtime', () => {
 
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
 			expect(mocks.engine.stop).not.toHaveBeenCalled();
+		});
+
+		it('stops the engine when it fails to start', async () => {
+			mocks.engine.start.mockImplementationOnce(() => {
+				throw new Error('start failed');
+			});
+
+			await expect(newRuntime().init(initOptions())).rejects.toThrow('start failed');
+
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
 		});
 
 		it('closes the unbound server, stops the engine and closes the connection when the server fails to listen', async () => {

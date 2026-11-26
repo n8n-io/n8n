@@ -1,6 +1,7 @@
 import type { DropdownMenuContentProps } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
+import type { IconSize } from '../../types';
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
@@ -94,6 +95,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	label: string;
 	/** Icon or emoji displayed before the label */
 	icon?: IconOrEmoji;
+	/** Size of the leading icon. */
+	iconSize?: IconSize;
 	/** Whether the item is disabled */
 	disabled?: boolean;
 	/** Whether to show a separator above the item */

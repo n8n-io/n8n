@@ -19,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { getCurrentScope, onScopeDispose, ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useActivationError } from '@/app/composables/useActivationError';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import type { INode } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
@@ -284,9 +285,14 @@ export function useWorkflowActivate() {
 				const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.publishTitle');
 				const violations = getPolicyViolations(error);
 
-				// An admin may have turned on reviews and required approval after this page loaded.
+				// An admin may have turned on reviews or required approval after this page loaded.
 				if (error.meta?.reason === 'review_required') {
-					useSettingsStore().setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: true });
+					const settingsStore = useSettingsStore();
+					settingsStore.setWorkflowReviewsPolicy({
+						...(settingsStore.settings.workflowReviews ?? {}),
+						enabled: true,
+					});
+					void useWorkflowReviewStatusStore().fetchStatus(workflowId);
 					// Retrying this version cannot succeed, so close whichever publish modal sent it.
 					uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
 					uiStore.closeModal(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);

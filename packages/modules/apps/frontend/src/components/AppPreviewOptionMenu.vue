@@ -1,8 +1,7 @@
 <script setup lang="ts" generic="T extends string">
 import {
-	N8nButton,
 	N8nDropdownMenu,
-	N8nIcon,
+	N8nIconButton,
 	N8nTooltip,
 	type DropdownMenuItemProps,
 	type IconName,
@@ -14,6 +13,7 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	options: Array<{ value: T; label: string; icon: IconName }>;
 	label: string;
+	disabled?: boolean;
 }>();
 
 const selected = defineModel<T>({ required: true });
@@ -35,14 +35,19 @@ const selectedOption = computed(() => props.options.find(({ value }) => value ==
 		<N8nDropdownMenu
 			v-bind="$attrs"
 			:items="items"
-			placement="bottom-end"
+			:disabled="disabled"
+			placement="bottom-start"
 			@select="selected = $event"
 		>
 			<template #trigger>
-				<N8nButton variant="ghost" size="small" :aria-label="label">
-					<N8nIcon v-if="selectedOption" :icon="selectedOption.icon" size="small" />
-					<N8nIcon icon="chevron-down" :size="12" />
-				</N8nButton>
+				<!-- The icon shows the current choice, so the trigger needs no chevron. -->
+				<N8nIconButton
+					:icon="selectedOption?.icon ?? options[0].icon"
+					variant="ghost"
+					size="small"
+					:aria-label="label"
+					:disabled="disabled"
+				/>
 			</template>
 		</N8nDropdownMenu>
 	</N8nTooltip>

@@ -167,6 +167,12 @@ const hoveredStatus = computed(() => {
 	const summary = hoveredSummary.value;
 	if (!summary) return undefined;
 	if (summary.type === 'workflow') {
+		if (summary.isArchived) {
+			return {
+				label: i18n.baseText('workflows.item.archived'),
+				published: false,
+			};
+		}
 		return {
 			label: i18n.baseText(
 				summary.published ? 'workflows.published' : 'instanceAi.previewTabBar.draft',
@@ -508,7 +514,8 @@ async function handleCopyLink(tab: PreviewTab) {
 
 .header {
 	flex-shrink: 0;
-	height: 49px;
+	// 6px above and below the tabs, plus the 1px bottom border.
+	height: 45px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);

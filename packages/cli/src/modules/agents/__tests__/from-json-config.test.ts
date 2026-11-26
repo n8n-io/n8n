@@ -210,7 +210,7 @@ describe('buildFromJson()', () => {
 
 	it('sets name, model, and instructions', async () => {
 		const agent = await buildFromJson(
-			makeConfig(),
+			makeConfig({ name: 'Prodigy' }),
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
@@ -220,10 +220,11 @@ describe('buildFromJson()', () => {
 		);
 		const snap: AgentSnapshot = agent.snapshot;
 
-		expect(snap.name).toBe('test-agent');
+		expect(snap.name).toBe('Prodigy');
 		expect(snap.model.provider).toBe('anthropic');
 		expect(snap.model.name).toBe('claude-sonnet-5-5');
-		expect(snap.instructions).toBe('You are a test agent.');
+		// AGENT-1663: The agent needs its name even if the authored instructions omit it.
+		expect(snap.instructions).toBe('Your name is "Prodigy".\n\nYou are a test agent.');
 	});
 
 	it('appends the self-modification policy only for the preview chat', async () => {
@@ -242,12 +243,12 @@ describe('buildFromJson()', () => {
 			).snapshot.instructions ?? '';
 
 		const preview = await build(true);
-		expect(preview).toContain('You are a test agent.');
+		expect(preview).toContain('Your name is "test-agent".\n\nYou are a test agent.');
 		expect(preview).toContain('Preview chat policy');
 		expect(preview).toContain('including your own setup, only through your tools');
 		expect(preview).not.toContain('you have no tool that can');
-		expect(await build(false)).toBe('You are a test agent.');
-		expect(await build()).toBe('You are a test agent.');
+		expect(await build(false)).not.toContain('Preview chat policy');
+		expect(await build()).not.toContain('Preview chat policy');
 	});
 
 	it('handles multi-slash model string for aggregator providers', async () => {
@@ -349,7 +350,7 @@ describe('buildFromJson()', () => {
 		);
 
 		const instructions = agent.snapshot.instructions ?? '';
-		expect(instructions).toBe('You are a test agent.');
+		expect(instructions).toContain('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
@@ -405,9 +406,10 @@ describe('buildFromJson()', () => {
 						allowedTools: ['load_workflow'],
 						references: [
 							{
-								path: 'references/guide.md',
+								path: 'reference/degraded/guide.md',
 								content: '# Guide',
 							},
+							{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
 						],
 					},
 					unused_skill: {
@@ -432,19 +434,31 @@ describe('buildFromJson()', () => {
 		const loadedText = (loaded.value ?? []).map((part) => part.text).join('\n');
 		expect(loadedText).toContain('[Skill: "Summarize notes"]');
 		expect(loadedText).toContain('Extract decisions and action items.');
-		expect(loadedText).toContain('filePath: "references/guide.md"');
+		expect(loadedText).toContain('filePath: "reference/degraded/guide.md"');
 
 		await expect(
-			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
+			loadSkill!.handler?.(
+				{ skillId: 'summarize_notes', filePath: './reference/degraded/guide.md' },
+				{},
+			),
 		).resolves.toMatchObject({
 			ok: true,
 			success: true,
 			skillId: 'summarize_notes',
-			filePath: 'references/guide.md',
+			filePath: 'reference/degraded/guide.md',
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
+
+		// An agent never gets a binary file: it is not a linked file of the skill.
+		expect(loadedText).not.toContain('assets/logo.png');
+		const binary = await loadSkill!.handler?.(
+			{ skillId: 'summarize_notes', filePath: 'assets/logo.png' },
+			{},
+		);
+		expect(binary).toMatchObject({ success: false, errorCode: 'invalid_reference' });
+		expect(JSON.stringify(binary)).not.toContain('AP8=');
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,
