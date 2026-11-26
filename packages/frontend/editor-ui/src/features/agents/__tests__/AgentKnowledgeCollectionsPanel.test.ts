@@ -116,9 +116,19 @@ function chipNames(result: Awaited<ReturnType<typeof render>>) {
 describe('AgentKnowledgeCollectionsPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		listAgentKnowledgeCollections.mockResolvedValue([collection('a', true), collection('b')]);
-		addAgentKnowledgeCollection.mockResolvedValue({ success: true });
-		removeAgentKnowledgeCollection.mockResolvedValue({ success: true });
+		// The panel reads the list again after a change, so the mocks keep the server state.
+		let server = [collection('a', true), collection('b')];
+		const setOnServer = (id: string, added: boolean) => {
+			server = server.map((item) => (item.id === id ? { ...item, added } : item));
+			return { success: true };
+		};
+		listAgentKnowledgeCollections.mockImplementation(async () => server);
+		addAgentKnowledgeCollection.mockImplementation(
+			async (_context, _projectId, _agentId, id: string) => setOnServer(id, true),
+		);
+		removeAgentKnowledgeCollection.mockImplementation(
+			async (_context, _projectId, _agentId, id: string) => setOnServer(id, false),
+		);
 	});
 
 	it('shows only the added collections as pills', async () => {
@@ -197,6 +207,7 @@ describe('AgentKnowledgeCollectionsPanel', () => {
 
 		await userEvent.click(await result.findByTestId('picker-add-b'));
 		await userEvent.click(await result.findByTestId('picker-remove-b'));
+		listAgentKnowledgeCollections.mockResolvedValue([collection('a', true), collection('b', true)]);
 		add.resolve({ success: true });
 
 		await waitFor(() => expect(chipNames(result)).toEqual(['Collection a', 'Collection b']));

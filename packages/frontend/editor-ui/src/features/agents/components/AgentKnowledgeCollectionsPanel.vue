@@ -61,35 +61,25 @@ const pickerItems = computed<CollectionConnectionItem[]>(() =>
 );
 
 /** Collections of the current agent with an add or remove request that is still running. */
-let busyIds = new Set<string>();
-// Counts adds and removes, so a list read can tell that one happened while it ran.
-let changeCount = 0;
-// A list read that overlapped a request was dropped, so the list is read again after it.
-let reloadWhenIdle = false;
+const busyIds = new Set<string>();
 const { next: nextRead } = useLatestFetch();
 
 function isStale(projectId: string, agentId: string) {
 	return projectId !== props.projectId || agentId !== props.agentId;
 }
 
+/**
+ * A read that returns while a request runs is dropped, because the server can answer before it
+ * applies the request. The last request to finish reads the list again.
+ */
 async function load() {
 	const { projectId, agentId } = props;
 	const isLatest = nextRead();
-	const changesBefore = changeCount;
-	// The server can answer before it applies a request that is still running.
-	const quietAtStart = busyIds.size === 0;
 	loading.value = true;
 	try {
 		const list = await listAgentKnowledgeCollections(rootStore.restApiContext, projectId, agentId);
-		if (!isLatest()) {
-			return;
-		}
-		if (quietAtStart && changesBefore === changeCount) {
+		if (isLatest() && busyIds.size === 0) {
 			collections.value = list;
-		} else if (busyIds.size === 0) {
-			void load();
-		} else {
-			reloadWhenIdle = true;
 		}
 	} catch (error) {
 		if (isLatest()) {
@@ -106,15 +96,13 @@ watch(
 	() => [props.projectId, props.agentId],
 	() => {
 		collections.value = [];
-		busyIds = new Set();
-		reloadWhenIdle = false;
+		busyIds.clear();
 		void load();
 	},
 	{ immediate: true },
 );
 
 function setAdded(collectionId: string, added: boolean) {
-	changeCount++;
 	collections.value = collections.value.map((collection) =>
 		collection.id === collectionId ? { ...collection, added } : collection,
 	);
@@ -129,8 +117,7 @@ async function setMembership(collectionId: string, added: boolean) {
 		return;
 	}
 	const { projectId, agentId } = props;
-	const busy = busyIds;
-	busy.add(collectionId);
+	busyIds.add(collectionId);
 	setAdded(collectionId, added);
 	try {
 		const request = added ? addAgentKnowledgeCollection : removeAgentKnowledgeCollection;
@@ -147,10 +134,12 @@ async function setMembership(collectionId: string, added: boolean) {
 			),
 		);
 	} finally {
-		busy.delete(collectionId);
-		if (busy === busyIds && busy.size === 0 && reloadWhenIdle) {
-			reloadWhenIdle = false;
-			void load();
+		// After an agent switch, the watch cleared the set and read the new agent's list.
+		if (!isStale(projectId, agentId)) {
+			busyIds.delete(collectionId);
+			if (busyIds.size === 0) {
+				void load();
+			}
 		}
 	}
 }
