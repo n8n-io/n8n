@@ -360,6 +360,7 @@ function onApprovalSelect(key: string) {
 			:questions="input.questions ?? []"
 			:intro-message="input.introMessage"
 			:disabled="isInactive"
+			:draft-key="input.requestId"
 			data-test-id="assistant-agent-questions"
 			@submit="onQuestionsSubmit"
 		/>
