@@ -239,7 +239,8 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 		// A deep component path names one primitive, so every import and re-export form is reported.
 		// Package-root namespace, star, and default forms do not name one primitive and stay out of scope.
 		// A wrapped library is reported for every form: named, default, namespace, type-only,
-		// re-export, star re-export and dynamic `import()`.
+		// re-export, star re-export, dynamic `import()`, a type query `import('x').T` and
+		// `import x = require('x')`.
 		const reportWrappedModule = (node: TSESTree.Node, source: string): boolean => {
 			const decision = decideWrappedModule(source, context.filename);
 			if (decision === undefined) return false;
@@ -294,6 +295,12 @@ export const NoDirectComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs(
 				) {
 					reportWrappedModule(node, node.source.value);
 				}
+			},
+			TSImportType(node) {
+				reportWrappedModule(node, node.source.value);
+			},
+			TSExternalModuleReference(node) {
+				reportWrappedModule(node, node.expression.value);
 			},
 		};
 

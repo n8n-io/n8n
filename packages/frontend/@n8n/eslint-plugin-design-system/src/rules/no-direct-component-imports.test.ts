@@ -451,6 +451,16 @@ ruleTester.run('no-direct-component-imports wrapped modules', NoDirectComponentI
 			filename: chartsEntryWindowsPath,
 		},
 		{
+			name: 'type query import in the entry folder',
+			code: "type Ref = import('vue-chartjs').ChartComponentRef;",
+			filename: chartsEntry,
+		},
+		{
+			name: 'type query import of another package',
+			code: "type Data = import('chart.js').ChartData;",
+			filename: editorChart,
+		},
+		{
 			name: 'dynamic import in the entry folder',
 			code: "const lib = await import('vue-chartjs');",
 			filename: chartsEntry,
@@ -532,6 +542,26 @@ ruleTester.run('no-direct-component-imports wrapped modules', NoDirectComponentI
 		{
 			name: 'dynamic import',
 			code: "const lib = await import('vue-chartjs');",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'type query import',
+			code: "type Ref = import('vue-chartjs').ChartComponentRef;",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'type query import of a subpath',
+			code: "let chart: import('vue-chartjs/dist/index.js').ChartComponentRef;",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'import equals require',
+			code: "import Lib = require('vue-chartjs');",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'export import equals require',
+			code: "export import Lib = require('vue-chartjs');",
 			errors: [moduleError(chartsBan)],
 		},
 		{

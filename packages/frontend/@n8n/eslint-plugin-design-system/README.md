@@ -24,7 +24,7 @@ Three lists select what the rule checks:
 
 - `src/rules/pending-reka-imports.ts` and `allowedElementPlusComponents` in `src/rules/element-plus-components.ts` name primitives that are not migrated yet. Those imports are allowed in any file. Remove a name when that primitive is migrated.
 - `src/rules/wrapped-component-bans.ts` names a migrated primitive. Only the wrapper folder may import it. Add a row when a new wrapper replaces a primitive.
-- `src/rules/wrapped-module-bans.ts` names a library that a design-system entry wraps as a whole, for example `vue-chartjs`, which `@n8n/design-system/charts` wraps. Only the entry folder may import the library or its subpaths. Every form is reported: named, default, namespace, type-only, side-effect, re-export, star re-export and a dynamic `import()` with a literal source.
+- `src/rules/wrapped-module-bans.ts` names a library that a design-system entry wraps as a whole, for example `vue-chartjs`, which `@n8n/design-system/charts` wraps. Only the entry folder may import the library or its subpaths. Every form is reported: named, default, namespace, type-only, side-effect, re-export, star re-export, a dynamic `import()` with a literal source, a type query such as `import('vue-chartjs').ChartComponentRef`, and `import x = require('vue-chartjs')`.
 
 The rule checks named script imports and named re-exports. In Vue files it also checks Element Plus template tags. A deep Element Plus component path is reported for every import form and every re-export form. Namespace imports, star re-exports, and default imports of a package root (`reka-ui` or `element-plus`) stay out of scope, because those forms do not name one primitive.
 
