@@ -2,7 +2,6 @@ import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { tagVersionInfoToReleaseCandidateBranchName } from './github-helpers.mjs';
 
-const trySh = mock.fn(() => ({ ok: true, out: '' }));
 function resolveV2Track(track) {
 	if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
 	if (track === 'beta') return { version: '2.10.1', tag: 'n8n@2.10.1' };
@@ -31,7 +30,6 @@ mock.module('./github-helpers.mjs', {
 			]),
 		resolveReleaseTagForTrack,
 		tagVersionInfoToReleaseCandidateBranchName,
-		trySh,
 		writeGithubOutput: () => {}, // no-op in tests
 		getCommitForRef: () => {}, // no-op
 		localRefExists: () => {}, // no-op
@@ -88,29 +86,7 @@ describe('determine-tracks', () => {
 	});
 	it('Disallow changing major version', () => {
 		assert.throws(() => determineTrack('3.0.0'), /Major version bumps are not allowed/);
-		assert.throws(() => determineTrack('3.6.0'), /Major version bumps are not allowed/);
-		assert.throws(() => determineTrack('3.5.1'), /Major version bumps are not allowed/);
-	});
-	it('Promote the v3 baseline when cutting the first normal v3 beta', () => {
-		trySh.mock.resetCalls();
-		assert.deepEqual(determineTrack('3.5.0'), {
-			previous_version: '3.4.1',
-			version: '3.5.0',
-			track: 'beta',
-			bump: 'minor',
-			new_stable_version: '3.4.1',
-			release_type: 'stable',
-			rc_branch: 'release-candidate/3.5.x',
-			prerelease: false,
-		});
-		assert.deepEqual(trySh.mock.calls[0].arguments, [
-			'git',
-			['merge-base', '--is-ancestor', 'refs/tags/n8n@3.4.1', 'HEAD'],
-		]);
-	});
-	it('Reject the v3 cutover if its baseline is not in the release history', () => {
-		trySh.mock.mockImplementationOnce(() => ({ ok: false, out: '' }));
-		assert.throws(() => determineTrack('3.5.0'), /must descend from n8n@3\.4\.1/);
+		assert.throws(() => determineTrack('3.5.0'), /Major version bumps are not allowed/);
 	});
 	it('Use the live v3 beta for subsequent v3 minors and patches', (t) => {
 		const versions = {
@@ -121,14 +97,12 @@ describe('determine-tracks', () => {
 			(track) => versions[track] ?? resolveV2Track(track),
 		);
 		t.after(() => resolveReleaseTagForTrack.mock.restore());
-		trySh.mock.resetCalls();
 		const minor = determineTrack('3.6.0');
 		assert.equal(minor.previous_version, '3.5.0');
 		assert.equal(minor.new_stable_version, '3.5.0');
 		const patch = determineTrack('3.5.1');
 		assert.equal(patch.previous_version, '3.5.0');
 		assert.equal(patch.new_stable_version, null);
-		assert.equal(trySh.mock.callCount(), 0);
 	});
 	it('Allow a standalone prerelease with a bare major version', () => {
 		const output = determineTrack('3.0.0', { prerelease: true });
