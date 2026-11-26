@@ -28,6 +28,25 @@ export type HitlRequestType = 'approval' | 'interaction' | 'wait';
 export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
 export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
+/** Where the tokens of a turn or a thread went. */
+export interface TimelineTokenBreakdown {
+	/** Input tokens, cached input included. */
+	inputTokens: number;
+	/** Input tokens read from the prompt cache. A subset of `inputTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `inputTokens`. */
+	cacheWriteTokens: number | null;
+	outputTokens: number;
+	totalTokens: number;
+}
+
+/** The model usage of one turn. The turn is one agent execution. */
+export interface TimelineTurnUsage extends TimelineTokenBreakdown {
+	cost: number | null;
+	startedAt: number | null;
+	stoppedAt: number | null;
+}
+
 export interface TimelineItem {
 	id?: string;
 	kind: EventKind;
@@ -85,6 +104,8 @@ export interface TimelineItem {
 	subAgentName?: string;
 	resumed?: boolean;
 	guardrailCode?: string;
+	/** The usage of the turn. Only set on the last agent message of the turn. */
+	turnUsage?: TimelineTurnUsage;
 }
 
 interface BaseFilterOption {

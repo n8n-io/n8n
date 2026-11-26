@@ -694,6 +694,34 @@ describe('sanitizeAgentJsonConfig', () => {
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
 	});
+
+	it('keeps the workflow kind and its check workflow id', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'workflow',
+							id: 'workflow_guard',
+							workflowId: 'wf-1',
+							legacyGuardrailField: true,
+						},
+					],
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'workflow', id: 'workflow_guard', workflowId: 'wf-1' }],
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
 });
 
 describe('sanitizeAgentSkillBodies', () => {

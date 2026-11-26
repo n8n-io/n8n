@@ -309,6 +309,16 @@ export function isNodeItemRestricted(nodeTypeName: string): boolean {
 	return getNodeItemRestriction(nodeTypeName) !== undefined;
 }
 
+/**
+ * A trigger row drops "Trigger" from its name only when it is the app's one row. A restricted
+ * trigger, or one kept apart from its restricted app node, needs the full name to tell them apart.
+ */
+export function keepsFullTriggerName(nodeTypeName: string): boolean {
+	return (
+		isNodeItemRestricted(nodeTypeName) || isNodeItemRestricted(nodeTypeName.replace('Trigger', ''))
+	);
+}
+
 type IsRestricted = (nodeTypeName: string) => boolean;
 
 /** Browse lists: drop restricted nodes and any section that ends up empty. */

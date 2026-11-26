@@ -112,7 +112,10 @@ const sentBody = () => create.mock.calls[0][0];
 const sentOptions = () => create.mock.calls[0][1];
 const transportOptions = (call: number) =>
 	vi.mocked(createCustomModelEndpointConfig).mock.calls[call][2];
-const transportHeaders = () => transportOptions(0).requestHeaders;
+const transportHeaders = () => ({
+	...transportOptions(0).contextHeaders,
+	...transportOptions(0).userHeaders,
+});
 
 describe('CustomModelEndpoint', () => {
 	beforeEach(() => {
@@ -280,7 +283,7 @@ describe('CustomModelEndpoint', () => {
 		// header from an earlier item would survive into a later item's retry after a 401.
 		const records = vi
 			.mocked(createCustomModelEndpointConfig)
-			.mock.calls.map((call) => call[2].requestHeaders);
+			.mock.calls.map((call) => ({ ...call[2].contextHeaders, ...call[2].userHeaders }));
 
 		expect(records).toEqual([{ 'x-first': 'set' }, {}]);
 	});
@@ -363,8 +366,8 @@ describe('CustomModelEndpoint', () => {
 		await new CustomModelEndpoint().execute.call(ctx);
 
 		expect([transportOptions(0).timeout, transportOptions(1).timeout]).toEqual([1_000, 2_000]);
-		expect(transportOptions(0).requestHeaders).toEqual({});
-		expect(transportOptions(1).requestHeaders).toMatchObject({ 'x-n8n-workflow-id': 'wf-1' });
+		expect(transportOptions(0).contextHeaders).toEqual({});
+		expect(transportOptions(1).contextHeaders).toMatchObject({ 'x-n8n-workflow-id': 'wf-1' });
 	});
 
 	it('refuses to stream, naming the option to remove', async () => {

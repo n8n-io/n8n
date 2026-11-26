@@ -210,11 +210,14 @@ export class CustomModelEndpoint implements INodeType {
 		 * this layer rather than on the request, because `mergeHeaders` lets it win over the
 		 * credential's gateway headers, which is the precedence the sub-node has.
 		 */
-		const clientFor = (requestHeaders: Record<string, string>, timeout?: number) => {
+		const clientFor = (
+			headers: { contextHeaders: Record<string, string>; userHeaders: Record<string, string> },
+			timeout?: number,
+		) => {
 			const { configuration } = createCustomModelEndpointConfig(this, credential, {
 				credentialType,
 				timeout,
-				requestHeaders,
+				...headers,
 				tokenSource: tokenSource(),
 			});
 
@@ -264,18 +267,20 @@ export class CustomModelEndpoint implements INodeType {
 					});
 				}
 
-				const requestHeaders: Record<string, string> = {
-					...contextHeadersFor(itemIndex),
-					...toHeaderRecord(
-						Object.fromEntries(
-							headerRows.flatMap(({ name, value }) => {
-								const headerName = String(name ?? '').trim();
-								return headerName ? [[headerName, value]] : [];
-							}),
-						),
+				// Kept apart from the context headers, because only what the user typed can
+				// hold a key and so become something to filter out of an error.
+				const userHeaders = toHeaderRecord(
+					Object.fromEntries(
+						headerRows.flatMap(({ name, value }) => {
+							const headerName = String(name ?? '').trim();
+							return headerName ? [[headerName, value]] : [];
+						}),
 					),
-				};
-				const client = clientFor(requestHeaders, options.timeout);
+				);
+				const client = clientFor(
+					{ contextHeaders: contextHeadersFor(itemIndex), userHeaders },
+					options.timeout,
+				);
 
 				const response = await client.chat.completions.create(body, {
 					signal: this.getExecutionCancelSignal(),

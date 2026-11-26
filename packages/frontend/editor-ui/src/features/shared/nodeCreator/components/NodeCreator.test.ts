@@ -14,6 +14,9 @@ const mockNodeCreatorState = vi.hoisted(() => ({
 	isReplacingFromSetupPanel: false,
 }));
 const mockFocusPanel = vi.hoisted(() => ({ focusPanelActive: false, focusPanelWidth: 0 }));
+const mockSetMergeNodes = vi.hoisted(() => vi.fn());
+// Stands in for store state that the generator reads, such as type availability policies.
+const generatorDependency = ref(0);
 
 vi.mock('@/app/stores/focusPanel.store', () => ({
 	useFocusPanelStore: vi.fn(() => mockFocusPanel),
@@ -47,14 +50,17 @@ vi.mock('@/features/shared/nodeCreator/composables/useKeyboardNavigation', () =>
 
 vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: vi.fn(() => ({
-		generateMergedNodesAndActions: vi.fn(() => ({ actions: [], mergedNodes: [] })),
+		generateMergedNodesAndActions: vi.fn(() => ({
+			actions: [],
+			mergedNodes: [{ name: `generation-${generatorDependency.value}` }],
+		})),
 	})),
 }));
 
 vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		setActions: vi.fn(),
-		setMergeNodes: vi.fn(),
+		setMergeNodes: mockSetMergeNodes,
 		get openingContext() {
 			return mockNodeCreatorState.openingContext;
 		},
@@ -110,6 +116,18 @@ describe('NodeCreator', () => {
 		mockNodeCreatorState.isReplacingFromSetupPanel = false;
 		mockFocusPanel.focusPanelActive = false;
 		mockFocusPanel.focusPanelWidth = 0;
+		generatorDependency.value = 0;
+	});
+
+	it('regenerates the merged nodes when state read by the generator changes', async () => {
+		renderComponent();
+		expect(mockSetMergeNodes).toHaveBeenLastCalledWith([{ name: 'generation-0' }]);
+
+		generatorDependency.value = 1;
+
+		await waitFor(() =>
+			expect(mockSetMergeNodes).toHaveBeenLastCalledWith([{ name: 'generation-1' }]),
+		);
 	});
 
 	it('calls fetchConfig from useAiGateway composable on mount', async () => {

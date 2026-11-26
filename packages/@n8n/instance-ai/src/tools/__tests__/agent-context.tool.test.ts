@@ -46,6 +46,23 @@ describe('agent-context tool', () => {
 		expect(resolveDefaultAgentId).not.toHaveBeenCalled();
 	});
 
+	it('passes the path and offset for the next part of a skill reference', async () => {
+		const reader = { lookup: vi.fn().mockResolvedValue({}) };
+		const tool = makeTool(reader);
+		const input = {
+			type: 'skill',
+			skillId: 'skill_a',
+			referencePaths: ['reference/guide.md'],
+			referenceOffset: 262_144,
+		};
+
+		await executeTool(tool, input);
+
+		expect(reader.lookup).toHaveBeenCalledWith({ ...input, agentId: 'agent-1' });
+		await expect(executeTool(tool, { ...input, referenceOffset: -1 })).rejects.toThrow();
+		expect(reader.lookup).toHaveBeenCalledTimes(1);
+	});
+
 	it('passes session filters to the reader', async () => {
 		const reader = { lookup: vi.fn().mockResolvedValue({ sessions: [], nextCursor: null }) };
 

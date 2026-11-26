@@ -47,6 +47,8 @@ export const playwrightCorpus = [
 	'Manual_wait_set.json',
 	'Multiple_trigger_node_rerun.json',
 	'NDV-debug-generate-data.json',
+	'Same_slot_convergence.json',
+	'Same_slot_convergence_one_branch.json',
 	'Test_Workflow_pairedItem_incomplete_manual_bug.json',
 	'Test_workflow_partial_execution_v2.json',
 	'Test_workflow_partial_execution_with_missing_credentials.json',

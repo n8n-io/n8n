@@ -35,6 +35,7 @@ import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
 import { AssistantTurnOverrides } from '../../turn-setup/assistant-turn-overrides';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
+import type { AssistantRunDebugService } from '../assistant-run-debug.service';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type { AssistantClientRequest } from '../assistant-turn-options';
@@ -106,6 +107,8 @@ function setup() {
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
 	const telemetry = mock<TelemetryProxy>();
+	const runDebug = mock<AssistantRunDebugService>();
+	runDebug.stepHooksForTurn.mockReturnValue(undefined);
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -122,12 +125,14 @@ function setup() {
 		userRepository,
 		turnOverrides,
 		telemetry,
+		runDebug,
 	);
 	return {
 		userRepository,
 		provider,
 		telemetry,
 		turnOverrides,
+		runDebug,
 		sentry,
 		errorReporter,
 		adapterService,
@@ -170,6 +175,7 @@ function startTurn(
 		resourceId: 'system-chat:user-1',
 		abortSignal: new AbortController().signal,
 		emitHostEvent: vi.fn(),
+		emitTransientHostEvent: vi.fn(),
 		memory: mock<SystemAgentStartTurn['memory']>(),
 		checkpointStore: mock<SystemAgentStartTurn['checkpointStore']>(),
 		sessionGrants: mock<SystemAgentStartTurn['sessionGrants']>(),
@@ -676,6 +682,7 @@ describe('AssistantAgentProvider', () => {
 				resourceId: start.resourceId,
 				abortSignal: start.abortSignal,
 				emitHostEvent: start.emitHostEvent,
+				emitTransientHostEvent: start.emitTransientHostEvent,
 				memory: start.memory,
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
@@ -1016,6 +1023,7 @@ describe('AssistantAgentProvider', () => {
 					resourceId: start.resourceId,
 					abortSignal: start.abortSignal,
 					emitHostEvent: start.emitHostEvent,
+					emitTransientHostEvent: start.emitTransientHostEvent,
 					memory: start.memory,
 					checkpointStore,
 					sessionGrants: start.sessionGrants,
@@ -1150,6 +1158,7 @@ describe('AssistantAgentProvider', () => {
 					resourceId: start.resourceId,
 					abortSignal: start.abortSignal,
 					emitHostEvent: start.emitHostEvent,
+					emitTransientHostEvent: start.emitTransientHostEvent,
 					memory: start.memory,
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
@@ -1499,6 +1508,7 @@ describe('AssistantAgentProvider', () => {
 				resourceId: start.resourceId,
 				abortSignal: start.abortSignal,
 				emitHostEvent: start.emitHostEvent,
+				emitTransientHostEvent: start.emitTransientHostEvent,
 				memory: start.memory,
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
@@ -1648,6 +1658,7 @@ describe('AssistantAgentProvider', () => {
 					resourceId: start.resourceId,
 					abortSignal: start.abortSignal,
 					emitHostEvent: start.emitHostEvent,
+					emitTransientHostEvent: start.emitTransientHostEvent,
 					memory: start.memory,
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
@@ -1761,6 +1772,7 @@ describe('AssistantAgentProvider', () => {
 						resourceId: start.resourceId,
 						abortSignal: start.abortSignal,
 						emitHostEvent: start.emitHostEvent,
+						emitTransientHostEvent: start.emitTransientHostEvent,
 						memory: start.memory,
 						checkpointStore: start.checkpointStore,
 						sessionGrants: start.sessionGrants,

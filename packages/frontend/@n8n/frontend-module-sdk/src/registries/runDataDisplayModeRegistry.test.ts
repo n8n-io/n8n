@@ -79,7 +79,7 @@ describe('runDataDisplayModeRegistry', () => {
 			},
 		);
 
-		it.each(['table', 'json', 'binary', 'schema', 'html', 'ai'])(
+		it.each(['table', 'json', 'binary', 'schema', 'ai'])(
 			'should warn and skip the built-in id "%s"',
 			(id) => {
 				runDataDisplayModeRegistry.register({ ...chart, id });

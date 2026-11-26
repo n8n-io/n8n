@@ -19,6 +19,8 @@ export interface ArtifactToolCall {
 /** One message of the thread. */
 export interface ArtifactTurn {
 	id: string;
+	/** The backend run of the turn, when the runtime has one. The workflow drafts of a run name it. */
+	runId?: string;
 	role: 'user' | 'assistant';
 	/** The agent still works on this turn. */
 	isLive: boolean;

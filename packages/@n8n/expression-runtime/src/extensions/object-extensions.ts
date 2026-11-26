@@ -1,5 +1,6 @@
 import type { ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
+import { toWellFormed } from './utf8';
 import { defineField } from './utils';
 
 function isEmpty(value: object): boolean {
@@ -20,7 +21,10 @@ function values(value: object): unknown[] {
 
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
-	return name in value;
+	// Count own and proxy-exposed fields; ignore names inherited from the prototype.
+	if (Object.hasOwn(value, name)) return true;
+	const proto = Object.getPrototypeOf(value) as object | null;
+	return name in value && (proto === null || !(name in proto));
 }
 
 function removeField(value: object, extraArgs: string[]): object {
@@ -86,8 +90,10 @@ export function compact(value: object): object {
 // V8 isolate. encodeURIComponent is an ECMAScript built-in available in all
 // V8 contexts, but it doesn't encode !'()~ which WHATWG requires. The extra
 // replace step covers those characters to match URLSearchParams output.
+// URLSearchParams also replaces lone surrogates with U+FFFD, where
+// encodeURIComponent throws a URIError.
 function whatwgEncode(str: string): string {
-	return encodeURIComponent(str)
+	return encodeURIComponent(toWellFormed(str))
 		.replace(/%20/g, '+')
 		.replace(/[!'()~]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }

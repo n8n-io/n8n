@@ -1,4 +1,5 @@
 import {
+	AssistantAgentFeedbackRequestDto,
 	AssistantAgentTargetRequestDto,
 	AssistantPreferenceCardEditRequestDto,
 	AssistantPreferenceCardUndoRequestDto,
@@ -17,6 +18,7 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { AssistantAgentController } from '../assistant-agent.controller';
+import type { AssistantAgentFeedbackService } from '../assistant-agent-feedback.service';
 import type { AssistantAgentTargetsService } from '../assistant-agent-targets.service';
 import type { AssistantPreferenceCardsService } from '../assistant-preference-cards.service';
 import type { AssistantThreadCreditsService } from '../assistant-thread-credits.service';
@@ -29,11 +31,13 @@ describe('AssistantAgentController', () => {
 	const threadCredits = mock<AssistantThreadCreditsService>();
 	const agentTargets = mock<AssistantAgentTargetsService>();
 	const preferenceCards = mock<AssistantPreferenceCardsService>();
+	const feedback = mock<AssistantAgentFeedbackService>();
 	const controller = new AssistantAgentController(
 		threadTabs,
 		threadCredits,
 		agentTargets,
 		preferenceCards,
+		feedback,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -67,6 +71,7 @@ describe('AssistantAgentController', () => {
 			getPreferenceCards: '/threads/:threadId/preference-cards',
 			undoPreference: '/threads/:threadId/preferences/:preferenceId/undo',
 			editPreference: '/threads/:threadId/preferences/:preferenceId/edit',
+			submitFeedback: '/threads/:threadId/feedback',
 		};
 		for (const [handler, path] of Object.entries(paths)) {
 			expect(metadata.routes.get(handler)?.path).toBe(path);
@@ -247,6 +252,25 @@ describe('AssistantAgentController', () => {
 				THREAD_ID,
 				payload,
 				'push-1',
+			);
+		});
+	});
+
+	describe('submitFeedback', () => {
+		const payload = new AssistantAgentFeedbackRequestDto({ executionId: 'exec-1', rating: 'up' });
+
+		it('sends the rating of the turn', async () => {
+			await expect(controller.submitFeedback(req, res, THREAD_ID, payload)).resolves.toEqual({
+				ok: true,
+			});
+			expect(feedback.submit).toHaveBeenCalledWith(user, THREAD_ID, payload);
+		});
+
+		it('rejects a thread that the user cannot use', async () => {
+			feedback.submit.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(controller.submitFeedback(req, res, THREAD_ID, payload)).rejects.toThrow(
+				NotFoundError,
 			);
 		});
 	});

@@ -138,4 +138,82 @@ describe('PromotionResourceTree', () => {
 		await userEvent.click(folder);
 		expect(emitted('toggleContainer')).toEqual([['folder:f1']]);
 	});
+
+	describe('groups, hints and the summary', () => {
+		const group = (getAllByTestId: (id: string) => HTMLElement[], id: string) => {
+			const match = getAllByTestId('promotion-preview-tree-group').find(
+				(element) => element.dataset.groupId === id,
+			);
+			if (!match) throw new Error(`No group ${id}`);
+			return within(match);
+		};
+
+		it('should show "Select all" with the count of included changes behind it', () => {
+			const selected = new Set(['workflow:w1']);
+			const { getByTestId, getByText } = renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					tree,
+					graph,
+					selected,
+					inclusion: resolveInclusion(graph, selected),
+					includedChanges: 3,
+					totalChanges: 17,
+					disabled: new Set(),
+					locked: false,
+					direction: 'promote',
+					blockers: indexBlockers([]),
+				},
+			});
+
+			expect(getByText('Select all')).toBeInTheDocument();
+			expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3 of 17 selected');
+		});
+
+		it('should show each group with how many of its resources the operation includes', () => {
+			const { getAllByTestId } = render(['workflow:w1']);
+
+			expect(
+				group(getAllByTestId, 'section:workflows').getByTestId('promotion-preview-group-count'),
+			).toHaveTextContent(/^1 of 4 selected$/);
+			expect(
+				group(getAllByTestId, 'group:credential').getByTestId('promotion-preview-group-count'),
+			).toHaveTextContent('1 of 2 selected');
+		});
+
+		it('should send the workflows of the group when users click its checkbox', async () => {
+			const { getAllByTestId, emitted } = render([]);
+
+			await userEvent.click(
+				group(getAllByTestId, 'section:workflows').getByTestId('promotion-preview-group-checkbox'),
+			);
+
+			expect(emitted().toggleGroup).toEqual([
+				[['workflow:w1', 'workflow:w2', 'workflow:w3', 'workflow:w4']],
+			]);
+		});
+
+		it('should show no checkbox, count in a list that users only read', () => {
+			const selected = new Set(['workflow:w1']);
+			const { queryAllByTestId } = renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					tree,
+					graph,
+					selected,
+					inclusion: resolveInclusion(graph, selected),
+					includedChanges: 0,
+					totalChanges: 0,
+					disabled: new Set(),
+					locked: true,
+					direction: 'promote',
+					blockers: indexBlockers([]),
+					selectable: false,
+				},
+			});
+
+			expect(queryAllByTestId('promotion-preview-group-checkbox')).toHaveLength(0);
+			expect(queryAllByTestId('promotion-preview-group-count')).toHaveLength(0);
+		});
+	});
 });

@@ -29,6 +29,12 @@ const MAX_HOST_EVENT_ID_LENGTH = 128;
 /** Status events are small. The cap bounds the stored timeline, the stream and exports. */
 export const MAX_HOST_EVENT_PAYLOAD_BYTES = 64 * 1024;
 
+/** A transient event is not stored, so it can be larger. The cap bounds the stream. */
+export const MAX_TRANSIENT_HOST_EVENT_PAYLOAD_BYTES = 1024 * 1024;
+
+/** Emit a custom event that the chat shows live and history does not keep. */
+export type SystemAgentTransientHostEventEmitter = (name: string, payload: JSONValue) => void;
+
 function isValidId(value: unknown): value is string {
 	return typeof value === 'string' && value.length > 0 && value.length <= MAX_HOST_EVENT_ID_LENGTH;
 }
@@ -82,6 +88,21 @@ export class SystemAgentHostEventChannel {
 			return;
 		}
 		this.deliver(this.recorder, event);
+	};
+
+	/** Sends at once and records nothing, so it needs no recorder and no buffer. */
+	readonly emitTransient: SystemAgentTransientHostEventEmitter = (name, payload) => {
+		if (!isValidId(name)) {
+			throw new UnexpectedError('A host event needs a name of 1 to 128 characters');
+		}
+		if (jsonSizeExceeds(payload, MAX_TRANSIENT_HOST_EVENT_PAYLOAD_BYTES)) {
+			throw new UnexpectedError('A transient host event payload must not be larger than 1 MiB');
+		}
+		if (this.closed) {
+			this.onDropped?.(name);
+			return;
+		}
+		this.send({ type: 'transient-host-event', name, payload });
 	};
 
 	/** Start to record and send. Events from the buffer go first. */

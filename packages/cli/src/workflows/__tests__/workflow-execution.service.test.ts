@@ -14,11 +14,13 @@ import type {
 	WorkflowHistory,
 	WorkflowRepository,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { toITaskData } from '@test/helpers';
 import type { ErrorReporter } from 'n8n-core';
 import {
 	NodeConnectionTypes,
+	BINARY_MODE_COMBINED,
 	type IConnections,
 	type INode,
 	type INodeExecutionData,
@@ -35,6 +37,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowRequest } from '../workflow.request';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
@@ -241,6 +244,37 @@ describe('WorkflowExecutionService', () => {
 				undefined,
 			);
 		});
+
+		test('grants only binary data that the trigger is allowed to read', async () => {
+			const node = mock<INode>();
+			const workflow = mock<IWorkflowBase>({ id: 'workflow-id', nodes: [node] });
+			const triggerData: INodeExecutionData[][] = [
+				[
+					{
+						json: {},
+						binary: {
+							created: { data: '', mimeType: 'text/plain', id: 'created-id' },
+							unavailable: { data: '', mimeType: 'text/plain', id: 'unavailable-id' },
+						},
+					},
+				],
+			];
+			const binaryDataAccess =
+				mock<NonNullable<IWorkflowExecuteAdditionalData['binaryDataAccess']>>();
+			binaryDataAccess.isAllowed.mockImplementation(async (id) => id === 'created-id');
+
+			await workflowExecutionService.runWorkflow(
+				workflow,
+				node,
+				triggerData,
+				mock<IWorkflowExecuteAdditionalData>({ binaryDataAccess }),
+				'trigger',
+			);
+
+			const runData = workflowRunner.run.mock.calls.at(-1)?.[0];
+			expect(runData?.binaryDataAccess).toEqual(['created-id']);
+			expect(runData?.executionData?.binaryDataAccess).toEqual(['created-id']);
+		});
 	});
 
 	describe('runPolledWorkflow()', () => {
@@ -313,6 +347,35 @@ describe('WorkflowExecutionService', () => {
 			expect(committedPayload().data.executionData?.nodeExecutionStack).toEqual([
 				{ node, data: { main: pollItems }, source: null },
 			]);
+		});
+
+		test('commits only binary data that the poll is allowed to read', async () => {
+			const binaryDataAccess =
+				mock<NonNullable<IWorkflowExecuteAdditionalData['binaryDataAccess']>>();
+			binaryDataAccess.isAllowed.mockImplementation(async (id) => id === 'created-id');
+			const items: INodeExecutionData[][] = [
+				[
+					{
+						json: {},
+						binary: {
+							created: { data: '', mimeType: 'text/plain', id: 'created-id' },
+							unavailable: { data: '', mimeType: 'text/plain', id: 'unavailable-id' },
+						},
+					},
+				],
+			];
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				items,
+				mock<IWorkflowExecuteAdditionalData>({ binaryDataAccess }),
+				'trigger',
+				cursor,
+				responsePromise,
+			);
+
+			expect(committedPayload().data.binaryDataAccess).toEqual(['created-id']);
 		});
 
 		test('masks the trigger items before the payload is committed', async () => {
@@ -434,20 +497,71 @@ describe('WorkflowExecutionService', () => {
 
 			expect(returned).toBeUndefined();
 			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 			expect(responsePromise.reject).toHaveBeenCalledWith(contextError);
 			expect(errorReporter.error).toHaveBeenCalledWith(contextError, { shouldBeLogged: false });
 		});
 
-		test('commits neither the cursor nor an execution when preExecute blocks the run', async () => {
+		test('holds the cursor when preExecute blocks a poll that declared itself bounded', async () => {
 			const blocked = new Error('execution limit reached');
 			workflowRunner.prepareNewExecution.mockRejectedValue(new PreExecuteBlockedError(blocked));
 
-			const returned = await runPolledWorkflow();
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				undefined,
+				'none',
+				true,
+			);
 
 			expect(returned).toBeUndefined();
 			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(responsePromise.reject).toHaveBeenCalledWith(blocked);
+		});
+
+		test('advances the cursor alone when preExecute blocks a poll that did not declare itself bounded', async () => {
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+			workflowRunner.prepareNewExecution.mockRejectedValue(
+				new PreExecuteBlockedError(new Error('execution limit reached')),
+			);
+
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				fence,
+			);
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledExactlyOnceWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor,
+				fence,
+			});
+			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('rejects the response promise with the refusal cause before committing the cursor', async () => {
+			const blocked = new Error('execution limit reached');
+			const dbError = new Error('database unavailable');
+			workflowRunner.prepareNewExecution.mockRejectedValue(new PreExecuteBlockedError(blocked));
+			pollCursorService.commitCursorOnly.mockRejectedValue(dbError);
+
+			await expect(runPolledWorkflow()).rejects.toBe(dbError);
+
 			expect(responsePromise.reject).toHaveBeenCalledWith(blocked);
 		});
 
@@ -633,6 +747,101 @@ describe('WorkflowExecutionService', () => {
 		beforeEach(() => {
 			workflowRunner.run.mockClear();
 			vi.mocked(nodeTypes.getByNameAndVersion).mockReset();
+		});
+
+		test('grants only readable binary data, including nested combined-mode data', async () => {
+			const binaryDataAccessService = mock<BinaryDataAccessService>();
+			binaryDataAccessService.hasReadAccess.mockImplementation(
+				async (_user, id) => id !== 'unreadable-id',
+			);
+			Container.set(BinaryDataAccessService, binaryDataAccessService);
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [webhookNode, hackerNewsNode],
+				connections: createMainConnection(hackerNewsNode.name, webhookNode.name),
+				settings: { binaryMode: BINARY_MODE_COMBINED },
+			});
+			const binary = (id: string) => ({ data: '', mimeType: 'text/plain', id });
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
+				runData: {
+					[webhookNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [
+									[
+										{
+											json: { nested: { attachment: binary('nested-id') } },
+											binary: {
+												readable: binary('readable-id'),
+												unreadable: binary('unreadable-id'),
+											},
+										},
+									],
+								],
+							},
+						},
+					],
+				},
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+			};
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
+			workflowRunner.run.mockResolvedValue('execution-id');
+
+			await workflowExecutionService.executeManually({ workflowData, payload: runPayload, user });
+
+			expect(workflowRunner.run.mock.calls[0][0].binaryDataAccess).toEqual([
+				'readable-id',
+				'nested-id',
+			]);
+		});
+
+		test('does not grant binary data embedded in JSON in default mode', async () => {
+			const binaryDataAccessService = mock<BinaryDataAccessService>();
+			binaryDataAccessService.hasReadAccess.mockResolvedValue(true);
+			Container.set(BinaryDataAccessService, binaryDataAccessService);
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [webhookNode, hackerNewsNode],
+				connections: createMainConnection(hackerNewsNode.name, webhookNode.name),
+			});
+			const binary = (id: string) => ({ data: '', mimeType: 'text/plain', id });
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
+				runData: {
+					[webhookNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [
+									[
+										{
+											json: { attachment: binary('json-id') },
+											binary: { file: binary('binary-id') },
+										},
+									],
+								],
+							},
+						},
+					],
+				},
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+			};
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
+			workflowRunner.run.mockResolvedValue('execution-id');
+
+			await workflowExecutionService.executeManually({ workflowData, payload: runPayload, user });
+
+			expect(workflowRunner.run.mock.calls[0][0].binaryDataAccess).toEqual(['binary-id']);
 		});
 
 		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {

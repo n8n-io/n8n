@@ -33,6 +33,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import {
 	getTrustedOAuthOrigins,
 	hasOAuthTokenData,
@@ -473,8 +474,12 @@ watch(showAiGatewayErrorNudge, (isVisible) => {
 	});
 });
 
+// `initialize()` reads the credential type one time, to fill the property defaults and to find
+// a custom OAuth app. Startup does not wait for the credential types, so this modal waits.
+const credentialTypes = useCredentialTypesLoad();
+
 onMounted(async () => {
-	loading.value = !!modalOptions.value?.createCredential;
+	loading.value = !!modalOptions.value?.createCredential || credentialTypes.isLoading.value;
 	if (modalOptions.value?.initialTab) activeTab.value = modalOptions.value.initialTab;
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
@@ -498,9 +503,14 @@ onMounted(async () => {
 			}
 		}
 		if (modalOptions.value?.createCredential) {
-			await credentialsStore.fetchCredentialTypes(false);
+			await credentialTypes.whenLoaded();
 			if (!credentialType.value) throw new Error(i18n.baseText('credentialEdit.typeUnavailable'));
+		} else if (credentialTypes.isLoading.value) {
+			// If the types fail to load, still load the credential.
+			await credentialTypes.whenSettled();
 		}
+		// The user can close the modal while the types load.
+		if (isUnmounted || !modalOpen.value) return;
 
 		try {
 			// Name + defaults (new) or load + custom-OAuth detect (edit) — the same

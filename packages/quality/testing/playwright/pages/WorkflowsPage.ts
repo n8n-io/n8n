@@ -88,11 +88,11 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	async openFilters() {
-		await this.clickByTestId('resources-list-filters-trigger');
+		await this.getResourcesListFiltersTrigger().click();
 	}
 
 	async closeFilters() {
-		await this.clickByTestId('resources-list-filters-trigger');
+		await this.getResourcesListFiltersTrigger().click();
 	}
 
 	getShowArchivedCheckbox() {
