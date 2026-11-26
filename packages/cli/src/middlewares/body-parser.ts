@@ -159,7 +159,7 @@ export const bodyParser: RequestHandler = async (req, _res, next) => {
 	// The exchange applies its rate limit and small JSON parser before reading credentials.
 	if (
 		req.method === 'POST' &&
-		req.path.replace(/\/$/, '').toLowerCase() === credentialExchangePath
+		req.url.split('?')[0].replace(/\/$/, '').toLowerCase() === credentialExchangePath
 	) {
 		next();
 		return;

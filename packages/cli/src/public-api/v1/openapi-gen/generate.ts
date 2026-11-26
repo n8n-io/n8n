@@ -195,7 +195,7 @@ export function getGeneratedArtifacts(): GeneratedArtifact[] {
 			tags: ['User'],
 			summary: 'Issue a public API key with the instance owner credentials',
 			description:
-				'Requires N8N_PUBLIC_API_OWNER_KEY_EXCHANGE_ENABLED. Supply a current MFA code if the owner uses MFA. The key expires in 1 to 90 days.',
+				'Requires N8N_PUBLIC_API_OWNER_KEY_EXCHANGE_ENABLED and API key authentication for the public API. Supply a current MFA code if the owner uses MFA. The key expires in 1 to 90 days.',
 			request: {
 				body: {
 					required: true,

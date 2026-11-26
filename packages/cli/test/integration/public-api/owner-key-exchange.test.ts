@@ -79,6 +79,16 @@ test('limits attempts across email casing', async () => {
 	await post(email.toUpperCase()).expect(429);
 });
 
+test('rejects a body that is not JSON', async () => {
+	await server
+		.publicApiAgentWithoutApiKey()
+		.post('/auth/api-key')
+		.type('text/plain')
+		.send('email=owner@example.com')
+		.expect(415)
+		.expect('Cache-Control', 'no-store');
+});
+
 test('rejects malformed and oversized JSON without echoing credentials', async () => {
 	const api = server.publicApiAgentWithoutApiKey();
 	for (const [body, status] of [

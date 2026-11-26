@@ -2,7 +2,7 @@
 
 A deployment client can exchange the instance owner's credentials for a native n8n public API key. Do this once per key, not on each Terraform run. Only the deployment client needs the owner password. Give Terraform or the CLI the issued key from your secret manager.
 
-1. Configure the owner before startup with `N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true`, `N8N_INSTANCE_OWNER_EMAIL`, and `N8N_INSTANCE_OWNER_PASSWORD_HASH_FILE`. The file contains a bcrypt hash. Do not send the hash to the API.
+1. Configure the owner before startup with `N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true`, `N8N_INSTANCE_OWNER_EMAIL`, and `N8N_INSTANCE_OWNER_PASSWORD_HASH`. Set the bcrypt hash through the `_FILE` variant of the hash variable to read it from a secret file. Do not send the hash to the API.
 2. Before enabling the endpoint, restrict the exchange path to your provisioning network and require HTTPS. Do not log request or response bodies. Keep database query logging off. Each main limits attempts to 20 per IP and 5 per email per minute. For a cluster, configure a shared ingress rate limit before enabling the exchange. Process-local counters do not protect the cluster as a whole.
 3. Set `N8N_PUBLIC_API_OWNER_KEY_EXCHANGE_ENABLED=true` on each main. The exchange is off by default. The public API must permit API key authentication. In queue mode, use the same database and signing configuration on all mains. Workers do not issue keys. Wait for main readiness before sending the request.
 4. If MFA enrollment is mandatory, complete enrollment first.
