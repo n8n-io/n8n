@@ -5,11 +5,11 @@ const MAX_LISTED_ITEMS = 50;
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
-function listSection(title: string, refs: NamedRef[]): string | undefined {
+function listSection(title: string, refs: NamedRef[], max = MAX_LISTED_ITEMS): string | undefined {
 	if (refs.length === 0) return undefined;
-	const lines = refs.slice(0, MAX_LISTED_ITEMS).map(({ id, name }) => `- ${name} (${id})`);
-	if (refs.length > MAX_LISTED_ITEMS) {
-		lines.push(`- …and ${refs.length - MAX_LISTED_ITEMS} more`);
+	const lines = refs.slice(0, max).map(({ id, name }) => `- ${name} (${id})`);
+	if (refs.length > max) {
+		lines.push(`- …and ${refs.length - max} more`);
 	}
 	return [`${title}:`, ...lines].join('\n');
 }
@@ -30,7 +30,12 @@ export function appendProjectsMovedToOwnEnvironment(
 	commitMessage: string,
 	projects: NamedRef[],
 ): string {
-	const section = listSection('Projects moved to their own Promote environment', projects);
+	// Each removed project is named, because the commit is the only record of the removal.
+	const section = listSection(
+		'Projects moved to their own Promote environment',
+		projects,
+		Infinity,
+	);
 	return section ? `${commitMessage}\n\n${section}` : commitMessage;
 }
 
