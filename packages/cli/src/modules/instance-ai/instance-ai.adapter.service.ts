@@ -41,6 +41,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -188,6 +189,7 @@ import {
 	UserError,
 } from '@n8n/errors';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -1809,6 +1811,29 @@ export class InstanceAiAdapterService {
 				await notifyWorkflowUpdated(workflowId);
 
 				return { activeVersionId: wf.activeVersionId };
+			},
+
+			async getPublishReviewBlock(workflowId: string, versionId?: string) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+				if (!workflow) throw new WorkflowNotFoundError(workflowId);
+				// The publish refuses archived workflows with its own error, and they cannot go to review.
+				if (workflow.isArchived) return undefined;
+
+				const targetVersionId = versionId ?? workflow.versionId;
+				// Same as the publish: the live version goes live again without the review rules.
+				if (targetVersionId === workflow.activeVersionId) return undefined;
+
+				try {
+					await Container.get(WorkflowPublishGuardProxy).assertCanPublish(workflowId, {
+						versionId: targetVersionId,
+					});
+					return undefined;
+				} catch (error) {
+					if (error instanceof WorkflowPublishBlockedError) return error.details.reason;
+					throw error;
+				}
 			},
 
 			async unpublish(workflowId: string) {
