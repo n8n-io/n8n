@@ -461,6 +461,23 @@ describe('SimulationSessionService connection binding', () => {
 			expect(closed).toEqual(['world-1']);
 		});
 
+		it('should not return the session of a removed thread for a commit', async () => {
+			const { service, turn, closed, threads } = setup();
+			await turn();
+			const ids = {
+				userId: 'user-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				testChatId: 'chat-1',
+			};
+			expect(await service.getSession(ids)).toBeDefined();
+
+			threads.delete('chat-1');
+
+			expect(await service.getSession(ids)).toBeUndefined();
+			expect(closed).toEqual(['world-1']);
+		});
+
 		it('should close a world whose cache entry expired', async () => {
 			const { turn, closed } = setup();
 			await turn();
