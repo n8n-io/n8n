@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatActivity.test.ts
+  h_8a472ace01776f 951
+packages/frontend/editor-ui/src/features/agents/components/AgentChatActivity.vue
+  h_8a472ace01776f 18,53-54,117-120
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityTrace.vue
+  h_8a472ace01776f 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44f67a6977a3963884623c4adc70caf3e7e9ce45",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
