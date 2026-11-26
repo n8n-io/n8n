@@ -495,6 +495,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Attachments',
 		name: 'attachmentsJson',
 		type: 'json',
+		validateType: 'array',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -512,6 +513,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Blocks',
 		name: 'blocksJson',
 		type: 'json',
+		validateType: 'array',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -1367,6 +1369,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Attachments',
 		name: 'attachmentsJson',
 		type: 'json',
+		validateType: 'array',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -1384,6 +1387,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Blocks',
 		name: 'blocksJson',
 		type: 'json',
+		validateType: 'array',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,

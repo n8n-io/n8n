@@ -41,6 +41,28 @@ describe('Test SlackV1, message => post', () => {
 			unfurl_links: true,
 			unfurl_media: true,
 		})
+		.reply(200, API_RESPONSE)
+		.post('/api/chat.postMessage', {
+			channel: 'C08514ZPKB8',
+			text: 'json message',
+			attachments: [{ text: 'Ada' }],
+			blocks: [{ type: 'divider' }],
+		})
+		.reply(200, API_RESPONSE)
+		.post('/api/chat.postMessage', {
+			channel: 'C08514ZPKB8',
+			text: 'expression message',
+			attachments: [{ text: 'Grace' }],
+			blocks: [{ type: 'divider' }],
+		})
+		.reply(200, API_RESPONSE)
+		.post('/api/chat.update', {
+			channel: 'C08514ZPKB8',
+			text: 'updated message',
+			ts: '1734322671.726339',
+			attachments: [{ text: 'Grace' }],
+			blocks: [{ type: 'divider' }],
+		})
 		.reply(200, API_RESPONSE);
 
 	afterAll(() => slackNock.done());

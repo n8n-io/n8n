@@ -476,17 +476,6 @@ export function getMessageContent(
 	return content;
 }
 
-// tslint:disable-next-line:no-any
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
-
 export function getTarget(
 	context: IExecuteFunctions,
 	itemIndex: number,
