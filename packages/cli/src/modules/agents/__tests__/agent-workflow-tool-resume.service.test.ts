@@ -503,6 +503,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 	it('settles the job with only the last node’s output serialized', async () => {
 		const { service, backgroundJobService } = setup();
 		const ctx = afterContextWithOutput('success');
+		ctx.runData.data.binaryDataAccess = ['binary-id'];
 
 		await service.handleWorkflowExecuteAfter(ctx);
 
@@ -510,6 +511,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			'exec-1',
 			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
 			ctx.runData.data.resultData.runData,
+			['binary-id'],
 		);
 	});
 
@@ -534,6 +536,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			'exec-1',
 			{ status: 'failed', result: null, error: 'boom' },
 			ctx.runData.data.resultData.runData,
+			undefined,
 		);
 	});
 

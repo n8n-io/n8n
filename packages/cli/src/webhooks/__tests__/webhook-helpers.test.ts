@@ -73,14 +73,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
-<<<<<<< HEAD
-=======
 import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
-import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
-import type { ExternalHooks } from '@/external-hooks';
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
 import type { EngineV2ResumeRequest } from '@/interfaces';
 import { type ResponseError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';

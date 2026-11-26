@@ -345,11 +345,7 @@ export async function executeWorkflow(
 
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
-<<<<<<< HEAD
-=======
 		binaryDataAccess,
-		...(context.executionProjectId ? { projectId: context.executionProjectId } : {}),
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
 		executionMode: context.executionMode,
 		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
