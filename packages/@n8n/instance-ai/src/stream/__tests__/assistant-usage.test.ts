@@ -11,9 +11,12 @@ describe('deriveAssistantUsageTier', () => {
 		expect(deriveAssistantUsageTier([])).toBe('none');
 	});
 
-	it('returns strict for a turn that ran a workflow', () => {
-		expect(deriveAssistantUsageTier([returnedCall(DOMAIN_TOOL_IDS.RUN_WORKFLOW)])).toBe('strict');
-	});
+	it.each([DOMAIN_TOOL_IDS.RUN_WORKFLOW, DOMAIN_TOOL_IDS.CLEANUP_TEST_EXECUTIONS])(
+		'returns strict for a turn that called %s',
+		(toolName) => {
+			expect(deriveAssistantUsageTier([returnedCall(toolName)])).toBe('strict');
+		},
+	);
 
 	it('returns none for a turn that only asked a question and looked up nodes', () => {
 		const calls = [
@@ -87,9 +90,12 @@ describe('deriveAssistantUsageTier', () => {
 		expect(deriveAssistantUsageTier([returnedCall('workspace_execute_command')])).toBe('none');
 	});
 
-	it('returns strict for a tool it does not know, such as a tool from an MCP server', () => {
-		expect(deriveAssistantUsageTier([returnedCall('github_create_issue')])).toBe('strict');
-	});
+	it.each(['github_create_issue', 'workspace_create_doc'])(
+		'returns strict for a tool it does not know, such as the MCP tool %s',
+		(toolName) => {
+			expect(deriveAssistantUsageTier([returnedCall(toolName)])).toBe('strict');
+		},
+	);
 
 	it('returns strict for the Browser Use tools', () => {
 		expect(deriveAssistantUsageTier([returnedCall('browser_snapshot')])).toBe('strict');
@@ -119,6 +125,7 @@ describe('listAssistantToolsUsed', () => {
 		['workspace_execute_command', undefined, 'workspace'],
 		['browser_navigate', undefined, 'browser'],
 		['github_create_issue', undefined, 'other'],
+		['workspace_create_doc', undefined, 'other'],
 	])('labels %s with action %s as %s', (toolName, action, label) => {
 		expect(listAssistantToolsUsed([returnedCall(toolName, { action })])).toEqual([label]);
 	});

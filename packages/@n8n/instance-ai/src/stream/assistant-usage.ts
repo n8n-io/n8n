@@ -1,3 +1,4 @@
+import { WORKSPACE_TOOL_NAMES } from '@n8n/agents';
 import type {
 	FIND_TOOLS_TOOL_NAME,
 	READ_HISTORY_TOOL_NAME,
@@ -59,7 +60,8 @@ const EVAL_CONFIG_ACTION_TIERS: Readonly<Record<EvalConfigToolAction, AssistantU
  * has no tier here, so add one when you add a tool:
  * - `strict`: the tool builds, changes or runs something
  * - `broad`: the tool only reads the instance, debugs, or searches the docs or the web
- * - `none`: the tool only asks a question, looks up nodes, or runs an internal step
+ * - `none`: the tool only asks a question, looks up nodes, changes the Assistant's own settings,
+ *   or runs an internal step
  */
 const TOOL_TIERS: Readonly<Record<BuiltInToolName, AssistantUsageTier | ActionTiers>> = {
 	// Questions, setup and internal steps
@@ -67,7 +69,6 @@ const TOOL_TIERS: Readonly<Record<BuiltInToolName, AssistantUsageTier | ActionTi
 	'leave-onboarding': 'none',
 	save_user_preference: 'none',
 	send_feedback: 'none',
-	cleanup_test_executions: 'none',
 	workflow_builder_task_control: 'none',
 	workflow_builder_verify_built_workflow: 'none',
 	workflow_builder_report_verification_verdict: 'none',
@@ -147,6 +148,7 @@ const TOOL_TIERS: Readonly<Record<BuiltInToolName, AssistantUsageTier | ActionTi
 	run_workflow_step: 'strict',
 	stop_execution: 'strict',
 	execute_node: 'strict',
+	cleanup_test_executions: 'strict',
 	'eval-config': EVAL_CONFIG_ACTION_TIERS,
 
 	// Credentials, data tables, tags, folders and apps
@@ -196,8 +198,9 @@ const TOOL_TIERS: Readonly<Record<BuiltInToolName, AssistantUsageTier | ActionTi
 const TIERS_BY_TOOL = new Map(Object.entries(TOOL_TIERS));
 
 function tierOf({ toolName, action }: ToolCallSummary): AssistantUsageTier {
-	// The agent SDK names its sandbox file and shell tools `workspace_*`.
-	if (toolName.startsWith('workspace_')) return 'none';
+	// The agent SDK's sandbox file and shell tools. Match exact names: an MCP server named
+	// `workspace` also gives tool names that start with `workspace_`.
+	if (WORKSPACE_TOOL_NAMES.has(toolName)) return 'none';
 	// A tool that is not built in, such as an MCP tool, counts as strict.
 	const tier = TIERS_BY_TOOL.get(toolName) ?? 'strict';
 	if (typeof tier === 'string') return tier;
@@ -221,7 +224,7 @@ export function deriveAssistantUsageTier(toolCalls: ToolCallSummary[]): Assistan
 }
 
 function usageLabel({ toolName, action }: ToolCallSummary): string {
-	if (toolName.startsWith('workspace_')) return 'workspace';
+	if (WORKSPACE_TOOL_NAMES.has(toolName)) return 'workspace';
 	// Browser Use tools come from a local MCP server. They count as strict, like other MCP tools.
 	if (toolName.startsWith('browser_')) return 'browser';
 	// Do not send the names of MCP tools or other tools that are not built in.

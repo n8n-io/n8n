@@ -547,6 +547,7 @@ export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
 export {
 	CORE_WORKSPACE_TOOL_NAMES,
+	WORKSPACE_TOOL_NAMES,
 	createScopedWorkspace,
 	createWorkspaceTools,
 	reconcileToolResultRuns,

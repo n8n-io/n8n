@@ -1,7 +1,7 @@
 import { zodToJsonSchema } from '../../utils/zod';
 import { createEditFilesTool } from '../../workspace/tools/edit-files';
 import { createReadFilesTool } from '../../workspace/tools/read-files';
-import { createWorkspaceTools } from '../../workspace/tools/workspace-tools';
+import { createWorkspaceTools, WORKSPACE_TOOL_NAMES } from '../../workspace/tools/workspace-tools';
 import type { WorkspaceFilesystem, WorkspaceSandbox, CommandResult } from '../../workspace/types';
 
 function makeFakeFilesystem(overrides: Partial<WorkspaceFilesystem> = {}): WorkspaceFilesystem {
@@ -111,6 +111,15 @@ describe('createWorkspaceTools', () => {
 		expect(tools.find((tool) => tool.name === 'workspace_read_tool_result')?.outputTrust).toBe(
 			'untrusted',
 		);
+	});
+
+	it('lists every tool it can return in WORKSPACE_TOOL_NAMES', () => {
+		const tools = createWorkspaceTools({
+			filesystem: makeFakeFilesystem(),
+			sandbox: makeFakeSandbox({ processes: {} as WorkspaceSandbox['processes'] }),
+		});
+
+		expect(new Set(tools.map((t) => t.name))).toEqual(WORKSPACE_TOOL_NAMES);
 	});
 
 	describe('batch file tools', () => {
