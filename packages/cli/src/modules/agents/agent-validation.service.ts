@@ -473,7 +473,7 @@ export class AgentValidationService {
 				toolType: 'workflow',
 			};
 			const workflow = workflowsByReference.get(tool.workflowId);
-			if (workflow) {
+			if (workflow && !workflow.isArchived) {
 				const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 				if (incompatibility) {
 					issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));

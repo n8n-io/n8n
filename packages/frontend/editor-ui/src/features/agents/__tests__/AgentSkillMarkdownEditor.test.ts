@@ -244,6 +244,14 @@ describe('AgentSkillMarkdownEditor', () => {
 		expect(pressKey(editor, 'Backspace')).toBeFalsy();
 	});
 
+	it('keeps the mention when the editor is disabled', async () => {
+		const { editor } = await mountEditor({ modelValue: MENTION_BODY, disabled: true });
+		editor.commands.setTextSelection(MENTION_END);
+
+		expect(pressKey(editor, 'Backspace')).toBeFalsy();
+		expect(editor.getMarkdown()).toBe(MENTION_BODY);
+	});
+
 	it('keeps the default Backspace when the flag is off', async () => {
 		flag.enabled = false;
 		const { editor } = await mountEditor({ modelValue: MENTION_BODY });
@@ -265,14 +273,14 @@ describe('AgentSkillMarkdownEditor', () => {
 		open.mockRestore();
 	});
 
-	it('does not open a workflow for a clicked mention when the flag is off', async () => {
+	it('keeps the default link click for a mention when the flag is off', async () => {
 		flag.enabled = false;
 		const open = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { editor } = await mountEditor({ modelValue: MENTION_BODY });
 
 		clickMention(editor);
 
-		expect(open).not.toHaveBeenCalledWith('/base/workflow/wf1', '_blank');
+		expect(open.mock.calls).toEqual([['n8n://workflow/wf1', '_blank']]);
 		open.mockRestore();
 	});
 
