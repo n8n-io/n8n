@@ -5,9 +5,9 @@ import {
 	type INodeProperties,
 	NodeOperationError,
 	accumulateTokenUsage,
-	jsonParse,
 	requestPath,
 	updateDisplayOptions,
+	validateFieldType,
 	validateNodeParameters,
 } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
@@ -489,16 +489,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				const metadataFilter = fileSearchOptions.metadataFilter;
 				let fileSearchStoreNames: string[] | undefined;
 				if (fileSearchStoreNamesRaw) {
-					// Core does not validate this nested field, so an expression can return an array
-					const parsed =
-						typeof fileSearchStoreNamesRaw === 'string'
-							? jsonParse(fileSearchStoreNamesRaw, {
-									errorMessage: 'Failed to parse file search store names',
-								})
-							: fileSearchStoreNamesRaw;
-					if (Array.isArray(parsed)) {
-						fileSearchStoreNames = parsed;
+					// Core does not validate this nested field, so parse it like the editor check does
+					const validation = validateFieldType(
+						'File Search Store Names',
+						fileSearchStoreNamesRaw,
+						'array',
+					);
+					if (!validation.valid) {
+						throw new NodeOperationError(this.getNode(), validation.errorMessage, { itemIndex: i });
 					}
+					fileSearchStoreNames = validation.newValue?.map(String);
 				}
 
 				tools.push({

@@ -147,17 +147,6 @@ export async function getAllProperties(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = '';
-	}
-	return result;
-}
-
 // tslint:disable-next-line: no-any
 export function clean(obj: any) {
 	for (const propName in obj) {

@@ -11,12 +11,7 @@ import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workfl
 
 import { contactFields, contactOperations } from './ContactDescription';
 import type { ICreateContactBody } from './ContactInterface';
-import {
-	capitalize,
-	freshdeskApiRequest,
-	freshdeskApiRequestAllItems,
-	// validateJSON,
-} from './GenericFunctions';
+import { capitalize, freshdeskApiRequest, freshdeskApiRequestAllItems } from './GenericFunctions';
 
 const Status = {
 	Open: 2,

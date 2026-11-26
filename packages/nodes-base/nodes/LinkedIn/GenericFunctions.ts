@@ -78,13 +78,3 @@ export async function linkedInApiRequest(
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = '';
-	}
-	return result;
-}
