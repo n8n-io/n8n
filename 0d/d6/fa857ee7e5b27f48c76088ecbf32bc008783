@@ -1,0 +1,25 @@
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_c51b71bedc600f::t_1dfd1969f109eb 290-300,457-470,575
+  s_c51b71bedc600f::t_162cc37614304e 301,307
+  s_c51b71bedc600f::t_aea07b3e579512 302-303
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c51b71bedc600f::t_b63d212ca28fca 11608-11609
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_c51b71bedc600f::t_e648540c20e477 1180-1205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0dd6fa857ee7e5b27f48c76088ecbf32bc008783",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
