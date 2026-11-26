@@ -6,7 +6,6 @@ import {
 	getFileSha,
 	githubApiRequestAllItems,
 	isBase64,
-	validateJSON,
 	validateSecretName,
 	encryptSecret,
 	getRepositoryPublicKey,
@@ -228,22 +227,6 @@ describe('GenericFunctions', () => {
 		it('should return false for invalid Base64 strings', () => {
 			expect(isBase64('not base64')).toBe(false);
 			expect(isBase64('123!@#')).toBe(false);
-		});
-	});
-
-	describe('validateJSON', () => {
-		it('should return parsed JSON for valid JSON strings', () => {
-			const jsonString = '{"key": "value"}';
-			const result = validateJSON(jsonString);
-
-			expect(result).toEqual({ key: 'value' });
-		});
-
-		it('should return undefined for invalid JSON strings', () => {
-			const invalidJsonString = 'not json';
-			const result = validateJSON(invalidJsonString);
-
-			expect(result).toBeUndefined();
 		});
 	});
 

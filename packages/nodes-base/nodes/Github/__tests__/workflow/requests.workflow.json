@@ -2,6 +2,45 @@
 	"name": "GitHub Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "dispatch",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": "ci.yml",
+					"mode": "id"
+				},
+				"ref": {
+					"__rl": true,
+					"value": "main",
+					"mode": "name"
+				},
+				"inputs": "={{ { \"environment\": \"production\" } }}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 8150],
+			"id": "452187fd-f955-51f4-bd11-231a3ff7e3b9",
+			"name": "Workflow Dispatch Expression",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -1701,6 +1740,11 @@
 		"When clicking 'Execute Workflow'": {
 			"main": [
 				[
+					{
+						"node": "Workflow Dispatch Expression",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "File Create",
 						"type": "main",

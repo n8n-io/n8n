@@ -45,7 +45,7 @@ describe('GitHub workflow dispatch', () => {
 			repository: 'project',
 			workflowId: 'ci.yml',
 			ref: 'main',
-			inputs: '{}',
+			inputs: { environment: 'staging' },
 			...option,
 		};
 		context.getNodeParameter.mockImplementation((name, _index, fallback) => {
@@ -67,7 +67,7 @@ describe('GitHub workflow dispatch', () => {
 			'githubApi',
 			expect.objectContaining({
 				method: 'POST',
-				body: { ref: 'main', inputs: {}, ...requestFields },
+				body: { ref: 'main', inputs: { environment: 'staging' }, ...requestFields },
 			}),
 		);
 		expect(context.helpers.returnJsonArray).toHaveBeenCalledExactlyOnceWith(response ?? {});

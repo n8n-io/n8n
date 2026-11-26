@@ -203,28 +203,6 @@ describe('Test Github Node', () => {
 			};
 		});
 
-		it('should throw NodeOperationError for invalid JSON inputs', async () => {
-			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
-				if (parameterName === 'inputs') {
-					return 'invalid json';
-				}
-				if (parameterName === 'resource') {
-					return 'workflow';
-				}
-				if (parameterName === 'operation') {
-					return 'dispatchAndWait';
-				}
-				if (parameterName === 'authentication') {
-					return 'accessToken';
-				}
-				return '';
-			});
-
-			await expect(async () => {
-				await githubNode.execute.call(mockExecutionContext);
-			}).rejects.toThrow(NodeOperationError);
-		});
-
 		it('should throw NodeOperationError for 404 errors when dispatching a workflow', async () => {
 			const owner = 'testOwner';
 			const repository = 'testRepository';
@@ -246,7 +224,7 @@ describe('Test Github Node', () => {
 					return workflowId;
 				}
 				if (parameterName === 'inputs') {
-					return '{}';
+					return {};
 				}
 				if (parameterName === 'ref') {
 					return 'main';
@@ -289,7 +267,7 @@ describe('Test Github Node', () => {
 					return workflowId;
 				}
 				if (parameterName === 'inputs') {
-					return '{}';
+					return {};
 				}
 				if (parameterName === 'ref') {
 					return 'main';
@@ -338,7 +316,7 @@ describe('Test Github Node', () => {
 					return workflowId;
 				}
 				if (parameterName === 'inputs') {
-					return '{}';
+					return {};
 				}
 				if (parameterName === 'ref') {
 					return 'main';
@@ -731,7 +709,7 @@ describe('Test Github Node', () => {
 					if (parameterName === 'repository') return 'testRepository';
 					if (parameterName === 'workflowId') return 147025216;
 					if (parameterName === 'ref') return 'main';
-					if (parameterName === 'inputs') return '{}';
+					if (parameterName === 'inputs') return {};
 					return defaultValue;
 				},
 			);

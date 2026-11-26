@@ -47,7 +47,6 @@ const jsonValidateTypePending = [
 	'./nodes/ExecuteWorkflow/**',
 	'./nodes/Facebook/**',
 	'./nodes/Ghost/**',
-	'./nodes/Github/**',
 	'./nodes/Google/CloudStorage/**',
 	'./nodes/GraphQL/**',
 	'./nodes/HttpRequest/**',
