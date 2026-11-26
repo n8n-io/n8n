@@ -30,6 +30,10 @@ describe('Mautic > Workflows', () => {
 			mock.get('/contacts/34').reply(200, { contact });
 			mock.patch('/contacts/34/edit', { firstname: 'Nathan' }).reply(200, { contact });
 			mock.delete('/contacts/34/delete').reply(200, { contact });
+			mock.post('/contacts/new', { email: 'ada@example.com' }).reply(200, { contact });
+			mock.post('/contacts/new', { email: 'grace@example.com' }).reply(200, { contact });
+			mock.patch('/contacts/35/edit', { firstname: 'Ada' }).reply(200, { contact });
+			mock.patch('/contacts/35/edit', { firstname: 'Grace' }).reply(200, { contact });
 			mock.post('/emails/5/contact/34/send').reply(200, success);
 			mock.post('/contacts/34/dnc/email/add').reply(200, { contact });
 			mock.post('/contacts/34/points/plus/10').reply(200, success);
