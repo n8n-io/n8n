@@ -164,6 +164,6 @@ export function smallJsonCopy(value: unknown, maxChars: number): SmallJsonCopy {
 		copy = NOT_SMALL;
 	}
 	// The spend that stops a walk can go past the limit by a whole string.
-	const chars = Math.min(maxChars, Math.max(0, maxChars - budget.remaining));
+	const chars = Math.min(maxChars, maxChars - budget.remaining);
 	return { copy: copy === NOT_SMALL ? undefined : copy, chars };
 }
