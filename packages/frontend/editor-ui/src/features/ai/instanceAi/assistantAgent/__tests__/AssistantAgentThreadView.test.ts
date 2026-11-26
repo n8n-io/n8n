@@ -1591,12 +1591,19 @@ describe('AssistantAgentThreadView', () => {
 		expect(getByTestId('header-title')).toHaveTextContent('Weekly digest');
 	});
 
-	it('titles an untitled thread with its first message', async () => {
+	it('shows the sidebar placeholder for an untitled thread, not its first message', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
 		await flushPromises();
 
-		expect(getByTestId('header-title')).toHaveTextContent('Build a digest');
+		expect(getByTestId('header-title')).toHaveTextContent('New conversation');
+	});
+
+	it('shows no title for a thread with no messages', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('');
 	});
 
 	it('opens a new Assistant thread from the header', async () => {

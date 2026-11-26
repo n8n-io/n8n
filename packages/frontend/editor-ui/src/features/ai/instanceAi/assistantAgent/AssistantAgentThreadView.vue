@@ -98,11 +98,7 @@ import {
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import {
-	firstMessageTitle,
-	getAppTargetsFromThreadMetadata,
-	threadTargetsAgent,
-} from '../instanceAi.threadRuntime';
+import { getAppTargetsFromThreadMetadata, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
@@ -756,12 +752,13 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
 // --- Header ---
-// The stored title, else the first user message, as in the Assistant runtime view.
+// The stored title, else the placeholder that the sidebar shows until the title is generated.
+// A thread with no messages has no title, so the header does not flash the placeholder.
 const threadTitle = computed(() => {
 	const title = threadsStore.threadsById.get(props.threadId)?.title;
 	if (title) return title;
-	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
-	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
+	const hasUserMessage = panel.value?.messages.some((message) => message.role === 'user');
+	return hasUserMessage ? i18n.baseText('commandBar.instanceAi.newThread') : undefined;
 });
 
 function startNewThread(): void {
