@@ -1,0 +1,223 @@
+<!doctype html>
+<!--
+Change-story template. Fill every {{PLACEHOLDER}} with an HTML fragment.
+Fragment markup this page already supports:
+
+  All assets sit next to this page inside the run directory: assets/...
+
+  Screenshot (click opens lightbox):
+    <figure class="shot">
+      <img src="assets/after-flow-1.png" alt="what it shows">
+      <figcaption>caption, incl. how it was produced</figcaption>
+    </figure>
+
+  Before/after pair (in-place toggle, real state):
+    <div class="ba" data-state="after">
+      <img class="ba-before" src="assets/before-x.png" alt="before">
+      <img class="ba-after" src="assets/after-x.png" alt="after">
+      <button class="ba-toggle" type="button"></button>
+    </div>
+
+  Long output (tests, API captures), verdict visible when collapsed:
+    <details class="output">
+      <summary>Unit tests: 11/11 pass (pnpm test ... on the PR branch)</summary>
+      <pre>key lines of the output</pre>
+      <p><a href="assets/tests-x.txt">full output</a></p>
+    </details>
+
+  Look-here item (deep-linked when a PR exists):
+    <li><a href="https://github.com/o/r/pull/N/files#diff-<sha256>R42">
+    <code>path/to/file.ts:42</code></a> one line on why to read it</li>
+
+  Mermaid: put the diagram source inside {{HOW_HTML}} as
+    <pre class="mermaid">sequenceDiagram ...</pre>
+  If the CDN is unreachable the source stays visible as text.
+  Mermaid message text is parsed, not free prose: a semicolon acts as a
+  statement separator and kills the whole diagram; use commas/periods
+  and avoid braces in message text.
+
+  Gist ({{GIST_HTML}}, always filled):
+    <p class="gist">1-3 sentences, the one thing to remember about this change.</p>
+
+  Review (--review only; otherwise fill BOTH placeholders with ''):
+    {{REVIEW_NAV_HTML}}     -> <a href="#review-findings">Review findings</a>
+    {{REVIEW_SECTION_HTML}} ->
+    <section id="review-findings"><h2>Review findings</h2>
+      <p class="verdict approve|nits|changes">Verdict: request-changes, top reason</p>
+      <p class="meta">Multi-discipline review lenses; opinions, not verified facts.</p>
+      <details class="finding sev-blocker" open>
+        <summary><span class="sev">BLOCKER</span><span class="lens">security</span>
+        <a href="...pull/N/files#diff-<sha256>R42"><code>file.ts:42</code></a>
+        one-line issue</summary>
+        <p>suggested fix</p>
+      </details>
+      (sev-major open, sev-minor without the open attribute)
+      <p class="meta">Coverage: which lenses ran, which were skipped and why.</p>
+    </section>
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Change Story: {{TITLE}}</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0;
+    --accent: #0969da; --soft: #f6f8fa; --flag: #9a6700;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d;
+      --accent: #4493f8; --soft: #151b23; --flag: #d29922;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+  a { color: var(--accent); }
+  code, pre { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code { background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+  pre {
+    background: var(--soft); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto;
+  }
+  nav {
+    position: sticky; top: 0; z-index: 2; background: var(--bg);
+    border-bottom: 1px solid var(--line); padding: 10px 24px;
+    display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px;
+  }
+  nav a { text-decoration: none; color: var(--muted); }
+  nav a:hover { color: var(--accent); }
+  header h1 { font-size: 26px; line-height: 1.3; margin: 28px 0 6px; }
+  .meta { color: var(--muted); font-size: 14px; }
+  .gist {
+    font-size: 18px; line-height: 1.55; margin: 16px 0 0;
+    padding-left: 14px; border-left: 3px solid var(--accent);
+  }
+  section { margin-top: 40px; }
+  h2 {
+    font-size: 20px; border-bottom: 1px solid var(--line);
+    padding-bottom: 6px; margin-bottom: 14px;
+  }
+  #look-here h2 { color: var(--flag); }
+  #look-here li, #not-covered li { margin-bottom: 8px; }
+  figure.shot { margin: 16px 0; }
+  figure.shot img, .ba img {
+    max-width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    cursor: zoom-in; display: block;
+  }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .ba { margin: 16px 0; }
+  .ba[data-state="after"] .ba-before, .ba[data-state="before"] .ba-after { display: none; }
+  .ba-toggle, dialog button {
+    margin-top: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+    background: var(--soft); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  details.output { margin: 14px 0; }
+  details.output summary { cursor: pointer; font-weight: 600; }
+  details.output pre { margin-top: 10px; }
+  dialog {
+    border: none; border-radius: 10px; padding: 8px; max-width: 92vw;
+    background: var(--bg);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  dialog img { max-width: 100%; max-height: 86vh; display: block; }
+  pre.mermaid { background: transparent; border: none; text-align: center; }
+  .finding { margin: 10px 0; }
+  .finding summary { cursor: pointer; }
+  .sev, .lens {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 1px 7px; border-radius: 10px; margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .sev-blocker .sev { background: #d1242f; color: #fff; }
+  .sev-major .sev { background: #9a6700; color: #fff; }
+  .sev-minor .sev { background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+  .lens { background: var(--soft); color: var(--muted); border: 1px solid var(--line); font-weight: 600; }
+  .verdict { font-weight: 700; }
+  .verdict.approve { color: #1a7f37; }
+  .verdict.nits { color: var(--flag); }
+  .verdict.changes { color: #d1242f; }
+  @media (prefers-color-scheme: dark) {
+    .verdict.approve { color: #3fb950; }
+    .verdict.changes { color: #f85149; }
+    .sev-blocker .sev { background: #da3633; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a href="#why">Why</a>
+  <a href="#what-changed">What changed</a>
+  <a href="#how-it-works">How it works</a>
+  <a href="#evidence">Evidence</a>
+  <a href="#look-here">Look here</a>
+  {{REVIEW_NAV_HTML}}
+  <a href="#not-covered">Not covered</a>
+</nav>
+<main>
+  <header>
+    <h1>{{TITLE}}</h1>
+    <p class="meta"><code>{{BRANCH}}</code> | {{DATE}} | diff vs <code>{{BASE}}</code>{{PR_LINK_HTML}}</p>
+    {{GIST_HTML}}
+  </header>
+
+  <section id="why"><h2>Why</h2>{{WHY_HTML}}</section>
+  <section id="what-changed"><h2>What changed for the user</h2>{{WHAT_CHANGED_HTML}}</section>
+  <section id="how-it-works"><h2>How it works now</h2>{{HOW_HTML}}</section>
+  <section id="evidence"><h2>Evidence</h2>{{EVIDENCE_HTML}}</section>
+  <section id="look-here"><h2>Look here</h2>{{LOOK_HERE_HTML}}</section>
+  {{REVIEW_SECTION_HTML}}
+  <section id="not-covered"><h2>Not covered</h2>{{NOT_COVERED_HTML}}</section>
+</main>
+
+<dialog id="lightbox">
+  <img alt="">
+  <button type="button" autofocus>Close</button>
+</dialog>
+
+<!-- Classic script on purpose: module scripts are blocked on file:// pages
+     (unique origin), and startOnLoad races a dynamically imported mermaid.
+     IIFE build + explicit run() works from file:// and has no race. -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"
+        integrity="sha384-T/0lMUdJpd2S1ZHtRiofG3htU3xPCrFVeAQ1UUE2TJwlEJSV5NUwn30kP28n238E"
+        crossorigin="anonymous"></script>
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
+    });
+    mermaid.run();
+  } /* offline: CDN script missing, diagram source stays visible */
+</script>
+<script>
+  const box = document.getElementById('lightbox');
+  document.querySelectorAll('figure.shot img, .ba img').forEach((img) => {
+    img.addEventListener('click', () => {
+      box.querySelector('img').src = img.src;
+      box.showModal();
+    });
+  });
+  box.querySelector('button').addEventListener('click', () => box.close());
+  box.addEventListener('click', (e) => { if (e.target === box) box.close(); });
+
+  document.querySelectorAll('.ba').forEach((ba) => {
+    const btn = ba.querySelector('.ba-toggle');
+    const label = () => {
+      const s = ba.dataset.state;
+      btn.textContent = `Showing: ${s} (click for ${s === 'after' ? 'before' : 'after'})`;
+    };
+    btn.addEventListener('click', () => {
+      ba.dataset.state = ba.dataset.state === 'after' ? 'before' : 'after';
+      label();
+    });
+    label();
+  });
+</script>
+</body>
+</html>
