@@ -65,4 +65,9 @@ export class PromotionEnvironmentProjectRepository extends BaseRepository<Promot
 		});
 		return rows.map((row) => row.projectId);
 	}
+
+	async findProjectIdsWithOwnEnvironment(direction: PromotionDirection): Promise<string[]> {
+		const rows = await this.find({ where: { direction }, select: { projectId: true } });
+		return rows.map((row) => row.projectId);
+	}
 }

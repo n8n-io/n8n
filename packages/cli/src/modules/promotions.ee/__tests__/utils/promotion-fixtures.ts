@@ -1,6 +1,7 @@
 import {
 	promotionProviderTypeCapabilities,
 	type PromoteSelectionResultDto,
+	type PromotionDirection,
 	type PromotionGitHostConfig,
 	type PromotionProviderConfig,
 } from '@n8n/api-types';
@@ -11,6 +12,7 @@ import { rm } from 'node:fs/promises';
 
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 
+import { PromotionEnvironmentRepository } from '../../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../../database/repositories/promotion-provider.repository';
 import { instancePromotionExportRequest } from '../../instance-package';
 
@@ -40,6 +42,30 @@ export async function insertTokenProvider({
 		authType: 'token',
 		config,
 		auth: await Container.get(Cipher).encryptV2(JSON.stringify(credentials)),
+	});
+}
+
+/** Stores a project-scope environment that team projects can link to. */
+export async function createProjectEnvironment({
+	providerId,
+	remoteUrl,
+	direction,
+}: {
+	providerId: string;
+	remoteUrl: string;
+	direction: PromotionDirection;
+}) {
+	return await Container.get(PromotionEnvironmentRepository).insertEnvironment({
+		name: `Team ${direction}`,
+		scope: 'projects',
+		providerId,
+		remote: { schemaVersion: 1, remoteUrl },
+		...(direction === 'promote'
+			? {
+					direction,
+					settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+				}
+			: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
 	});
 }
 

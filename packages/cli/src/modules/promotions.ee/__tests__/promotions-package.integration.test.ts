@@ -30,6 +30,7 @@ import {
 	FolderRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	SettingsRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
@@ -108,6 +109,8 @@ import { PromotionCredentialSelectionService } from '../promotion-credential-sel
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
+import { PromotionEnvironmentsService } from '../promotion-environments.service';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
@@ -125,7 +128,11 @@ import {
 	createGitRemoteSeed,
 	type TestRemote,
 } from './utils/git-remote-fixture';
-import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
+import {
+	createProjectEnvironment,
+	expectPushed,
+	writeInstancePromotionPackage,
+} from './utils/promotion-fixtures';
 
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
@@ -185,6 +192,7 @@ beforeEach(async () => {
 	await linkRepository.delete({});
 	await environmentRepository.delete({});
 	await providerRepository.delete({});
+	await Container.get(SettingsRepository).delete({ key: 'promotions.projectEnvironments' });
 	await testDb.truncate([
 		'WorkflowTagMapping',
 		'TagEntity',
@@ -226,7 +234,12 @@ beforeEach(async () => {
 		instanceSettings,
 	);
 	service = new PromotionsService(
-		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
+		new PromotionEnvironmentResolver(
+			environmentRepository,
+			linkRepository,
+			projectRepository,
+			Container.get(PromotionSettingsService),
+		),
 		new PromotionProvidersService(
 			providerRepository,
 			environmentRepository,
