@@ -323,40 +323,63 @@ const isConfirmedActive = computed(() => {
 	return true;
 });
 
+async function handleConfirmedActivation() {
+	const workflowId = workflowDocumentStore?.value?.workflowId ?? '';
+	// Make sure the checklist opens only on the first activation, also when the
+	// workflow loads as active before onMounted has read the cache.
+	const { firstActivatedAt } = await workflowsCache.getWorkflowSettings(workflowId);
+	if (!firstActivatedAt) {
+		if (isAnyModalOpen.value) {
+			// Defer opening until any open modal closes so the popover
+			// doesn't paint over it.
+			const stop = watch(isAnyModalOpen, (isOpen) => {
+				if (!isOpen) {
+					stop();
+					openSuggestedActions();
+				}
+			});
+		} else {
+			setTimeout(() => {
+				openSuggestedActions();
+			}, 0); // Ensure UI is ready and availableActions.length > 0
+		}
+	}
+
+	// Update firstActivatedAt after opening popover
+	await workflowsCache.updateFirstActivatedAt(workflowId);
+}
+
+// Set when an activation arrives while auto-open is disabled. firstActivatedAt
+// stays unset, and the activation is handled once auto-open is enabled again.
+let hasDeferredActivation = false;
+
 // Watch for workflow activation
-// Skipped entirely while auto-open is disabled, so firstActivatedAt stays unset
-// and the checklist can still open on the next Editor visit.
 watch(isConfirmedActive, async (isActive, wasActive) => {
-	if (props.disableAutoOpen) {
+	if (!isActive || wasActive) {
 		return;
 	}
 
-	if (isActive && !wasActive) {
-		const workflowId = workflowDocumentStore?.value?.workflowId ?? '';
-		// Make sure the checklist opens only on the first activation, also when the
-		// workflow loads as active before onMounted has read the cache.
-		const { firstActivatedAt } = await workflowsCache.getWorkflowSettings(workflowId);
-		if (!firstActivatedAt) {
-			if (isAnyModalOpen.value) {
-				// Defer opening until any open modal closes so the popover
-				// doesn't paint over it.
-				const stop = watch(isAnyModalOpen, (isOpen) => {
-					if (!isOpen) {
-						stop();
-						openSuggestedActions();
-					}
-				});
-			} else {
-				setTimeout(() => {
-					openSuggestedActions();
-				}, 0); // Ensure UI is ready and availableActions.length > 0
-			}
+	if (props.disableAutoOpen) {
+		hasDeferredActivation = true;
+		return;
+	}
+
+	await handleConfirmedActivation();
+});
+
+watch(
+	() => props.disableAutoOpen,
+	async (isDisabled) => {
+		if (isDisabled || !hasDeferredActivation) {
+			return;
 		}
 
-		// Update firstActivatedAt after opening popover
-		await workflowsCache.updateFirstActivatedAt(workflowId);
-	}
-});
+		hasDeferredActivation = false;
+		if (isConfirmedActive.value) {
+			await handleConfirmedActivation();
+		}
+	},
+);
 
 onMounted(async () => {
 	await loadWorkflowSettings();

@@ -603,6 +603,67 @@ describe('WorkflowProductionChecklist', () => {
 			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
 		});
 
+		it('should open popover when auto-open is enabled after an activation while it was disabled', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({
+				pinia: createTestingPinia(),
+				props: { disableAutoOpen: true },
+			});
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			await rerender({ disableAutoOpen: false });
+
+			await vi.waitFor(() => {
+				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+		});
+
+		it('should not open popover when auto-open is enabled without an activation while it was disabled', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({
+				pinia: createTestingPinia(),
+				props: { disableAutoOpen: true },
+			});
+			await flushPromises();
+
+			await rerender({ disableAutoOpen: false });
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+		});
+
 		it('should not open popover automatically if workflow was previously activated', async () => {
 			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},
