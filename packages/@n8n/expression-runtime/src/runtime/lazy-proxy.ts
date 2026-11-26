@@ -185,10 +185,10 @@ function keepItemsWithSomeFields(
 	return kept;
 }
 
-// The helpers below take the state of a proxy as arguments. Each inner function
-// of createDeepLazyProxy is one more closure for each proxy.
+// These helpers are not inner functions of createDeepLazyProxy. Each inner
+// function adds one closure to each proxy.
 
-/** Cache an object item as a lazy proxy that starts with the fields that the host gave. */
+/** `prop` is an array index, so plain assignment is safe. */
 function cacheItemWithSomeFields(
 	cache: Record<string, unknown>,
 	basePath: string[],
@@ -208,8 +208,8 @@ function cacheItemWithSomeFields(
 }
 
 /**
- * Read every field in one host call, one time for each request. Gives the
- * fields of the read, or `givenFields` when there is no read.
+ * Read the fields that fit in one host call, one time for each request.
+ * Gives these fields, or else `givenFields`.
  */
 function readEveryField(
 	batchRead: ReadBatch | undefined,
@@ -567,8 +567,8 @@ export function createDeepLazyProxy(
 
 	// `prop` is the already-stringified index — callers have it at hand, and
 	// re-deriving it here would put a String() allocation on the hot read path.
-	// Plain assignment is safe here (unlike cacheObjectValue): `prop`
-	// is always a canonical index string, never a setter-chain key like '__proto__'.
+	// Plain assignment is safe here: `prop` is always a canonical index string,
+	// never a setter-chain key like '__proto__'.
 	function fetchAndCacheArrayElement(idx: number, prop: string): unknown {
 		const t = target as Record<string, unknown>;
 		const reads = (childReads ??= newChildReads());
@@ -600,7 +600,6 @@ export function createDeepLazyProxy(
 		} else {
 			element = getArrayElement(basePath, idx);
 		}
-		// Primitives (and null) skip `materializeHostValue`'s metadata checks.
 		if (element === null || typeof element !== 'object') {
 			t[prop] = element;
 			return element;
@@ -610,7 +609,6 @@ export function createDeepLazyProxy(
 		return t[prop];
 	}
 
-	/** Cache the field that a host read gave, or else read the field from the host. */
 	function cacheObjectValue(prop: string): unknown {
 		const t = target as Record<string, unknown>;
 		if (givenFields !== undefined && hasOwn(givenFields, prop)) {
