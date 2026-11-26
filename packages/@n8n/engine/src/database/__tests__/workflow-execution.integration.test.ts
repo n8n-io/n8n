@@ -11,6 +11,7 @@ import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
+import { AddErrorWorkflowColumnsToWorkflowExecution1795132800000 } from '../migrations/1795132800000-AddErrorWorkflowColumnsToWorkflowExecution';
 import { TypeOrmExecutionStore } from '../typeorm-execution-store';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 
@@ -830,6 +831,47 @@ describe('workflow_execution table (integration)', () => {
 					}),
 				),
 			).rejects.toThrow(constraint);
+		});
+
+		it('the migration of the error workflow columns changes a table that has rows, in both directions', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			const errorId = generateId();
+			await store.createExecution({ ...errorRecord(sourceId), id: errorId });
+			const schemaObjects = async (): Promise<string[]> => {
+				const rows: Array<{ name: string }> = await dataSource.query(
+					`SELECT column_name AS name FROM information_schema.columns
+					 WHERE table_name = 'workflow_execution'
+					   AND column_name IN ('error_source_execution_id', 'error_source_workflow_id',
+					                       'resolve_error_workflow_on_failure', 'error_workflow_due_at')
+					 UNION ALL
+					 SELECT indexname FROM pg_indexes
+					 WHERE indexname IN ('idx_workflow_execution_error_source_execution_id',
+					                     'idx_workflow_execution_error_workflow_due_at')
+					 UNION ALL
+					 SELECT conname FROM pg_constraint
+					 WHERE conname IN ('chk_workflow_execution_error_source', 'chk_workflow_execution_one_link')`,
+				);
+				return rows.map((row) => row.name).sort();
+			};
+			const migration = new AddErrorWorkflowColumnsToWorkflowExecution1795132800000();
+			const queryRunner = dataSource.createQueryRunner();
+			await queryRunner.connect();
+			try {
+				await migration.down(queryRunner);
+				expect(await schemaObjects()).toEqual([]);
+			} finally {
+				// The other tests need the schema of the newest migration.
+				await migration.up(queryRunner);
+				await queryRunner.release();
+			}
+
+			expect(await schemaObjects()).toHaveLength(8);
+			// The rows stay. The columns come back empty, with the default for the flag.
+			const source = await loadRow(sourceId);
+			expect(source.resolveErrorWorkflowOnFailure).toBe(false);
+			expect(source.errorWorkflowDueAt).toBeNull();
+			expect((await loadRow(errorId)).errorSourceExecutionId).toBeNull();
 		});
 	});
 
