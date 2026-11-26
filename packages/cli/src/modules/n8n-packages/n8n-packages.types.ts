@@ -478,7 +478,7 @@ export interface ImportContext {
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
 	Omit<ImportWorkflowProperties, 'idPolicy' | 'publishingPolicy'> &
 	ImportProjectProperties &
-	ResolvedImportFolderProperties &
+	Omit<ResolvedImportFolderProperties, 'excludedProjectIds'> &
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties & {
