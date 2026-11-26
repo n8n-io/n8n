@@ -5,6 +5,8 @@ import {
 	GATE_MS,
 	SOURCES,
 	applyGate,
+	classifyNoFix,
+	movingTagOf,
 	compareScans,
 	evaluateSource,
 	readPin,
@@ -100,6 +102,10 @@ describe('compareScans', () => {
 			['CVE-3'],
 		);
 		assert.deepEqual(diff.addedPackages, ['curl']);
+		assert.deepEqual(
+			diff.remaining.map((f) => f.id),
+			['CVE-2', 'CVE-3'],
+		);
 	});
 
 	it('treats the same CVE in another package as another finding', () => {
@@ -135,6 +141,58 @@ describe('evaluateSource', () => {
 	it('reports a newer digest that removes no finding', () => {
 		const result = evaluateSource(pin, digest('c'), scans([], [finding('CVE-1', 'openssl')]));
 		assert.equal(result.status, 'no-fix');
+	});
+});
+
+describe('evaluateSource without a newer digest', () => {
+	const same = (vulns) => {
+		const scanned = summarizeReport(report(vulns));
+		return [{ platform: 'linux/amd64', pinned: scanned, newest: scanned }];
+	};
+
+	it('reports a pinned digest without findings as current', () => {
+		assert.equal(evaluateSource(pin, digest('a'), same([])).status, 'current');
+	});
+
+	it('reports a pinned digest with findings as no-fix', () => {
+		const result = evaluateSource(pin, digest('a'), same([finding('CVE-1', 'openssl')]));
+		assert.equal(result.status, 'no-fix');
+	});
+});
+
+describe('movingTagOf', () => {
+	it('drops the patch number', () => {
+		assert.equal(movingTagOf('26.13.0-alpine3.24-dev'), '26.13-alpine3.24-dev');
+		assert.equal(movingTagOf('3.13.18-slim-trixie'), '3.13-slim-trixie');
+		assert.equal(movingTagOf('26.13.0'), '26.13');
+	});
+
+	it('returns null for a tag without a patch number', () => {
+		assert.equal(movingTagOf('latest'), null);
+		assert.equal(movingTagOf('26.13-alpine3.24-dev'), null);
+	});
+});
+
+describe('classifyNoFix', () => {
+	const noFix = { source: 'DHI_REF', status: 'no-fix', platforms: [] };
+	const moving = (removed) => ({
+		ref: `dhi.io/node:26.13-alpine3.24-dev@${digest('d')}`,
+		platforms: [{ platform: 'linux/amd64', removed, added: [], addedPackages: [] }],
+	});
+	const fixed = { id: 'CVE-1', pkg: 'openssl', severity: 'HIGH' };
+
+	it('asks for a version update when the moving tag removes a finding', () => {
+		const result = classifyNoFix(noFix, moving([fixed]));
+		assert.equal(result.status, 'version-update');
+		assert.equal(result.versionUpdate.ref, `dhi.io/node:26.13-alpine3.24-dev@${digest('d')}`);
+	});
+
+	it('reports no upstream fix when the moving tag removes nothing', () => {
+		assert.equal(classifyNoFix(noFix, moving([])).status, 'no-upstream-fix');
+	});
+
+	it('reports no upstream fix without a moving tag', () => {
+		assert.equal(classifyNoFix(noFix, null).status, 'no-upstream-fix');
 	});
 });
 
@@ -218,13 +276,33 @@ describe('renderSummary', () => {
 		const summary = renderSummary([ready, evaluateSource(pin, digest('a'), [])]);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| curl \|/,
 		);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| - \|/,
 		);
-		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \|/);
+		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \| - \|/);
+	});
+
+	it('lists the sources that need a version update', () => {
+		const fixed = { id: 'CVE-1', pkg: 'openssl', severity: 'HIGH' };
+		const versionUpdate = classifyNoFix(
+			{ source: 'DHI_REF', status: 'no-fix', platforms: [] },
+			{
+				ref: 'dhi.io/node:26.13-alpine3.24-dev@sha256:d',
+				platforms: [
+					{ platform: 'linux/amd64', removed: [fixed], added: [], addedPackages: [] },
+					{ platform: 'linux/arm64', removed: [fixed], added: [], addedPackages: [] },
+				],
+			},
+		);
+		const summary = renderSummary([versionUpdate]);
+		assert.match(summary, /### Needs a person/);
+		assert.match(
+			summary,
+			/- `DHI_REF`: version update needed\. `dhi\.io\/node:26\.13-alpine3\.24-dev@sha256:d` removes 0 C \/ 1 H \/ 0 M \/ 0 L \/ 0 U\./,
+		);
 	});
 
 	it('lists the publisher errors', () => {
