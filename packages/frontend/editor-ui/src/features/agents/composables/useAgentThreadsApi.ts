@@ -1,4 +1,6 @@
 import type {
+	AgentAttentionFlag,
+	AgentAttentionFlagType,
 	AgentMessageAuthor,
 	AgentPersistedMessageDto,
 	AgentSessionPreviewAccess,
@@ -54,6 +56,8 @@ export interface AgentSessionFilters {
 	origin: AgentSessionOrigin | 'all';
 	startDate: string | Date;
 	endDate: string | Date;
+	/** Limits the list to these sessions. An empty list matches no sessions. */
+	sessionIds?: string[];
 }
 
 export function defaultAgentSessionFilters(): AgentSessionFilters {
@@ -144,12 +148,21 @@ export const listThreads = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	options: { limit: number; cursor?: string; filters?: AgentSessionFilters; previewOnly?: boolean },
+	options: {
+		limit: number;
+		cursor?: string;
+		filters?: AgentSessionFilters;
+		previewOnly?: boolean;
+		/** Limits the list to these sessions. An empty list matches no sessions. */
+		sessionIds?: string[];
+	},
 ): Promise<ThreadsPage> => {
 	const params = new URLSearchParams({ limit: String(options.limit) });
 	if (options.cursor) params.set('cursor', options.cursor);
 	if (options.previewOnly) params.set('previewOnly', 'true');
 	const { filters } = options;
+	const sessionIds = options.sessionIds ?? filters?.sessionIds;
+	if (sessionIds) params.set('sessionIds', sessionIds.join(','));
 	if (filters?.status && filters.status !== 'all') params.set('status', filters.status);
 	if (filters?.origin && filters.origin !== 'all') params.set('origin', filters.origin);
 	if (filters?.startDate) {
@@ -169,6 +182,35 @@ export const listThreads = async (
  * A system agent thread loads through the system agent routes, which find its
  * project from the thread. The project route loads project agents only.
  */
+export const listAttentionFlags = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	type?: AgentAttentionFlagType,
+): Promise<AgentAttentionFlag[]> => {
+	const query = type ? `?${new URLSearchParams({ type }).toString()}` : '';
+	return await makeRestApiRequest<AgentAttentionFlag[]>(
+		context,
+		'GET',
+		`${agentBasePath(projectId, agentId)}/attention-flags${query}`,
+	);
+};
+
+/** Send only flag IDs from a list response. A new error on the same session gets a new ID. */
+export const dismissAttentionFlags = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	body: { type: AgentAttentionFlagType; flagIds: string[] },
+): Promise<{ success: boolean }> => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'POST',
+		`${agentBasePath(projectId, agentId)}/attention-flags/dismiss`,
+		body,
+	);
+};
+
 export const getThreadDetail = async (
 	context: IRestApiContext,
 	projectId: string,

@@ -75,6 +75,25 @@ describe('resolveAgentTestHandoff', () => {
 		expect(result.block).not.toContain('User: Hello agent');
 	});
 
+	it('keeps only the accessible sessions in threadIds', async () => {
+		const getThreadDetail = vi.fn(async (threadId: string) =>
+			threadId === 'unknown-thread'
+				? null
+				: { thread: makeThread({ id: threadId }), executions: [makeExecution()] },
+		);
+
+		const result = await resolveAgentTestHandoff(
+			{ ...handoff, threadIds: ['preview-thread-1', 'thread-2', 'unknown-thread'] },
+			{ projectId: 'project-1', userId: 'user-1', getThreadDetail },
+		);
+
+		expect(getThreadDetail).toHaveBeenCalledWith('thread-2', 'project-1', 'agent-1', 'user-1');
+		expect(result.block).toContain('"threadIds":["preview-thread-1","thread-2"]');
+		expect(result.block).not.toContain('unknown-thread');
+		expect(result.block).toContain('The user shared 2 sessions');
+		expect(result.block).toContain('`agent-context`');
+	});
+
 	it('round-trips carried agentName/agentIcon/sessionTitle through the reference JSON', async () => {
 		const result = await resolveAgentTestHandoff(
 			{ ...handoff, agentName: 'SEO Auditor', agentIcon: 'search', sessionTitle: 'Help with tone' },

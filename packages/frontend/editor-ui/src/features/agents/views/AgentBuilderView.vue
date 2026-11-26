@@ -49,6 +49,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
+import { useAgentAttentionFlags } from '@/features/agents/composables/useAgentAttentionFlags';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -149,6 +150,7 @@ import {
 import {
 	AGENT_CONFIG_WRITE_KEY,
 	AGENT_BUILDER_STANDALONE_KEY,
+	AGENT_SESSION_ASSISTANT_KEY,
 	type AgentConfigWrite,
 } from '../components/agentBuilderInjectionKeys';
 import AgentBuilderChatMode from '../components/AgentBuilderChatMode.vue';
@@ -1115,8 +1117,10 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
+const { count: sessionErrorCount } = useAgentAttentionFlags(projectId, agentId);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	failedSessionCount: sessionErrorCount,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
@@ -1984,6 +1988,17 @@ const runConfigWrite: AgentConfigWrite = async (write) => {
 		}
 	}
 };
+provide(AGENT_SESSION_ASSISTANT_KEY, {
+	isAvailable: computed(() => !isArtifactMode.value && instanceAiReady.value),
+	async handoff(params) {
+		/** A child session can target a different Agent. The panel guards the current route. */
+		if (params.projectId !== projectId.value) return false;
+		return await handoffToAssistantPanel(
+			buildInstanceAiAgentPreviewHandoffContext(params),
+			params.initialDraft,
+		);
+	},
+});
 provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
 
 async function flushAutosave(): Promise<AutosaveResult> {

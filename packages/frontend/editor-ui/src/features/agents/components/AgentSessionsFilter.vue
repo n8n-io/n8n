@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nOption, N8nPopover, N8nSelect } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nPopover,
+	N8nSelect2 as N8nSelect,
+	N8nTagsInput2 as N8nTagsInput,
+	type TagsInputValue,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ElDatePicker } from 'element-plus';
 import { computed } from 'vue';
+import type { SelectItem, SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 
 import {
 	defaultAgentSessionFilters,
 	type AgentSessionFilters,
-	type AgentSessionOrigin,
-	type AgentSessionStatus,
 } from '../composables/useAgentThreadsApi';
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
@@ -21,7 +26,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
+const statuses: Array<{ id: AgentSessionFilters['status']; name: string }> = [
 	{ id: 'all', name: i18n.baseText('agentSessions.filters.anyStatus') },
 	{ id: 'running', name: i18n.baseText('agentSessions.status.running') },
 	{ id: 'succeeded', name: i18n.baseText('agentSessions.status.succeeded') },
@@ -31,7 +36,7 @@ const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
 	{ id: 'awaiting', name: i18n.baseText('agentSessions.status.awaiting') },
 ];
 
-const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
+const origins: Array<{ id: AgentSessionFilters['origin']; name: string }> = [
 	{ id: 'all', name: i18n.baseText('agentSessions.filters.anyOrigin') },
 	{ id: 'preview', name: i18n.baseText('agentSessions.origin.preview') },
 	{ id: 'instance-ai', name: i18n.baseText('agentSessions.origin.instanceAi') },
@@ -49,6 +54,19 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'webhook', name: i18n.baseText('agentSessions.origin.webhook') },
 ];
 
+const statusItems: SelectItem[] = statuses.map(({ id, name }) => ({ value: id, label: name }));
+const originItems: SelectItem[] = origins.map(({ id, name }) => ({ value: id, label: name }));
+
+function onStatusChange(value: SelectValue | undefined) {
+	const status = statuses.find((item) => item.id === value)?.id;
+	if (status) updateFilter({ status });
+}
+
+function onOriginChange(value: SelectValue | undefined) {
+	const origin = origins.find((item) => item.id === value)?.id;
+	if (origin) updateFilter({ origin });
+}
+
 const activeFilterCount = computed(
 	() =>
 		[
@@ -56,8 +74,26 @@ const activeFilterCount = computed(
 			props.modelValue.origin !== 'all',
 			Boolean(props.modelValue.startDate),
 			Boolean(props.modelValue.endDate),
+			props.modelValue.sessionIds !== undefined,
 		].filter(Boolean).length,
 );
+
+/** The dot shows only by color, so the accessible name carries the active filter count. */
+const filterButtonLabel = computed(() =>
+	activeFilterCount.value > 0
+		? i18n.baseText('agentSessions.filters.buttonLabelActive', {
+				interpolate: { count: String(activeFilterCount.value) },
+			})
+		: i18n.baseText('forms.resourceFiltersDropdown.filters'),
+);
+
+/** Removing the last ID clears the filter. An empty list would match no sessions. */
+function onSessionIdsChange(values: TagsInputValue[]) {
+	const sessionIds = [
+		...new Set(values.filter((value) => typeof value === 'string').map((value) => value.trim())),
+	].filter(Boolean);
+	updateFilter({ sessionIds: sessionIds.length > 0 ? sessionIds : undefined });
+}
 
 function updateFilter(value: Partial<AgentSessionFilters>) {
 	emit('filterChanged', { ...props.modelValue, ...value });
@@ -73,8 +109,7 @@ function reset() {
 		side="bottom"
 		align="end"
 		position-strategy="absolute"
-		width="calc(var(--spacing--5xl) + var(--spacing--4xl))"
-		show-arrow
+		width="calc(var(--spacing--5xl) + var(--spacing--2xl))"
 	>
 		<template #trigger>
 			<N8nButton
@@ -82,19 +117,17 @@ function reset() {
 				icon-only
 				icon="funnel"
 				size="medium"
-				:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
+				:aria-label="filterButtonLabel"
 				:active="activeFilterCount > 0"
 				data-test-id="agent-sessions-filter-button"
 				:class="$style.filterButton"
 			>
 				<template v-if="activeFilterCount > 0" #default>
-					<N8nBadge
-						variant="primary"
-						:class="$style.filterBadge"
-						data-test-id="agent-sessions-filter-badge"
-					>
-						{{ activeFilterCount }}
-					</N8nBadge>
+					<span
+						:class="$style.filterDot"
+						aria-hidden="true"
+						data-test-id="agent-sessions-filter-dot"
+					/>
 				</template>
 			</N8nButton>
 		</template>
@@ -109,15 +142,10 @@ function reset() {
 						id="agent-sessions-filter-status"
 						:model-value="props.modelValue.status"
 						data-test-id="agent-sessions-filter-status"
-						@update:model-value="updateFilter({ status: $event })"
-					>
-						<N8nOption
-							v-for="status in statuses"
-							:key="status.id"
-							:label="status.name"
-							:value="status.id"
-						/>
-					</N8nSelect>
+						:items="statusItems"
+						size="large"
+						@update:model-value="onStatusChange"
+					/>
 				</div>
 
 				<div :class="$style.group">
@@ -128,15 +156,26 @@ function reset() {
 						id="agent-sessions-filter-origin"
 						:model-value="props.modelValue.origin"
 						data-test-id="agent-sessions-filter-origin"
-						@update:model-value="updateFilter({ origin: $event })"
-					>
-						<N8nOption
-							v-for="origin in origins"
-							:key="origin.id"
-							:label="origin.name"
-							:value="origin.id"
-						/>
-					</N8nSelect>
+						:items="originItems"
+						size="large"
+						@update:model-value="onOriginChange"
+					/>
+				</div>
+
+				<div :class="$style.group">
+					<label for="agent-sessions-filter-session-ids">{{
+						i18n.baseText('agentSessions.filters.sessionIds')
+					}}</label>
+					<N8nTagsInput
+						id="agent-sessions-filter-session-ids"
+						:model-value="props.modelValue.sessionIds ?? []"
+						:placeholder="i18n.baseText('agentSessions.filters.sessionIdsPlaceholder')"
+						:class="$style.sessionIdFilter"
+						add-on-paste
+						add-on-blur
+						data-test-id="agent-sessions-filter-session-ids"
+						@update:model-value="onSessionIdsChange"
+					/>
 				</div>
 
 				<div :class="$style.group">
@@ -165,11 +204,10 @@ function reset() {
 						/>
 					</div>
 				</div>
-
+			</div>
+			<div v-if="activeFilterCount > 0" :class="$style.resetContainer">
 				<N8nButton
-					v-if="activeFilterCount > 0"
-					variant="ghost"
-					size="large"
+					variant="outline"
 					:class="$style.resetButton"
 					data-test-id="agent-sessions-filter-reset"
 					@click="reset"
@@ -182,6 +220,8 @@ function reset() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/mixins' as mixins;
+
 .group {
 	label {
 		display: inline-block;
@@ -204,26 +244,43 @@ function reset() {
 	line-height: 100%;
 }
 
+.resetContainer {
+	padding: var(--spacing--xs) var(--spacing--md);
+	border-top: 1px solid var(--border-color--subtle);
+}
+
 .resetButton {
-	margin-top: var(--spacing--xs);
-	padding: 0;
+	width: 100%;
 }
 
 .filterButton {
 	position: relative;
 }
 
-.filterBadge {
+.filterDot {
 	position: absolute;
-	top: 0;
-	right: calc(var(--spacing--4xs) * -1);
-	transform: translate(50%, -50%);
+	inset-block-start: var(--spacing--5xs);
+	inset-inline-end: var(--spacing--5xs);
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
+	border-radius: 50%;
+	background-color: var(--background--brand);
+	outline: 1px solid var(--background--surface);
+	pointer-events: none;
 }
 
 // The popover scroll area clips its content, so keep the padding inside it. This leaves room
 // for the focus rings of the full-width controls.
 .form {
-	padding: var(--spacing--sm);
+	padding-inline: var(--spacing--sm);
+	padding-block-end: var(--spacing--sm);
+}
+
+.sessionIdFilter {
+	max-height: var(--spacing--4xl);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	@include mixins.scroll-bar;
 }
 </style>
 

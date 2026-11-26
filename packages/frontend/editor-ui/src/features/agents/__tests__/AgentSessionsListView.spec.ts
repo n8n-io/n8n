@@ -44,6 +44,29 @@ let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 const stopSession = vi.hoisted(() => vi.fn());
 const agentPermissions = vi.hoisted(() => ({ canExecute: { value: true } }));
 
+const attentionFlagsState = vi.hoisted(() => ({
+	flags: [] as Array<{ id: string; type: 'session-error'; sessionId: string; createdAt: string }>,
+	dismiss: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentAttentionFlags', async () => {
+	const { computed } = await import('vue');
+	return {
+		useAgentAttentionFlags: () => {
+			const flags = computed(() => attentionFlagsState.flags);
+			return {
+				flags,
+				count: computed(() => flags.value.length),
+				hasFlags: computed(() => flags.value.length > 0),
+				flaggedSessionIds: computed(() => new Set(flags.value.map(({ sessionId }) => sessionId))),
+				isFlagged: () => false,
+				dismiss: attentionFlagsState.dismiss,
+				dismissSession: vi.fn(),
+			};
+		},
+	};
+});
+
 vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissions,
 }));
@@ -157,6 +180,14 @@ vi.mock('../agentSessions.store', () => ({
 	}),
 }));
 
+vi.mock('../components/AgentSessionFlagCard.vue', () => ({
+	default: {
+		name: 'AgentSessionFlagCard',
+		emits: ['fix-error', 'action'],
+		template: '<button data-test-id="agent-session-flag-card-fix" @click="$emit(\'fix-error\')" />',
+	},
+}));
+
 vi.mock('../components/AgentSessionsFilter.vue', () => ({
 	default: {
 		name: 'AgentSessionsFilter',
@@ -191,6 +222,9 @@ vi.mock('element-plus', () => ({
 
 import type { AgentExecutionThread, AgentSessionFilters } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+import { computed } from 'vue';
+import { AGENT_PREVIEW_HANDOFF_MAX_SESSIONS } from '@n8n/api-types';
+import { AGENT_SESSION_ASSISTANT_KEY } from '../components/agentBuilderInjectionKeys';
 
 const defaultFilters: AgentSessionFilters = {
 	status: 'all',
@@ -235,10 +269,12 @@ async function mountView({
 	threads = [makeThread()],
 	manageStoreLifecycle = true,
 	filters = { status: 'all', origin: 'all', startDate: '', endDate: '' },
+	provide = {},
 }: {
 	threads?: AgentExecutionThread[];
 	manageStoreLifecycle?: boolean;
 	filters?: typeof storeState.filters;
+	provide?: Record<symbol, unknown>;
 } = {}) {
 	storeState.threads = threads;
 	storeState.loading = false;
@@ -252,7 +288,7 @@ async function mountView({
 			agentId: 'agent-1',
 			manageStoreLifecycle,
 		},
-		global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
+		global: { plugins: [createTestingPinia({ createSpy: vi.fn })], provide },
 	});
 }
 
@@ -493,6 +529,47 @@ describe('AgentSessionsListView', () => {
 			'No sessions match these filters',
 		);
 		expect(wrapper.find('[data-test-id="agent-sessions-empty-description"]').exists()).toBe(false);
+	});
+
+	describe('flag card', () => {
+		afterEach(() => {
+			attentionFlagsState.flags = [];
+			attentionFlagsState.dismiss.mockReset();
+		});
+
+		it('sends at most the hand-off limit and dismisses only the sent flags', async () => {
+			attentionFlagsState.flags = Array.from(
+				{ length: AGENT_PREVIEW_HANDOFF_MAX_SESSIONS + 5 },
+				(_, index) => ({
+					id: `flag-${index}`,
+					type: 'session-error' as const,
+					sessionId: `session-${index}`,
+					createdAt: '2026-07-20T10:00:00.000Z',
+				}),
+			);
+			const handoff = vi.fn().mockResolvedValue(true);
+			const wrapper = await mountView({
+				provide: {
+					[AGENT_SESSION_ASSISTANT_KEY as symbol]: {
+						isAvailable: computed(() => true),
+						handoff,
+					},
+				},
+			});
+
+			await wrapper.get('[data-test-id="agent-session-flag-card-fix"]').trigger('click');
+			await flushPromises();
+
+			const sentIds = attentionFlagsState.flags
+				.slice(0, AGENT_PREVIEW_HANDOFF_MAX_SESSIONS)
+				.map(({ sessionId }) => sessionId);
+			expect(handoff).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'session-0', threadIds: sentIds }),
+			);
+			expect(attentionFlagsState.dismiss).toHaveBeenCalledExactlyOnceWith(
+				attentionFlagsState.flags.slice(0, AGENT_PREVIEW_HANDOFF_MAX_SESSIONS),
+			);
+		});
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {

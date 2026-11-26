@@ -1,4 +1,5 @@
-import type { InjectionKey } from 'vue';
+import type { ComputedRef, InjectionKey } from 'vue';
+import type { AgentTestHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff';
 
 /**
  * Provided by `AgentBuilderView`. Runs a write that changes the agent's saved config on the
@@ -13,3 +14,8 @@ export const AGENT_CONFIG_WRITE_KEY: InjectionKey<AgentConfigWrite> = Symbol('ag
 
 /** Scope standalone builder controls to the Agents UI. */
 export const AGENT_BUILDER_STANDALONE_KEY: InjectionKey<boolean> = Symbol('agentBuilderStandalone');
+
+export const AGENT_SESSION_ASSISTANT_KEY: InjectionKey<{
+	isAvailable: ComputedRef<boolean>;
+	handoff: (params: AgentTestHandoffParams) => Promise<boolean>;
+}> = Symbol('agentSessionAssistant');
