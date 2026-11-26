@@ -12,6 +12,8 @@ on:
     paths:
       - '.github/workflows/sec-base-image-refresh.yml'
       - '.github/scripts/docker/base-image-candidates.mjs'
+      - '.github/scripts/docker/base-image-publisher.mjs'
+      - 'security/keys/dhi.pub'
   workflow_dispatch:
 
 permissions:
@@ -53,8 +55,19 @@ jobs:
           version: v0.76.2
           cache: true
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v3.1.4
+
+      # A manual run skips the 24-hour gate. A digest that it lets through gets no auto-merge.
       - name: Find candidate digests
-        run: node .github/scripts/docker/base-image-candidates.mjs --out base-image-candidates.json
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          args=(--out base-image-candidates.json)
+          if [ "$EVENT" = workflow_dispatch ]; then args+=(--skip-gate); fi
+          node .github/scripts/docker/base-image-candidates.mjs "${args[@]}"
 
       - name: Upload candidates
         if: always()
