@@ -36,6 +36,7 @@ const settings = mockInstance(InstanceAiSettingsService, {
 		workflowBuilderAvailable: false,
 		unavailableReason: null,
 	}),
+	getPublicSetupState: async () => ({ setupCompleted: true, modelAndSandboxConfigured: true }),
 });
 
 const testServer = setupTestServer({
