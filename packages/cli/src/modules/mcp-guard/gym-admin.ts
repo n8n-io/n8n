@@ -75,6 +75,15 @@ export class GymAdmin {
 		await this.call('POST', `/_sim/v1/tenants/${tenant}/events`, event);
 	}
 
+	// Maps the refs of the seed to the native ids that the gym made, such as `person:42` to `user:100000002`.
+	async refs(tenant: string): Promise<Record<string, string>> {
+		const res = await this.call('GET', `/_sim/v1/tenants/${tenant}/refs`);
+		const refs = isRecord(res) && isRecord(res.refs) ? res.refs : {};
+		return Object.fromEntries(
+			Object.entries(refs).flatMap(([ref, id]) => (typeof id === 'string' ? [[ref, id]] : [])),
+		);
+	}
+
 	async tenantExists(tenant: string): Promise<boolean> {
 		const res = await this.call('GET', '/_sim/v1/tenants');
 		const tenants = isRecord(res) && Array.isArray(res.tenants) ? res.tenants : [];

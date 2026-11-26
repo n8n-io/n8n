@@ -1,7 +1,7 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { HttpGuardRouter, type HttpGuardRouterDeps } from '../http-router';
-import { GMAIL_PROFILE } from '../http-profiles';
+import { GMAIL_PROFILE, TELEGRAM_PROFILE } from '../http-profiles';
 import type { McpCaller } from '../mcp-upstream';
 import type { CapturedRequest } from '../network';
 import { currentRequestContext } from '../request-context';
@@ -429,5 +429,58 @@ describe('HttpGuardRouter ids with encoded characters', () => {
 		await router.handle(request('GET', '/gmail/v1/users/me/messages/1a1f32cf%ZZ'));
 
 		expect(upstream.callTool).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('HttpGuardRouter with an id map', () => {
+	const refs = async () => ({ 'person:8761991977': 'user:100000002' });
+	const tgRequest = (path: string, body: unknown) =>
+		request('POST', path, body, 'api.telegram.org');
+
+	it('sends the id of the gym and shows the real id again', async () => {
+		const gym = {
+			listTools: vi.fn(async () => []),
+			callTool: vi.fn(async (..._a: unknown[]) =>
+				result({ ok: true, result: { message_id: 3, chat: { id: 100000002 } } }),
+			),
+		};
+		const { router } = setup({
+			profile: TELEGRAM_PROFILE,
+			gym: gym as unknown as McpCaller,
+			refs,
+		});
+
+		const res = await router.handle(
+			tgRequest('/botabc/sendMessage', { chat_id: 8761991977, text: 'hi' }),
+		);
+
+		const sent = gym.callTool.mock.calls[0][1] as { body: { chat_id: number } };
+		expect(sent.body.chat_id).toBe(100000002);
+		expect(await res.json()).toEqual({
+			ok: true,
+			result: { message_id: 3, chat: { id: 8761991977 } },
+		});
+	});
+
+	it('calls the gym with the call as it is when the refs cannot be read', async () => {
+		const gym = {
+			listTools: vi.fn(async () => []),
+			callTool: vi.fn(async (..._a: unknown[]) => result({ ok: true, result: {} })),
+		};
+		const { router } = setup({
+			profile: TELEGRAM_PROFILE,
+			gym: gym as unknown as McpCaller,
+			refs: async () => {
+				throw new Error('down');
+			},
+		});
+
+		const res = await router.handle(
+			tgRequest('/botabc/sendMessage', { chat_id: 8761991977, text: 'hi' }),
+		);
+
+		expect(res.status).toBe(200);
+		const sent = gym.callTool.mock.calls[0][1] as { body: { chat_id: number } };
+		expect(sent.body.chat_id).toBe(8761991977);
 	});
 });

@@ -1,5 +1,5 @@
 import type { GymAdmin } from './gym-admin';
-import { HttpGuardRouter } from './http-router';
+import { HttpGuardRouter, withIdMap } from './http-router';
 import type { HttpVendorProfile } from './http-profiles';
 import { createGymSender, createHttpToolCaller, isReadToolName } from './http-tool-caller';
 import { createPlanLlm, type HydrationModel } from './hydration-llm';
@@ -107,7 +107,7 @@ export class HttpRunRegistry {
 				// HTTPS, be read-shaped, be on the host of the node, and be inside the vendor.
 				allow: (req) =>
 					req.url.protocol === 'https:' &&
-					isReadShaped(req, vendor.readPaths, vendor.graphqlPaths) &&
+					isReadShaped(req, vendor.readPaths, vendor.graphqlPaths, vendor.strictReads) &&
 					matchesVendor(vendor, req.url.hostname, req.url.pathname),
 			});
 			const sendToGym = createGymSender({
@@ -121,11 +121,15 @@ export class HttpRunRegistry {
 				send: async (req) => await sendToGym(fillPathSecret(req, profile.pathSecret, token)),
 				headers: () => ({ accept: 'application/json' }),
 			});
+			// The hydrator replays calls with real ids. Give it a gym caller that maps them, as the router does.
+			const hydratorGym = profile.idMap
+				? withIdMap(gym, profile.idMap, async () => await admin.refs(tenant))
+				: gym;
 			const hydrator = new PlanHydrator({
 				admin,
 				tenant,
 				upstream,
-				gym,
+				gym: hydratorGym,
 				readTools: isReadToolName,
 				instructions: `${PLAN_INSTRUCTIONS}\n${vendor.instructions}`,
 				// A timeout of the guarded call aborts the model call of the hydration too.
@@ -141,6 +145,7 @@ export class HttpRunRegistry {
 				hydrator,
 				profile,
 				gymIds: state?.gymIds,
+				refs: profile.idMap ? async () => await admin.refs(tenant) : undefined,
 			});
 			const run: HttpRun = { tenant, epoch, lastUsed: Date.now(), router };
 			this.runs.set(runId, run);

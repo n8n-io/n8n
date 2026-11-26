@@ -1,6 +1,13 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
-import type { PathSecretPattern } from './path-secret';
+import { REDACTED_SECRET, type PathSecretPattern } from './path-secret';
+
+/** The gym makes its own ids. This turns the real ids of a call into those ids, and back in the answer. */
+export interface HttpIdMap {
+	// `refs` maps a ref of the seed to the native id of the gym.
+	toGym: (args: HttpToolArgs, refs: Readonly<Record<string, string>>) => HttpToolArgs;
+	fromGym: (json: unknown, refs: Readonly<Record<string, string>>) => unknown;
+}
 
 /** What the guard needs to run one HTTP vendor on a gym. The instructions are in `vendors/<name>.md`. */
 export interface HttpVendorProfile {
@@ -23,6 +30,8 @@ export interface HttpVendorProfile {
 	enrich?: (json: unknown) => unknown;
 	// Last change to an overlay, after the checks. Code adds data here that the real data does not hold.
 	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
+	// Set when the gym cannot keep the real ids of the objects that a call names (Telegram chats).
+	idMap?: HttpIdMap;
 	// Real reads for the objects that a call needs in the gym, before the first model turn.
 	lookups?: (
 		tool: string,
@@ -180,4 +189,118 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	},
 };
 
-export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE];
+// `/bot<token>/<method>` and `/file/bot<token>/<path>`. Group 1 is `/bot`, group 2 is the token.
+const TELEGRAM_PATH_SECRET: PathSecretPattern = /^(\/(?:file\/)?bot)([^/]+)/;
+const TELEGRAM_BASE = `/bot${REDACTED_SECRET}`;
+const MAX_CHAT_ID = 128;
+
+// A chat id is a number or text such as `@name`. It sits in the body, or in the query of a GET.
+// It can be short, so `looksLikeId` is no help: look at the field itself.
+function chatIdOf(args: Record<string, unknown>): string | undefined {
+	const raw = isRecord(args.body) ? args.body.chat_id : undefined;
+	const fromQuery = isRecord(args.query) ? args.query.chat_id : undefined;
+	return idText(raw ?? fromQuery);
+}
+
+function idText(raw: unknown): string | undefined {
+	const id = typeof raw === 'number' ? String(raw) : raw;
+	return typeof id === 'string' && id !== '' && id.length <= MAX_CHAT_ID ? id : undefined;
+}
+
+const methodOf = (path: string): string => path.split('/').pop() ?? '';
+
+const TELEGRAM_ID_FIELDS = ['chat_id', 'from_chat_id', 'user_id'];
+const TELEGRAM_ANSWER_KEYS: ReadonlySet<string> = new Set(['id', ...TELEGRAM_ID_FIELDS]);
+
+// The seed names a person or a chat by its real id (`person:42`). The gym id is the number at the end.
+// A private chat has the id of its person.
+function telegramIds(refs: Readonly<Record<string, string>>): Map<string, number> {
+	const ids = new Map<string, number>();
+	for (const [ref, native] of Object.entries(refs)) {
+		const real = /^(?:person|chat):(-?\d+)$/.exec(ref)?.[1];
+		const gym = /(-?\d+)$/.exec(native)?.[1];
+		if (real !== undefined && gym !== undefined) ids.set(real, Number(gym));
+	}
+	return ids;
+}
+
+function swapIdsInAnswer(json: unknown, gymToReal: ReadonlyMap<number, number>): unknown {
+	if (Array.isArray(json)) return json.map((item) => swapIdsInAnswer(item, gymToReal));
+	if (!isRecord(json)) return json;
+	return Object.fromEntries(
+		Object.entries(json).map(([key, value]) => {
+			const real = typeof value === 'number' ? gymToReal.get(value) : undefined;
+			return [
+				key,
+				real !== undefined && TELEGRAM_ANSWER_KEYS.has(key)
+					? real
+					: swapIdsInAnswer(value, gymToReal),
+			];
+		}),
+	);
+}
+
+const TELEGRAM_ID_MAP: HttpIdMap = {
+	toGym: (args, refs) => {
+		const ids = telegramIds(refs);
+		const gymId = (value: unknown): number | undefined => {
+			const id = idText(value);
+			return id === undefined ? undefined : ids.get(id);
+		};
+		const body = isRecord(args.body) ? { ...args.body } : args.body;
+		const query = args.query ? { ...args.query } : args.query;
+		for (const field of TELEGRAM_ID_FIELDS) {
+			if (isRecord(body)) {
+				const gym = gymId(body[field]);
+				if (gym !== undefined) body[field] = gym;
+			}
+			const fromQuery = query?.[field];
+			const gym = typeof fromQuery === 'string' ? gymId(fromQuery) : undefined;
+			if (query && gym !== undefined) query[field] = String(gym);
+		}
+		return { ...args, ...(body !== undefined && { body }), ...(query !== undefined && { query }) };
+	},
+	fromGym: (json, refs) =>
+		swapIdsInAnswer(
+			json,
+			new Map([...telegramIds(refs)].map(([real, gym]) => [gym, Number(real)] as const)),
+		),
+};
+
+export const TELEGRAM_PROFILE: HttpVendorProfile = {
+	name: 'telegram',
+	credentialKind: 'bot_token',
+	credentialField: 'accessToken',
+	placeholderSeed: {
+		world_version: 1,
+		persona: {
+			ref: 'person:me',
+			name: 'Guard',
+			email: 'guard@unknown.invalid',
+			telegram: { username: 'guard_user', first_name: 'Guard', started: true },
+		},
+	},
+	pathSecret: TELEGRAM_PATH_SECRET,
+	idMap: TELEGRAM_ID_MAP,
+	lookups: (tool, args) => {
+		// A write on a chat needs that chat in the gym. The real chat gives its type, title and name.
+		const chat = tool.startsWith('write_') ? chatIdOf(args) : undefined;
+		return chat === undefined
+			? []
+			: [
+					{
+						tool: 'read_getChat',
+						args: { method: 'POST', path: `${TELEGRAM_BASE}/getChat`, body: { chat_id: chat } },
+					},
+				];
+	},
+	hydrateRead: (args) => {
+		// The gym has its own bot. A file has no content in a copy.
+		if (args.path.startsWith('/file/')) return false;
+		return !['getMe', 'getFile'].includes(methodOf(args.path));
+	},
+	// The gym makes its own chat ids, so an id of the gym never equals a real chat id. Check the field.
+	hydrateWrite: (args) => chatIdOf(args) !== undefined,
+};
+
+export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE, TELEGRAM_PROFILE];

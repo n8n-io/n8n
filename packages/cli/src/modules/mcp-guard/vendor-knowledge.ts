@@ -20,6 +20,8 @@ export interface VendorKnowledge {
 	readPaths: RegExp[];
 	// Paths of GraphQL endpoints. Only a `POST` to one of them can be a GraphQL query.
 	graphqlPaths: RegExp[];
+	// The API runs any method from a GET too (Telegram). Then only a listed path is a read, whatever the HTTP method.
+	strictReads: boolean;
 	instructions: string;
 }
 
@@ -72,6 +74,7 @@ export function parseVendorFile(text: string, source: string): VendorKnowledge {
 		pathPrefixes: list(fields.get('path_prefixes')),
 		passthroughHosts: list(fields.get('passthrough_hosts')).map(canonicalHost),
 		readPaths: lists.read_paths.map((source_) => toRegExp(source_, 'read', source)),
+		strictReads: fields.get('strict_reads')?.trim() === 'true',
 		graphqlPaths: lists.graphql_paths.map((source_) => toRegExp(source_, 'GraphQL', source)),
 		instructions,
 	};
@@ -105,7 +108,7 @@ export function matchesVendor(vendor: VendorKnowledge, host: string, pathname: s
 }
 
 // The vendors that have a file. Add a name here when a file is added.
-const VENDOR_NAMES = ['gmail'] as const;
+const VENDOR_NAMES = ['gmail', 'telegram'] as const;
 
 export function vendorForRequest(host: string, pathname: string): VendorKnowledge | undefined {
 	return VENDOR_NAMES.map(loadVendorKnowledge).find((vendor) =>
