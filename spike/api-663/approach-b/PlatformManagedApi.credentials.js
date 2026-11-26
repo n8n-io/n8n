@@ -6,26 +6,24 @@
 // The n8n code is the same as in approach A. This file has no fields and adds nothing to
 // requests. The platform can change the name, display name and notice.
 class PlatformManagedApi {
-	constructor() {
-		this.name = 'platformManagedApi';
-		this.displayName = 'Managed by platform';
-		this.icon = 'fa:building';
-		this.properties = [
-			{
-				displayName:
-					'The platform adds the real credentials when the request leaves n8n. Nothing to configure here.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
-		];
-		// The editor shows this credential as a fixed, disabled value.
-		this.systemManaged = true;
-		// Lists the type under HTTP Request > Predefined Credential Type.
-		this.httpRequestNode = { name: 'Managed by platform', docsUrl: '', apiBaseUrlPlaceholder: 'https://' };
-		// Adds nothing to the request. HTTP Request lists only types that define `authenticate`.
-		this.authenticate = { type: 'generic', properties: {} };
-	}
+	name = 'platformManagedApi';
+	displayName = 'Managed by platform';
+	icon = 'fa:building';
+	properties = [
+		{
+			displayName:
+				'The platform adds the real credentials when the request leaves n8n. Nothing to configure here.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
+	];
+	// The editor shows this credential as a fixed, disabled value.
+	systemManaged = true;
+	// Lists the type under HTTP Request > Predefined Credential Type.
+	httpRequestNode = { name: 'Managed by platform', docsUrl: '', apiBaseUrlPlaceholder: 'https://' };
+	// Adds nothing to the request. HTTP Request lists only types that define `authenticate`.
+	authenticate = { type: 'generic', properties: {} };
 }
 
 module.exports = { PlatformManagedApi };
