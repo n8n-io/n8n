@@ -55,12 +55,17 @@ const appIconActions = computed<AgentHeldAction[]>(() => {
 	});
 });
 
-// The result of a run shows without another click.
+// The result of a run shows without another click, with each failed action open.
 watch(
 	() => props.committed,
 	(committed) => {
-		if (committed) expanded.value = true;
+		if (!committed) return;
+		expanded.value = true;
+		for (const result of committed.results) {
+			if (result.status === 'failed') setActionPreviewOpen(result.actionId, true);
+		}
 	},
+	{ immediate: true },
 );
 
 const resultByActionId = computed(() => {
@@ -75,6 +80,17 @@ const committedSucceededCount = computed(() => {
 	if (!props.committed) return 0;
 	return props.committed.results.filter((item) => item.status !== 'failed').length;
 });
+
+const commitOutcome = computed<'done' | 'partial' | 'failed'>(() => {
+	const total = props.committed?.results.length ?? 0;
+	if (committedSucceededCount.value === total) return 'done';
+	return committedSucceededCount.value === 0 ? 'failed' : 'partial';
+});
+
+const previewEntriesByActionId = computed(
+	() =>
+		new Map(props.actions.map((action) => [action.actionId, formatPreviewEntries(action.input)])),
+);
 
 const committedTime = computed(() =>
 	props.committed ? formatCommitTime(props.committed.committedAt) : '',
@@ -94,12 +110,21 @@ const runButtonLabel = computed(() =>
 	}),
 );
 
-const doneCountText = computed(() =>
-	i18n.baseText('agents.testRun.holdReplay.doneCount', {
-		adjustToNumber: committedSucceededCount.value,
-		interpolate: { count: committedSucceededCount.value },
-	}),
-);
+const doneCountText = computed(() => {
+	const done = committedSucceededCount.value;
+	const total = props.committed?.results.length ?? 0;
+	if (commitOutcome.value === 'partial') {
+		return i18n.baseText('agents.testRun.holdReplay.partialCount', {
+			interpolate: { done, total },
+		});
+	}
+	const key =
+		commitOutcome.value === 'failed'
+			? 'agents.testRun.holdReplay.failedCount'
+			: 'agents.testRun.holdReplay.doneCount';
+	const count = commitOutcome.value === 'failed' ? total : done;
+	return i18n.baseText(key, { adjustToNumber: count, interpolate: { count } });
+});
 
 /** One row per action: `Gmail: email` while held, `Gmail: email sent` once it ran. */
 function actionRowLabel(action: AgentHeldAction): string {
@@ -113,11 +138,16 @@ function actionRowLabel(action: AgentHeldAction): string {
 		: i18n.baseText('agents.testRun.holdReplay.actionRowSaved', { interpolate });
 }
 
-const doneSummaryText = computed(() =>
-	i18n.baseText('agents.testRun.holdReplay.doneSummary', {
-		interpolate: { time: committedTime.value },
-	}),
-);
+const doneSummaryText = computed(() => {
+	if (commitOutcome.value === 'failed') {
+		return i18n.baseText('agents.testRun.holdReplay.failedSummary');
+	}
+	const key =
+		commitOutcome.value === 'partial'
+			? 'agents.testRun.holdReplay.partialSummary'
+			: 'agents.testRun.holdReplay.doneSummary';
+	return i18n.baseText(key, { interpolate: { time: committedTime.value } });
+});
 
 function setActionPreviewOpen(actionId: string, open: boolean) {
 	expandedActionIds.value = { ...expandedActionIds.value, [actionId]: open };
@@ -144,11 +174,27 @@ function onRunClick() {
 			<CollapsibleTrigger as-child>
 				<N8nAiActivityStepButton
 					size="medium"
-					:class="[$style.trigger, props.committed && $style.triggerDone]"
+					:class="[
+						$style.trigger,
+						props.committed && commitOutcome === 'done' && $style.triggerDone,
+					]"
 					data-testid="agent-held-actions-toggle"
 				>
-					<template v-if="committedSucceededCount > 0" #prefix>
-						<N8nIcon icon="check" size="small" :class="$style.doneIcon" aria-hidden="true" />
+					<template v-if="props.committed" #prefix>
+						<N8nIcon
+							v-if="commitOutcome === 'done'"
+							icon="check"
+							size="small"
+							:class="$style.doneIcon"
+							aria-hidden="true"
+						/>
+						<N8nIcon
+							v-else
+							icon="triangle-alert"
+							size="small"
+							:class="$style.failedIcon"
+							aria-hidden="true"
+						/>
 					</template>
 					<span
 						aria-live="polite"
@@ -241,11 +287,11 @@ function onRunClick() {
 											{{ resultByActionId.get(action.actionId)?.error }}
 										</p>
 										<dl
-											v-if="formatPreviewEntries(action.input).length > 0"
+											v-if="previewEntriesByActionId.get(action.actionId)?.length"
 											:class="$style.previewEntries"
 										>
 											<template
-												v-for="entry in formatPreviewEntries(action.input)"
+												v-for="entry in previewEntriesByActionId.get(action.actionId)"
 												:key="entry.key"
 											>
 												<dt :class="$style.previewKey">{{ entry.key }}</dt>
@@ -302,6 +348,11 @@ function onRunClick() {
 .doneIcon {
 	flex-shrink: 0;
 	color: var(--color--success);
+}
+
+.failedIcon {
+	flex-shrink: 0;
+	color: var(--text-color--danger);
 }
 
 .appIcons {

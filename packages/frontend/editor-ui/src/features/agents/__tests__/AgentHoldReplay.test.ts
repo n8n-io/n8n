@@ -251,19 +251,35 @@ describe('AgentHeldActionsTray', () => {
 					committedAt: new Date(2026, 10, 20, 14, 7, 0).toISOString(),
 					results: [
 						{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' },
-						{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'failed' },
+						{
+							actionId: 'call-2',
+							toolName: 'linear__create_issue',
+							status: 'failed',
+							error: 'Team not found',
+						},
 					],
 				},
 			},
 		});
 
 		await waitFor(() => expect(getAllByTestId('agent-held-action-preview')).toHaveLength(2));
+		// Only the failed row opens, so its error shows without a click.
+		await waitFor(() => expect(getAllByTestId('agent-held-action-preview-body')).toHaveLength(1));
+		expect(getByTestId('agent-held-action-preview-body')).toHaveTextContent('Team not found');
+		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
+			'Some actions failed. The rest ran in your real apps at 14:07.',
+		);
 		const rows = getAllByTestId('agent-held-action-preview-toggle');
 		expect(rows[0]).toHaveTextContent('Slack: message sent');
 		expect(rows[1]).toHaveTextContent('Linear: issue');
 		expect(rows[1]).not.toHaveTextContent('Linear: issue saved');
 		expect(getByTestId('agent-held-action-failed')).toHaveTextContent('Failed');
-		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('1 action done');
+		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent(
+			'1 of 2 actions done',
+		);
+		expect(
+			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
+		).not.toBeInTheDocument();
 	});
 
 	it('does not show a replay as a success when every action failed', async () => {
@@ -282,8 +298,12 @@ describe('AgentHeldActionsTray', () => {
 
 		await waitFor(() => expect(getAllByTestId('agent-held-action-failed')).toHaveLength(2));
 		const banner = getByTestId('agent-held-actions-committed-banner');
-		expect(banner).toHaveTextContent('0 actions done');
-		expect(banner).not.toHaveTextContent('2 actions done');
+		expect(banner).toHaveTextContent('2 actions failed');
+		expect(banner).not.toHaveTextContent('done');
+		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
+			'Nothing was sent or saved. See why below.',
+		);
+		await waitFor(() => expect(getAllByTestId('agent-held-action-preview-body')).toHaveLength(2));
 		expect(
 			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
 		).not.toBeInTheDocument();
