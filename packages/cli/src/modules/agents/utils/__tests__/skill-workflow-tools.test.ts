@@ -121,6 +121,21 @@ describe('withSkillWorkflowTools', () => {
 		expect(tool).toEqual(expect.objectContaining({ workflow: 'wf1', name: 'workflow_wf1' }));
 	});
 
+	it('leaves out a skill workflow tool when a configured tool already has its name', () => {
+		const direct: AgentJsonToolConfig = {
+			type: 'workflow',
+			workflowId: 'wf9',
+			workflow: 'Other',
+			name: 'workflow_B123',
+		};
+		const skills = { 'skill-1': skill('Skill', '[Get code](n8n://workflow/B123)') };
+
+		const result = withSkillWorkflowTools(config(['skill-1'], [direct]), skills);
+
+		expect(result.tools).toEqual([direct]);
+		expect(findSkillWorkflowTools(config(['skill-1'], [direct]), skills)).toEqual([]);
+	});
+
 	it('ignores skills that are not attached or have no body', () => {
 		const skills = { 'skill-2': skill('Other', '[Get code](n8n://workflow/wf1)') };
 		const input = config(['skill-1']);
