@@ -2,12 +2,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/features/workflows/components/WorkflowPublishModal.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import { waitFor } from '@testing-library/vue';
+import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { WEBHOOK_NODE_TYPE, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import {
@@ -19,7 +20,6 @@ const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 const mockTelemetryTrack = vi.fn();
-const mockModalClosed = vi.fn();
 
 vi.mock('@/app/composables/useWorkflowActivate', () => ({
 	useWorkflowActivate: () => ({
@@ -62,13 +62,10 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 	pinia: createTestingPinia({ initialState, stubActions: false }),
 	global: {
 		stubs: {
-			Modal: {
-				props: ['eventBus'],
+			Dialog: {
+				props: ['open', 'header'],
 				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-				created() {
-					this.eventBus?.on('close', mockModalClosed);
-				},
+					'<div v-if="open" role="dialog"><h2 v-if="header">{{ header }}</h2><slot /></div>',
 			},
 			WorkflowVersionForm: {
 				template: `
@@ -77,6 +74,9 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 					</div>
 				`,
 				props: ['versionName', 'description', 'disabled'],
+				methods: {
+					focusInput: vi.fn(),
+				},
 			},
 		},
 	},
@@ -148,6 +148,8 @@ describe('WorkflowPublishModal', () => {
 			success: true,
 			errorHandled: false,
 		});
+
+		useUIStore().openModal(WORKFLOW_PUBLISH_MODAL_KEY);
 	});
 
 	/** Mirrors the push handler that flips the document to "published" out of band. */
@@ -167,6 +169,7 @@ describe('WorkflowPublishModal', () => {
 	}
 
 	afterEach(() => {
+		cleanup();
 		vi.clearAllMocks();
 	});
 
@@ -225,6 +228,28 @@ describe('WorkflowPublishModal', () => {
 	});
 
 	describe('handlePublish without conflicts', () => {
+		it('publishes when the footer button submits the form', async () => {
+			const { getByTestId } = renderComponent();
+
+			await userEvent.type(getByTestId('workflow-publish-version-name-input'), 'v1.0.0');
+
+			const submitButton = getByTestId('workflow-publish-button');
+			expect(submitButton).toHaveAttribute('type', 'submit');
+			expect(submitButton).toHaveAttribute('form', 'workflow-publish-form');
+
+			const form = document.getElementById('workflow-publish-form');
+			expect(form).not.toBeNull();
+			await fireEvent.submit(form!);
+
+			await waitFor(() => {
+				expect(mockPublishWorkflow).toHaveBeenCalledWith(
+					'workflow-1',
+					'new-version',
+					expect.objectContaining({ name: expect.stringContaining('v1.0.0') }),
+				);
+			});
+		});
+
 		it('should proceed to publish when there are no conflicting webhooks', async () => {
 			mockPublishWorkflow.mockReset().mockResolvedValue({
 				success: true,
@@ -267,15 +292,15 @@ describe('WorkflowPublishModal', () => {
 			// push confirmed the publish first - the modal cannot tell the difference.
 			mockPublishWorkflow.mockReset().mockResolvedValue({ success: true, errorHandled: false });
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 
 			await userEvent.type(getByTestId('workflow-publish-version-name-input'), 'v1.0.0');
 			await userEvent.click(getByTestId('workflow-publish-button'));
 
 			await waitFor(() => {
-				expect(mockModalClosed).toHaveBeenCalled();
+				expect(useUIStore().isModalActiveById[WORKFLOW_PUBLISH_MODAL_KEY]).not.toBe(true);
 			});
-			expect(getByTestId('workflow-publish-cancel-button')).not.toBeDisabled();
+			expect(queryByTestId('workflow-publish-cancel-button')).not.toBeInTheDocument();
 		});
 
 		it('does not claim "no changes to publish" while a publish is in flight', async () => {

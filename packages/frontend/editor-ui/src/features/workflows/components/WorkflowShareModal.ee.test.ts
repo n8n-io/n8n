@@ -24,7 +24,9 @@ import type {
 } from '@/features/collaboration/projects/projects.types';
 import { DEFAULT_PROJECT_SEARCH_PAGE_SIZE } from '@/features/collaboration/projects/projects.utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
+import { STORES } from '@n8n/stores';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const mockWorkflowDocumentState = reactive({
 	homeProject: null as ProjectSharingData | null,
@@ -86,13 +88,21 @@ vi.mock('@n8n/utils/event-bus', () => ({
 }));
 
 const renderComponent = createComponentRenderer(WorkflowShareModal, {
-	pinia: createTestingPinia(),
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.UI]: {
+				modalStateById: {
+					[WORKFLOW_SHARE_MODAL_KEY]: { open: true },
+				},
+			},
+		},
+	}),
 	global: {
 		stubs: {
-			Modal: {
-				props: ['beforeClose'],
+			Dialog: {
+				emits: ['update:open'],
 				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /><button data-test-id="attempt-close" @click="beforeClose()">Close modal</button></div>',
+					'<div role="dialog"><slot /><button data-test-id="attempt-close" @click="$emit(\'update:open\', false)">Close modal</button></div>',
 			},
 		},
 	},
@@ -224,7 +234,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 		await waitFor(() => expect(showErrorMock).toHaveBeenCalledOnce());
 		expect(saveAsNewWorkflowMock).toHaveBeenCalledOnce();
 		expect(saveWorkflowSharedWithSpy).not.toHaveBeenCalled();
-		expect(modalBusEmitMock).not.toHaveBeenCalledWith('close');
+		expect(useUIStore().closeModal).not.toHaveBeenCalledWith(WORKFLOW_SHARE_MODAL_KEY);
 	});
 
 	it('saves sharing changes after initial loading when closing the modal', async () => {
@@ -259,7 +269,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 				workflowId,
 				sharedWithProjects: [projectsStore.personalProjects[0]],
 			});
-			expect(modalBusEmitMock).toHaveBeenCalledWith('close');
+			expect(useUIStore().closeModal).toHaveBeenCalledWith(WORKFLOW_SHARE_MODAL_KEY);
 		});
 	});
 

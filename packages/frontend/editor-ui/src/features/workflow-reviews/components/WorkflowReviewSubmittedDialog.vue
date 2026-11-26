@@ -35,10 +35,7 @@ const { submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody>
-			<N8nDialogDescription
-				data-test-id="workflow-review-submitted-dialog"
-				:class="$style.description"
-			>
+			<N8nDialogDescription data-test-id="workflow-review-submitted-dialog">
 				<I18nT keypath="workflowReviews.submitted.description" tag="span" scope="global">
 					<template #submission>
 						<N8nLink
@@ -72,11 +69,6 @@ const { submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 </template>
 
 <style lang="scss" module>
-.description {
-	display: block;
-	margin-top: var(--spacing--xs);
-}
-
 .footer {
 	align-items: center;
 	justify-content: space-between;

@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import { useContextMenu } from '../composables/useContextMenu';
-import { isFocusHandoffAction, type ContextMenuAction } from '../composables/useContextMenuItems';
+import {
+	shouldSuppressContextMenuFocusRestore,
+	type ContextMenuAction,
+} from '../composables/useContextMenuItems';
+import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useStyles } from '@n8n/composables/useStyles';
 import { watch } from 'vue';
 import {
@@ -19,21 +24,24 @@ import { N8nIcon, N8nKeyboardShortcut } from '@n8n/design-system';
 // a synthetic one. A script-dispatched `contextmenu` cannot be cancelled in
 // time for WebKit, and Safari showed its own menu next to ours (API-490).
 const contextMenu = useContextMenu();
+const uiStore = useUIStore();
 const { position, isOpen, actions } = contextMenu;
 const emit = defineEmits<{
 	action: [action: ContextMenuAction, nodeIds: string[], groupId?: string];
 }>();
 const { APP_Z_INDEXES } = useStyles();
 
-// When a selected action hands off to another floating layer (e.g. the sticky
-// color popover), we must not restore focus as the menu closes — otherwise
-// the restore lands outside the freshly-opened layer and dismisses it.
-let suppressRestoreFocus = false;
 // Dropdown content would move focus to the hidden trigger on close. Restore
 // the element that was focused before the menu opened instead, and only when
 // the user did not click elsewhere, which already moved focus itself.
 let previouslyFocused: HTMLElement | null = null;
 let interactedOutside = false;
+
+// The selected action is read when the menu closes, after the handler has run.
+// Extraction either opens the name dialog or rejects the selection. Only the
+// first of those should keep the menu from restoring focus. Other handoffs
+// (the sticky color popover, the group title editor) suppress it too.
+let pendingAction: ContextMenuAction | undefined;
 
 watch(isOpen, (open) => {
 	if (!open) return;
@@ -42,7 +50,7 @@ watch(isOpen, (open) => {
 });
 
 function onActionSelect(item: ContextMenuAction) {
-	suppressRestoreFocus = isFocusHandoffAction(item);
+	pendingAction = item;
 	// Read the target while the menu is guaranteed open, and hand it down as
 	// data — group actions must target the group that was right-clicked, not
 	// whatever the snapshotted member ids resolve to at dispatch time.
@@ -55,8 +63,13 @@ function onInteractOutside() {
 
 function onCloseAutoFocus(event: Event) {
 	event.preventDefault();
-	const restore = !suppressRestoreFocus && !interactedOutside;
-	suppressRestoreFocus = false;
+	const action = pendingAction;
+	pendingAction = undefined;
+	const extractionNameDialogOpen =
+		uiStore.modalsById[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]?.open === true;
+	const suppress =
+		action !== undefined && shouldSuppressContextMenuFocusRestore(action, extractionNameDialogOpen);
+	const restore = !suppress && !interactedOutside;
 	if (restore) previouslyFocused?.focus();
 	previouslyFocused = null;
 }

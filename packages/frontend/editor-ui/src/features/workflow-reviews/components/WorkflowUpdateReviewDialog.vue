@@ -252,7 +252,7 @@ const submit = async () => {
 			</div>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<N8nDialogDescription :class="$style.description">
+			<N8nDialogDescription>
 				<I18nT keypath="workflowReviews.updateReview.description" tag="span" scope="global">
 					<!-- the id is undefined until fetchStatus resolves (409 path), so the
 					label must render unlinked rather than leaving an empty slot. -->
@@ -355,11 +355,6 @@ const submit = async () => {
 </template>
 
 <style lang="scss" module>
-.description {
-	display: block;
-	margin-top: var(--spacing--xs);
-}
-
 .form {
 	display: flex;
 	flex-direction: column;

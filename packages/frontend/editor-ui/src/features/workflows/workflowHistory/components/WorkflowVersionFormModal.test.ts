@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanup, waitFor } from '@testing-library/vue';
+import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createEventBus } from '@n8n/utils/event-bus';
 import WorkflowVersionFormModal, {
@@ -25,12 +25,8 @@ const renderComponent = createComponentRenderer(WorkflowVersionFormModal, {
 	}),
 	global: {
 		stubs: {
-			Modal: {
-				template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-				props: ['name', 'eventBus'],
-				mounted() {
-					this.eventBus?.emit('opened');
-				},
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
 			WorkflowVersionForm: {
 				template: `
@@ -112,6 +108,40 @@ describe('WorkflowVersionFormModal', () => {
 		await waitFor(() => {
 			const textarea = getByTestId(`${TEST_MODAL_KEY}-description-input`);
 			expect(textarea).toHaveValue('Custom description');
+		});
+	});
+
+	it('submits through the form associated with the footer button', async () => {
+		const eventBus = createEventBus<WorkflowVersionFormModalEventBusEvents>();
+		const submitHandler = vi.fn();
+		eventBus.on('submit', submitHandler);
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modalName: TEST_MODAL_KEY,
+				data: {
+					versionId: 'version-123',
+					versionName: 'Test Version',
+					description: 'Test Description',
+					modalTitle: 'Test Modal',
+					submitButtonLabel: 'Submit',
+					eventBus,
+				},
+			},
+		});
+
+		const submitButton = getByTestId(`${TEST_MODAL_KEY}-submit-button`);
+		expect(submitButton).toHaveAttribute('type', 'submit');
+		expect(submitButton).toHaveAttribute('form', `${TEST_MODAL_KEY}-form`);
+
+		const form = document.getElementById(`${TEST_MODAL_KEY}-form`);
+		expect(form).not.toBeNull();
+		await fireEvent.submit(form!);
+
+		expect(submitHandler).toHaveBeenCalledWith({
+			versionId: 'version-123',
+			name: 'Test Version',
+			description: 'Test Description',
 		});
 	});
 

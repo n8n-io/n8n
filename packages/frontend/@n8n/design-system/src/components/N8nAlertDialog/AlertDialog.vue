@@ -80,6 +80,8 @@ withDefaults(defineProps<AlertDialogProps>(), {
 
 const emit = defineEmits<AlertDialogEmits>();
 
+defineOptions({ inheritAttrs: false });
+
 defineSlots<{
 	/**
 	 * Optional additional content between description and footer
@@ -105,7 +107,7 @@ const handleCancel = () => {
 	<DialogRoot :open="open" :default-open="defaultOpen" @update:open="handleOpenChange">
 		<DialogPortal>
 			<N8nDialogOverlay :stacked="stacked" />
-			<N8nDialogContent :size="size" :show-close-button="false" :stacked="stacked">
+			<N8nDialogContent v-bind="$attrs" :size="size" :show-close-button="false" :stacked="stacked">
 				<N8nDialogHeader>
 					<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 					<N8nDialogDescription v-if="description">

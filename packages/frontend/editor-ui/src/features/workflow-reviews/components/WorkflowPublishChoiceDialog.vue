@@ -43,7 +43,7 @@ const chooseReview = () => {
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody>
-			<N8nDialogDescription :class="$style.description">
+			<N8nDialogDescription>
 				{{ i18n.baseText('workflowReviews.publishChoice.description') }}
 			</N8nDialogDescription>
 		</N8nDialogBody>
@@ -72,11 +72,6 @@ const chooseReview = () => {
 </template>
 
 <style lang="scss" module>
-.description {
-	display: block;
-	margin-top: var(--spacing--xs);
-}
-
 .footer {
 	align-items: center;
 	justify-content: space-between;
