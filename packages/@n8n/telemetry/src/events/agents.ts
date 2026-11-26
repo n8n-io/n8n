@@ -367,7 +367,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			user_id: z
 				.string()
 				.optional()
-				.describe('Absent for runs without an n8n user, such as some chat integrations'),
+				.describe(
+					'Absent for runs without an n8n user, such as some chat integrations, and for agents that a workflow starts. PostHog drops events without a user, so count these runs in BigQuery',
+				),
 			workflow_id: z.string(),
 			skill_ids: z
 				.array(z.string())
