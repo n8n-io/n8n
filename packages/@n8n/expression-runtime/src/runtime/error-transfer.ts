@@ -56,7 +56,10 @@ function dataPropsOf(
 ): Pick<ErrorValueSentinel, '__props' | '__nonEnumerableKeys'> {
 	const props: Record<string, unknown> = {};
 	const nonEnumerableKeys: string[] = [];
-	for (const [key, descriptor] of objectEntries(getOwnPropertyDescriptors(error))) {
+	const entries = objectEntries(getOwnPropertyDescriptors(error));
+	for (let i = 0; i < entries.length; i++) {
+		const key = entries[i][0];
+		const descriptor = entries[i][1];
 		if (descriptor.enumerable || !BUILT_IN_ERROR_KEYS.has(key)) {
 			try {
 				const value: unknown = reflectGet(error, key);
@@ -162,8 +165,8 @@ export function rebuildErrorValue(
 				if (keys.length === 0 || typeof json !== 'object' || json === null) return json;
 				// Refresh direct fields. Keep omitted fields out and calculated values as captured.
 				const result = { ...json };
-				for (const key of keys) {
-					defineOwnValue(result, key, reflectGet(this, key));
+				for (let i = 0; i < keys.length; i++) {
+					defineOwnValue(result, keys[i], reflectGet(this, keys[i]));
 				}
 				return result;
 			},

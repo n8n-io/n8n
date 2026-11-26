@@ -906,6 +906,60 @@ describe('QuickJsBridge cycle guard', () => {
 		}
 	});
 
+	it('should keep boxed values in a Map after an array iterator replacement', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				`
+				const m = new Map();
+				m.set("number", new Number(7));
+				m.set("string", new String("x"));
+				m.set("boolean", new Boolean(true));
+				m.set("bigint", Object(10n));
+				Array.prototype[Symbol.iterator] = function () {
+					return { next: () => ({ done: true }) };
+				};
+				return m;
+				`,
+				{},
+			) as Map<string, object>;
+
+			expect(result.get('number')?.valueOf()).toBe(7);
+			expect(result.get('string')?.valueOf()).toBe('x');
+			expect(result.get('boolean')?.valueOf()).toBe(true);
+			expect(result.get('bigint')?.valueOf()).toBe(10n);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should return objects and errors after an array iterator replacement', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				`
+					const error = new TypeError("bad");
+					error.code = 5;
+					const result = { plain: { a: 1, b: [1, 2] }, error };
+					Array.prototype[Symbol.iterator] = function () {
+						return { next: () => ({ done: true }) };
+					};
+					return result;
+				`,
+				{},
+			) as { plain: unknown; error: Error & { code?: number } };
+
+			expect(result.plain).toEqual({ a: 1, b: [1, 2] });
+			expect(result.error).toBeInstanceOf(TypeError);
+			expect(result.error.message).toBe('bad');
+			expect(result.error.code).toBe(5);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
 	it('should return undefined for host-call plain object and array cycles without breaking the runtime', async () => {
 		const evaluator = new ExpressionEvaluator({
 			createBridge: () => new QuickJsBridge({ timeout: 5000 }),
