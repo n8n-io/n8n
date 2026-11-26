@@ -142,4 +142,21 @@ describe('Node source image manifests', () => {
 		]);
 		assert.deepEqual(createdTags.sort(), expectedTags.sort());
 	});
+
+	it('restricts the workflow to n8n-io/n8n and skips downstream jobs when prepare is skipped', () => {
+		const { prepare, build, 'create-multi-arch-manifest': manifest } = workflow.jobs;
+
+		assert.equal(prepare.if, "github.repository == 'n8n-io/n8n'");
+
+		const buildNeeds = Array.isArray(build.needs) ? build.needs : [build.needs];
+		assert.ok(buildNeeds.includes('prepare'));
+		assert.doesNotMatch(build.if, /\balways\(\)/);
+		assert.match(build.if, /\bneeds\.prepare\.outputs\.changed == 'true'/);
+
+		const manifestNeeds = Array.isArray(manifest.needs) ? manifest.needs : [manifest.needs];
+		assert.ok(manifestNeeds.includes('prepare'));
+		assert.ok(manifestNeeds.includes('build'));
+		assert.match(manifest.if, /\bneeds\.prepare\.result == 'success'/);
+		assert.match(manifest.if, /\bneeds\.prepare\.outputs\.changed == 'true'/);
+	});
 });
