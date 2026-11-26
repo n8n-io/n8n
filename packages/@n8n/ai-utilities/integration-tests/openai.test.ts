@@ -229,7 +229,7 @@ describe('OpenAI Integration with Langchain Agent', () => {
 			total_tokens: 61,
 		});
 		const responseMetadata2 = message2.response_metadata as Record<string, unknown>;
-		expect(responseMetadata2.finish_reason).toBe('stop');
+		expect(responseMetadata2.finish_reason).toBe('tool-calls');
 
 		const { message: message3 } = getChunkData(chunks[2]);
 		expect(message3.content).toBe("It's always sunny in Tokyo!");

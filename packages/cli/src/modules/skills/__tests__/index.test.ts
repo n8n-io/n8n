@@ -24,6 +24,7 @@ describe('public API', () => {
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',
+			'WorkflowsInSkillsFlagGate',
 			'findIntroducedNameClashes',
 			'findNameClashGroups',
 			'getSkillHash',

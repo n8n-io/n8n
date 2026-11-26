@@ -98,11 +98,7 @@ import {
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import {
-	firstMessageTitle,
-	getAppTargetsFromThreadMetadata,
-	threadTargetsAgent,
-} from '../instanceAi.threadRuntime';
+import { getAppTargetsFromThreadMetadata, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
@@ -161,6 +157,7 @@ import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 import { useAssistantWorkflowDrafts } from './useAssistantWorkflowDrafts';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -399,8 +396,13 @@ function onSessionCreated(): void {
 	finishLaunch();
 	// The thread exists once the server accepts its first message. Show it in the lists
 	// now, not only after the first reply ends.
-	void threadsStore.loadThread(props.threadId);
+	void threadsStore.loadThread(props.threadId, firstUserMessageText());
 	void agentTargets.refresh();
+}
+
+/** The first message that the user sent in this thread, as the panel shows it. */
+function firstUserMessageText(): string | undefined {
+	return panel.value?.messages.find((message) => message.role === 'user')?.content || undefined;
 }
 
 // A finished turn can add the thread to the lists, or give it a title.
@@ -771,12 +773,17 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
 // --- Header ---
-// The stored title, else the first user message, as in the Assistant runtime view.
+// As in the sidebar: the generated title, else the first user message until the title
+// arrives. The panel has the message before the thread summary loads. A thread with no
+// messages has no title, so the header does not flash the placeholder.
 const threadTitle = computed(() => {
-	const title = threadsStore.threadsById.get(props.threadId)?.title;
-	if (title) return title;
-	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
-	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
+	const thread = threadsStore.threadsById.get(props.threadId);
+	const firstMessage = thread?.firstMessage ?? firstUserMessageText();
+	if (!thread?.title && !firstMessage) return undefined;
+	return formatThreadTitle(
+		{ title: thread?.title ?? null, firstMessage },
+		i18n.baseText('commandBar.instanceAi.newThread'),
+	);
 });
 
 function startNewThread(): void {
