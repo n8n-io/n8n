@@ -133,6 +133,9 @@ async function submit() {
 			<N8nDialogBody>
 				<form id="promote-instance-form" :class="$style.body" @submit.prevent="submit">
 					<N8nText color="text-base">{{ bodyText }}</N8nText>
+					<N8nText color="text-base">{{
+						i18n.baseText('settings.promotions.promote.dialog.body.ownEnvironments')
+					}}</N8nText>
 
 					<PromotionCommitMessageField
 						ref="messageField"

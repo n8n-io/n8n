@@ -5097,6 +5097,7 @@
 	"settings.promotions.promote.dialog.ariaDescription": "Promote all projects on this instance to your connected Git remote.",
 	"settings.promotions.promote.dialog.body.mergeRequest": "This promotes all projects on this instance to a new branch and opens a merge request into branch {branch}.",
 	"settings.promotions.promote.dialog.body.newBranch": "This promotes all projects on this instance to a new branch.",
+	"settings.promotions.promote.dialog.body.ownEnvironments": "While project environments are on, projects that promote to their own environment are left out.",
 	"settings.promotions.promote.dialog.body.toBranch": "This promotes all projects on this instance to branch {branch}.",
 	"settings.promotions.promote.dialog.confirm": "Promote",
 	"settings.promotions.promote.dialog.result.title": "Instance promoted",
