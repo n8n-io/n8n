@@ -31,6 +31,7 @@ import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { findSkillWorkflows } from '@/features/agents/utils/skillWorkflows';
+import { useSkillWorkflowNames } from '@/features/agents/composables/useSkillWorkflowToolNames';
 import {
 	isRestrictedByInlineTool,
 	isRestrictedIssue,
@@ -429,13 +430,17 @@ const skillWorkflows = computed(() =>
 		: [],
 );
 
+const { workflowName } = useSkillWorkflowNames(() =>
+	skillWorkflows.value.map(({ workflowId }) => workflowId),
+);
+
 const skillWorkflowRows = computed(() =>
 	skillWorkflows.value.map((workflow) => {
 		const invalidReasons = skillWorkflowIssueMessages.value.get(workflow.workflowId) ?? [];
 		const warningReasons = skillWorkflowWarningMessages.value.get(workflow.workflowId) ?? [];
 		return {
 			...workflow,
-			label: workflow.name || workflow.workflowId,
+			label: workflowName(workflow.workflowId) ?? (workflow.name || workflow.workflowId),
 			invalidReasons,
 			warningReasons,
 		};

@@ -1,8 +1,11 @@
 import { flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { effectScope, ref } from 'vue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { effectScope, ref, type EffectScope } from 'vue';
 
-import { useSkillWorkflowToolNames } from '@/features/agents/composables/useSkillWorkflowToolNames';
+import {
+	useSkillWorkflowNames,
+	useSkillWorkflowToolNames,
+} from '@/features/agents/composables/useSkillWorkflowToolNames';
 
 const searchWorkflows = vi.hoisted(() => vi.fn());
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -17,11 +20,23 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
+const scopes: EffectScope[] = [];
+
+function runInScope<T>(setup: () => T): T {
+	const scope = effectScope();
+	scopes.push(scope);
+	return scope.run(setup)!;
+}
+
 function useInScope(toolNames: () => string[]) {
-	return effectScope().run(() => useSkillWorkflowToolNames(toolNames))!;
+	return runInScope(() => useSkillWorkflowToolNames(toolNames));
 }
 
 describe('useSkillWorkflowToolNames', () => {
+	afterEach(() => {
+		for (const scope of scopes.splice(0)) scope.stop();
+	});
+
 	beforeEach(() => {
 		searchWorkflows.mockReset();
 		workflowsInSkillsEnabled.value = true;
@@ -88,5 +103,19 @@ describe('useSkillWorkflowToolNames', () => {
 		await flushPromises();
 
 		expect(searchWorkflows).not.toHaveBeenCalled();
+	});
+
+	it('loads the current names again for each new builder view', async () => {
+		searchWorkflows.mockResolvedValueOnce([{ id: 'wf5', name: 'Old name' }]);
+		const first = runInScope(() => useSkillWorkflowNames(() => ['wf5']));
+		await flushPromises();
+
+		searchWorkflows.mockResolvedValueOnce([{ id: 'wf5', name: 'New name' }]);
+		const second = runInScope(() => useSkillWorkflowNames(() => ['wf5']));
+		await flushPromises();
+
+		expect(searchWorkflows).toHaveBeenCalledTimes(2);
+		expect(first.workflowName('wf5')).toBe('Old name');
+		expect(second.workflowName('wf5')).toBe('New name');
 	});
 });
