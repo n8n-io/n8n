@@ -297,6 +297,10 @@ function makeService(sandboxEnabled = false) {
 	Container.set(AgentBudgetAlertService, mock<AgentBudgetAlertService>());
 
 	executionService.canUseDraftThread.mockResolvedValue(true);
+	executionService.classifyExistingDraftThread.mockResolvedValue({
+		usable: true,
+		previewChat: true,
+	});
 	executionService.findThreadById.mockResolvedValue({
 		id: 'thread-1',
 		projectId,
@@ -2429,6 +2433,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		async (operation) => {
 			const { service, executionService, runtimeCacheService } = makeService();
 			executionService.canUseDraftThread.mockResolvedValue(false);
+			executionService.classifyExistingDraftThread.mockResolvedValue({
+				usable: false,
+				previewChat: false,
+			});
 			let result: Promise<unknown>;
 			if (operation === 'chat') {
 				result = collect(
@@ -3616,12 +3624,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			abortSignal,
 		});
 
-		expect(executionService.canUseDraftThread).toHaveBeenCalledWith(
+		expect(executionService.classifyExistingDraftThread).toHaveBeenCalledExactlyOnceWith(
 			'thread-1',
 			projectId,
 			agentId,
 			user.id,
-			{ previewChat: true, sessionMode: 'existing' },
 		);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
@@ -3670,9 +3677,10 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('keeps previewChat unset on a wake for a non-preview draft thread', async () => {
 		const { service, runtimeCacheService, executionService } = makeService();
-		executionService.canUseDraftThread.mockImplementation(
-			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
-		);
+		executionService.classifyExistingDraftThread.mockResolvedValue({
+			usable: true,
+			previewChat: false,
+		});
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -3686,21 +3694,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			abortSignal: new AbortController().signal,
 		});
 
-		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
-			1,
+		expect(executionService.classifyExistingDraftThread).toHaveBeenCalledExactlyOnceWith(
 			'thread-1',
 			projectId,
 			agentId,
 			user.id,
-			{ previewChat: true, sessionMode: 'existing' },
-		);
-		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
-			2,
-			'thread-1',
-			projectId,
-			agentId,
-			user.id,
-			{ previewChat: false, sessionMode: 'existing' },
 		);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
@@ -3710,6 +3708,27 @@ describe('AgentExecutionOrchestratorService', () => {
 			user,
 			sandboxPrincipalHash: userPrincipalHash,
 		});
+	});
+
+	it('rejects a draft wake when the thread is unusable', async () => {
+		const { service, executionService, runtimeCacheService } = makeService();
+		executionService.classifyExistingDraftThread.mockResolvedValue({
+			usable: false,
+			previewChat: false,
+		});
+
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: '<background-jobs-settled>[]</background-jobs-settled>',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toThrow('Session not found');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
 	it.each(['draft', 'published'] as const)(

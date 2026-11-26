@@ -2,6 +2,7 @@ import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-t
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
+	loginIdOf,
 	ProjectMutationHooksProxy,
 	ProjectNotFoundError,
 	RoleService,
@@ -303,12 +304,16 @@ export class ProjectService {
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
 		// 9. Delete the project and its deletion marker in one transaction.
-		await this.txRunner.run({}, async (ctx) => {
+		const deletion = { projectId: project.id, userId: user.id, loginId: loginIdOf(ctx) };
+		const afterProjectDeleted = await this.txRunner.run({}, async (ctx) => {
+			const afterCommit = await this.projectMutationHooks.beforeProjectDeleted(deletion, ctx);
 			await this.projectRepository.removeProjectForDeletion(project, ctx);
 			if (this.moduleRegistry.isActive('agents')) {
 				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
 			}
+			return afterCommit;
 		});
+		await afterProjectDeleted();
 
 		if (targetProject) {
 			// The cascade removes the source owner rows. Invalidate after the transaction commits.

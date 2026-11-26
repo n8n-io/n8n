@@ -152,7 +152,7 @@ export type SkillSourceMovePreview = z.infer<typeof skillSourceMovePreviewSchema
 /** The source that a link points to. */
 export type SkillSourceSummary = {
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -339,7 +339,7 @@ export type SkillSyncState =
 
 /** The answer of Check now. */
 export type SkillSourceCheckResponse = {
-	/** The source, such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** Skills of the source with an update that waits for review, after the check. */
 	updatesFound: number;
@@ -354,7 +354,7 @@ export type SkillSourceCheckResponse = {
 export type SkillSyncedFrom = {
 	sourceId: string;
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;
@@ -417,7 +417,7 @@ export type SkillSourceHealth = 'connected' | 'credential_issue' | 'source_unava
 export type SkillSourceListItem = {
 	id: string;
 	type: 'github';
-	/** Such as `owner/repository`. */
+	/** Display name, including the folder for a folder source. */
 	label: string;
 	/** The branch, or null for a source type without branches. */
 	ref: string | null;

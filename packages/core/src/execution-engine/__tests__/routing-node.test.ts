@@ -2317,6 +2317,202 @@ describe('RoutingNode', () => {
 			},
 		];
 
+		const parameterScopeTests: typeof tests = [
+			{
+				description:
+					'options parameter with routing.request.url resolves $parameter without the credential object',
+				input: {
+					node: {
+						parameters: {
+							operation: 'get',
+							executionId: '={{ $credentials.apiKey }}',
+						},
+					},
+					nodeType: {
+						credentials: [{ name: 'testCredentials', required: true }],
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								noDataExpression: true,
+								default: 'get',
+								options: [
+									{
+										name: 'Get',
+										value: 'get',
+										routing: {
+											request: {
+												method: 'GET',
+												url: '=/executions/{{ $parameter.executionId }}',
+											},
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Execution ID',
+								name: 'executionId',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							pairedItem: { item: 0 },
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'fixedCollection values resolve without the credential object',
+				input: {
+					node: {
+						parameters: {
+							filters: {
+								conditions: { field: '={{ $credentials.apiKey }}' },
+							},
+						},
+					},
+					nodeType: {
+						credentials: [{ name: 'testCredentials', required: true }],
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'Filters',
+								name: 'filters',
+								type: 'fixedCollection',
+								default: {},
+								options: [
+									{
+										name: 'conditions',
+										displayName: 'Conditions',
+										values: [
+											{
+												displayName: 'Field',
+												name: 'field',
+												type: 'string',
+												default: '',
+												routing: {
+													send: {
+														type: 'query',
+														property: 'field',
+														value: '={{ $parent.field }}',
+													},
+												},
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							pairedItem: { item: 0 },
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/test-url',
+									headers: {},
+									qs: { field: undefined },
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'requestDefaults and routing strings keep the credential object',
+				input: {
+					node: {
+						parameters: {
+							operation: 'get',
+						},
+					},
+					nodeType: {
+						credentials: [{ name: 'testCredentials', required: true }],
+						requestDefaults: {
+							baseURL: '={{ $credentials.baseUrl }}',
+						},
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								noDataExpression: true,
+								default: 'get',
+								options: [
+									{
+										name: 'Get',
+										value: 'get',
+										routing: {
+											request: {
+												method: 'GET',
+												url: '=/keys/{{ $credentials.apiKey }}',
+											},
+										},
+									},
+								],
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							pairedItem: { item: 0 },
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/keys/testApiKey',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'https://example.com',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+		];
+		tests.push(...parameterScopeTests);
+
 		const baseNode: INode = {
 			parameters: {},
 			name: 'test',
@@ -2838,6 +3034,7 @@ describe('RoutingNode', () => {
 				routedUrl?: string;
 				nodeParameters?: INodeParameters;
 				propertyBaseURL?: string;
+				onWorkflow?: (workflow: Workflow) => void;
 			} = {},
 		) => {
 			const credentialData = data as unknown as ICredentialDataDecryptedObject;
@@ -2849,6 +3046,7 @@ describe('RoutingNode', () => {
 				active: false,
 				nodeTypes,
 			});
+			options.onWorkflow?.(workflow);
 
 			const executeFunctions = mock<executionContexts.ExecuteContext>();
 			Object.assign(executeFunctions, {
@@ -2893,6 +3091,37 @@ describe('RoutingNode', () => {
 		};
 		const getRequestOptions = (result: Awaited<ReturnType<typeof runWithCredential>>) =>
 			(result![0]![0]!.json as { requestOptions: IHttpRequestOptions }).requestOptions;
+
+		test('resolves node parameter values without the credential object in every pass', async () => {
+			const authorExpression = '={{ $credentials.apiKey }}';
+			const calls: Array<{ value: unknown; hasCredentials: boolean }> = [];
+
+			await runWithCredential(
+				{
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'api.example.com',
+				},
+				{
+					routedUrl: '={{ "/path" }}',
+					nodeParameters: { endpoint: authorExpression },
+					onWorkflow: (workflow) => {
+						const original = workflow.expression.getParameterValue.bind(workflow.expression);
+						vi.spyOn(workflow.expression, 'getParameterValue').mockImplementation((...args) => {
+							calls.push({ value: args[0], hasCredentials: args[7]?.$credentials !== undefined });
+							return original(...args);
+						});
+					},
+				},
+			);
+
+			const parameterCalls = calls.filter((call) => call.value === authorExpression);
+			// The parameter resolves in the request pass and again in the base URL replay.
+			expect(parameterCalls.length).toBeGreaterThan(1);
+			expect(parameterCalls.every((call) => !call.hasCredentials)).toBe(true);
+			// Description-owned strings keep the credential object.
+			expect(calls.some((call) => call.hasCredentials)).toBe(true);
+		});
 
 		test("propagates credential allowedDomains when mode is 'domains'", async () => {
 			const result = await runWithCredential({
