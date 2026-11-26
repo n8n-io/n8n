@@ -17,6 +17,7 @@ import {
 	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
 	type PromotionPreview,
+	type PromotionPromoteCheck,
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -346,6 +347,17 @@ export class PromotionsService {
 				promotionRunContents: { projectIds },
 			})),
 		};
+	}
+
+	/**
+	 * What an instance Promote leaves out, read before the Promote. It reads this instance only,
+	 * so it needs no checkout and no lock.
+	 */
+	async checkPromote(environmentId: string, actor: User): Promise<PromotionPromoteCheck> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		this.assertInstanceScope(input, 'The Promote check');
+		const projectIds = await this.projectRepository.findTeamProjectIds();
+		return await this.promotePreviewService.buildInstanceCheck(actor, projectIds);
 	}
 
 	/** Records the push, then opens a review for a promotion branch. This does not throw. */

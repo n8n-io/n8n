@@ -6,7 +6,9 @@ import {
 	promotionBindingProjectSchema,
 	promotionCredentialExpressionValueRef,
 	promotionDataTableChangeSchema,
+	promotionDependencyWarningSchema,
 	promotionInstanceProjectSchema,
+	promotionMissingDependencySchema,
 	promotionPreviewCheckSchema,
 } from './promotion-apply-check.dto';
 import { promotionProviderTypeSchema } from './promotion-provider.dto';
@@ -144,6 +146,19 @@ export const promotionPreviewSchema = z.object({
 	/** Apply only: what stops the Apply of each workflow, from the same plan as the resources. */
 	check: promotionPreviewCheckSchema.optional(),
 	/**
+	 * Promote only: what the workflows of the project use from other projects, and what the branch
+	 * does not hold after the Promote.
+	 */
+	missingDependencies: z.array(promotionMissingDependencySchema).optional().openapi({
+		description:
+			'Promote only. The credentials, sub-workflows and error workflows of other projects that the workflows of this project use, and that are not on the branch after the Promote. Use `consumers` to find the entries of a selection.',
+	}),
+	/** Promote only: references to something that does not exist on this instance. */
+	warnings: z.array(promotionDependencyWarningSchema).optional().openapi({
+		description:
+			'Promote only. References from the workflows of this project to a credential, workflow or variable that does not exist on this instance.',
+	}),
+	/**
 	 * A hash of what this preview shows. Promote and Apply compare it with a fresh preview and
 	 * stop when the project or its branch changed after the preview was loaded.
 	 */
@@ -157,9 +172,25 @@ export type PromotionPreview = z.infer<typeof promotionPreviewSchema>;
 
 export class PromotionPreviewDto extends Z.class(promotionPreviewSchema.shape) {}
 
+/**
+ * What an instance Promote leaves out, read before the Promote. An instance Promote has no
+ * preview of its changes.
+ */
+export const promotionPromoteCheckSchema = z.object({
+	missingDependencies: z.array(promotionMissingDependencySchema),
+	warnings: z.array(promotionDependencyWarningSchema),
+	revision: z.string().openapi({
+		description: 'A hash of the two lists. It changes when one of them changes.',
+	}),
+});
+
+export type PromotionPromoteCheck = z.infer<typeof promotionPromoteCheckSchema>;
+
+export class PromotionPromoteCheckDto extends Z.class(promotionPromoteCheckSchema.shape) {}
+
 /** The preview of a whole-instance Apply. It always has a commit, a check and a revision. */
 export const promotionInstanceApplyPreviewSchema = promotionPreviewSchema
-	.omit({ blocker: true })
+	.omit({ blocker: true, missingDependencies: true, warnings: true })
 	.extend({
 		commitSha: z.string(),
 		check: promotionPreviewCheckSchema,

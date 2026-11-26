@@ -1,0 +1,54 @@
+operationId: getPromoteCheck
+tags:
+  - Promotions
+summary: 'Beta: Check the dependencies of a Promote of all team projects'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Lists what the workflows of the team projects use and the branch does not hold after a Promote of all team projects. It changes nothing. `missingDependencies` lists the credentials, sub-workflows and error workflows of personal projects, which a promotion does not carry. `warnings` lists the references to a credential, workflow or variable that does not exist on this instance. Each entry gives its name, its type and the workflows that use it in `consumers`. It never gives the project or the owner of the dependency. `accessible` tells whether you can read it. The Promote stops on an entry or a warning where `blocking` is true. References in expressions are not checked. `revision` changes when one of the two lists changes. Requires a Promote environment with instance scope.
+
+  Requires the `promotions:promote` API key scope.
+x-required-scope: promotions:promote
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            missingDependencies:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/promotionMissingDependency.generated.yml
+            warnings:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/promotionDependencyWarning.generated.yml
+            revision:
+              type: string
+              description: A hash of the two lists. It changes when one of them changes.
+          required:
+            - missingDependencies
+            - warnings
+            - revision
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
