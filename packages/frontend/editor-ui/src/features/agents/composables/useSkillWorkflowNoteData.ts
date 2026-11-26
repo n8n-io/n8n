@@ -15,7 +15,15 @@ export function useSkillWorkflowNoteData(workflowIds: Ref<string[]>, enabled: Re
 		try {
 			const workflows = await workflowsListStore.searchWorkflows({
 				ids: page,
-				select: ['id', 'nodes', 'activeVersionId', 'settings', 'isArchived', 'ownedBy'],
+				select: [
+					'id',
+					'nodes',
+					'activeVersionId',
+					'settings',
+					'isArchived',
+					'ownedBy',
+					'updatedAt',
+				],
 				options: { take: page.length, includeScopes: false },
 			});
 			const found = new Map(workflows.map((workflow) => [workflow.id, workflow]));
