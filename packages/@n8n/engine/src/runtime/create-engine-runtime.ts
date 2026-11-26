@@ -35,6 +35,8 @@ import type { EngineWorkQueues } from '../queue';
 import {
 	DEFAULT_RECONCILIATION_BATCH_SIZE,
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
+	PendingErrorWorkflowDetector,
+	PendingErrorWorkflowRepair,
 	QueuedExecutionDetector,
 	QueuedExecutionRepair,
 	QueuedStepDetector,
@@ -200,7 +202,7 @@ export function createEngineRuntime({
 		stepStore,
 		orchestrationQueue,
 	);
-	// One error start for each failed execution.
+	// One error start for a failed execution and for the repair.
 	const errorWorkflowStarter = new ErrorWorkflowStarter(
 		executionStore,
 		stepStore,
@@ -259,6 +261,11 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new PendingErrorWorkflowDetector(
+				executionStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
@@ -270,6 +277,10 @@ export function createEngineRuntime({
 				lifecycleEventPublisherFactory,
 			),
 			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationQueue),
+			'execution-error-workflow-pending': new PendingErrorWorkflowRepair(
+				executionStore,
+				errorWorkflowStarter,
+			),
 		},
 		logger,
 	);

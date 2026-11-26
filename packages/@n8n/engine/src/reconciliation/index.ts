@@ -1,3 +1,5 @@
+export { PendingErrorWorkflowDetector } from './pending-error-workflow-detector';
+export { PendingErrorWorkflowRepair } from './pending-error-workflow-repair';
 export { QueuedExecutionDetector } from './queued-execution-detector';
 export { QueuedExecutionRepair } from './queued-execution-repair';
 export { QueuedStepDetector } from './queued-step-detector';
