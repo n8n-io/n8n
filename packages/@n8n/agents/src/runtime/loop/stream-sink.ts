@@ -1,5 +1,6 @@
 import type { StreamTextTransform, TextStreamPart, ToolSet } from 'ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import { raceWithAbort } from '../../sdk/abort';
 
 import { finalizeRun } from './run-output-sink';
@@ -17,6 +18,11 @@ import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { isEncryptedReasoningRejected } from '../model/encrypted-reasoning';
+import {
+	flexRetryDelayMs,
+	isFlexUnavailable,
+	MAX_FLEX_UNAVAILABLE_RETRIES,
+} from '../model/flex-unavailable';
 import { toPromptCacheParamsError } from '../model/prompt-cache-params-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
@@ -215,6 +221,7 @@ export class StreamSink implements RunOutputSink<void> {
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
 		const deadlines = this.getStreamDeadlines();
+		let flexRetries = 0;
 		for (let attempt = 0; ; attempt++) {
 			this.resetRawReaders();
 			// Per-attempt controller: a stall must be able to cancel this attempt's
@@ -229,7 +236,18 @@ export class StreamSink implements RunOutputSink<void> {
 					if (!attemptState.streamedContent) await ctx.onInputRejected?.(error);
 					throw error;
 				}
-				if (!this.canRetryStream(error, attempt, attemptState, ctx.abortSignal)) {
+				// OpenAI Flex without free capacity: wait, then re-issue the turn. The rejected request is not billed.
+				if (
+					isFlexUnavailable(error) &&
+					flexRetries < MAX_FLEX_UNAVAILABLE_RETRIES &&
+					!attemptState.streamedContent &&
+					!ctx.abortSignal.aborted
+				) {
+					await sleep(flexRetryDelayMs(flexRetries++), ctx.abortSignal);
+					continue;
+				}
+				// Flex waits do not use up the stall retry.
+				if (!this.canRetryStream(error, attempt - flexRetries, attemptState, ctx.abortSignal)) {
 					throw toPromptCacheParamsError(error);
 				}
 			}
@@ -293,6 +311,14 @@ export class StreamSink implements RunOutputSink<void> {
 				chunk.type === 'error' &&
 				!attemptState.streamedContent &&
 				isEncryptedReasoningRejected(chunk.error)
+			) {
+				throw chunk.error;
+			}
+			// Retried by `callModel` after a wait. Do not forward it or count it as content.
+			if (
+				chunk.type === 'error' &&
+				!attemptState.streamedContent &&
+				isFlexUnavailable(chunk.error)
 			) {
 				throw chunk.error;
 			}
