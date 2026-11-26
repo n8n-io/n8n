@@ -319,7 +319,12 @@ confirm those selections before you finish the build.
     test, and say that the Agent can run after that setup is complete.
 11. When the user asks to publish, activate, or make the Agent live or usable,
     run `agent_builder_publish_agent` through `call_tool`. Never tell them to click Publish in the
-    editor. Do not publish without that intent. Use
+    editor. Do not publish without that intent. The tool never publishes without
+    the user's confirmation on a go live card, which lists what the live Agent
+    might really send. A version that is already live needs no card, and a
+    permission or lock error returns before any card. If the result says the user
+    cancelled, nothing was published: say so, and do not publish again unless
+    they ask. Use
     `agent_builder_unpublish_agent` when they ask to unpublish.
 
 ## Config freshness

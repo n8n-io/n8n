@@ -24,6 +24,7 @@ type MakeReason = (
 	kind: EngineV2ReasonKind,
 	problem: string,
 	nodeName?: string,
+	severity?: EngineV2Reason['severity'],
 ) => EngineV2Reason;
 
 interface Loop {
@@ -58,12 +59,13 @@ function findReasonsForTrigger(
 	connections: IConnections,
 	trigger: INode | undefined,
 ): EngineV2Reason[] {
-	const reason: MakeReason = (code, kind, problem, nodeName) =>
+	const reason: MakeReason = (code, kind, problem, nodeName, severity) =>
 		makeReason({
 			code,
 			kind,
 			problem,
 			node: nodeName === undefined ? undefined : nodesByName.get(nodeName),
+			severity,
 		});
 	const isLoopNode = (name: string) => nodesByName.get(name)?.type === SPLIT_IN_BATCHES_TYPE;
 
@@ -302,9 +304,10 @@ function findInputSlotReasons(
 		.map((slot) =>
 			reason(
 				'INPUT_SLOT_CONVERGENCE',
-				'temporary',
-				`${slot.count} connections go into input ${slot.inputIndex + 1} of "${slot.to}". Engine v2 does not support more than one connection into one input yet.`,
+				'permanent',
+				`${slot.count} connections go into input ${slot.inputIndex + 1} of "${slot.to}". Engine v2 runs "${slot.to}" once, on the items of all these connections together. Engine v1 runs it once for each connection that sends items. A node that works on all its items at once, such as Aggregate, can give a different result. To keep the engine v1 result, give each connection its own copy of "${slot.to}".`,
 				slot.to,
+				'warning',
 			),
 		);
 }

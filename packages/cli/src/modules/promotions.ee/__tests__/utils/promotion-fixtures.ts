@@ -50,7 +50,6 @@ export async function writeInstancePromotionPackage(user: User, targetDir: strin
 		instancePromotionExportRequest({
 			user,
 			projectIds: await Container.get(ProjectRepository).findTeamProjectIds(),
-			canExportVariableValues: true,
 		}),
 		{ targetDir },
 	);

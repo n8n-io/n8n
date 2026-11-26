@@ -13,6 +13,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | description | text |  | true |  |  |  |
 | id | uuid |  | false | [public.app](public.app.md) |  |  |
+| isScaffold | boolean | false | false |  |  |  |
 | label | varchar(255) |  | true |  |  |  |
 | sourceArtifactId | integer |  | false |  | [public.app_artifact](public.app_artifact.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -32,6 +33,7 @@
 | app_version_buildStatus_not_null | n | NOT NULL "buildStatus" |
 | app_version_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_version_id_not_null | n | NOT NULL id |
+| app_version_isScaffold_not_null | n | NOT NULL "isScaffold" |
 | app_version_sourceArtifactId_not_null | n | NOT NULL "sourceArtifactId" |
 | app_version_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -65,6 +67,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   text description
   uuid id
+  boolean isScaffold
   varchar_255_ label
   integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt

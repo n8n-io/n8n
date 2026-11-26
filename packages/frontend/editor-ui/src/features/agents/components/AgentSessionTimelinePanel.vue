@@ -28,6 +28,11 @@ import {
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
 import {
+	getChatAttachmentUrl,
+	type AgentChatChannel,
+} from '@/features/agents/composables/useAgentApi';
+import { AGENT_ATTACHMENT_URL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
+import {
 	backgroundTasksToTimelineItems,
 	insertBackgroundTaskTimelineItems,
 } from '@/features/agents/utils/background-task-timeline';
@@ -44,7 +49,17 @@ import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappe
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
@@ -55,6 +70,8 @@ const props = defineProps<{
 	threadId: string;
 	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	/** The chat routes of the thread. System agents, such as the Assistant, use 'system'. */
+	channel?: AgentChatChannel;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -69,7 +86,21 @@ const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
+const rootStore = useRootStore();
 const documentVisibility = useDocumentVisibility();
+
+// Attachments and output files download through the chat routes of the thread.
+// The fallback of the attachment list uses the project routes, which load project agents only.
+provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
+	getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachmentId,
+		props.channel ?? 'chat',
+		props.threadId,
+	),
+);
 
 const projectId = computed(() => props.projectId);
 
@@ -93,6 +124,7 @@ const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.threadId,
+	channel: () => props.channel ?? 'chat',
 	active: true,
 });
 
@@ -296,10 +328,11 @@ const approvalDisabled = computed(() => pendingApprovalIdentity.value === thread
 
 // The approval suspension parked on the latest execution, if that execution is
 // still awaiting a decision. Independent of the selected row: the card sits
-// inline in the timeline table.
+// inline in the timeline table. Only task runs resume from here; a chat turn,
+// such as an Assistant turn, takes its approval in the chat.
 const openApprovalItem = computed((): TimelineItem | null => {
 	const latest = executions.value.at(-1);
-	if (!latest || latest.status !== 'awaiting') return null;
+	if (!latest || latest.status !== 'awaiting' || latest.source !== 'task') return null;
 	return (
 		items.value.find(
 			(item) =>
@@ -387,6 +420,7 @@ async function fetchThreadDetail(initial: boolean) {
 			currentProjectId,
 			currentAgentId,
 			currentThreadId,
+			props.channel,
 		);
 		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
 			return;

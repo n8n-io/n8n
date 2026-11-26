@@ -184,6 +184,11 @@ describe('custom role scope whitelists', () => {
 		expect(BASELINE_INSTANCE_SCOPES).toContain('chatHub:message');
 	});
 
+	it('grants Migration Report access to every instance role, but not running migrations', () => {
+		expect(MANDATORY_INSTANCE_SCOPES).toContain('breakingChanges:list');
+		expect(GLOBAL_CUSTOM_ROLE_SCOPES).not.toContain('breakingChanges:migrate');
+	});
+
 	it('exposes n8n Assistant and n8n Agent scopes as their own use/manage options', () => {
 		const { 'AiAssistant use': use, 'AiAssistant manage': manage } =
 			GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
@@ -428,6 +433,7 @@ describe('mandatory instance options', () => {
 describe('baseline instance scopes', () => {
 	it('lists the read scopes Member holds that have no option of their own', () => {
 		expect([...BASELINE_INSTANCE_SCOPES].sort()).toEqual([
+			'breakingChanges:list',
 			'chatHub:message',
 			'credentialResolver:list',
 			'dataTable:list',

@@ -1,6 +1,12 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	loginIdOf,
+	ProjectMutationHooksProxy,
+	ProjectNotFoundError,
+	RoleService,
+} from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -109,6 +115,7 @@ export class ProjectService {
 		private readonly txRunner: TransactionRunner,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountProjects: ServiceAccountProjects,
+		private readonly projectMutationHooks: ProjectMutationHooksProxy,
 	) {}
 
 	private get workflowService() {
@@ -297,12 +304,16 @@ export class ProjectService {
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
 		// 9. Delete the project and its deletion marker in one transaction.
-		await this.txRunner.run({}, async (ctx) => {
+		const deletion = { projectId: project.id, userId: user.id, loginId: loginIdOf(ctx) };
+		const afterProjectDeleted = await this.txRunner.run({}, async (ctx) => {
+			const afterCommit = await this.projectMutationHooks.beforeProjectDeleted(deletion, ctx);
 			await this.projectRepository.removeProjectForDeletion(project, ctx);
 			if (this.moduleRegistry.isActive('agents')) {
 				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
 			}
+			return afterCommit;
 		});
+		await afterProjectDeleted();
 
 		if (targetProject) {
 			// The cascade removes the source owner rows. Invalidate after the transaction commits.
@@ -560,6 +571,8 @@ export class ProjectService {
 			throw error;
 		}
 		if (!project) throw new TeamProjectOverQuotaError(limit);
+
+		await this.projectMutationHooks.afterTeamProjectCreated(project.id);
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,

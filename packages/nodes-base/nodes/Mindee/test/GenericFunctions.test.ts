@@ -2,7 +2,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
-import { mindeeApiRequest } from '../GenericFunctions';
+import { mindeeApiRequest } from '../v1/GenericFunctions';
 
 describe('mindeeApiRequest', () => {
 	it('should encode path values', async () => {

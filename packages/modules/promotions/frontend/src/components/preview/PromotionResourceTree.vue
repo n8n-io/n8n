@@ -8,6 +8,7 @@ import { usePromotionPreviewLabels } from '../../composables/usePromotionPreview
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import {
 	availableKeys,
+	groupCheck,
 	selectionCheck,
 	type DisabledKeys,
 	type Inclusion,
@@ -40,6 +41,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	toggle: [key: ResourceKey];
 	toggleContainer: [key: ResourceKey];
+	toggleGroup: [keys: ResourceKey[]];
 	selectAll: [];
 	clear: [];
 	inspect: [key: ResourceKey];
@@ -65,6 +67,9 @@ const rows = computed(() =>
 		return {
 			item,
 			indent,
+			group: item.memberKeys
+				? groupCheck(props.graph, props.inclusion, item.memberKeys, props.disabled)
+				: undefined,
 			resource,
 			check: resource
 				? selectionCheck(props.graph, resource, {
@@ -94,33 +99,78 @@ function onToggle(resource: PromotionResource) {
 
 <template>
 	<div :class="$style.tree" data-test-id="promotion-preview-tree">
-		<div v-if="selectable" :class="$style.row">
-			<N8nCheckbox
-				:model-value="allState === 'checked'"
-				:indeterminate="allState === 'indeterminate'"
-				:disabled="locked || (available.length === 0 && allState === 'unchecked')"
-				:aria-label="i18n.baseText('promotions.preview.tree.selectAll')"
-				data-test-id="promotion-preview-select-all"
-				@update:model-value="allState === 'checked' ? emit('clear') : emit('selectAll')"
-			/>
-			<N8nText step="xs" color="text-base" data-test-id="promotion-preview-counts">
-				{{
-					i18n.baseText('promotions.preview.tree.selectedOfTotal', {
-						adjustToNumber: totalChanges,
-						interpolate: {
-							selected: String(includedChanges),
-							total: String(totalChanges),
-						},
-					})
-				}}
-			</N8nText>
-		</div>
+		<template v-if="selectable">
+			<div :class="$style.row">
+				<N8nCheckbox
+					:model-value="allState === 'checked'"
+					:indeterminate="allState === 'indeterminate'"
+					:disabled="locked || (available.length === 0 && allState === 'unchecked')"
+					:aria-label="i18n.baseText('promotions.preview.tree.selectAll')"
+					data-test-id="promotion-preview-select-all"
+					@update:model-value="allState === 'checked' ? emit('clear') : emit('selectAll')"
+				/>
+				<N8nText step="xs" bold color="text-dark" :class="$style.selectAllLabel">
+					{{ i18n.baseText('promotions.preview.tree.selectAll') }}
+				</N8nText>
+				<N8nText step="xs" color="text-light" data-test-id="promotion-preview-counts">
+					{{
+						i18n.baseText('promotions.preview.tree.selectedOfTotal', {
+							interpolate: {
+								selected: String(includedChanges),
+								total: String(totalChanges),
+							},
+						})
+					}}
+				</N8nText>
+			</div>
+			<span :class="$style.separator" aria-hidden="true" />
+		</template>
 
 		<ul :class="$style.list" role="list">
-			<template v-for="{ item, indent, resource, check, marker } in rows" :key="item.id">
-				<li v-if="item.kind === 'section'" :class="$style.heading">
-					<N8nText step="2xs" bold color="text-base">
+			<template
+				v-for="({ item, indent, resource, check, marker, group }, index) in rows"
+				:key="item.id"
+			>
+				<li
+					v-if="item.kind === 'section' && index > 0"
+					:class="$style.separatorItem"
+					role="presentation"
+				>
+					<span :class="$style.separator" aria-hidden="true" />
+				</li>
+				<li
+					v-if="item.kind === 'section'"
+					:class="$style.heading"
+					data-test-id="promotion-preview-tree-group"
+					:data-group-id="item.id"
+				>
+					<N8nCheckbox
+						v-if="selectable && group"
+						:model-value="group.state === 'checked'"
+						:indeterminate="group.state === 'indeterminate'"
+						:disabled="locked || !group.canToggle"
+						:aria-label="
+							i18n.baseText('promotions.preview.tree.group.select', {
+								interpolate: { group: item.label },
+							})
+						"
+						data-test-id="promotion-preview-group-checkbox"
+						@update:model-value="emit('toggleGroup', item.memberKeys ?? [])"
+					/>
+					<N8nText step="xs" bold color="text-dark" :class="$style.groupLabel">
 						{{ item.label }}
+					</N8nText>
+					<N8nText
+						v-if="selectable && group"
+						step="2xs"
+						color="text-light"
+						data-test-id="promotion-preview-group-count"
+					>
+						{{
+							i18n.baseText('promotions.preview.tree.selectedOfTotal', {
+								interpolate: { selected: String(group.included), total: String(group.total) },
+							})
+						}}
 					</N8nText>
 				</li>
 				<li
@@ -219,6 +269,10 @@ function onToggle(resource: PromotionResource) {
 
 /* The same hover and selection as the inbox list. Both colors are transparent, so they show on
    any page background. */
+.resource {
+	padding-left: calc(var(--spacing--2xs) + var(--spacing--xs));
+}
+
 .resource:hover {
 	background-color: var(--background--hover);
 }
@@ -235,12 +289,29 @@ function onToggle(resource: PromotionResource) {
 .heading {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--2xs);
 	min-height: var(--height--sm);
 	padding: 0 var(--spacing--2xs);
 }
 
-.heading:not(:first-child) {
-	margin-top: var(--spacing--xs);
+.groupLabel {
+	flex: 1;
+	font-weight: var(--font-weight--bold);
+}
+
+.selectAllLabel {
+	flex: 1;
+}
+
+.separator {
+	display: block;
+	height: var(--border-width);
+	margin: var(--spacing--2xs) 0;
+	background-color: var(--border-color);
+}
+
+.separatorItem {
+	list-style: none;
 }
 
 .name {

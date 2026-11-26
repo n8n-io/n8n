@@ -16,6 +16,7 @@ describe('get-execution MCP tool', () => {
 	let workflowFinderService: WorkflowFinderService;
 	let telemetry: TelemetryProxy;
 	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
+	const maxDataSizeBytes = 100 * 1024 * 1024;
 
 	const mockWorkflow = {
 		id: 'workflow-1',
@@ -41,6 +42,7 @@ describe('get-execution MCP tool', () => {
 				workflowFinderService,
 				telemetry,
 				executionRedactionServiceProxy,
+				maxDataSizeBytes,
 			);
 
 			expect(tool.name).toBe('get_workflow_execution');
@@ -64,6 +66,7 @@ describe('get-execution MCP tool', () => {
 						workflowFinderService,
 						telemetry,
 						executionRedactionServiceProxy,
+						maxDataSizeBytes,
 					);
 
 					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
@@ -98,6 +101,7 @@ describe('get-execution MCP tool', () => {
 						workflowFinderService,
 						telemetry,
 						executionRedactionServiceProxy,
+						maxDataSizeBytes,
 					);
 
 					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
@@ -128,6 +132,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
@@ -163,6 +168,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecution = {
@@ -209,6 +215,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -276,6 +283,78 @@ describe('get-execution MCP tool', () => {
 				);
 			});
 
+			test('passes the display size limit to the loader when includeData is true', async () => {
+				const tool = createGetExecutionTool(
+					user,
+					executionService,
+					workflowFinderService,
+					telemetry,
+					executionRedactionServiceProxy,
+					maxDataSizeBytes,
+				);
+
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionService.findOneAcrossEngines as Mock).mockResolvedValue(null);
+
+				await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData: true,
+						nodeNames: undefined,
+						truncateData: undefined,
+					},
+					{} as never,
+				);
+
+				expect(executionService.findOneAcrossEngines).toHaveBeenCalledWith(
+					'execution-1',
+					['workflow-1'],
+					{ includeData: true, includeAnnotation: false, maxDataSizeBytes },
+				);
+			});
+
+			test('reports dataTooLargeToDisplay and returns no data when the execution is too large', async () => {
+				const tool = createGetExecutionTool(
+					user,
+					executionService,
+					workflowFinderService,
+					telemetry,
+					executionRedactionServiceProxy,
+					maxDataSizeBytes,
+				);
+
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionService.findOneAcrossEngines as Mock).mockResolvedValue({
+					id: 'execution-1',
+					workflowId: 'workflow-1',
+					mode: 'manual',
+					status: 'success',
+					startedAt: new Date('2025-01-01T00:00:00.000Z'),
+					stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+					data: createEmptyRunExecutionData(),
+					dataTooLargeToDisplay: true,
+				});
+
+				const result = await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData: true,
+						nodeNames: ['Trigger'],
+						truncateData: 1,
+					},
+					{} as never,
+				);
+
+				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+				expect(result.structuredContent).toEqual({
+					execution: expect.objectContaining({ id: 'execution-1', status: 'success' }),
+					data: null,
+					dataTooLargeToDisplay: true,
+				});
+			});
+
 			test('filters data by nodeNames', async () => {
 				const tool = createGetExecutionTool(
 					user,
@@ -283,6 +362,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -356,6 +436,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -412,6 +493,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -478,6 +560,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -533,6 +616,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -592,6 +676,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -661,6 +746,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecution = {
@@ -703,6 +789,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecution = {
@@ -744,6 +831,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecution = {
@@ -788,6 +876,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -851,6 +940,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const waitTillDate = new Date('2025-01-01T12:00:00.000Z');
@@ -911,6 +1001,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 			beforeEach(() => {
@@ -981,7 +1072,7 @@ describe('get-execution MCP tool', () => {
 				expect(executionService.findOneAcrossEngines).toHaveBeenCalledWith(
 					V2_EXECUTION_ID,
 					['workflow-1'],
-					{ includeData: true, includeAnnotation: false },
+					{ includeData: true, includeAnnotation: false, maxDataSizeBytes },
 				);
 				expect(result.structuredContent).toMatchObject({ data });
 			});
@@ -1089,6 +1180,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const execution = mockExecution();
@@ -1120,6 +1212,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
@@ -1149,6 +1242,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				const execution = mockExecution();
@@ -1234,6 +1328,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					maxDataSizeBytes,
 				);
 
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);

@@ -7,9 +7,11 @@ import assert from 'node:assert/strict';
  * node --test --experimental-test-module-mocks ./.github/scripts/set-latest-for-monorepo-packages.test.mjs
  * */
 
-let resolveLatestVersion;
+let getPackagesToPromote, resolveLatestVersion;
 before(async () => {
-	({ resolveLatestVersion } = await import('./set-latest-for-monorepo-packages.mjs'));
+	({ getPackagesToPromote, resolveLatestVersion } = await import(
+		'./set-latest-for-monorepo-packages.mjs'
+	));
 });
 
 const originalFetch = globalThis.fetch;
@@ -20,6 +22,27 @@ afterEach(() => {
 function mockDistTags(tags) {
 	globalThis.fetch = async () => ({ ok: true, json: async () => tags });
 }
+
+describe('getPackagesToPromote', () => {
+	it('includes public scoped packages and the unscoped stable packages', async () => {
+		const names = ['@n8n/config', 'n8n-core', 'n8n-editor-ui', 'n8n-nodes-base', 'n8n-workflow'];
+		const stablePackages = names.map((name) => ({ name, version: '1.2.3' }));
+		const packages = [
+			...stablePackages,
+			{ name: 'n8n', version: '2.3.4' },
+			{ name: 'other-package', version: '1.2.3' },
+			{ name: '@n8n/private-package', version: '1.2.3', private: true },
+			{ name: '@n8n/no-version' },
+		];
+
+		const selected = getPackagesToPromote(packages);
+		assert.deepEqual(selected, stablePackages);
+		assert.deepEqual(
+			await Promise.all(selected.map(resolveLatestVersion)),
+			stablePackages.map(({ version }) => version),
+		);
+	});
+});
 
 describe('resolveLatestVersion', () => {
 	it('uses the checkout version for regular monorepo packages', async () => {

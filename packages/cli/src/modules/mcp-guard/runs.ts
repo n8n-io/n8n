@@ -46,11 +46,11 @@ export class RunRegistry {
 			const now = Date.now();
 			existing.lastUsed = now;
 			// Someone can delete the tenant in the gym. Then build the run again.
-			if (
-				now - existing.verifiedAt < VERIFY_MS ||
-				(await this.cfg.admin.tenantExists(existing.tenant))
-			) {
-				existing.verifiedAt = Math.max(existing.verifiedAt, now);
+			const recentlyVerified = now - existing.verifiedAt < VERIFY_MS;
+			// Only a real check moves `verifiedAt`. A cache hit must not extend the window.
+			const exists = recentlyVerified || (await this.cfg.admin.tenantExists(existing.tenant));
+			if (exists) {
+				if (!recentlyVerified) existing.verifiedAt = Math.max(existing.verifiedAt, now);
 				existing.tokenRef.value = token;
 				return existing;
 			}
