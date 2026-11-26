@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	APP_INSPECTOR_MESSAGE_SOURCE,
+	APP_PREVIEW_FRAME_PARAM,
 	appInspectorEventSchema,
 	type AppPreviewElement,
 	type AppResponse,
@@ -10,9 +11,12 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nBadge,
+	N8nButton,
 	N8nEmptyState,
 	N8nIconButton,
+	N8nHeading,
 	N8nLoading,
+	N8nSpinner,
 	N8nText,
 	N8nTooltip,
 	type IconName,
@@ -22,7 +26,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { createAppPreview } from '../apps.api';
-import { getAppVersionLabel, type AppVersions } from '../composables/useAppVersions';
+import type { AppVersions } from '../composables/useAppVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
 import AppFeedbackLink from './feedback/AppFeedbackLink.vue';
 
@@ -58,6 +62,7 @@ const props = defineProps<{
 	versions: AppVersions;
 	inspectable?: boolean;
 	elementSelected?: boolean;
+	assistantWorking?: boolean;
 }>();
 
 const emit = defineEmits<{ 'element-selected': [element: AppPreviewElement] }>();
@@ -69,9 +74,15 @@ const latestFetch = useLatestFetch();
 
 const { head, latestBuilt, building } = props.versions;
 
-type Preview = { version: AppVersionResponse; url: string };
+type Preview = {
+	version: AppVersionResponse;
+	url: string;
+	frameUrl: string;
+	authorizeUrl: string;
+};
 
 const preview = ref<Preview | null>(null);
+const frameSrc = ref<string>();
 const granting = ref(false);
 const grantFailed = ref(false);
 const screenSize = ref<ScreenSize>('desktop');
@@ -100,18 +111,26 @@ const previewOrigin = computed(() =>
 const loading = computed(() => props.versions.loading.value || granting.value);
 const failed = computed(() => props.versions.failed.value || grantFailed.value);
 const buildFailed = computed(() => head.value?.buildStatus === 'failed');
-const versionLabel = computed(() => {
-	const version = preview.value?.version;
-	return version ? getAppVersionLabel(version) : null;
-});
+// The Assistant saves a version only after its build, so while it works on a new
+// app there is no version yet. Show the build state for that whole wait.
+const firstBuild = computed(
+	() => building.value || (!!props.assistantWorking && !latestBuilt.value && !buildFailed.value),
+);
 
 async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
 }
 
+function toFrameUrl(url: string): string {
+	const frameUrl = new URL(url);
+	frameUrl.searchParams.set(APP_PREVIEW_FRAME_PARAM, '1');
+	return frameUrl.toString();
+}
+
 function showPreview(next: Preview | null) {
 	clearTimeout(refreshTimer);
 	preview.value = next;
+	frameSrc.value = next?.frameUrl;
 	if (next) refreshTimer = setTimeout(async () => await show(true), GRANT_REFRESH_MS);
 }
 
@@ -126,9 +145,9 @@ async function show(force = false) {
 	}
 	granting.value = true;
 	try {
-		const { url } = await grant(version.id);
+		const { url, authorizeUrl } = await grant(version.id);
 		if (!isLatest()) return;
-		showPreview({ version, url });
+		showPreview({ version, url, frameUrl: toFrameUrl(url), authorizeUrl });
 		grantFailed.value = false;
 	} catch (error) {
 		if (!isLatest()) return;
@@ -172,6 +191,12 @@ function setInspecting(value: boolean) {
 }
 
 function onFrameLoad() {
+	// The first load only prepares the sign-in. The editor opens the sign-in itself, because a
+	// browser can drop the n8n session cookie when the preview host redirects the frame.
+	if (preview.value && frameSrc.value === preview.value.frameUrl) {
+		frameSrc.value = preview.value.authorizeUrl;
+		return;
+	}
 	if (inspecting.value) postInspectCommand('inspect:enable');
 }
 
@@ -218,55 +243,77 @@ onBeforeUnmount(() => {
 	<div :class="$style.preview" data-test-id="app-preview">
 		<div :class="$style.toolbar">
 			<div :class="$style.left">
-				<N8nTooltip :content="i18n.baseText('apps.preview.reload')">
-					<N8nIconButton
-						icon="refresh-cw"
-						variant="ghost"
-						size="small"
-						:aria-label="i18n.baseText('apps.preview.reload')"
-						:loading="loading"
-						data-test-id="app-preview-reload"
-						@click="reload"
-					/>
-				</N8nTooltip>
-				<N8nBadge v-if="building" variant="info" data-test-id="app-preview-status">
-					{{ i18n.baseText('apps.preview.building') }}
-				</N8nBadge>
-				<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
-					{{ i18n.baseText('apps.preview.buildFailed') }}
-				</N8nBadge>
-			</div>
-			<N8nText
-				v-if="inspecting"
-				size="small"
-				color="text-light"
-				:class="$style.version"
-				data-test-id="app-preview-inspect-hint"
-			>
-				{{ i18n.baseText('apps.preview.inspect.hint') }}
-			</N8nText>
-			<N8nText
-				v-else-if="versionLabel"
-				size="small"
-				color="text-light"
-				:class="$style.version"
-				data-test-id="app-preview-version"
-			>
-				{{ i18n.baseText('apps.preview.version', { interpolate: { version: versionLabel } }) }}
-			</N8nText>
-			<div :class="$style.right">
 				<AppPreviewOptionMenu
 					v-model="screenSize"
 					:options="sizeOptions"
 					:label="i18n.baseText('apps.preview.size.label')"
+					:disabled="!preview"
 					data-test-id="app-preview-size"
 				/>
 				<AppPreviewOptionMenu
 					v-model="theme"
 					:options="themeOptions"
 					:label="i18n.baseText('apps.preview.theme.label')"
+					:disabled="!preview"
 					data-test-id="app-preview-theme"
 				/>
+			</div>
+			<div :class="$style.center">
+				<template v-if="inspecting">
+					<N8nText
+						size="small"
+						color="text-light"
+						:class="$style.hint"
+						data-test-id="app-preview-inspect-hint"
+					>
+						{{ i18n.baseText('apps.preview.inspect.hint') }}
+					</N8nText>
+					<N8nButton
+						variant="outline"
+						size="xsmall"
+						data-test-id="app-preview-inspect-cancel"
+						@click="setInspecting(false)"
+					>
+						{{ i18n.baseText('generic.cancel') }}
+					</N8nButton>
+				</template>
+				<template v-else>
+					<N8nBadge v-if="building" variant="info" data-test-id="app-preview-status">
+						{{ i18n.baseText('apps.preview.building') }}
+					</N8nBadge>
+					<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
+						{{ i18n.baseText('apps.preview.buildFailed') }}
+					</N8nBadge>
+				</template>
+			</div>
+			<div :class="$style.right">
+				<N8nTooltip v-if="inspectable" :content="i18n.baseText('apps.preview.inspect.select')">
+					<N8nButton
+						icon="mouse-pointer"
+						variant="ghost"
+						size="small"
+						:class="{ [$style.active]: inspecting }"
+						:aria-pressed="inspecting"
+						:disabled="!preview"
+						data-test-id="app-preview-select"
+						@click="setInspecting(!inspecting)"
+					>
+						{{ i18n.baseText('apps.preview.inspect.selectLabel') }}
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip :content="i18n.baseText('apps.preview.reload')">
+					<N8nIconButton
+						icon="refresh-cw"
+						variant="ghost"
+						size="small"
+						:class="$style.groupStart"
+						:aria-label="i18n.baseText('apps.preview.reload')"
+						:loading="loading"
+						:disabled="firstBuild && !preview && !failed"
+						data-test-id="app-preview-reload"
+						@click="reload"
+					/>
+				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('apps.preview.openInNewTab')">
 					<N8nIconButton
 						icon="external-link"
@@ -299,7 +346,7 @@ onBeforeUnmount(() => {
 				v-else-if="preview"
 				:key="preview.url"
 				ref="frame"
-				:src="preview.url"
+				:src="frameSrc"
 				:title="i18n.baseText('apps.preview.frameTitle', { interpolate: { name: app.name } })"
 				:style="{ width: SCREEN_WIDTHS[screenSize], colorScheme: theme }"
 				:class="$style.frame"
@@ -307,13 +354,22 @@ onBeforeUnmount(() => {
 				data-test-id="app-preview-frame"
 				@load="onFrameLoad"
 			/>
-			<N8nEmptyState
-				v-else-if="building"
-				:icon="{ type: 'icon', value: 'wrench' }"
-				:heading="i18n.baseText('apps.preview.firstBuild.heading')"
-				:description="i18n.baseText('apps.preview.firstBuild.description')"
+			<div
+				v-else-if="firstBuild"
+				:class="$style.firstBuild"
+				role="status"
 				data-test-id="app-preview-first-build"
-			/>
+			>
+				<N8nSpinner type="grid" size="xlarge" />
+				<div :class="$style.firstBuildText">
+					<N8nHeading tag="h2" size="xlarge" align="center">
+						{{ i18n.baseText('apps.preview.firstBuild.heading') }}
+					</N8nHeading>
+					<N8nText color="text-base" align="center">
+						{{ i18n.baseText('apps.preview.firstBuild.description') }}
+					</N8nText>
+				</div>
+			</div>
 			<N8nEmptyState
 				v-else-if="buildFailed"
 				:icon="{ type: 'icon', value: 'triangle-alert' }"
@@ -328,32 +384,6 @@ onBeforeUnmount(() => {
 				:description="i18n.baseText('apps.preview.empty.description')"
 				data-test-id="app-preview-empty"
 			/>
-			<div v-if="inspectable && preview" :class="$style.modes" data-test-id="app-preview-modes">
-				<N8nTooltip :content="i18n.baseText('apps.preview.inspect.browse')">
-					<N8nIconButton
-						icon="mouse-pointer"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.active]: !inspecting }"
-						:aria-label="i18n.baseText('apps.preview.inspect.browse')"
-						:aria-pressed="!inspecting"
-						data-test-id="app-preview-mode-browse"
-						@click="setInspecting(false)"
-					/>
-				</N8nTooltip>
-				<N8nTooltip :content="i18n.baseText('apps.preview.inspect.select')">
-					<N8nIconButton
-						icon="crosshair"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.active]: inspecting }"
-						:aria-label="i18n.baseText('apps.preview.inspect.select')"
-						:aria-pressed="inspecting"
-						data-test-id="app-preview-mode-select"
-						@click="setInspecting(true)"
-					/>
-				</N8nTooltip>
-			</div>
 		</div>
 		<AppFeedbackLink :app="app" />
 	</div>
@@ -372,10 +402,11 @@ onBeforeUnmount(() => {
 	grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--md) var(--spacing--2xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .left,
+.center,
 .right {
 	display: flex;
 	align-items: center;
@@ -396,26 +427,20 @@ onBeforeUnmount(() => {
 	}
 }
 
-.modes {
-	position: absolute;
-	bottom: calc(var(--spacing--xs) * 2);
-	left: 50%;
-	transform: translateX(-50%);
-	display: flex;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--background--surface);
-	box-shadow: var(--shadow--sm);
+.center {
+	grid-column: 2;
+	justify-content: center;
 }
 
 .active {
-	background: var(--background--subtle);
+	background: var(--background--active);
 }
 
-.version {
-	grid-column: 2;
+.groupStart {
+	margin-left: calc(var(--spacing--sm) - var(--spacing--2xs));
+}
+
+.hint {
 	min-width: 0;
 	white-space: nowrap;
 	overflow: hidden;
@@ -437,6 +462,21 @@ onBeforeUnmount(() => {
 	&:not(:last-child) {
 		padding-bottom: 0;
 	}
+}
+
+.firstBuild {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--md);
+	padding: var(--spacing--3xl) var(--spacing--xl);
+}
+
+.firstBuildText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	max-width: 32rem;
 }
 
 .frame {

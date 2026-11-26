@@ -3,9 +3,9 @@ import type { Request, Response } from 'express';
 
 import { BadRequestError } from '@n8n/errors';
 
-import type { ResolveSubWorkflowResponse } from './engine-sub-workflow.contract';
-import { resolveSubWorkflowRequestSchema } from './engine-sub-workflow.contract';
-import { EngineSubWorkflowService } from './engine-sub-workflow.service';
+import type { ResolveSubWorkflowResponse } from './engine-workflow-resolve.contract';
+import { resolveSubWorkflowRequestSchema } from './engine-workflow-resolve.contract';
+import { EngineSubWorkflowService } from './engine-workflow-resolve.service';
 
 /** Serves `POST /internal/sub-workflows/resolve` for the engine v2 data plane. */
 @Service()

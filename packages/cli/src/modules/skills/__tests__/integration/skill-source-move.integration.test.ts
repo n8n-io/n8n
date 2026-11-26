@@ -32,6 +32,7 @@ import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
+import { skillSourceIdentityKey } from '../../sources/skill-source-client';
 import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
@@ -243,6 +244,62 @@ describe('Skill source scope moves', () => {
 		const result = await preview(sourceId, request(null, to.id));
 		expect(result.duplicate).toMatchObject({ kind: 'blocked', sourceId: other });
 		await move(sourceId, request(null, to.id), 409);
+	});
+
+	it('moves a legacy folder source beside a sibling without rewriting the sibling', async () => {
+		const first = await sourceIn(from.id, ['First']);
+		const second = await sourceIn(to.id, ['Second']);
+		for (const [sourceId, path] of [
+			[first.sourceId, 'skills/first'],
+			[second.sourceId, 'skills/second'],
+		]) {
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{
+					identityKey: 'github:github.com/acme/skills',
+					locator: { owner: 'acme', repository: 'skills', branch: 'main', path },
+				},
+			);
+		}
+		const sibling = await sources().findById(second.sourceId);
+		expect((await preview(first.sourceId, request(from.id, to.id))).canMove).toBe(true);
+		await move(first.sourceId, request(from.id, to.id));
+		const moved = await sources().findById(first.sourceId);
+		expect(moved?.projectId).toBe(to.id);
+		expect(moved?.identityKey).not.toBe('github:github.com/acme/skills');
+		expect(await sources().findById(second.sourceId)).toEqual(sibling);
+		expect((await findSkill(first.skills[0].id))?.projectId).toBe(to.id);
+	});
+
+	it('blocks moving a legacy folder onto an overlapping source with a folder identity', async () => {
+		const first = await sourceIn(from.id, ['First']);
+		const second = await sourceIn(to.id, ['Second']);
+		const locator = { owner: 'acme', repository: 'skills', branch: 'main', path: 'skills/first' };
+		await db().update(
+			SkillSourceConnection,
+			{ id: first.sourceId },
+			{
+				identityKey: 'github:github.com/acme/skills',
+				locator,
+			},
+		);
+		const parent = { ...locator, path: 'skills' };
+		await db().update(
+			SkillSourceConnection,
+			{ id: second.sourceId },
+			{
+				identityKey: await skillSourceIdentityKey(
+					Container.get(GitHubSkillSourceClient).identity(parent),
+				),
+				locator: parent,
+			},
+		);
+		expect((await preview(first.sourceId, request(from.id, to.id))).duplicate).toMatchObject({
+			kind: 'blocked',
+			sourceId: second.sourceId,
+		});
+		await move(first.sourceId, request(from.id, to.id), 409);
 	});
 
 	it('checks local credential eligibility without resolving credentials or contacting GitHub', async () => {

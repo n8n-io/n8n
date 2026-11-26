@@ -22,7 +22,9 @@ export class EmailAuthHandler implements IPasswordAuthHandler<Person> {
 	async handleLogin(email: string, password: string): Promise<Person | undefined> {
 		const person = await this.personRepository.findByEmailWithAuthIdentities(email);
 
-		if (person?.password && (await this.passwordUtility.compare(password, person.password))) {
+		// Always run the comparison, so the cost does not depend on whether the person exists.
+		const isMatch = await this.passwordUtility.compare(password, person?.password || null);
+		if (person?.password && isMatch) {
 			return person;
 		}
 

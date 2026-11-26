@@ -198,6 +198,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
+		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+		stoppedLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -1793,10 +1795,21 @@ const { tools: testRunTools, refresh: refreshTestRunTools } = useAgentTestRunToo
 	configKey: testRunConfigKey,
 });
 const isResettingTestRun = ref(false);
+let testRunResetRequest = 0;
+
+// A reset in flight on one chat must not keep the button busy on another.
+watch(
+	() => [props.projectId, props.agentId, props.continueSessionId],
+	() => {
+		testRunResetRequest++;
+		isResettingTestRun.value = false;
+	},
+);
 
 async function onNewTestRun() {
 	if (isResettingTestRun.value || isStreaming.value) return;
 	isResettingTestRun.value = true;
+	const request = ++testRunResetRequest;
 	// The panel can move to another chat while the request runs.
 	const target = {
 		projectId: props.projectId,
@@ -1826,7 +1839,7 @@ async function onNewTestRun() {
 	} catch (error) {
 		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.testRun.reset.error'));
 	} finally {
-		isResettingTestRun.value = false;
+		if (request === testRunResetRequest) isResettingTestRun.value = false;
 	}
 }
 const sessionFilesOpen = ref(false);
@@ -2350,6 +2363,7 @@ onBeforeUnmount(() => {
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
+				:stopped-label="props.stoppedLabel"
 				:test-run="props.chatMode === 'test'"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
@@ -2415,6 +2429,8 @@ onBeforeUnmount(() => {
 .scrollArea {
 	flex: 1;
 	min-height: 0;
+	// Centers the scroll button over the input, which a host panel can move.
+	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
 }
 
 /* Sizes the empty test run from the scroll area, so its starters sit by the composer. */
@@ -2448,9 +2464,12 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 100%;
+	// Same as the messages: centers in the space that a host panel leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 .backgroundJobs {

@@ -1196,7 +1196,7 @@ export const getAgentTestRunTools = async (
 	return await makeRestApiRequest<AgentTestRunToolsResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/test-run/tools`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/tools`,
 	);
 };
 
@@ -1209,7 +1209,7 @@ export const resetAgentTestRun = async (
 	return await makeRestApiRequest<AgentTestRunResetResponse>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/test-run/reset`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/reset`,
 		{ sessionId },
 	);
 };

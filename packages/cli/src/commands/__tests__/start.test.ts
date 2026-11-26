@@ -3,7 +3,13 @@ import '@/zod-alias-support';
 
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	DbConnection,
+	DeploymentKeyRepository,
+	FoldStepRegistry,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import http from 'node:http';
@@ -41,6 +47,7 @@ import {
 	RoleCacheService,
 } from '@n8n/backend-services';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -185,6 +192,8 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 		Container.set(PollJobProvider, pollJobProvider);
+		Container.set(WorkflowStatisticsRepository, mockInstance(WorkflowStatisticsRepository));
+		Container.set(WorkflowStatisticsService, mockInstance(WorkflowStatisticsService));
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
@@ -261,6 +270,27 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(pushProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
 				initModules.mock.invocationCallOrder[0],
 			);
+		});
+
+		it('should register the workflow statistics fold step before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const initModules = vi.fn().mockImplementation(async () => {
+				const names = Container.get(FoldStepRegistry)
+					.getAll()
+					.map(({ name }) => name);
+				expect(names).toContain('workflow_statistics');
+			});
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(initModules).toHaveBeenCalledTimes(1);
+			expect(
+				Container.get(FoldStepRegistry)
+					.getAll()
+					.map(({ name }) => name),
+			).toEqual(['workflow_statistics']);
 		});
 
 		it('should register node types on the node types proxy before the modules initialize', async () => {

@@ -101,6 +101,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  boolean isTestChat
   uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
@@ -109,7 +110,6 @@ erDiagram
   varchar_32_ taskId
   json taskStop
   varchar_36_ taskVersionId FK
-  boolean testChat
   varchar_255_ title
   integer totalCompletionTokens
   double_precision totalCost
