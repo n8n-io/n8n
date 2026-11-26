@@ -1724,7 +1724,7 @@ export function getParameterIssues(
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
 		}
-	} else if (nodeProperties.validateType) {
+	} else if (nodeProperties.validateType && isDisplayed) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 		const error = validateParameter(nodeProperties, value, nodeProperties.validateType);
 		if (error) {

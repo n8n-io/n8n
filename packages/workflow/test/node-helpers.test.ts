@@ -7868,6 +7868,25 @@ describe('NodeHelpers', () => {
 				]);
 			});
 
+			it('skips validateType when the parameter is not displayed', () => {
+				const result = getParameterIssues(
+					{
+						displayName: 'Content (JSON)',
+						name: 'content',
+						type: 'json',
+						default: '',
+						validateType: 'object',
+						displayOptions: { show: { contentFormat: ['mobileDoc'] } },
+					},
+					{ contentFormat: 'html', content: '<p>Hi</p>' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
 			it('skips validateType for expression values (starting with "=")', () => {
 				const result = getParameterIssues(
 					numberProperties,
