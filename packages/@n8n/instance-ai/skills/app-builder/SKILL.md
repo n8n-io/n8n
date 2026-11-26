@@ -49,9 +49,8 @@ Add components under `src/`. Keep files small and focused.
      safe defaults.
    - New app: call `create_app` with a short blueprint. The
      user can review the description and edit the app title before approval.
-     Set `theme` to `both`, unless the user asks for one theme. Include a
-     high-level binding plan for the workflows, data tables, and agents the app
-     is likely to need. Do not delay
+     Set `theme` to `both`. Include a high-level binding plan for the
+     workflows, data tables, and agents the app is likely to need. Do not delay
      the blueprint to design every resource or find every resource id. Mark a
      resource as `existing` and include its id only when you already know it.
      Otherwise, mark it as `new`. Do not create or change a resource before the
@@ -72,8 +71,7 @@ Add components under `src/`. Keep files small and focused.
      already open, with your uncommitted edits.
 2. **Support light and dark themes.** Add light and dark styles to every app.
    Use `@media (prefers-color-scheme: dark)` so the app responds to the theme
-   switch in the preview and to the browser setting when opened directly. Build
-   only one theme when the user asks for it.
+   switch in the preview and to the browser setting when opened directly.
 3. **Edit the folder in batches.** Read with `workspace_read_files` and change
    files with `workspace_edit_files`. Put all the files of one step into one
    call, not one call for each file. Use the single-file tools only for a single
