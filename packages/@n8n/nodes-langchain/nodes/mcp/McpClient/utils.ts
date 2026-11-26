@@ -221,6 +221,35 @@ export function jsonSchemaTypeToFieldType(schema: JSONSchema7): FieldType {
 	return 'string';
 }
 
+function isNullSchema(schema: JSONSchema7Definition): boolean {
+	return typeof schema === 'object' && schema.type === 'null';
+}
+
+/**
+ * A nullable parameter puts its type next to `null`: in `anyOf` or `oneOf` (Pydantic, Zod)
+ * or in a `type` array (Go, Rust). Returns the schema of the type that is not null, so the
+ * field keeps that type.
+ */
+function withoutNull(schema: JSONSchema7): JSONSchema7 {
+	if (Array.isArray(schema.type)) {
+		const types = schema.type.filter((type) => type !== 'null');
+		return types.length === 1 ? { ...schema, type: types[0] } : schema;
+	}
+
+	const variants = schema.anyOf ?? schema.oneOf;
+	if (!variants?.some(isNullSchema)) {
+		return schema;
+	}
+
+	const [variant, ...others] = variants.filter((item) => !isNullSchema(item));
+	if (others.length > 0 || typeof variant !== 'object') {
+		return schema;
+	}
+
+	const { anyOf, oneOf, ...rest } = schema;
+	return { ...rest, ...variant };
+}
+
 export function convertJsonSchemaToResourceMapperFields(
 	schema: JSONSchema7,
 ): ResourceMapperField[] {
@@ -247,10 +276,11 @@ export function convertJsonSchemaToResourceMapperFields(
 			continue;
 		}
 
-		const schemaType = jsonSchemaTypeToFieldType(propertySchema);
+		const fieldSchema = withoutNull(propertySchema);
+		const schemaType = jsonSchemaTypeToFieldType(fieldSchema);
 		let defaultValue: string | undefined;
 		if (schemaType === 'object' || schemaType === 'array') {
-			const result = jsonSchemaTypeToDefaultValue(propertySchema);
+			const result = jsonSchemaTypeToDefaultValue(fieldSchema);
 			if (result !== null) {
 				defaultValue = JSON.stringify(result, null, 2);
 			}
@@ -258,7 +288,7 @@ export function convertJsonSchemaToResourceMapperFields(
 
 		const field: ResourceMapperField = {
 			id: key,
-			displayName: propertySchema.title ?? key,
+			displayName: fieldSchema.title ?? key,
 			defaultMatch: false,
 			required: required.includes(key),
 			display: true,
@@ -266,9 +296,9 @@ export function convertJsonSchemaToResourceMapperFields(
 			defaultValue,
 		};
 
-		if (propertySchema.enum && Array.isArray(propertySchema.enum)) {
+		if (fieldSchema.enum && Array.isArray(fieldSchema.enum)) {
 			field.type = 'options';
-			field.options = propertySchema.enum.map((value) => ({
+			field.options = fieldSchema.enum.map((value) => ({
 				name: value,
 				value,
 			})) as INodePropertyOptions[];
