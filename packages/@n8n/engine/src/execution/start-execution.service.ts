@@ -120,10 +120,16 @@ export class StartExecutionService {
 			throw new UnexpectedError('An execution cannot have both a parent link and an error source');
 		}
 		if (request.parent) await this.validateParent(request.parent);
-		// The source has ended, so only its existence is checked. No lock is
+		// Only a failed execution can have an error execution. No lock is
 		// needed: an ended execution does not change status again.
 		if (request.errorSource) {
-			await this.executionStore.loadExecutionStatus(request.errorSource.executionId);
+			const { executionId: sourceId } = request.errorSource;
+			const status = await this.executionStore.loadExecutionStatus(sourceId);
+			if (status !== 'failed') {
+				throw new UnexpectedError(
+					`Execution ${sourceId} is ${status}, so it cannot be the source of an error execution`,
+				);
+			}
 		}
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });

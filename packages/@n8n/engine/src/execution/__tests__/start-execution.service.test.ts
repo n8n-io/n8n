@@ -166,6 +166,21 @@ describe('StartExecutionService', () => {
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 
+		it.each(['queued', 'running', 'waiting', 'completed', 'cancelled'] as const)(
+			'rejects a source that is %s without persisting',
+			async (status) => {
+				const store = makeStore({ loadExecutionStatus: vi.fn().mockResolvedValue(status) });
+				const queue = makeQueue();
+				const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
+
+				await expect(service.start(request)).rejects.toThrow(
+					`Execution failed-exec is ${status}, so it cannot be the source of an error execution`,
+				);
+				expect(store.createExecution).not.toHaveBeenCalled();
+				expect(queue.publish).not.toHaveBeenCalled();
+			},
+		);
+
 		it('rejects a request with both a parent link and an error source', async () => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
