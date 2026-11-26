@@ -60,13 +60,12 @@ const pickerItems = computed<CollectionConnectionItem[]>(() =>
 	})),
 );
 
-/** Collections of the current agent with an add or remove request that is still running. */
-const busyIds = new Set<string>();
+/**
+ * Collections of the current agent with an add or remove request that is still running. An agent
+ * switch makes a new set, so a request from an earlier visit cannot change the current one.
+ */
+let busyIds = new Set<string>();
 const { next: nextRead } = useLatestFetch();
-
-function isStale(projectId: string, agentId: string) {
-	return projectId !== props.projectId || agentId !== props.agentId;
-}
 
 /**
  * A read that returns while a request runs is dropped, because the server can answer before it
@@ -96,7 +95,7 @@ watch(
 	() => [props.projectId, props.agentId],
 	() => {
 		collections.value = [];
-		busyIds.clear();
+		busyIds = new Set();
 		void load();
 	},
 	{ immediate: true },
@@ -117,13 +116,15 @@ async function setMembership(collectionId: string, added: boolean) {
 		return;
 	}
 	const { projectId, agentId } = props;
-	busyIds.add(collectionId);
+	const busy = busyIds;
+	const isStale = () => busy !== busyIds;
+	busy.add(collectionId);
 	setAdded(collectionId, added);
 	try {
 		const request = added ? addAgentKnowledgeCollection : removeAgentKnowledgeCollection;
 		await request(rootStore.restApiContext, projectId, agentId, collectionId);
 	} catch (error) {
-		if (isStale(projectId, agentId)) {
+		if (isStale()) {
 			return;
 		}
 		setAdded(collectionId, !added);
@@ -134,10 +135,10 @@ async function setMembership(collectionId: string, added: boolean) {
 			),
 		);
 	} finally {
-		// After an agent switch, the watch cleared the set and read the new agent's list.
-		if (!isStale(projectId, agentId)) {
-			busyIds.delete(collectionId);
-			if (busyIds.size === 0) {
+		// After an agent switch, the watch already read the new agent's list.
+		if (!isStale()) {
+			busy.delete(collectionId);
+			if (busy.size === 0) {
 				void load();
 			}
 		}

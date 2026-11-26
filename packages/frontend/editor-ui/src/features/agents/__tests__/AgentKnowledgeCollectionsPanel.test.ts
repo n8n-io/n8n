@@ -96,10 +96,12 @@ function collection(id: string, added = false): AgentKnowledgeCollectionDto {
 /** A request that stays open until the test settles it. */
 function deferred() {
 	let resolve!: (value: unknown) => void;
-	const promise = new Promise((done) => {
+	let reject!: (error: Error) => void;
+	const promise = new Promise((done, fail) => {
 		resolve = done;
+		reject = fail;
 	});
-	return { promise, resolve };
+	return { promise, resolve, reject };
 }
 
 async function render(props: { disabled?: boolean } = {}) {
@@ -230,6 +232,32 @@ describe('AgentKnowledgeCollectionsPanel', () => {
 
 		await waitFor(() => expect(listAgentKnowledgeCollections).toHaveBeenCalledTimes(3));
 		expect(await result.findByTestId('picker-add-a')).toBeInTheDocument();
+		expect(chipNames(result)).toEqual([]);
+	});
+
+	it('ignores a request from an earlier visit after a switch away and back to the agent', async () => {
+		const oldRemove = deferred();
+		removeAgentKnowledgeCollection.mockReturnValueOnce(oldRemove.promise);
+		const result = await render();
+
+		await userEvent.click(await result.findByTestId('chip-menu-remove'));
+		await result.rerender({ agentId: 'agent-2' });
+		await result.rerender({ agentId: 'agent-1' });
+		await waitFor(() => expect(chipNames(result)).toEqual(['Collection a']));
+
+		// The earlier request still runs, but the new visit can remove the collection.
+		const newRemove = deferred();
+		removeAgentKnowledgeCollection.mockReturnValueOnce(newRemove.promise);
+		await userEvent.click(await result.findByTestId('chip-menu-remove'));
+		expect(removeAgentKnowledgeCollection).toHaveBeenCalledTimes(2);
+
+		oldRemove.reject(new Error('nope'));
+		await userEvent.click(await result.findByTestId('agent-collections-add'));
+		await userEvent.click(await result.findByTestId('picker-add-a'));
+
+		// The new remove still runs, so the second click on the same collection waits for it.
+		expect(addAgentKnowledgeCollection).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
 		expect(chipNames(result)).toEqual([]);
 	});
 
