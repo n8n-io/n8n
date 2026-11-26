@@ -8120,6 +8120,56 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 		wrapper.unmount();
 	});
 
+	it('shows the held line for a send that the LLM mock made up, and not for its reads', async () => {
+		const toolCalls = [
+			{
+				tool: 'slack__list_channels',
+				toolCallId: 'call-read',
+				state: 'done',
+				simulation: { route: 'simulated_made_up', reason: 'invented_by_llm' },
+			},
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-send',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated_made_up',
+					reason: 'invented_by_llm',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ toolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="toolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-held-actions-count"]').exists()).toBe(true);
+		expect(
+			wrapper
+				.getComponent({ name: 'AgentHeldActionsTray' })
+				.props('actions')
+				.map((action: { actionId: string }) => action.actionId),
+		).toEqual(['call-send']);
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-held-actions-run-btn"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
 	it('sends a starter prompt from the standalone preview page', async () => {
 		routeState.name = AGENT_PREVIEW_VIEW;
 		const sendMessageFromOutside = vi.fn();

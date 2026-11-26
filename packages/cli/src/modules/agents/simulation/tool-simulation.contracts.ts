@@ -1,5 +1,7 @@
 import type { ToolCallEvidence, ToolTestCapability, ToolTestKind } from '@n8n/api-types';
 
+import type { ToolActionMode } from './tool-action-classifier';
+
 /**
  * Contract between n8n and a simulation backend. Each test chat gets one world; every request a
  * tool would send goes to it instead. A backend never sends anything real. When it cannot answer,
@@ -80,6 +82,11 @@ export interface ToolCallContext {
 	toolName: string;
 	/** For example `n8n-nodes-base.slack`. */
 	nodeType?: string;
+	/**
+	 * `write_hold` when n8n holds the call as a send or change that the user can run later.
+	 * A backend that cannot tell a write from a read can use it to report `world_write`.
+	 */
+	actionMode?: ToolActionMode;
 	/** Aborts when the run stops, so a backend can stop waiting on (and paying for) a reply. */
 	signal?: AbortSignal;
 }

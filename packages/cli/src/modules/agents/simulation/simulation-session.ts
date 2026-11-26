@@ -26,6 +26,7 @@ import { nodeSimulationGap } from './non-http-node-types';
 import { redactOutboundRequest } from './outbound-redaction';
 import { TestRunCredentialsHelper } from './test-run-credentials-helper';
 import { classifyBuiltToolAction, classifyHttpMethod } from './tool-action-classifier';
+import type { ToolActionMode } from './tool-action-classifier';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -127,6 +128,7 @@ interface ActiveToolCall {
 	sources: ReplySource[];
 	/** Only known values, so nothing large a backend sends is kept until the call ends. */
 	evidence: Set<ToolCallEvidence>;
+	actionMode: ToolActionMode;
 	blocked?: ToolCallSimulation;
 	readThrough?: boolean;
 }
@@ -302,6 +304,7 @@ export class SimulationSession {
 			toolName: tool.name,
 			sources: [],
 			evidence: new Set(),
+			actionMode,
 			readThrough: this.allowReadThrough && actionMode === 'read_through',
 		};
 		let output: unknown;
@@ -393,6 +396,7 @@ export class SimulationSession {
 					await this.world.handleRequest(request, {
 						toolCallId: active?.toolCallId,
 						toolName: active?.toolName ?? 'unknown',
+						...(active ? { actionMode: active.actionMode } : {}),
 						...(nodeType ? { nodeType } : {}),
 						...(signal ? { signal } : {}),
 					}),

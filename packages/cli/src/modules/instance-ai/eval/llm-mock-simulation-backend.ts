@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import type { InstanceAiEvalAgentScenarioSeed, ToolTestCapability } from '@n8n/api-types';
+import type {
+	InstanceAiEvalAgentScenarioSeed,
+	ToolCallEvidence,
+	ToolTestCapability,
+} from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OperationalError } from '@n8n/errors';
 import { Service } from '@n8n/di';
@@ -14,6 +18,7 @@ import type {
 	SimulatedReply,
 	SimulationBackend,
 	SimulationWorld,
+	ToolCallContext,
 } from '@/modules/agents/simulation/tool-simulation.contracts';
 
 import type { AgentSeedToolSummary } from './agent-scenario-seed';
@@ -160,13 +165,15 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
 				// A stopped run neither starts nor waits for a generation.
 				const { signal } = call;
+				// The mock writes nothing, but a held send or change shows as held in the test chat.
+				const evidence = heldWriteEvidence(call);
 				if (signal?.aborted) throw stoppedError();
 				if (request.protocol === 'web_search') {
 					const body = await untilStopped(webSearch(request.args, { signal }), signal);
 					if (body.note === WEB_SEARCH_MOCK_FAILURE_NOTE) {
 						return { outcome: 'unavailable', detail: 'The LLM mock failed to answer this search.' };
 					}
-					return { outcome: 'served', source: 'made_up', status: 200, body };
+					return { outcome: 'served', source: 'made_up', ...evidence, status: 200, body };
 				}
 				if (request.protocol === 'mcp') {
 					const server = mcpServers.find((entry) => entry.name === request.server);
@@ -207,6 +214,7 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 					return {
 						outcome: 'served',
 						source: 'made_up',
+						...evidence,
 						status: response.status,
 						headers: Object.fromEntries(response.headers.entries()),
 						body: text,
@@ -243,6 +251,7 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				return {
 					outcome: 'served',
 					source: 'made_up',
+					...evidence,
 					status: response.statusCode,
 					headers: response.headers,
 					body: response.body,
@@ -250,6 +259,11 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 			},
 		};
 	}
+}
+
+/** `world_write` for every reply of a call that n8n holds as a send or change. Reads get none. */
+function heldWriteEvidence(call: ToolCallContext): { evidence?: ToolCallEvidence[] } {
+	return call.actionMode === 'write_hold' ? { evidence: ['world_write'] } : {};
 }
 
 function mockMcpUrl(serverName: string, origin = DEFAULT_MCP_MOCK_ORIGIN): string {
