@@ -1156,7 +1156,7 @@ describe('AgentChatMessageList', () => {
 		expect(renderOrder).toEqual(['shared-thinking-block', 'markdown-chunk']);
 	});
 
-	it('keeps narrated tool-step reasoning above the later final output', () => {
+	it('keeps the reasoning of a run at the top of the turn', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [
@@ -1183,7 +1183,7 @@ describe('AgentChatMessageList', () => {
 		const renderOrder = wrapper
 			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
 			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
-		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block', 'markdown-chunk']);
+		expect(renderOrder).toEqual(['shared-thinking-block', 'markdown-chunk', 'markdown-chunk']);
 		expect(
 			wrapper.findAll('[data-test-id="shared-reasoning-block"]').map((element) => element.text()),
 		).toEqual(['Choose a query.', 'Compose the answer.']);

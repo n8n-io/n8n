@@ -7,6 +7,7 @@ function tool(id: string, overrides: Partial<AiActivityToolItem<string>> = {}) {
 		kind: 'tool',
 		id,
 		label: id,
+		toolName: id,
 		payload: id,
 		...overrides,
 	} satisfies AiActivityToolItem<string>;
