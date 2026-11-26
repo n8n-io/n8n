@@ -9,7 +9,7 @@ import AgentTimeline from '../components/AgentTimeline.vue';
 const renderComponent = createThreadComponentRenderer(AgentTimeline, {
 	global: {
 		stubs: {
-			ThinkingBlock: { template: '<div data-test-id="thinking-block-stub" />' },
+			AiActivityTrace: { template: '<div data-test-id="activity-trace-stub" />' },
 			AgentSection: { template: '<div />' },
 			TimelineTextSegment: { template: '<div />' },
 		},
@@ -159,10 +159,10 @@ describe('AgentTimeline assistant test run card', () => {
 		});
 
 		expect(queryByTestId('agent-assistant-test-run-card')).not.toBeInTheDocument();
-		expect(queryByTestId('thinking-block-stub')).toBeInTheDocument();
+		expect(queryByTestId('activity-trace-stub')).toBeInTheDocument();
 	});
 
-	it('keeps an in-flight call_agent inside the thinking block until it finishes', () => {
+	it('keeps an in-flight call_agent inside the activity trace until it finishes', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				agentNode: makeNode({
@@ -173,6 +173,6 @@ describe('AgentTimeline assistant test run card', () => {
 		});
 
 		expect(queryByTestId('agent-assistant-test-run-card')).not.toBeInTheDocument();
-		expect(queryByTestId('thinking-block-stub')).toBeInTheDocument();
+		expect(queryByTestId('activity-trace-stub')).toBeInTheDocument();
 	});
 });
