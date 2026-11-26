@@ -841,6 +841,58 @@ describe('execute-workflow MCP tool', () => {
 				]);
 			});
 
+			test('converts inputs to the declared field types', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [subWorkflowTrigger],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-sub-typed');
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'sub-workflow',
+					{ workflowInputs: { customerId: '99' } },
+					'production',
+					'SubWorkflowTrigger',
+				);
+
+				const runCall = (workflowRunner.run as Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+				expect(runCall.executionData?.executionData?.nodeExecutionStack[0].data.main).toEqual([
+					[{ json: { customerId: 99 } }],
+				]);
+			});
+
+			test('rejects inputs that do not match the declared field types', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [subWorkflowTrigger],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+				await expect(
+					executeWorkflow(
+						user,
+						workflowFinderService,
+						workflowRunner,
+						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
+						'sub-workflow',
+						{ workflowInputs: { customerId: 'not a number' } },
+						'production',
+						'SubWorkflowTrigger',
+					),
+				).rejects.toThrow('inputs do not match its declared fields. customerId:');
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
 			test('rejects the trigger when inputs are omitted', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),

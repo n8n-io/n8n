@@ -2,14 +2,12 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { isRecord } from '@n8n/utils/is-record';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
-	type IDataObject,
 	type INode,
 	type IPinData,
 	type IWorkflowExecutionDataProcess,
@@ -42,6 +40,7 @@ import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils'
 
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { WorkflowRunner } from '@/workflow-runner';
+import { inferInputSchema } from '@/workflows/callable/callable-workflow-input';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import {
 	type TelemetryProxy,
@@ -551,8 +550,18 @@ const getPinDataForTrigger = async (
 		}
 		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE: {
 			const workflowInputs = inputs && 'workflowInputs' in inputs ? inputs.workflowInputs : {};
+			const parsed = inferInputSchema(node, 'executeWorkflow').safeParse(workflowInputs);
+			if (!parsed.success) {
+				const issues = parsed.error.issues
+					.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+					.join('; ');
+				throw new WorkflowAccessError(
+					`Trigger node "${node.name}" inputs do not match its declared fields. ${issues}.`,
+					'invalid_inputs',
+				);
+			}
 			return {
-				[node.name]: [{ json: isDataObject(workflowInputs) ? workflowInputs : {} }],
+				[node.name]: [{ json: parsed.data }],
 			};
 		}
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
@@ -583,8 +592,6 @@ const getPinDataForTrigger = async (
 			return { [node.name]: [{ json: {} }] };
 	}
 };
-
-const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
 
 const getSupportedTriggerNamesForMode = (executionMode: ExecutionMode): string[] => {
 	return executionMode === 'production'
