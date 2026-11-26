@@ -4,7 +4,7 @@ import {
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import type { IDataObject, INode } from 'n8n-workflow';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -124,11 +124,22 @@ function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
 export type WorkflowInputFieldDef = { name: string; type?: string };
 
 /** Apply the trigger's version-specific default before workflow execution adds node defaults. */
-export function getExecuteWorkflowInputSource(triggerNode: INode): string {
+function getExecuteWorkflowInputSource(triggerNode: INode): string {
 	const params = triggerNode.parameters ?? {};
 	const inputSource = params[INPUT_SOURCE];
 	const defaultInputSource = triggerNode.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;
 	return typeof inputSource === 'string' ? inputSource : defaultInputSource;
+}
+
+export function isPassthroughTrigger(triggerNode: INode): boolean {
+	return getExecuteWorkflowInputSource(triggerNode) === PASSTHROUGH;
+}
+
+export function toSubWorkflowTriggerOutput(triggerNode: INode, inputs: IDataObject): IDataObject {
+	if (isPassthroughTrigger(triggerNode)) return inputs;
+	return Object.fromEntries(
+		listWorkflowInputFields(triggerNode).map(({ name }) => [name, inputs[name] ?? null]),
+	);
 }
 
 /** Declared field defs from an Execute Workflow Trigger (empty for passthrough). */
@@ -159,7 +170,8 @@ export function listWorkflowInputFields(triggerNode: INode): WorkflowInputFieldD
 		| { values?: Array<{ name: string; type?: string }> }
 		| undefined;
 
-	return (workflowInputs?.values ?? []).filter(
+	const fields = Array.isArray(workflowInputs?.values) ? workflowInputs.values : [];
+	return fields.filter(
 		(field): field is WorkflowInputFieldDef =>
 			typeof field.name === 'string' && field.name.length > 0,
 	);

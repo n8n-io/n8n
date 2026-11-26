@@ -40,7 +40,10 @@ import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils'
 
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { inferInputSchema } from '@/workflows/callable/callable-workflow-input';
+import {
+	inferInputSchema,
+	toSubWorkflowTriggerOutput,
+} from '@/workflows/callable/callable-workflow-input';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import {
 	type TelemetryProxy,
@@ -317,19 +320,13 @@ const buildRunData = async (
 		mcpMessageId,
 	};
 
-	// Set the trigger node as the start node and pin data for it, so the workflow runs
-	// with the provided inputs without waiting for an actual trigger event. The Execute
-	// Workflow Trigger is not pinned: it runs on the inputs, as in a real sub-workflow call.
+	// Set the trigger node as the start node and pin data for it
+	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 
 	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
-	const { [triggerNode.name]: _editorTriggerPinData, ...workflowPinData } = isManualExecution
-		? (workflow.pinData ?? {})
-		: {};
-	runData.pinData =
-		triggerNode.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE
-			? workflowPinData
-			: { ...workflowPinData, ...triggerPinData };
+	const workflowPinData = isManualExecution ? (workflow.pinData ?? {}) : {};
+	runData.pinData = { ...workflowPinData, ...triggerPinData };
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
@@ -344,7 +341,7 @@ const buildRunData = async (
 				{
 					node: triggerNode,
 					data: {
-						main: [triggerPinData[triggerNode.name]],
+						main: [runData.pinData[triggerNode.name]],
 					},
 					source: null,
 				},
@@ -409,9 +406,14 @@ const resolveExecuteWorkflowTrigger = (
 		return named;
 	}
 
-	const noPayloadTriggers = eligible.filter((node) => !triggerRequiresInputs(node.type));
-	if (eligible.length === 1 && noPayloadTriggers.length === 1) {
-		return noPayloadTriggers[0];
+	const triggersOtherThanSubWorkflow = eligible.filter(
+		(node) => node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	);
+	if (
+		triggersOtherThanSubWorkflow.length === 1 &&
+		!triggerRequiresInputs(triggersOtherThanSubWorkflow[0].type)
+	) {
+		return triggersOtherThanSubWorkflow[0];
 	}
 
 	if (eligible.length === 0) throw noEligibleTriggerError(executionMode);
@@ -496,7 +498,7 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 
 /**
  * Constructs the trigger items from the provided inputs, keyed by node name.
- * Callers must validate inputs against the trigger before this runs.
+ * Callers must check the input shape against the trigger before this runs.
  */
 const getPinDataForTrigger = async (
 	node: INode,
@@ -562,7 +564,7 @@ const getPinDataForTrigger = async (
 				);
 			}
 			return {
-				[node.name]: [{ json: parsed.data }],
+				[node.name]: [{ json: toSubWorkflowTriggerOutput(node, parsed.data) }],
 			};
 		}
 		case SCHEDULE_TRIGGER_NODE_TYPE: {

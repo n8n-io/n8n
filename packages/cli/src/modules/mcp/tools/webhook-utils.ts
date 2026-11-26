@@ -15,7 +15,7 @@ import {
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import {
-	getExecuteWorkflowInputSource,
+	isPassthroughTrigger,
 	listWorkflowInputFields,
 } from '@/workflows/callable/callable-workflow-input';
 
@@ -184,7 +184,7 @@ const getFormTriggerDetails = (formTriggers: INode[]): string => {
 };
 
 const describeWorkflowInputFields = (node: INode): string => {
-	if (getExecuteWorkflowInputSource(node) === 'passthrough') return 'any fields (passthrough)';
+	if (isPassthroughTrigger(node)) return 'any fields (passthrough)';
 	const fields = listWorkflowInputFields(node);
 	if (fields.length === 0) return 'none declared';
 	return fields.map((field) => `${field.name} (${field.type ?? 'string'})`).join(', ');

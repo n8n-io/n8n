@@ -11,6 +11,19 @@ describe('workflowInputsSchema', () => {
 		});
 	});
 
+	test('accepts a sub-workflow payload, also with no fields', () => {
+		expect(workflowInputsSchema.parse({ workflowInputs: { customerId: 1 } })).toEqual({
+			workflowInputs: { customerId: 1 },
+		});
+		expect(workflowInputsSchema.parse({ workflowInputs: {} })).toEqual({ workflowInputs: {} });
+	});
+
+	test('rejects a sub-workflow payload next to another payload key', () => {
+		expect(workflowInputsSchema.safeParse({ workflowInputs: {}, chatInput: 'hi' }).success).toBe(
+			false,
+		);
+	});
+
 	test('rejects leftover type', () => {
 		expect(workflowInputsSchema.safeParse({ type: 'chat' }).success).toBe(false);
 		expect(workflowInputsSchema.safeParse({ type: 'chat', chatInput: 'hi' }).success).toBe(false);
