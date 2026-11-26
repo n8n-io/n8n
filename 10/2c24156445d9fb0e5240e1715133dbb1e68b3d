@@ -13,6 +13,7 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
   s_b84ef0cad933cd::t_87fc32a1794ebe 4785-4787
 packages/cli/src/modules/agents/agent-execution.service.ts
   s_b84ef0cad933cd::t_8b661144f36057 9,92,174,1056,1068-1072
+  s_88e49051a12369::t_3d1ca981162295 1046
 packages/@n8n/api-types/src/agents/dto.ts
   s_b84ef0cad933cd::t_8b661144f36057 105-109
 packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
@@ -50,6 +51,14 @@ packages/cli/src/modules/agents/__tests__/latest-session-activity.test.ts
         "model": "gpt-6.1-sol"
       },
       "human_author": null
+    },
+    "s_88e49051a12369": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a21944-3240-71f6-8a19-6924bc5aa7e5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
     },
     "s_b84ef0cad933cd": {
       "agent_id": {
