@@ -1020,4 +1020,40 @@ describe('SimulationSession held actions and read-through', () => {
 		expect(session.getHeldAction('tc-send')).toMatchObject({ toolName: 'send_slack' });
 		expect(session.getHeldAction('tc-read')).toBeUndefined();
 	});
+
+	it('does not show a failed write as held, because it has no held action to run', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: {},
+			evidence: ['world_read', 'world_write'],
+		});
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [slackCapability],
+		});
+		const { tool: sendTool, handler } = slackTool(session);
+		const failingTool = nodeTool('send_slack', 'n8n-nodes-base.slack', async () => {
+			await handler();
+			throw new Error('The node failed after the reply');
+		});
+
+		await expect(runTool(session, failingTool, 'tc-failed')).rejects.toThrow(
+			'The node failed after the reply',
+		);
+		await runTool(session, sendTool, 'tc-held');
+
+		expect(session.getHeldAction('tc-failed')).toBeUndefined();
+		expect(session.takeDecision('tc-failed')).toEqual({
+			route: 'simulated_made_up',
+			reason: 'invented_by_llm',
+			evidence: ['world_read'],
+		});
+		expect(session.getHeldAction('tc-held')).toBeDefined();
+		expect(session.takeDecision('tc-held')).toMatchObject({
+			evidence: ['world_read', 'world_write'],
+		});
+	});
 });

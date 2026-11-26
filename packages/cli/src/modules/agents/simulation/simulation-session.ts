@@ -319,6 +319,8 @@ export class SimulationSession {
 				this.recordDecision(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);
 			}
+			// A failed call has no held action to run later, so it must not show as held.
+			active.evidence.delete('world_write');
 			const decision = foldSources(active.sources, active.evidence);
 			if (decision) this.recordDecision(toolCallId, decision);
 			throw error;
