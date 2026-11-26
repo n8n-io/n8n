@@ -220,6 +220,62 @@ describe('TypeORMObservationLogStore', () => {
 		);
 	});
 
+	it('reads and updates observation resume state through the cursor repository', async () => {
+		const observationCursorRepo = mock<InstanceAiObservationCursorRepository>();
+		const resumeFromAt = new Date('2026-01-01T00:00:00.000Z');
+		const updatedAt = new Date('2026-01-01T00:01:00.000Z');
+		observationCursorRepo.findForThread
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({
+				observationScopeId: 'thread-1',
+				lastObservedMessageId: 'message-2',
+				lastObservedAt: resumeFromAt,
+				updatedAt,
+				resumeFromMessageId: 'message-1',
+				resumeFromAt,
+				resumeNotes: '* IMPORTANT Keep the prior decision.',
+				lastRequestTokens: 1234,
+				lastModelId: 'anthropic/claude-sonnet-4-5',
+				workingSet: null,
+			} as never)
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({
+				observationScopeId: 'thread-1',
+				lastObservedMessageId: 'message-2',
+				lastObservedAt: resumeFromAt,
+				updatedAt,
+			} as never);
+
+		const store = createObservationLogStore({ observationCursorRepo });
+		const state = {
+			observationScopeId: 'thread-1',
+			resumeFrom: { lastObservedMessageId: 'message-1', lastObservedAt: resumeFromAt },
+			resumeNotes: '* IMPORTANT Keep the prior decision.',
+			lastRequestTokens: 1234,
+			lastModelId: 'anthropic/claude-sonnet-4-5',
+		};
+
+		await expect(store.getResumeState('thread-1')).resolves.toBeNull();
+		await expect(store.getResumeState('thread-1')).resolves.toEqual(state);
+
+		await store.saveResumeState(state);
+		expect(observationCursorRepo.updateResumeStateForThread).not.toHaveBeenCalled();
+
+		await store.saveResumeState(state);
+		expect(observationCursorRepo.updateResumeStateForThread).toHaveBeenCalledWith(
+			'thread-1',
+			updatedAt,
+			{
+				resumeFromMessageId: 'message-1',
+				resumeFromAt,
+				resumeNotes: '* IMPORTANT Keep the prior decision.',
+				lastRequestTokens: 1234,
+				lastModelId: 'anthropic/claude-sonnet-4-5',
+			},
+			{},
+		);
+	});
+
 	it('returns observation-scope messages after the cursor keyset', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		const sinceCreatedAt = new Date('2026-01-01T00:00:00.000Z');

@@ -97,4 +97,32 @@ describe('InstanceAiObservationCursorRepository', () => {
 		expect(await repository.findForThread(scope, {})).toEqual(original);
 		expect(await repository.findForThread(otherScope, {})).toBeNull();
 	});
+
+	it('updates resume state only when updatedAt matches and preserves updatedAt', async () => {
+		await repository.upsertForThread(cursor, {});
+		const stored = await rows.findOneByOrFail({ observationScopeId: scope });
+		const resumeColumns = {
+			resumeFromMessageId: 'message-1',
+			resumeFromAt: new Date('2026-01-01T00:00:00.000Z'),
+			resumeNotes: '* IMPORTANT Keep the prior decision.',
+			lastRequestTokens: 1234,
+			lastModelId: 'anthropic/claude-sonnet-4-5',
+		};
+
+		await repository.updateResumeStateForThread(
+			scope,
+			new Date('2026-01-01T00:09:00.000Z'),
+			resumeColumns,
+			{},
+		);
+		expect(await repository.findForThread(scope, {})).toEqual(stored);
+
+		await expect(
+			repository.updateResumeStateForThread(scope, stored.updatedAt, resumeColumns, {}),
+		).resolves.toBeUndefined();
+		expect(await repository.findForThread(scope, {})).toEqual({
+			...stored,
+			...resumeColumns,
+		});
+	});
 });

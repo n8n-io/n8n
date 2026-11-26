@@ -62,5 +62,53 @@ describe('InstanceAiObservationCursorRepository', () => {
 				skipUpdateIfNoValuesChanged: false,
 			});
 		});
+
+		it('passes workingSet through when provided', async () => {
+			const cursor = {
+				observationScopeId: 'thread-1',
+				lastObservedMessageId: 'message-2',
+				lastObservedAt: new Date('2026-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2026-01-01T00:01:00.000Z'),
+				workingSet: 'Plan\n- [ ] Ship it',
+			};
+			entityManager.upsert.mockResolvedValueOnce({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			await expect(repository.upsertForThread(cursor, ROOT)).resolves.toBeUndefined();
+			expect(entityManager.upsert).toHaveBeenCalledWith(InstanceAiObservationCursor, cursor, {
+				conflictPaths: ['observationScopeId'],
+				skipUpdateIfNoValuesChanged: false,
+			});
+		});
+	});
+
+	describe('updateResumeStateForThread', () => {
+		it('updates resume columns matched by observationScopeId and updatedAt while preserving updatedAt', async () => {
+			const updatedAt = new Date('2026-01-01T00:01:00.000Z');
+			const resumeColumns = {
+				resumeFromMessageId: 'message-1',
+				resumeFromAt: new Date('2026-01-01T00:00:00.000Z'),
+				resumeNotes: '* IMPORTANT Keep the prior decision.',
+				lastRequestTokens: 1234,
+				lastModelId: 'anthropic/claude-sonnet-4-5',
+			};
+			entityManager.update.mockResolvedValueOnce({
+				generatedMaps: [],
+				raw: [],
+				affected: 1,
+			});
+
+			await expect(
+				repository.updateResumeStateForThread('thread-1', updatedAt, resumeColumns, ROOT),
+			).resolves.toBeUndefined();
+			expect(entityManager.update).toHaveBeenCalledWith(
+				InstanceAiObservationCursor,
+				{ observationScopeId: 'thread-1', updatedAt },
+				{ ...resumeColumns, updatedAt },
+			);
+		});
 	});
 });

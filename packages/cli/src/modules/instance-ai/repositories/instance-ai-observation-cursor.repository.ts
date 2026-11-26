@@ -33,12 +33,32 @@ export class InstanceAiObservationCursorRepository {
 		cursor: Pick<
 			InstanceAiObservationCursor,
 			'observationScopeId' | 'lastObservedMessageId' | 'lastObservedAt' | 'updatedAt'
-		>,
+		> &
+			Partial<Pick<InstanceAiObservationCursor, 'workingSet'>>,
 		ctx: OperationContext,
 	): Promise<void> {
 		await this.table.managerFor(ctx).upsert(InstanceAiObservationCursor, cursor, {
 			conflictPaths: ['observationScopeId'],
 			skipUpdateIfNoValuesChanged: false,
 		});
+	}
+
+	async updateResumeStateForThread(
+		observationScopeId: string,
+		updatedAt: Date,
+		resumeColumns: Pick<
+			InstanceAiObservationCursor,
+			'resumeFromMessageId' | 'resumeFromAt' | 'resumeNotes' | 'lastRequestTokens' | 'lastModelId'
+		>,
+		ctx: OperationContext,
+	): Promise<void> {
+		// Keep updatedAt: the Observer commit matches the cursor row on it.
+		await this.table
+			.managerFor(ctx)
+			.update(
+				InstanceAiObservationCursor,
+				{ observationScopeId, updatedAt },
+				{ ...resumeColumns, updatedAt },
+			);
 	}
 }
