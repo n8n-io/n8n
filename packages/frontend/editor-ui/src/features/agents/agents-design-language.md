@@ -183,8 +183,10 @@ Put it in the session list menu and beside Close in the session detail header.
 Use a red, icon-only ghost control in the header. Match the Preview control's
 size. Disable the action while the request runs. Keep the session running until
 the server reports its final status. Then remove the stop icon and show
-`Session stopped` in the conversation. Keep the notice after a reload. Send the same
-notice to a user who talks to the Agent through a channel.
+`Session stopped` in the conversation as a muted status line, below the stopped
+turn. Do not show it as reply text. A chat host can replace the label. Keep the
+notice after a reload. A user who talks to the Agent through a channel gets
+`Session stopped` as a channel message.
 Stop discards queued input, including steered messages, before it aborts the active
 execution. Clear the chat queue and close its waiting connections. Keep unsent
 composer drafts. Stop also cancels active background child jobs and clears suspensions for the
