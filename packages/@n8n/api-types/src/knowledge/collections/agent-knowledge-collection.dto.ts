@@ -3,8 +3,6 @@ export interface AgentKnowledgeCollectionDto {
 	id: string;
 	name: string;
 	description: string;
-	/** The number of files in the collection. */
 	fileCount: number;
-	/** True when the collection is on this agent. */
-	added: boolean;
+	usedByAgent: boolean;
 }

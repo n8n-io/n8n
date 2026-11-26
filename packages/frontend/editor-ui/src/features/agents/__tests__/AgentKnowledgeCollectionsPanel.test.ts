@@ -83,13 +83,13 @@ const renderPanel = createComponentRenderer(AgentKnowledgeCollectionsPanel, {
 	props: { projectId: 'project-1', agentId: 'agent-1' },
 });
 
-function collection(id: string, added = false): AgentKnowledgeCollectionDto {
+function collection(id: string, usedByAgent = false): AgentKnowledgeCollectionDto {
 	return {
 		id,
 		name: `Collection ${id}`,
 		description: `About ${id}`,
 		fileCount: 3,
-		added,
+		usedByAgent,
 	};
 }
 
@@ -120,8 +120,8 @@ describe('AgentKnowledgeCollectionsPanel', () => {
 		vi.clearAllMocks();
 		// The panel reads the list again after a change, so the mocks keep the server state.
 		let server = [collection('a', true), collection('b')];
-		const setOnServer = (id: string, added: boolean) => {
-			server = server.map((item) => (item.id === id ? { ...item, added } : item));
+		const setOnServer = (id: string, usedByAgent: boolean) => {
+			server = server.map((item) => (item.id === id ? { ...item, usedByAgent } : item));
 			return { success: true };
 		};
 		listAgentKnowledgeCollections.mockImplementation(async () => server);

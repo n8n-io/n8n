@@ -43,7 +43,9 @@ const loading = ref(false);
 const pickerOpen = ref(false);
 const searchQuery = ref('');
 
-const addedCollections = computed(() => collections.value.filter(({ added }) => added));
+const collectionsUsedByAgent = computed(() =>
+	collections.value.filter(({ usedByAgent }) => usedByAgent),
+);
 const pickerItems = computed<CollectionConnectionItem[]>(() =>
 	collections.value.map((collection) => ({
 		id: `collection:${collection.id}`,
@@ -52,7 +54,7 @@ const pickerItems = computed<CollectionConnectionItem[]>(() =>
 		title: collection.name,
 		description: collection.description,
 		status: 'none',
-		attached: collection.added,
+		attached: collection.usedByAgent,
 		summary: i18n.baseText('settings.context.collections.fileCount', {
 			interpolate: { count: collection.fileCount },
 			adjustToNumber: collection.fileCount,
@@ -101,9 +103,9 @@ watch(
 	{ immediate: true },
 );
 
-function setAdded(collectionId: string, added: boolean) {
+function setUsedByAgent(collectionId: string, usedByAgent: boolean) {
 	collections.value = collections.value.map((collection) =>
-		collection.id === collectionId ? { ...collection, added } : collection,
+		collection.id === collectionId ? { ...collection, usedByAgent } : collection,
 	);
 }
 
@@ -119,7 +121,7 @@ async function setMembership(collectionId: string, added: boolean) {
 	const busy = busyIds;
 	const isStale = () => busy !== busyIds;
 	busy.add(collectionId);
-	setAdded(collectionId, added);
+	setUsedByAgent(collectionId, added);
 	try {
 		const request = added ? addAgentKnowledgeCollection : removeAgentKnowledgeCollection;
 		await request(rootStore.restApiContext, projectId, agentId, collectionId);
@@ -127,7 +129,7 @@ async function setMembership(collectionId: string, added: boolean) {
 		if (isStale()) {
 			return;
 		}
-		setAdded(collectionId, !added);
+		setUsedByAgent(collectionId, !added);
 		showError(
 			error,
 			i18n.baseText(
@@ -195,13 +197,17 @@ function openManageCollections() {
 	>
 		<AgentChipRow
 			:label="i18n.baseText('agents.builder.collections.label')"
-			:item-count="addedCollections.length"
+			:item-count="collectionsUsedByAgent.length"
 			:add-label="i18n.baseText('agents.builder.collections.add')"
 			add-button-test-id="agent-collections-add"
 			:disabled="props.disabled"
 			@add="openPicker"
 		>
-			<div v-for="collection in addedCollections" :key="collection.id" :class="$style.chipGroup">
+			<div
+				v-for="collection in collectionsUsedByAgent"
+				:key="collection.id"
+				:class="$style.chipGroup"
+			>
 				<AgentItemContextMenu
 					:disabled="props.disabled"
 					:remove-label="i18n.baseText('agents.builder.collections.remove')"
