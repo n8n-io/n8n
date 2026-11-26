@@ -151,7 +151,7 @@ describe('HeldActionCommitService', () => {
 		expect(session.listHeldActions().map((a) => a.actionId)).toEqual(['tc-1', 'tc-2']);
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 
 		const { agent, runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
@@ -216,7 +216,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Once' }, realSlack);
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
@@ -265,7 +265,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
@@ -314,7 +314,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
@@ -354,7 +354,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Later' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtime, runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
@@ -391,7 +391,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'crm_update_contact', 'tc-1', { id: 'c-1' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime(
 			[],
 			[{ name: 'crm_update_contact', description: 'CRM', handler: realMcp, mcpTool: true }],
@@ -418,7 +418,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Deploy now' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtime, runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
@@ -471,7 +471,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
@@ -506,7 +506,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
 		]);
@@ -533,7 +533,7 @@ describe('HeldActionCommitService', () => {
 		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, vi.fn());
 
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(session);
+		simulationSessions.getSession.mockResolvedValue(session);
 		const { runtimeCache } = makeRuntime([
 			{ name: 'slack_post_message', description: 'Slack', handler: vi.fn() },
 		]);
@@ -557,7 +557,7 @@ describe('HeldActionCommitService', () => {
 
 	it('throws NotFoundError when no simulation session is bound to the caller, agent, and test chat', async () => {
 		const simulationSessions = mock<SimulationSessionService>();
-		simulationSessions.getSession.mockReturnValue(undefined);
+		simulationSessions.getSession.mockResolvedValue(undefined);
 		const runtimeCache = mock<AgentRuntimeCacheService>();
 
 		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
