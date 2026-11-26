@@ -18591,7 +18591,7 @@ packages:
   alasql@4.4.0:
     resolution: {integrity: sha512-EQOk3NEvKcQxoYeY0d4ePF0VHAcljx3pn5ZkEowMPRThjWXyDc/VHYqC8Sg+6BH2ZhKZBdeRqlvlgZmhfGBtDA==}
     engines: {node: '>=15'}
-    deprecated: 'Please upgrade to 4.4.2 or later: https://github.com/AlaSQL/alasql/security/advisories/GHSA-834p-3m5w-q478'
+    deprecated: 'Please upgrade to 4.4.3 or later: https://github.com/AlaSQL/alasql/security/advisories/GHSA-67vj-hh8j-j94f'
     hasBin: true
 
   alien-signals@1.0.4:
