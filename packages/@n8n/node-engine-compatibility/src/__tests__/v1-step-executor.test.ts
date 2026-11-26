@@ -611,7 +611,7 @@ describe('V1StepExecutor', () => {
 					]);
 				});
 
-				it('keeps naming the first source when its edge is dead', async () => {
+				it('names the first live source when the first edge is dead', async () => {
 					const { a: _deadEdge, ...onlyB } = outputsByNodeId;
 
 					const result = await testStepExecutor(edgesListedBFirst, onlyB).execute(
@@ -623,7 +623,7 @@ describe('V1StepExecutor', () => {
 						),
 					);
 
-					expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
+					expect(result.outputs).toEqual([[{ json: { message: 'B' } }]]);
 				});
 			});
 

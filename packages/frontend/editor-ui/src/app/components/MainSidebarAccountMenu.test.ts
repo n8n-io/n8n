@@ -21,6 +21,8 @@ import { useVersionsStore } from '@n8n/stores/versions.store';
 const routerPushMock = vi.hoisted(() => vi.fn());
 const trackMock = vi.hoisted(() => vi.fn());
 const goToDashboardMock = vi.hoisted(() => vi.fn());
+const isCalloutDismissedMock = vi.hoisted(() => vi.fn());
+const dismissCalloutMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPushMock, resolve: vi.fn(() => ({ meta: {} })) }),
@@ -34,6 +36,13 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToDashboard: goToDashboardMock }),
+}));
+
+vi.mock('@/app/composables/useCalloutHelpers', () => ({
+	useCalloutHelpers: () => ({
+		isCalloutDismissed: isCalloutDismissedMock,
+		dismissCallout: dismissCalloutMock,
+	}),
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -106,6 +115,8 @@ describe('MainSidebarAccountMenu', () => {
 		versionsStore.whatsNewArticles = [];
 		versionsStore.hasVersionUpdates = false;
 		versionsStore.isWhatsNewArticleRead = vi.fn(() => false);
+		versionsStore.isWhatsNewCalloutOpen = false;
+		isCalloutDismissedMock.mockReturnValue(false);
 		rootStore.versionCli = '1.2.3';
 		uiStore.openModal = vi.fn();
 		uiStore.openModalWithData = vi.fn();
@@ -325,6 +336,112 @@ describe('MainSidebarAccountMenu', () => {
 			expect(
 				within(menu).queryByTestId('main-sidebar-account-cloud-console'),
 			).not.toBeInTheDocument();
+		});
+	});
+
+	describe('cloud console coachmark', () => {
+		const COACHMARK_KEY = 'cloud-console-moved-coachmark';
+
+		beforeEach(() => {
+			settingsStore.isCloudDeployment = true;
+			usersStore.currentUser = {
+				...usersStore.currentUser,
+				createdAt: '2026-06-01T00:00:00Z',
+			} as IUser;
+		});
+
+		it('points a cloud owner who knew the old sidebar at the account menu', async () => {
+			renderComponent();
+
+			expect(await screen.findByTestId('cloud-console-coachmark')).toHaveTextContent(
+				'Cloud console has moved',
+			);
+		});
+
+		it('stays hidden for an account created after the move', () => {
+			usersStore.currentUser = {
+				...usersStore.currentUser,
+				createdAt: '2026-11-20T00:00:00Z',
+			} as IUser;
+			renderComponent();
+
+			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
+		});
+
+		it('stays hidden for a cloud member', () => {
+			usersStore.isInstanceOwner = false;
+			renderComponent();
+
+			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
+		});
+
+		it('stays hidden once dismissed', () => {
+			isCalloutDismissedMock.mockReturnValue(true);
+			renderComponent();
+
+			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
+		});
+
+		it("waits while the What's new toast is open, then appears once it closes", async () => {
+			versionsStore.isWhatsNewCalloutOpen = true;
+			renderComponent();
+
+			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
+
+			versionsStore.isWhatsNewCalloutOpen = false;
+
+			expect(await screen.findByTestId('cloud-console-coachmark')).toBeInTheDocument();
+		});
+
+		it('is dismissed with "Got it"', async () => {
+			renderComponent();
+
+			await userEvent.click(await screen.findByTestId('cloud-console-coachmark-dismiss'));
+
+			expect(dismissCalloutMock).toHaveBeenCalledWith(COACHMARK_KEY);
+			await waitFor(() =>
+				expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument(),
+			);
+		});
+
+		it('opens the menu on Cloud console with "Show me"', async () => {
+			renderComponent();
+
+			await userEvent.click(await screen.findByTestId('cloud-console-coachmark-show-me'));
+
+			const menu = await screen.findByTestId('main-sidebar-account-menu');
+			expect(within(menu).getByTestId('main-sidebar-account-cloud-console')).toBeVisible();
+			expect(dismissCalloutMock).toHaveBeenCalledWith(COACHMARK_KEY);
+			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
+		});
+
+		it('counts opening the menu as found', async () => {
+			const { getByTestId } = renderComponent();
+
+			await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			expect(dismissCalloutMock).toHaveBeenCalledWith(COACHMARK_KEY);
+		});
+
+		it('does not write again once dismissed', async () => {
+			isCalloutDismissedMock.mockReturnValue(true);
+			const { getByTestId } = renderComponent();
+
+			await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			expect(dismissCalloutMock).not.toHaveBeenCalled();
+		});
+
+		it('does not write for an account that never qualified', async () => {
+			usersStore.currentUser = {
+				...usersStore.currentUser,
+				createdAt: '2026-11-20T00:00:00Z',
+			} as IUser;
+			const { getByTestId } = renderComponent();
+
+			await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			expect(dismissCalloutMock).not.toHaveBeenCalled();
 		});
 	});
 

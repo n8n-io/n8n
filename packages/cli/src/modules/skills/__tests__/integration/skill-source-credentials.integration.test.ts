@@ -518,6 +518,48 @@ describe('Skill Sync with credentials', () => {
 			expect(meta).toEqual({ reason: 'not_found' });
 		});
 
+		it('requires an eligible credential for each sibling folder import', async () => {
+			github.push(
+				'acme/private',
+				{
+					'skills/pdf/SKILL.md': skillMd('pdf'),
+					'skills/docx/SKILL.md': skillMd('docx'),
+				},
+				'main',
+				{ private: true },
+			);
+			for (const folder of ['pdf', 'docx']) {
+				const payload = { url: `${PRIVATE}/tree/main/skills/${folder}`, ...scope() };
+				const missing = await post(editor, '/skill-sources/discover', payload, 404);
+				expect(missing.meta?.reason).toBe('not_found');
+				const refused = await post(
+					editor,
+					'/skill-sources/discover',
+					{ ...payload, credentialId: otherTeamCredential.id },
+					403,
+				);
+				expect(refused.meta?.reason).toBe('credential_out_of_scope');
+				const withCredential = { ...payload, credentialId: teamCredential.id };
+				const { data: discovery } = await post<SkillSourceDiscovery>(
+					editor,
+					'/skill-sources/discover',
+					withCredential,
+				);
+				expect(discovery.duplicate).toEqual({ kind: 'none' });
+				const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+					...withCredential,
+					skillKeys: discovery.skills.map(({ key }) => key),
+				});
+				expect(data.imported.map(({ name }) => name)).toEqual([folder]);
+				const source = await Container.get(DataSource).manager.findOneByOrFail(
+					SkillSourceConnection,
+					{ id: data.sourceId },
+				);
+				expect(source.credentialId).toBe(teamCredential.id);
+			}
+			expect(await Container.get(DataSource).manager.count(SkillSourceConnection)).toBe(2);
+		});
+
 		it.each([
 			['a credential of another project', () => otherTeamCredential.id],
 			['a credential that does not exist', () => 'no-such-credential'],

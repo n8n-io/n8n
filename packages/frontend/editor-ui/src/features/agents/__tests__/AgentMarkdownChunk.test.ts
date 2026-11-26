@@ -1,5 +1,9 @@
 import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
-import { mount } from '@vue/test-utils';
+import {
+	AGENT_CHAT_MARKDOWN_HOST_KEY,
+	type AgentChatMarkdownHost,
+} from '../components/agentChatInjectionKeys';
+import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentMarkdownChunk from '../components/AgentMarkdownChunk.vue';
@@ -30,6 +34,35 @@ describe('AgentMarkdownChunk', () => {
 		expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('a1', 'p1');
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(wrapper.get('a').attributes('href')).toBe('/projects/p1/agents/a1?openPreview=true');
+	});
+
+	it('opens a link to a resource of the host in the host preview', async () => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const host: AgentChatMarkdownHost = {
+			resources: () => [{ type: 'workflow', id: 'w1', name: 'Weekly report' }],
+			linkableResources: () => [],
+			artifactLinks: {
+				artifactHref: (_type, id) => `/workflow/${id}`,
+				routerPathHref: (path) => path,
+				toRouterPath: (href) => ({ pathname: href, fullPath: href }),
+			},
+		};
+		const wrapper = mount(AgentMarkdownChunk, {
+			props: { source: '[Weekly report](/workflow/w1)' },
+			global: {
+				provide: { openWorkflowPreview, [AGENT_CHAT_MARKDOWN_HOST_KEY as symbol]: host },
+			},
+		});
+		// The markdown renders its resource links after it mounts.
+		await flushPromises();
+		let prevented: boolean | undefined;
+		wrapper.element.addEventListener('click', (event: Event) => {
+			prevented = event.defaultPrevented;
+			event.preventDefault();
+		});
+		await wrapper.get('a').trigger('click');
+		expect(prevented).toBe(true);
+		expect(openWorkflowPreview).toHaveBeenCalledExactlyOnceWith('w1');
 	});
 
 	it('routes agent Preview links outside the standalone Agents UI without a provider', async () => {

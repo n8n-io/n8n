@@ -54,6 +54,14 @@ export function setNotify(fn: NotifyFn): void {
 const noopHandle: NotificationHandle = { close() {} };
 const noopNotify: NotifyFn = () => noopHandle;
 
+/**
+ * Whether `showMessage` dropped the notification instead of rendering it. A dropped
+ * notification never calls `onClose`, so callers tracking an open toast must not keep its handle.
+ */
+export function isDroppedNotification(handle: NotificationHandle): boolean {
+	return handle === noopHandle;
+}
+
 let warnedAboutMissingNotify = false;
 
 function resolveNotify(): NotifyFn {

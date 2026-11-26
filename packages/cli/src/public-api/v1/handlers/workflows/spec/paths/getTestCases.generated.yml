@@ -3,7 +3,7 @@ tags:
   - Evaluation
 summary: Retrieve test run cases
 description: |-
-  Retrieve the per-case results of an evaluation test run.
+  Retrieve the per-case results of an evaluation test run. Requires the `execution:read` project scope.
 
   Requires the `testRun:read` API key scope.
 x-required-scope: testRun:read

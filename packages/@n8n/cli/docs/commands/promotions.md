@@ -26,7 +26,11 @@ Requires the Promotions feature to be licensed. The API key scopes are:
   connect and disconnect them, and link projects
 - `promotions:readEnvironments`: list and get environments, their projects and
   their missing projects
-- `promotions:promote`: preview and promote
+- `promotions:promote`: preview and promote. Every member can add it to a key.
+  The key promotes only the projects where the role of its owner can promote:
+  instance owners and admins in every project, project admins and editors as
+  the `promotion-settings` option `--who-can-promote` allows. Only instance
+  owners and admins can promote all team projects
 - `promotions:apply`: preview, apply and continue
 - `securitySettings:manage`: get and update the promotion settings
 

@@ -34,7 +34,7 @@ variable "RUNTIME_IMAGE" {
   default = "n8nio/base:26.13.0-c86615646b167060211ad428f021f59099b62284@sha256:02079402e2a7f33a41e8bf8943a2f6a08b45fd7a749abafaa20ef44bf4b6fd76"
 }
 variable "DEBIAN_RUNTIME_IMAGE" {
-  default = "n8nio/base:26.13.0-debian-b23a3454e958998b052277c130ee6f9f027427f0@sha256:cbdcf28cd718a9a3c8490cd2ee80dd61869e19e3a663ab0f7b762eb5e7ee2f4a"
+  default = "n8nio/base:26.13.0-debian-b81d2d875b7643cee7242f234b8d853cbea3ad58@sha256:4ba00ab3af5b3925b03e76f7211dfbb150addf21b60702ce9d463f52d6105a75"
 }
 
 # Published by build-node-pc-image.yml on master. The n8n image compiles native
