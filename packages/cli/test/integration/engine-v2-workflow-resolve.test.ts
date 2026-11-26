@@ -2,6 +2,7 @@ import {
 	createActiveWorkflow,
 	createWorkflow,
 	getPersonalProject,
+	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
@@ -30,6 +31,7 @@ import type {
 	ResolveSubWorkflowRequest,
 } from '@/modules/engine-v2/engine-workflow-resolve.contract';
 
+import { saveCredential } from './shared/db/credentials';
 import { createMember } from './shared/db/users';
 import { buildDefaultNodes, initNodeTypes } from './shared/utils';
 
@@ -75,6 +77,29 @@ class ReportsExecutionId implements INodeType {
 	}
 }
 
+const CREDENTIAL_NODE_TYPE = 'n8n-nodes-base.usesCredential';
+const CREDENTIAL_TYPE = 'githubApi';
+
+/** An action that requires a credential, so the credential check counts the credential. */
+class UsesCredential implements INodeType {
+	description = {
+		displayName: 'Uses Credential',
+		name: 'usesCredential',
+		group: ['transform'],
+		version: 1,
+		description: 'Requires a credential',
+		defaults: { name: 'Uses Credential' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: [{ name: CREDENTIAL_TYPE, required: true }],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([this.getInputData()]);
+	}
+}
+
 const connections: IConnections = {
 	[TRIGGER_NAME]: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 };
@@ -92,6 +117,7 @@ const nodeTypesFor = (trigger: INodeType) => ({
 	...buildDefaultNodes(),
 	[TRIGGER_TYPE]: { type: trigger, sourcePath: '' },
 	[ERROR_TRIGGER_TYPE]: { type: new ErrorTrigger(), sourcePath: '' },
+	[CREDENTIAL_NODE_TYPE]: { type: new UsesCredential(), sourcePath: '' },
 });
 
 /**
@@ -346,6 +372,51 @@ describe('Engine v2 workflow resolve (integration)', () => {
 			const result = await resolveError(source({ errorWorkflow: workflow.id }));
 
 			expect(result.projectId).toBe((await getPersonalProject(member)).id);
+		});
+
+		describe('with a credential', () => {
+			const errorWorkflowWithCredential = async (credentialOwner: User) => {
+				const credential = await saveCredential(
+					randomCredentialPayload({ type: CREDENTIAL_TYPE }),
+					{ user: credentialOwner, role: 'credential:owner' },
+				);
+				const node: INode = {
+					id: 'uses-credential',
+					name: 'Uses Credential',
+					type: CREDENTIAL_NODE_TYPE,
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+					credentials: { [CREDENTIAL_TYPE]: { id: credential.id, name: credential.name } },
+				};
+				return await createActiveWorkflow(
+					{
+						settings: { engineType: 'v2' },
+						nodes: [errorTriggerNode, node],
+						connections: {
+							[errorTriggerNode.name]: { main: [[{ node: node.name, type: 'main', index: 0 }]] },
+						},
+					},
+					member,
+				);
+			};
+
+			it('resolves when the project of the error workflow owns the credential', async () => {
+				const workflow = await errorWorkflowWithCredential(member);
+
+				const result = await resolveError(source({ errorWorkflow: workflow.id }));
+
+				expect(result.workflowId).toBe(workflow.id);
+			});
+
+			// An error run has no user, so only the project of the error workflow counts, as in v1.
+			it('refuses a credential that is not shared with the project of the error workflow', async () => {
+				const workflow = await errorWorkflowWithCredential(await createMember());
+
+				await expect(resolveError(source({ errorWorkflow: workflow.id }))).rejects.toThrow(
+					UserError,
+				);
+			});
 		});
 
 		it('refuses when the settings name no error workflow', async () => {

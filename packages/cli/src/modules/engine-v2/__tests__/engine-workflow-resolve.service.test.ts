@@ -126,6 +126,7 @@ describe('EngineWorkflowResolveService, for an error workflow', () => {
 		logger.scoped.mockReturnValue(logger);
 		workflowRepository.exists.mockResolvedValue(true);
 		policyChecker.check.mockResolvedValue(undefined);
+		credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'failed-project' }),
 		);
@@ -235,10 +236,25 @@ describe('EngineWorkflowResolveService, for an error workflow', () => {
 			);
 		});
 
-		it('runs no credential check, as v1 runs none for an error workflow', async () => {
+		it('checks the credentials of the error workflow with no user, as v1 does', async () => {
 			await resolveStart();
 
-			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledExactlyOnceWith(
+				'err-wf',
+				errorWorkflow().nodes,
+				undefined,
+			);
+		});
+
+		it('refuses with 403 when the credential check refuses', async () => {
+			credentialsPermissionChecker.check.mockRejectedValue(
+				new UserError('No access to a credential'),
+			);
+
+			const error: unknown = await resolveStart().catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(ResponseError);
+			expect((error as ResponseError).httpStatusCode).toBe(403);
 		});
 
 		it('starts the failed workflow from its own Error Trigger when the settings name none', async () => {

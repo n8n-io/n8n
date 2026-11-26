@@ -241,8 +241,9 @@ export class EngineWorkflowResolveService {
 	}
 
 	/**
-	 * The checks v1 runs before the new execution starts. v1 runs no credential
-	 * check for an error workflow.
+	 * The checks v1 runs before the new execution starts. An error run has no
+	 * user, so the credential check accepts only the credentials that the
+	 * project of the error workflow can use.
 	 */
 	private async assertCallable(workflowData: IWorkflowBase, target: ResolveTarget): Promise<void> {
 		const { caller, mode } = target;
@@ -250,13 +251,7 @@ export class EngineWorkflowResolveService {
 			// Independent checks. When both refuse, the first rejection is the one reported.
 			await Promise.all([
 				this.policyChecker.check(workflowData, caller.workflowId, caller.node, caller.userId),
-				mode === 'integrated'
-					? this.credentialsPermissionChecker.check(
-							workflowData.id,
-							workflowData.nodes,
-							caller.userId,
-						)
-					: undefined,
+				this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, caller.userId),
 			]);
 		} catch (error) {
 			if (error instanceof SubworkflowPolicyDenialError) {
