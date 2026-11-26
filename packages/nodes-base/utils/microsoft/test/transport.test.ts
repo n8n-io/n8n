@@ -366,7 +366,10 @@ describe('Microsoft Graph transport kernel', () => {
 					[429, { 'retry-after': '3' }, { cause: 'rate-limited', retryAfterMs: 3000 }],
 					[429, {}, { cause: 'rate-limited' }],
 					[503, { 'Retry-After': '2' }, { cause: 'temporarily-unavailable', retryAfterMs: 2000 }],
+					[500, {}, { cause: 'temporarily-unavailable' }],
+					[408, {}, { cause: 'temporarily-unavailable' }],
 					[400, { 'retry-after': '3' }, undefined],
+					[403, {}, undefined],
 				])(
 					'keeps the wait of a %i with headers %j on failure',
 					async (statusCode, headers, expected) => {
@@ -452,7 +455,9 @@ describe('Microsoft Graph transport kernel', () => {
 			it.each([
 				[429, { 'Retry-After': '5' }, { cause: 'rate-limited', retryAfterMs: 5000 }],
 				[503, {}, { cause: 'temporarily-unavailable' }],
+				[502, { 'retry-after': '1' }, { cause: 'temporarily-unavailable', retryAfterMs: 1000 }],
 				[404, { 'retry-after': '5' }, undefined],
+				[401, {}, undefined],
 			])(
 				'keeps the wait of a delegated %i with headers %j on failure',
 				async (statusCode, headers, expected) => {

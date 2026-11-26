@@ -1,4 +1,3 @@
-import { retryabilityFromError } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
@@ -102,22 +101,22 @@ const DEFAULT_RETRY_MS = 1_000;
 // background, if throttled reads still get skipped.
 const RETRY_BUDGET_MS = 10_000;
 
-/** How long to wait before a retry, or `undefined` when the error is not worth one. */
+/**
+ * How long to wait before a retry, or `undefined` when the error is not worth one. The transport
+ * marks a 429, a 408, a 5xx and a network error on `failure`, with the `Retry-After` wait.
+ */
 function retryWaitMs(error: unknown): number | undefined {
-	const { retryable, retryAfterMs } = retryabilityFromError(error);
-	// The transport keeps the throttle cause and the `Retry-After` wait on `failure`, because it
-	// drops the headers and, under Service Principal, the network error code.
 	const failure = error instanceof NodeApiError ? error.failure : undefined;
-	const timed = failure?.cause === 'rate-limited' || failure?.cause === 'temporarily-unavailable';
-	if (retryable !== 'yes' && !timed) return undefined;
-	const hinted = failure && 'retryAfterMs' in failure ? failure.retryAfterMs : undefined;
-	return hinted ?? retryAfterMs ?? DEFAULT_RETRY_MS;
+	if (failure?.cause !== 'rate-limited' && failure?.cause !== 'temporarily-unavailable') {
+		return undefined;
+	}
+	return failure.retryAfterMs ?? DEFAULT_RETRY_MS;
 }
 
 type GraphRead = (path: RequestPath, qs?: IDataObject) => Promise<unknown>;
 
 /**
- * A Graph GET that retries once after a 429, a 5xx or a network error. The waits of one request
+ * A Graph GET that retries once after a 429, a 408, a 5xx or a network error. The waits of one request
  * share {@link RETRY_BUDGET_MS}. A wait that does not fit throws the error without a retry.
  */
 function createGraphRead(this: IWebhookFunctions): GraphRead {

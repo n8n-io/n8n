@@ -54,19 +54,14 @@ export interface MicrosoftGraphForbiddenHint {
 }
 
 /**
- * A 429, a 503 or a network error as a `failure`, with the `Retry-After` wait when Graph sent
- * one. It is read from the original error, because the rebuilt `NodeApiError` keeps no response
+ * A failure worth a retry (a 429, a 408, a 5xx or a network error) as a `failure`, with the
+ * `Retry-After` wait when Graph sent one. It is read from the original error, because the rebuilt `NodeApiError` keeps no response
  * headers, and the sanitized Service Principal error keeps no error code either.
  */
 function throttleFailure(error: unknown): Failure | undefined {
 	const { retryable, status, retryAfterMs } = retryabilityFromError(error);
-	const cause =
-		status === 429
-			? 'rate-limited'
-			: status === 503 || (status === undefined && retryable === 'yes')
-				? 'temporarily-unavailable'
-				: undefined;
-	if (cause === undefined) return undefined;
+	if (retryable !== 'yes') return undefined;
+	const cause = status === 429 ? 'rate-limited' : 'temporarily-unavailable';
 	return retryAfterMs === undefined ? { cause } : { cause, retryAfterMs };
 }
 

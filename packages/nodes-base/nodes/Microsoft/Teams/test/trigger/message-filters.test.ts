@@ -60,12 +60,24 @@ const off: MessageFilters = {
 const apiError = (httpCode: string) =>
 	new NodeApiError(mock<INode>(), { message: `status ${httpCode}`, httpCode });
 
-// The shape the transport throws for a 429 with `Retry-After`: the wait is on `failure`.
-const throttled = (retryAfterMs: number) =>
+// The shapes the transport throws for an error worth a retry: the cause and the `Retry-After`
+// wait are on `failure`.
+const throttled = (retryAfterMs?: number) =>
 	new NodeApiError(
 		mock<INode>(),
 		{ message: 'Too Many Requests', httpCode: '429' },
-		{ failure: { cause: 'rate-limited', retryAfterMs } },
+		{
+			failure:
+				retryAfterMs === undefined
+					? { cause: 'rate-limited' }
+					: { cause: 'rate-limited', retryAfterMs },
+		},
+	);
+const unavailable = (httpCode?: string) =>
+	new NodeApiError(
+		mock<INode>(),
+		{ message: 'Service Unavailable', ...(httpCode && { httpCode }) },
+		{ failure: { cause: 'temporarily-unavailable' } },
 	);
 
 // The shape `microsoftApiRequest` throws when core cannot refresh a revoked OAuth2 token: it has
@@ -563,7 +575,7 @@ describe('message filters', () => {
 			const longId = 'm'.repeat(100);
 			const item = { ...notification('1'), subscriptionId: 's'.repeat(100) };
 			item.resourceData = { id: longId };
-			routeMessages({ [messagePath('1')]: apiError('429'), [messagePath('2')]: plainMessage });
+			routeMessages({ [messagePath('1')]: throttled(), [messagePath('2')]: plainMessage });
 			const ctx = ctxWith();
 
 			const result = await filterChangeNotifications.call(ctx, [item, notification('2')], skipBot);
@@ -602,24 +614,8 @@ describe('message filters', () => {
 			});
 
 			it.each([
-				['a 503', apiError('503')],
-				[
-					'a network error',
-					new NodeApiError(
-						mock<INode>(),
-						Object.assign(new Error('socket hang up'), {
-							code: 'ECONNRESET',
-						}) as unknown as JsonObject,
-					),
-				],
-				[
-					'a network error under Service Principal (status and code dropped)',
-					new NodeApiError(
-						mock<INode>(),
-						{ message: 'Microsoft Graph rejected the request (HTTP unknown).' },
-						{ failure: { cause: 'temporarily-unavailable' } },
-					),
-				],
+				['a 503', unavailable('503')],
+				['a network error (no status)', unavailable()],
 			])('retries once after %s, waiting one second', async (_label, failure) => {
 				const answers: unknown[] = [failure, plainMessage];
 				request.mockImplementation(async () => {
@@ -642,6 +638,7 @@ describe('message filters', () => {
 				['a 404', apiError('404')],
 				['a 400', apiError('400')],
 				['an error without a status', new Error('boom')],
+				['a 429 without the transport mark', apiError('429')],
 			])('does not retry after %s', async (_label, failure) => {
 				routeMessages({ [messagePath('1')]: failure });
 
@@ -785,7 +782,7 @@ describe('message filters', () => {
 			});
 
 			it.each([
-				['a 429 on the read and the retry', apiError('429'), ['/v1.0/me', '/v1.0/me']],
+				['a 429 on the read and the retry', throttled(), ['/v1.0/me', '/v1.0/me']],
 				['an empty id', { id: '' }, ['/v1.0/me']],
 			])(
 				'skips the batch without reading messages after %s from /me',
