@@ -239,14 +239,15 @@ describe('AgentRegistryMcpConfigForm', () => {
 		await expect(remove(wrapper)).resolves.toBe(false);
 		expect(confirmRemove).toHaveBeenCalledWith(
 			expect.objectContaining({
-				description: 'tools.connection.settings.removeConfirm.description',
+				description: 'agents.toolConfig.mcp.removeConfirm.description',
+				descriptionEmphasis: 'agents.toolConfig.mcp.removeConfirm.credentialNotice',
 				isDestructive: true,
 				confirmButtonText: 'tools.connection.settings.removeConfirm.confirmButton',
 			}),
 		);
 		expect(baseTextMock).toHaveBeenCalledWith(
-			'tools.connection.settings.removeConfirm.description',
-			{ interpolate: { item: 'tool', service: 'github' } },
+			'agents.toolConfig.mcp.removeConfirm.credentialNotice',
+			{ interpolate: { service: 'github' } },
 		);
 		expect(baseTextMock).toHaveBeenCalledWith(
 			'tools.connection.settings.removeConfirm.confirmButton',

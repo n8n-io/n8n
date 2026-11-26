@@ -583,6 +583,7 @@ export class ChatHubWorkflowService {
 		);
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess: attachments.flatMap(({ id }) => (id ? [id] : [])),
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -1606,6 +1607,7 @@ Respond the title only:`,
 		const autoSaveHighlightedData = chatTriggerParams.options?.autoSaveHighlightedData !== false;
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess: attachments.flatMap(({ id }) => (id ? [id] : [])),
 			executionData: {
 				nodeExecutionStack,
 			},

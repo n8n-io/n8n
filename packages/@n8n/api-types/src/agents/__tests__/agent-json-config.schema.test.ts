@@ -916,6 +916,7 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 		{ kind: 'jailbreak', prompt: 'Detect jailbreaks', threshold: 0.7 },
 		{ kind: 'nsfw', threshold: 0 },
 		{ kind: 'topicalAlignment', prompt: 'Stay on topic', threshold: 1 },
+		{ kind: 'workflow', workflowId: 'wf-1' },
 	])('accepts a valid %s guardrail', (guardrail) => {
 		expect(parseGuardrails([{ ...baseGuardrail, ...guardrail }]).success).toBe(true);
 	});
@@ -998,6 +999,22 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: 'a+' }] },
 			]).success,
 		).toBe(false);
+	});
+
+	it('rejects a workflow guardrail without a check workflow id', () => {
+		expect(parseGuardrails([{ ...baseGuardrail, kind: 'workflow' }]).success).toBe(false);
+	});
+
+	it('rejects a workflow guardrail at the after stage', () => {
+		const result = parseGuardrails([
+			{ ...baseGuardrail, kind: 'workflow', workflowId: 'wf-1', stage: 'after' },
+		]);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe(
+				'A workflow guardrail cannot run after a tool call',
+			);
+		}
 	});
 });
 

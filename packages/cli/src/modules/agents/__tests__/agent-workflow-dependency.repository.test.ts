@@ -147,6 +147,31 @@ describe('AgentWorkflowDependencyRepository', () => {
 		]);
 	});
 
+	it('includes a workflow guardrail check workflow in the dependency ids', async () => {
+		const agent = makeAgent();
+		agent.activeVersionId = null;
+		agent.schema = {
+			...agent.schema,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'workflow', id: 'g1', workflowId: 'wf-check' }],
+				},
+			},
+		} as Agent['schema'];
+		entityManager.findOne.mockResolvedValue(agent);
+		entityManager.find.mockResolvedValue(workflows('wf-draft', 'wf-legacy', 'wf-check'));
+
+		await repository.refreshForAgent(agent.id);
+
+		expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+			where: [
+				{ id: In(['wf-draft', 'wf-check']), shared: { projectId: 'project-1' } },
+				{ name: In(['Legacy WF']), shared: { projectId: 'project-1' } },
+			],
+			select: ['id'],
+		});
+	});
+
 	it('leaves the replacement empty when the agent no longer exists', async () => {
 		entityManager.findOne.mockResolvedValue(null);
 

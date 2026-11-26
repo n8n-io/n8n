@@ -157,7 +157,10 @@ export const optionsCollection: INodeProperties = {
 			default: false,
 			description: "Whether to treat query parameters enclosed in single quotes as text e.g. '$1'",
 			displayOptions: {
-				show: { queryReplacement: [{ _cnd: { exists: true } }] },
+				show: {
+					queryReplacement: [{ _cnd: { exists: true } }],
+					'@version': [{ _cnd: { lt: 2.9 } }],
+				},
 			},
 		},
 		{

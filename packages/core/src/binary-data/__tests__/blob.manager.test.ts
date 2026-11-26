@@ -57,6 +57,22 @@ describe('parseExecutionFileId', () => {
 	it('returns null for a malformed id', () => {
 		expect(parseExecutionFileId('malformed-id')).toBeNull();
 	});
+
+	it('rejects traversal, backslash, trailing, and incomplete paths', () => {
+		const invalidFileIds = [
+			'workflows/../executions/999/binary_data/file',
+			'workflows/workflow/executions/../binary_data/file',
+			'workflows/work\\flow/executions/999/binary_data/file',
+			'workflows/workflow/executions/999/binary_data/file\\name',
+			'workflows/workflow/executions/999/binary_data/file/',
+			'workflows/workflow/executions/999/binary_data/',
+			'workflows/workflow/executions/999/binary_data',
+		];
+
+		for (const invalidFileId of invalidFileIds) {
+			expect(parseExecutionFileId(invalidFileId)).toBeNull();
+		}
+	});
 });
 
 describe('store', () => {
@@ -97,8 +113,10 @@ describe('store', () => {
 });
 
 describe('getPath', () => {
-	it('returns the file id unchanged', () => {
-		expect(manager.getPath(fileId)).toBe(fileId);
+	it('rejects path access when the byte store has no filesystem path', () => {
+		expect(() => manager.getPath(fileId)).toThrow(
+			'Binary data storage does not provide filesystem paths.',
+		);
 	});
 });
 
