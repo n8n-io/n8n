@@ -116,16 +116,6 @@ export async function payPalApiRequestAllItems(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = '';
-	}
-	return result;
-}
-
 export function upperFist(s: string): string {
 	return s
 		.split('.')

@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
-import { payPalApiRequest, payPalApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { payPalApiRequest, payPalApiRequestAllItems } from './GenericFunctions';
 import {
 	payoutFields,
 	payoutItemFields,
@@ -184,8 +184,7 @@ export class PayPal implements INodeType {
 								});
 							}
 						} else {
-							const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);
-							body.items = itemsJson;
+							body.items = this.getNodeParameter('itemsJson', i) as IItem[] | undefined;
 						}
 						responseData = await payPalApiRequest.call(
 							this,
