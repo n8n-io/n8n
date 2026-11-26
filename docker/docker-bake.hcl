@@ -60,7 +60,7 @@ variable "PYTHON_IMAGE" {
 # Debian 13, the release of the distroless runtime. That image runs the glibc
 # of this Python image.
 variable "DEBIAN_PYTHON_IMAGE" {
-  default = "python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1"
+  default = "python:3.13.18-slim-trixie@sha256:7249d5587b78209a006dc4a3b5340678f84ea729239193aa559962cd8c1fce50"
 }
 variable "DISTROLESS_BASE_IMAGE" {
   default = "gcr.io/distroless/cc-debian13:latest@sha256:e1f5543d45a2cd7c02a5b43dda5f0ff30729b4832113759d01ed39b0b152cddb"
