@@ -21,11 +21,11 @@ export interface DeploymentRequestOptions {
 	timeout?: number;
 }
 
-export interface P1Result {
+export interface SignInResult {
 	version: string;
 }
 
-export interface P2Result {
+export interface WebhookRunResult {
 	workflowId: string;
 	webhookPath: string;
 	token: string;
@@ -38,29 +38,29 @@ export interface CodeRunResult {
 	responseBody: Record<string, unknown>;
 }
 
-export interface P3Options {
+export interface RunCodeNodesOptions {
 	/** Run a Python Code node in addition to JavaScript (requires an external task runner). */
 	python?: boolean;
 }
 
-export interface P3Result {
+export interface RunCodeNodesResult {
 	js: CodeRunResult;
 	python?: CodeRunResult;
 }
 
-export interface P4Options {
+export interface ReadExecutionOptions {
 	timeoutMs?: number;
 	pollIntervalMs?: number;
 }
 
-export interface P4Result {
+export interface ReadExecutionResult {
 	executionId: string;
 	status: string;
 	finished: boolean;
 	runData: Record<string, unknown>;
 }
 
-export interface P5Result {
+export interface BinaryRoundTripResult {
 	workflowId: string;
 	webhookPath: string;
 	payload: string;
@@ -275,8 +275,8 @@ export class DeploymentProbe {
 		return lastResponse!;
 	}
 
-	/** P1: Readiness check, owner setup, and API login. */
-	async p1(): Promise<P1Result> {
+	/** Check readiness, complete owner setup if needed, and log in via REST API (P1). */
+	async signIn(): Promise<SignInResult> {
 		const readinessDeadline = Date.now() + 15_000;
 		let ready = false;
 		let lastReadinessStatus = 0;
@@ -369,14 +369,14 @@ export class DeploymentProbe {
 		return { version };
 	}
 
-	/** P2: Import and activate a workflow, trigger its production webhook, and verify the response. */
-	async p2(): Promise<P2Result> {
+	/** Import and activate a workflow, trigger its production webhook, and verify the response (P2). */
+	async runWebhook(): Promise<WebhookRunResult> {
 		const token = nanoid(10);
 		const webhookId = nanoid(12);
-		const webhookPath = `probe-p2-${nanoid(8).toLowerCase()}`;
+		const webhookPath = `probe-webhook-${nanoid(8).toLowerCase()}`;
 
 		const { id: workflowId, versionId } = await this.createWorkflow({
-			name: `Deployment Probe P2 (${token})`,
+			name: `Deployment Probe Webhook (${token})`,
 			active: false,
 			nodes: [
 				{
@@ -426,19 +426,19 @@ export class DeploymentProbe {
 		const response = await this.triggerWebhook(webhookPath, { query: { token } });
 		const { body, text } = await parseJsonBody(response);
 		if (!response.ok()) {
-			throw new Error(`P2 webhook failed (${response.status()}): ${text.slice(0, 400)}`);
+			throw new Error(`Webhook probe failed (${response.status()}): ${text.slice(0, 400)}`);
 		}
 		if (!isRecord(body) || body.echo !== `probe:${token}`) {
 			throw new Error(
-				`P2 webhook response mismatch. Expected echo="probe:${token}", got: ${text.slice(0, 400)}`,
+				`Webhook probe response mismatch. Expected echo="probe:${token}", got: ${text.slice(0, 400)}`,
 			);
 		}
 
 		return { workflowId, webhookPath, token, responseBody: body };
 	}
 
-	/** P3: Run a JavaScript Code node (and a Python Code node when `python: true`). */
-	async p3(options: P3Options = {}): Promise<P3Result> {
+	/** Run a JavaScript Code node, and a Python Code node when `python: true` (P3). */
+	async runCodeNodes(options: RunCodeNodesOptions = {}): Promise<RunCodeNodesResult> {
 		const js = await this.runCodeNode('javaScript');
 		if (!options.python) {
 			return { js };
@@ -451,7 +451,7 @@ export class DeploymentProbe {
 		const token = nanoid(10);
 		const webhookId = nanoid(12);
 		const label = language === 'javaScript' ? 'js' : 'py';
-		const webhookPath = `probe-p3-${label}-${nanoid(8).toLowerCase()}`;
+		const webhookPath = `probe-code-${label}-${nanoid(8).toLowerCase()}`;
 
 		const codeParameters =
 			language === 'javaScript'
@@ -469,7 +469,7 @@ export class DeploymentProbe {
 					};
 
 		const { id: workflowId, versionId } = await this.createWorkflow({
-			name: `Deployment Probe P3 ${label} (${token})`,
+			name: `Deployment Probe Code ${label} (${token})`,
 			active: false,
 			nodes: [
 				{
@@ -508,7 +508,7 @@ export class DeploymentProbe {
 		const { body, text } = await parseJsonBody(response);
 		if (!response.ok()) {
 			throw new Error(
-				`P3 ${language} Code node webhook failed (${response.status()}): ${text.slice(0, 400)}`,
+				`${language} Code node webhook failed (${response.status()}): ${text.slice(0, 400)}`,
 			);
 		}
 
@@ -521,15 +521,18 @@ export class DeploymentProbe {
 			body.result !== 42
 		) {
 			throw new Error(
-				`P3 ${language} Code node returned unexpected payload. Expected runtime="${expectedRuntime}", echo="${expectedEcho}", result=42. Got: ${text.slice(0, 400)}`,
+				`${language} Code node returned unexpected payload. Expected runtime="${expectedRuntime}", echo="${expectedEcho}", result=42. Got: ${text.slice(0, 400)}`,
 			);
 		}
 
 		return { workflowId, webhookPath, responseBody: body };
 	}
 
-	/** P4: Read the finished execution for `workflowId` back via REST API. */
-	async p4(workflowId: string, options: P4Options = {}): Promise<P4Result> {
+	/** Read the finished execution for `workflowId` back via REST API (P4). */
+	async readExecution(
+		workflowId: string,
+		options: ReadExecutionOptions = {},
+	): Promise<ReadExecutionResult> {
 		const timeoutMs = options.timeoutMs ?? 15_000;
 		const pollIntervalMs = options.pollIntervalMs ?? 250;
 		const deadline = Date.now() + timeoutMs;
@@ -576,11 +579,13 @@ export class DeploymentProbe {
 		}
 
 		if (!settledId) {
-			throw new Error(`P4: no finished execution for workflow ${workflowId} within ${timeoutMs}ms`);
+			throw new Error(
+				`readExecution: no finished execution for workflow ${workflowId} within ${timeoutMs}ms`,
+			);
 		}
 		if (settledStatus !== 'success') {
 			throw new Error(
-				`P4: execution ${settledId} for workflow ${workflowId} finished with status "${settledStatus}"`,
+				`readExecution: execution ${settledId} for workflow ${workflowId} finished with status "${settledStatus}"`,
 			);
 		}
 
@@ -597,7 +602,7 @@ export class DeploymentProbe {
 		const status = typeof detail.status === 'string' ? detail.status : '';
 		if (!finished || status !== 'success') {
 			throw new Error(
-				`P4: execution ${settledId} is not a finished success (finished=${String(finished)}, status=${status})`,
+				`readExecution: execution ${settledId} is not a finished success (finished=${String(finished)}, status=${status})`,
 			);
 		}
 
@@ -607,7 +612,7 @@ export class DeploymentProbe {
 			isRecord(parsedData) && isRecord(parsedData.resultData) ? parsedData.resultData : null;
 		const runData = resultData && isRecord(resultData.runData) ? resultData.runData : null;
 		if (!runData || Object.keys(runData).length === 0) {
-			throw new Error(`P4: execution ${settledId} has no runData`);
+			throw new Error(`readExecution: execution ${settledId} has no runData`);
 		}
 
 		return {
@@ -618,16 +623,16 @@ export class DeploymentProbe {
 		};
 	}
 
-	/** P5: Write binary data in one node and read it in a later node. */
-	async p5(): Promise<P5Result> {
+	/** Write binary data in one node and read it in a later node (P5). */
+	async roundTripBinary(): Promise<BinaryRoundTripResult> {
 		const token = nanoid(10);
 		const payload = `binary-probe-${token}`;
 		const expectedExtracted = `${payload}:written`;
 		const webhookId = nanoid(12);
-		const webhookPath = `probe-p5-${nanoid(8).toLowerCase()}`;
+		const webhookPath = `probe-binary-${nanoid(8).toLowerCase()}`;
 
 		const { id: workflowId, versionId } = await this.createWorkflow({
-			name: `Deployment Probe P5 (${token})`,
+			name: `Deployment Probe Binary (${token})`,
 			active: false,
 			nodes: [
 				{
@@ -723,11 +728,11 @@ export class DeploymentProbe {
 		});
 		const { body, text } = await parseJsonBody(response);
 		if (!response.ok()) {
-			throw new Error(`P5 binary webhook failed (${response.status()}): ${text.slice(0, 400)}`);
+			throw new Error(`Binary probe webhook failed (${response.status()}): ${text.slice(0, 400)}`);
 		}
 		if (!isRecord(body) || body.extracted !== expectedExtracted) {
 			throw new Error(
-				`P5 binary round-trip mismatch. Expected extracted="${expectedExtracted}", got: ${text.slice(0, 400)}`,
+				`Binary round-trip mismatch. Expected extracted="${expectedExtracted}", got: ${text.slice(0, 400)}`,
 			);
 		}
 
@@ -939,8 +944,8 @@ export async function runDeploymentCell<TProbeOutput = unknown>(
 
 		let version = 'unknown';
 		await test.step('Sign in', async () => {
-			const p1 = await activeProbe.p1();
-			version = p1.version;
+			const signInResult = await activeProbe.signIn();
+			version = signInResult.version;
 			testInfo.annotations.push({ type: 'n8n-version', description: version });
 		});
 

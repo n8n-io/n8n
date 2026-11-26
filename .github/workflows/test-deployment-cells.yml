@@ -160,13 +160,13 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2204
             n8n_image_key: n8n
             runners_image_key: runners_distroless
-            specs: tests/deployment/img-07.spec.ts
+            specs: tests/deployment/task-runner-distroless.spec.ts
           - group: pc-distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
             n8n_image_key: n8n_pc
             runners_image_key: runners_distroless
-            specs: tests/deployment/crt-01.spec.ts
+            specs: tests/deployment/cloud-image-pair.spec.ts
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       DEPLOYMENT_CHANNEL: ${{ needs.resolve.outputs.channel }}
