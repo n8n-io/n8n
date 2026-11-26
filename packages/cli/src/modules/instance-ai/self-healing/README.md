@@ -447,9 +447,12 @@ The `instance-ai` module must be loaded. Entities and migrations do not depend o
 Saved review services do not require Assistant model availability. Recovery of existing
 investigations remains available when the flag is off.
 
-Self-healing requires the n8n Assistant to be enabled and its setup to be complete.
-On direct self-managed instances, setup is complete when a model, a sandbox, and a web search choice
-are configured. On Cloud and proxy-managed instances, setup is complete automatically.
+Self-healing requires the n8n Assistant to be enabled, with a model and a sandbox. When the
+Assistant is disabled, no new investigation starts. The model and sandbox check reads the Assistant
+setup under its lock, so it runs only for a failure in a watched workflow, and when a user creates
+or enables a configuration. A run does not
+need web search, so self-healing does not wait for the web search choice that the Assistant setup
+asks for. On Cloud and proxy-managed instances, the model and the sandbox count as configured.
 Self-healing is off on self-hosted Enterprise instances even when the environment variable is on.
 Every Cloud plan requires both `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and the PostHog
 instance flag `150_self_healing`.
@@ -466,9 +469,8 @@ configuration returns a `BadRequestError`.
 When the availability check returns false, `GET /self-healing/status` returns `enabled: false`
 and no `setupProjectId`, so the Inbox does not offer the setup. The `self_healing_result` Inbox
 source is then disabled unless saved results exist, so Inbox stays hidden when self-healing is its
-only source and has no results. Investigation admission looks up the workflow's configuration
-before this check, so failures in projects without self-healing skip the Assistant setup read.
-Investigations in progress finish, and existing results stay available for review.
+only source and has no results. The availability check reads no database, so the settings and
+each failed execution can call it. Investigations in progress finish, and existing results stay available for review.
 PostHog decisions are cached for 10 minutes. A change needs no restart.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.

@@ -25,7 +25,7 @@ const notice = computed<NoticeText | null>(() => {
 			link: 'selfHealing.config.assistantDisabledNotice.link',
 		};
 	}
-	if (instanceAi?.setupCompleted === false) {
+	if (instanceAi?.modelAndSandboxConfigured === false) {
 		return {
 			reason: 'selfHealing.config.assistantSetupIncompleteNotice',
 			askAdmin: 'selfHealing.config.assistantSetupIncompleteNotice.askAdmin',

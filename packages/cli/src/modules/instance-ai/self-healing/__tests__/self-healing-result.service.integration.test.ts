@@ -110,7 +110,7 @@ beforeEach(() => {
 	Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled = true;
 	const instanceAiSettings = Container.get(InstanceAiSettingsService);
 	vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(true);
-	vi.spyOn(instanceAiSettings, 'isSetupCompleted').mockResolvedValue(true);
+	vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured').mockResolvedValue(true);
 	runtime.startSelfHealingRun.mockReset();
 	runtime.routeCancelRun.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
@@ -2250,7 +2250,7 @@ describe('Inbox source reads', () => {
 	it('skips the self-healing check when saved results exist', async () => {
 		const isEnabled = vi
 			.spyOn(Container.get(SelfHealingConfigurationService), 'isEnabled')
-			.mockRejectedValue(new Error('Assistant setup unavailable'));
+			.mockRejectedValue(new Error('PostHog unavailable'));
 
 		await fixture('needs_you', false);
 		await expect(service.isInboxAvailable()).resolves.toBe(true);
@@ -2268,7 +2268,7 @@ describe('Inbox source reads', () => {
 	});
 
 	it('reports a failed self-healing check when no results are saved', async () => {
-		const error = new Error('Assistant setup unavailable');
+		const error = new Error('PostHog unavailable');
 		vi.spyOn(Container.get(SelfHealingConfigurationService), 'isEnabled').mockRejectedValue(error);
 		await expect(service.isInboxAvailable()).rejects.toBe(error);
 	});

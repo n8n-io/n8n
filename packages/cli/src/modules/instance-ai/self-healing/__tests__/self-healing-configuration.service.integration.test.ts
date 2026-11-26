@@ -87,7 +87,7 @@ beforeAll(async () => {
 beforeEach(() => {
 	const instanceAiSettings = Container.get(InstanceAiSettingsService);
 	vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(true);
-	vi.spyOn(instanceAiSettings, 'isSetupCompleted').mockResolvedValue(true);
+	vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured').mockResolvedValue(true);
 	runtime.routeCancelRun.mockReset();
 });
 
@@ -515,13 +515,11 @@ const cases = [
 	{ setting: true, type: 'cloud', flag: undefined, enterprise: true, expected: false },
 	{ ...eligible, type: 'default', assistantEnabled: false, expected: false },
 	{ ...eligible, type: 'cloud', assistantEnabled: false, expected: false },
-	{ ...eligible, type: 'default', setupCompleted: false, expected: false },
-	{ ...eligible, type: 'cloud', setupCompleted: false, expected: false },
 ] as const;
 
-it.each(cases.map((testCase) => ({ assistantEnabled: true, setupCompleted: true, ...testCase })))(
-	'reports enabled $expected for setting $setting, assistant $assistantEnabled, setup $setupCompleted, deployment $type, flag $flag, Enterprise $enterprise',
-	async ({ setting, assistantEnabled, setupCompleted, type, flag, enterprise, expected }) => {
+it.each(cases.map((testCase) => ({ assistantEnabled: true, ...testCase })))(
+	'reports enabled $expected for setting $setting, assistant $assistantEnabled, deployment $type, flag $flag, Enterprise $enterprise',
+	async ({ setting, assistantEnabled, type, flag, enterprise, expected }) => {
 		const user = await createUser();
 		const personalProjectId = (await getPersonalProject(user)).id;
 		const globalConfig = Container.get(GlobalConfig);
@@ -538,9 +536,8 @@ it.each(cases.map((testCase) => ({ assistantEnabled: true, setupCompleted: true,
 			.mockImplementation(async (name) => (name === SELF_HEALING_FLAG ? flag : undefined));
 		vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
 		vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(assistantEnabled);
-		const assistantReady = vi
-			.spyOn(instanceAiSettings, 'isSetupCompleted')
-			.mockResolvedValue(setupCompleted);
+		// The availability check reads no database, so it does not read the Assistant setup.
+		const assistantSetup = vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured');
 
 		try {
 			expect(await configurations.isEnabled()).toBe(expected);
@@ -548,8 +545,8 @@ it.each(cases.map((testCase) => ({ assistantEnabled: true, setupCompleted: true,
 				enabled: expected,
 				setupProjectId: expected ? personalProjectId : null,
 			});
-			if (type !== 'cloud' && enterprise) expect(assistantReady).not.toHaveBeenCalled();
-			if (type !== 'cloud' || !setting || !assistantEnabled || !setupCompleted) {
+			expect(assistantSetup).not.toHaveBeenCalled();
+			if (type !== 'cloud' || !setting || !assistantEnabled) {
 				expect(postHog).not.toHaveBeenCalled();
 			} else {
 				expect(postHog).toHaveBeenCalledWith(SELF_HEALING_FLAG);
@@ -582,7 +579,7 @@ it.each([
 		const created = (await agent.post(url).send(input).expect(200)).body.data;
 		const instanceAiSettings = Container.get(InstanceAiSettingsService);
 		vi.spyOn(instanceAiSettings, 'isInstanceAiEnabled').mockReturnValue(assistantEnabled);
-		vi.spyOn(instanceAiSettings, 'isSetupCompleted').mockResolvedValue(setupCompleted);
+		vi.spyOn(instanceAiSettings, 'isModelAndSandboxConfigured').mockResolvedValue(setupCompleted);
 
 		const createRes = await agent.post(url).send(input).expect(400);
 		expect(createRes.body.message).toBe(message);

@@ -204,7 +204,8 @@ export class InstanceAiModule implements ModuleInterface {
 		const mcpConnectionsAvailable = service.areMcpConnectionsAvailable();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
-		const setupCompleted = await settingsService.isSetupCompleted();
+		const { setupCompleted, modelAndSandboxConfigured } =
+			await settingsService.getPublicSetupState();
 		return {
 			enabled,
 			mcpConnectionsAvailable,
@@ -212,6 +213,7 @@ export class InstanceAiModule implements ModuleInterface {
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
 			setupCompleted,
+			modelAndSandboxConfigured,
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,

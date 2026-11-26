@@ -72,7 +72,7 @@ it('shows the Preview and enterprise readiness badges next to the heading', asyn
 it('does not show the Assistant notice in the configuration list', async () => {
 	const settingsStore = useSettingsStore();
 	settingsStore.moduleSettings = {
-		'instance-ai': { enabled: false, setupCompleted: false },
+		'instance-ai': { enabled: false, modelAndSandboxConfigured: false },
 	} as typeof settingsStore.moduleSettings;
 
 	const { view } = await renderSection();

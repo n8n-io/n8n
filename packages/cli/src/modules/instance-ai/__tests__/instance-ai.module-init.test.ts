@@ -353,7 +353,10 @@ describe('InstanceAiModule.init', () => {
 			workflowBuilderAvailable: false,
 			unavailableReason: null,
 		} as never);
-		settings.isSetupCompleted.mockResolvedValue(true);
+		settings.getPublicSetupState.mockResolvedValue({
+			setupCompleted: true,
+			modelAndSandboxConfigured: true,
+		});
 		runtime.areMcpConnectionsAvailable.mockReturnValue(false);
 		runtime.isProxyEnabled.mockReturnValue(false);
 

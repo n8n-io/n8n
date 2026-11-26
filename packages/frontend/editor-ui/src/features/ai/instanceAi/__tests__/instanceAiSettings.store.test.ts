@@ -370,6 +370,21 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(settingsStore.refreshInboxSettings).toHaveBeenCalledOnce();
 		});
 
+		it('does not wait for the Inbox refresh', async () => {
+			settingsStore.refreshInboxSettings = vi.fn().mockReturnValue(new Promise(() => {}));
+
+			await expect(store.persistEnabled(true)).resolves.toBe(true);
+			expect(settingsStore.refreshInboxSettings).toHaveBeenCalledOnce();
+		});
+
+		it('does not refresh the Inbox when the Assistant stays on', async () => {
+			setModuleSettings(settingsStore, { enabled: response.enabled });
+			store.setField('mcpAccessEnabled', true);
+
+			await expect(store.save()).resolves.toBe(true);
+			expect(settingsStore.refreshInboxSettings).not.toHaveBeenCalled();
+		});
+
 		it.each(['cloudManaged', 'proxyEnabled'] as const)(
 			'keeps setup complete on %s instances when module settings cannot refresh',
 			async (managedFlag) => {

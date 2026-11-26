@@ -117,6 +117,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	async function refreshSettingsAfterSave(adminRes: InstanceAiAdminSettingsResponse) {
 		const ms = settingsStore.moduleSettings;
 		const prev = ms['instance-ai'];
+		const isManaged = isCloudManaged.value || isProxyEnabled.value;
+		const setupState = deriveInstanceAiSetupState(adminRes);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			mcpConnectionsAvailable:
@@ -124,10 +126,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
-			setupCompleted:
-				isCloudManaged.value ||
-				isProxyEnabled.value ||
-				deriveInstanceAiSetupState(adminRes).setupCompleted,
+			setupCompleted: isManaged || setupState.setupCompleted,
+			modelAndSandboxConfigured: isManaged || setupState.modelAndSandboxConfigured,
 			sandboxEnabled: adminRes.sandboxEnabled,
 			workflowBuilderAvailable: adminRes.sandboxEnabled
 				? (prev?.workflowBuilderAvailable ?? true)
@@ -143,10 +143,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			...ms,
 			'instance-ai': merged,
 		};
-		await Promise.allSettled([
-			settingsStore.getModuleSettings(),
-			settingsStore.refreshInboxSettings(),
-		]);
+		// Turning the Assistant on or off can show or hide self-healing in the Inbox.
+		// The save does not wait for it.
+		if (prev?.enabled !== merged.enabled) {
+			void settingsStore.refreshInboxSettings().catch(() => {});
+		}
+		await settingsStore.getModuleSettings().catch(() => {});
 	}
 	const canManage = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),

@@ -1290,6 +1290,22 @@ export class InstanceAiSettingsService {
 		return (await this.resolveSetupState()).setupCompleted;
 	}
 
+	/** Detail-free setup flags for the editor, from one read of the settings. */
+	async getPublicSetupState(): Promise<
+		Pick<InstanceAiSetupState, 'setupCompleted' | 'modelAndSandboxConfigured'>
+	> {
+		if (!this.isDirectSelfManaged()) {
+			return { setupCompleted: true, modelAndSandboxConfigured: true };
+		}
+		const { setupCompleted, modelAndSandboxConfigured } = await this.resolveSetupState();
+		return { setupCompleted, modelAndSandboxConfigured };
+	}
+
+	/** Whether background runs, such as self-healing, have a model and a sandbox. */
+	async isModelAndSandboxConfigured(): Promise<boolean> {
+		return (await this.getPublicSetupState()).modelAndSandboxConfigured;
+	}
+
 	/**
 	 * Whether a model is available to answer a run. Narrower than
 	 * `isSetupCompleted` on purpose: sandbox and web search are optional for a

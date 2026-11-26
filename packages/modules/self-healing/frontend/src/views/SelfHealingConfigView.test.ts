@@ -122,10 +122,11 @@ it.each([
 const DISABLED = "The n8n Assistant is disabled, so self-healing can't run.";
 const SETUP_INCOMPLETE = "The n8n Assistant isn't set up, so self-healing can't run.";
 
-it('shows no Assistant notice when the Assistant is ready', async () => {
+it('shows no Assistant notice when the Assistant has a model and a sandbox', async () => {
 	const settingsStore = useSettingsStore();
+	// Self-healing needs no web search, so the incomplete Assistant setup does not matter.
 	settingsStore.moduleSettings = {
-		'instance-ai': { enabled: true, setupCompleted: true },
+		'instance-ai': { enabled: true, setupCompleted: false, modelAndSandboxConfigured: true },
 	} as typeof settingsStore.moduleSettings;
 
 	const view = await renderView('new');
@@ -135,11 +136,11 @@ it('shows no Assistant notice when the Assistant is ready', async () => {
 
 it.each([
 	{
-		assistant: { enabled: false, setupCompleted: true },
+		assistant: { enabled: false, modelAndSandboxConfigured: true },
 		expected: `${DISABLED} Ask an instance owner or admin to turn it on.`,
 	},
 	{
-		assistant: { enabled: true, setupCompleted: false },
+		assistant: { enabled: true, modelAndSandboxConfigured: false },
 		expected: `${SETUP_INCOMPLETE} Ask an instance owner or admin to finish the setup.`,
 	},
 ])('tells a member to ask an admin for $assistant', async ({ assistant, expected }) => {
@@ -154,9 +155,13 @@ it.each([
 });
 
 it.each([
-	{ assistant: { enabled: false, setupCompleted: true }, reason: DISABLED, link: 'Turn it on' },
 	{
-		assistant: { enabled: true, setupCompleted: false },
+		assistant: { enabled: false, modelAndSandboxConfigured: true },
+		reason: DISABLED,
+		link: 'Turn it on',
+	},
+	{
+		assistant: { enabled: true, modelAndSandboxConfigured: false },
 		reason: SETUP_INCOMPLETE,
 		link: 'Finish the setup',
 	},

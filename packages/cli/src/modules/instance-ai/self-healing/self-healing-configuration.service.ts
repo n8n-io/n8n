@@ -71,28 +71,37 @@ export class SelfHealingConfigurationService {
 	/** Tells whether new self-healing work can start now. */
 	async isEnabled(): Promise<boolean> {
 		if (!this.globalConfig.instanceAi.workflowSuggestionsEnabled) return false;
-		const isCloud = this.globalConfig.deployment.type === 'cloud';
-		// Self-healing is not available on self-hosted Enterprise yet.
-		if (!isCloud && this.license.isEnterprisePlan()) return false;
-		if (await this.assistantUnavailableReason()) return false;
-		// Self-hosted instances have no PostHog flag and use the env setting only.
-		if (!isCloud) return true;
+		// Self-healing runs through the n8n Assistant. This check reads no database, so the
+		// settings and each failed execution can call it. Creating or enabling a
+		// configuration also checks the Assistant setup.
+		if (!this.instanceAiSettings.isInstanceAiEnabled()) return false;
+		if (this.globalConfig.deployment.type !== 'cloud') {
+			// Self-healing is not available on self-hosted Enterprise yet.
+			// Other self-hosted instances have no PostHog flag and use the env setting only.
+			return !this.license.isEnterprisePlan();
+		}
 
-		// Every Cloud plan also requires the PostHog instance flag.
+		// Every Cloud plan requires both the env setting and the PostHog instance flag.
 		// No answer from PostHog means off.
 		return (await this.postHogClient.getFeatureFlagForInstance(SELF_HEALING_FLAG)) === true;
 	}
 
-	/** Self-healing runs through the n8n Assistant, so the Assistant must be on and set up. */
-	private async assistantUnavailableReason(): Promise<string | null> {
-		if (!this.instanceAiSettings.isInstanceAiEnabled()) return ASSISTANT_DISABLED;
-		if (!(await this.instanceAiSettings.isSetupCompleted())) return ASSISTANT_SETUP_INCOMPLETE;
-		return null;
+	/**
+	 * Tells whether the n8n Assistant has a model and a sandbox for a run. A run does not
+	 * need web search. This reads the Assistant setup under its lock, so call it only when
+	 * a run is about to start or a user saves a configuration.
+	 */
+	async hasAssistantSetup(): Promise<boolean> {
+		return await this.instanceAiSettings.isModelAndSandboxConfigured();
 	}
 
 	private async requireAssistantReady(): Promise<void> {
-		const reason = await this.assistantUnavailableReason();
-		if (reason) throw new BadRequestError(reason);
+		if (!this.instanceAiSettings.isInstanceAiEnabled()) {
+			throw new BadRequestError(ASSISTANT_DISABLED);
+		}
+		if (!(await this.hasAssistantSetup())) {
+			throw new BadRequestError(ASSISTANT_SETUP_INCOMPLETE);
+		}
 	}
 
 	private trackChange(

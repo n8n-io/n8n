@@ -2796,6 +2796,8 @@ export interface InstanceAiSetupState {
 	/** Credential assigned for the selected sandbox provider; a credential for the other provider does not count. */
 	sandboxCredentialId: string | null;
 	webSearchSource: InstanceAiWebSearchSource;
+	/** Model and sandbox configured. Background runs, such as self-healing, need no web search. */
+	modelAndSandboxConfigured: boolean;
 	/** Model and sandbox configured, and web search decided (configured or explicitly disabled). */
 	setupCompleted: boolean;
 }
@@ -2833,14 +2835,15 @@ export function deriveInstanceAiSetupState(
 			: settings.searchDisabled
 				? 'disabled'
 				: 'none';
+	const modelAndSandboxConfigured = modelSource !== 'none' && sandboxSource !== 'none';
 	return {
 		modelSource,
 		sandboxSource,
 		sandboxType: sandboxSource === 'none' ? null : settings.sandboxProvider,
 		sandboxCredentialId,
 		webSearchSource,
-		setupCompleted:
-			modelSource !== 'none' && sandboxSource !== 'none' && webSearchSource !== 'none',
+		modelAndSandboxConfigured,
+		setupCompleted: modelAndSandboxConfigured && webSearchSource !== 'none',
 	};
 }
 

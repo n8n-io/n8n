@@ -419,6 +419,8 @@ export type FrontendModuleSettings = {
 		cloudManaged: boolean;
 		/** Whether model, sandbox, and the explicit web-search decision are configured. */
 		setupCompleted?: boolean;
+		/** Whether a model and a sandbox are configured. Self-healing needs only these two. */
+		modelAndSandboxConfigured?: boolean;
 		sandboxEnabled: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;
