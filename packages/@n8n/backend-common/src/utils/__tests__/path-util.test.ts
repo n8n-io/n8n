@@ -31,6 +31,19 @@ describe('isContainedWithin', () => {
 	])('should return false for parent %s and child %s', (parent, child) => {
 		expect(isContainedWithin(parent, child)).toBe(false);
 	});
+
+	describe('windows-style case-insensitive paths', () => {
+		const isWin32 = process.platform === 'win32';
+
+		it(
+			'should match a differently-cased parent on Windows',
+			() => {
+				expect(isContainedWithin('C:\\Apps\\N8N', 'c:\\apps\\n8n\\credentials')).toBe(isWin32);
+				expect(isContainedWithin('C:\\Apps\\N8N', 'C:\\Apps\\N8N')).toBe(true);
+				expect(isContainedWithin('C:\\Apps\\N8N', 'C:\\Apps\\Other')).toBe(false);
+			},
+		);
+	});
 });
 
 describe('safeJoinPath', () => {
