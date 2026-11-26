@@ -56,6 +56,8 @@ export type ResolveSubWorkflowRequest = z.infer<typeof resolveSubWorkflowRequest
 /** Response of `POST /internal/sub-workflows/resolve`: what a sub-execution start needs. */
 export interface ResolveSubWorkflowResponse {
 	workflowId: string;
+	/** The project that owns the sub-workflow. */
+	projectId: string;
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
@@ -78,6 +80,7 @@ const graphSchema = workflowGraphSchema.extend({
 /** The response as the engine's start route would accept it. */
 const resolveSubWorkflowResponseSchema = z.object({
 	workflowId: z.string().min(1),
+	projectId: z.string().min(1),
 	graph: graphSchema,
 	workflow: jsonObjectSchema,
 	triggerOutputs: triggerOutputsSchema.nullable(),

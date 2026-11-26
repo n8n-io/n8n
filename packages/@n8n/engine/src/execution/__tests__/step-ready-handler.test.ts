@@ -1440,6 +1440,7 @@ describe('StepReadyHandler sub-executions', () => {
 	const subExecution = {
 		executionId: 'exec-sub',
 		workflowId: 'wf-sub',
+		projectId: 'project-sub',
 		graph: subWorkflowGraph,
 		workflow: { id: 'wf-sub' },
 		triggerOutputs: [[{ json: { in: 1 } }]],
@@ -1490,7 +1491,7 @@ describe('StepReadyHandler sub-executions', () => {
 			workflow: { id: 'wf-sub' },
 			triggerOutputs: subExecution.triggerOutputs,
 			mode: 'production',
-			callerContext: { hostMode: 'trigger' },
+			callerContext: { hostMode: 'trigger', projectId: 'project-sub' },
 			parent: { executionId: 'exec-1', stepId: 'step-a', awaited: true },
 		});
 		// The sub-execution cannot end before the parent step can be resumed.
@@ -1498,6 +1499,76 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it.each([
+		{ parentProjectId: 'project-parent', awaited: true },
+		{ parentProjectId: 'project-parent', awaited: false },
+		{ parentProjectId: 'project-sub', awaited: true },
+		{ parentProjectId: 'project-sub', awaited: false },
+	])(
+		'uses the sub-workflow project with parent $parentProjectId and awaited $awaited',
+		async ({ parentProjectId, awaited }) => {
+			const callerContext = { userId: 'user-1', projectId: parentProjectId, hostMode: 'manual' };
+			const starter = makeSubExecutionStarter();
+			const handler = makeHandler(
+				makeExecutionStore({ callerContext }),
+				makeStepStore(),
+				makeQueue(),
+				{
+					v1StepExecutor: makeExecutor({
+						subExecution: awaited ? subExecution : { ...detached, outputs: [[]] },
+					}),
+				},
+				undefined,
+				undefined,
+				undefined,
+				starter,
+			);
+
+			await handler.handle(event);
+
+			expect(starter.start).toHaveBeenCalledWith(
+				expect.objectContaining({
+					callerContext: { userId: 'user-1', projectId: 'project-sub', hostMode: 'manual' },
+				}),
+			);
+			expect(callerContext.projectId).toBe(parentProjectId);
+		},
+	);
+
+	it('uses each sub-workflow project for nested calls across three projects', async () => {
+		let callerContext: ExecutionRecord['callerContext'] = {
+			userId: 'user-1',
+			projectId: 'project-a',
+			hostMode: 'manual',
+		};
+		const start = vi.fn<SubExecutionStarter['start']>().mockImplementation(async (request) => {
+			callerContext = request.callerContext;
+			return { executionId: request.executionId };
+		});
+
+		for (const projectId of ['project-b', 'project-c']) {
+			const handler = makeHandler(
+				makeExecutionStore({ callerContext }),
+				makeStepStore(),
+				makeQueue(),
+				{
+					v1StepExecutor: makeExecutor({
+						subExecution: { ...subExecution, workflowId: `wf-${projectId}`, projectId },
+					}),
+				},
+				undefined,
+				undefined,
+				undefined,
+				{ start },
+			);
+
+			await handler.handle(event);
+
+			expect(callerContext).toEqual({ userId: 'user-1', projectId, hostMode: 'manual' });
+		}
+		expect(start).toHaveBeenCalledTimes(2);
 	});
 
 	it('starts no sub-execution when the step was taken over or its execution ended', async () => {

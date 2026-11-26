@@ -24,7 +24,13 @@ const stepContext: StepExecutionContext = {
 	responseExpectation: { kind: 'none' },
 };
 const graph: WorkflowGraph = { nodes: [{ id: 't', name: 'T', type: 'trigger' }], edges: [] };
-const resolved = { workflowId: 'sub-workflow', graph, workflow: {}, triggerOutputs: null };
+const resolved = {
+	workflowId: 'sub-workflow',
+	projectId: 'project-sub',
+	graph,
+	workflow: {},
+	triggerOutputs: null,
+};
 
 describe('SubWorkflowCalls', () => {
 	it('drops the detached sub-execution too when a second call fails the run', async () => {

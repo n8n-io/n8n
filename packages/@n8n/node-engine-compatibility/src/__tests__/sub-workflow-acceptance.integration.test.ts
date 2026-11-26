@@ -66,6 +66,7 @@ function resolverFor(subWorkflow = subWorkflowFixture()): SubWorkflowResolver {
 	return vi.fn(async (request: SubWorkflowResolveRequest) => {
 		return await Promise.resolve({
 			workflowId: request.workflowId,
+			projectId: 'project-sub',
 			graph: converter.convert(subWorkflow, SUB_WORKFLOW_TRIGGER),
 			workflow: { id: request.workflowId, name: 'Sub-workflow' },
 			triggerOutputs: toStepOutputs([request.items]),
@@ -106,6 +107,7 @@ describe('sub-workflow acceptance (integration)', () => {
 		expect(execution.status).toBe('completed');
 		const subExecution = await subExecutionOf(execution.id);
 		expect(subExecution.status).toBe('completed');
+		expect(subExecution.callerContext.projectId).toBe('project-sub');
 		expect(subExecution.parentStepId).toBe(byNode('exec')?.id);
 		expect(subExecution.parentAwaited).toBe(true);
 		expect(subExecution.mode).toBe('manual');
@@ -156,6 +158,7 @@ describe('sub-workflow acceptance (integration)', () => {
 		expect(execution.status).toBe('completed');
 		const subExecution = await subExecutionOf(execution.id);
 		expect(subExecution.status).toBe('completed');
+		expect(subExecution.callerContext.projectId).toBe('project-sub');
 		expect(subExecution.parentAwaited).toBe(false);
 
 		const exec = byNode('exec');

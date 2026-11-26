@@ -797,6 +797,7 @@ describe('step execution (integration)', () => {
 						subExecution: {
 							executionId: subExecutionId,
 							workflowId: 'wf-sub',
+							projectId: 'project-sub',
 							graph: subWorkflowGraph,
 							workflow: { id: 'wf-sub' },
 							triggerOutputs: [[{ json: { in: 1 } }]],
@@ -843,7 +844,7 @@ describe('step execution (integration)', () => {
 		expect(subExecution.parentStepId).toBe(call?.id);
 		expect(subExecution.parentAwaited).toBe(true);
 		expect(subExecution.mode).toBe('production');
-		expect(subExecution.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(subExecution.callerContext).toEqual({ hostMode: 'trigger', projectId: 'project-sub' });
 		expect(subExecution.triggerOutputs).toEqual([[{ json: { in: 1 } }]]);
 
 		// `call` ran twice: once to ask for the sub-execution, once with its result.
@@ -888,6 +889,7 @@ describe('step execution (integration)', () => {
 					subExecution: {
 						executionId: subExecutionId,
 						workflowId: 'wf-sub',
+						projectId: 'project-sub',
 						graph: subWorkflowGraph,
 						workflow: { id: 'wf-sub' },
 						triggerOutputs: [[{ json: { in: 1 } }]],
@@ -955,6 +957,7 @@ describe('step execution (integration)', () => {
 						subExecution: {
 							executionId: subExecutionId,
 							workflowId: 'wf-sub',
+							projectId: 'project-sub',
 							graph: subWorkflowGraph,
 							workflow: { id: 'wf-sub' },
 							triggerOutputs: [[{ json: { in: 1 } }]],

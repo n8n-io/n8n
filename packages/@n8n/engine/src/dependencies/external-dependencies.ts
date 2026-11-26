@@ -85,6 +85,8 @@ export interface StepExecutionRequest {
 export type SubExecutionDeclaration = {
 	executionId: string;
 	workflowId: string;
+	/** The project that owns the sub-workflow, supplied by the host. */
+	projectId: string;
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs?: TriggerOutputs | null;

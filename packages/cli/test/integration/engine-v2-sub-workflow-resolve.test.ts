@@ -1,4 +1,9 @@
-import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createActiveWorkflow,
+	createWorkflow,
+	createTeamProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
 import type { IWorkflowDb, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -21,6 +26,7 @@ import type { ResolveSubWorkflowRequest } from '@/modules/engine-v2/engine-sub-w
 import { SUB_WORKFLOWS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
 
 import { createMember } from './shared/db/users';
+import { createProjectVariable } from './shared/db/variables';
 import { buildDefaultNodes, initNodeTypes } from './shared/utils';
 
 const TRIGGER_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
@@ -59,6 +65,13 @@ class ReportsExecutionId implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await Promise.resolve([[{ json: { executionId: this.getExecutionId() } }]]);
+	}
+}
+
+class ReportsProjectVariable extends ReportsExecutionId {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const value = this.evaluateExpression('{{ $vars.projectValue }}', 0) as string;
+		return [[{ json: { value } }]];
 	}
 }
 
@@ -151,6 +164,47 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		expect(result.returnLastRunOnly).toBe(false);
 		expect(result.workflow).toMatchObject({ id: workflow.id });
 	});
+
+	it.each([true, false])(
+		'resolves the owning project and its trigger variables with same project %s',
+		async (sameProject) => {
+			const parentProject = await createTeamProject(undefined, member);
+			const subProject = sameProject ? parentProject : await createTeamProject(undefined, member);
+			const caller = await createWorkflow({ settings: { engineType: 'v2' } }, parentProject);
+			await createProjectVariable('projectValue', 'parent', parentProject);
+			if (!sameProject) await createProjectVariable('projectValue', 'child', subProject);
+			const workflow = await createWorkflow(
+				{
+					settings: { engineType: 'v2', callerPolicy: 'any' },
+					nodes: [triggerNode, setNode],
+					connections,
+				},
+				subProject,
+			);
+			await initNodeTypes({
+				...buildDefaultNodes(),
+				[TRIGGER_TYPE]: { type: new ReportsProjectVariable(), sourcePath: '' },
+			});
+			try {
+				const result = await resolve(
+					request(workflow.id, {
+						parent: { ...request(workflow.id).parent, workflowId: caller.id },
+						context: { userId: member.id, projectId: parentProject.id },
+					}),
+				);
+
+				expect(result.projectId).toBe(subProject.id);
+				expect(result.triggerOutputs).toEqual([
+					[{ json: { value: sameProject ? 'parent' : 'child' } }],
+				]);
+			} finally {
+				await initNodeTypes({
+					...buildDefaultNodes(),
+					[TRIGGER_TYPE]: { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
+				});
+			}
+		},
+	);
 
 	it('runs the trigger under the sub-execution id', async () => {
 		// A stand-in trigger that reports the id it runs under, in the real one's place.

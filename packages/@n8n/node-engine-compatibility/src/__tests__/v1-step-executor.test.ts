@@ -980,6 +980,7 @@ describe('sub-workflows', () => {
 	};
 	const resolved = {
 		workflowId: 'sub-workflow',
+		projectId: 'project-sub',
 		graph: subWorkflowGraph,
 		workflow: { id: 'sub-workflow', name: 'Sub-workflow' },
 		triggerOutputs: [[{ json: { a: 1 } }]],

@@ -29,6 +29,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { NodeTypesProxy } from '@n8n/backend-services';
+import { OwnershipService } from '@/services/ownership.service';
 import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { findSubworkflowStart, withExpressionIsolate } from '@/utils';
 import {
@@ -61,6 +62,7 @@ export class EngineSubWorkflowService {
 		private readonly policyChecker: SubworkflowPolicyChecker,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly nodeTypes: NodeTypesProxy,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async resolve({
@@ -73,6 +75,9 @@ export class EngineSubWorkflowService {
 		const subWorkflowData = await this.load(subWorkflowId, parent);
 		await this.assertCallable(subWorkflowData, parent, context);
 		const trigger = this.findTrigger(subWorkflowData);
+		const { id: projectId } = await this.ownershipService.getWorkflowProjectCached(
+			subWorkflowData.id,
+		);
 		// We run the trigger here so the execution receives the trigger output like any other execution.
 		const triggerOutputs = await this.runTrigger(
 			subWorkflowData,
@@ -80,10 +85,12 @@ export class EngineSubWorkflowService {
 			items,
 			subExecutionId,
 			context,
+			projectId,
 		);
 
 		return {
 			workflowId: subWorkflowData.id,
+			projectId,
 			...(await toEngineWorkflowPayload({
 				workflowData: subWorkflowData,
 				triggerName: trigger.name,
@@ -181,6 +188,7 @@ export class EngineSubWorkflowService {
 		items: INodeExecutionData[],
 		executionId: string,
 		context: ResolveSubWorkflowRequest['context'],
+		projectId: string,
 	): Promise<INodeExecutionData[][]> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(trigger.type, trigger.typeVersion);
 		const { execute } = nodeType;
@@ -198,7 +206,7 @@ export class EngineSubWorkflowService {
 		const additionalData = await getBase({
 			userId: context.userId,
 			workflowId: subWorkflowData.id,
-			projectId: context.projectId,
+			projectId,
 		});
 		// The trigger runs as the sub-execution's first node, so `$execution.id` is the sub-execution's.
 		additionalData.executionId = executionId;

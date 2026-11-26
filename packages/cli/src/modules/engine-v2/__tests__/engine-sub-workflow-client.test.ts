@@ -24,6 +24,7 @@ const request: ResolveSubWorkflowRequest = {
 
 const resolved: ResolveSubWorkflowResponse = {
 	workflowId: 'wf-sub',
+	projectId: 'project-sub',
 	graph: { nodes: [{ id: 't', name: 'Trigger', type: 'trigger' }], edges: [] },
 	workflow: { id: 'wf-sub' },
 	triggerOutputs: [[{ json: { a: 1 } }]],
@@ -108,6 +109,12 @@ describe('EngineSubWorkflowClient', () => {
 		respondWith(200, { workflowId: 'wf-sub' });
 
 		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
+	});
+
+	it.each([undefined, '', 42])('rejects a 200 body with projectId %s', async (projectId) => {
+		respondWith(200, { ...resolved, projectId });
+
+		await expect(client.resolve(request, signal)).rejects.toThrow(/malformed/);
 	});
 
 	it('rejects a 200 body whose graph edges lack a slot index', async () => {

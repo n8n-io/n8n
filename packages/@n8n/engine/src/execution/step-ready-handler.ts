@@ -284,7 +284,7 @@ export class StepReadyHandler {
 				workflow: subExecution.workflow,
 				triggerOutputs: subExecution.triggerOutputs,
 				mode: execution.mode,
-				callerContext: execution.callerContext,
+				callerContext: { ...execution.callerContext, projectId: subExecution.projectId },
 				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
 			});
 			return { kind: 'started' };

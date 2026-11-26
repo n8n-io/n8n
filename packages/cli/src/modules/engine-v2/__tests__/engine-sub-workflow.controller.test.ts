@@ -26,6 +26,7 @@ const resolveRequest: ResolveSubWorkflowRequest = {
 
 const resolved: ResolveSubWorkflowResponse = {
 	workflowId: 'wf-sub',
+	projectId: 'project-sub',
 	graph: { nodes: [{ id: 't', name: 'Trigger', type: 'trigger' }], edges: [] },
 	workflow: { id: 'wf-sub' },
 	triggerOutputs: [[{ json: { a: 1 } }]],
