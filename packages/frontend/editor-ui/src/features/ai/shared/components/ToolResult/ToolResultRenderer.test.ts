@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import ToolResultRenderer from '../components/ToolResultRenderer.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const renderComponent = createComponentRenderer(ToolResultRenderer);
 
 describe('ToolResultRenderer', () => {
+	it('renders text content as markdown', () => {
+		const { container } = renderComponent({
+			props: {
+				toolName: 'read_file',
+				result: { type: 'content', value: [{ type: 'text', text: 'Found **two** files' }] },
+			},
+		});
+
+		expect(container.querySelector('strong')).toHaveTextContent('two');
+		expect(container).not.toHaveTextContent('**');
+	});
+
 	it.each([
 		{ mediaType: 'image/png', selector: 'img' },
 		{ mediaType: 'application/pdf', selector: 'iframe' },

@@ -305,7 +305,7 @@ function findInputSlotReasons(
 			reason(
 				'INPUT_SLOT_CONVERGENCE',
 				'permanent',
-				`${slot.count} connections go into input ${slot.inputIndex + 1} of "${slot.to}". Engine v2 runs "${slot.to}" once, on the items of all these connections together. Engine v1 runs it once for each connection that sends items. A node that works on all its items at once, such as Aggregate, can give a different result. To keep the engine v1 result, give each connection its own copy of "${slot.to}".`,
+				`${slot.count} connections go into input ${slot.inputIndex + 1} of "${slot.to}". Engine v2 runs "${slot.to}" once, on the items of all these connections together. Items arrive in the order of the connected nodes on the canvas: top to bottom, then left to right. Engine v1 runs it once for each connection that sends items. A node that works on all its items at once, such as Aggregate, can give a different result. To keep the engine v1 result, give each connection its own copy of "${slot.to}".`,
 				slot.to,
 				'warning',
 			),

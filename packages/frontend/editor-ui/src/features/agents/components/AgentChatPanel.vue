@@ -2361,10 +2361,10 @@ onBeforeUnmount(() => {
 .backgroundJobs {
 	min-width: 0;
 
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+	--n8n-ai-activity-step--height: auto;
+	--n8n-ai-activity-step--min-height: var(--height--xl);
+	--n8n-ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--n8n-ai-activity-step--color: var(--text-color);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);
