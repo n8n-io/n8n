@@ -1,4 +1,4 @@
-import type { InstanceTypeAccessResponse } from '@n8n/api-types';
+import type { InstanceTypeAccessResponse, NodeTypeUsageResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInstancePolicyStore } from './instance-policy.store';
 import NodeTypesTab from './NodeTypesTab.vue';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
+import { policyTableCells } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 	saveInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	fetchNodeTypeSummaries: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 }));
@@ -32,7 +34,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 const SLACK = 'n8n-nodes-base.slack';
 const SLACK_TRIGGER = 'n8n-nodes-base.slackTrigger';
-const HIDDEN = 'n8n-nodes-base.internalThing';
 const NOT_LOADED = 'n8n-nodes-base.notLoaded';
 
 const summary = (displayName: string, fields: Partial<NodeTypeSummary> = {}): NodeTypeSummary => ({
@@ -44,7 +45,6 @@ const summary = (displayName: string, fields: Partial<NodeTypeSummary> = {}): No
 const SUMMARIES = new Map([
 	[SLACK, summary('Slack', { icon: 'fa:slack' })],
 	[SLACK_TRIGGER, summary('Slack Trigger')],
-	[HIDDEN, summary('Internal thing', { hidden: true })],
 ]);
 
 const policy = (
@@ -57,27 +57,23 @@ const access = (
 	types: InstanceTypeAccessResponse['types'] = [
 		{ name: SLACK, access: 'allow', matchedRuleId: null },
 		{ name: SLACK_TRIGGER, access: 'allow', matchedRuleId: null },
-		{ name: HIDDEN, access: 'allow', matchedRuleId: null },
 		{ name: NOT_LOADED, access: 'deny', matchedRuleId: 'rule-1' },
 	],
 ): InstanceTypeAccessResponse => ({ scopeId: 'scope-1', version, defaultAction: 'allow', types });
 
 const renderTab = createComponentRenderer(NodeTypesTab);
 
-const setup = async (arrangeTabReads?: () => void) => {
+const setup = async (arrangeAccessReads?: () => void) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
 	useRBACStore().setGlobalScopes(['nodeTypePolicy:manage']);
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
+	arrangeAccessReads?.();
 	await useInstancePolicyStore().load(['node']);
-	// The store reads the access list on load too. The tests arrange and count only the reads of the tab.
-	mocks.fetchInstanceAccess.mockClear();
-	arrangeTabReads?.();
 	return renderTab({ pinia });
 };
 
-const accessCell = (getByTestId: (id: string) => HTMLElement, name = SLACK) =>
-	getByTestId(`instance-policy-access-${name}`);
+const { accessCell, usageCells } = policyTableCells(SLACK);
 
 const restrict = async (getByTestId: (id: string) => HTMLElement, name = SLACK) => {
 	await userEvent.click(accessCell(getByTestId, name));
@@ -90,6 +86,19 @@ describe('NodeTypesTab', () => {
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1));
 		mocks.fetchInstanceAccess.mockResolvedValue(access(1));
 		mocks.fetchNodeTypeSummaries.mockResolvedValue(SUMMARIES);
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			[SLACK]: { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+		} satisfies NodeTypeUsageResponse);
+	});
+
+	// `useTypeUsage.test.ts` covers the loading and failure states.
+	it('shows the usage of each node type, and 0 for a node type that no workflow uses', async () => {
+		const { findByText, getByTestId } = await setup();
+
+		await findByText('Slack Trigger');
+		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
+		expect(usageCells(getByTestId, SLACK_TRIGGER)).toEqual(['0', '0', '0', '0']);
+		expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
 	});
 
 	it('gives a node type and its trigger a row each, with their access', async () => {
@@ -99,76 +108,6 @@ describe('NodeTypesTab', () => {
 		expect(getByText('Slack Trigger')).toBeInTheDocument();
 		expect(accessCell(getByTestId)).toHaveTextContent('Allowed');
 		expect(mocks.fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node');
-	});
-
-	it('gives no row to a hidden node type', async () => {
-		const { findByText, queryByText } = await setup();
-		await findByText('Slack');
-
-		expect(queryByText('Internal thing')).not.toBeInTheDocument();
-		expect(queryByText(HIDDEN)).not.toBeInTheDocument();
-	});
-
-	it('gives a row to a hidden node type that a name rule decides, so the admin can undo the rule', async () => {
-		mocks.fetchInstancePolicy.mockResolvedValue(
-			policy(1, [{ id: 'rule-1', action: 'deny', selector: { kind: 'name', value: HIDDEN } }]),
-		);
-		mocks.fetchInstanceAccess.mockResolvedValue(
-			access(1, [
-				{ name: SLACK, access: 'allow', matchedRuleId: null },
-				{ name: HIDDEN, access: 'deny', matchedRuleId: 'rule-1' },
-			]),
-		);
-		const { findByText, getByTestId } = await setup();
-
-		expect(await findByText('Internal thing')).toBeInTheDocument();
-		expect(accessCell(getByTestId, HIDDEN)).toHaveTextContent('Restricted');
-	});
-
-	it('keeps the row of a hidden node type while the access list reloads after a change', async () => {
-		const hiddenRule = (id: string, action: 'allow' | 'deny') => ({
-			id,
-			action,
-			selector: { kind: 'name' as const, value: HIDDEN },
-		});
-		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, [hiddenRule('rule-1', 'deny')]));
-		mocks.saveInstancePolicy.mockResolvedValue({
-			...policy(2, [hiddenRule('rule-2', 'allow')]),
-			warnings: [],
-		});
-		const reload = createDeferredPromise<InstanceTypeAccessResponse>();
-		const { findByText, getByTestId, queryByText } = await setup(() =>
-			mocks.fetchInstanceAccess
-				.mockResolvedValueOnce(
-					access(1, [{ name: HIDDEN, access: 'deny', matchedRuleId: 'rule-1' }]),
-				)
-				.mockReturnValue(reload.promise),
-		);
-		await findByText('Internal thing');
-
-		await userEvent.click(accessCell(getByTestId, HIDDEN));
-		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
-
-		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
-		expect(queryByText('Internal thing')).toBeInTheDocument();
-	});
-
-	it('gives no row to a hidden node type that a package rule decides', async () => {
-		mocks.fetchInstancePolicy.mockResolvedValue(
-			policy(1, [
-				{ id: 'deny-base', action: 'deny', selector: { kind: 'package', value: 'n8n-nodes-base' } },
-			]),
-		);
-		mocks.fetchInstanceAccess.mockResolvedValue(
-			access(1, [
-				{ name: SLACK, access: 'deny', matchedRuleId: 'deny-base' },
-				{ name: HIDDEN, access: 'deny', matchedRuleId: 'deny-base' },
-			]),
-		);
-		const { findByText, queryByText } = await setup();
-		await findByText('Slack');
-
-		expect(queryByText('Internal thing')).not.toBeInTheDocument();
 	});
 
 	it('shows the name of a node type that the editor did not load', async () => {
@@ -185,7 +124,6 @@ describe('NodeTypesTab', () => {
 
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalled());
 		expect(queryByText(SLACK)).not.toBeInTheDocument();
-		expect(queryByText(HIDDEN)).not.toBeInTheDocument();
 
 		summaries.resolve(SUMMARIES);
 		expect(await findByText('Slack')).toBeInTheDocument();
@@ -200,7 +138,8 @@ describe('NodeTypesTab', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
-	it('restricts a node type at once', async () => {
+	it('restricts a node type that no workflow uses at once', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
@@ -269,6 +208,7 @@ describe('NodeTypesTab', () => {
 	});
 
 	it('loads the access list again when the policy changed after the page loaded', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
 		const { findByText, getByTestId } = await setup(() =>

@@ -386,6 +386,29 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "hi".extractUrlPath() }}')).toBeUndefined();
 		});
 
+		test.each([
+			['https://de.wikipedia.org/wiki/Käse', '/wiki/K%C3%A4se'],
+			['https://example.com/my report.pdf', '/my%20report.pdf'],
+			['https://example.com/a<b>c', '/a%3Cb%3Ec'],
+			['https://example.com/v1/../v2/users', '/v2/users'],
+			['https://example.com/a/./b', '/a/b'],
+			['https://example.com/a/b/..', '/a/'],
+			['https://example.com/a%2fb', '/a%2fb'],
+			['https://example.com/a+b;c=d', '/a+b;c=d'],
+			['http:example.com/path', '/path'],
+			['mailto:me@example.com', 'me@example.com'],
+			['https://exa mple.com/path', undefined],
+			['https://example.com:port/path', undefined],
+		])('.extractUrlPath should give the path of `new URL()` for %j', (url, path) => {
+			expect(evaluate('={{ $json.url.extractUrlPath() }}', [{ url }])).toEqual(path);
+		});
+
+		test('.extractUrlPath should replace a lone surrogate in the path', () => {
+			expect(
+				evaluate('={{ ("https://example.com/" + "😀".substring(0, 1)).extractUrlPath() }}'),
+			).toEqual('/%EF%BF%BD');
+		});
+
 		test('.parseJson should work on a string', () => {
 			expect(evaluate('={{ \'{"test1":1,"test2":"2"}\'.parseJson() }}')).toEqual({
 				test1: 1,
@@ -424,5 +447,33 @@ describe('Data Transformation Functions', () => {
 		test('.base64Decode should work on a string', () => {
 			expect(evaluate('={{ "bjhuIHRlc3Q=".base64Decode() }}')).toBe('n8n test');
 		});
+
+		test.each([
+			["'😀'.substring(0, 1)", '77+9'],
+			["'𐀀'[0]", '77+9'],
+			["'é😀'", 'w6nwn5iA'],
+		])(
+			'.base64Encode should encode %s as UTF-8 with U+FFFD for lone surrogates',
+			(value, expected) => {
+				expect(evaluate(`={{ ${value}.base64Encode() }}`)).toBe(expected);
+				expect(evaluate(`={{ ${value}.hash('base64') }}`)).toBe(expected);
+			},
+		);
+
+		test.each([
+			['/w==', '\uFFFD'],
+			['wA==', '\uFFFD'],
+			['7aCA', '\uFFFD\uFFFD\uFFFD'],
+			['w6nwn5iA', 'é😀'],
+			['a@b.com', 'i\uFFFD('],
+			['a-b_c', 'k\uFFFD\uFFFD'],
+			['aGVs bG8=', 'hello'],
+			['!!!', ''],
+		])(
+			'.base64Decode should decode %s, skip non-base64 characters and give U+FFFD for invalid UTF-8',
+			(value, expected) => {
+				expect(evaluate(`={{ "${value}".base64Decode() }}`)).toBe(expected);
+			},
+		);
 	});
 });

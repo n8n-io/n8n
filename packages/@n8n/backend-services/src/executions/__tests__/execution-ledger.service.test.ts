@@ -25,6 +25,10 @@ const endedFacts: ExecutionLedgerEndedFacts = {
 	timeSavedMin: 0,
 };
 const txCtx = { trx: mock<Transaction>() };
+const withOwner = { hasOwnerProject: true };
+const withoutOwner = { hasOwnerProject: false };
+const noProjectMessage =
+	'The run is in the execution ledger with no project: the workflow has no owner project';
 
 describe('ExecutionLedger', () => {
 	const logger = mock<Logger>();
@@ -34,14 +38,14 @@ describe('ExecutionLedger', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		writer.writeStarted.mockResolvedValue(true);
-		writer.writeEnded.mockResolvedValue(true);
+		writer.writeStarted.mockResolvedValue(withOwner);
+		writer.writeEnded.mockResolvedValue(withOwner);
 		ledger = new ExecutionLedger(logger, errorReporter);
 	});
 
 	describe('without a writer', () => {
 		it('does nothing', async () => {
-			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(false);
+			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBeUndefined();
 			await ledger.recordEndedInTransaction(endedFacts, txCtx);
 			await ledger.recordEnded(endedFacts);
 
@@ -74,7 +78,7 @@ describe('ExecutionLedger', () => {
 		beforeEach(() => ledger.setImplementation(writer));
 
 		it('passes the context to the writer', async () => {
-			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(true);
+			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBeUndefined();
 			await ledger.recordEndedInTransaction(endedFacts, txCtx);
 
 			expect(writer.writeStarted).toHaveBeenCalledWith(startedFacts, txCtx);
@@ -97,21 +101,39 @@ describe('ExecutionLedger', () => {
 			await expect(ledger.recordStarted(startedFacts, txCtx)).rejects.toThrow('insert failed');
 		});
 
-		it('logs and reports a workflow without an owner project', async () => {
-			writer.writeStarted.mockResolvedValue(false);
+		it('logs and reports a row written with no project', async () => {
+			writer.writeStarted.mockResolvedValue(withoutOwner);
 
-			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(false);
+			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBeUndefined();
 
 			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-				'Execution exec-1 of workflow wf-1 is not in the execution ledger: the workflow has no owner project',
+				'Execution exec-1 of workflow wf-1 is in the execution ledger with no project: the workflow has no owner project',
 				{ executionId: 'exec-1', workflowId: 'wf-1' },
 			);
 			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({
-					message: 'The run is not in the execution ledger: the workflow has no owner project',
-				}),
+				expect.objectContaining({ message: noProjectMessage }),
 				{ shouldBeLogged: false },
 			);
+		});
+
+		it('logs and reports an ended row written with no project', async () => {
+			writer.writeEnded.mockResolvedValue(withoutOwner);
+
+			await ledger.recordEndedInTransaction(endedFacts, txCtx);
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ message: noProjectMessage }),
+				{ shouldBeLogged: false },
+			);
+		});
+
+		it('does not log or report rows written with a project', async () => {
+			await ledger.recordStarted(startedFacts, txCtx);
+			await ledger.recordEndedInTransaction(endedFacts, txCtx);
+
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 	});
 
@@ -139,12 +161,16 @@ describe('ExecutionLedger', () => {
 			);
 		});
 
-		it('writes no ended row when the started row was not recorded', async () => {
-			writer.writeStarted.mockResolvedValue(false);
+		it('writes both rows and reports each when a run created finished has no owner project', async () => {
+			writer.writeStarted.mockResolvedValue(withoutOwner);
+			writer.writeEnded.mockResolvedValue(withoutOwner);
 
 			await ledger.recordCreated({ started: startedFacts, status: 'error' }, txCtx);
 
-			expect(writer.writeEnded).not.toHaveBeenCalled();
+			expect(writer.writeStarted).toHaveBeenCalledOnce();
+			expect(writer.writeEnded).toHaveBeenCalledOnce();
+			expect(logger.error).toHaveBeenCalledTimes(2);
+			expect(errorReporter.error).toHaveBeenCalledTimes(2);
 		});
 
 		it('reports a row created finished with work done and writes no ended row', async () => {
@@ -176,6 +202,21 @@ describe('ExecutionLedger', () => {
 				txCtx,
 			);
 			expect(writer.writeStarted).toHaveBeenCalledOnce();
+		});
+
+		it('reports a reclaimed tombstone whose ended row has no owner project', async () => {
+			writer.writeEnded.mockResolvedValue(withoutOwner);
+
+			await ledger.recordCreated(
+				{ started: startedFacts, status: 'new', reclaimedTombstone: tombstone },
+				txCtx,
+			);
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ message: noProjectMessage }),
+				{ shouldBeLogged: false },
+			);
 		});
 
 		it('writes only the tombstone row for a copied run', async () => {
@@ -223,13 +264,26 @@ describe('ExecutionLedger', () => {
 			});
 		});
 
-		it('logs and reports a workflow without an owner project', async () => {
-			writer.writeEnded.mockResolvedValue(false);
+		it('logs and reports a row written with no project', async () => {
+			writer.writeEnded.mockResolvedValue(withoutOwner);
 
 			await ledger.recordEnded(endedFacts);
 
-			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+				'Execution exec-1 of workflow wf-1 is in the execution ledger with no project: the workflow has no owner project',
+				{ executionId: 'exec-1', workflowId: 'wf-1' },
+			);
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ message: noProjectMessage }),
+				{ shouldBeLogged: false },
+			);
+		});
+
+		it('does not log or report a row written with a project', async () => {
+			await ledger.recordEnded(endedFacts);
+
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 	});
 
@@ -238,8 +292,8 @@ describe('ExecutionLedger', () => {
 		const third = { ...endedFacts, executionId: 'exec-3' };
 
 		const deferred = () => {
-			let resolve!: (value: boolean) => void;
-			const promise = new Promise<boolean>((r) => {
+			let resolve!: (value: typeof withOwner) => void;
+			const promise = new Promise<typeof withOwner>((r) => {
 				resolve = r;
 			});
 			return { promise, resolve };
@@ -270,7 +324,7 @@ describe('ExecutionLedger', () => {
 
 			expect(writer.writeEnded).toHaveBeenCalledTimes(1);
 
-			first.resolve(true);
+			first.resolve(withOwner);
 			await done;
 
 			expect(writer.writeEnded).toHaveBeenCalledTimes(2);
@@ -289,7 +343,7 @@ describe('ExecutionLedger', () => {
 
 			expect(writer.writeEnded).toHaveBeenCalledTimes(1);
 
-			first.resolve(true);
+			first.resolve(withOwner);
 			await Promise.all([one, two]);
 
 			expect(writer.writeEnded.mock.calls.map(([facts]) => facts.executionId)).toEqual([
@@ -310,7 +364,7 @@ describe('ExecutionLedger', () => {
 
 			expect(settled).toBe(false);
 
-			gate.resolve(true);
+			gate.resolve(withOwner);
 			await done;
 
 			expect(settled).toBe(true);

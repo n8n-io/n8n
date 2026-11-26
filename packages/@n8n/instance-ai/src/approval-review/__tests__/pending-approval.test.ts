@@ -97,8 +97,39 @@ describe('readPendingApproval', () => {
 });
 
 describe('routeApproval', () => {
+	it('always asks before the assistant publishes an agent', () => {
+		const payload = {
+			message: 'Publish Support agent and go live.',
+			severity: 'warning',
+			resourceName: 'Support agent',
+			approvalDetails: {
+				action: 'publish-agent',
+				liveAvailability: 'unpublished',
+				selectedVersion: false,
+				sendTargets: [{ kind: 'channel', name: 'Slack' }],
+			},
+		};
+		const approval = readPendingApproval(
+			builtTool({ name: 'agent_builder_publish_agent' }),
+			{},
+			payload,
+			'call_1',
+		);
+
+		expect(approval).toMatchObject({
+			toolName: 'agent_builder_publish_agent',
+			approvalDetails: payload.approvalDetails,
+		});
+		expect(routeApproval(approval!)).toBe('always-ask');
+		// A legacy name of the publish tool never reaches the judge either.
+		expect(routeApproval({ toolName: 'publish_agent', args: {} })).toBe('always-ask');
+	});
+
 	it('always asks before a skill is deleted, and lets the judge decide other skill changes', () => {
 		expect(routeApproval({ toolName: 'skills', args: { action: 'delete', skillId: 's1' } })).toBe(
+			'always-ask',
+		);
+		expect(routeApproval({ toolName: 'skills', args: { action: 'import-from-source' } })).toBe(
 			'always-ask',
 		);
 		expect(routeApproval({ toolName: 'skills', args: { action: 'update', skillId: 's1' } })).toBe(

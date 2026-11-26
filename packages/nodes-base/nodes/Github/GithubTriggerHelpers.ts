@@ -1,5 +1,16 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import type { IWebhookFunctions } from 'n8n-workflow';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
+/** Path of the webhooks collection that the trigger manages: an organization's or a repository's. */
+export function getHooksPath(this: IHookFunctions) {
+	const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+	if (this.getNodeParameter('resource', 'repository') === 'organization') {
+		return requestPath`/orgs/${owner}/hooks`;
+	}
+	const repository = this.getNodeParameter('repository', '', { extractValue: true }) as string;
+	return requestPath`/repos/${owner}/${repository}/hooks`;
+}
 
 /**
  * Verifies the GitHub webhook signature using HMAC-SHA256.

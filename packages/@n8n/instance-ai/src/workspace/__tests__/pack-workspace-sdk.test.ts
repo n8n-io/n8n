@@ -41,11 +41,13 @@ describe('findLinkedWorkspacePackages', () => {
 		expect(found.map((pkg) => pkg.name).sort()).toEqual([
 			'@n8n/errors',
 			'@n8n/utils',
+			'@n8n/workflow-engine-check',
 			'@n8n/workflow-sdk',
 			'n8n-workflow',
 		]);
 		const names = found.map((pkg) => pkg.name);
 		expect(names.indexOf('@n8n/errors')).toBeLessThan(names.indexOf('n8n-workflow'));
+		expect(names.indexOf('n8n-workflow')).toBeLessThan(names.indexOf('@n8n/workflow-engine-check'));
 		expect(names.at(-1)).toBe('@n8n/workflow-sdk');
 	});
 
@@ -60,6 +62,7 @@ describe('findLinkedWorkspacePackages', () => {
 			'@n8n/expression-runtime',
 			'@n8n/tournament',
 			'@n8n/utils',
+			'@n8n/workflow-engine-check',
 			'@n8n/workflow-sdk',
 			'n8n-workflow',
 		]);

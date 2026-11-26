@@ -98,10 +98,22 @@ export interface StepView {
 	updatedAt: string;
 }
 
+/** An execution that a step of another execution started. */
+export interface SubExecutionView {
+	executionId: string;
+	workflowId: string;
+	/** The step that started it. */
+	stepId: string;
+}
+
 /** An execution with its steps, read as one query so the two cannot disagree. */
 export interface ExecutionWithStepsView extends ExecutionView {
 	/** Every step of the execution, oldest first. Empty if it has run none yet. */
 	steps: StepView[];
+	/** The workflow of the parent execution, or `null` for a top-level execution. */
+	parentWorkflowId: string | null;
+	/** The executions that the steps started, oldest first. */
+	subExecutions: SubExecutionView[];
 }
 
 /**

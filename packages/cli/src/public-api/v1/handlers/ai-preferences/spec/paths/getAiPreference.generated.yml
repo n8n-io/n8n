@@ -1,0 +1,32 @@
+operationId: getAiPreference
+tags:
+  - AiPreference
+summary: Retrieve an AI preference
+description: |-
+  Retrieve one AI preference by ID. The content, scope, userId and projectId fields form the body that the update endpoint takes.
+
+  Requires the `aiPreference:read` API key scope.
+x-required-scope: aiPreference:read
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the AI preference.
+    name: aiPreferenceId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/aiPreferencePublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -1,6 +1,6 @@
 ---
 title: Write a database migration
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -165,4 +165,4 @@ Then check it on a local instance: `pnpm start` applies the migration, and `pnpm
 
 ## Get a review
 
-A PR with a migration needs an approval from [`@n8n-io/migrations-review`](https://github.com/orgs/n8n-io/teams/migrations-review). Before you open the PR, go through the pre-flight checklist in `.agents/skills/db-migrations/SKILL.md`. Each item is a fix that reviewers often ask for.
+A PR with a migration needs an approval from [`@n8n-io/migrations-review`](https://github.com/orgs/n8n-io/teams/migrations-review), unless a member of that team wrote it. Before you open the PR, go through the pre-flight checklist in `.agents/skills/db-migrations/SKILL.md`. Each item is a fix that reviewers often ask for.

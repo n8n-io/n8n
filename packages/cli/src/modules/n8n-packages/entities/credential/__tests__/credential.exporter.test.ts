@@ -116,6 +116,61 @@ describe('CredentialExporter', () => {
 		},
 	);
 
+	describe('additional credentials', () => {
+		it('writes a credential that no requirement covers, without a requirement row', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(makeCredential());
+			const writer = new CapturingWriter();
+
+			const result = await exporter.export({
+				user,
+				requirements: [],
+				writer,
+				credentialExportPolicy: 'no-values',
+				additionalCredentialIds: ['cred_1'],
+			});
+
+			expect(result.entries.map(({ id }) => id)).toEqual(['cred_1']);
+			expect(result.requirements).toEqual([]);
+			expect(writer.files.map(({ path }) => path)).toContain(
+				`${result.entries[0].target}/credential.json`,
+			);
+		});
+
+		it('writes a credential once when a requirement also covers it', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(makeCredential());
+
+			const result = await exporter.export({
+				user,
+				requirements: [makeRequirement()],
+				writer: new CapturingWriter(),
+				credentialExportPolicy: 'no-values',
+				additionalCredentialIds: ['cred_1', 'cred_1'],
+			});
+
+			expect(result.entries).toHaveLength(1);
+			expect(result.requirements).toHaveLength(1);
+		});
+
+		it('fails for a selected credential that the user cannot read', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(null);
+			const writer = new CapturingWriter();
+
+			await expect(
+				exporter.export({
+					user,
+					requirements: [],
+					writer,
+					credentialExportPolicy: 'no-values',
+					additionalCredentialIds: ['cred_1'],
+				}),
+			).rejects.toThrow('You cannot read the credential');
+			expect(writer.files).toEqual([]);
+		});
+	});
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, finder } = makeExporter();

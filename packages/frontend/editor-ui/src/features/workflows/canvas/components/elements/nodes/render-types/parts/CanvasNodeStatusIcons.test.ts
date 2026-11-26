@@ -17,6 +17,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
 	CanvasNodeDirtiness,
 	CanvasNodeRenderType,
@@ -478,6 +479,169 @@ describe('CanvasNodeStatusIcons', () => {
 
 			expect(queryByTestId('node-restricted')).toBeInTheDocument();
 			expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('node with a restricted credential type', () => {
+		let credentialsStore: MockedStore<typeof useCredentialsStore>;
+
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockImplementation((name) => ({
+				name,
+				available: true,
+			}));
+			typeAvailabilityPoliciesStore.getCredentialTypeAvailability.mockImplementation((type) =>
+				type === 'slackApi'
+					? { name: 'slackApi', available: false, scope: 'instance' }
+					: { name: type, available: true },
+			);
+			credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockImplementation((type: string) =>
+					type === 'slackApi' ? { name: 'slackApi', displayName: 'Slack API' } : undefined,
+				);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getUsableCredentialById = vi.fn().mockReturnValue(undefined);
+		});
+
+		function renderSlackNode({
+			credentialType = 'slackApi',
+			disabled = false,
+		}: { credentialType?: string; disabled?: boolean } = {}) {
+			const canvasPinia = getActivePinia();
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			const document = useWorkflowDocumentStore(createWorkflowDocumentId('workflow'));
+			setActivePinia(canvasPinia);
+			vi.spyOn(document, 'getNodeById').mockReturnValue(
+				createTestNode({
+					id: 'node',
+					type: 'n8n-nodes-base.slack',
+					credentials: { [credentialType]: { id: '1', name: 'Slack account' } },
+				}),
+			);
+
+			return renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							id: 'node',
+							data: { type: 'n8n-nodes-base.slack', disabled },
+						}),
+						[WorkflowDocumentStoreKey]: computed(() => document),
+					},
+				},
+			});
+		}
+
+		it('should render the warning badge when the node uses a restricted credential type', () => {
+			const { queryByTestId } = renderSlackNode();
+
+			expect(queryByTestId('node-credential-type-restricted')).toBeInTheDocument();
+		});
+
+		it('should name the credential type and the scope in the tooltip', async () => {
+			const { getByTestId } = renderSlackNode();
+
+			await userEvent.hover(getByTestId('node-credential-type-restricted').firstElementChild!);
+
+			// The tooltip also renders a visually hidden copy for screen readers.
+			const matches = await screen.findAllByText(
+				"Slack API credentials are restricted on this instance. Workflows can't use them.",
+			);
+			expect(matches.length).toBeGreaterThan(0);
+		});
+
+		it('should render nothing for an allowed credential type', () => {
+			const { queryByTestId } = renderSlackNode({ credentialType: 'slackOAuth2Api' });
+
+			expect(queryByTestId('node-credential-type-restricted')).not.toBeInTheDocument();
+		});
+
+		it('should judge the selected credential by its own type', () => {
+			credentialsStore.getCredentialById = vi
+				.fn()
+				.mockReturnValue({ id: '1', name: 'Slack account', type: 'slackApi' });
+
+			const { queryByTestId } = renderSlackNode({ credentialType: 'slackOAuth2Api' });
+
+			expect(queryByTestId('node-credential-type-restricted')).toBeInTheDocument();
+		});
+
+		it('should find the selected credential in the usable credentials of the workflow', () => {
+			credentialsStore.getUsableCredentialById = vi
+				.fn()
+				.mockReturnValue({ id: '1', name: 'Slack account', type: 'slackApi' });
+
+			const { queryByTestId } = renderSlackNode({ credentialType: 'slackOAuth2Api' });
+
+			expect(credentialsStore.getCredentialById).not.toHaveBeenCalled();
+			expect(queryByTestId('node-credential-type-restricted')).toBeInTheDocument();
+		});
+
+		it('should show the disabled icon on a disabled node', () => {
+			const { queryByTestId } = renderSlackNode({ disabled: true });
+
+			expect(queryByTestId('node-credential-type-restricted')).not.toBeInTheDocument();
+		});
+
+		it('should render the badge as soon as a restricted credential is selected', async () => {
+			// One pinia with real actions, so the document store updates its nodes as the editor does.
+			const canvasPinia = getActivePinia();
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			try {
+				const policies = useTypeAvailabilityPoliciesStore();
+				vi.spyOn(policies, 'getNodeTypeAvailability').mockImplementation((name) => ({
+					name,
+					available: true,
+				}));
+				vi.spyOn(policies, 'getCredentialTypeAvailability').mockImplementation((name) =>
+					name === 'slackApi'
+						? { name, available: false, scope: 'instance' }
+						: { name, available: true },
+				);
+
+				const document = useWorkflowDocumentStore(createWorkflowDocumentId('live'));
+				document.setNodes([
+					createTestNode({ id: 'node', name: 'Slack', type: 'n8n-nodes-base.slack' }),
+				]);
+
+				const { queryByTestId, findByTestId } = renderComponent({
+					pinia,
+					global: {
+						provide: {
+							...createCanvasProvide(),
+							...createCanvasNodeProvide({ id: 'node', data: { type: 'n8n-nodes-base.slack' } }),
+							[WorkflowDocumentStoreKey]: computed(() => document),
+						},
+					},
+				});
+				expect(queryByTestId('node-credential-type-restricted')).not.toBeInTheDocument();
+
+				document.updateNodeProperties({
+					name: 'Slack',
+					properties: { credentials: { slackApi: { id: '1', name: 'Slack account' } } },
+				});
+
+				expect(await findByTestId('node-credential-type-restricted')).toBeInTheDocument();
+			} finally {
+				setActivePinia(canvasPinia);
+			}
+		});
+
+		it('should keep the node type lock ahead of it', () => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				available: false,
+				scope: 'instance',
+			});
+
+			const { queryByTestId } = renderSlackNode();
+
+			expect(queryByTestId('node-restricted')).toBeInTheDocument();
+			expect(queryByTestId('node-credential-type-restricted')).not.toBeInTheDocument();
 		});
 	});
 
