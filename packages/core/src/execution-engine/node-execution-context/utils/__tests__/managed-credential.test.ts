@@ -76,6 +76,25 @@ describe('managed credential (spike)', () => {
 			expect(findMissingManagedFields(properties, { ordId: 'x' })).toEqual([]);
 		});
 
+		it('treats null as missing', () => {
+			expect(
+				findMissingManagedFields([field('ordId', { required: true })], { ordId: null } as never),
+			).toEqual(['ordId']);
+		});
+
+		it('ignores required secret fields, which never sit on the node', () => {
+			const secret = field('token', { required: true, typeOptions: { password: true } });
+			expect(findMissingManagedFields([secret], {})).toEqual([]);
+		});
+
+		it('ignores required fields that are shown only under a condition', () => {
+			const conditional = field('domain', {
+				required: true,
+				displayOptions: { show: { variant: ['server'] } },
+			});
+			expect(findMissingManagedFields([conditional], {})).toEqual([]);
+		});
+
 		it('ignores notices', () => {
 			expect(
 				findMissingManagedFields([field('notice', { type: 'notice', required: true })], {}),

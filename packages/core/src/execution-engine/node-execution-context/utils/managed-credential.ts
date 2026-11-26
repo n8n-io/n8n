@@ -35,14 +35,23 @@ export function getManagedReferenceData(
 	return data;
 }
 
-/** Required fields of the managed type that the node's reference leaves empty. */
+/**
+ * Required fields of the managed type that the node's reference leaves empty. Secret fields
+ * never sit on the node, and conditional fields cannot be judged here, so both are skipped.
+ */
 export function findMissingManagedFields(
 	properties: INodeProperties[],
 	data: ICredentialDataDecryptedObject,
 ): string[] {
 	return properties
-		.filter((property) => property.required && property.type !== 'notice')
-		.filter(({ name }) => data[name] === undefined || data[name] === '')
+		.filter(
+			(property) =>
+				property.required &&
+				property.type !== 'notice' &&
+				!property.typeOptions?.password &&
+				!property.displayOptions,
+		)
+		.filter(({ name }) => data[name] === undefined || data[name] === null || data[name] === '')
 		.map(({ name }) => name);
 }
 

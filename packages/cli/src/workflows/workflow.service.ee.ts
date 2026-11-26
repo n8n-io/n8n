@@ -677,13 +677,12 @@ export class EnterpriseWorkflowService {
 
 			if (current.credentials) {
 				for (const [credType, nodeCred] of Object.entries(current.credentials)) {
+					// Managed reference: resolved at execution, any stored id is never read.
+					if (isManagedCredentialReference(credType)) continue;
 					const id = nodeCred.id?.toString();
 					if (id) {
 						ids.push(id);
-					} else if (
-						(nodeCred.__aiGatewayManaged || isManagedCredentialReference(credType)) &&
-						nodeCred.id === null
-					) {
+					} else if (nodeCred.__aiGatewayManaged && nodeCred.id === null) {
 						// Managed credential, resolved at execution — exempt.
 					} else if (nodeCred.id === null || nodeCred.id === '') {
 						hasUnresolved = true;
