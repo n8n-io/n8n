@@ -8,7 +8,10 @@ import type { IRunExecutionData } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
-import { collectDatabaseFileIds } from '@/execution-lifecycle/restore-binary-data-id';
+import {
+	collectDatabaseFileIds,
+	MODES_THAT_STORE_FILES_BEFORE_THEIR_EXECUTION,
+} from '@/execution-lifecycle/restore-binary-data-id';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -74,9 +77,9 @@ const databaseFileIdsToAssign = (data?: Partial<IRunExecutionData>) =>
 	data?.parentExecution ? [] : collectDatabaseFileIds(data?.resultData?.runData ?? {});
 
 /**
- * Repairs the database files of webhook executions that ended before n8n
- * assigned such files to their execution. Executions in other modes are not
- * covered, to limit how much execution data the backfill reads.
+ * Repairs the database files of webhook and trigger executions that ended
+ * before n8n assigned such files to their execution. Executions in other modes
+ * are not covered, to limit how much execution data the backfill reads.
  */
 @Service()
 export class UnassignedBinaryDataBackfillService {
@@ -89,8 +92,8 @@ export class UnassignedBinaryDataBackfillService {
 	) {}
 
 	/**
-	 * Assigns each unassigned database file to the webhook execution whose run
-	 * data refers to it, and continues where the previous call stopped. Covers
+	 * Assigns each unassigned database file to the webhook or trigger execution
+	 * whose run data refers to it, and continues where the previous call stopped. Covers
 	 * the executions that exist at the first call. When the grace period for
 	 * processes of an earlier n8n version has passed, also covers the executions
 	 * that stopped since the first call. Returns when all of them are done, when
@@ -172,14 +175,14 @@ export class UnassignedBinaryDataBackfillService {
 	}
 
 	/**
-	 * Handles the webhook executions of the next ID range, then saves and returns
+	 * Handles the webhook and trigger executions of the next ID range, then saves and returns
 	 * the progress. When `mustStop` turns true inside the range, the progress ends
 	 * at the last execution that was handled.
 	 */
 	private async backfillNextRange(start: Progress, mustStop: () => boolean): Promise<Progress> {
 		const rangeEnd = nextRangeEnd(start);
-		const executionIds = await this.executionRepository.findIdsByModeInIdRange(
-			'webhook',
+		const executionIds = await this.executionRepository.findIdsByModesInIdRange(
+			MODES_THAT_STORE_FILES_BEFORE_THEIR_EXECUTION,
 			start.lastExecutionId,
 			rangeEnd,
 			stoppedSinceOf(start),

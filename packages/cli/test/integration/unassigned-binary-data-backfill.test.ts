@@ -89,7 +89,16 @@ it('should assign an unassigned file to the webhook execution that refers to it'
 	expect(await findSourceId(fileId)).toBe(execution.id);
 });
 
-it('should leave a file unassigned when only a non-webhook execution refers to it', async () => {
+it('should assign an unassigned file to the trigger execution that refers to it', async () => {
+	const fileId = await storeUnassignedFile();
+	const execution = await createExecutionReferringTo(fileId, 'trigger');
+
+	await backfillService.backfill(neverAborted(), ONE_MINUTE_MS);
+
+	expect(await findSourceId(fileId)).toBe(execution.id);
+});
+
+it('should leave a file unassigned when only a manual execution refers to it', async () => {
 	const fileId = await storeUnassignedFile();
 	await createExecutionReferringTo(fileId, 'manual');
 

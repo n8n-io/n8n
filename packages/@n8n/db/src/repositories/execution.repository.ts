@@ -772,19 +772,19 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * IDs of the executions that ran in `mode` and whose ID is above `afterId`,
+	 * IDs of the executions that ran in one of `modes` and whose ID is above `afterId`,
 	 * up to and including `throughId`, in ascending order. With `stoppedSince`,
 	 * only the executions that stopped at or after that time.
 	 */
-	async findIdsByModeInIdRange(
-		mode: WorkflowExecuteMode,
+	async findIdsByModesInIdRange(
+		modes: WorkflowExecuteMode[],
 		afterId: number,
 		throughId: number,
 		stoppedSince?: Date,
 	): Promise<string[]> {
 		const query = this.createQueryBuilder('execution')
 			.select('execution.id')
-			.where('execution.mode = :mode', { mode })
+			.where('execution.mode IN (:...modes)', { modes })
 			.andWhere('execution.id > :afterId', { afterId })
 			.andWhere('execution.id <= :throughId', { throughId })
 			.orderBy('execution.id', 'ASC');

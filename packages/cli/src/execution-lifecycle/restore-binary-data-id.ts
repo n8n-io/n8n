@@ -96,11 +96,16 @@ export async function assignDatabaseFilesToExecution(run: IRun, executionId: str
 }
 
 /**
- * True for a mode whose first node stores its files before the execution exists.
+ * Modes whose first node stores its files before the execution exists.
  * In another mode, a file under the temporary path can belong to another execution.
  */
+export const MODES_THAT_STORE_FILES_BEFORE_THEIR_EXECUTION: WorkflowExecuteMode[] = [
+	'webhook',
+	'trigger',
+];
+
 const storesFilesBeforeItsExecution = (mode: WorkflowExecuteMode) =>
-	mode === 'webhook' || mode === 'trigger';
+	MODES_THAT_STORE_FILES_BEFORE_THEIR_EXECUTION.includes(mode);
 
 const keepsBinaryDataInMemory = () => Container.get(BinaryDataConfig).mode === 'default';
 

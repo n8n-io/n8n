@@ -10,7 +10,7 @@ const BACKFILL_INTERVAL_SECONDS = 60;
 const RUN_BUDGET_MS = (BACKFILL_INTERVAL_SECONDS - 15) * Time.seconds.toMilliseconds;
 
 /**
- * Assigns the database files of past webhook executions to their execution, so
+ * Assigns the database files of past webhook and trigger executions to their execution, so
  * that the editor can read them and pruning can delete them.
  */
 @SystemTask()
