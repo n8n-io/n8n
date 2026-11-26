@@ -1,4 +1,6 @@
 import {
+	promotionApplyCheckSchema,
+	promotionBindingConflictSchema,
 	promotionDependencyWarningSchema,
 	promotionMissingDependencySchema,
 } from '../promotion-apply-check.dto';
@@ -90,6 +92,50 @@ describe('promotionMissingDependencySchema', () => {
 
 		expect(promotionMissingDependencySchema.parse(withOwner)).toEqual(credential);
 	});
+
+	describe('condition', () => {
+		const workflow = {
+			kind: 'workflow',
+			id: 'workflow2',
+			name: 'Notify',
+			group: 'needs-action',
+			reason: 'not-on-instance',
+			accessible: true,
+			blocking: false,
+			consumers,
+		};
+
+		it.each(['target-selected', 'target-not-selected'])(
+			'accepts the condition `%s`',
+			(condition) => {
+				const entry = { ...workflow, condition };
+
+				expect(promotionMissingDependencySchema.parse(entry)).toEqual(entry);
+			},
+		);
+
+		it('accepts an entry without a condition, and adds none', () => {
+			expect(promotionMissingDependencySchema.parse(workflow)).toEqual(workflow);
+			expect(promotionMissingDependencySchema.parse(workflow)).not.toHaveProperty('condition');
+		});
+
+		it.each(['selected', '', null, true])('rejects the condition %j', (condition) => {
+			expect(promotionMissingDependencySchema.safeParse({ ...workflow, condition }).success).toBe(
+				false,
+			);
+		});
+
+		it('accepts the reason `not-on-branch` for an Apply entry outside the access', () => {
+			const entry = {
+				...workflow,
+				group: 'outside-access',
+				reason: 'not-on-branch',
+				accessible: false,
+			};
+
+			expect(promotionMissingDependencySchema.parse(entry)).toEqual(entry);
+		});
+	});
 });
 
 describe('promotionDependencyWarningSchema', () => {
@@ -119,5 +165,84 @@ describe('promotionDependencyWarningSchema', () => {
 		expect(promotionDependencyWarningSchema.safeParse({ ...warning, [field]: value }).success).toBe(
 			false,
 		);
+	});
+});
+
+describe('promotionApplyCheckSchema', () => {
+	const check = {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		missingDependencies: [],
+	};
+	const outsideAccess = {
+		kind: 'credential',
+		id: 'credential1',
+		name: 'CRM key',
+		credentialType: 'httpHeaderAuth',
+		group: 'outside-access',
+		reason: 'not-on-instance',
+		accessible: false,
+		blocking: true,
+		consumers,
+	};
+
+	it('accepts a check whose only entry is a missing dependency', () => {
+		const withDependency = { ...check, missingDependencies: [outsideAccess] };
+
+		expect(promotionApplyCheckSchema.parse(withDependency)).toEqual(withDependency);
+	});
+
+	it('requires the list of missing dependencies', () => {
+		const { missingDependencies: _omitted, ...withoutList } = check;
+
+		expect(promotionApplyCheckSchema.safeParse(withoutList).success).toBe(false);
+	});
+
+	it.each(['archived', 'caller-policy', 'not-shared', 'type-mismatch'])(
+		'accepts the Apply reason %s',
+		(reason) => {
+			const entry = { ...outsideAccess, group: 'needs-action', accessible: true, reason };
+
+			expect(promotionApplyCheckSchema.parse({ ...check, missingDependencies: [entry] })).toEqual({
+				...check,
+				missingDependencies: [entry],
+			});
+		},
+	);
+
+	it('rejects an entry of the list that is not a missing dependency', () => {
+		const { group: _omitted, ...withoutGroup } = outsideAccess;
+
+		expect(
+			promotionApplyCheckSchema.safeParse({ ...check, missingDependencies: [withoutGroup] })
+				.success,
+		).toBe(false);
+	});
+});
+
+describe('promotionBindingConflictSchema', () => {
+	const credentialConflict = {
+		kind: 'credential',
+		sourceId: 'credential1',
+		name: 'CRM key',
+		expectedTypes: ['httpHeaderAuth'],
+		referenceFiles: ['workflow.json'],
+		consumers,
+	};
+
+	it('accepts a credential conflict that the check still reports', () => {
+		const conflict = { ...credentialConflict, code: 'unknown-type' };
+
+		expect(promotionBindingConflictSchema.parse(conflict)).toEqual(conflict);
+	});
+
+	it('rejects the code of a credential without an owner, which is a missing dependency now', () => {
+		expect(
+			promotionBindingConflictSchema.safeParse({ ...credentialConflict, code: 'unknown-owner' })
+				.success,
+		).toBe(false);
 	});
 });

@@ -185,6 +185,7 @@ describe('ApplyPackageResultDto', () => {
 		accessRequirements: [],
 		conflicts: [],
 		warnings: [],
+		missingDependencies: [],
 	};
 
 	it('retains the named response schema and parses each stopped outcome', () => {
@@ -203,6 +204,7 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity, status: 'unknown' },
 		{ ...identity, status: 'blocked' },
 		{ ...identity, status: 'blocked', check: { ...check, missingProjects: undefined } },
+		{ ...identity, status: 'blocked', check: { ...check, missingDependencies: undefined } },
 		{ ...identity, status: 'applied', warnings: [] },
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {

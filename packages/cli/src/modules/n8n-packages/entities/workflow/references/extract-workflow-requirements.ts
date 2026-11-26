@@ -1,6 +1,5 @@
-import type { WorkflowEntity } from '@n8n/db';
-
 import { workflowReferences } from './workflow-references';
+import type { WorkflowReferenceSource } from '../../reference';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
 
 /**
@@ -9,7 +8,7 @@ import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
  * single dependency.
  */
 export function extractWorkflowRequirements(
-	workflow: WorkflowEntity,
+	workflow: WorkflowReferenceSource,
 ): WorkflowSubWorkflowRequirement[] {
 	const byId = new Map<string, WorkflowSubWorkflowRequirement>();
 	for (const reference of workflowReferences) {

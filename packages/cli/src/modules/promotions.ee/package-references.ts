@@ -1,7 +1,7 @@
 import type { PromotionBindingConsumer, PromotionBindingProject } from '@n8n/api-types';
-
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
 import type { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
+import { extractWorkflowRequirements } from '@/modules/n8n-packages/entities/workflow/references/extract-workflow-requirements';
 import type {
 	InventoryCredential,
 	InventoryVariable,
@@ -24,6 +24,13 @@ export interface CredentialReference {
 export interface VariableReference {
 	name: string;
 	file: InventoryVariable | undefined;
+	workflows: InventoryWorkflow[];
+}
+
+/** A workflow that other workflows call from a node, or set as their error workflow. */
+export interface WorkflowReference {
+	id: string;
+	/** The workflows that reference it. Its caller policy applies to each of them. */
 	workflows: InventoryWorkflow[];
 }
 
@@ -96,6 +103,27 @@ export function collectVariableReferences(
 	return [...groups.values()].sort(
 		(a, b) => compare(a.file?.projectId ?? '', b.file?.projectId ?? '') || compare(a.name, b.name),
 	);
+}
+
+/**
+ * Reads the references with the extractors of the export, so the two cannot differ. It does not
+ * read a reference in an expression.
+ */
+export function collectWorkflowReferences(
+	inventory: PackageDirectoryInventory,
+): WorkflowReference[] {
+	const groups = new Map<string, WorkflowReference>();
+	const add = (id: string, workflow: InventoryWorkflow) => {
+		const group = groups.get(id) ?? { id, workflows: [] };
+		group.workflows.push(workflow);
+		groups.set(id, group);
+	};
+	for (const workflow of inventory.workflows) {
+		const { nodes, settings } = workflow.content;
+		const requirements = extractWorkflowRequirements({ id: workflow.id, nodes, settings });
+		for (const { referencedWorkflowId } of requirements) add(referencedWorkflowId, workflow);
+	}
+	return [...groups.values()].sort((a, b) => compare(a.id, b.id));
 }
 
 export function consumersOf(

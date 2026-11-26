@@ -4,6 +4,7 @@ import type {
 	PromotionBindingConsumer,
 	PromotionDependencyWarning,
 	PromotionMissingDependency,
+	PromotionMissingDependencyReason,
 	PromotionResourceType,
 } from '@n8n/api-types';
 import {
@@ -15,7 +16,7 @@ import {
 	N8nTooltip,
 	type IconName,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
@@ -26,6 +27,7 @@ import {
 	PROMOTE_STATUS_STYLES,
 	type StatusStyle,
 } from '../../promotionDependencyStatus';
+import { isWarningDependency } from '../../promotionOperation';
 import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
@@ -37,7 +39,11 @@ const props = withDefaults(
 		 * `null` on Promote, which has no check.
 		 */
 		check: ApplyCheckResult | null;
-		/** Promote only: what the selected workflows use and the branch does not hold after the Promote. */
+		/**
+		 * The missing dependencies that get a row of their own. Promote: what the selected workflows
+		 * use and the branch does not hold after the Promote. Apply: the dependencies that the other
+		 * lists of the check do not detail, and that hold for the selection.
+		 */
 		missingDependencies?: PromotionMissingDependency[];
 		/** Promote only: what the selected workflows reference and this instance does not have. */
 		dependencyWarnings?: PromotionDependencyWarning[];
@@ -117,13 +123,15 @@ type StatusKey =
 	| 'moved'
 	| 'otherProject'
 	| 'outside'
+	| 'notOnBranch'
 	| 'personal';
 
 const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
-// A dependency that Promote leaves out does not stop it, so its status is not a warning.
+// A dependency that users cannot act on from this page has a neutral status.
 const STATUS_STYLES: Partial<Record<StatusKey, StatusStyle>> = {
 	resolved: { tone: 'success', icon: 'circle-check' },
 	...PROMOTE_STATUS_STYLES,
+	notOnBranch: { tone: 'neutral', icon: 'circle-minus' },
 };
 
 const status = (key: StatusKey) => ({
@@ -268,7 +276,14 @@ function dependencyDescription(
 		return i18n.baseText('promotions.preview.blockers.section.otherProject.description');
 	}
 	if (id === 'outsideAccess') {
-		return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
+		if (!props.check) {
+			return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
+		}
+		return i18n.baseText(
+			dependencies.some(({ blocking }) => blocking)
+				? 'promotions.preview.blockers.section.outsideAccess.description.blocking'
+				: 'promotions.preview.blockers.section.outsideAccess.description',
+		);
 	}
 	// A user cannot move what is in a personal project that the user cannot access.
 	if (dependencies.some(({ accessible }) => !accessible)) {
@@ -281,18 +296,27 @@ function dependencyDescription(
 	);
 }
 
-// The tooltip of one row. It must not tell the user to move what the user cannot reach. It names
-// the project of the dependency when the API sends it.
-function disabledReason(
-	{ group, accessible, project }: PromotionMissingDependency,
-	reason: DependencySection['reason'],
-) {
-	if (group === 'personal' && !accessible) {
-		return 'promotions.preview.blockers.disabled.personal.noAccess';
-	}
-	return group === 'other-project' && project
-		? 'promotions.preview.blockers.disabled.otherProject.named'
-		: reason;
+/** Why the workflows cannot use a sub-workflow or an error workflow on this instance after an Apply. */
+const WORKFLOW_DETAILS: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
+	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance',
+	archived: 'promotions.preview.blockers.workflow.archived',
+	'caller-policy': 'promotions.preview.blockers.workflow.callerPolicy',
+};
+
+/**
+ * With `target-selected`, the Apply itself archives or deletes the workflow. The text tells what
+ * the Apply does, because the workflow is not in that state yet.
+ */
+const WORKFLOW_DETAILS_BY_APPLY: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
+	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance.byApply',
+	archived: 'promotions.preview.blockers.workflow.archived.byApply',
+};
+
+function workflowDetail({ kind, reason, condition }: PromotionMissingDependency) {
+	const detail = kind === 'workflow' ? WORKFLOW_DETAILS[reason] : undefined;
+	const detailByApply =
+		condition === 'target-selected' ? WORKFLOW_DETAILS_BY_APPLY[reason] : undefined;
+	return detail && i18n.baseText(detailByApply ?? detail);
 }
 
 // The row of a dependency of another project tells which project to promote it from.
@@ -305,39 +329,104 @@ const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
 
 // The row shows the name, the type and the workflows that use the dependency. The API sends no
 // owner. It sends the project only for a dependency of another project that the user can access.
-const dependencyRow = (
-	dependency: PromotionMissingDependency,
-	{ id, status: statusKey, reason }: DependencySection,
-): BlockerRow => ({
-	key: `${id}:${dependency.kind}:${dependency.id ?? dependency.name}`,
-	icon: resourceIcon(dependency.kind),
-	name: dependency.name,
-	type: dependency.kind,
-	usedBy: usedBy(dependency.consumers),
-	status: status(statusKey),
-	detail: otherProjectDetail(dependency),
-	// "Include" is not available yet, so the button only says why.
-	disabledAction: {
-		label: i18n.baseText('promotions.preview.blockers.include'),
-		reason: i18n.baseText(disabledReason(dependency, reason), {
-			interpolate: {
-				type: i18n.baseText(`promotions.preview.blockers.type.${dependency.kind}`).toLowerCase(),
-				project: dependency.project?.name ?? '',
-			},
-		}),
-	},
+function dependencyRow(dependency: PromotionMissingDependency, sectionId: string) {
+	return {
+		// One dependency can have an entry for each reason and for each condition on the selection.
+		key: [
+			sectionId,
+			dependency.kind,
+			dependency.id ?? dependency.name,
+			dependency.reason,
+			dependency.condition ?? '',
+		].join(':'),
+		icon: resourceIcon(dependency.kind),
+		name: dependency.name,
+		type: dependency.kind,
+		usedBy: usedBy(dependency.consumers),
+		detail: workflowDetail(dependency) ?? otherProjectDetail(dependency),
+	};
+}
+
+// The type of a dependency, as a tooltip names it inside a sentence.
+const typeInSentence = (kind: PromotionMissingDependency['kind']) => ({
+	type: i18n.baseText(`promotions.preview.blockers.type.${kind}`).toLowerCase(),
 });
 
-// The kinds of issue, in the order that users read them. Only the first one stops the operation.
+// Promote cannot include the dependency yet. The button of the action only says why.
+function includeAction(
+	{ kind, group, accessible, project }: PromotionMissingDependency,
+	reason: DependencySection['reason'],
+): BlockerRow['disabledAction'] {
+	// The tooltip must not tell the user to move what the user cannot reach. It names the project
+	// of the dependency when the API sends it.
+	const namedReason =
+		group === 'other-project' && project
+			? 'promotions.preview.blockers.disabled.otherProject.named'
+			: reason;
+	const promoteReason =
+		group === 'personal' && !accessible
+			? 'promotions.preview.blockers.disabled.personal.noAccess'
+			: namedReason;
+	return {
+		label: i18n.baseText('promotions.preview.blockers.include'),
+		reason: i18n.baseText(promoteReason, {
+			interpolate: { ...typeInSentence(kind), project: project?.name ?? '' },
+		}),
+	};
+}
+
+/**
+ * Apply: why the workflows cannot use a sub-workflow or an error workflow of "Outside your
+ * access". The user cannot change the workflow, so no text asks the user to.
+ */
+const OUTSIDE_WORKFLOW_DETAILS: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
+	'not-on-branch': 'promotions.preview.blockers.workflow.notOnBranch',
+	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance',
+	archived: 'promotions.preview.blockers.workflow.archived.noAccess',
+	'caller-policy': 'promotions.preview.blockers.workflow.callerPolicy.noAccess',
+};
+
+// Apply: what a row of "Outside your access" shows, by the reason of the dependency.
+function outsideAccessOnApply({
+	kind,
+	reason,
+}: PromotionMissingDependency): Pick<BlockerRow, 'status' | 'detail' | 'disabledAction'> {
+	const detailKey = kind === 'workflow' ? OUTSIDE_WORKFLOW_DETAILS[reason] : undefined;
+	const detail = detailKey && i18n.baseText(detailKey);
+	// The workflow is on this instance, so the row offers nothing to add.
+	if (reason === 'archived' || reason === 'caller-policy') {
+		return { status: status('outside'), detail };
+	}
+	// Apply cannot add a dependency that the branch does not hold, or that users cannot access.
+	// The button of the action only says why.
+	const notOnBranch = reason === 'not-on-branch';
+	return {
+		status: status(notOnBranch ? 'notOnBranch' : 'outside'),
+		detail,
+		disabledAction: {
+			label: i18n.baseText(`promotions.preview.blockers.create.${kind}`),
+			reason: i18n.baseText(
+				notOnBranch
+					? 'promotions.preview.blockers.disabled.notOnBranch.apply'
+					: 'promotions.preview.blockers.disabled.outside.apply',
+				{ interpolate: typeInSentence(kind) },
+			),
+		},
+	};
+}
+
+// The kinds of issue, in the order that users read them. Only Apply has "Needs your action".
 const sections = computed(() =>
 	[
 		{
 			id: 'blockers' as const,
 			title: i18n.baseText('promotions.preview.blockers.section.blockers', {
-				adjustToNumber: blockerRows.value.length,
 				interpolate: { count: String(blockerRows.value.length) },
 			}),
-			description: undefined,
+			// The text tells users to create dependencies, so it needs a row that they can create.
+			description: blockerRows.value.some(({ createLabel }) => createLabel !== undefined)
+				? i18n.baseText('promotions.preview.blockers.section.blockers.description')
+				: undefined,
 			rows: blockerRows.value,
 		},
 		...DEPENDENCY_SECTIONS.map((section) => {
@@ -348,14 +437,29 @@ const sections = computed(() =>
 					interpolate: { count: String(dependencies.length) },
 				}),
 				description: dependencyDescription(section.id, dependencies),
-				rows: dependencies.map((dependency) => dependencyRow(dependency, section)),
+				// On Apply, the only section of this list is "Outside your access".
+				rows: dependencies.map(
+					(dependency): BlockerRow => ({
+						...dependencyRow(dependency, section.id),
+						...(props.check
+							? outsideAccessOnApply(dependency)
+							: {
+									status: status(section.status),
+									disabledAction: includeAction(dependency, section.reason),
+								}),
+					}),
+				),
 			};
 		}),
 	].filter(({ rows }) => rows.length > 0),
 );
 
-const unresolvedCount = computed(
-	() => blockerRows.value.filter((row) => row.status.tone === 'warning').length,
+// What still stops the Apply. A missing dependency says itself whether it does.
+const unresolvedCount = computed(() =>
+	props.check
+		? blockerRows.value.filter((row) => row.status.tone === 'warning').length +
+			props.missingDependencies.filter(({ blocking }) => blocking).length
+		: 0,
 );
 
 function removedColumns(
@@ -370,12 +474,38 @@ function removedColumns(
 
 const warnings = computed(() => props.check?.warnings ?? []);
 
+// Apply: the sub-workflows and error workflows that users can access, and that the workflows
+// cannot use on this instance. They do not stop the Apply, and this page cannot add them.
+const unusableWorkflows = computed(() => props.missingDependencies.filter(isWarningDependency));
+
+// The dependencies that only warn, in one group for each cause.
+const dependencyWarningGroups = computed(() =>
+	[
+		{
+			id: 'missingOnSource' as const,
+			rows: props.dependencyWarnings.map(({ kind, id, name, consumers }) => ({
+				key: `${kind}:${id ?? name}`,
+				icon: resourceIcon(kind),
+				name,
+				type: kind,
+				usedBy: usedBy(consumers),
+				detail: i18n.baseText(`promotions.preview.blockers.missingOnSource.${kind}`),
+			})),
+		},
+		{
+			id: 'unusableWorkflows' as const,
+			rows: unusableWorkflows.value.map((dependency) => dependencyRow(dependency, 'warnings')),
+		},
+	].filter(({ rows }) => rows.length > 0),
+);
+
 // Data table changes and warnings do not block the operation, so they share one section.
 const warningCount = computed(
 	() =>
 		bindings.destructiveChanges.value.length +
 		warnings.value.length +
-		props.dependencyWarnings.length,
+		props.dependencyWarnings.length +
+		unusableWorkflows.value.length,
 );
 const open = ref({
 	blockers: true,
@@ -408,7 +538,9 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		</N8nText>
 
 		<N8nCallout
-			v-if="check && unresolvedCount === 0"
+			v-if="
+				check && unresolvedCount === 0 && missingDependencies.length === unusableWorkflows.length
+			"
 			theme="success"
 			slim
 			role="status"
@@ -645,12 +777,12 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</tbody>
 					</table>
 				</div>
-				<div v-if="dependencyWarnings.length > 0" :class="$style.group">
+				<div v-for="group in dependencyWarningGroups" :key="group.id" :class="$style.group">
 					<N8nCallout theme="warning" :class="$style.callout">
 						<N8nText bold tag="p">{{
-							i18n.baseText('promotions.preview.blockers.missingOnSource.title')
+							i18n.baseText(`promotions.preview.blockers.${group.id}.title`)
 						}}</N8nText>
-						{{ i18n.baseText('promotions.preview.blockers.missingOnSource.description') }}
+						{{ i18n.baseText(`promotions.preview.blockers.${group.id}.description`) }}
 					</N8nCallout>
 					<table :class="$style.table">
 						<thead>
@@ -664,25 +796,29 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</thead>
 						<tbody>
 							<tr
-								v-for="warning in dependencyWarnings"
-								:key="`${warning.kind}:${warning.id ?? warning.name}`"
+								v-for="row in group.rows"
+								:key="row.key"
 								data-test-id="promotion-preview-dependency-warning"
 							>
 								<td>
 									<div :class="$style.name">
-										<N8nIcon :icon="resourceIcon(warning.kind)" size="small" :class="$style.icon" />
-										<N8nText step="xs" color="text-dark">{{ warning.name }}</N8nText>
+										<N8nIcon :icon="row.icon" size="small" :class="$style.icon" />
+										<N8nText step="xs" color="text-dark">{{ row.name }}</N8nText>
 									</div>
-									<N8nText tag="p" step="2xs" color="text-light" :class="$style.detail">
-										{{
-											i18n.baseText(`promotions.preview.blockers.missingOnSource.${warning.kind}`)
-										}}
+									<N8nText
+										v-if="row.detail"
+										tag="p"
+										step="2xs"
+										color="text-light"
+										:class="$style.detail"
+									>
+										{{ row.detail }}
 									</N8nText>
 								</td>
 								<td>
 									<N8nText step="2xs" color="text-light">
 										<PromotionWorkflowLinks
-											:workflows="usedBy(warning.consumers)"
+											:workflows="row.usedBy"
 											list
 											@inspect="emit('inspect', $event)"
 										/>
@@ -690,7 +826,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</td>
 								<td>
 									<N8nText step="xs" color="text-base">
-										{{ i18n.baseText(`promotions.preview.blockers.type.${warning.kind}`) }}
+										{{ i18n.baseText(`promotions.preview.blockers.type.${row.type}`) }}
 									</N8nText>
 								</td>
 							</tr>

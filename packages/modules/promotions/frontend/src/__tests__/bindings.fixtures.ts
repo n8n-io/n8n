@@ -66,6 +66,7 @@ export function blocked(check: Partial<BlockedApplyResult['check']> = {}): Block
 			accessRequirements: [],
 			conflicts: [],
 			warnings: [],
+			missingDependencies: [],
 			...check,
 		},
 	};

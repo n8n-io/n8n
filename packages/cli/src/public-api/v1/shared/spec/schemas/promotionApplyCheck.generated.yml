@@ -541,76 +541,6 @@ properties:
             code:
               type: string
               enum:
-                - unknown-owner
-          required:
-            - kind
-            - sourceId
-            - name
-            - expectedTypes
-            - referenceFiles
-            - consumers
-            - code
-        - type: object
-          properties:
-            kind:
-              type: string
-              enum:
-                - credential
-            sourceId:
-              type: string
-              nullable: true
-              minLength: 1
-            name:
-              type: string
-            expectedTypes:
-              type: array
-              items:
-                type: string
-              minItems: 1
-            filePath:
-              type: string
-            referenceFiles:
-              type: array
-              items:
-                type: string
-              minItems: 1
-            consumers:
-              type: array
-              items:
-                type: object
-                properties:
-                  project:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        minLength: 1
-                      name:
-                        type: string
-                    required:
-                      - id
-                      - name
-                  workflows:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          minLength: 1
-                        name:
-                          type: string
-                      required:
-                        - id
-                        - name
-                    minItems: 1
-                required:
-                  - project
-                  - workflows
-              minItems: 1
-            code:
-              type: string
-              enum:
                 - type-mismatch
             targetType:
               type: string
@@ -1336,9 +1266,15 @@ properties:
         - name
         - scope
         - consumers
+  missingDependencies:
+    type: array
+    items:
+      $ref: promotionMissingDependency.generated.yml
+    description: Every credential, variable, sub-workflow and error workflow that the applied workflows use, and that is not usable on this instance after the Apply. An entry of the group `needs-action` can also be in `missingBindings`, `accessRequirements` or `conflicts`, which hold the details to resolve it. An entry of the group `outside-access` is only in this list.
 required:
   - missingProjects
   - missingBindings
   - accessRequirements
   - conflicts
   - warnings
+  - missingDependencies

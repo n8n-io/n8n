@@ -93,6 +93,15 @@ The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/pro
 Read `status` before you read `counts` and `git`.
 The change preview now always returns `revision`, also for `promote`.
 
+The Apply check now has `missingDependencies`.
+The Apply previews return the check as `check`, and a `blocked` Apply result returns it too.
+The list holds each credential, variable, sub-workflow and error workflow that the applied workflows use and that is not usable on this instance after the Apply.
+An entry with `blocking: true` stops the Apply.
+The Apply check no longer returns the conflict `unknown-owner`.
+A missing credential without an owner project on the branch is now an entry in `missingDependencies`, with the group `outside-access`.
+A missing credential in a project where you cannot create a credential is now only in `missingDependencies`, with the group `outside-access`. It is no longer in `missingBindings`.
+Such an Apply still returns `blocked`.
+
 # 2.0.0
 
 ### What changed?

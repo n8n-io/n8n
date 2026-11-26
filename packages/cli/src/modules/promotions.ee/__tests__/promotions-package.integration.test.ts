@@ -3,6 +3,7 @@ import {
 	applyPackageResultSchema,
 	type ApplyPackageResultDto,
 	type ContinueApplyPackageDto,
+	type PromotionApplyCheck,
 	type PromotionProviderType,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
@@ -18,7 +19,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Person, Project } from '@n8n/db';
+import type { Person, Project, User, WorkflowEntity } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -37,6 +38,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
@@ -74,10 +76,17 @@ import {
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { createAgent } from '@test-integration/db/agents';
-import { encryptCredentialData, saveCredential } from '@test-integration/db/credentials';
+import {
+	encryptCredentialData,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import {
+	buildWorkflowReferencingVariables,
+	executeWorkflowNode,
+} from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
@@ -93,7 +102,7 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
-import { createMember, createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMember, createOwnerWithApiKey, createUser } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
@@ -516,8 +525,8 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 }
 
 /** The Apply preview, read through the test's `service` and its working directory. */
-async function loadApplyPreview(projectId: string) {
-	const preview = await changeService().getPreview(owner, projectId, 'apply');
+async function loadApplyPreview(projectId: string, user: User = owner) {
+	const preview = await changeService().getPreview(user, projectId, 'apply');
 	assert(preview.check && preview.commitSha && preview.revision);
 	return {
 		...preview,
@@ -2575,6 +2584,875 @@ describe('Check of the Apply preview', () => {
 				},
 			],
 		});
+	});
+});
+
+describe('Missing dependencies of an Apply', () => {
+	let remote: TestRemote;
+	let environments: Awaited<ReturnType<typeof createInstanceEnvironments>>;
+	let alpha: Project;
+	let beta: Project;
+
+	beforeEach(async () => {
+		remote = await createRemote();
+		environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.apply.id, owner);
+		alpha = await createTeamProject('Alpha team', owner);
+		beta = await createTeamProject('Beta team', owner);
+	});
+
+	/** What a user needs in a project to apply to it and to export it, except for credentials. */
+	const APPLY_SCOPES: Scope[] = [
+		'project:read',
+		'project:list',
+		'project:update',
+		'project:export',
+		'folder:create',
+		'folder:read',
+		'folder:update',
+		'folder:list',
+		'workflow:create',
+		'workflow:read',
+		'workflow:update',
+		'workflow:import',
+		'workflow:export',
+		'workflow:list',
+		'workflow:delete',
+		'workflow:publish',
+		'credential:read',
+		'credential:update',
+		'credential:list',
+	];
+
+	async function linkWithScopes(user: User, project: Project, scopes: Scope[]) {
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(user, project, role.slug);
+	}
+
+	/** A user who can apply in Alpha and create credentials there, without access to Beta. */
+	async function createAlphaApplier(globalScopes: Scope[] = []) {
+		const applier = await createUser({
+			role: await createCustomRoleWithScopeSlugs(['promotions:apply', ...globalScopes], {
+				roleType: 'global',
+			}),
+		});
+		await linkWithScopes(applier, alpha, [...APPLY_SCOPES, 'credential:create']);
+		return applier;
+	}
+
+	async function saveHeaderCredential(name: string, ownerProject: Project) {
+		return await saveCredential(
+			{ name, type: 'httpHeaderAuth', data: { name: 'X-Token', value: 'secret' } },
+			{ project: ownerProject, role: 'credential:owner' },
+		);
+	}
+
+	// The lists order ids by code unit, which a locale comparison does not do.
+	const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : 1);
+
+	const usedBy = (...workflows: Array<{ id: string; name: string }>) => [
+		{
+			project: { id: alpha.id, name: alpha.name },
+			workflows: workflows.map(({ id, name }) => ({ id, name })).sort(byId),
+		},
+	];
+
+	const applyOf = (preview: Awaited<ReturnType<typeof loadApplyPreview>>) => ({
+		expectedSource: { ...preview.source, commitSha: preview.commitSha },
+		expectedPreviewRevision: preview.revision,
+	});
+
+	/** No part of what a user reads names the project: not its id, and not its name. */
+	const expectNotNamed = (project: Project, ...shown: unknown[]) => {
+		for (const value of shown) {
+			const text = JSON.stringify(value);
+			expect(text).not.toContain(project.id);
+			expect(text).not.toContain(project.name);
+		}
+	};
+
+	/** The whole preview of the project and the whole result of an Apply that stops. */
+	async function readPreviewAndBlocked(user: User, workflow: { id: string }) {
+		const preview = await loadApplyPreview(alpha.id, user);
+		const blocked = await service.applyProjectSelection(alpha.id, user, {
+			workflowIds: [workflow.id],
+		});
+		assert(blocked.status === 'blocked');
+		// The preview holds every part that a user reads.
+		expect(preview).toMatchObject({
+			resources: expect.any(Array),
+			dependencies: expect.any(Array),
+			check: { missingProjects: expect.any(Array), warnings: expect.any(Array) },
+		});
+		return [preview, blocked] as const;
+	}
+
+	/** Removes a workflow from the branch, as a later Promote without it does. */
+	async function removeFromBranch(workflowId: string) {
+		const root = path.join(remote.workingDir, 'n8n');
+		const manifestPath = path.join(root, 'manifest.json');
+		const manifest = jsonParse<{ workflows: Array<{ id: string; target: string }> }>(
+			await readFile(manifestPath, 'utf-8'),
+		);
+		const entry = manifest.workflows.find(({ id }) => id === workflowId);
+		assert(entry);
+		await rm(path.join(root, entry.target), { recursive: true });
+		manifest.workflows = manifest.workflows.filter(({ id }) => id !== workflowId);
+		await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+		await commitAndPushRemote(remote, 'Remove a workflow');
+	}
+
+	const workflowEntries = ({
+		missingDependencies,
+	}: Pick<PromotionApplyCheck, 'missingDependencies'>) =>
+		missingDependencies.filter(({ kind }) => kind === 'workflow');
+
+	/**
+	 * A workflow of Alpha that calls a helper of Alpha, both on the branch. Its credential has
+	 * another type here, which stops every Apply of the caller until `unblock` runs.
+	 */
+	async function exportCallerOfOwnHelper() {
+		const credential = await saveHeaderCredential('Alpha key', alpha);
+		const helper = await createWorkflow({ name: 'Helper', nodes: [], connections: {} }, alpha);
+		const caller = await createWorkflow(
+			{
+				name: 'Caller',
+				nodes: [headerAuthNode(credential), executeWorkflowNode(helper.id)],
+				connections: {},
+			},
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(WorkflowRepository).update(caller.id, { nodes: [] });
+		const setType = async (type: string) =>
+			await Container.get(CredentialsRepository).update(credential.id, { type });
+		await setType('httpBasicAuth');
+
+		return {
+			helper,
+			caller,
+			unblock: async () => await setType(credential.type),
+			/** The workflow entries of the Apply that stops on the credential. Nothing changes here. */
+			blockedOn: async (workflowIds: string[]) => {
+				const before = await snapshotApplyState();
+				const result = await service.applyProjectSelection(alpha.id, owner, { workflowIds });
+				assert(result.status === 'blocked');
+				expect(await snapshotApplyState()).toEqual(before);
+				return workflowEntries(result.check);
+			},
+			apply: async (workflowIds: string[]) => {
+				const result = await service.applyProjectSelection(alpha.id, owner, {
+					workflowIds,
+					...applyOf(await loadApplyPreview(alpha.id)),
+				});
+				assert(result.status === 'applied');
+				return result.counts.workflows;
+			},
+			entry: {
+				kind: 'workflow',
+				id: helper.id,
+				name: 'Helper',
+				group: 'needs-action',
+				reason: 'not-on-instance',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(caller),
+			},
+		};
+	}
+
+	/**
+	 * Apply stops, as it did before the list existed. The result is the same with and without a
+	 * preview, and nothing changes on this instance.
+	 */
+	async function expectBlocked(user: User, workflow: { id: string }) {
+		const before = await snapshotApplyState();
+		const direct = await service.applyProjectSelection(alpha.id, user, {
+			workflowIds: [workflow.id],
+		});
+		const preview = await loadApplyPreview(alpha.id, user);
+		const reviewed = await service.applyProjectSelection(alpha.id, user, {
+			workflowIds: [workflow.id],
+			...applyOf(preview),
+		});
+
+		assert(direct.status === 'blocked');
+		expect(reviewed).toEqual(direct);
+		const { movedWorkflows, movedFolders, ...check } = preview.check;
+		expect(direct.check).toEqual(check);
+		expect(await snapshotApplyState()).toEqual(before);
+		return preview.check;
+	}
+
+	/**
+	 * Exports two workflows of Alpha that use the same workflow, then empties them here, so that
+	 * an Apply writes their references again.
+	 */
+	async function exportCallers(build: (name: string) => Promise<WorkflowEntity>) {
+		const callers = [await build('First caller'), await build('Second caller')] as const;
+		await exportPackageToRemote(remote);
+		for (const { id } of callers) {
+			await Container.get(WorkflowRepository).update(id, { nodes: [], settings: {} });
+		}
+		return callers;
+	}
+
+	/**
+	 * Apply does not check a workflow reference, as before the list existed. It writes each caller
+	 * as the branch holds it, with and without a preview. Returns the check before the Apply.
+	 */
+	async function expectApplied(user: User, [first, second]: readonly WorkflowEntity[]) {
+		const workflows = Container.get(WorkflowRepository);
+		const credentialCount = await Container.get(CredentialsRepository).count();
+		const publishState = async () =>
+			(await workflows.find({ order: { id: 'ASC' } })).map(({ id, active, activeVersionId }) => ({
+				id,
+				active,
+				activeVersionId,
+			}));
+		const published = await publishState();
+
+		const before = await loadApplyPreview(alpha.id, user);
+		const direct = await service.applyProjectSelection(alpha.id, user, {
+			workflowIds: [first.id],
+		});
+		const reviewed = await service.applyProjectSelection(alpha.id, user, {
+			workflowIds: [second.id],
+			...applyOf(await loadApplyPreview(alpha.id, user)),
+		});
+
+		assert(direct.status === 'applied' && reviewed.status === 'applied');
+		expect(direct.counts.workflows).toMatchObject({ created: 0, updated: 1 });
+		expect(reviewed.counts).toEqual(direct.counts);
+		for (const authored of [first, second]) {
+			const landed = await workflows.findOneByOrFail({ id: authored.id });
+			expect(landed.nodes).toEqual(authored.nodes);
+			expect(landed.settings?.errorWorkflow).toBe(authored.settings?.errorWorkflow);
+		}
+		expect(await Container.get(CredentialsRepository).count()).toBe(credentialCount);
+		expect(await publishState()).toEqual(published);
+		return before.check;
+	}
+
+	it('lists a missing credential of the project itself, and stops the Apply as before', async () => {
+		const credential = await saveHeaderCredential('Alpha key', alpha);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+
+		const check = await expectBlocked(owner, workflow);
+
+		expect(check.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'credential',
+				sourceId: credential.id,
+				ownerProject: { id: alpha.id, name: alpha.name },
+			}),
+		]);
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'credential',
+				id: credential.id,
+				name: 'Alpha key',
+				credentialType: 'httpHeaderAuth',
+				group: 'needs-action',
+				reason: 'not-on-instance',
+				accessible: true,
+				blocking: true,
+				consumers: usedBy(workflow),
+			},
+		]);
+		// A user with access to Alpha only reads the same check.
+		expect(await expectBlocked(await createAlphaApplier(), workflow)).toEqual(check);
+	});
+
+	it('lists a missing credential of another project by the access of the user, and never names that project to a user without access', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		const entry = {
+			kind: 'credential',
+			id: credential.id,
+			name: 'CRM key',
+			credentialType: 'httpHeaderAuth',
+			reason: 'not-on-instance',
+			blocking: true,
+			consumers: usedBy(workflow),
+		};
+
+		const withAccess = await expectBlocked(owner, workflow);
+
+		expect(withAccess.missingDependencies).toEqual([
+			{ ...entry, group: 'needs-action', accessible: true },
+		]);
+		expect(withAccess.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'credential',
+				sourceId: credential.id,
+				ownerProject: { id: beta.id, name: beta.name },
+			}),
+		]);
+
+		const applier = await createAlphaApplier();
+		const withoutAccess = await expectBlocked(applier, workflow);
+
+		expect(withoutAccess.missingDependencies).toEqual([
+			{ ...entry, group: 'outside-access', accessible: false },
+		]);
+		expect(withoutAccess.missingBindings).toEqual([]);
+		expect(withoutAccess.conflicts).toEqual([]);
+		expectNotNamed(beta, ...(await readPreviewAndBlocked(applier, workflow)));
+	});
+
+	it('lists a missing credential without an owner project on the branch, and reports no conflict', async () => {
+		const credential = await saveCredential(
+			{ name: 'My key', type: 'httpHeaderAuth', data: { name: 'X-Token', value: 'secret' } },
+			{ user: owner, role: 'credential:owner' },
+		);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+
+		const check = await expectBlocked(owner, workflow);
+
+		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'credential',
+				id: credential.id,
+				name: 'My key',
+				credentialType: 'httpHeaderAuth',
+				group: 'outside-access',
+				reason: 'not-on-branch',
+				accessible: false,
+				blocking: true,
+				consumers: usedBy(workflow),
+			},
+		]);
+	});
+
+	it('lists a missing credential of a project that this instance lacks by the scope to create projects', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		await projectRepository.delete(beta.id);
+		const entry = {
+			kind: 'credential',
+			id: credential.id,
+			name: 'CRM key',
+			credentialType: 'httpHeaderAuth',
+			reason: 'not-on-instance',
+			blocking: true,
+			consumers: usedBy(workflow),
+		};
+
+		// A user who can create projects can create the owner project, then the credential.
+		const withScope = await expectBlocked(await createAlphaApplier(['project:create']), workflow);
+
+		expect(withScope.missingDependencies).toEqual([
+			{ ...entry, group: 'needs-action', accessible: true },
+		]);
+		expect(withScope.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'credential',
+				sourceId: credential.id,
+				ownerProject: { id: beta.id, name: beta.name },
+			}),
+		]);
+
+		const applier = await createAlphaApplier();
+		const withoutScope = await expectBlocked(applier, workflow);
+
+		expect(withoutScope.missingDependencies).toEqual([
+			{ ...entry, group: 'outside-access', accessible: false },
+		]);
+		expect(withoutScope).toMatchObject({ missingBindings: [], conflicts: [] });
+		expectNotNamed(beta, ...(await readPreviewAndBlocked(applier, workflow)));
+	});
+
+	it('lists a missing credential outside the access of the user for an Apply of the whole instance', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		// The Apply of the whole instance needs every project. The user cannot create a credential
+		// in the owner project of the credential.
+		const applier = await createAlphaApplier();
+		await linkWithScopes(applier, beta, APPLY_SCOPES);
+		const before = await snapshotApplyState();
+
+		const preview = await changeService().getInstanceApplyPreview(applier, environments.apply.id);
+		const blocked = await service.apply(environments.apply.id, applier);
+
+		assert(preview.check && blocked.status === 'blocked');
+		for (const check of [preview.check, blocked.check]) {
+			expect(check.missingDependencies).toEqual([
+				{
+					kind: 'credential',
+					id: credential.id,
+					name: 'CRM key',
+					credentialType: 'httpHeaderAuth',
+					group: 'outside-access',
+					reason: 'not-on-instance',
+					accessible: false,
+					blocking: true,
+					consumers: usedBy(workflow),
+				},
+			]);
+			// The binding names the owner project and holds the expressions of the credential.
+			expect(check.missingBindings).toEqual([]);
+		}
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('lists a credential that the project cannot use and a credential of another type, with their reasons', async () => {
+		const unshared = await saveHeaderCredential('Beta key', beta);
+		const retyped = await saveHeaderCredential('Alpha key', alpha);
+		const workflow = await createWorkflow(
+			{
+				name: 'Sync',
+				nodes: [headerAuthNode(unshared), headerAuthNode(retyped)],
+				connections: {},
+			},
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).update(retyped.id, { type: 'httpBasicAuth' });
+
+		const check = await expectBlocked(owner, workflow);
+
+		expect(check.missingBindings).toEqual([]);
+		expect(check.accessRequirements).toEqual([
+			expect.objectContaining({ code: 'access-required', sourceId: unshared.id }),
+		]);
+		expect(check.conflicts).toEqual([
+			expect.objectContaining({ code: 'type-mismatch', sourceId: retyped.id }),
+		]);
+		const listed = {
+			kind: 'credential',
+			credentialType: 'httpHeaderAuth',
+			group: 'needs-action',
+			accessible: true,
+			blocking: true,
+			consumers: usedBy(workflow),
+		};
+		expect(check.missingDependencies).toEqual(
+			[
+				{ ...listed, id: unshared.id, name: 'Beta key', reason: 'not-shared' },
+				{ ...listed, id: retyped.id, name: 'Alpha key', reason: 'type-mismatch' },
+			].sort(byId),
+		);
+	});
+
+	it('lists a sub-workflow that is not on this instance, and applies as before', async () => {
+		const helper = await createWorkflow(
+			{ name: 'Helper', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
+			beta,
+		);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [executeWorkflowNode(helper.id)], connections: {} },
+					alpha,
+				),
+		);
+		await Container.get(WorkflowRepository).delete(helper.id);
+		const applier = await createAlphaApplier();
+		const entry = {
+			kind: 'workflow',
+			id: helper.id,
+			name: 'Helper',
+			reason: 'not-on-instance',
+			blocking: false,
+			consumers: usedBy(...callers),
+		};
+
+		const withoutAccess = await loadApplyPreview(alpha.id, applier);
+		const check = await expectApplied(owner, callers);
+
+		// The branch holds the sub-workflow in Beta, so the access to Beta decides the group.
+		expect(check.missingDependencies).toEqual([
+			{ ...entry, group: 'needs-action', accessible: true },
+		]);
+		expect(withoutAccess.check.missingDependencies).toEqual([
+			{ ...entry, group: 'outside-access', accessible: false },
+		]);
+		expectNotNamed(beta, withoutAccess);
+		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
+	});
+
+	it('lists a sub-workflow that the branch archives for a selection with it, and applies as before', async () => {
+		const helper = await createWorkflow(
+			{ name: 'Helper', nodes: [], connections: {}, isArchived: true },
+			alpha,
+		);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [executeWorkflowNode(helper.id)], connections: {} },
+					alpha,
+				),
+		);
+		// Only an Apply that includes the sub-workflow archives it here.
+		await Container.get(WorkflowRepository).update(helper.id, { isArchived: false });
+
+		const check = await expectApplied(await createAlphaApplier(), callers);
+
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'workflow',
+				id: helper.id,
+				name: 'Helper',
+				group: 'needs-action',
+				reason: 'archived',
+				accessible: true,
+				blocking: false,
+				condition: 'target-selected',
+				consumers: usedBy(...callers),
+			},
+		]);
+	});
+
+	it('lists a sub-workflow that the branch adds only for a selection without it, and applies each selection as before', async () => {
+		const { helper, caller, entry, blockedOn, unblock, apply } = await exportCallerOfOwnHelper();
+		const workflows = Container.get(WorkflowRepository);
+		await workflows.delete(helper.id);
+		const conditional = { ...entry, condition: 'target-not-selected' };
+
+		// The preview covers every selection. The result of an Apply covers its selection.
+		expect(workflowEntries((await loadApplyPreview(alpha.id)).check)).toEqual([conditional]);
+		expect(await blockedOn([caller.id])).toEqual([entry]);
+		expect(await blockedOn([caller.id, helper.id])).toEqual([]);
+
+		await unblock();
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([conditional]);
+		const overApi = await testServer
+			.publicApiAgentFor(owner)
+			.get(`/promotions/projects/${alpha.id}/changes/apply`)
+			.expect(200);
+		expect(overApi.body.check.missingDependencies).toEqual([conditional]);
+
+		// The Apply does not check the call, so it writes a call to a workflow that is not here.
+		expect(await apply([caller.id])).toMatchObject({ created: 0, updated: 1 });
+		expect((await workflows.findOneByOrFail({ id: caller.id })).nodes).toEqual(caller.nodes);
+		expect(await workflows.existsBy({ id: helper.id })).toBe(false);
+
+		expect(await apply([caller.id, helper.id])).toMatchObject({ created: 1 });
+		expect(await workflows.existsBy({ id: helper.id })).toBe(true);
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([]);
+	});
+
+	it('lists a sub-workflow that the branch lacks only for a selection that deletes it, and applies each selection as before', async () => {
+		const { helper, caller, entry, blockedOn, unblock, apply } = await exportCallerOfOwnHelper();
+		const workflows = Container.get(WorkflowRepository);
+		await removeFromBranch(helper.id);
+		const conditional = { ...entry, condition: 'target-selected' };
+
+		// The user can read the project of the deleted workflow, so the user can act on the entry.
+		expect(workflowEntries((await loadApplyPreview(alpha.id)).check)).toEqual([conditional]);
+		expect(await blockedOn([caller.id])).toEqual([]);
+		expect(await blockedOn([caller.id, helper.id])).toEqual([entry]);
+
+		await unblock();
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([conditional]);
+
+		expect(await apply([caller.id])).toMatchObject({ created: 0, updated: 1 });
+		expect((await workflows.findOneByOrFail({ id: caller.id })).nodes).toEqual(caller.nodes);
+		expect(await workflows.existsBy({ id: helper.id })).toBe(true);
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([conditional]);
+
+		// The Apply does not check the call, so it deletes a workflow that the caller still calls.
+		await apply([helper.id]);
+		expect(await workflows.existsBy({ id: helper.id })).toBe(false);
+		// Now neither this instance nor the branch holds the workflow, for every selection.
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([
+			{ ...entry, group: 'outside-access', reason: 'not-on-branch', accessible: false },
+		]);
+	});
+
+	it('lists a sub-workflow that this instance archives, and changes the preview revision with the list', async () => {
+		const helper = await createWorkflow(
+			{ name: 'Helper', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
+			beta,
+		);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [executeWorkflowNode(helper.id)], connections: {} },
+					alpha,
+				),
+		);
+		const applier = await createAlphaApplier();
+		const usable = await loadApplyPreview(alpha.id, applier);
+		expect(usable.check.missingDependencies).toEqual([]);
+		expect((await loadApplyPreview(alpha.id, applier)).revision).toBe(usable.revision);
+
+		// The name on this instance belongs to a workflow that the user cannot read.
+		await Container.get(WorkflowRepository).update(helper.id, {
+			isArchived: true,
+			name: 'Name on this instance',
+		});
+
+		const archived = await loadApplyPreview(alpha.id, applier);
+		expect(archived.check.missingDependencies).toEqual([
+			{
+				kind: 'workflow',
+				id: helper.id,
+				name: 'Helper',
+				group: 'outside-access',
+				reason: 'archived',
+				accessible: false,
+				blocking: false,
+				consumers: usedBy(...callers),
+			},
+		]);
+		expectNotNamed(beta, archived);
+		expect(JSON.stringify(archived)).not.toContain('Name on this instance');
+		// Only the list changed, and an Apply that reviewed the old list stops.
+		expect(archived.resources).toEqual(usable.resources);
+		expect(archived.revision).not.toBe(usable.revision);
+		expect(
+			await service.applyProjectSelection(alpha.id, applier, {
+				workflowIds: [callers[0].id],
+				...applyOf(usable),
+			}),
+		).toMatchObject({ status: 'preview-changed' });
+
+		const check = await expectApplied(owner, callers);
+
+		expect(check.missingDependencies).toEqual([
+			expect.objectContaining({ id: helper.id, group: 'needs-action', accessible: true }),
+		]);
+	});
+
+	it('lists a sub-workflow whose caller policy refuses the workflow, and applies as before', async () => {
+		// Without a policy of its own, a sub-workflow accepts only the workflows of its project.
+		const helper = await createWorkflow({ name: 'Helper', nodes: [], connections: {} }, beta);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [executeWorkflowNode(helper.id)], connections: {} },
+					alpha,
+				),
+		);
+
+		const check = await expectApplied(owner, callers);
+
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'workflow',
+				id: helper.id,
+				name: 'Helper',
+				group: 'needs-action',
+				reason: 'caller-policy',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(...callers),
+			},
+		]);
+	});
+
+	it('lists an error workflow that is not on this instance, and applies as before', async () => {
+		const handler = await createWorkflow({ name: 'Handler', nodes: [], connections: {} }, beta);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [], connections: {}, settings: { errorWorkflow: handler.id } },
+					alpha,
+				),
+		);
+		await Container.get(WorkflowRepository).delete(handler.id);
+
+		const check = await expectApplied(owner, callers);
+
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'workflow',
+				id: handler.id,
+				name: 'Handler',
+				group: 'needs-action',
+				reason: 'not-on-instance',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(...callers),
+			},
+		]);
+	});
+
+	it('lists an error workflow whose caller policy refuses the workflow, and applies as before', async () => {
+		// Without a policy of its own, an error workflow accepts only the workflows of its project.
+		const handler = await createWorkflow({ name: 'Handler', nodes: [], connections: {} }, beta);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [], connections: {}, settings: { errorWorkflow: handler.id } },
+					alpha,
+				),
+		);
+
+		const check = await expectApplied(owner, callers);
+
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'workflow',
+				id: handler.id,
+				name: 'Handler',
+				group: 'needs-action',
+				reason: 'caller-policy',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(...callers),
+			},
+		]);
+	});
+
+	it('lists nothing when this instance holds every dependency in a usable state', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const helper = await createWorkflow(
+			{ name: 'Helper', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
+			beta,
+		);
+		const ownHelper = await createWorkflow({ name: 'Own helper', nodes: [] }, alpha);
+		const handler = await createWorkflow(
+			{ name: 'Handler', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
+			beta,
+		);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{
+						name,
+						nodes: [
+							headerAuthNode(credential),
+							executeWorkflowNode(helper.id),
+							executeWorkflowNode(ownHelper.id),
+						],
+						connections: {},
+						settings: { errorWorkflow: handler.id },
+					},
+					alpha,
+				),
+		);
+
+		const check = await expectApplied(await createAlphaApplier(), callers);
+
+		expect(check).toMatchObject({
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			missingDependencies: [],
+		});
+	});
+
+	it('gives the list to an API user, for a project Apply and for an Apply of the whole instance', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const helper = await createWorkflow({ name: 'Helper', nodes: [], connections: {} }, beta);
+		const workflow = await createWorkflow(
+			{
+				name: 'Sync',
+				nodes: [headerAuthNode(credential), executeWorkflowNode(helper.id)],
+				connections: {},
+			},
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		const agent = testServer.publicApiAgentFor(owner);
+		const before = await snapshotApplyState();
+		const missingDependencies = [
+			{
+				kind: 'credential',
+				id: credential.id,
+				name: 'CRM key',
+				credentialType: 'httpHeaderAuth',
+				group: 'needs-action',
+				reason: 'not-on-instance',
+				accessible: true,
+				blocking: true,
+				consumers: usedBy(workflow),
+			},
+			{
+				kind: 'workflow',
+				id: helper.id,
+				name: 'Helper',
+				group: 'needs-action',
+				reason: 'caller-policy',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(workflow),
+			},
+		];
+
+		const projectPreview = await agent
+			.get(`/promotions/projects/${alpha.id}/changes/apply`)
+			.expect(200);
+		const projectApply = await agent
+			.post(`/promotions/projects/${alpha.id}/apply`)
+			.send({ workflowIds: [workflow.id] })
+			.expect(200);
+		const instancePreview = await agent
+			.get(`/promotions/environments/${environments.apply.id}/changes`)
+			.expect(200);
+		const instanceApply = await agent
+			.post(`/promotions/environments/${environments.apply.id}/apply`)
+			.send({})
+			.expect(200);
+
+		expect(projectPreview.body.check.missingDependencies).toEqual(missingDependencies);
+		expect(instancePreview.body.check.missingDependencies).toEqual(missingDependencies);
+		for (const { body } of [projectApply, instanceApply]) {
+			expect(body.status).toBe('blocked');
+			expect(body.check.missingDependencies).toEqual(missingDependencies);
+		}
+		expect(await snapshotApplyState()).toEqual(before);
+
+		// With the credential on this instance, only the entry that does not stop the Apply is left.
+		await agent
+			.post('/credentials')
+			.send({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				projectId: alpha.id,
+				data: { name: 'X-Token', value: 'target-secret' },
+			})
+			.expect(200);
+
+		const afterCreate = await agent
+			.get(`/promotions/environments/${environments.apply.id}/changes`)
+			.expect(200);
+		expect(afterCreate.body.check.missingDependencies).toEqual([missingDependencies[1]]);
+		expect(afterCreate.body.revision).not.toBe(instancePreview.body.revision);
+		const applied = await agent
+			.post(`/promotions/environments/${environments.apply.id}/apply/continue`)
+			.send({
+				expectedSource: { ...afterCreate.body.source, commitSha: afterCreate.body.commitSha },
+				expectedPreviewRevision: afterCreate.body.revision,
+			})
+			.expect(200);
+		expect(applied.body.status).toBe('applied');
 	});
 });
 
