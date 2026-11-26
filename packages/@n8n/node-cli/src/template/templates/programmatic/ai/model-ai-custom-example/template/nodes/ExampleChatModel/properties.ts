@@ -62,6 +62,27 @@ export const openAiProperties: INodeProperties[] = [
 				default: { searchContextSize: 'medium' },
 				options: [
 					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. New York, London',
+					},
+					{
+						displayName: 'Country',
+						name: 'country',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. US, GB',
+					},
+					{
+						displayName: 'Region',
+						name: 'region',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. New York, London',
+					},
+					{
 						displayName: 'Search Context Size',
 						name: 'searchContextSize',
 						type: 'options',
@@ -82,27 +103,6 @@ export const openAiProperties: INodeProperties[] = [
 						description:
 							'Comma-separated list of domains to search. Only domains in this list will be searched.',
 						placeholder: 'e.g. google.com, wikipedia.org',
-					},
-					{
-						displayName: 'Country',
-						name: 'country',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. US, GB',
-					},
-					{
-						displayName: 'City',
-						name: 'city',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. New York, London',
-					},
-					{
-						displayName: 'Region',
-						name: 'region',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. New York, London',
 					},
 				],
 			},
