@@ -34,6 +34,18 @@ export type AgentUpdated = {
 	};
 };
 
+/** Title generation stored a title on a thread that had none. */
+export type AgentThreadTitleUpdated = {
+	type: 'agentThreadTitleUpdated';
+	data: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		title: string;
+		emoji?: string;
+	};
+};
+
 export type AgentMessageQueueUpdated = {
 	type: 'agentMessageQueueUpdated';
 	data: { projectId: string; agentId: string; threadId: string };
@@ -43,4 +55,5 @@ export type AgentsPushMessage =
 	| AgentExecutionUpdated
 	| AgentUpdated
 	| AgentBackgroundJobsUpdated
+	| AgentThreadTitleUpdated
 	| AgentMessageQueueUpdated;

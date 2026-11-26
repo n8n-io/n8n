@@ -155,6 +155,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - group: default
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners
+            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01'
           - group: distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
@@ -204,6 +210,8 @@ jobs:
         env:
           SPECS: ${{ matrix.specs }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
         run: |
           set -euo pipefail
           read -r -a SPEC_ARGS <<< "$SPECS"

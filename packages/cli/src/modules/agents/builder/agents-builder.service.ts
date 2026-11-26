@@ -112,6 +112,7 @@ export class AgentsBuilderService {
 			credentialProviderFor(agentId),
 			'publish',
 			{ skillRefs },
+			user,
 		);
 		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 		return {

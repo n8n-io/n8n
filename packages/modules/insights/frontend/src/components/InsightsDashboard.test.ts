@@ -51,7 +51,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('vue-chartjs', () => ({
+vi.mock('@n8n/design-system/charts', () => ({
 	Bar: {
 		template: '<div>Bar</div>',
 	},

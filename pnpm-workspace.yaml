@@ -72,6 +72,7 @@ catalog:
   '@ai-sdk/openai': ^4.0.104
   '@ai-sdk/openai-compatible': ^3.0.77
   '@ai-sdk/otel': ^1.0.150
+  '@ai-sdk/provider': ^4.0.33
   '@ai-sdk/provider-utils': ^5.0.67
   '@ai-sdk/xai': ^4.0.59
   '@asteasolutions/zod-to-openapi': 7.3.4
@@ -344,12 +345,14 @@ catalogs:
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
     autoprefixer: ^10.4.19
+    chart.js: ^4.4.0
     element-plus: 2.4.3
     highlight.js: 11.12.0
     pinia: ^2.2.4
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
+    vue-chartjs: ^5.2.0
     vue-i18n: 11.4.14
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0

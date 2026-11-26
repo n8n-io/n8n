@@ -26,7 +26,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_statistics](public.agent_execution_statistics.md) | 2 |  | BASE TABLE |
 | [public.agent_execution_statistics_delta](public.agent_execution_statistics_delta.md) | 2 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 21 |  | BASE TABLE |
 | [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 11 |  | BASE TABLE |
@@ -748,6 +748,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  boolean isTestChat
   uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

@@ -22,6 +22,8 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import { toAnsweredQuestionsToolCall } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import AiTypingIndicator from '../../shared/components/AiTypingIndicator.vue';
+import { isAwaitingFirstOutput } from '../builderAgents';
 
 const props = defineProps<{
 	message: InstanceAiMessage;
@@ -35,6 +37,7 @@ const showDebugInfo = ref(false);
 const isUser = computed(() => props.message.role === 'user');
 const isStreaming = computed(() => props.message.isStreaming);
 const showContent = computed(() => props.message.content.length > 0 || isStreaming.value);
+const showTypingIndicator = computed(() => isAwaitingFirstOutput(props.message));
 
 const runError = computed(() => {
 	const tree = props.message.agentTree;
@@ -266,11 +269,7 @@ function formatJson(value: unknown): string {
 				<span>{{ statusMessage }}</span>
 			</div>
 
-			<!-- Blinking cursor while waiting for response -->
-			<span
-				v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
-				:class="$style.blinkingCursor"
-			/>
+			<AiTypingIndicator v-else-if="showTypingIndicator" :class="$style.typingIndicator" />
 
 			<!-- Run stopped indicator (survives reload via the persisted cancelled status) -->
 			<div
@@ -372,23 +371,8 @@ function formatJson(value: unknown): string {
 	}
 }
 
-.blinkingCursor {
-	display: inline-block;
-	width: 2px;
-	height: 1.2em;
-	background: var(--color--text);
-	animation: cursor-blink 1s step-end infinite;
-	vertical-align: text-bottom;
-}
-
-@keyframes cursor-blink {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0;
-	}
+.typingIndicator {
+	margin-top: var(--spacing--xs);
 }
 
 .runLevelError {

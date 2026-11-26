@@ -86,6 +86,7 @@ import {
 	type AppResponse,
 } from '@n8n/api-types';
 
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -1961,6 +1962,7 @@ import {
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
 	ExecutionRedactionServiceProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
@@ -5342,6 +5344,69 @@ describe('createWorkflowAdapter', () => {
 				WorkflowEditorLockedError,
 			);
 			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getPublishReviewBlock', () => {
+		let guardSpy: MockInstance | undefined;
+
+		afterEach(() => {
+			guardSpy?.mockRestore();
+			guardSpy = undefined;
+		});
+
+		it('returns the reason when the review rules refuse the draft', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter } = createWorkflowAdapterForTests();
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBe('review_required');
+			expect(guardSpy).toHaveBeenCalledWith('wf-new', { versionId: 'version-id' });
+		});
+
+		it('returns undefined when the review rules allow the version', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockResolvedValue(undefined);
+			const { adapter } = createWorkflowAdapterForTests();
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new', 'v-2')).resolves.toBeUndefined();
+			expect(guardSpy).toHaveBeenCalledWith('wf-new', { versionId: 'v-2' });
+		});
+
+		it('does not check the version that is already live, as the publish does not', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				activeVersionId: 'version-id',
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not check an archived workflow, so the publish returns its archive error', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				isArchived: true,
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
 		});
 	});
 

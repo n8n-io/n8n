@@ -10,6 +10,7 @@ import {
 	ListPromotionProvidersQueryDto,
 	ListPromotionRepositoriesQueryDto,
 	ListPromotionBranchesQueryDto,
+	ListPromotionReviewsQueryDto,
 	MAX_ITEMS_PER_PAGE,
 	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
@@ -30,6 +31,8 @@ import {
 	PromotionRepositoryListPublicDto,
 	PromotionResourceDetailsDto,
 	PromotionResourceDetailsRequestDto,
+	PromotionReviewListPublicDto,
+	PromotionReviewPublicDto,
 	PromotionBranchListPublicDto,
 	PromotionSettingsPublicDto,
 	UpdatePromotionEnvironmentDto,
@@ -41,6 +44,7 @@ import {
 	promotionDirectionSchema,
 	promotionProviderIdParamSchema,
 	promotionRepositoryIdParamSchema,
+	promotionReviewIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -59,7 +63,9 @@ import {
 	GlobalScope,
 	Licensed,
 	Param,
+	Patch,
 	Post,
+	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -111,14 +117,14 @@ export class PromotionsPublicController {
 		return await (await this.settingsService()).get();
 	}
 
-	@Put('/settings')
+	@Patch('/settings')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('securitySettings:manage')
 	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Beta: Update the promotion settings')
 	@ApiDescription(
 		BETA_NOTE +
-			'Replaces who can promote, approve, and apply in their own projects. Send every setting. A `GET` response can be sent back as the body. Each setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes.',
+			'Changes who can promote, approve, and apply in their own projects. Send only the settings to change. A setting that you leave out keeps its value. Each setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionSettingsPublicDto)
@@ -126,7 +132,7 @@ export class PromotionsPublicController {
 	async updatePromotionSettings(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body body: UpdatePromotionSettingsDto,
+		@Body({ required: true }) body: UpdatePromotionSettingsDto,
 	): Promise<PromotionSettingsPublicDto> {
 		return await (await this.settingsService()).update(req.user, body, req.ctx);
 	}
@@ -604,7 +610,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Promote all team projects')
 	@ApiDescription(
 		BETA_NOTE +
-			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. Another operation on the same environment returns 423.",
+			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. Only instance owners and admins can promote all team projects. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
@@ -752,7 +758,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Preview the changes of a project in one direction')
 	@ApiDescription(
 		BETA_NOTE +
-			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from.',
+			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. Instance owners and admins can always promote. Project admins and editors can promote their project when the whoCanPromote setting allows their role. For `apply` the preview is what applying the branch changes on this instance, the key needs the promotions:apply scope, and the user must be an instance owner or admin. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionPreviewDto)
@@ -778,7 +784,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Read the content of changed resources')
 	@ApiDescription(
 		BETA_NOTE +
-			'Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the role of the user has the variable:list scope. The key needs the same scope as the preview for that direction.',
+			'Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore, and credentials that the user cannot read. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the role of the user has the variable:list scope. The key and the role of the user need the same access as the preview for that direction.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionResourceDetailsDto)
@@ -808,11 +814,11 @@ export class PromotionsPublicController {
 	@Post('/projects/:projectId/promote')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('promotions:promote')
-	@GlobalScope('promotions:promote')
+	@ProjectScope('promotions:promote')
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment). Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Another operation on the same environment returns 423.",
+			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment). Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Instance owners and admins can always promote. Project admins and editors can promote their project when the whoCanPromote setting allows their role. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromoteSelectionResultDto)
@@ -910,6 +916,47 @@ export class PromotionsPublicController {
 		return direction;
 	}
 
+	// -- Reviews -------------------------------------------------------------
+
+	@Get('/reviews')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:readReviews')
+	@ApiSummary('Beta: List promotion reviews')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns the promotion reviews that the Inbox of the key owner shows. Instance owners and admins see all reviews. `state` selects the open or the closed reviews, as the Inbox tabs do. The list starts with the newest activity. The first page reads all open reviews from the Git host and records their new states. The next pages read only their own reviews and record no state, so paging does not move a review. An approval or a close between two pages can still move a review. `title`, `webUrl`, `headCommitSha` and `hasConflicts` come from the Git host. `remoteError` tells why they are missing. Returns 403 when the instance does not use promotion reviews.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionReviewListPublicDto)
+	@ApiErrorResponse(503)
+	async getPromotionReviews(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListPromotionReviewsQueryDto,
+	): Promise<PromotionReviewListPublicDto> {
+		return await (await this.reviewsService()).listPage(req.user, query);
+	}
+
+	@Get('/reviews/:promotionReviewId')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:readReviews')
+	@ApiSummary('Beta: Retrieve a promotion review')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns one promotion review with the same fields as the list. Reads the merge request from the Git host now. Returns 404 when the Inbox of the key owner does not show the review.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionReviewPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionReview(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionReviewId', promotionReviewIdParamSchema) promotionReviewId: string,
+	): Promise<PromotionReviewPublicDto> {
+		return await (await this.reviewsService()).getForUser(req.user, promotionReviewId);
+	}
+
 	// -- Module access -------------------------------------------------------
 
 	private assertModuleActive() {
@@ -946,6 +993,14 @@ export class PromotionsPublicController {
 		this.assertModuleActive();
 		const { PromotionsService } = await import('@/modules/promotions.ee/promotions.service.js');
 		return Container.get(PromotionsService);
+	}
+
+	private async reviewsService() {
+		this.assertModuleActive();
+		const { PromotionReviewInboxService } = await import(
+			'@/modules/promotions.ee/promotion-review-inbox.service.js'
+		);
+		return Container.get(PromotionReviewInboxService);
 	}
 
 	private async changeService() {
