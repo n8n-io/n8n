@@ -1111,6 +1111,23 @@ describe('SkillsController', () => {
 				.send({ scope: 'project', projectId: project.id, skill })
 				.expect(200);
 		});
+
+		it('refuses an owner mention of a workflow that does not exist', async () => {
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
+			);
+			const skill = {
+				...body,
+				name: 'Mentions missing workflow',
+				instructions: 'Run [Gone](n8n://workflow/missingWorkflow1).',
+			};
+
+			const { body: refused } = await owner
+				.post('/skills')
+				.send({ scope: 'instance', skill })
+				.expect(400);
+			expect(refused.message).toContain('Workflow "missingWorkflow1"');
+		});
 	});
 
 	describe('delete', () => {
