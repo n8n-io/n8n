@@ -26,6 +26,7 @@ export * from './attention-flags';
 export * from './model-id';
 export * from './model-providers';
 export * from './provider-capabilities';
+export * from './service-tier';
 export * from './reasoning';
 export * from './rich-card.schema';
 export * from './sub-agent.schema';

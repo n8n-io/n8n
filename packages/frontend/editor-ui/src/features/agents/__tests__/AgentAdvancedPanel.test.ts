@@ -518,6 +518,60 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
+	it('shows the service tier select with the default tier for OpenAI', () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ model: 'openai/gpt-6.1-sol' }) },
+			global: { stubs: globalStubs },
+		});
+		expect(findStubComponent(wrapper, 'agent-service-tier-select').props('modelValue')).toBe(
+			'default',
+		);
+	});
+
+	it('shows the configured service tier', () => {
+		const config = makeConfig({ model: 'openai/gpt-6.1-sol', config: { serviceTier: 'flex' } });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(findStubComponent(wrapper, 'agent-service-tier-select').props('modelValue')).toBe(
+			'flex',
+		);
+	});
+
+	it.each(['anthropic/claude-sonnet-4-5', 'google/gemini-2.5-pro', 'azure-openai/my-deployment'])(
+		'hides the service tier select for %s',
+		(model) => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig({ model }) },
+				global: { stubs: globalStubs },
+			});
+			expect(wrapper.find('[data-testid="agent-service-tier-select"]').exists()).toBe(false);
+		},
+	);
+
+	it('saves the selected service tier and keeps the other settings', () => {
+		const config = makeConfig({ model: 'openai/gpt-6.1-sol', config: { maxIterations: 20 } });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		emitSelectValue(wrapper, 'agent-service-tier-select', 'flex');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config).toEqual({ maxIterations: 20, serviceTier: 'flex' });
+	});
+
+	it('removes the service tier from the config when the default is selected', () => {
+		const config = makeConfig({ model: 'openai/gpt-6.1-sol', config: { serviceTier: 'flex' } });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		emitSelectValue(wrapper, 'agent-service-tier-select', 'default');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config).toEqual({});
+	});
+
 	it('saves enabled: false when the user turns prompt caching off', async () => {
 		const config = makeConfig({
 			model: 'openai/gpt-5.1',
