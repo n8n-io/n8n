@@ -98,7 +98,7 @@ responses:
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
-    description: Import blocked by non-conflict issues only — for example a delete the caller may not perform (`workflow-removal-forbidden`), unresolved credentials, or node types this instance does not have.
+    description: Import blocked by non-conflict issues only — for example a delete the caller may not perform (`workflow-removal-forbidden`), a folder or workflow write that the caller's project role does not allow, unresolved credentials, or node types this instance does not have.
     content:
       application/json:
         schema:

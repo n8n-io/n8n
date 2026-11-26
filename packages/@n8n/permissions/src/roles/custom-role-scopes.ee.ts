@@ -64,6 +64,8 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	projectVariable: ['read', 'update', 'create', 'delete'],
 	projectAiPreference: ['read', 'update', 'create', 'delete'],
 	projectSkill: ['read', 'update', 'create', 'delete'],
+	// Only the operations on a project. Providers and environments stay with instance roles.
+	promotions: ['promote', 'apply', 'readReviews', 'approveReviews'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };

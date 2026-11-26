@@ -69,7 +69,11 @@ export const IMPORT_DESCRIPTION =
 	'`workflow:delete` and `workflow:activate`. Archiving or restoring a matched Agent needs ' +
 	'`agent:delete`. ' +
 	'Creating a missing credential requires `credential:create`. ' +
-	'Destination-project permissions and dependency scopes still apply.\n\n' +
+	"Destination-project permissions and dependency scopes still apply. The caller's role in " +
+	'the target project must allow each folder and workflow that the import creates or ' +
+	'changes. Otherwise the import returns `folder-write-forbidden` or ' +
+	'`workflow-write-forbidden` before any write. A workflow package with folders checks ' +
+	'`folder:create` and `folder:update` first, and returns 403 when the role lacks them.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
 	'Check `agents[].publishing.state` and `workflows[].publishing.state` for publication ' +
@@ -90,7 +94,8 @@ export const IMPORT_409_DESCRIPTION =
 export const IMPORT_422_DESCRIPTION =
 	'Import blocked by non-conflict issues only — for example unresolved credentials or ' +
 	'variables, invalid Agent definitions or dependencies, node types this instance does not have, ' +
-	'a delete the caller may not perform, or ' +
+	"a delete the caller may not perform, a folder or workflow write that the caller's " +
+	'project role does not allow, or ' +
 	'variable stubs whose creation would exceed the instance variable quota. ' +
 	'Exception: a skill conflict returns 422, also under `conflictPolicy=fail`. The import plans ' +
 	'a skill as part of each Agent that uses it, so it reports every skill problem as an ' +
@@ -139,5 +144,6 @@ export const IMPORT_SELECTION_409_DESCRIPTION =
 	'named for deletion (`workflow-removal-conflict`).';
 export const IMPORT_SELECTION_422_DESCRIPTION =
 	'Import blocked by non-conflict issues only — for example a delete the caller may not ' +
-	'perform (`workflow-removal-forbidden`), unresolved credentials, or node types this ' +
-	'instance does not have.';
+	"perform (`workflow-removal-forbidden`), a folder or workflow write that the caller's " +
+	'project role does not allow, unresolved credentials, or node types this instance does ' +
+	'not have.';

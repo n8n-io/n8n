@@ -3,6 +3,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { FolderService } from '@/services/folder.service';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import type { LayoutConflictPolicy } from '../../../n8n-packages.types';
 import type { FolderImportContext, PreparedFolder } from '../folder-import.types';
@@ -20,6 +21,10 @@ const context = (
 	layoutConflictPolicy,
 	...over,
 });
+
+// The user's project role allows every folder write unless a test says otherwise.
+const projectService = mock<ProjectService>();
+projectService.getProjectWithScope.mockResolvedValue(mock<Project>());
 
 const folder = (sourceFolderId: string, parentFolderId: string | null): PreparedFolder => ({
 	sourceFolderId,
@@ -41,7 +46,7 @@ describe('FolderImporter', () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', 'old')]);
 
-		const plan = await new FolderImporter(folderService).plan(context(), [
+		const plan = await new FolderImporter(folderService, projectService).plan(context(), [
 			folder('new', null),
 			folder('a', 'new'),
 		]);
@@ -56,7 +61,7 @@ describe('FolderImporter', () => {
 			existingFolder('b', 'project-1', 'a'),
 			existingFolder('a', 'project-1', null),
 		]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, projectService);
 
 		// `b` sat under `a`. The package puts `a` under `b`, and `b` at the project root.
 		const plan = await importer.plan(context('follow-package'), [
@@ -76,7 +81,7 @@ describe('FolderImporter', () => {
 	it('creates new folders in apply and leaves the moves to applyUpdates', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, projectService);
 		const ctx = context('follow-package');
 
 		const plan = await importer.plan(ctx, [folder('new', null), folder('a', 'new')]);
@@ -103,7 +108,7 @@ describe('FolderImporter', () => {
 			existingFolder('a', 'project-1', null),
 			existingFolder('b', 'project-1', null),
 		]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, projectService);
 		const ctx = context('follow-package');
 
 		const plan = await importer.plan(ctx, [
@@ -131,7 +136,7 @@ describe('FolderImporter', () => {
 	it('keeps the existing name of a folder by default', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, projectService);
 
 		const plan = await importer.plan(context(), [{ ...folder('a', null), name: 'Invoices' }]);
 		await importer.applyUpdates(context(), plan);
@@ -147,7 +152,7 @@ describe('FolderImporter', () => {
 			folderService.getFoldersByIds.mockResolvedValue([
 				{ ...existingFolder('a', 'project-2', null), resourceType },
 			]);
-			const importer = new FolderImporter(folderService);
+			const importer = new FolderImporter(folderService, projectService);
 			const ctx = context('follow-package');
 
 			// The package also renames it, so a skipped project check would plan an update.
@@ -171,7 +176,7 @@ describe('FolderImporter', () => {
 			existingFolder('new', 'project-1', null),
 		]);
 
-		const plan = await new FolderImporter(folderService).plan(
+		const plan = await new FolderImporter(folderService, projectService).plan(
 			context('follow-package', { folderConflictPolicy: 'fail' }),
 			[folder('new', null), folder('a', 'new')],
 		);
@@ -180,5 +185,36 @@ describe('FolderImporter', () => {
 		expect(plan.conflicts).toContainEqual(
 			expect.objectContaining({ kind: 'fail-policy', sourceFolderId: 'a' }),
 		);
+	});
+
+	it('reports each folder write that the project role does not allow, except in a project that the import creates', async () => {
+		const folderService = mock<FolderService>();
+		folderService.getFoldersByIds.mockResolvedValue([
+			existingFolder('moved', 'project-1', null),
+			existingFolder('kept', 'project-1', null),
+		]);
+		// The role can move and rename folders, but not create them.
+		const denyingProjectService = mock<ProjectService>();
+		denyingProjectService.getProjectWithScope.mockImplementation(
+			async (_user, _projectId, scopes) =>
+				scopes.includes('folder:update') ? mock<Project>() : null,
+		);
+		const importer = new FolderImporter(folderService, denyingProjectService);
+		const folders = () => [folder('new', null), folder('moved', 'new'), folder('kept', null)];
+
+		const plan = await importer.plan(context('follow-package'), folders());
+
+		expect(plan.forbidden).toEqual([
+			{ sourceFolderId: 'new', name: 'new', projectId: 'project-1', action: 'create' },
+		]);
+
+		denyingProjectService.getProjectWithScope.mockClear();
+		const pending = await importer.plan(
+			context('follow-package', { projectPendingCreation: true }),
+			folders(),
+		);
+
+		expect(pending.forbidden).toEqual([]);
+		expect(denyingProjectService.getProjectWithScope).not.toHaveBeenCalled();
 	});
 });

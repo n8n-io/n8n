@@ -98,6 +98,17 @@ type HardConflict = Exclude<
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
+	if (conflict.code === 'folder-forbidden') {
+		return {
+			key: `conflict:${index}`,
+			icon: resourceIcon('folder'),
+			name: conflict.name,
+			type: 'folder',
+			usedBy: usedBy(conflict.consumers),
+			status: status('conflict'),
+			detail: i18n.baseText(`promotions.bindings.conflicts.folder-forbidden.${conflict.reason}`),
+		};
+	}
 	const row = {
 		key: `conflict:${index}`,
 		status: status('conflict'),

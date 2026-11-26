@@ -32,6 +32,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'projectAiPreference',
 	'projectSkill',
 	'sourceControl',
+	'promotions',
 ];
 
 export const SCOPES: Record<ProjectResource, ProjectRoleScope[]> = Object.fromEntries(
@@ -40,6 +41,30 @@ export const SCOPES: Record<ProjectResource, ProjectRoleScope[]> = Object.fromEn
 		operations.map((op) => `${resource}:${op}`),
 	]),
 ) as Record<ProjectResource, ProjectRoleScope[]>;
+
+/**
+ * The scopes that a promotion operation reads the project with. Without them the operation
+ * fails, so the editor selects them with the operation.
+ */
+export const PROMOTION_SCOPE_NEEDS: Partial<Record<string, string[]>> = {
+	'promotions:promote': [
+		'promotions:readReviews',
+		'project:read',
+		'project:export',
+		'workflow:export',
+		'folder:read',
+		'dataTable:read',
+	],
+	'promotions:apply': [
+		'project:read',
+		'project:export',
+		'workflow:export',
+		'folder:read',
+		'dataTable:read',
+		'credential:read',
+	],
+	'promotions:approveReviews': ['promotions:readReviews'],
+} satisfies Partial<Record<ProjectRoleScope, ProjectRoleScope[]>>;
 
 /** All UI-visible scopes as a flat set, for permission counting */
 export const UI_VISIBLE_SCOPES: Set<string> = new Set([

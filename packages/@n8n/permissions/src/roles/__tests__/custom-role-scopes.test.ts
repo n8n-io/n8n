@@ -133,6 +133,13 @@ describe('custom role scope whitelists', () => {
 
 		expect(GLOBAL_CUSTOM_ROLE_SCOPES.has('user:create')).toBe(true);
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('user:create')).toBe(false);
+
+		// A project role acts only in its project. Setup and custom instance roles get no promotion scopes.
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('promotions:apply')).toBe(true);
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('promotions:manageEnvironments')).toBe(false);
+		expect(
+			[...GLOBAL_CUSTOM_ROLE_SCOPES].filter((scope) => scope.startsWith('promotions:')),
+		).toEqual([]);
 	});
 
 	it('includes coupled hidden scopes in the project whitelist', () => {
