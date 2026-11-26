@@ -53,7 +53,7 @@ vi.mock('@n8n/i18n', () => ({
 					'This model does not support reasoning',
 				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
 				'agents.builder.advanced.sandboxEgress.hint':
-					'Let commands in the agent sandbox connect to the public internet',
+					'Send and receive information over the public internet',
 				'agents.builder.advanced.sandboxEgress.disabledHint': 'Disabled at the instance level',
 				'nodeCredentials.createNew': 'Create new credential',
 				'nodeCredentials.createNew.permissionDenied':
@@ -802,7 +802,7 @@ describe('AgentAdvancedPanel', () => {
 			expect(toggle.props('modelValue')).toBe(false);
 			expect(toggle.props('disabled')).toBe(false);
 			expect(wrapper.find('[data-testid="agent-sandbox-egress-hint"]').text()).toBe(
-				'Let commands in the agent sandbox connect to the public internet',
+				'Send and receive information over the public internet',
 			);
 
 			await wrapper.find('[data-testid="agent-sandbox-egress-toggle"]').trigger('click');
