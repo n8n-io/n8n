@@ -611,24 +611,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async changeInputRunSelector(value: string) {
-		await this.changeRunSelector(this.inputPanel, value);
+		await this.selectRun(this.inputPanel, value);
 		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
-		await this.changeRunSelector(this.outputPanel, value);
+		await this.selectRun(this.outputPanel, value);
 		await this.expectOutputRunSelectorValue(value);
 	}
 
-	private async changeRunSelector(panel: RunDataPanel, value: string) {
+	private async selectRun(panel: RunDataPanel, value: string) {
 		const input = panel.getRunSelectorInput();
-		await input.click();
+		await panel.getRunSelector().click();
 		await expect(input).toHaveAttribute('aria-expanded', 'true');
-		await expect(input).toHaveAttribute('aria-controls', /.+/);
 		const listboxId = await input.getAttribute('aria-controls');
-		// Both panels have the same labels. A closing dropdown can still be visible.
+		if (!listboxId) throw new Error('The run selector has no associated listbox');
 		await this.page
-			.locator(`[id="${listboxId}"]`)
+			.locator(`[id=${JSON.stringify(listboxId)}]`)
 			.getByRole('option', { name: value, includeHidden: true })
 			.click();
 	}

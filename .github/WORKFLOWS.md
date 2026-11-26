@@ -713,6 +713,7 @@ Push to master
 | Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
+| After nightly Docker builds | `test-deployment-cells.yml` (`workflow_run`) | Nightly deployment compatibility cells against published `master` and `3.x` images (Currents project `tlfUav`) |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
@@ -762,6 +763,13 @@ can promote too via the `force_rc` dispatch input, several times a day: each pub
 claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
 and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
 is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
+
+`test-deployment-cells.yml` ("Test: Deployment cells") runs via `workflow_run` after
+scheduled `Docker: Build and Push` runs (`master`) and after `Build: v3 Nightly Docker Images`
+runs (`3.x`), and supports manual `workflow_dispatch` with a `channel` selector. It resolves
+and pins the published GHCR image digests, runs API-only Playwright deployment cells in
+`packages/quality/testing/playwright/tests/deployment/` with 0 retries, and reports to the
+separate `n8n-nightly-compatibility` Currents project (`tlfUav`).
 
 See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
@@ -908,6 +916,7 @@ Scripts in `.github/scripts/`:
 | `docker/edit-image-native-smoke-check.mjs`| Verify the Edit Image v2 bindings load and draw text with the image's Arial font | `docker-build-smoke.yml`|
 | `docker/native-addons-smoke-check.mjs`| Verify isolated-vm and sqlite3 work in the built image, and that it has no build toolchain | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
+| `docker/get-manifest-digests.mjs`| Resolve multi-arch manifest digests for attestation and pinned deployment cells | `docker-build-push.yml`, `test-deployment-cells.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|

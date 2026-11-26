@@ -5,6 +5,7 @@ import type { PluginSimple } from 'markdown-it';
 import { inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
+import { AGENT_CHAT_MARKDOWN_HOST_KEY } from './agentChatInjectionKeys';
 import { resolveAgentTestLink } from '../utils/agentTestUrl';
 
 const props = defineProps<{
@@ -39,6 +40,25 @@ const openAgentChatPreview = inject<((agentId: string, projectId: string) => boo
 	'openAgentChatPreview',
 	undefined,
 );
+// A host such as the Assistant opens the resources of a reply in its own preview.
+const markdownHost = inject(AGENT_CHAT_MARKDOWN_HOST_KEY, undefined);
+const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
+const openDataTablePreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openDataTablePreview',
+	undefined,
+);
+const openAgentPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
+const openSkillPreview = inject<((id: string) => boolean) | undefined>(
+	'openSkillPreview',
+	undefined,
+);
+const openAppPreview = inject<((id: string) => boolean) | undefined>('openAppPreview', undefined);
 
 function handleLinkClick(event: MouseEvent) {
 	if (!(event.target instanceof Element)) return;
@@ -76,6 +96,14 @@ function handleLinkClick(event: MouseEvent) {
 	<ChatMarkdown
 		:content="source"
 		:plugins="standaloneBuilder ? [buildLinks] : []"
+		:resources="markdownHost?.resources()"
+		:linkable-resources="markdownHost?.linkableResources()"
+		:artifact-links="markdownHost?.artifactLinks"
+		:open-workflow-preview="openWorkflowPreview"
+		:open-data-table-preview="openDataTablePreview"
+		:open-agent-preview="openAgentPreview"
+		:open-skill-preview="openSkillPreview"
+		:open-app-preview="openAppPreview"
 		@click="handleLinkClick"
 	/>
 </template>

@@ -514,7 +514,8 @@ async function handleCopyLink(tab: PreviewTab) {
 
 .header {
 	flex-shrink: 0;
-	height: 49px;
+	// 6px above and below the tabs, plus the 1px bottom border.
+	height: 45px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
