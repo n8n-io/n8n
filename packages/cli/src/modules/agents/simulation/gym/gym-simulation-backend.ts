@@ -32,6 +32,8 @@ const PER_REQUEST_KINDS = new Set<SimulatedTool['kind']>(['workflow']);
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+const HTTP_SCHEMES = new Set(['http:', 'https:']);
+
 /** The Gym answers these when a tenant or a request is over its fixed capacity. */
 const CAPACITY_STATUSES = new Set([413, 507]);
 
@@ -105,6 +107,10 @@ export class GymSimulationBackend implements SimulationBackend {
 		await tenant?.close();
 	}
 
+	private isOpen(tenant: AgentSimulationGymTenant): boolean {
+		return this.tenants.get(tenant.id) === tenant;
+	}
+
 	private async handleRequest(
 		gym: AgentSimulationGym,
 		tenant: AgentSimulationGymTenant,
@@ -113,6 +119,7 @@ export class GymSimulationBackend implements SimulationBackend {
 	): Promise<SimulatedReply> {
 		// A stopped run neither starts nor waits for a reply. The session then blocks the call.
 		if (signal?.aborted) throw stoppedError();
+		if (!this.isOpen(tenant)) return WORLD_CLOSED;
 		if (request.protocol === 'mcp') {
 			return { outcome: 'unsupported', detail: KIND_GAPS.mcp };
 		}
@@ -126,6 +133,12 @@ export class GymSimulationBackend implements SimulationBackend {
 		} catch {
 			return { outcome: 'unsupported', detail: 'The request has no valid URL.' };
 		}
+		if (!HTTP_SCHEMES.has(url.protocol)) {
+			return {
+				outcome: 'unsupported',
+				detail: `The test world does not serve ${url.protocol} URLs.`,
+			};
+		}
 
 		const { host, pathname } = url;
 		let vendor: string | undefined;
@@ -135,6 +148,8 @@ export class GymSimulationBackend implements SimulationBackend {
 			if (!vendor)
 				return { outcome: 'unsupported', detail: `The test world does not have ${host}.` };
 			if (signal?.aborted) throw stoppedError();
+			// closeWorld can run while the Gym looks up the vendor.
+			if (!this.isOpen(tenant)) return WORLD_CLOSED;
 			response = await untilStopped(
 				tenant.handle(
 					vendor,
@@ -182,6 +197,11 @@ export class GymSimulationBackend implements SimulationBackend {
 }
 
 const GYM_MISSING = 'No module provides the test world.';
+
+const WORLD_CLOSED: SimulatedReply = {
+	outcome: 'unavailable',
+	detail: 'The test world is closed.',
+};
 
 const KIND_GAPS: Partial<Record<SimulatedTool['kind'], string>> = {
 	mcp: 'The test world does not have MCP servers yet.',

@@ -188,6 +188,11 @@ describe('GymSimulationBackend', () => {
 			{ protocol: 'http', method: 'GET', url: 'not a url' },
 			'unsupported',
 		],
+		[
+			'a URL that is not HTTP',
+			{ protocol: 'http', method: 'GET', url: 'ftp://slack.com/api/conversations.history' },
+			'unsupported',
+		],
 	] as [string, OutboundRequest, string][])(
 		'blocks %s and never falls back',
 		async (_name, request, outcome) => {
@@ -208,6 +213,34 @@ describe('GymSimulationBackend', () => {
 		await backend.closeWorld(world.worldId);
 
 		expect(tenants[0].closed).toBe(true);
+	});
+
+	it('does not ask the tenant of a world that is closed', async () => {
+		const { backend, gym, tenants } = setup();
+		const world = await backend.openWorld(openInput);
+		const handle = vi.spyOn(tenants[0], 'handle');
+		await backend.closeWorld(world.worldId);
+
+		const reply = await world.handleRequest(post('after close'), call);
+
+		expect(reply).toEqual({ outcome: 'unavailable', detail: 'The test world is closed.' });
+		expect(gym.vendorForHost).not.toHaveBeenCalled();
+		expect(handle).not.toHaveBeenCalled();
+	});
+
+	it('does not ask the tenant when the world closes while the Gym finds the vendor', async () => {
+		const { backend, gym, tenants } = setup();
+		const world = await backend.openWorld(openInput);
+		const handle = vi.spyOn(tenants[0], 'handle');
+		vi.mocked(gym.vendorForHost).mockImplementation(async () => {
+			await backend.closeWorld(world.worldId);
+			return 'slack';
+		});
+
+		const reply = await world.handleRequest(post('closed mid-lookup'), call);
+
+		expect(reply).toEqual({ outcome: 'unavailable', detail: 'The test world is closed.' });
+		expect(handle).not.toHaveBeenCalled();
 	});
 
 	it('fails to open a world when the Gym cannot open a tenant', async () => {
