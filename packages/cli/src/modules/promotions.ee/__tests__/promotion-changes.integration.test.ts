@@ -15,6 +15,7 @@ import {
 import {
 	CredentialsRepository,
 	FolderRepository,
+	type Project,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	TagRepository,
@@ -30,7 +31,7 @@ import { mkdtempSync } from 'node:fs';
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { vi } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -51,7 +52,7 @@ import { TagService } from '@/services/tag.service';
 import { createAgent } from '@test-integration/db/agents';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
-import { createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
@@ -60,6 +61,7 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -192,6 +194,18 @@ function changedResources({ resources }: { resources: PromotionResource[] }) {
 	return resources.filter(({ change }) => change !== 'unchanged');
 }
 
+/** A member who administers the project, while "Who can promote" allows project admins. */
+async function createPromotingProjectAdmin(owner: User, project: Project) {
+	const settings = Container.get(PromotionSettingsService);
+	onTestFinished(async () => {
+		await settings.update(owner, { whoCanPromote: 'instanceAdmins' });
+	});
+	await settings.update(owner, { whoCanPromote: 'projectAdmins' });
+	const projectAdmin = await createMember();
+	await linkUserToProject(projectAdmin, project, 'project:admin');
+	return projectAdmin;
+}
+
 function changedWorkflows(preview: { resources: PromotionResource[] }) {
 	return changedResources(preview).filter(({ type }) => type === 'workflow');
 }
@@ -229,7 +243,7 @@ it.each(['whole', 'selection'] as const)(
 		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		const service = Container.get(PromotionsService);
-		const options = { commitMessage: 'Workflow changes', canExportVariableValues: true };
+		const options = { commitMessage: 'Workflow changes' };
 
 		if (mode === 'whole') {
 			await service.promote(environments.promote.id, owner, options);
@@ -362,7 +376,6 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	);
 	await service.promote(environments.promote.id, owner, {
 		commitMessage: 'Baseline',
-		canExportVariableValues: true,
 	});
 
 	const workflows = Container.get(WorkflowRepository);
@@ -398,7 +411,6 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 
 	await service.promote(environments.promote.id, owner, {
 		commitMessage: 'Changes',
-		canExportVariableValues: true,
 	});
 	await workflows.update(archived.id, { isArchived: false });
 	expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([
@@ -458,7 +470,6 @@ it('lists a workflow whose only change is its description', async () => {
 	const agent = server.publicApiAgentWithCookie(owner);
 	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
 		commitMessage: 'Baseline',
-		canExportVariableValues: true,
 	});
 	expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([]);
 
@@ -505,7 +516,7 @@ it('marks a workflow that moved into a project that has no files on the branch y
 }, 30_000);
 
 it('lists the project variable that a workflow reads, not the global variable that it shadows', async () => {
-	// The key of a pipeline that may promote, but not read variable values.
+	// The key of a pipeline that may only promote.
 	const owner = await createOwnerWithApiKey({ scopes: ['promotions:promote'] });
 	const project = await createTeamProject('Dependencies', owner);
 	const global = await createVariable('API_URL', 'global');
@@ -522,7 +533,7 @@ it('lists the project variable that a workflow reads, not the global variable th
 		project,
 		variableNames: ['API_URL'],
 	});
-	const environments = await createInstanceEnvironments();
+	const environments = await createInstanceEnvironments(['promote', 'apply']);
 	await exportPreviewBaseline(environments.promote, owner);
 	const agent = server.publicApiAgentFor(owner);
 	const endpoint = `/promotions/projects/${project.id}/changes/promote`;
@@ -539,7 +550,7 @@ it('lists the project variable that a workflow reads, not the global variable th
 		expect.objectContaining({ key: variableKey, change: 'modified' }),
 	]);
 
-	// The details name the variable, but the key cannot read its value.
+	// The owner's role can list variables, so the details show the values. The key scopes do not matter.
 	const { commitSha } = (await agent.get(endpoint).expect(200)).body;
 	const { body } = await agent
 		.post(`${endpoint}/details`)
@@ -548,9 +559,25 @@ it('lists the project variable that a workflow reads, not the global variable th
 	expect(body.details).toEqual([
 		expect.objectContaining({
 			key: variableKey,
-			valueHidden: true,
-			before: { name: 'API_URL', type: expect.any(String) },
-			after: { name: 'API_URL', type: expect.any(String) },
+			before: { name: 'API_URL', type: expect.any(String), value: 'project' },
+			after: { name: 'API_URL', type: expect.any(String), value: 'changed project' },
+		}),
+	]);
+
+	const applyOwner = await createOwnerWithApiKey({ scopes: ['promotions:apply'] });
+	const applyAgent = server.publicApiAgentFor(applyOwner);
+	const applyEndpoint = `/promotions/environments/${environments.apply.id}/changes`;
+	const { body: applyPreview } = await applyAgent.get(applyEndpoint).expect(200);
+	expect(applyPreview.source).toEqual(sourceOf(environments.apply));
+	const { body: applyDetails } = await applyAgent
+		.post(`${applyEndpoint}/details`)
+		.send({ commitSha: applyPreview.commitSha, keys: [variableKey] })
+		.expect(200);
+	expect(applyDetails.details).toEqual([
+		expect.objectContaining({
+			key: variableKey,
+			before: { name: 'API_URL', type: expect.any(String), value: 'changed project' },
+			after: { name: 'API_URL', type: expect.any(String), value: 'project' },
 		}),
 	]);
 }, 30_000);
@@ -586,7 +613,6 @@ it('lists what applying the branch changes on this instance, named and archived 
 	const service = Container.get(PromotionsService);
 	await service.promote(environments.promote.id, owner, {
 		commitMessage: 'Baseline',
-		canExportVariableValues: true,
 	});
 	const baseline = await remoteHead();
 	const agent = server.publicApiAgentWithCookie(owner);
@@ -658,7 +684,6 @@ it('lists what applying the branch changes on this instance, named and archived 
 
 	await service.promote(environments.promote.id, owner, {
 		commitMessage: 'Sync',
-		canExportVariableValues: true,
 	});
 	const after = (await agent.get(applyEndpoint).expect(200)).body;
 	expect(after).toMatchObject({
@@ -735,7 +760,6 @@ it.each([
 		});
 		await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Source edit',
-			canExportVariableValues: true,
 		});
 		// The branch file has `tagIds: []`, which a destination without workflow tags does not export.
 		Container.get(GlobalConfig).tags.disabled = tags === 'disabled';
@@ -946,7 +970,7 @@ describe('resources in the preview', () => {
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
-	it('stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
+	it('lets a project admin promote their project, stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const invoice = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
@@ -959,8 +983,9 @@ describe('resources in the preview', () => {
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.update(invoice.id, { name: 'Invoice (local)' });
 		await workflowRepository.update(reminder.id, { name: 'Reminder (local)' });
+		const projectAdmin = await createPromotingProjectAdmin(owner, project);
 
-		const agent = server.publicApiAgentWithCookie(owner);
+		const agent = server.publicApiAgentWithCookie(projectAdmin);
 		const loadPreview = async () =>
 			(await agent.get(`/promotions/projects/${project.id}/changes/promote`).expect(200)).body;
 		const promoteShown = async (preview: { revision: string }) =>
@@ -974,6 +999,15 @@ describe('resources in the preview', () => {
 
 		// A colleague edits a workflow of the project during the review.
 		const beforeEdit = await loadPreview();
+		const { details } = (
+			await agent
+				.post(`/promotions/projects/${project.id}/changes/promote/details`)
+				.send({ commitSha: beforeEdit.commitSha, keys: [`workflow:${invoice.id}`] })
+				.expect(200)
+		).body;
+		expect(details).toEqual([
+			expect.objectContaining({ after: expect.objectContaining({ name: 'Invoice (local)' }) }),
+		]);
 		await workflowRepository.update(invoice.id, { name: 'Invoice (edited again)' });
 		const head = await remoteHead();
 		expect(await promoteShown(beforeEdit)).toEqual(stopped);
@@ -983,13 +1017,28 @@ describe('resources in the preview', () => {
 		const beforePromotion = await loadPreview();
 		await Container.get(PromotionsService).promoteProjectSelection(project.id, owner, {
 			workflowIds: [reminder.id],
-			canExportVariableValues: true,
 		});
 		const promotedHead = await remoteHead();
 		expect(await promoteShown(beforePromotion)).toEqual(stopped);
 		expect(await remoteHead()).toBe(promotedHead);
 
-		expect(await promoteShown(await loadPreview())).toMatchObject({ status: 'promoted' });
+		// An admin turns on a new branch for each Promote during the review. The confirmation
+		// named the base branch as the target, so the Promote stops.
+		const environmentRepository = Container.get(PromotionEnvironmentRepository);
+		const { id, providerId } = environments.promote;
+		const promoteSettings = (createBranchOnPromotion: boolean) => ({
+			settings: { schemaVersion: 1 as const, baseBranchName: 'main', createBranchOnPromotion },
+		});
+		const beforeSetting = await loadPreview();
+		await environmentRepository.updateEnvironment(id, providerId, promoteSettings(true), {});
+		expect(await promoteShown(beforeSetting)).toEqual(stopped);
+		expect(await remoteHead()).toBe(promotedHead);
+		await environmentRepository.updateEnvironment(id, providerId, promoteSettings(false), {});
+
+		// A rename only labels the preview, so the Promote goes ahead.
+		const beforeRename = await loadPreview();
+		await environmentRepository.updateEnvironment(id, providerId, { name: 'Production' }, {});
+		expect(await promoteShown(beforeRename)).toMatchObject({ status: 'promoted' });
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
@@ -1278,7 +1327,6 @@ describe('resources in the preview', () => {
 		await workflows.delete(draft.id);
 		await Container.get(PromotionsService).promote(environments.promote.id, owner, {
 			commitMessage: 'Moves the branch',
-			canExportVariableValues: true,
 		});
 		const later = await loadDetail();
 		expect(later.revision.after).not.toBe(revision.after);
@@ -1293,6 +1341,47 @@ describe('resources in the preview', () => {
 			.expect(200);
 		expect(body.details).toEqual([expect.objectContaining({ key })]);
 		expect(body.missingKeys).toEqual([draftKey]);
+	}, 30_000);
+
+	it("leaves out a credential on the branch that the project admin can't read", async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const payments = await createTeamProject('Payments', owner);
+		const credential = await saveCredential(
+			{ name: 'Payments API', type: 'httpHeaderAuth', data: {} },
+			{ project: payments, role: 'credential:owner' },
+		);
+		// The owner can use every credential, so the branch holds one that Billing can't read.
+		const charge = await buildWorkflowReferencingCredential({
+			name: 'Charge customers',
+			project,
+			credential,
+		});
+		const environments = await createInstanceEnvironments();
+		await exportPreviewBaseline(environments.promote, owner);
+		const projectAdmin = await createPromotingProjectAdmin(owner, project);
+		const agent = server.publicApiAgentWithCookie(projectAdmin);
+		const endpoint = `/promotions/projects/${project.id}/changes/promote`;
+		const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+		const credentialKey = `credential:${credential.id}`;
+		const workflowKey = `workflow:${charge.id}`;
+
+		const loadDetails = async () =>
+			(
+				await agent
+					.post(`${endpoint}/details`)
+					.send({ commitSha, keys: [credentialKey, workflowKey] })
+					.expect(200)
+			).body;
+
+		const expected = {
+			missingKeys: [credentialKey],
+			details: [expect.objectContaining({ key: workflowKey })],
+		};
+		expect(await loadDetails()).toEqual(expected);
+		// The branch still holds the credential after its deletion on this instance.
+		await Container.get(CredentialsRepository).delete(credential.id);
+		expect(await loadDetails()).toEqual(expected);
 	}, 30_000);
 
 	it('returns both sides of a project whose id has a colon', async () => {

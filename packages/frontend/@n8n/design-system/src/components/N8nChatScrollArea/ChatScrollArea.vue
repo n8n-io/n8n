@@ -156,7 +156,7 @@ onMounted(async () => {
 			data-test-id="chat-scroll-area-viewport"
 		>
 			<div ref="topSentinel" :class="$style.sentinel" aria-hidden="true" />
-			<div ref="content">
+			<div ref="content" :class="$style.content">
 				<slot />
 			</div>
 			<div :class="$style.spacer" aria-hidden="true" />
@@ -187,6 +187,7 @@ onMounted(async () => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/mixins';
 @use '../../css/mixins/motion';
 
 .chatScrollArea {
@@ -197,11 +198,22 @@ onMounted(async () => {
 }
 
 .viewport {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	width: 100%;
 	overflow-y: auto;
 	overflow-anchor: none;
 	outline: none;
+	// A thin thumb only, with no track background or borders.
+	@include mixins.scroll-bar;
+	// The default thumb is too faint on the light chat background. In dark mode this
+	// token is about as light as the default thumb.
+	scrollbar-color: var(--border-color--stronger) transparent;
+
+	&::-webkit-scrollbar-thumb {
+		background-color: var(--border-color--stronger);
+	}
 
 	&:focus-visible {
 		@include focus.focus-ring;
@@ -220,12 +232,20 @@ onMounted(async () => {
 	);
 }
 
+/* Fills the free height, so slot content with `height: 100%` (an empty state) can center. */
+.content {
+	flex-grow: 1;
+}
+
+/* `flex-shrink: 0` keeps the sentinels and the spacer at full height when the content overflows. */
 .sentinel {
+	flex-shrink: 0;
 	height: 1px;
 	overflow-anchor: auto;
 }
 
 .spacer {
+	flex-shrink: 0;
 	height: var(--chat--input--height, 0);
 }
 

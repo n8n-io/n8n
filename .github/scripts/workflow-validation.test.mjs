@@ -140,6 +140,96 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('ownership workflow routing', () => {
+	const reviews = workflowFile('ci-owners-required-reviews.yml');
+	const dispatch = stepNamed(
+		reviews,
+		'dispatch-review',
+		'Evaluate reviews with the caller on master',
+	);
+
+	const runDispatch = (t, { owner = 'n8n-io', numbers = '123\n', failure = '' } = {}) => {
+		const directory = mkdtempSync(join(tmpdir(), 'ownership-dispatch-'));
+		t.after(() => rmSync(directory, { recursive: true, force: true }));
+		const log = join(directory, 'calls.jsonl');
+		writeFileSync(log, '');
+		writeFileSync(
+			join(directory, 'gh'),
+			`#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
+const args = process.argv.slice(2);
+appendFileSync(process.env.MOCK_LOG, JSON.stringify(args) + '\\n');
+if (args.includes(process.env.MOCK_FAILURE)) process.exit(1);
+if (args.includes('GET')) process.stdout.write(process.env.MOCK_NUMBERS);
+`,
+			{ mode: 0o755 },
+		);
+		execFileSync('bash', ['-c', dispatch.run], {
+			env: {
+				...process.env,
+				PATH: `${directory}:${process.env.PATH}`,
+				GH_TOKEN: 'test-token',
+				GITHUB_REPOSITORY: 'n8n-io/n8n',
+				RUN_HEAD_OWNER: owner,
+				RUN_HEAD_BRANCH: 'feature/"$(exit 1)',
+				MOCK_LOG: log,
+				MOCK_NUMBERS: numbers,
+				MOCK_FAILURE: failure,
+			},
+		});
+		return readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse);
+	};
+
+	it('uses base-branch callers and keeps the external pins in sync', () => {
+		assert.ok(triggersOf(reviews).pull_request_target);
+		assert.equal(triggersOf(reviews).pull_request_review, undefined);
+		assert.deepEqual(triggersOf(reviews).workflow_run, {
+			workflows: ['Util: Notify PR Status'],
+			types: ['completed'],
+		});
+		assert.equal(
+			reviews.jobs['dispatch-review'].if,
+			"github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request_review'",
+		);
+		assert.equal(reviews.jobs['required-reviews'].if, "github.event_name != 'workflow_run'");
+		assert.match(reviews.jobs['required-reviews'].uses, /ownership-checks\.yml@[a-f0-9]{40}$/);
+		assert.equal(reviews.jobs['required-reviews'].with['ownership-comment'], true);
+		assert.ok(reviews.jobs['dispatch-review'].steps.every((step) => !step.uses));
+	});
+
+	for (const owner of ['n8n-io', 'contributor']) {
+		it(`dispatches each open PR from ${owner} on master`, (t) => {
+			const [lookup, ...calls] = runDispatch(t, { owner, numbers: '123\n456\n' });
+			assert.ok(lookup.includes('--paginate'));
+			assert.ok(lookup.includes('state=open'));
+			assert.ok(lookup.includes(`head=${owner}:feature/"$(exit 1)`));
+			assert.deepEqual(
+				calls,
+				['123', '456'].map((number) => [
+					'api',
+					'-X',
+					'POST',
+					'repos/n8n-io/n8n/actions/workflows/ci-owners-required-reviews.yml/dispatches',
+					'-f',
+					'ref=master',
+					'-f',
+					`inputs[pr_number]=${number}`,
+				]),
+			);
+		});
+	}
+
+	it('does not dispatch when no open PR matches', (t) => {
+		assert.equal(runDispatch(t, { numbers: '' }).length, 1);
+	});
+
+	for (const failure of ['GET', 'POST']) {
+		it(`fails when the ${failure} request fails`, (t) => {
+			assert.throws(() => runDispatch(t, { failure }));
+		});
+	}
+});
+
 describe('automated release PR CI bypass', () => {
 	const releasePrConjunction = [
 		"github.event.pull_request.user.login == 'n8n-assistant[bot]'",
@@ -447,7 +537,7 @@ describe('unpublished package handling', () => {
 			'Notify Developer Platform alerts channel',
 		);
 
-		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1-2' }]);
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1' }]);
 		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
 		assert.equal(notify.if, "steps.detect.outputs.packages != '[]'");
 		assert.match(notify.run, /--channel '#alerts-developer-platforms'/);

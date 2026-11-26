@@ -1,12 +1,13 @@
-import type { Role, Scope as DbScope, SharedWorkflowRepository, User } from '@n8n/db';
+import type { SharedWorkflowRepository, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
-import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { ApplyPreviewService } from '../apply-preview.service';
 import type { LocalPackageEntities } from '../local-package-entities.service';
+import type { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { PromotePreviewService } from '../promote-preview.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -18,14 +19,12 @@ vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
 	N8nPackagesService: class {},
 }));
 vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
 
-const userWith = (...scopes: Scope[]) =>
-	mock<User>({
-		role: mock<Role>({ scopes: scopes.map((slug) => mock<DbScope>({ slug })) }),
-	});
-const pusher = userWith('promotions:promote');
-const puller = userWith('promotions:apply');
-const nobody = userWith();
+// The mocked role check decides access, so one user serves every case.
+const user = mock<User>();
 
 const branched = (createBranchOnPromotion: boolean) =>
 	mock<PromotionOperationInput>({
@@ -51,10 +50,12 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			mock<N8nPackagesService>(),
 			mock<SharedWorkflowRepository>(),
 			reviewGate,
+			mock<PromotionCredentialSelectionService>(),
 		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,
 		mock(),
+		mock<PromotionCredentialSelectionService>(),
 	);
 
 	beforeEach(() => {
@@ -69,7 +70,7 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	it('returns an empty preview with the blocker and skips the git work', async () => {
 		reviewGate.findPromoteBlocker.mockResolvedValue({ code: 'reviewOpen', reviewId: 'review-1' });
 
-		const preview = await service.getPreview(pusher, 'project-1', 'promote');
+		const preview = await service.getPreview(user, 'project-1', 'promote');
 
 		expect(preview).toEqual({
 			commitSha: null,
@@ -87,23 +88,28 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	it('does not run the gate when the promote pushes directly', async () => {
 		environmentResolver.resolveForProject.mockResolvedValue(branched(false));
 
-		await expect(service.getPreview(pusher, 'project-1', 'promote')).rejects.toThrow('compare ran');
+		await expect(service.getPreview(user, 'project-1', 'promote')).rejects.toThrow('compare ran');
 
 		expect(reviewGate.findPromoteBlocker).not.toHaveBeenCalled();
 	});
 
 	it('does not run the gate for an apply preview', async () => {
-		await expect(service.getPreview(puller, 'project-1', 'apply')).rejects.toThrow('compare ran');
+		await expect(service.getPreview(user, 'project-1', 'apply')).rejects.toThrow('compare ran');
 
 		expect(environmentResolver.resolveForProject).not.toHaveBeenCalled();
 		expect(reviewGate.findPromoteBlocker).not.toHaveBeenCalled();
 	});
 
-	it('checks the permission before the gate', async () => {
-		await expect(service.getPreview(nobody, 'project-1', 'promote')).rejects.toThrow(
-			ForbiddenError,
-		);
+	it('checks the role in the project before the gate', async () => {
+		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
 
+		const preview = service.getPreview(user, 'project-1', 'promote');
+
+		await expect(preview).rejects.toThrow(ForbiddenError);
+		await expect(preview).rejects.toThrow('requires the promotions:promote scope');
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['promotions:promote'], false, {
+			projectId: 'project-1',
+		});
 		expect(environmentResolver.resolveForProject).not.toHaveBeenCalled();
 		expect(reviewGate.findPromoteBlocker).not.toHaveBeenCalled();
 		expect(promotionsService.readBranchPackage).not.toHaveBeenCalled();

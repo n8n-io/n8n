@@ -1,4 +1,5 @@
 import {
+	APP_TOOL_NAME_BY_ACTION,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	type InstanceAiAgentPreviewHandoffContext,
@@ -186,11 +187,11 @@ export function buildAppTargetsBlock(
 	if (apps.length === 0 && !hasPendingApp) return '';
 	return [
 		APP_TARGETS_OPEN_TAG,
-		'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the `apps` tool.',
+		`This conversation builds these n8n Apps. Load \`app-builder\` and pass the matching \`appId\` to the app tools, for example \`${APP_TOOL_NAME_BY_ACTION.open}\`.`,
 		...apps.map(({ id, name }) => `- App ${sanitisePromptText(name)} (appId: \`${id}\`)`),
 		...(hasPendingApp
 			? [
-					'- A new app that the user opened. It has no row yet. Create it with the `apps` tool action `create`.',
+					`- A new app that the user opened. It has no row yet. Create it with \`${APP_TOOL_NAME_BY_ACTION.create}\`.`,
 				]
 			: []),
 		APP_TARGETS_CLOSE_TAG,

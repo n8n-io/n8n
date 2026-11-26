@@ -37,6 +37,7 @@ describe('public API', () => {
 			'toSkillToolRefusal',
 			'withSkillWorkflowMentionHint',
 			'withTrimmedName',
+			'withUnsentSkillFiles',
 		]);
 		// The import loads every skills service, which takes seconds under a full test run.
 	}, 30_000);

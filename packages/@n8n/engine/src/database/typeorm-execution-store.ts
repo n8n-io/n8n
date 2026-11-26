@@ -12,7 +12,11 @@ import {
 	type PrunableExecutionQuery,
 	type StaleQueuedExecution,
 } from '../execution/execution-store';
-import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
+import {
+	DEFAULT_STALENESS_THRESHOLDS,
+	nextQueuedStaleAfter,
+	type StalenessThresholds,
+} from '../execution/staleness';
 import {
 	ENDED_EXECUTION_STATUSES,
 	isEndedExecutionStatus,
@@ -173,7 +177,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, status: 'queued', staleAfter },
-			{ staleAfter: this.staleAfterFor('queued') },
+			{ staleAfter: nextQueuedStaleAfter(staleAfter, Date.now(), this.staleness.queuedMs) },
 		);
 		return result.affected === 1;
 	}

@@ -591,7 +591,7 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
 			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
 			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
-			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, n8n_node: 0, other: 3 });
+			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 3 });
 		});
 
 		test('should count calls per route, result and caller', () => {
@@ -672,8 +672,8 @@ describe('Telemetry', () => {
 		test.each([
 			{
 				client: 'editor_ui',
-				clients: { editor_ui: 1, n8n_node: 0, other: 2 },
-				endpointsByClient: { editor_ui: { 'GET /workflows': 1 }, n8n_node: {} },
+				clients: { editor_ui: 1, n8n_node: 0, n8n_cli: 0, other: 2 },
+				endpointsByClient: { editor_ui: { 'GET /workflows': 1 }, n8n_node: {}, n8n_cli: {} },
 				routes: [
 					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					{ route: 'GET /workflows', result: '2xx', caller: 'editor_ui', calls: 1 },
@@ -682,11 +682,21 @@ describe('Telemetry', () => {
 			},
 			{
 				client: 'n8n_node',
-				clients: { editor_ui: 0, n8n_node: 1, other: 2 },
-				endpointsByClient: { editor_ui: {}, n8n_node: { 'GET /workflows': 1 } },
+				clients: { editor_ui: 0, n8n_node: 1, n8n_cli: 0, other: 2 },
+				endpointsByClient: { editor_ui: {}, n8n_node: { 'GET /workflows': 1 }, n8n_cli: {} },
 				routes: [
 					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					{ route: 'GET /workflows', result: '2xx', caller: 'n8n_node', calls: 1 },
+					{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
+				],
+			},
+			{
+				client: 'n8n_cli',
+				clients: { editor_ui: 0, n8n_node: 0, n8n_cli: 1, other: 2 },
+				endpointsByClient: { editor_ui: {}, n8n_node: {}, n8n_cli: { 'GET /workflows': 1 } },
+				routes: [
+					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+					{ route: 'GET /workflows', result: '2xx', caller: 'n8n_cli', calls: 1 },
 					{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
 				],
 			},
@@ -1254,8 +1264,8 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					user_id: 'user1',
 					total_calls: 1,
-					clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, other: 1 }),
-					endpoints_by_client: JSON.stringify({ editor_ui: {}, n8n_node: {} }),
+					clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 1 }),
+					endpoints_by_client: JSON.stringify({ editor_ui: {}, n8n_node: {}, n8n_cli: {} }),
 					routes: JSON.stringify([
 						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					]),

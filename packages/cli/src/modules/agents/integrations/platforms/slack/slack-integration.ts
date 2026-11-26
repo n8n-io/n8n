@@ -1,3 +1,4 @@
+import { slackHitl } from './slack-hitl';
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
@@ -43,6 +44,7 @@ import {
 	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
+import { SlackMethodsService } from './slack-methods.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
 import { buildSlackOriginDraft, fetchSlackOriginNames } from './slack-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
@@ -54,7 +56,12 @@ import type { DecodedThread, OriginInput } from '../../integration-origin-suppor
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
-	constructor(private readonly agentRepository: AgentRepository) {
+	readonly hitl = slackHitl;
+
+	constructor(
+		private readonly agentRepository: AgentRepository,
+		private readonly slackMethodsService: SlackMethodsService,
+	) {
 		super();
 	}
 
@@ -236,6 +243,19 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
 		return await fetchSlackOriginNames(input, origin);
+	}
+
+	/** One install belongs to one workspace, and `auth.test` names both. */
+	async describeAccount(credential: Record<string, unknown>) {
+		const response = await this.slackMethodsService.callSlackApi<{
+			user?: unknown;
+			team?: unknown;
+		}>('auth.test', {}, { authorization: `Bearer ${this.extractBotToken(credential)}` });
+		if (!response.ok) return undefined;
+		return {
+			botName: typeof response.user === 'string' ? response.user : undefined,
+			workspaceNames: typeof response.team === 'string' ? [response.team] : undefined,
+		};
 	}
 
 	resolveEpisodicScope({

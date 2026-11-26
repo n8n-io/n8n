@@ -53,9 +53,11 @@ jobs:
           owner: n8n-io
           repositories: n8n-nodes-starter
           # Scope the token to what create-pull-request does: push the branch,
-          # open the PR.
+          # open the PR, and push the regenerated `.github/workflows/*` files, which
+          # GitHub rejects from an app token without the workflows permission.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Checkout n8n
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,26 +96,31 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # `npm update` keeps the `"*"` range in package.json and only moves the
+      # `npm update` keeps the `"*"` ranges in package.json and only moves the
       # lockfile. `npm install @n8n/node-cli@latest` would rewrite the range.
+      # `n8n-workflow` is the peer dependency every community node declares as
+      # `*`; refreshing it keeps the starter on the current `latest` build.
       # The assertion guards against a pre-release tag winning the resolution.
-      - name: Refresh the @n8n/node-cli pin in the starter lockfile
+      - name: Refresh the @n8n/node-cli and n8n-workflow pins in the starter lockfile
         if: steps.gate.outputs.skip != 'true'
         working-directory: starter
         env:
           LATEST: ${{ steps.gate.outputs.latest }}
         run: |
-          npm update @n8n/node-cli --package-lock-only --no-audit --no-fund
+          npm update @n8n/node-cli n8n-workflow --package-lock-only --no-audit --no-fund
           LOCKED="$(node -p "require('./package-lock.json').packages['node_modules/@n8n/node-cli'].version")"
           if [ "$LOCKED" != "$LATEST" ]; then
             echo "::error::Lockfile resolved @n8n/node-cli@$LOCKED, expected $LATEST"
             exit 1
           fi
 
+      # The job only generates files; it never runs a node. Skipping install
+      # scripts avoids compiling native modules such as isolated-vm, which has
+      # no prebuilt binary for every Node version the runner may pin.
       - name: Install n8n-nodes-starter dependencies
         if: steps.gate.outputs.skip != 'true'
         working-directory: starter
-        run: npm ci --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       # The CLI detects the package manager from `npm_config_user_agent` and
       # writes it into the generated CI workflows, so pin it to npm. The git

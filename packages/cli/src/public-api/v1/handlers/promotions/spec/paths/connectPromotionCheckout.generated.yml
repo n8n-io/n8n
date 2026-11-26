@@ -7,8 +7,8 @@ description: |-
 
   Prepares the environment on the instance that handles the request. For a Git provider, this clones the configured branch into local storage. Safe to call repeatedly. This call is optional: other operations prepare the environment when they need it. Another operation on the same environment returns 423.
 
-  Requires the `promotions:connect` API key scope.
-x-required-scope: promotions:connect
+  Requires the `promotions:manageEnvironments` API key scope.
+x-required-scope: promotions:manageEnvironments
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:

@@ -7,10 +7,8 @@ The descriptor `id` must match the backend module id
 (`packages/cli/src/modules/type-availability-policies`). Both `settings.activeModules` and
 `/rest/module-settings` are keyed by that string, and a mismatch fails silently.
 
-The module is license-gated on `feat:typeAvailabilityPolicies` and is a default module. The policy
-pages under Settings > Security stay hidden until
-`N8N_ENV_FEAT_NODE_AND_CREDENTIAL_POLICIES_SETTINGS=true`. The shell checks this flag in
-`useTypePoliciesSettingsFlag`, because a module cannot import `useEnvFeatureFlag`.
+The module is license-gated on `feat:typeAvailabilityPolicies` and is not a default module. Enable it
+in a dev instance with `N8N_ENABLED_MODULES=type-availability-policies`.
 
 `useTypeAvailabilityPoliciesStore` answers whether a project may use a node type or a credential
 type. The store is passive: it does not watch the route, because the projects store lives in the
@@ -43,6 +41,14 @@ A 409 with no new version means the server refuses to edit the policy in place, 
 several attached documents or shares one. The save returns `notEditable`, the page says so once,
 and the store sets `notEditable` for that kind. Later saves of that kind are not sent until a load
 finds a newer version.
+
+The landing page lists the team projects from `GET /project-policies` through
+`useProjectPolicies()`. Each entry covers both kinds, so a project policy is one card. "Add project
+policy" calls `POST /project-policies`, which gives the project both kinds in one write. The page
+reads the list again after each add, also when the admin closed the dialog before the add ended. A
+409 means another admin added the policy first: the dialog keeps its error and the page reads the
+list again. If the first list read fails, the page shows the Global section only. A later read that
+fails keeps the last list, and a read that ends after a newer one is ignored.
 
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies

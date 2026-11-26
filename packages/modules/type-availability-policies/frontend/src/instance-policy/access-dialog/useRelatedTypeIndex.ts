@@ -34,8 +34,8 @@ function indexOf(nodeTypes: readonly INodeTypeDescription[]): CredentialTypeInde
 }
 
 /**
- * Loads the node and credential type descriptions and the access of the types for an access
- * dialog, and turns related types into the sections that the dialog shows.
+ * Loads the node and credential type descriptions and the access and usage of the types for an
+ * access dialog, and turns related types into the sections that the dialog shows.
  */
 export function useRelatedTypeIndex() {
 	const i18n = useI18n();
@@ -48,6 +48,7 @@ export function useRelatedTypeIndex() {
 	onMounted(async () => {
 		// A failed earlier read leaves the dropdowns disabled, so each open tries again.
 		void instancePolicy.loadAccess();
+		void instancePolicy.loadMissingUsage();
 		try {
 			await typeDescriptions.load();
 			typesLoaded.value = true;

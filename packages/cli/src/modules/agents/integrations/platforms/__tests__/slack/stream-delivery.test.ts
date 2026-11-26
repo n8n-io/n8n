@@ -282,7 +282,7 @@ describe('Slack stream delivery', () => {
 		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
 		const consumer = new AgentChatStreamConsumer({
 			disableStreaming: false,
-			maxMessageLength: new SlackIntegration(mock()).maxMessageLength,
+			maxMessageLength: new SlackIntegration(mock(), mock()).maxMessageLength,
 			logger,
 			postErrorToThread,
 			handleSuspension: vi.fn().mockResolvedValue('skipped'),

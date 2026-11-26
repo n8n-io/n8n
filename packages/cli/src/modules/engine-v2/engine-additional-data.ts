@@ -96,18 +96,18 @@ export class EngineAdditionalDataBuilder {
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly codeExecutionBackend: CodeExecutionBackend,
-	) {
-		// DI injects `undefined` when no module has set a backend yet.
-		if (!codeExecutionBackend) {
-			throw new UnexpectedError('Code execution backend is not set');
-		}
-	}
+	) {}
 
 	build(
 		context: AdditionalDataContext,
 		credentialsHelper: ICredentialsHelper,
 		dataTableProxyProvider: DataTableProxyProvider,
 	): IWorkflowExecuteAdditionalData {
+		// DI injects `undefined` when the process started no code execution backend.
+		if (!this.codeExecutionBackend) {
+			throw new UnexpectedError('Code execution backend is not set');
+		}
+
 		const webhookBase = this.urlService.getWebhookBaseUrl();
 		const testWebhookBase = this.urlService.getTestWebhookBaseUrl();
 		const { endpoints } = this.globalConfig;

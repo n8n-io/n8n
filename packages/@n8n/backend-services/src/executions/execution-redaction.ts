@@ -44,6 +44,12 @@ export type RedactableExecution = {
 		'resultData' | 'executionData' | 'redactionInfo' | 'pushRef' | 'pushRefUserId'
 	>;
 	workflowData: Pick<IWorkflowBase, 'settings' | 'nodes'>;
+	/** Highlighted data. Redaction clears it together with the run data. */
+	customData?: Record<string, string>;
+	/** True when the read skipped the run data because it is too large to display. */
+	dataTooLargeToDisplay?: boolean;
+	/** Where the run data is stored: `'db'`, or a blob store such as `'fs'` or `'s3'`. */
+	storedAt?: string;
 };
 
 /** Narrows a loaded execution to one the redaction strategies can process. */

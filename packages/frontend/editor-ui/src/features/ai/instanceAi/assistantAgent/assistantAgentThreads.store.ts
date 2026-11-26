@@ -166,17 +166,22 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		if (current === undefined || total > current) creditsUsed.value.set(threadId, total);
 	}
 
-	/** Loads the stored credit total of a thread, so the total shows after a reload. */
-	async function loadThreadCredits(threadId: string): Promise<void> {
+	/**
+	 * Loads the stored credit total of a thread, so the total shows after a reload.
+	 * Returns `false` when the load failed, so the caller does not read a missing total as zero.
+	 */
+	async function loadThreadCredits(threadId: string): Promise<boolean> {
 		try {
 			const { creditsUsed: total } = await fetchAssistantAgentThreadCredits(
 				rootStore.restApiContext,
 				threadId,
 			);
 			if (total !== null) setThreadCreditsUsed(threadId, total);
+			return true;
 		} catch (error) {
 			// Best effort: the header shows no thread total.
 			console.error('Failed to load Assistant agent thread credits', error);
+			return false;
 		}
 	}
 

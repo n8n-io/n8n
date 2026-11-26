@@ -4,12 +4,16 @@ import {
 	discoverPublicSkillSourceSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	projectSkillDetailsForModel,
 	SKILL_WORKFLOW_MENTION_HINT,
+	skillReferenceReadError,
 	SKILLS_MAX_PAGE_SIZE,
+	skillReferenceReadShape,
 	skillScopeSchema,
 	type InstanceAiPermissionMode,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
@@ -80,9 +84,10 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Read a skill with its instructions, references, skillHash and the agents that use it',
+			'Read a skill with its instructions, reference paths, bounded text content, skillHash and the agents that use it. Read omitted paths separately with referencePath.',
 		),
 	skillId: skillIdField,
+	...skillReferenceReadShape,
 });
 
 const createAction = z.object({
@@ -104,7 +109,9 @@ const updateAction = z.object({
 	name: skillContentShape.name.optional(),
 	description: skillContentShape.description.optional(),
 	instructions: skillContentShape.instructions.optional(),
-	references: skillContentShape.references,
+	references: skillContentShape.references.describe(
+		'Replace the text files. Read all parts of the files you want to keep before replacing them. Binary files you do not name stay in the skill.',
+	),
 	scope: scopeField.optional(),
 	projectId: projectIdField,
 	availableToAssistant: availableToAssistantField,
@@ -173,10 +180,14 @@ function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 	};
 }
 
-function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
+function details(
+	detail: SkillDetail,
+	assistantSkillsEnabled: boolean,
+	reference?: SkillReferenceRead,
+) {
 	return {
 		...summary(detail, assistantSkillsEnabled),
-		skill: detail.skill,
+		...projectSkillDetailsForModel(detail.skill, reference),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
 		syncedFrom: detail.syncedFrom,
@@ -385,7 +396,7 @@ async function handleImportFromSource(
 		// The service applies the import rules, so the card names what the import takes.
 		const { source, importable, failed } = await sources.checkImport(input);
 		const target = await audience(context, input.scope, input.projectId);
-		const { label, ref, path } = source;
+		const { label, ref } = source;
 		const names = importable.map(({ name }) => name).join(', ');
 		const selection =
 			importable.length === 1 ? '1 synced skill' : `${importable.length} synced skills`;
@@ -397,7 +408,7 @@ async function handleImportFromSource(
 					: ` ${failed.length} selected skills cannot come in.`;
 		return await ctx.suspend({
 			requestId: nanoid(),
-			resourceName: `${label}${ref ? ` · ${ref}` : ''}${path ? ` · ${path}` : ''}`,
+			resourceName: `${label}${ref ? ` · ${ref}` : ''}`,
 			message: `Connect this source and import ${selection} ${target}: ${names}.${leftOut}`,
 			severity: 'warning',
 		});
@@ -460,8 +471,11 @@ export function createSkillsTool(context: InstanceAiContext) {
 						skills: data.map((item) => summary(item, service.assistantSkillsEnabled)),
 					};
 				}
-				case 'get':
-					return details(await service.get(input.skillId), service.assistantSkillsEnabled);
+				case 'get': {
+					const reason = skillReferenceReadError(input);
+					if (reason) return { success: false, refused: true, reason };
+					return details(await service.get(input.skillId), service.assistantSkillsEnabled, input);
+				}
 				case 'create':
 					return await handleCreate(context, service, input, ctx);
 				case 'update':

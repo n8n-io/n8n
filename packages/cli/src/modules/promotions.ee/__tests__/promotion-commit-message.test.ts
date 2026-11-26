@@ -70,4 +70,18 @@ describe('buildSelectionPromotionCommitMessage', () => {
 		expect(message).toContain('- WF 49 (w49)\n- …and 2 more');
 		expect(message).not.toContain('WF 50');
 	});
+
+	it('counts the selected credentials in the title and lists them', () => {
+		expect(
+			buildSelectionPromotionCommitMessage({
+				projectName,
+				added: [],
+				updated: [],
+				removed: [],
+				credentials: [{ id: 'c1', name: 'CRM key' }],
+			}),
+		).toBe(
+			['Promote 1 credential from "Marketing Ops"', 'Credentials:\n- CRM key (c1)'].join('\n\n'),
+		);
+	});
 });

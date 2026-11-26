@@ -18,6 +18,8 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
@@ -39,6 +41,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -108,6 +111,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedbackService,
 	InstanceAiSkillService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
@@ -185,6 +189,7 @@ import {
 	UserError,
 } from '@n8n/errors';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -263,6 +268,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
+import { appNamespaceCandidates } from './app-namespace-candidates';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
 	isEngineV2ExecutionUnsettled,
@@ -435,6 +441,8 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
+	/** Canvas drafts parsed from the builder's source before the save. */
+	draftWorkflowPreviewEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -457,6 +465,9 @@ export interface InstanceAiFeatureFlags {
 	workflowsInSkillsEnabled?: boolean;
 	preferencesNoteVariant?: string;
 }
+
+const AGENT_FEEDBACK_SUMMARY_MAX_LENGTH = 1000;
+const AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH = 100;
 
 @Service()
 export class InstanceAiAdapterService {
@@ -615,6 +626,8 @@ export class InstanceAiAdapterService {
 			onHelperUsage?: InstanceAiContext['onHelperUsage'];
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
+			/** Unlabeled transport for non-LLM utility fetches such as the models.dev catalog. */
+			catalogFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
 			allowSendingParameterValues?: boolean;
 		},
@@ -644,6 +657,7 @@ export class InstanceAiAdapterService {
 			utilityModelId,
 			onHelperUsage,
 			modelFetch,
+			catalogFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
@@ -684,6 +698,7 @@ export class InstanceAiAdapterService {
 			...(utilityModelId ? { utilityModelId } : {}),
 			...(onHelperUsage ? { onHelperUsage } : {}),
 			modelFetch,
+			...(catalogFetch ? { catalogFetch } : {}),
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
@@ -727,6 +742,10 @@ export class InstanceAiAdapterService {
 			// Absent only in test contexts constructed without DI.
 			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
+				: {}),
+			// Reports go out only as telemetry. Without it the tool would make calls that do nothing.
+			...(this.globalConfig.diagnostics.enabled
+				? { agentFeedbackService: this.createAgentFeedbackAdapter(user) }
 				: {}),
 			skillService: this.getSkillService(
 				user,
@@ -884,6 +903,9 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			draftWorkflowPreviewEnabled:
+				flags[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG] ===
+				INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
@@ -929,6 +951,33 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/**
+	 * The summary and the tool name are agent-written text, so secrets and personal data
+	 * are removed here. Redaction runs on the full text before the cut, so a secret
+	 * that crosses the cut is still found.
+	 */
+	private createAgentFeedbackAdapter(user: User): InstanceAiAgentFeedbackService {
+		return {
+			send: ({ category, severity, summary, toolName, threadId, runId }) => {
+				this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK, {
+					user_id: user.id,
+					...(threadId ? { thread_id: threadId } : {}),
+					...(runId ? { run_id: runId } : {}),
+					category,
+					severity,
+					summary: redactTelemetryText(summary, { maxLength: AGENT_FEEDBACK_SUMMARY_MAX_LENGTH }),
+					...(toolName
+						? {
+								tool_name: redactTelemetryText(toolName, {
+									maxLength: AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH,
+								}),
+							}
+						: {}),
+				});
+			},
 		};
 	}
 
@@ -1774,6 +1823,29 @@ export class InstanceAiAdapterService {
 				await notifyWorkflowUpdated(workflowId);
 
 				return { activeVersionId: wf.activeVersionId };
+			},
+
+			async getPublishReviewBlock(workflowId: string, versionId?: string) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+				if (!workflow) throw new WorkflowNotFoundError(workflowId);
+				// The publish refuses archived workflows with its own error, and they cannot go to review.
+				if (workflow.isArchived) return undefined;
+
+				const targetVersionId = versionId ?? workflow.versionId;
+				// Same as the publish: the live version goes live again without the review rules.
+				if (targetVersionId === workflow.activeVersionId) return undefined;
+
+				try {
+					await Container.get(WorkflowPublishGuardProxy).assertCanPublish(workflowId, {
+						versionId: targetVersionId,
+					});
+					return undefined;
+				} catch (error) {
+					if (error instanceof WorkflowPublishBlockedError) return error.details.reason;
+					throw error;
+				}
 			},
 
 			async unpublish(workflowId: string) {
@@ -3793,17 +3865,21 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				try {
-					return await apps.createApp(
-						projectId,
-						CreateAppDto.parse({ name, namespace, visibility }),
-						{ id, actor },
-					);
-				} catch (error) {
-					// The namespace is the only unique field that the user picks.
-					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
-					throw error;
+				// The user doesn't see the namespace on the plan card, so a taken
+				// namespace moves on to the next numbered one instead of failing.
+				for (const candidate of appNamespaceCandidates(namespace, apps.maxNamespaceLength())) {
+					try {
+						return await apps.createApp(
+							projectId,
+							CreateAppDto.parse({ name, namespace: candidate, visibility }),
+							{ id, actor },
+						);
+					} catch (error) {
+						// The namespace is the only unique field that the Assistant picks.
+						if (!(error instanceof ConflictError)) throw error;
+					}
 				}
+				throw new AppNamespaceTakenError(namespace);
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');
@@ -3844,6 +3920,7 @@ export class InstanceAiAdapterService {
 					appId,
 					dto.baseVersionId,
 					dto.bindings,
+					{ threadId, source: 'assistant' },
 				);
 				return { ...result, types: renderBindingTypes(result.bindings) };
 			},

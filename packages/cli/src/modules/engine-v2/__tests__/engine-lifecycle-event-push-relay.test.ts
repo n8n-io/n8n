@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import type { EngineV2PushSession } from '@/services/engine-v2-push-session';
 
 import { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 
@@ -79,7 +80,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 	const sentOfType = <T extends PushMessage['type']>(type: T) =>
 		sent().filter((message): message is Extract<PushMessage, { type: T }> => message.type === type);
 
-	const register = (overrides: { trigger?: { nodeName: string; outputs: never } } = {}) =>
+	const register = (overrides: Partial<Pick<EngineV2PushSession, 'trigger' | 'start'>> = {}) =>
 		registry.register(EXECUTION_ID, {
 			pushRef: PUSH_REF,
 			userId: USER_ID,
@@ -114,13 +115,42 @@ describe('EngineLifecycleEventPushRelay', () => {
 		}
 	});
 
-	it('never sends executionStarted', () => {
-		// Would overwrite the editor's existing run data with an empty scaffold.
-		register();
+	describe('execution:started', () => {
+		const start = {
+			mode: 'webhook' as const,
+			source: 'instance_ai' as const,
+			workflowName: 'My workflow',
+			flattedRunData: '[{"Edit Fields":"1"},[]]',
+		};
 
-		relay.relay([executionStarted, stepStarted, stepCompleted]);
+		it('sends executionStarted from what the dispatcher prepared', () => {
+			register({ start });
 
-		expect(sentOfType('executionStarted')).toHaveLength(0);
+			relay.relay([executionStarted]);
+
+			expect(sent()).toEqual([
+				{
+					type: 'executionStarted',
+					data: {
+						executionId: EXECUTION_ID,
+						workflowId: WORKFLOW_ID,
+						mode: 'webhook',
+						source: 'instance_ai',
+						workflowName: 'My workflow',
+						startedAt: new Date(executionStarted.at),
+						flattedRunData: start.flattedRunData,
+					},
+				},
+			]);
+		});
+
+		it('sends it once, however often the event is redelivered', () => {
+			register({ start });
+
+			relay.relay([executionStarted, executionStarted]);
+
+			expect(sentOfType('executionStarted')).toHaveLength(1);
+		});
 	});
 
 	describe('the trigger', () => {
@@ -131,14 +161,16 @@ describe('EngineLifecycleEventPushRelay', () => {
 				pushRef: PUSH_REF,
 				workflowId: WORKFLOW_ID,
 				trigger: { nodeName: TRIGGER_NAME, outputs: triggerOutputs },
+				start: { mode: 'manual', flattedRunData: '[{}]' },
 			});
 
-		it('reports its run, because the engine never announces it', () => {
+		it('reports its run after the run is announced, because the engine never announces it', () => {
 			registerWithTrigger();
 
 			relay.relay([executionStarted]);
 
 			expect(sent().map((message) => message.type)).toEqual([
+				'executionStarted',
 				'nodeExecuteBefore',
 				'nodeExecuteAfter',
 				'nodeExecuteAfterData',
