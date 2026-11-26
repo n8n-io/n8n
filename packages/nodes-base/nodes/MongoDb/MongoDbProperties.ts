@@ -208,6 +208,7 @@ export const nodeProperties: INodeProperties[] = [
 				displayName: 'Sort (JSON Format)',
 				name: 'sort',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					rows: 2,
 				},
@@ -234,6 +235,7 @@ export const nodeProperties: INodeProperties[] = [
 				displayName: 'Projection (JSON Format)',
 				name: 'projection',
 				type: 'json',
+				validateType: 'object',
 				typeOptions: {
 					rows: 4,
 				},
@@ -422,6 +424,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayName: 'Index Definition',
 		name: 'indexDefinition',
 		type: 'json',
+		validateType: 'object',
 		displayOptions: {
 			show: {
 				operation: ['createSearchIndex', 'updateSearchIndex'],
