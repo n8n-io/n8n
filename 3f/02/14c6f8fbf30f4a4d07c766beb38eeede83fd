@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/NextCloud/actions/file/createFromText.operation.ts
+  s_e48526bb13ba4b::t_1f319f9ea1b47f 11
+  s_e48526bb13ba4b::t_95dea51f71d1ad 81-82
+  s_e48526bb13ba4b::t_1fb24eb92049e8 185,197,205,209
+packages/nodes-base/nodes/NextCloud/test/search.operation.test.ts
+  s_e48526bb13ba4b::t_b686b661a33873 92-97,100-104
+  s_e48526bb13ba4b::t_bfe84a9fe480ef 8
+  s_e48526bb13ba4b::t_a2b294b0cb8a95 319-330
+packages/nodes-base/nodes/NextCloud/actions/folder/search.operation.ts
+  s_e48526bb13ba4b::t_0b34dfde1cfc3a 226-229
+  s_e48526bb13ba4b::t_c4b4f32292c400 214-217
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_e48526bb13ba4b::t_bfe84a9fe480ef 8-13,207-229
+  s_50795f9787e625::t_99752a47460ecd 230
+packages/nodes-base/nodes/NextCloud/test/createFromText.operation.test.ts
+  s_e48526bb13ba4b::t_09a6e4c0fb995c 60
+  s_e48526bb13ba4b::t_1bc375c9345761 160
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_50795f9787e625::t_d5beada29aecdc 146,204,257,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f0214c6f8fbf30f4a4d07c766beb38eeede83fd",
+  "prompts": {},
+  "sessions": {
+    "s_50795f9787e625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42d12515-ea53-4ce2-9f84-b88ec831710f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_e48526bb13ba4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641211a8-07f9-490c-a870-ae90c9d0a5f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
