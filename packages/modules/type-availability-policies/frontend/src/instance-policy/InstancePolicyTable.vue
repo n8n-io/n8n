@@ -375,7 +375,6 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			show-select
 			item-selectable="editable"
 			:select-row-label="selectRowLabel"
-			:select-all-items="filteredRows"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"

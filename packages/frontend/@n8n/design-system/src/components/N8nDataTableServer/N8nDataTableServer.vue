@@ -37,7 +37,6 @@ import type {
 	Row,
 	RowSelectionState,
 	SortingState,
-	Table,
 	Updater,
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
@@ -78,13 +77,6 @@ const props = withDefaults(
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
 		/** The accessible name of the checkbox that selects the rows of the page. */
 		selectAllLabel?: string;
-		/**
-		 * The rows that the header checkbox selects. By default it selects the rows of this page.
-		 * A table that pages on the client can pass every row that matches its filters, so the
-		 * header selects them on every page. `itemSelectable` applies to them too. Not for use with
-		 * `returnObject`.
-		 */
-		selectAllItems?: T[];
 		/** The accessible name of the checkbox of a row, for example "Select Slack". */
 		selectRowLabel?: (row: T) => string;
 		pageSizes?: number[];
@@ -132,7 +124,6 @@ const props = withDefaults(
 	{
 		itemSelectable: undefined,
 		selectAllLabel: undefined,
-		selectAllItems: undefined,
 		selectRowLabel: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
@@ -487,12 +478,10 @@ const selectColumn: ColumnDef<T> = {
 	// 16px leading inset, 16px checkbox, 8px trailing padding.
 	size: 40,
 	enablePinning: true,
-	header: ({ table }) =>
+	header: () =>
 		h(N8nCheckbox, {
-			...(props.selectAllItems ? selectAllState(props.selectAllItems) : pageSelectAllState(table)),
-			'aria-label':
-				props.selectAllLabel ??
-				t(props.selectAllItems ? 'dataTable.selectAllPages' : 'dataTable.selectAll'),
+			...pageSelectAllState(),
+			'aria-label': props.selectAllLabel ?? t('dataTable.selectAll'),
 		}),
 	cell: ({ row }) => {
 		return h(N8nCheckbox, {
@@ -518,25 +507,17 @@ type SelectAllState = {
 	'onUpdate:modelValue': (value: boolean) => void;
 };
 
-// The page variants compare only the rows of this page, so rows that stay selected on other pages
-// do not make the header checkbox look partly checked.
-function pageSelectAllState(table: Table<T>): SelectAllState {
-	return {
-		modelValue: table.getIsAllPageRowsSelected(),
-		indeterminate: table.getIsSomePageRowsSelected(),
-		'onUpdate:modelValue': (value) => table.toggleAllRowsSelected(value),
-	};
-}
-
-function selectAllState(items: T[]): SelectAllState {
-	const ids = items.filter(isItemSelectable).map((item, index) => getRowId(item, index));
+// Reads the rows from props, so that the header updates when the page changes. Rows that stay
+// selected on other pages do not make the header checkbox look checked.
+function pageSelectAllState(): SelectAllState {
+	const ids = props.items.filter(isItemSelectable).map((item, index) => getRowId(item, index));
 	const selectedCount = ids.filter((id) => rowSelection.value[id]).length;
 	return {
 		modelValue: ids.length > 0 && selectedCount === ids.length,
 		indeterminate: selectedCount > 0 && selectedCount < ids.length,
 		disabled: ids.length === 0,
 		'onUpdate:modelValue': (value) => {
-			// Ids outside `ids`, such as rows that a filter hides, keep their state.
+			// Ids outside `ids`, such as the rows of other pages, keep their state.
 			const next = { ...rowSelection.value };
 			for (const id of ids) {
 				if (value) next[id] = true;

@@ -73,7 +73,6 @@ export default {
 	'selectedItemsInfo.selectedMany': '{count} rows selected',
 	'selectedItemsInfo.clearSelection': 'Clear selection',
 	'dataTable.selectAll': 'Select all rows on this page',
-	'dataTable.selectAllPages': 'Select all rows',
 	'dataTable.selectRow': 'Select row',
 	'contextMenu.noItems': 'No items',
 	'codeDiff.couldNotReplace': 'Could not replace code',

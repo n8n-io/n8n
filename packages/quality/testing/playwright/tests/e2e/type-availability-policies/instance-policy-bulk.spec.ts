@@ -59,7 +59,7 @@ test.describe(
 			await expect(page.getRowAccess(SET.name)).toContainText('Allowed');
 		});
 
-		test('should select the rows of every page from the header and restrict them all', async ({
+		test('should select the rows of one page from the header and restrict them', async ({
 			n8n,
 			api,
 		}) => {
@@ -69,22 +69,26 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('node');
 
+			// One page shows 25 rows. The node catalog fills several pages, and only this page is selected.
 			await page.getSelectAllCheckbox().check();
-
-			// One page shows 25 rows. The node catalog fills several pages, and all are selected.
 			const selected = Number(
-				/(\d+) rows selected/.exec(await page.getSelectionBar().innerText())?.[1],
+				/(\d+) rows? selected/.exec(await page.getSelectionBar().innerText())?.[1],
 			);
-			expect(selected).toBeGreaterThan(25);
+			expect(selected).toBeGreaterThan(0);
+			expect(selected).toBeLessThanOrEqual(25);
+			await page.getSelectAllCheckbox().uncheck();
+			await expect(page.getSelectionBar()).toBeHidden();
+
+			await page.search(NO_OP.type);
+			await page.getSelectAllCheckbox().check();
+			await expect(page.getSelectionBar()).toContainText('1 row selected');
 			await page.getBulkButton('Restricted').click();
-			await page.getRestrictReviewButton(`Restrict ${selected}`).click();
+			await page.getRestrictReviewButton('Restrict 1').click();
 
 			await expect(page.getSelectionBar()).toBeHidden();
 			await n8n.page.reload();
 			await page.search(NO_OP.type);
 			await expect(page.getRowAccess(NO_OP.name)).toContainText('Restricted');
-			await page.search(SET.type);
-			await expect(page.getRowAccess(SET.name)).toContainText('Restricted');
 		});
 
 		test('should ask once before it restricts the selected node types that workflows use', async ({

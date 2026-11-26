@@ -563,7 +563,7 @@ describe('InstancePolicyTable', () => {
 
 			expect(rowCheckbox(getByRole, 'Bitly API')).toBeEnabled();
 			expect(rowCheckbox(getByRole, 'Slack API')).toBeDisabled();
-			expect(getByRole('checkbox', { name: 'Select all rows' })).toBeInTheDocument();
+			expect(getByRole('checkbox', { name: 'Select all rows on this page' })).toBeInTheDocument();
 		});
 
 		it('shows the bar with the count and the actions, and announces the count', async () => {
@@ -634,7 +634,7 @@ describe('InstancePolicyTable', () => {
 			expect(rowCheckbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');
 		});
 
-		it('selects every row that the search and the filter show, on all pages', async () => {
+		it('selects the rows of the page from the header, and keeps the rows of other pages', async () => {
 			const rows = [
 				...Array.from({ length: 30 }, (_, index) =>
 					row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
@@ -642,27 +642,36 @@ describe('InstancePolicyTable', () => {
 				row('readOnly', 'Read only', 'delegate', false),
 				row('restricted', 'Restricted type', 'deny'),
 			];
-			const { getByRole, getByTestId, emitted } = setup(rows);
-			const selectAll = getByRole('checkbox', { name: 'Select all rows' });
+			const { getByRole, getByTestId } = setup(rows);
+			const selectAll = () => getByRole('checkbox', { name: 'Select all rows on this page' });
+			const bar = () => within(getByTestId('selected-items-info'));
 
-			await userEvent.click(selectAll);
-			const bar = within(getByTestId('selected-items-info'));
-			// Every editable row, on both pages. The read-only row is left out.
-			expect(bar.getByText('31 rows selected')).toBeInTheDocument();
-			expect(selectAll).toHaveAttribute('aria-checked', 'true');
+			await userEvent.click(selectAll());
+			// The 25 rows of the first page, without the read-only row.
+			expect(bar().getByText('24 rows selected')).toBeInTheDocument();
+			expect(selectAll()).toHaveAttribute('aria-checked', 'true');
 
-			await userEvent.click(selectAll);
-			expect(getByTestId('policy-bulk-status')).toHaveTextContent('Selection cleared');
+			await fireEvent.click(getByTestId('pagination-next'));
+			expect(selectAll()).toHaveAttribute('aria-checked', 'false');
+			await userEvent.click(selectAll());
+			expect(bar().getByText('31 rows selected')).toBeInTheDocument();
 
-			// With a filter, only the rows that it shows.
+			// Clearing the second page keeps the rows of the first page.
+			await userEvent.click(selectAll());
+			expect(bar().getByText('24 rows selected')).toBeInTheDocument();
+		});
+
+		it('selects only the rows that the filter shows', async () => {
+			const { getByRole, getByTestId, emitted } = setup();
+
 			await openFilter(getByRole);
 			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
-			await userEvent.click(selectAll);
+			await userEvent.click(getByRole('checkbox', { name: 'Select all rows on this page' }));
 			expect(within(getByTestId('selected-items-info')).getByText('1 row selected')).toBeVisible();
 
 			await userEvent.click(getByTestId('policy-bulk-allow'));
 			expect(emitted('bulkChange')).toEqual([
-				[[{ name: 'restricted', label: 'Restricted type' }], 'allow'],
+				[[{ name: 'bitlyApi', label: 'Bitly API' }], 'allow'],
 			]);
 		});
 
@@ -675,7 +684,9 @@ describe('InstancePolicyTable', () => {
 			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
 			expect(rowCheckbox(getByRole, 'Bitly API')).toHaveAttribute('aria-checked', 'false');
 			expect(getByTestId('policy-bulk-status')).toHaveTextContent('Selection cleared');
-			await waitFor(() => expect(getByRole('checkbox', { name: 'Select all rows' })).toHaveFocus());
+			await waitFor(() =>
+				expect(getByRole('checkbox', { name: 'Select all rows on this page' })).toHaveFocus(),
+			);
 		});
 
 		it('keeps the focus on the action while it runs, then moves it to the select-all checkbox', async () => {
@@ -692,7 +703,9 @@ describe('InstancePolicyTable', () => {
 			expect(allow).toHaveFocus();
 
 			await rerender({ bulkBusy: false, selection: [] });
-			await waitFor(() => expect(getByRole('checkbox', { name: 'Select all rows' })).toHaveFocus());
+			await waitFor(() =>
+				expect(getByRole('checkbox', { name: 'Select all rows on this page' })).toHaveFocus(),
+			);
 		});
 
 		it('clears the selection when the admin presses Escape in the bar', async () => {

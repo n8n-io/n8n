@@ -528,40 +528,23 @@ describe('N8nDataTableServer', () => {
 		expect(emitted('update:selection').at(-1)).toEqual([[offPage]]);
 	});
 
-	it('selects the given rows on every page from the header when selectAllItems is set', async () => {
-		const otherPages = [itemFactory(), itemFactory()];
-		const notSelectable = itemFactory();
-		const allIds = [...items, ...otherPages].map((item) => item.id);
-		const hidden = 'hidden-by-a-filter';
-		const { getByRole, emitted, rerender } = render(N8nDataTableServer<Item>, {
+	it('updates the header checkbox when the rows of the page change', async () => {
+		const nextPage = items.map((item) => ({ ...item, id: `${item.id}-next` }));
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
 			props: {
 				items,
 				headers,
-				itemsLength: allIds.length + 1,
+				itemsLength: 10,
 				showSelect: true,
-				selection: [hidden],
-				selectAllItems: [...items, ...otherPages, notSelectable],
-				itemSelectable: (item: Item) => item.id !== notSelectable.id,
+				selection: items.map((item) => item.id),
 			},
 		});
-		// The default name says that the header selects more than the page.
-		const header = getByRole('checkbox', { name: 'Select all rows' });
-		expect(header).toHaveAttribute('aria-checked', 'false');
+		const header = () => container.querySelector<HTMLElement>('thead [role="checkbox"]')!;
+		expect(header()).toHaveAttribute('aria-checked', 'true');
 
-		await userEvent.click(header);
-		// Every selectable row, on all pages. The row that `itemSelectable` refuses is left out.
-		expect(emitted('update:selection').at(-1)).toEqual([[hidden, ...allIds]]);
-
-		await rerender({ selection: [hidden, ...allIds] });
-		expect(header).toHaveAttribute('aria-checked', 'true');
-
-		await rerender({ selection: [hidden, otherPages[0].id] });
-		expect(header).toHaveAttribute('aria-checked', 'mixed');
-
-		// Clearing keeps the ids outside the list, such as rows that a filter hides.
-		await rerender({ selection: [hidden, ...allIds] });
-		await userEvent.click(header);
-		expect(emitted('update:selection').at(-1)).toEqual([[hidden]]);
+		// The rows of the first page stay selected, but none of the new page is.
+		await rerender({ items: nextPage });
+		expect(header()).toHaveAttribute('aria-checked', 'false');
 	});
 
 	it('should render one skeleton row per page size while the first page loads', () => {

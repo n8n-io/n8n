@@ -84,9 +84,9 @@ export class InstancePolicyPage extends BasePage {
 		return this.page.getByRole('checkbox', { name: `Select ${displayName}` });
 	}
 
-	/** Selects every row that the search and the filter show, on all pages. */
+	/** Selects the rows of the current page. */
 	getSelectAllCheckbox(): Locator {
-		return this.page.getByRole('checkbox', { name: 'Select all rows' });
+		return this.page.getByRole('checkbox', { name: 'Select all rows on this page' });
 	}
 
 	/** The bar that shows the count of the selected rows and the bulk actions. */
