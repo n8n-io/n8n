@@ -67,6 +67,31 @@ for (const mode of ['filesystem', 's3'] as const) {
 			expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
 		});
 
+		it('should restore a file under the temporary path in `trigger` mode', async () => {
+			const executionId = '999';
+			const incorrectFileId = 'workflows/6HYhhKmJch2cYxGj/executions/temp/binary_data/a5c3f1ed';
+			const run = toIRun({ binary: { data: { id: `${mode}:${incorrectFileId}` } } });
+
+			await restoreBinaryDataId(run, executionId, 'trigger');
+
+			const correctFileId = incorrectFileId.replace('temp', executionId);
+			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+			expect(getDataId(run, 'binary')).toBe(`${mode}:${correctFileId}`);
+		});
+
+		it.each(['integrated', 'manual', 'retry'] as const)(
+			'should leave a file under the temporary path in `%s` mode',
+			async (executionMode) => {
+				const binaryDataId = `${mode}:workflows/6HYhhKmJch2cYxGj/executions/temp/binary_data/a5c3f1ed`;
+				const run = toIRun({ binary: { data: { id: binaryDataId } } });
+
+				await restoreBinaryDataId(run, '999', executionMode);
+
+				expect(binaryDataService.rename).not.toHaveBeenCalled();
+				expect(getDataId(run, 'binary')).toBe(binaryDataId);
+			},
+		);
+
 		it('should restore if binary data ID in a given form-data name is missing execution ID', async () => {
 			const workflowId = '6HYhhKmJch2cYxGj';
 			const executionId = '999';

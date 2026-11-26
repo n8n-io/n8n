@@ -11,7 +11,7 @@ import { DatabaseManager } from '@/binary-data/database.manager';
  * time of writing a binary data file, its name is missing the execution ID.
  * This function restores the ID in the file name and run data reference.
  *
- * This edge case can happen only for a Webhook node that accepts binary data,
+ * This happens for a Webhook node or a trigger node that produces binary data,
  * when the binary data manager is set to persist this binary data.
  *
  * ```txt
@@ -95,12 +95,21 @@ export async function assignDatabaseFilesToExecution(run: IRun, executionId: str
 	}
 }
 
+/**
+ * True for a mode whose first node stores its files before the execution exists.
+ * In another mode, a file under the temporary path can belong to another execution.
+ */
+const storesFilesBeforeItsExecution = (mode: WorkflowExecuteMode) =>
+	mode === 'webhook' || mode === 'trigger';
+
+const keepsBinaryDataInMemory = () => Container.get(BinaryDataConfig).mode === 'default';
+
 export async function restoreBinaryDataId(
 	run: IRun,
 	executionId: string,
 	workflowExecutionMode: WorkflowExecuteMode,
 ) {
-	if (workflowExecutionMode !== 'webhook' || Container.get(BinaryDataConfig).mode === 'default') {
+	if (!storesFilesBeforeItsExecution(workflowExecutionMode) || keepsBinaryDataInMemory()) {
 		return;
 	}
 

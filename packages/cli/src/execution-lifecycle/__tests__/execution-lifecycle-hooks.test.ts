@@ -79,6 +79,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowStaticDataService = mockInstance(WorkflowStaticDataService);
 	const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
 	const binaryDataService = mockInstance(BinaryDataService);
+	mockInstance(BinaryDataConfig, { mode: 'default' });
 	const binaryDataAccessService = mockInstance(BinaryDataAccessService);
 	const databaseManager = mockInstance(DatabaseManager);
 	const databaseFileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
