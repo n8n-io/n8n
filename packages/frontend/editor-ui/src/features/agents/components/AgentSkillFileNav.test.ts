@@ -102,6 +102,50 @@ describe('AgentSkillFileNav', () => {
 		).toBeNull();
 	});
 
+	it('shows the notes that block an agent as a warning in the agent context, and the other notes as info', async () => {
+		flag.enabled = true;
+		searchWorkflows.mockResolvedValue([
+			{
+				id: 'wf1',
+				nodes: [{ type: SCHEDULE_TRIGGER_NODE_TYPE, name: 'Schedule' }],
+				activeVersionId: null,
+				settings: {},
+			},
+		]);
+		const { container } = renderComponent({
+			props: {
+				skill: { ...MENTIONING_SKILL, references: [] },
+				selectedPath: 'SKILL.md',
+				instanceSkill: true,
+				agentContext: true,
+			},
+		});
+
+		await waitFor(() =>
+			expect(byTestId(container, 'agent-skill-workflow-warnings')).toHaveAttribute(
+				'aria-label',
+				"To use this workflow in agents, add the 'When Executed by Another Workflow' trigger. To use this workflow in a published agent, publish the workflow.",
+			),
+		);
+		expect(byTestId(container, 'agent-skill-workflow-notes')).toHaveAttribute(
+			'aria-label',
+			"Agents can use this workflow only in its own project. To use it in other projects, share it with them and set 'This workflow can be called by' to 'Any workflow'.",
+		);
+	});
+
+	it('shows no warning outside the agent context', async () => {
+		flag.enabled = true;
+		searchWorkflows.mockResolvedValue([
+			{ id: 'wf1', nodes: [], activeVersionId: null, settings: {} },
+		]);
+		const { container } = renderComponent({
+			props: { skill: { ...MENTIONING_SKILL, references: [] }, selectedPath: 'SKILL.md' },
+		});
+
+		await waitFor(() => expect(byTestId(container, 'agent-skill-workflow-notes')).not.toBeNull());
+		expect(byTestId(container, 'agent-skill-workflow-warnings')).toBeNull();
+	});
+
 	it('adds the MCP notes for a skill available to MCP and the access note for an instance skill', async () => {
 		flag.enabled = true;
 		searchWorkflows.mockResolvedValue([

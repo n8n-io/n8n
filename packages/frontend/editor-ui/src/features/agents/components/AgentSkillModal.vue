@@ -1761,6 +1761,7 @@ function onRemove() {
 						:change-counts="diffCounts"
 						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
+						:agent-context="!!props.data.agentId"
 						read-only
 						@select="selectedPath = $event"
 					/>
@@ -1782,6 +1783,7 @@ function onRemove() {
 						:mention-project-name="mentionProjectName"
 						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
+						:agent-context="!!props.data.agentId"
 						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"

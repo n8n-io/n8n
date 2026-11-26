@@ -11,6 +11,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '../types';
 import { useSkillWorkflowNoteData } from '@/features/agents/composables/useSkillWorkflowNoteData';
 import {
+	AGENT_BLOCKING_NOTES,
 	getSkillWorkflowNotes,
 	type SkillWorkflowNote,
 } from '@/features/agents/utils/skillWorkflowNotes';
@@ -34,6 +35,7 @@ const props = withDefaults(
 		mentionProjectName?: string;
 		instanceSkill?: boolean;
 		availableToMcp?: boolean;
+		agentContext?: boolean;
 	}>(),
 	{
 		addReferenceDisabled: false,
@@ -43,6 +45,7 @@ const props = withDefaults(
 		mentionProjectName: undefined,
 		instanceSkill: false,
 		availableToMcp: false,
+		agentContext: false,
 	},
 );
 
@@ -79,13 +82,20 @@ const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
 const workflowRows = computed(() =>
 	mentionedWorkflows.value.map((workflow) => {
 		const data = noteData.value.get(workflow.workflowId);
-		const notes = data
+		const allNotes = data
 			? getSkillWorkflowNotes(data, {
 					instanceSkill: props.instanceSkill,
 					availableToMCP: props.availableToMcp,
-				}).map((note) => i18n.baseText(NOTE_TEXT_KEYS[note]))
+				})
 			: [];
-		return { ...workflow, notes };
+		const isWarning = (note: SkillWorkflowNote) =>
+			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
+		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
+		return {
+			...workflow,
+			warnings: allNotes.filter(isWarning).map(toText),
+			notes: allNotes.filter((note) => !isWarning(note)).map(toText),
+		};
 	}),
 );
 
@@ -277,6 +287,23 @@ function testIdForPath(path: string) {
 						data-attr="agent-skill-workflow-notes"
 					>
 						<N8nIcon icon="info" :size="16" />
+					</span>
+				</N8nTooltip>
+				<N8nTooltip v-if="workflow.warnings.length > 0" as-child placement="right">
+					<template #content>
+						<p v-for="warning in workflow.warnings" :key="warning" :class="$style.note">
+							{{ warning }}
+						</p>
+					</template>
+					<span
+						:class="[$style.noteIcon, $style.invalidIcon]"
+						tabindex="0"
+						role="img"
+						:aria-label="workflow.warnings.join(' ')"
+						data-testid="agent-skill-workflow-warnings"
+						data-attr="agent-skill-workflow-warnings"
+					>
+						<N8nIcon icon="triangle-alert" :size="16" />
 					</span>
 				</N8nTooltip>
 			</div>
