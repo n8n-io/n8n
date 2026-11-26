@@ -59,6 +59,7 @@ jobs:
       n8n_pc: ${{ steps.pin.outputs.n8n_pc }}
       runners: ${{ steps.pin.outputs.runners }}
       runners_distroless: ${{ steps.pin.outputs.runners_distroless }}
+      n8n_stable: ${{ steps.pin.outputs.n8n_stable }}
     steps:
       - name: Checkout CI helpers
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -113,6 +114,13 @@ jobs:
           DISTROLESS_TAG: ${{ steps.context.outputs.runners_distroless_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
 
+      - name: Resolve 2.x stable image digest
+        id: stable_digest
+        if: steps.context.outputs.channel == '3.x'
+        env:
+          N8N_TAG: ghcr.io/n8n-io/n8n:stable
+        run: node .github/scripts/docker/get-manifest-digests.mjs
+
       - name: Pin image references by digest
         id: pin
         env:
@@ -125,6 +133,8 @@ jobs:
           RUNNERS_DIGEST: ${{ steps.digests.outputs.runners_digest }}
           RUNNERS_DISTROLESS_IMAGE: ${{ steps.digests.outputs.runners_distroless_image }}
           RUNNERS_DISTROLESS_DIGEST: ${{ steps.digests.outputs.runners_distroless_digest }}
+          N8N_STABLE_IMAGE: ${{ steps.stable_digest.outputs.n8n_image }}
+          N8N_STABLE_DIGEST: ${{ steps.stable_digest.outputs.n8n_digest }}
         run: |
           set -euo pipefail
           pin() {
@@ -142,6 +152,9 @@ jobs:
           pin "n8n_pc" "$N8N_PC_IMAGE" "$N8N_PC_DIGEST"
           pin "runners" "$RUNNERS_IMAGE" "$RUNNERS_DIGEST"
           pin "runners_distroless" "$RUNNERS_DISTROLESS_IMAGE" "$RUNNERS_DISTROLESS_DIGEST"
+          if [ "$CHANNEL" = "3.x" ]; then
+            pin "n8n_stable" "$N8N_STABLE_IMAGE" "$N8N_STABLE_DIGEST"
+          fi
 
   cells:
     name: ${{ needs.resolve.outputs.channel }} · ${{ matrix.arch }} · ${{ matrix.group }}
@@ -160,7 +173,7 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2204
             n8n_image_key: n8n
             runners_image_key: runners
-            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01|@cell:DEP-05|@cell:DEP-06'
+            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01|@cell:DEP-05|@cell:DEP-06|@cell:PLT-04'
           - group: distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
@@ -257,6 +270,82 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: deployment-cells-${{ needs.resolve.outputs.channel }}-${{ matrix.arch }}-${{ matrix.group }}-${{ github.run_attempt }}
+          path: |
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: cancelled()
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${GITHUB_RUN_ID}\", \"githubRunAttempt\": \"${GITHUB_RUN_ATTEMPT}\"}"
+          fi
+
+  upgrade:
+    name: 3.x · amd64 · upgrade
+    needs: resolve
+    if: needs.resolve.outputs.channel == '3.x'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      DEPLOYMENT_CHANNEL: ${{ needs.resolve.outputs.channel }}
+      DEPLOYMENT_ARCH: amd64
+      # Always pass both image env vars explicitly: parseImage() cannot derive
+      # a runners tag when TEST_IMAGE_N8N is pinned by @sha256:... digest.
+      TEST_IMAGE_N8N: ${{ needs.resolve.outputs.n8n }}
+      TEST_IMAGE_TASK_RUNNER: ${{ needs.resolve.outputs.runners }}
+      TEST_IMAGE_N8N_UPGRADE_FROM: ${{ needs.resolve.outputs.n8n_stable }}
+      CURRENTS_PROJECT_ID: 'tlfUav'
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=n8n-workflow...
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+
+      - name: Pull pinned images
+        run: |
+          set -euo pipefail
+          docker pull --quiet "$TEST_IMAGE_N8N"
+          docker pull --quiet "$TEST_IMAGE_N8N_UPGRADE_FROM"
+
+      - name: Run upgrade deployment cell
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+        run: |
+          set -euo pipefail
+          pnpm --filter=n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.spec.ts
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: deployment-cells-3.x-amd64-upgrade-${{ github.run_attempt }}
           path: |
             packages/quality/testing/playwright/test-results/
             packages/quality/testing/playwright/playwright-report/
