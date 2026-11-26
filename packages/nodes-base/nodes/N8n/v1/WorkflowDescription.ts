@@ -167,6 +167,7 @@ const createOperation: INodeProperties[] = [
 		displayName: 'Workflow Object',
 		name: 'workflowObject',
 		type: 'json',
+		validateType: 'object',
 		default: '{ "name": "My workflow", "nodes": [], "connections": {}, "settings": {} }',
 		placeholder:
 			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',
@@ -425,6 +426,7 @@ const updateOperation: INodeProperties[] = [
 		displayName: 'Workflow Object',
 		name: 'workflowObject',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		placeholder:
 			'{\n  "name": "My workflow",\n  "nodes": [],\n  "connections": {},\n  "settings": {}\n}',

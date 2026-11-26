@@ -1,0 +1,71 @@
+{
+	"name": "n8n JSON body",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5a0f2a64-3b1d-4b8e-9d6a-1f0e2d3c4b01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "create",
+				"workflowObject": "{\"name\": \"From JSON\", \"nodes\": [], \"connections\": {}, \"settings\": {}}"
+			},
+			"id": "5a0f2a64-3b1d-4b8e-9d6a-1f0e2d3c4b02",
+			"name": "Workflow Create JSON",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": { "n8nApi": { "id": "7", "name": "n8n account" } }
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "update",
+				"workflowId": { "__rl": true, "mode": "id", "value": "2002" },
+				"workflowObject": "={{ { \"name\": \"From expression\", \"nodes\": [], \"connections\": {}, \"settings\": {} } }}"
+			},
+			"id": "5a0f2a64-3b1d-4b8e-9d6a-1f0e2d3c4b03",
+			"name": "Workflow Update Expression",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"credentials": { "n8nApi": { "id": "7", "name": "n8n account" } }
+		},
+		{
+			"parameters": {
+				"resource": "credential",
+				"operation": "create",
+				"name": "Acme API",
+				"credentialTypeName": "httpHeaderAuth",
+				"data": "={{ { \"name\": \"Authorization\", \"value\": \"Bearer abc\" } }}"
+			},
+			"id": "5a0f2a64-3b1d-4b8e-9d6a-1f0e2d3c4b04",
+			"name": "Credential Create Expression",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"credentials": { "n8nApi": { "id": "7", "name": "n8n account" } }
+		}
+	],
+	"pinData": {
+		"Workflow Create JSON": [{ "json": { "id": "wf-1" } }],
+		"Workflow Update Expression": [{ "json": { "id": "2002" } }],
+		"Credential Create Expression": [{ "json": { "id": "cred-1" } }]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{ "node": "Workflow Create JSON", "type": "main", "index": 0 },
+					{ "node": "Workflow Update Expression", "type": "main", "index": 0 },
+					{ "node": "Credential Create Expression", "type": "main", "index": 0 }
+				]
+			]
+		}
+	}
+}
