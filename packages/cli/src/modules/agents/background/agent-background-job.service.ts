@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -18,6 +19,7 @@ import {
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { AgentFileBridge } from '../agent-file-bridge.service';
+import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from '../approval/approval-expiry';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -186,13 +188,16 @@ export class AgentBackgroundJobService {
 	 * Register a workflow execution parked at a Wait node as a background job.
 	 */
 	async registerWorkflowJob(
-		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & { executionId: string },
+		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & {
+			executionId: string;
+			kind?: 'workflow' | 'approval';
+		},
 	): Promise<BackgroundJobReceipt> {
 		const { executionId, ...job } = params;
 
 		const outcome = await this.jobRepository.insertWorkflowJobOrGetExisting({
 			...job,
-			kind: 'workflow',
+			kind: job.kind ?? 'workflow',
 			childExecutionId: executionId,
 		});
 		if (outcome.inserted) {
@@ -210,9 +215,28 @@ export class AgentBackgroundJobService {
 		executionId: string,
 		settlement: AgentBackgroundJobSettlement,
 		runData?: IRunData,
+		connections?: import('n8n-workflow').IConnections,
+		binaryDataAccess?: string[],
 	): Promise<boolean> {
 		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
 		if (!job) return false;
+		if (hasApprovalExpired(job)) {
+			return await this.settle(job.id, { status: 'failed', error: APPROVAL_EXPIRED_ERROR });
+		}
+		if (job.kind === 'approval' && settlement.status === 'completed' && runData) {
+			try {
+				const { collectAgentDecision } = await import('../approval/decision-result.js');
+				settlement = {
+					...settlement,
+					result: JSON.stringify(collectAgentDecision(runData, connections)),
+				};
+			} catch (error) {
+				settlement = {
+					status: 'failed',
+					error: error instanceof Error ? error.message : String(error),
+				};
+			}
+		}
 
 		if (job.pauseRequestId && runData) {
 			settlement = {
@@ -222,7 +246,7 @@ export class AgentBackgroundJobService {
 		}
 		let storedFiles: JobOutputFiles['files'] = null;
 		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
-			const output = await this.storeOutputFiles(job, runData);
+			const output = await this.storeOutputFiles(job, runData, binaryDataAccess);
 			storedFiles = output.files;
 			settlement = { ...settlement, ...output };
 		}
@@ -242,9 +266,15 @@ export class AgentBackgroundJobService {
 	async storeOutputFiles(
 		job: Pick<
 			AgentBackgroundJob,
-			'id' | 'parentAgentId' | 'parentThreadId' | 'parentResourceId' | 'pauseRequestId'
+			| 'id'
+			| 'parentAgentId'
+			| 'parentThreadId'
+			| 'parentResourceId'
+			| 'pauseRequestId'
+			| 'workflowId'
 		>,
 		runData: IRunData,
+		binaryDataAccess?: string[],
 	): Promise<JobOutputFiles> {
 		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
 		if (!items.some((item) => item.binary) || !job.parentResourceId) return NO_OUTPUT_FILES;
@@ -256,6 +286,8 @@ export class AgentBackgroundJobService {
 				projectId,
 				threadId: job.parentThreadId,
 				resourceId: job.parentResourceId,
+				workflowId: job.workflowId ?? undefined,
+				...(binaryDataAccess?.length ? { binaryDataAccess } : {}),
 			});
 			return {
 				files: files.length > 0 ? files : null,
@@ -309,8 +341,7 @@ export class AgentBackgroundJobService {
 			if (job.pauseRequestId) await this.retainLatestStopGroup(job);
 
 			this.notifyJobUpdate(job);
-			await this.requestWakeSafely(job.parentThreadId);
-
+			if (job.kind !== 'approval') await this.requestWakeSafely(job.parentThreadId);
 			return true;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
@@ -402,7 +433,8 @@ export class AgentBackgroundJobService {
 		);
 		const results = await Promise.allSettled(
 			selected.map(async (job) => {
-				if (job.kind === 'workflow' && job.status === 'running') await this.cancelWorkflowJob(job);
+				if ((job.kind === 'workflow' || job.kind === 'approval') && job.status === 'running')
+					await this.cancelWorkflowJob(job);
 				else if (job.kind === 'subagent' && job.status === 'suspended') await this.pause(job.id);
 			}),
 		);
@@ -839,7 +871,7 @@ export class AgentBackgroundJobService {
 		parentAgentId: string,
 		parentThreadId: string,
 		options: { includePaused?: boolean } = {},
-	): Promise<Array<BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>>> {
+	): Promise<(BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>)[]> {
 		const candidates = await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId);
 		const stoppingRequests = new Set(
 			candidates
@@ -923,7 +955,8 @@ export class AgentBackgroundJobService {
 		if (job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 			return 'already-settled';
 
-		if (job.kind === 'workflow') return await this.cancelWorkflowJob(job);
+		if (job.kind === 'workflow' || job.kind === 'approval')
+			return await this.cancelWorkflowJob(job);
 
 		const claimed = await this.jobRepository.settleIfActive(
 			jobId,
@@ -954,6 +987,22 @@ export class AgentBackgroundJobService {
 		return 'cancelled';
 	}
 
+	/** Stop the running approval of a parent run, for example when its checkpoint is discarded. */
+	async cancelApprovalByExecutionId(
+		executionId: string,
+		parentAgentId: string,
+		parentRunId: string,
+	): Promise<void> {
+		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
+		if (
+			job?.kind !== 'approval' ||
+			job.parentAgentId !== parentAgentId ||
+			job.parentRunId !== parentRunId
+		)
+			return;
+		await this.cancelWorkflowJob(job);
+	}
+
 	async cancelForParent(
 		parentAgentId: string,
 		parentThreadId: string,
@@ -979,7 +1028,7 @@ export class AgentBackgroundJobService {
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		for (const job of jobs) {
 			if (
-				job.kind === 'subagent' &&
+				(job.kind === 'subagent' || job.kind === 'approval') &&
 				job.parentAgentId === parentAgentId &&
 				(parentResourceId === undefined || job.parentResourceId === parentResourceId) &&
 				(job.status === 'running' || job.status === 'suspended')
@@ -1095,8 +1144,21 @@ export class AgentBackgroundJobService {
 	 */
 	async reconcileWorkflowJobs(signal?: AbortSignal): Promise<void> {
 		if (signal?.aborted) return;
-		const jobs = await this.jobRepository.findRunningJobs('workflow');
+		for (const job of await this.jobRepository.findUnconsumedApprovalsPastTimeout(new Date())) {
+			if (signal?.aborted) return;
+			try {
+				await this.expireApprovalJob(job);
+			} catch (error) {
+				this.logger.warn('Failed to expire an approval request', { jobId: job.id, error });
+			}
+		}
+		if (signal?.aborted) return;
+		const jobs = [
+			...(await this.jobRepository.findRunningJobs('workflow')),
+			...(await this.jobRepository.findRunningJobs('approval')),
+		];
 		await this.settleFinishedWorkflowJobs(jobs, signal);
+		await this.reconcileSettledApprovals(signal);
 		for (const job of jobs) {
 			if (signal?.aborted) return;
 			if (!job.pauseRequestId) continue;
@@ -1111,6 +1173,123 @@ export class AgentBackgroundJobService {
 		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
 	}
 
+	async consumeSettledApprovals(parentRunId: string, parentAgentId: string): Promise<void> {
+		const checkpoint = await this.checkpointStorage.getStatus(parentRunId, parentAgentId);
+		// A missing checkpoint can mean that the first suspension has not been saved yet.
+		if (checkpoint.status === 'not-found') return;
+		for (const job of await this.jobRepository.findUnconsumedSettledApprovals({
+			runId: parentRunId,
+			agentId: parentAgentId,
+		})) {
+			if (
+				job.parentRunId !== parentRunId ||
+				job.parentAgentId !== parentAgentId ||
+				!job.childExecutionId
+			)
+				continue;
+			if (checkpoint.status === 'active') {
+				const pending = Object.values(checkpoint.checkpoint.pendingToolCalls);
+				if (
+					pending.some(
+						(call) =>
+							call.suspended &&
+							isRecord(call.continuation) &&
+							call.continuation.__agentDecisionWorkflow === true &&
+							call.continuation.executionId === job.childExecutionId,
+					)
+				)
+					continue;
+			}
+			await this.jobRepository.consumeApprovalJob(job.childExecutionId);
+		}
+	}
+
+	private async reconcileSettledApprovals(signal?: AbortSignal): Promise<void> {
+		for (const job of await this.jobRepository.findUnconsumedSettledApprovals()) {
+			if (signal?.aborted) return;
+			if (!job.childExecutionId || !job.parentRunId) continue;
+			try {
+				const execution = await this.executionPersistence.findSingleExecution(
+					job.childExecutionId,
+					{ includeData: true, unflattenData: true },
+				);
+				const parent = execution?.data.parentAgentRun;
+				if (
+					!parent ||
+					parent.agentId !== job.parentAgentId ||
+					parent.runId !== job.parentRunId ||
+					parent.threadId !== job.parentThreadId
+				)
+					continue;
+				await this.consumeSettledApprovals(parent.runId, parent.agentId);
+				const checkpoint = await this.checkpointStorage.getStatus(parent.runId, parent.agentId);
+				if (
+					checkpoint.status !== 'active' ||
+					checkpoint.checkpoint.status !== 'suspended' ||
+					!checkpoint.checkpoint.pendingToolCalls[parent.toolCallId]
+				)
+					continue;
+				const { AgentWorkflowToolResumeService } = await import(
+					'../agent-workflow-tool-resume.service.js'
+				);
+				await Container.get(AgentWorkflowToolResumeService).resumeIfSuspended(
+					parent,
+					execution.status,
+				);
+			} catch (error) {
+				this.logger.warn('Failed to reconcile an approval result', { jobId: job.id, error });
+			}
+		}
+	}
+
+	/** Stop expired waits and use the existing workflow continuation path. */
+	async expireApprovalJob(
+		job: AgentBackgroundJob,
+		options: { resumeAgent?: boolean } = {},
+	): Promise<void> {
+		if (!hasApprovalExpired(job) || (job.status !== 'running' && job.status !== 'failed')) return;
+		const finished = await this.findDecisionFinishedInTime(job);
+		if (finished) {
+			await this.settleFinishedWorkflowJob(finished.job, finished.status, finished.stoppedAt);
+			return;
+		}
+		await this.stopWorkflowJobExecution(job);
+		await this.settle(
+			job.id,
+			{ status: 'failed', error: APPROVAL_EXPIRED_ERROR },
+			{ status: 'running', timeoutAt: job.timeoutAt },
+		);
+		const settled = await this.jobRepository.findById(job.id);
+		if (settled?.status !== 'failed' || settled.error !== APPROVAL_EXPIRED_ERROR) return;
+		if (options.resumeAgent === false) return;
+		if (!job.childExecutionId) return;
+		const execution = await this.executionPersistence.findSingleExecution(job.childExecutionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		if (!execution) return;
+		const agentRun = execution.data.parentAgentRun;
+		if (
+			!agentRun ||
+			agentRun.agentId !== job.parentAgentId ||
+			agentRun.runId !== job.parentRunId ||
+			agentRun.threadId !== job.parentThreadId
+		)
+			return;
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active') {
+			await this.jobRepository.consumeApprovalJob(job.childExecutionId);
+			return;
+		}
+		const { AgentWorkflowToolResumeService } = await import(
+			'../agent-workflow-tool-resume.service.js'
+		);
+		await Container.get(AgentWorkflowToolResumeService).resumeIfSuspended(
+			agentRun,
+			execution.status,
+		);
+	}
+
 	/**
 	 * Stop the execution first, then claim the row. A workflow job has no
 	 * timeout, so a row claimed before a failed stop would tell the model the
@@ -1123,7 +1302,8 @@ export class AgentBackgroundJobService {
 		job: AgentBackgroundJob,
 	): Promise<'cancelled' | 'already-settled'> {
 		if (!(await this.stopWorkflowJobExecution(job))) {
-			if (job.pauseRequestId) await this.settleFinishedWorkflowJobs([job]);
+			if (job.pauseRequestId || job.kind === 'approval')
+				await this.settleFinishedWorkflowJobs([job]);
 			return 'already-settled';
 		}
 
@@ -1174,7 +1354,9 @@ export class AgentBackgroundJobService {
 	): Promise<boolean> {
 		const candidates = jobs.filter(
 			(job): job is AgentBackgroundJob & { childExecutionId: string } =>
-				job.kind === 'workflow' && job.status === 'running' && job.childExecutionId !== null,
+				(job.kind === 'workflow' || job.kind === 'approval') &&
+				job.status === 'running' &&
+				job.childExecutionId !== null,
 		);
 		if (candidates.length === 0) return false;
 
@@ -1219,10 +1401,21 @@ export class AgentBackgroundJobService {
 
 			const runData = execution?.data?.resultData?.runData;
 			if (!runData) return { result: null, ...NO_OUTPUT_FILES };
+			if (job.kind === 'approval') {
+				const { collectAgentDecision } = await import('../approval/decision-result.js');
+				return {
+					result: JSON.stringify(
+						collectAgentDecision(runData, execution?.workflowData.connections),
+					),
+					...NO_OUTPUT_FILES,
+				};
+			}
 
 			return {
 				result: serializeWorkflowJobResult(collectResultData(runData, allOutputs)),
-				...(status === 'completed' ? await this.storeOutputFiles(job, runData) : NO_OUTPUT_FILES),
+				...(status === 'completed'
+					? await this.storeOutputFiles(job, runData, execution.data?.binaryDataAccess)
+					: NO_OUTPUT_FILES),
 			};
 		} catch (error) {
 			this.logger.warn('Failed to read a finished execution’s data for its job result', {
@@ -1237,6 +1430,7 @@ export class AgentBackgroundJobService {
 		const timedOut = await this.jobRepository.findActivePastTimeout(new Date());
 		for (const job of timedOut) {
 			if (signal?.aborted) return;
+			if (job.kind === 'approval') continue;
 			if (job.status !== 'running' && job.status !== 'suspended') continue;
 			if (job.status === 'suspended' && job.pauseRequestId && job.notifiedAt && job.timeoutAt) {
 				await this.releaseResumeReservations([job], job.timeoutAt);
@@ -1351,12 +1545,34 @@ export class AgentBackgroundJobService {
 		return true;
 	}
 
+	/**
+	 * A decision can finish before its deadline while its settle hook is lost,
+	 * for example in a crash. Returns the execution outcome in that case.
+	 */
+	private async findDecisionFinishedInTime(job: AgentBackgroundJob) {
+		const { childExecutionId, timeoutAt } = job;
+		if (job.kind !== 'approval' || job.status !== 'running' || !childExecutionId || !timeoutAt)
+			return undefined;
+		const execution = await this.executionPersistence.findSingleExecution(childExecutionId);
+		if (!execution?.stoppedAt || !isTerminalExecutionStatus(execution.status)) return undefined;
+		const stoppedAt = new Date(execution.stoppedAt);
+		// An invalid date gives NaN, which fails this check.
+		if (!(stoppedAt.getTime() < timeoutAt.getTime())) return undefined;
+		return { job: { ...job, childExecutionId }, status: execution.status, stoppedAt };
+	}
+
+	/** `settledAt` is the execution end time of a decision that finished before its deadline. */
 	private async settleFinishedWorkflowJob(
 		job: AgentBackgroundJob & { childExecutionId: string },
 		executionStatus: ExecutionStatus | undefined,
+		settledAt?: Date,
 	): Promise<boolean> {
 		const executionId = job.childExecutionId;
 		try {
+			if (!settledAt && hasApprovalExpired(job)) {
+				await this.expireApprovalJob(job);
+				return true;
+			}
 			if (executionStatus === undefined) {
 				return await this.settle(job.id, {
 					status: 'failed',
@@ -1373,6 +1589,7 @@ export class AgentBackgroundJobService {
 				status,
 				...output,
 				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
+				...(settledAt && { settledAt }),
 			});
 			if (!settled) await this.deleteUnusedFiles(job.id, output.files);
 			return settled;

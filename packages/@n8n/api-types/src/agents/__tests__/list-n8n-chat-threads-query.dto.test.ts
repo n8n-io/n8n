@@ -1,16 +1,21 @@
 import { ListN8nChatThreadsQueryDto } from '../dto';
 
 describe('ListN8nChatThreadsQueryDto', () => {
-	it('accepts an ISO datetime cursor', () => {
-		const result = ListN8nChatThreadsQueryDto.safeParse({ cursor: '2025-01-02T00:00:00.000Z' });
-		expect(result.success).toBe(true);
-		expect(result.data).toEqual({ cursor: '2025-01-02T00:00:00.000Z' });
-	});
+	it.each(['2025-01-02T00:00:00.000Z', '2025-01-02T00:00:00.000Z|thread-1|suffix'])(
+		'accepts cursor %s',
+		(cursor) => {
+			const result = ListN8nChatThreadsQueryDto.safeParse({ cursor });
+			expect(result.success).toBe(true);
+			expect(result.data).toEqual({ cursor });
+		},
+	);
 
-	it('rejects a malformed cursor', () => {
-		const result = ListN8nChatThreadsQueryDto.safeParse({ cursor: 'not-a-date' });
-		expect(result.success).toBe(false);
-	});
+	it.each(['not-a-date', '2025-01-02T00:00:00.000Z|', '2025-01-02T00:00:00.000Z|\0'])(
+		'rejects malformed cursor %s',
+		(cursor) => {
+			expect(ListN8nChatThreadsQueryDto.safeParse({ cursor }).success).toBe(false);
+		},
+	);
 
 	it('accepts an absent cursor', () => {
 		const result = ListN8nChatThreadsQueryDto.safeParse({});

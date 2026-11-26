@@ -1556,6 +1556,25 @@ describe('Git Node', () => {
 			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
+		it('should disable fetching missing objects for every git process of a local clone', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('/git/source-repo');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit.mock.calls.length).toBeGreaterThan(1);
+			for (const [options] of mockSimpleGit.mock.calls) {
+				expect(options?.allowEnvironment).toContain('GIT_NO_LAZY_FETCH');
+			}
+			expect(mockGit.env).toHaveBeenCalledTimes(mockSimpleGit.mock.calls.length);
+			for (const [env] of mockGit.env.mock.calls) {
+				expect(env).toMatchObject({ GIT_NO_LAZY_FETCH: '1' });
+			}
+		});
+
 		it('should check file URL source repository paths', async () => {
 			const sourcePath = resolve(sep, 'tmp', 'source-repo');
 			const sourceRepository = pathToFileURL(sourcePath).href;
@@ -1693,6 +1712,20 @@ describe('Git Node', () => {
 
 			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
 			expect(envArg.GIT_ALLOW_PROTOCOL).toBe('file:git:http:https:ssh');
+		});
+
+		it('should disable fetching missing objects via the environment', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
+			expect(envArg.GIT_NO_LAZY_FETCH).toBe('1');
+			expect(mockSimpleGit.mock.calls[0][0]?.allowEnvironment).toContain('GIT_NO_LAZY_FETCH');
 		});
 
 		it.each(['push', 'pushTags'])(

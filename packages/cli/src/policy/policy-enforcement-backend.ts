@@ -4,6 +4,7 @@ import type {
 	CredentialSaveContext,
 	CredentialTransferContext,
 	EnforcementPoint,
+	ExecutionAdmissionContext,
 	PolicyDecision,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -17,6 +18,7 @@ import type { UserLike } from '@/types/user-like.types';
 type PolicyContexts = {
 	workflowSave: WorkflowSaveContext;
 	workflowPublish: WorkflowPublishContext;
+	executionAdmission: ExecutionAdmissionContext;
 	workflowStart: WorkflowStartContext;
 	workflowTransfer: WorkflowTransferContext;
 	credentialSave: CredentialSaveContext;
@@ -29,7 +31,7 @@ export type PolicyContext<Point extends EnforcementPoint> = PolicyContexts[Point
 
 /** Why the actor is not a user. */
 export type PolicySystemReason =
-	/** Inside a run. Runs are not attributed to the user who started them. */
+	/** Inside a run, or at its admission. Runs are not attributed to the user who started them. */
 	| 'execution'
 	| 'cli-import'
 	/** Trigger registration that no request asked for directly, such as startup or a retry. */

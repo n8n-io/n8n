@@ -253,7 +253,7 @@ const sortedInstanceResults = computed(() => {
 				</N8nText>
 			</div>
 			<div :class="$style.ActionBar">
-				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" :class="$style.Tabs" />
+				<N8nTabs v-model="currentTab" :options="tabs" :class="$style.Tabs" />
 				<div :class="$style.RefreshGroup">
 					<N8nText
 						v-if="state?.report.generatedAt"

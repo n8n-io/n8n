@@ -122,6 +122,7 @@ packages/cli/src/security-audit/                        @n8n-io/core-application
 packages/cli/src/modules/workflow-index/                @n8n-io/core-application
 packages/cli/src/modules/breaking-changes/              @n8n-io/core-application
 packages/cli/src/workflows/publication/                 @n8n-io/core-application required
+packages/modules/durable-leases/                        @n8n-io/core-application required
 
 packages/cli/src/scaling/                               @n8n-io/core-execution
 packages/cli/src/concurrency/                           @n8n-io/core-execution

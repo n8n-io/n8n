@@ -349,6 +349,7 @@ export class JobProcessor {
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			const data: IWorkflowExecutionDataProcess = {
+				binaryDataAccess: execution.data.binaryDataAccess,
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
 				destinationNode: startData?.destinationNode,
@@ -544,6 +545,7 @@ export class JobProcessor {
 				mcpType: 'trigger',
 				sessionId: job.data.mcpSessionId,
 				messageId: job.data.mcpMessageId ?? '',
+				toolName,
 				response: toolResult, // Actual tool result
 				workerId: this.instanceSettings.hostId,
 			};

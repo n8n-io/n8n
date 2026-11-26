@@ -1,7 +1,7 @@
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
-/** A file that belongs to one skill version. Only `references/*.md` in v1. */
+/** A file that belongs to one skill version. */
 @Entity({ name: 'skill_file' })
 export class SkillFile extends WithTimestamps {
 	@PrimaryColumn({ type: 'uuid' })
@@ -12,4 +12,11 @@ export class SkillFile extends WithTimestamps {
 
 	@Column({ type: 'text' })
 	content: string;
+
+	@Column({
+		type: 'boolean',
+		default: false,
+		comment: 'Content holds Base64 instead of UTF-8 text',
+	})
+	isBinary: boolean;
 }
