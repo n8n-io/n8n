@@ -2378,6 +2378,24 @@ describe('Execution Lifecycle Hooks', () => {
 			},
 		);
 
+		it('should restore binary data IDs before the save for webhooks', async () => {
+			mockInstance(BinaryDataConfig, { mode: 'filesystem' });
+			lifecycleHooks = createHooks('webhook');
+			successfulRun.data.resultData.runData = runDataWithBinary(
+				`filesystem-v2:workflows/${workflowId}/executions/temp/binary_data/123`,
+			);
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(binaryDataService.rename).toHaveBeenCalledWith(
+				`workflows/${workflowId}/executions/temp/binary_data/123`,
+				`workflows/${workflowId}/executions/${executionId}/binary_data/123`,
+			);
+			expect(binaryDataService.rename.mock.invocationCallOrder[0]).toBeLessThan(
+				executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should run workflow.preExecute when legacy flag is on', async () => {
 			executionsConfig.preExecuteErrorCreatesExecution = true;
 			lifecycleHooks = createHooks();

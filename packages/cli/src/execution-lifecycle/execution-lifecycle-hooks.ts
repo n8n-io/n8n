@@ -905,6 +905,8 @@ function hookFunctionsSaveWorker(
 		});
 		runsEndedBySave.delete(fullRunData);
 
+		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
+
 		const { parentExecution } = fullRunData.data;
 		if (parentExecution) {
 			await duplicateBinaryDataToParent(
