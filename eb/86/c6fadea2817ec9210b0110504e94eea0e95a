@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionPreviewDocument.ts
+  s_5852fb3adf0946::t_57f9ee8af8a6bd 7,97-99,179,197
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionPreviewDocument.test.ts
+  s_5852fb3adf0946::t_15781b2b05b8fd 32
+  s_5852fb3adf0946::t_81fad52608d392 122
+  s_5852fb3adf0946::t_aa09f1749d9b67 239-283
+  s_5852fb3adf0946::t_5ff2398dded1fd 28
+  s_5852fb3adf0946::t_100bb4d3145b12 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb86c6fadea2817ec9210b0110504e94eea0e95a",
+  "prompts": {},
+  "sessions": {
+    "s_5852fb3adf0946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4b5e40c-0d02-43a1-b0d5-fc7f9d2b17f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

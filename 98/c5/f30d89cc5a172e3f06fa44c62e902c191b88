@@ -1,0 +1,28 @@
+packages/frontend/@n8n/eslint-plugin-design-system/README.md
+  s_1b279b1934f6ba::t_55d54b6ed2012f 27
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.test.ts
+  s_1b279b1934f6ba::t_55d54b6ed2012f 453-462,546-565
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerChartsAccordion.test.ts
+  s_1b279b1934f6ba::t_ff440b656d7387 57,72,103
+  s_1b279b1934f6ba::t_257f0d184f08e3 82-88,94
+  s_1b279b1934f6ba::t_4136100f41857b 105-116
+  s_1b279b1934f6ba::t_e2330bbb37e673 1-56,58-71,73-81,89-93,95-102,104,117-123
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.ts
+  s_1b279b1934f6ba::t_55d54b6ed2012f 242-243,299-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98c5f30d89cc5a172e3f06fa44c62e902c191b88",
+  "prompts": {},
+  "sessions": {
+    "s_1b279b1934f6ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d587a90-f43c-4aaf-90cd-8f1f40ac1be8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
