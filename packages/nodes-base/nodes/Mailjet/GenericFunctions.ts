@@ -80,16 +80,6 @@ export async function mailjetApiRequestAllItems(
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): IDataObject | undefined {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
-
 export interface IMessage {
 	From?: { Email?: string; Name?: string };
 	Subject?: string;
