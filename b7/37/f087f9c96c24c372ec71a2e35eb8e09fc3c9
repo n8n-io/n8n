@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/agents.module.ts
+  h_8a472ace01776f 34
+packages/cli/src/modules/agents/simulation/gym/register-gym-simulation-backend.ts
+  h_8a472ace01776f 9-11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  h_8a472ace01776f 4,479,490-504
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  h_8a472ace01776f 120,124-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b737f087f9c96c24c372ec71a2e35eb8e09fc3c9",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
