@@ -227,6 +227,8 @@ export const TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT = createExperiment(
 	'148_test_button_primary_color',
 );
 
+export const AGENTS_INVOCATION_STEP_EXPERIMENT = createExperiment('153_agents_invocation_step');
+
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
 	{
@@ -251,7 +253,13 @@ export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
 	},
 );
 
+export const AGENT_SETUP_HEADER_EXPERIMENT = createExperiment('136_agent_setup_header');
+/** A/B test. The `variant` arm shows agent triggers first and restyles the trigger section. */
+export const AGENT_TRIGGER_REDESIGN_EXPERIMENT = createExperiment('143_agent_trigger_redesign');
+
 export const EXPERIMENTS_TO_TRACK = [
+	AGENT_SETUP_HEADER_EXPERIMENT.name,
+	AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -307,4 +315,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AGENTS_N8N_CHAT_EXPERIMENT.name,
 	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 	TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT.name,
+	AGENTS_INVOCATION_STEP_EXPERIMENT.name,
 ];

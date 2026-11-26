@@ -33,6 +33,9 @@ pnpm stack --tunnel
 
 When started, you'll see the URL: `http://localhost:[port]`
 
+To run a persistent topology from your checkout as local processes, with
+env vars for each component, use [`rig`](../../../../scripts/experimental/rig/README.md).
+
 ## Using in Playwright Tests
 
 ### Basic Test
@@ -430,6 +433,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `vector` | - | Vector log collector (depends on victoriaLogs) |
 | `tracing` | ✓ | Jaeger for distributed tracing |
 | `kafka` | ✓ | Kafka broker for message queue testing |
+| `localstack` | ✓ | AWS emulator for Secrets Manager and S3 |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |

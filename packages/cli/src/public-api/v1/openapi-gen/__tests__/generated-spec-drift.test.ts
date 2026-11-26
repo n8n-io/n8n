@@ -89,14 +89,14 @@ describe('Discovery response documentation', () => {
 			.getControllerMetadata(PromotionsPublicController as never)
 			.routes.get(handler);
 		expect(route?.responseDto).toBe(responseDto);
-		expect(route?.accessScope).toEqual({ scope: 'promotions:discover', globalOnly: true });
-		expect(route?.apiKeyScope).toBe('promotions:discover');
+		expect(route?.accessScope).toEqual({ scope: 'promotions:manageProviders', globalOnly: true });
+		expect(route?.apiKeyScope).toBe('promotions:manageProviders');
 		expect(route?.licenseFeature).toBe('feat:promotions');
 		const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 		const operation = parse(
 			getGeneratedArtifacts().find((artifact) => artifact.outputPath === outputPath)!.content,
 		) as OpenAPIV3.OperationObject;
-		expect(operation).toHaveProperty('x-required-scope', 'promotions:discover');
+		expect(operation).toHaveProperty('x-required-scope', 'promotions:manageProviders');
 		expect(operation.parameters).toContainEqual({
 			$ref: '../../../../shared/spec/parameters/limit.yml',
 		});

@@ -181,12 +181,44 @@ These only run if specific files changed:
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docs/backend/**`, `packages/@n8n/backend-docs-site/**`                | `release-docs-backend.yml` (PR preview, master deploys to n8n-backend-docs.pages.dev) | master     |
 | `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (builds only the bases whose inputs changed; publishes on master only) | any        |
-| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
+| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds compiled `-dev` images for pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; independent of `RUNTIME_IMAGE`; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
+
+### Pushes to an open PR
+
+A push to an open PR tests only the commits after the newest PR commit that
+passed `ci-pull-requests.yml`. `find-last-green-commit.mjs` finds that commit.
+`ci-filter` then uses the diff from that commit, not the whole PR, for the path
+filters, the test scoping and the E2E selection. On an incremental run, lint
+and typecheck compare the same commit with the PR head (`TURBO_SCM_BASE` and
+`TURBO_SCM_HEAD`), not with the merge commit, which also holds the base-branch
+changes since that commit. In all other runs, they compare the whole PR with
+the base branch, as before.
+
+`ci-filter` tests the whole PR when one of these is true:
+
+- The event is not a push to an open PR (`opened`, `reopened`, merge queue).
+- No earlier PR commit passed CI.
+- The earlier commit is not an ancestor of the head (force push or rebase).
+- The new commits include a merge, for example from master.
+- The merge base changed, for example because the PR now targets another branch.
+- The PR has the `force-full-ci` label. The script reads the label from the
+  API, so a "Re-run all jobs" after you add the label tests the whole PR.
+
+**Why:** a small fix, such as one line in a test, ran all E2E shards and DB
+legs again because an earlier commit had changed runtime code. The earlier
+commits passed CI against an older base branch. The merge queue runs the unit,
+integration and DB tests, lint and typecheck for the whole PR on the latest
+base branch, so that gap closes before the merge. The queue does not run E2E, so an
+E2E spec runs again only when the new commits select it.
+
+**Coverage:** an incremental run collects coverage only for the files that the
+new commits change. Codecov still calculates patch coverage over the whole PR,
+but for that push only the lines in those files have coverage data.
 
 ### On PR Review
 
@@ -261,9 +293,12 @@ survive. The run is skipped when `latest` already matches the lockfile; a
 |------------------------------------|----------------------------------------|--------|
 | PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
 
-This workflow uses `pull_request_target`. Thus, it runs without approval on
-fork and bot PRs, and it has a write token on them. No step checks out or runs
-PR code. An edit to the comment does not send a new notification.
+This workflow uses `pull_request`, because GitHub does not start a
+`pull_request_target` run for the `dequeued` type. On PRs from external
+contributors and bots, a run waits for approval. On fork PRs, the token is
+read-only, so the comment step fails. The `concurrency` group keeps at most one
+pending run for each PR, so many approved runs update one comment. An edit to
+the comment does not send a new notification.
 
 ### Label Triggers
 
@@ -664,7 +699,7 @@ Push to master
 ├─ unit-test (matrix: Node 24.22.2, 26.13.0)
 │   └─ Coverage only on 24.22.2
 ├─ lint
-├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -678,6 +713,7 @@ Push to master
 | Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
+| After nightly Docker builds | `test-deployment-cells.yml` (`workflow_run`) | Nightly deployment compatibility cells against published `master` and `3.x` images (Currents project `tlfUav`) |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
@@ -693,7 +729,7 @@ Push to master
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
-| Mon–Tue every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
+| Monday every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -727,6 +763,13 @@ can promote too via the `force_rc` dispatch input, several times a day: each pub
 claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
 and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
 is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
+
+`test-deployment-cells.yml` ("Test: Deployment cells") runs via `workflow_run` after
+scheduled `Docker: Build and Push` runs (`master`) and after `Build: v3 Nightly Docker Images`
+runs (`3.x`), and supports manual `workflow_dispatch` with a `channel` selector. It resolves
+and pins the published GHCR image digests, runs API-only Playwright deployment cells in
+`packages/quality/testing/playwright/tests/deployment/` with 0 retries, and reports to the
+separate `n8n-nightly-compatibility` Currents project (`tlfUav`).
 
 See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
@@ -782,6 +825,8 @@ once new-disk retention works.
 inputs:
   script:        # path of the module, relative to the repository root
   github-token:  # token for the Octokit client, also exported as GITHUB_TOKEN
+outputs:
+  result:        # the string that main() returns, empty when it returns nothing
 ```
 
 Runs one `.github/scripts` module through `actions/github-script`. That action
@@ -871,6 +916,7 @@ Scripts in `.github/scripts/`:
 | `docker/edit-image-native-smoke-check.mjs`| Verify the Edit Image v2 bindings load and draw text with the image's Arial font | `docker-build-smoke.yml`|
 | `docker/native-addons-smoke-check.mjs`| Verify isolated-vm and sqlite3 work in the built image, and that it has no build toolchain | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
+| `docker/get-manifest-digests.mjs`| Resolve multi-arch manifest digests for attestation and pinned deployment cells | `docker-build-push.yml`, `test-deployment-cells.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
@@ -891,6 +937,7 @@ Scripts in `.github/scripts/`:
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
@@ -970,14 +1017,13 @@ The format is strict, enforced by `node .github/scripts/owners/owners.mjs --chec
 Team existence is not checked by `--check` (it needs an org read token, which
 fork PRs do not have); a separate workflow covers it (DEVP-891).
 
-The file drives four workflows:
+The file drives three workflows:
 
 | Workflow                          | Purpose                                                                  |
 |-----------------------------------|--------------------------------------------------------------------------|
 | `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
-| `ci-owners-review-recommendations.yml` | Calls DevHub: advisory PR comment with owning teams, line stats, required teams |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
-| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` and `involved` entries through the "Required Reviews" commit status |
+| `ci-owners-required-reviews.yml`  | Enforces `required` and `involved` entries through the "Required Reviews" commit status, and calls DevHub for the advisory PR comment |
 
 ### Auto-assign reviewers
 
@@ -1010,9 +1056,10 @@ counts.
 workflow in `n8n-io/github-actions`. The shared workflow reads OWNERS from
 `master`, checks live approvals and team membership, and writes a commit status
 named **Required Reviews** on the head SHA. It uses the n8n Assistant GitHub
-App credentials and runs no PR code. The optional ownership comment still
-uses DevHub through OIDC. See `ownership-checks/README.md` in
-`n8n-io/github-actions`.
+App credentials and runs no PR code. The same call also asks DevHub, through
+OIDC, to post the PR review overview comment: owning teams, line stats and
+required teams. The comment is advisory: if DevHub fails, the status is not
+affected. See `ownership-checks/README.md` in `n8n-io/github-actions`.
 
 A missing approval reports `pending` ("Waiting for approval from: …"), not
 `failure`, so an unreviewed PR does not show red CI. Any state other than

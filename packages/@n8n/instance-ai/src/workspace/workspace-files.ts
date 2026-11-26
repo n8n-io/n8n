@@ -24,6 +24,10 @@ export interface WorkspaceFileTarget {
 			content: string | Buffer,
 			options?: { recursive?: boolean; abortSignal?: AbortSignal },
 		) => Promise<void>;
+		writeFiles?: (
+			files: Array<{ path: string; content: string | Buffer }>,
+			options?: { abortSignal?: AbortSignal },
+		) => Promise<void>;
 	};
 	sandbox?: SandboxWorkspace['sandbox'];
 }
@@ -243,7 +247,10 @@ async function writeWorkspaceFileContent(
 	}
 }
 
-/** Write several UTF-8 workspace files in parallel. */
+/**
+ * Write several UTF-8 workspace files. Uses one batch request when the provider has one,
+ * and writes the files in parallel otherwise or when the batch fails.
+ */
 export async function writeWorkspaceFileMap(
 	workspace: WorkspaceFileTarget,
 	files: Map<string, string>,
@@ -255,11 +262,30 @@ export async function writeWorkspaceFileMap(
 		{ kind: 'batch', inputs: { fileCount: files.size, bytes } },
 		async () => {
 			const startedAt = Date.now();
-			await Promise.all(
-				Array.from(files, async ([filePath, content]) => {
-					await writeWorkspaceFile(workspace, filePath, content, options);
-				}),
-			);
+			const writeEach = async () =>
+				await Promise.all(
+					Array.from(files, async ([filePath, content]) => {
+						await writeWorkspaceFile(workspace, filePath, content, options);
+					}),
+				);
+			const filesystem = workspace.filesystem;
+			if (files.size > 1 && filesystem?.writeFiles) {
+				try {
+					await filesystem.writeFiles(
+						Array.from(files, ([path, content]) => ({ path, content })),
+						{ abortSignal: options?.abortSignal },
+					);
+				} catch (error) {
+					if (isAbortError(error)) throw error;
+					await traceSandboxOperation(
+						'batch-write-fallback',
+						{ inputs: { fileCount: files.size, error: formatErrorForLog(error) } },
+						writeEach,
+					);
+				}
+			} else {
+				await writeEach();
+			}
 			options?.logger.debug('Wrote workspace files', {
 				resource: resourceLabel(options),
 				fileCount: files.size,

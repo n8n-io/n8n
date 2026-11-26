@@ -7,6 +7,7 @@ import {
 	resolveInclusion,
 	selectAll,
 	toggleContainer,
+	toggleGroup,
 	toggleSelection,
 	type DisabledKeys,
 	type Inclusion,
@@ -15,7 +16,11 @@ import {
 	type SelectionState,
 } from '../promotionPreview.selection';
 
-const noInclusion: Inclusion = { included: new Set(), reasons: new Map() };
+const noInclusion: Inclusion = {
+	included: new Set(),
+	reasons: new Map(),
+	requiredBy: new Map(),
+};
 
 /**
  * The selection on the preview page. `disabled` holds the blocked workflows. The selection does
@@ -63,6 +68,10 @@ export function usePromotionSelection(
 			update((current) => toggleSelection(selection.value, current, key, disabled.value)),
 		toggleAllInside: (containerKey: ResourceKey) =>
 			update((current) => toggleContainer(selection.value, current, containerKey, disabled.value)),
+		toggleGroup: (members: ResourceKey[]) =>
+			update((current) =>
+				toggleGroup(selection.value, current, inclusion.value, members, disabled.value),
+			),
 		selectAll: () => update((current) => selectAll(selection.value, current, disabled.value)),
 		clear: () => update(() => clearSelection()),
 	};

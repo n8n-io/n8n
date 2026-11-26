@@ -296,7 +296,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 
 			expect(hook.messages.value.filter(({ id }) => id === 'exec-stopped:stopped')).toHaveLength(1);
 			expect(hook.messages.value.at(-1)).toMatchObject({
-				content: 'agentSessions.stopped',
+				id: 'exec-stopped:stopped',
 				executionId: 'exec-stopped',
 			});
 			expect(hook.messages.value.flatMap(({ toolCalls }) => toolCalls ?? [])).toEqual(
@@ -348,7 +348,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				resolvedAt: expect.any(Number),
 			});
 			expect(assistant.status).toBe('success');
-			expect(hook.messages.value.at(-1)?.content).toBe('agentSessions.stopped');
+			expect(hook.messages.value.at(-1)?.id).toBe('exec-stopped:stopped');
 			expect(cancelAgentChatExecutionMock).not.toHaveBeenCalled();
 		},
 	);
@@ -4570,10 +4570,8 @@ describe('useAgentChatStream — execution recovery', () => {
 			for (const hook of [first, second]) {
 				expect(hook.isStreaming.value).toBe(false);
 				expect(hook.isCancelling.value).toBe(false);
-				expect(hook.messages.value.map((message) => message.content)).toEqual(
-					status === 'cancelled'
-						? ['retained answer', 'agentSessions.stopped']
-						: ['retained answer'],
+				expect(hook.messages.value.map((message) => message.id)).toEqual(
+					status === 'cancelled' ? ['exec-1:assistant', 'exec-1:stopped'] : ['exec-1:assistant'],
 				);
 			}
 			expect(fetch).not.toHaveBeenCalled();

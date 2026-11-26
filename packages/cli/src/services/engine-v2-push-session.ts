@@ -1,4 +1,8 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import type {
+	INodeExecutionData,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 
 /**
  * A step run reported to the editor. Kept after it settles so a redelivered
@@ -16,6 +20,16 @@ export class EngineV2StepRun {
 		readonly startTime: number,
 	) {}
 }
+
+/** What `executionStarted` reports about the run, prepared at dispatch. */
+export type EngineV2RunStart = {
+	/** The host's execution mode; the event only carries it as a string. */
+	mode: WorkflowExecuteMode;
+	/** The run data the run starts from, as v1's `flattedRunData`. */
+	flattedRunData: string;
+	source?: WorkflowExecutionSource;
+	workflowName?: string;
+};
 
 /** State needed to relay one execution's lifecycle events to the editor. */
 export class EngineV2PushSession {
@@ -39,5 +53,7 @@ export class EngineV2PushSession {
 		public trigger?: { nodeName: string; outputs: INodeExecutionData[][] },
 		/** The user who owns `pushRef`. */
 		readonly userId?: string,
+		/** Cleared once emitted — the run data can be large. */
+		public start?: EngineV2RunStart,
 	) {}
 }

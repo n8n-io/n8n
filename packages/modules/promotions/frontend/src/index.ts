@@ -9,3 +9,6 @@ export const loadPromotionPreviewBadges = async () =>
 
 export const loadPromotionReviewChanges = async () =>
 	await import('./components/review/PromotionReviewChanges.vue');
+
+export const loadPromotionProjectAccessRows = async () =>
+	await import('./components/PromotionProjectAccessRows.vue');

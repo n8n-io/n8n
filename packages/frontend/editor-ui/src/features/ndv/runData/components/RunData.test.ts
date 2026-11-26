@@ -4,13 +4,17 @@ import {
 	type RunDataDisplayModeContribution,
 	type RunDataDisplayModeProps,
 } from '@n8n/frontend-module-sdk';
+import { HtmlDisplayModeModule } from '@n8n/frontend-module-html-display-mode';
 import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestWorkflow,
 	createTestWorkflowObject,
 	createTestWorkflowExecutionResponse,
 	createMockEnterpriseSettings,
 	defaultNodeDescriptions,
+	defaultNodeTypes,
+	mockLoadedNodeType,
 } from '@/__tests__/mocks';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -39,6 +43,7 @@ import { waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import {
 	createRunExecutionData,
+	HTML_NODE_TYPE,
 	jsonParse,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
@@ -456,6 +461,41 @@ describe('RunData', () => {
 
 			await waitFor(() => expect(emitted('displayModeChange')).toContainEqual(['map']));
 		});
+
+		it('offers, auto-selects and renders the HTML module for an HTML node', async () => {
+			HtmlDisplayModeModule.runDataDisplayModes?.forEach((mode) =>
+				runDataDisplayModeRegistry.register(mode),
+			);
+			const htmlNode = createTestNode({
+				name: 'Test Node',
+				type: HTML_NODE_TYPE,
+				parameters: { operation: 'generateHtmlTemplate' },
+			}) as INodeUi;
+			const htmlItems = Array.from({ length: 26 }, (_, index) => ({
+				json: { html: `<h1>Item ${index}</h1>` },
+			}));
+
+			const { emitted, findByTestId, container, queryByTestId, rerender } = render({
+				defaultRunItems: htmlItems,
+				workflowNodes: [{ ...htmlNode }],
+				node: htmlNode,
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('radio-button-html')).toHaveTextContent('HTML');
+			await waitFor(() => expect(emitted('displayModeChange')).toContainEqual(['html']));
+
+			await rerender({ displayMode: 'html' });
+
+			await waitFor(() =>
+				expect(container.querySelector('iframe.__html-display')).toHaveAttribute(
+					'srcdoc',
+					'<h1>Item 0</h1>',
+				),
+			);
+			expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-search')).toBeInTheDocument();
+		});
 	});
 
 	describe('AI-simulated output', () => {
@@ -706,16 +746,6 @@ describe('RunData', () => {
 				},
 			})),
 			displayMode: 'binary',
-		});
-		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
-	});
-
-	it('should not render pagination on html tab', async () => {
-		const { queryByTestId } = render({
-			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
-				json: { html: `<h1>Test ${i}</h1>` },
-			})),
-			displayMode: 'html',
 		});
 		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
 	});
@@ -2243,6 +2273,7 @@ describe('RunData', () => {
 		fetchedRunData,
 		inputNodes,
 		stubPinButton = true,
+		node,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -2272,6 +2303,7 @@ describe('RunData', () => {
 		/** The parent nodes that the input panel's schema view shows. */
 		inputNodes?: IConnectedNode[];
 		stubPinButton?: boolean;
+		node?: INodeUi;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -2383,6 +2415,10 @@ describe('RunData', () => {
 				workflowObject: createTestWorkflowObject({
 					id: workflowId,
 					nodes: workflowNodes,
+					nodeTypes: createMockNodeTypes({
+						...defaultNodeTypes,
+						[HTML_NODE_TYPE]: mockLoadedNodeType(HTML_NODE_TYPE),
+					}),
 				}),
 				displayMode,
 				...(workflowExecutionProp ? { workflowExecution: workflowExecutionProp } : {}),
@@ -2426,13 +2462,15 @@ describe('RunData', () => {
 			},
 		})({
 			props: {
-				node: createTestNode({
-					id: nodeId ?? '1',
-					name: 'Test Node',
-					type: SET_NODE_TYPE,
-					position: [0, 0],
-					parameters: {},
-				}),
+				node:
+					node ??
+					createTestNode({
+						id: nodeId ?? '1',
+						name: 'Test Node',
+						type: SET_NODE_TYPE,
+						position: [0, 0],
+						parameters: {},
+					}),
 				nodes: inputNodes ?? [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
 				paneType,

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { AgentSkillReference } from '@n8n/api-types';
 
 import type { SkillFrontmatter } from '../database/entities/skill-version.entity';
 
@@ -8,7 +9,7 @@ export type SkillContent = {
 	description: string;
 	instructions: string;
 	frontmatter: SkillFrontmatter | null;
-	files: Array<{ path: string; content: string }>;
+	files: AgentSkillReference[];
 };
 
 /** Plain code-unit order, the same order every reader of `skill_file` uses. */
@@ -47,7 +48,9 @@ export function skillContentHash(content: SkillContent): string {
 				instructions: content.instructions,
 				frontmatter: content.frontmatter ? sortKeys(content.frontmatter) : null,
 				files: content.files
-					.map((file) => [file.path, file.content])
+					.map((file) =>
+						file.isBinary ? [file.path, file.content, 'base64'] : [file.path, file.content],
+					)
 					.sort(([left], [right]) => compareSkillFilePaths(left, right)),
 			}),
 		)

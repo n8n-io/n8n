@@ -88,6 +88,12 @@ export interface ProtectedResource {
 	/** First-party resources skip the third-party consent treatment. */
 	isFirstParty?: boolean;
 
+	/**
+	 * The instance's own authorization server skips the consent screen for the resource's own
+	 * client. Only for a first-party resource.
+	 */
+	skipConsent?: boolean;
+
 	/** Whether the resource is currently served. Treated as `true` when not implemented. */
 	isAvailable?(): Promise<boolean>;
 

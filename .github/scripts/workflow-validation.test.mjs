@@ -142,7 +142,6 @@ describe('evaluateStepCondition', () => {
 
 describe('ownership workflow routing', () => {
 	const reviews = workflowFile('ci-owners-required-reviews.yml');
-	const comments = workflowFile('ci-owners-review-recommendations.yml');
 	const dispatch = stepNamed(
 		reviews,
 		'dispatch-review',
@@ -183,9 +182,7 @@ if (args.includes('GET')) process.stdout.write(process.env.MOCK_NUMBERS);
 
 	it('uses base-branch callers and keeps the external pins in sync', () => {
 		assert.ok(triggersOf(reviews).pull_request_target);
-		assert.ok(triggersOf(comments).pull_request_target);
 		assert.equal(triggersOf(reviews).pull_request_review, undefined);
-		assert.equal(triggersOf(comments).pull_request, undefined);
 		assert.deepEqual(triggersOf(reviews).workflow_run, {
 			workflows: ['Util: Notify PR Status'],
 			types: ['completed'],
@@ -196,7 +193,7 @@ if (args.includes('GET')) process.stdout.write(process.env.MOCK_NUMBERS);
 		);
 		assert.equal(reviews.jobs['required-reviews'].if, "github.event_name != 'workflow_run'");
 		assert.match(reviews.jobs['required-reviews'].uses, /ownership-checks\.yml@[a-f0-9]{40}$/);
-		assert.equal(reviews.jobs['required-reviews'].uses, comments.jobs['ownership-comment'].uses);
+		assert.equal(reviews.jobs['required-reviews'].with['ownership-comment'], true);
 		assert.ok(reviews.jobs['dispatch-review'].steps.every((step) => !step.uses));
 	});
 
@@ -540,7 +537,7 @@ describe('unpublished package handling', () => {
 			'Notify Developer Platform alerts channel',
 		);
 
-		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1-2' }]);
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1' }]);
 		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
 		assert.equal(notify.if, "steps.detect.outputs.packages != '[]'");
 		assert.match(notify.run, /--channel '#alerts-developer-platforms'/);

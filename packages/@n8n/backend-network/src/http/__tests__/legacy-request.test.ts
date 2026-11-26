@@ -1,16 +1,23 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig, type SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import axios from 'axios';
 import { jsonParse, type IHttpRequestOptions, type IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import {
+	createServer as createNetServer,
+	type AddressInfo,
+	type Server as NetServer,
+	type Socket,
+} from 'node:net';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
 import { binaryToString } from '../binary-string';
 import { OutboundHttp } from '../outbound-http';
+import { startRecordingProxy, type RecordingProxy } from './fixtures/recording-proxy';
 
 // A given `bridge` is installed as the instance's protection service, so
 // clients pick it up through the default safe mode.
@@ -361,6 +368,51 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			},
 		);
 
+		describe('with a proxy', () => {
+			let proxy: RecordingProxy;
+
+			beforeEach(async () => {
+				nock.restore();
+				proxy = await startRecordingProxy();
+			});
+
+			afterEach(async () => {
+				await proxy.close();
+				nock.activate();
+			});
+
+			it('blocks a proxy that is not in allowedDomains', async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy({
+						url: 'http://example.com/data',
+						headers: { Authorization: 'Bearer token' },
+						proxy: proxy.url,
+						allowedDomains: 'example.com',
+					}),
+				).rejects.toThrow('Domain not allowed');
+
+				expect(proxy.received).toHaveLength(0);
+			});
+
+			it.each([['example.com, 127.0.0.1'], [undefined]])(
+				'uses the proxy when allowedDomains is %s',
+				async (allowedDomains) => {
+					const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+					const body = await client.requestLegacy({
+						url: 'http://example.com/data',
+						proxy: proxy.url,
+						allowedDomains,
+					});
+
+					expect(body).toBe('ok');
+					expect(proxy.received).toHaveLength(1);
+				},
+			);
+		});
+
 		it('blocks redirects to disallowed domains', async () => {
 			nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://not-allowed.com/data' });
 			nock('https://not-allowed.com').get('/data').reply(200, 'not-ok');
@@ -455,6 +507,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 	describe('body drain', () => {
 		let server: Server;
 		let port: number;
+		let dropTruncatedSocket: (() => void) | undefined;
 
 		beforeAll(async () => {
 			nock.enableNetConnect('127.0.0.1');
@@ -466,6 +519,28 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			// path, drained internally), `/stall-200` returns 200 (success path,
 			// drained by the caller).
 			server = createServer((req, res) => {
+				if (req.url === '/truncated-200') {
+					res.writeHead(200, { 'content-type': 'text/plain', 'content-length': '100' });
+					res.write('half');
+					dropTruncatedSocket = () => res.socket?.destroy();
+					return;
+				}
+				if (req.url === '/truncated-403-mid-drain') {
+					res.writeHead(403, { 'content-type': 'text/plain', 'content-length': '1000' });
+					res.write('Access denied ');
+					setTimeout(() => {
+						if (!res.socket?.destroyed) {
+							res.write('mid-drain');
+							setTimeout(() => res.socket?.destroy(), 20).unref();
+						}
+					}, 20).unref();
+					return;
+				}
+				if (req.url === '/invalid-charset-403') {
+					res.writeHead(403, { 'content-type': 'text/plain; charset=invalid-charset' });
+					res.end('Access Denied by proxy');
+					return;
+				}
 				const status = (req.url ?? '').startsWith('/stall-200') ? 200 : 403;
 				res.writeHead(status, { 'content-type': 'text/plain', 'content-length': '1000' });
 				res.write('partial body');
@@ -494,16 +569,17 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		});
 
 		it(
-			'rejects instead of hanging when the error-response body never terminates',
+			'rejects with the HTTP status instead of hanging when the error-response body never terminates',
 			{ timeout: 5000 },
 			async () => {
 				// No per-request `timeout`: axios then sets no socket timeout, so nothing
-				// tears the stalled body stream down — without the guard it hangs forever.
+				// tears the stalled body stream down. The body-read guard aborts the
+				// drain and requestLegacy still surfaces the original 403 status.
 				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				await expect(
 					client.requestLegacy({ url: `http://127.0.0.1:${port}/stall`, useStream: true }),
-				).rejects.toThrow(/timed out/i);
+				).rejects.toMatchObject({ statusCode: 403, status: 403, error: 'partial body' });
 			},
 		);
 
@@ -513,7 +589,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			async () => {
 				// The HTTP Request node always sets a per-request timeout (default 300_000ms).
 				// The configured guard must still apply, so the read aborts at ~500ms here,
-				// not at the 30s request timeout.
+				// not at the 30s request timeout, and still surfaces the original 403.
 				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 				const start = Date.now();
 
@@ -523,7 +599,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 						useStream: true,
 						timeout: 30_000,
 					}),
-				).rejects.toThrow(/timed out/i);
+				).rejects.toMatchObject({ statusCode: 403, status: 403, error: 'partial body' });
 				expect(Date.now() - start).toBeLessThan(3000);
 			},
 		);
@@ -545,6 +621,71 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 				await expect(binaryToString(body)).rejects.toThrow(/timed out/i);
 				expect(Date.now() - start).toBeLessThan(3000);
+			},
+		);
+
+		it(
+			'rejects a truncated success-response (2xx) body instead of returning partial bytes',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const body = (await client.requestLegacy({
+					url: `http://127.0.0.1:${port}/truncated-200`,
+					useStream: true,
+					timeout: 30_000,
+				})) as Readable;
+
+				// Drop the server socket after headers arrived so the IncomingMessage is
+				// already destroyed with partial bytes still buffered before draining.
+				const closed = new Promise<void>((resolve) => {
+					body.once('error', () => {});
+					body.once('close', resolve);
+				});
+				dropTruncatedSocket?.();
+				await closed;
+
+				expect(body.destroyed).toBe(true);
+				await expect(binaryToString(body)).rejects.toThrow(/aborted|closed before completing/i);
+			},
+		);
+
+		it(
+			'preserves error-body bytes received before the connection drops mid-drain',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy({
+						url: `http://127.0.0.1:${port}/truncated-403-mid-drain`,
+						useStream: true,
+						timeout: 30_000,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: 'Access denied mid-drain',
+				});
+			},
+		);
+
+		it(
+			'preserves the error body via UTF-8 fallback when the response charset cannot be decoded',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy({
+						url: `http://127.0.0.1:${port}/invalid-charset-403`,
+						useStream: true,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: 'Access Denied by proxy',
+				});
 			},
 		);
 	});
@@ -695,5 +836,198 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			expect(stream.destroyed).toBe(false);
 			stream.destroy();
 		});
+	});
+
+	// Regression test for NODE-5666: HTTP Request node with Response Format = Autodetect
+	// hangs until responseBodyReadTimeout (default 5 min) on a proxy 403 CONNECT denial.
+	describe('proxy CONNECT error responses', () => {
+		let proxyServer: NetServer;
+		let proxyUrl: string;
+		let previousAxiosProxy: typeof axios.defaults.proxy;
+		const openSockets = new Set<Socket>();
+		const pendingTimers = new Set<NodeJS.Timeout>();
+		const errorBody = `<!DOCTYPE html><html><body>${'Access Denied. '.repeat(250)}</body></html>`;
+
+		beforeAll(async () => {
+			// Match production startup (configureGlobalAxiosDefaults) so axios lets
+			// HttpsProxyAgent handle proxying even when the test runner sets HTTPS_PROXY.
+			previousAxiosProxy = axios.defaults.proxy;
+			axios.defaults.proxy = false;
+			// Restore native http/https modules because nock's @mswjs/interceptors
+			// breaks HttpsProxyAgent real socket passthrough.
+			nock.restore();
+			// Emulate Squid denying an HTTPS CONNECT tunnel: write 403 headers with a
+			// multi-KB Content-Length first, then send the HTML body shortly after
+			// (matching headers and body spanning separate writes or TCP segments).
+			proxyServer = createNetServer((socket) => {
+				openSockets.add(socket);
+				socket.once('close', () => openSockets.delete(socket));
+				socket.setNoDelay(true);
+				socket.once('data', (chunk) => {
+					const requestLine = chunk.toString('ascii').split('\r\n')[0] ?? '';
+					if (requestLine.includes('partial-body.example.com')) {
+						// Headers and a partial HTML body arrive in the same TCP segment,
+						// with a larger Content-Length that is never satisfied.
+						socket.write(
+							'HTTP/1.1 403 Forbidden\r\n' +
+								'Server: squid/5.7\r\n' +
+								'Content-Type: text/html;charset=utf-8\r\n' +
+								'Content-Length: 100000\r\n' +
+								'\r\n' +
+								'<html><body><h1>Access Denied.</h1></body></html>\n',
+						);
+						return;
+					}
+					if (requestLine.includes('empty-body.example.com')) {
+						socket.end('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');
+						return;
+					}
+					socket.write(
+						'HTTP/1.1 403 Forbidden\r\n' +
+							'Server: squid/5.7\r\n' +
+							'Content-Type: text/html;charset=utf-8\r\n' +
+							`Content-Length: ${Buffer.byteLength(errorBody)}\r\n` +
+							'X-Squid-Error: ERR_ACCESS_DENIED 0\r\n' +
+							'Connection: close\r\n' +
+							'\r\n',
+					);
+					const timer = setTimeout(() => {
+						pendingTimers.delete(timer);
+						if (!socket.destroyed) {
+							socket.end(errorBody);
+						}
+					}, 20);
+					timer.unref();
+					pendingTimers.add(timer);
+				});
+			});
+			await new Promise<void>((resolve) => proxyServer.listen(0, '127.0.0.1', resolve));
+			proxyUrl = `http://127.0.0.1:${(proxyServer.address() as AddressInfo).port}`;
+		});
+
+		afterAll(async () => {
+			for (const timer of pendingTimers) clearTimeout(timer);
+			pendingTimers.clear();
+			for (const socket of openSockets) socket.destroy();
+			openSockets.clear();
+			await new Promise<void>((resolve) => proxyServer.close(() => resolve()));
+			axios.defaults.proxy = previousAxiosProxy;
+			if (!nock.isActive()) nock.activate();
+		});
+
+		beforeEach(() => {
+			// Bound the inactivity timeout below the test timeout so a hang fails fast
+			// in CI rather than waiting for the 300_000ms production default.
+			Container.set(
+				HttpRequestConfig,
+				Object.assign(new HttpRequestConfig(), { responseBodyReadTimeout: 1500 }),
+			);
+		});
+
+		afterEach(() => {
+			Container.set(HttpRequestConfig, new HttpRequestConfig());
+		});
+
+		it(
+			'fails fast with 403 when proxy denies CONNECT without streaming (Text format)',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://denied.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						json: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({ statusCode: 403 });
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
+
+		it(
+			'fails fast with 403 when proxy denies CONNECT with streaming (Autodetect format)',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://denied.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						encoding: null,
+						json: false,
+						useStream: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({ statusCode: 403 });
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
+
+		it(
+			'surfaces buffered partial error body when proxy CONNECT 403 arrives with truncated Content-Length',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://partial-body.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						encoding: null,
+						json: false,
+						useStream: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: expect.stringContaining('Access Denied.'),
+				});
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
+
+		it(
+			'fails fast with 403 when proxy CONNECT denial has empty body and no Content-Type',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://empty-body.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						encoding: null,
+						json: false,
+						useStream: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: '',
+				});
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
 	});
 });
