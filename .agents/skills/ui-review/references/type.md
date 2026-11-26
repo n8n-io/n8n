@@ -7,7 +7,7 @@ Guidance on properly sized, set, and scaled type.
 - Prefer `N8nText` to render UI text over styled semantic tags. Use the `step` value to properly size text. Use `tag` to define semantic tag.
 - Always use font sizes from design-system. Never use hard-coded values.
 - Only use `--font-family` on UI. Use `--font-family--monospace` for code.
-- Only use `--font-weight--regular` or `--font-weight--medium`. Never bold or italic.
+- Prefer use `--font-weight--regular` or `--font-weight--medium`. Set medium with `<N8nText bold />`.
 - Stick to 1-2 font-sizes per UI section. Prefer using color, opacity, and weight to create contrast.
 - Default to `--font-size--sm` or `<N8nText step="sm" />` for most UI text. Consider `md` and `xs` sizes for headings and captions respectively. This does not apply to Markdown or user-generated text (e.g. inputs).
 - Links should always be underlined.
