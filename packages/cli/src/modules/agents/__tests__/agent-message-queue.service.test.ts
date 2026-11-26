@@ -253,6 +253,25 @@ describe('AgentMessageQueueService', () => {
 			);
 		});
 
+		it('restores the chat mode of a queued preview message when it is claimed', async () => {
+			repository.findHead.mockResolvedValue(
+				mock<AgentMessageQueue>({
+					id: 'queue-1',
+					steeringExecutionId: null,
+					payload: { kind: 'preview', stopReportId: 'stop-1', mode: 'test' },
+					message: mock<AgentMessageEntity>({
+						resourceId: 'draft-chat:user-1',
+						content: { role: 'user', content: [{ type: 'text', text: 'Summarize the stop' }] },
+						origin: { source: 'chat', hidden: true },
+					}),
+				}),
+			);
+
+			const claimed = await service.claimNext('thread-1', async () => true);
+
+			expect(claimed?.payload).toMatchObject({ kind: 'preview', mode: 'test' });
+		});
+
 		it('holds the head while captured work runs and claims it after settlement', async () => {
 			threadRepository.findStopTargetsStillActive.mockResolvedValueOnce([
 				{ jobId: 'job-1', title: 'Research' },
@@ -372,6 +391,34 @@ describe('AgentMessageQueueService', () => {
 	});
 
 	describe('integration messages', () => {
+		it('keeps the chat mode of a preview message in the dispatch', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+
+			await service.enqueue({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'new',
+				source: 'chat',
+				payload: {
+					kind: 'preview',
+					message: 'hello',
+					resourceId: 'draft-chat:user-1',
+					userId: 'user-1',
+					mode: 'test',
+				},
+			});
+
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'preview', mode: 'test' },
+				expect.anything(),
+			);
+		});
+
 		it('stores the typed platform context on the origin, outside the dispatch', async () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
 			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
@@ -763,6 +810,49 @@ describe('AgentMessageQueueService', () => {
 				kind,
 			});
 
+			expect(repository.reserveSteering).toHaveBeenCalledWith(
+				'thread-1',
+				'1',
+				'execution-1',
+				expect.anything(),
+			);
+		});
+
+		async function steerTestMessage(testChat: boolean) {
+			threadRepository.lockById.mockResolvedValue(makeThread({ testChat }));
+			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([['thread-1', 'chat']]),
+			);
+			repository.findItem.mockResolvedValue(
+				mock<AgentMessageQueue>({
+					id: '1',
+					payload: { kind: 'preview', mode: 'test' } as AgentMessageQueue['payload'],
+					executionId: null,
+					steeringExecutionId: null,
+				}),
+			);
+			steering.findEligible.mockResolvedValue(mock<AgentExecution>({ id: 'execution-1' }));
+			repository.reserveSteering.mockResolvedValue(true);
+			return await service.steer({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				userId: 'user-1',
+				queueId: '1',
+				executionId: 'execution-1',
+				kind: 'preview',
+			});
+		}
+
+		it('never steers a message that asked for a test run into a live run', async () => {
+			const steered = steerTestMessage(false);
+			await expect(steered).rejects.toThrow(ConflictError);
+			await expect(steered).rejects.toThrow('This chat runs live');
+			expect(repository.reserveSteering).not.toHaveBeenCalled();
+		});
+
+		it("steers a message that asked for a test run into a test chat's run", async () => {
+			await steerTestMessage(true);
 			expect(repository.reserveSteering).toHaveBeenCalledWith(
 				'thread-1',
 				'1',
