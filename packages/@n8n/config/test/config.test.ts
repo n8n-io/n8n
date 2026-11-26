@@ -224,6 +224,7 @@ describe('GlobalConfig', () => {
 		},
 		publicApi: {
 			disabled: false,
+			ownerKeyExchangeEnabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
 			rateLimit: {
