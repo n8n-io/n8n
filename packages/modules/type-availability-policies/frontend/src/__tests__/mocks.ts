@@ -50,10 +50,10 @@ export function mockPolicyProject(project: Pick<Project, 'type'> & Partial<Proje
 }
 
 export const contactAdminModalStub = {
-	props: ['open', 'typeName', 'audience', 'kind'],
+	props: ['open', 'typeName', 'audience', 'kind', 'telemetrySource'],
 	emits: ['update:open'],
 	template:
-		'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience" :data-kind="kind">{{ typeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
+		'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience" :data-kind="kind" :data-telemetry-source="telemetrySource">{{ typeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
 };
 
 export function mockProjectPolicy(

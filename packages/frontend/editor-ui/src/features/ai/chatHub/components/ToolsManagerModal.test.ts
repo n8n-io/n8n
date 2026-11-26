@@ -3,7 +3,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import {
+	contactAdminModalStub,
+	mockRestrictedNodeTypes,
+} from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -144,18 +147,16 @@ const dialogPartStub = { template: '<div><slot /></div>' };
 const MODAL_NAME = 'ToolsManagerModal';
 const onConfirmMock = vi.fn();
 
-const renderComponent = createComponentRenderer(ToolsManagerModal, {
-	global: {
-		stubs: {
-			Dialog: DialogStub,
-			DialogHeader: dialogPartStub,
-			DialogTitle: dialogPartStub,
-			DialogFooter: dialogPartStub,
-			NodeToolSettingsContent: createToolSettingsStub(true),
-			NodeIcon: { template: '<div />' },
-		},
-	},
-});
+const stubs = {
+	Dialog: DialogStub,
+	DialogHeader: dialogPartStub,
+	DialogTitle: dialogPartStub,
+	DialogFooter: dialogPartStub,
+	NodeToolSettingsContent: createToolSettingsStub(true),
+	NodeIcon: { template: '<div />' },
+};
+
+const renderComponent = createComponentRenderer(ToolsManagerModal, { global: { stubs } });
 
 function getConfiguredItems() {
 	return Array.from(document.body.querySelectorAll('.item.configured'));
@@ -765,6 +766,24 @@ describe('ToolsManagerModal', () => {
 			expect(saveButton).toBeDisabled();
 			await userEvent.click(saveButton);
 			expect(chatStore.updateConfiguredTool).not.toHaveBeenCalled();
+		});
+
+		it('reports the tools manager as the source of a contact admin request from the callout', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { findByTestId } = renderComponent({
+				props: defaultProps(),
+				global: { stubs: { ...stubs, ContactAdminModal: contactAdminModalStub } },
+			});
+
+			await userEvent.click(getActionButtons(getConfiguredItems()[0])[0]);
+			await userEvent.click(await findByTestId('restricted-chatTool-contact-admin'));
+
+			expect(await findByTestId('contact-admin-modal')).toHaveAttribute(
+				'data-telemetry-source',
+				'chat_hub_tools_manager',
+			);
 		});
 
 		it('removes a restricted configured tool', async () => {

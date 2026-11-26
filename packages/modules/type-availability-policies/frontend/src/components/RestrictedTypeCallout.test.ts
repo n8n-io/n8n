@@ -17,10 +17,24 @@ const renderCallout = createComponentRenderer(RestrictedTypeCallout, {
 });
 
 const renderTool = (restriction?: OptionalVerdict) =>
-	renderCallout({ props: { surface: 'tool', typeName: 'Slack', restriction } });
+	renderCallout({
+		props: {
+			surface: 'tool',
+			typeName: 'Slack',
+			restriction,
+			telemetrySource: 'agent_tool_config',
+		},
+	});
 
 const renderCredential = (restriction?: OptionalVerdict) =>
-	renderCallout({ props: { surface: 'credential', typeName: 'OpenAI', restriction } });
+	renderCallout({
+		props: {
+			surface: 'credential',
+			typeName: 'OpenAI',
+			restriction,
+			telemetrySource: 'credential_edit',
+		},
+	});
 
 describe('RestrictedTypeCallout', () => {
 	beforeEach(() => {
@@ -50,7 +64,9 @@ describe('RestrictedTypeCallout', () => {
 			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 			await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
 
-			expect(getByTestId('contact-admin-modal')).toHaveTextContent('Slack');
+			const dialog = getByTestId('contact-admin-modal');
+			expect(dialog).toHaveTextContent('Slack');
+			expect(dialog).toHaveAttribute('data-telemetry-source', 'agent_tool_config');
 		});
 
 		it('sends a project restriction to the project admins', async () => {

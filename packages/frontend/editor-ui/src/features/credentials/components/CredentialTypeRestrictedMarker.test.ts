@@ -67,6 +67,7 @@ describe('CredentialTypeRestrictedMarker', () => {
 				placement: 'field',
 				scopeLabel: 'Restricted nodes',
 				description: 'Every node is blocked.',
+				telemetrySource: 'node_credentials',
 			},
 			attachTo: document.body,
 		});
