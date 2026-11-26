@@ -70,9 +70,7 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 		response = await getTokenRequestClient('user-controlled').request({
 			url: tokenUrl,
 			method: 'POST',
-			// RFC 6749 2.3.1 percent-encodes both halves before they are base64-encoded, so a
-			// secret holding `+`, `%` or a space still reaches a compliant server intact. A
-			// space stays `%20` rather than becoming `+`, because a server that percent-decodes
+			// A space stays `%20` rather than becoming `+`: a server that percent-decodes
 			// without treating the pair as a form would hand a `+` on as a literal one.
 			...(inBody
 				? {}
