@@ -17,9 +17,18 @@ import { PromotionsModule } from './promotions.module';
 import {
 	PROMOTION_INSTANCE_APPLY_VIEW,
 	PROMOTION_PREVIEW_VIEWS,
+	PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW,
 	PROMOTIONS_SETTINGS_SCOPES,
 	PROMOTIONS_SETTINGS_VIEW,
 } from './promotions.constants';
+import type * as PromotionsApi from './promotionsSettings.api';
+
+const api = vi.hoisted(() => ({
+	getPromotionProjectEnvironmentsSettings:
+		vi.fn<typeof PromotionsApi.getPromotionProjectEnvironmentsSettings>(),
+}));
+
+vi.mock('./promotionsSettings.api', () => api);
 
 const stub = { render: () => null };
 
@@ -129,6 +138,57 @@ describe('PromotionsModule settings route', () => {
 		const router = createTestRouter();
 
 		await router.push('/settings/promotions');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.SOURCE_CONTROL);
+	});
+});
+
+describe('PromotionsModule project environments allow list route', () => {
+	const path = '/settings/promotions/project-environments';
+	const instanceAdmin = [...PROMOTIONS_SETTINGS_SCOPES, 'promotions:manageEnvironments'] as Scope[];
+
+	it('opens the project list for an instance admin while project environments are on', async () => {
+		setup({ scopes: instanceAdmin });
+		api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true });
+		const router = createTestRouter();
+
+		await router.push(path);
+
+		expect(router.currentRoute.value.name).toBe(PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW);
+	});
+
+	it.each([
+		[
+			'the setting is off',
+			instanceAdmin,
+			() => api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: false }),
+		],
+		[
+			'the manage scope is missing',
+			[...PROMOTIONS_SETTINGS_SCOPES],
+			() => api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true }),
+		],
+		[
+			'the setting read rejects',
+			instanceAdmin,
+			() => api.getPromotionProjectEnvironmentsSettings.mockRejectedValue(new Error('failed')),
+		],
+	])('leads to the Environments settings when %s', async (_, scopes, mockSetting) => {
+		setup({ scopes });
+		mockSetting();
+		const router = createTestRouter();
+
+		await router.push(path);
+
+		expect(router.currentRoute.value.name).toBe(PROMOTIONS_SETTINGS_VIEW);
+	});
+
+	it('leads to the v1 settings when the module is inactive', async () => {
+		setup({ activeModules: [], scopes: instanceAdmin });
+		api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true });
+		const router = createTestRouter();
+
+		await router.push(path);
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.SOURCE_CONTROL);
 	});

@@ -11,6 +11,8 @@ import type {
 	PromotionEnvironmentPublicDto,
 	PromotionEnvironmentSummary,
 	PromotionMissingProjectListPublicDto,
+	PromotionProjectEnvironmentsAllowList,
+	PromotionProjectEnvironmentsAllowListResponse,
 	PromotionProjectEnvironmentsSettingsPublicDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
@@ -19,11 +21,12 @@ import type {
 	PromotionRepositoryListPublicDto,
 	PromotionBranchListPublicDto,
 	UpdatePromotionEnvironmentDto,
+	UpdatePromotionProjectEnvironmentsAllowListDto,
 	UpdatePromotionProjectEnvironmentsSettingsDto,
 	UpdatePromotionProviderDto,
 } from '@n8n/api-types';
-import type { PublicApiContext } from '@n8n/rest-api-client';
-import { makePublicApiRequest, ResponseError } from '@n8n/rest-api-client';
+import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
+import { makePublicApiRequest, makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 
 export type PromotionProvider = PromotionProviderPublicDto;
 export type PromotionEnvironment = PromotionEnvironmentPublicDto;
@@ -226,3 +229,20 @@ export const updatePromotionProjectEnvironmentsSettings = async (
 		`${promotionsApiRoot}/settings/project-environments`,
 		payload,
 	);
+
+const allowListRoot = `${promotionsApiRoot}/settings/project-environments/projects`;
+
+export const getPromotionProjectEnvironmentsAllowList = async (
+	context: IRestApiContext,
+	query: { skip: number; take: number; search?: string; allowEnvironments?: boolean },
+): Promise<PromotionProjectEnvironmentsAllowList> =>
+	await makeRestApiRequest(context, 'GET', allowListRoot, { ...query });
+
+export const updatePromotionProjectEnvironmentsAllowList = async (
+	context: IRestApiContext,
+	projectId: string,
+	payload: UpdatePromotionProjectEnvironmentsAllowListDto,
+): Promise<PromotionProjectEnvironmentsAllowListResponse> =>
+	await makeRestApiRequest(context, 'PATCH', `${allowListRoot}/${encodeURIComponent(projectId)}`, {
+		...payload,
+	});

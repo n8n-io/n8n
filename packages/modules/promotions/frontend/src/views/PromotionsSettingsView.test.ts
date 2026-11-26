@@ -12,7 +12,10 @@ import { computed, reactive, ref } from 'vue';
 
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
-import { PROMOTIONS_SETTINGS_SCOPES } from '../promotions.constants';
+import {
+	PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW,
+	PROMOTIONS_SETTINGS_SCOPES,
+} from '../promotions.constants';
 import PromotionsSettingsView from './PromotionsSettingsView.vue';
 
 const api = vi.hoisted(() => ({
@@ -50,6 +53,7 @@ const environmentsSettings = {
 const mockConfirm = vi.fn();
 const showMessage = vi.fn();
 const showError = vi.fn();
+const routerPush = vi.fn();
 
 vi.mock('@n8n/design-system', async () => ({
 	...(await vi.importActual<object>('@n8n/design-system')),
@@ -62,7 +66,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('vue-router', async () => ({
 	...(await vi.importActual<object>('vue-router')),
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: routerPush }),
 }));
 
 const timestamps = {
@@ -457,6 +461,31 @@ describe('PromotionsSettingsView', () => {
 				{ enabled: true },
 			);
 			await waitFor(() => expect(toggle).toBeChecked());
+		});
+
+		it('shows the Projects entry when project environments go on and opens the project list from it', async () => {
+			useRBACStore().setGlobalScopes([
+				...PROMOTIONS_SETTINGS_SCOPES,
+				'promotions:manageEnvironments',
+			]);
+			api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: false });
+			api.updatePromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true });
+			renderView();
+
+			const toggle = await screen.findByRole('switch', { name: 'Project environments' });
+			await waitFor(() => expect(toggle).toBeEnabled());
+			expect(
+				screen.queryByTestId('promotion-project-environments-projects-row'),
+			).not.toBeInTheDocument();
+
+			await userEvent.click(toggle);
+			await userEvent.click(
+				await screen.findByTestId('promotion-project-environments-projects-row'),
+			);
+
+			expect(routerPush).toHaveBeenCalledWith({
+				name: PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW,
+			});
 		});
 
 		it('shows what the server stored and an error when saving fails', async () => {

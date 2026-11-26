@@ -4,6 +4,7 @@ import { capabilities, capabilityRegistry, defineFrontendModule } from '@n8n/fro
 import { useI18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
 
 import {
@@ -11,6 +12,7 @@ import {
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+	PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW,
 	PROMOTIONS_SETTINGS_SCOPES,
 	PROMOTIONS_SETTINGS_VIEW,
 } from './promotions.constants';
@@ -18,6 +20,8 @@ import {
 const SettingsView = async () => await import('./views/PromotionsSettingsView.vue');
 const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
 const PreviewView = async () => await import('./views/PromotionPreviewView.vue');
+const AllowListView = async () =>
+	await import('./views/PromotionProjectEnvironmentsAllowListView.vue');
 
 const isPromotionsEnabled = () =>
 	capabilityRegistry.use(capabilities.environmentsSettings).isPromotionsEnabled();
@@ -52,6 +56,16 @@ const requireOperationScope =
 		}
 		return (isPromotionsEnabled() && canOperate) || { name: VIEWS.HOMEPAGE };
 	};
+
+const requireProjectEnvironmentsEnabled = async () => {
+	const settingsPage = { name: PROMOTIONS_SETTINGS_VIEW };
+	if (!useRBACStore().hasScope('promotions:manageEnvironments')) return settingsPage;
+	const { getPromotionProjectEnvironmentsSettings } = await import('./promotionsSettings.api');
+	const enabled = await getPromotionProjectEnvironmentsSettings(useRootStore().publicApiContext)
+		.then((settings) => settings.enabled)
+		.catch(() => false);
+	return enabled || settingsPage;
+};
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
@@ -135,6 +149,12 @@ export const PromotionsModule = defineFrontendModule({
 					name: PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 					component: EnvironmentView,
 					props: true,
+				},
+				{
+					path: 'project-environments',
+					name: PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW,
+					component: AllowListView,
+					beforeEnter: requireProjectEnvironmentsEnabled,
 				},
 			],
 		},

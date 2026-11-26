@@ -211,6 +211,8 @@ export const eventNamesAudit = [
 	'n8n.audit.promotions.environment.deleted',
 	'n8n.audit.promotions.project-environments.enabled',
 	'n8n.audit.promotions.project-environments.disabled',
+	'n8n.audit.promotions.project-environments.project.allowed',
+	'n8n.audit.promotions.project-environments.project.disallowed',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload

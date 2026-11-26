@@ -17,6 +17,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
 	N8nSwitch,
@@ -44,6 +45,7 @@ import {
 	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+	PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW,
 	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE,
 } from '../promotions.constants';
 import {
@@ -65,6 +67,7 @@ const showProjectAccess =
 	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE.length > 0 &&
 	useRBACStore().hasScope('securitySettings:manage');
 const showProjectEnvironments = useRBACStore().hasScope('promotions:manageEnvironments');
+const projectEnvironmentsEnabled = ref(false);
 const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
@@ -284,7 +287,29 @@ async function remove(environment: PromotionEnvironment) {
 						/>
 					</template>
 				</N8nSettingsRow>
-				<PromotionProjectEnvironmentsRow v-if="showProjectEnvironments" />
+				<PromotionProjectEnvironmentsRow
+					v-if="showProjectEnvironments"
+					v-model:enabled="projectEnvironmentsEnabled"
+				/>
+				<N8nSettingsRow
+					v-if="projectEnvironmentsEnabled"
+					clickable
+					:title="i18n.baseText('generic.projects')"
+					:description="
+						i18n.baseText('settings.promotions.projectEnvironments.allowList.description')
+					"
+					data-test-id="promotion-project-environments-projects-row"
+					data-attr="promotion-project-environments-projects-row"
+					@click="router.push({ name: PROMOTIONS_PROJECT_ENVIRONMENTS_ALLOW_LIST_VIEW })"
+				>
+					<template #action>
+						<N8nSettingsRowConfigure
+							:value="
+								i18n.baseText('settings.promotions.projectEnvironments.allowList.entry.action')
+							"
+						/>
+					</template>
+				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
 		<N8nSettingsSection

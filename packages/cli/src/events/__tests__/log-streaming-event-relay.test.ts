@@ -4385,6 +4385,47 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each([
+			{
+				label: 'allowed',
+				allowEnvironments: true,
+				eventName: 'n8n.audit.promotions.project-environments.project.allowed',
+			},
+			{
+				label: 'not allowed',
+				allowEnvironments: false,
+				eventName: 'n8n.audit.promotions.project-environments.project.disallowed',
+			},
+		])('logs a project set to $label', ({ allowEnvironments, eventName }) => {
+			const event: RelayEventMap['promotion-project-environments-allow-list-updated'] = {
+				user: {
+					id: 'user406',
+					email: 'admin9@example.com',
+					firstName: 'Ninth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				projectId: 'project-1',
+				allowEnvironments,
+				loginId: 'login-1',
+			};
+
+			eventService.emit('promotion-project-environments-allow-list-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: {
+					userId: 'user406',
+					_email: 'admin9@example.com',
+					_firstName: 'Ninth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					projectId: 'project-1',
+					loginId: 'login-1',
+				},
+			});
+		});
 	});
 
 	describe('MCP server events', () => {

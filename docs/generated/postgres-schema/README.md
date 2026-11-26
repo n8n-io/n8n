@@ -141,6 +141,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project_workflow_review_settings](public.project_workflow_review_settings.md) | 5 |  | BASE TABLE |
 | [public.promotion_environment](public.promotion_environment.md) | 9 |  | BASE TABLE |
 | [public.promotion_environment_project](public.promotion_environment_project.md) | 5 |  | BASE TABLE |
+| [public.promotion_project_settings](public.promotion_project_settings.md) | 4 |  | BASE TABLE |
 | [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
 | [public.promotion_review](public.promotion_review.md) | 10 |  | BASE TABLE |
 | [public.promotion_run](public.promotion_run.md) | 8 |  | BASE TABLE |
@@ -429,6 +430,7 @@ erDiagram
 "public.promotion_environment" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
 "public.promotion_environment_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_environment_project" }o--|| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE CASCADE"
+"public.promotion_project_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;approvedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_review" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
@@ -1881,6 +1883,12 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_16_ direction
   uuid environmentId FK
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_project_settings" {
+  boolean allowEnvironments
+  timestamp_3__with_time_zone createdAt
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }

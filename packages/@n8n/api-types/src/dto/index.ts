@@ -934,6 +934,13 @@ export {
 	UpdatePromotionSettingsDto,
 	type PromotionSettings,
 } from './promotions/promotion-settings.dto';
+export {
+	ListPromotionProjectEnvironmentsAllowListQueryDto,
+	UpdatePromotionProjectEnvironmentsAllowListDto,
+	type PromotionProjectEnvironmentsAllowList,
+	type PromotionProjectEnvironmentsAllowListProject,
+	type PromotionProjectEnvironmentsAllowListResponse,
+} from './promotions/promotion-project-environments-allow-list.dto';
 
 export {
 	ScimConfigPatchDto,
