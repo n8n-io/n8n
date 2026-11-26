@@ -388,6 +388,11 @@ function onToggle(resource: PromotionResource) {
 	padding-left: calc(var(--spacing--2xs) + var(--spacing--xs));
 }
 
+/* The warning icon and the lock end the row. Both sit 4px closer to the right edge, in one column. */
+.resource > :last-child:not(.name) {
+	margin-right: calc(-1 * var(--spacing--4xs));
+}
+
 .resource:hover {
 	background-color: var(--background--hover);
 }
