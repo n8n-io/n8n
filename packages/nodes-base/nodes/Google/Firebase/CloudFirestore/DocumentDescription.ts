@@ -616,6 +616,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Query JSON',
 		name: 'query',
 		type: 'string',
+		validateType: 'object',
 		default: '',
 		displayOptions: {
 			show: {

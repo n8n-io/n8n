@@ -366,7 +366,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				await Promise.all(
 					items.map(async (_: IDataObject, i: number) => {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						const queryParameters = this.getNodeParameter('queryParameters', i, '[]');
 						const body = parseAndResolveQueryParameters(
 							query,
