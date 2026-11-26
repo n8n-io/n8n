@@ -157,6 +157,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'dataAttributesJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,

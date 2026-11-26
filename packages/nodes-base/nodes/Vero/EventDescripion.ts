@@ -167,6 +167,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'dataAttributesJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -184,6 +185,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Extra',
 		name: 'extraAttributesJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,

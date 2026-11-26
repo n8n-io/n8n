@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import isEqual from 'lodash/isEqual';
 import nock from 'nock';
 
 const ok = { status: 200, message: 'Success.' };
@@ -9,6 +10,18 @@ describe('Vero > Workflows', () => {
 	const mock = nock('https://api.getvero.com/api/v2');
 
 	beforeAll(() => {
+		mock
+			.post('/users/track', (body) => body.id === 'json-1' && isEqual(body.data, { plan: 'pro' }))
+			.reply(200, ok);
+		mock
+			.post(
+				'/events/track',
+				(body) =>
+					body.identity.id === 'expr-1' &&
+					body.data === '{"plan":"team"}' &&
+					body.extras === '{"source":"n8n"}',
+			)
+			.reply(200, ok);
 		mock.post('/users/track', authorized).reply(200, ok);
 		mock.put('/users/reidentify', authorized).reply(200, ok);
 		mock.post('/users/unsubscribe', authorized).reply(200, ok);

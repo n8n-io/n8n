@@ -9,7 +9,7 @@ import type {
 import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescripion';
-import { validateJSON, veroApiRequest } from './GenericFunctions';
+import { veroApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
 
 export class Vero implements INodeType {
@@ -95,9 +95,9 @@ export class Vero implements INodeType {
 								}
 							}
 						} else {
-							const dataAttributesJson = validateJSON(
-								this.getNodeParameter('dataAttributesJson', i) as string,
-							);
+							const dataAttributesJson = this.getNodeParameter('dataAttributesJson', i) as
+								| IDataObject
+								| undefined;
 							if (dataAttributesJson) {
 								body.data = dataAttributesJson;
 							}
@@ -218,15 +218,15 @@ export class Vero implements INodeType {
 								}
 							}
 						} else {
-							const dataAttributesJson = validateJSON(
-								this.getNodeParameter('dataAttributesJson', i) as string,
-							);
+							const dataAttributesJson = this.getNodeParameter('dataAttributesJson', i) as
+								| IDataObject
+								| undefined;
 							if (dataAttributesJson) {
 								body.data = JSON.stringify(dataAttributesJson);
 							}
-							const extraAttributesJson = validateJSON(
-								this.getNodeParameter('extraAttributesJson', i) as string,
-							);
+							const extraAttributesJson = this.getNodeParameter('extraAttributesJson', i) as
+								| IDataObject
+								| undefined;
 							if (extraAttributesJson) {
 								body.extras = JSON.stringify(extraAttributesJson);
 							}
