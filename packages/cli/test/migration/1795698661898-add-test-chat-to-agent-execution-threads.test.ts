@@ -59,10 +59,10 @@ describe('AddTestChatToAgentExecutionThreads migration', () => {
 		);
 	}
 
-	async function testChatColumn() {
+	async function isTestChatColumn() {
 		return await withContext(async ({ queryRunner, tablePrefix }) =>
 			(await queryRunner.getTable(`${tablePrefix}agent_execution_threads`))?.findColumnByName(
-				'testChat',
+				'isTestChat',
 			),
 		);
 	}
@@ -100,7 +100,7 @@ describe('AddTestChatToAgentExecutionThreads migration', () => {
 	it('adds a required column that is false for existing and new chats', async () => {
 		await runSingleMigration(MIGRATION_NAME);
 
-		const column = await testChatColumn();
+		const column = await isTestChatColumn();
 		expect(column).toMatchObject({ type: 'boolean', isNullable: false });
 		// SQLite has no column comments.
 		if (await withContext(async ({ isPostgres }) => isPostgres)) {
@@ -112,12 +112,12 @@ describe('AddTestChatToAgentExecutionThreads migration', () => {
 		const threads = await readRows('agent_execution_threads');
 		expect(threads.map((thread) => thread.id).sort()).toEqual([threadId, newThreadId].sort());
 		// SQLite returns 0 and PostgreSQL returns false.
-		expect(threads.map((thread) => Boolean(thread.testChat))).toEqual([false, false]);
+		expect(threads.map((thread) => Boolean(thread.isTestChat))).toEqual([false, false]);
 
 		await withContext(async ({ escape, runQuery }) => {
 			await expect(
 				runQuery(
-					`UPDATE ${escape.tableName('agent_execution_threads')} SET ${escape.columnName('testChat')} = NULL`,
+					`UPDATE ${escape.tableName('agent_execution_threads')} SET ${escape.columnName('isTestChat')} = NULL`,
 				),
 			).rejects.toThrow();
 		});
@@ -130,7 +130,7 @@ describe('AddTestChatToAgentExecutionThreads migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 
 		expect(await readRows('agent_execution_threads')).toEqual(
-			threads.map((thread) => ({ ...thread, testChat: expect.anything() })),
+			threads.map((thread) => ({ ...thread, isTestChat: expect.anything() })),
 		);
 		expect(await readRows('agent_execution')).toEqual(executions);
 	});
@@ -141,13 +141,13 @@ describe('AddTestChatToAgentExecutionThreads migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 		await withContext(async ({ escape, runQuery }) => {
 			await runQuery(
-				`UPDATE ${escape.tableName('agent_execution_threads')} SET ${escape.columnName('testChat')} = true`,
+				`UPDATE ${escape.tableName('agent_execution_threads')} SET ${escape.columnName('isTestChat')} = true`,
 			);
 		});
 
 		await undoLastSingleMigration();
 
-		expect(await testChatColumn()).toBeUndefined();
+		expect(await isTestChatColumn()).toBeUndefined();
 		expect(await readRows('agent_execution_threads')).toEqual(threads);
 		expect(await readRows('agent_execution')).toEqual(executions);
 	});
@@ -157,16 +157,16 @@ describe('AddTestChatToAgentExecutionThreads migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 		await withContext(async ({ escape, runQuery }) => {
 			await runQuery(
-				`UPDATE ${escape.tableName('agent_execution_threads')} SET ${escape.columnName('testChat')} = true`,
+				`UPDATE ${escape.tableName('agent_execution_threads')} SET ${escape.columnName('isTestChat')} = true`,
 			);
 		});
 		await undoLastSingleMigration();
 
 		await runSingleMigration(MIGRATION_NAME);
 
-		expect(await testChatColumn()).toMatchObject({ type: 'boolean', isNullable: false });
+		expect(await isTestChatColumn()).toMatchObject({ type: 'boolean', isNullable: false });
 		const threads = await readRows('agent_execution_threads');
-		expect(threads.map((thread) => [thread.id, Boolean(thread.testChat)])).toEqual([
+		expect(threads.map((thread) => [thread.id, Boolean(thread.isTestChat)])).toEqual([
 			[threadId, false],
 		]);
 		expect(await readRows('agent_execution')).toEqual(executions);

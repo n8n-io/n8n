@@ -8,12 +8,14 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddTestChatToAgentExecutionThreads1795698661898 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const threads = escape.tableName('agent_execution_threads');
-		const testChat = escape.columnName('testChat');
+		const isTestChat = escape.columnName('isTestChat');
 
-		await runQuery(`ALTER TABLE ${threads} ADD COLUMN ${testChat} boolean NOT NULL DEFAULT false`);
+		await runQuery(
+			`ALTER TABLE ${threads} ADD COLUMN ${isTestChat} boolean NOT NULL DEFAULT false`,
+		);
 		if (isPostgres) {
 			await runQuery(
-				`COMMENT ON COLUMN ${threads}.${testChat} IS 'True for a test chat: its tool calls go to a simulation, not to real services.'`,
+				`COMMENT ON COLUMN ${threads}.${isTestChat} IS 'True for a test chat: its tool calls go to a simulation, not to real services.'`,
 			);
 		}
 	}
@@ -22,7 +24,7 @@ export class AddTestChatToAgentExecutionThreads1795698661898 implements Reversib
 		// Data loss: the drop forgets which threads were test chats. The threads stay.
 		// After a new upgrade, they are real chats: their tool calls go to real services.
 		await runQuery(
-			`ALTER TABLE ${escape.tableName('agent_execution_threads')} DROP COLUMN ${escape.columnName('testChat')}`,
+			`ALTER TABLE ${escape.tableName('agent_execution_threads')} DROP COLUMN ${escape.columnName('isTestChat')}`,
 		);
 	}
 }
