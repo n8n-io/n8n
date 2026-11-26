@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  h_8a472ace01776f 177,918-941
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  h_8a472ace01776f 357,442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88ed234b66417e04256f0f59489b25c0574bb972",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
