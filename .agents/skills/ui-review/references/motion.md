@@ -8,7 +8,7 @@ Guidance to design and implement web animations that feel natural and purposeful
 - Prefer animations from the `motion.scss` mixins in `@n8n/design-system`.
 - Use existing `--duration-*` and `--easing-*` tokens over custom values.
 - Size duration to the element. Small elements should animate quickly. Larger ones more slowly.
-- When an element appears, animate from `scale(0.95)`, not `scale(0)`
+- For scale-based entrances, animate from `scale(0.95)`, not `scale(0)`. Use another motion pattern when scaling is not appropriate.
 - Do animate on enter/exit transitions, state changes, or responses to user actions.
 - Do not animate focus or keypress feedback, hover effects on frequently used elements, or other high-frequency feedback. Keyboard-triggered state changes may use the same transition as pointer activation.
 - Prefer animating `transform` and `opacity`. These properties usually avoid layout and are often compositor-friendly, but can still cause paint and compositing costs. Profile them when performance matters.
