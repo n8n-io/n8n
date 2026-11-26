@@ -51,9 +51,9 @@ async function main() {
 	const scenarioFilter = argv.scenarioFilter;
 
 	const hasN8nLicense = !!n8nLicenseCert || !!n8nLicenseActivationKey;
-	if (n8nSetupToUse === 'scaling-multi-main' && !hasN8nLicense) {
+	if (n8nSetupToUse.startsWith('scaling-multi-main') && !hasN8nLicense) {
 		console.error(
-			'n8n license is required to run the multi-main scaling setup. Please provide N8N_LICENSE_CERT or N8N_LICENSE_ACTIVATION_KEY (and N8N_LICENSE_TENANT_ID if needed)',
+			'n8n license is required to run a multi-main scaling setup. Please provide N8N_LICENSE_CERT or N8N_LICENSE_ACTIVATION_KEY (and N8N_LICENSE_TENANT_ID if needed)',
 		);
 		process.exit(1);
 	}
