@@ -5,8 +5,10 @@ import {
 	createBrowserTools,
 	type AffectedResource,
 	type BrowserToolkit,
+	type PageChangeDetails,
 	type ToolDefinition,
 } from '@n8n/mcp-browser';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
@@ -15,6 +17,7 @@ import {
 	CloudBrowserLocalMcpServer,
 	SESSION_IDLE_TIMEOUT_MS,
 	START_SESSION_TOOL_NAME,
+	USER_CONTROL_TIMEOUT_MS,
 } from '../browser/cloud-browser-local-mcp-server';
 import type { BrowserDomainGate } from '../browser/browser.helpers';
 import type { CloudBrowserSessionProvider } from '../browser/cloud-browser-session-provider';
@@ -70,9 +73,25 @@ describe('CloudBrowserLocalMcpServer', () => {
 		} as unknown as ToolDefinition;
 		const connection = {
 			isConnected: true,
+			getConnection: () => state,
 			connect: vi.fn().mockResolvedValue(undefined),
 			disconnect: vi.fn().mockResolvedValue(undefined),
 		};
+		// Like the real connection, its own hook marks it as disconnected.
+		const connectionOnDisconnect = vi.fn(() => {
+			connection.isConnected = false;
+		});
+		const adapter: {
+			onPageChange?: (change: PageChangeDetails) => void;
+			onDisconnect?: (reason: string, details?: { blockingExtensionIds: string[] }) => void;
+			getPageUrl: Mock<(pageId: string) => string | undefined>;
+			getTargetId: Mock<(pageId: string) => Promise<string | undefined>>;
+		} = {
+			onDisconnect: connectionOnDisconnect,
+			getPageUrl: vi.fn(),
+			getTargetId: vi.fn(async (pageId: string) => `target-${pageId}`),
+		};
+		const state = { activePageId: 'page-1', adapter };
 		const click = {
 			name: 'browser_click',
 			inputSchema: z.object({ ref: z.string() }),
@@ -95,23 +114,35 @@ describe('CloudBrowserLocalMcpServer', () => {
 				},
 			],
 		} as unknown as ToolDefinition;
+		const tabList = {
+			name: 'browser_tab_list',
+			inputSchema: z.object({}),
+			execute: vi.fn(async () => ({ content: [{ type: 'text', text: 'windows' }] })),
+			getAffectedResources: () => [],
+		};
+		const tabClose = {
+			name: 'browser_tab_close',
+			inputSchema: z.object({ pageId: z.string() }),
+			execute: vi.fn(async ({ pageId }: { pageId: string }) => ({
+				content: [{ type: 'text', text: `closed ${pageId}` }],
+			})),
+			getAffectedResources: () => [],
+		};
 		const connect = {
 			name: 'browser_connect',
 			inputSchema: z.object({}),
 			execute: vi.fn(),
 			getAffectedResources: () => [],
 		};
-		const cookies = {
-			name: 'browser_cookies',
-			inputSchema: z.object({}),
-			execute: vi.fn(),
-			getAffectedResources: () => [],
-		};
 		return {
-			tools: [navigate, click, createCredential, connect, cookies],
+			tools: [navigate, click, createCredential, tabList, tabClose, connect],
 			connection,
+			adapter,
+			connectionOnDisconnect,
 		} as unknown as BrowserToolkit & {
 			connection: typeof connection;
+			adapter: typeof adapter;
+			connectionOnDisconnect: typeof connectionOnDisconnect;
 		};
 	}
 
@@ -175,6 +206,8 @@ describe('CloudBrowserLocalMcpServer', () => {
 				'browser_navigate',
 				'browser_click',
 				'browser_create_credential',
+				'browser_tab_list',
+				'browser_tab_close',
 			]);
 		});
 
@@ -216,6 +249,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 		const domainRequest = (host: string) => ({
 			toolGroup: 'browser',
+			kind: 'host',
 			resource: host,
 			description: `Browser: ${host}`,
 			options: ['denyOnce', 'allowOnce', 'allowForSession'],
@@ -361,6 +395,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(confirmationRequest(result)).toEqual({
 					toolGroup: 'browser',
+					kind: 'credential-write',
 					resource: 'credentials',
 					description: 'Create credential "Acme API"',
 					options: ['denyOnce', 'allowOnce'],
@@ -495,10 +530,138 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 			const result = await start({ url: 'https://example.com' });
 
-			expect(sessionProvider.createSession).toHaveBeenCalledWith(scope);
+			expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+				proxyCountry: undefined,
+			});
 			expect(createToolkit).toHaveBeenCalledWith('wss://connect/1');
 			expect(toolkits[0].connection.connect).toHaveBeenCalled();
 			expect(result).toEqual({ content: [{ type: 'text', text: 'opened https://example.com' }] });
+		});
+
+		it('opens the session through a proxy in the given country, in upper case', async () => {
+			const { sessionProvider, start } = setup();
+
+			await start({ url: 'https://example.com', proxyCountry: 'de' });
+
+			expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, { proxyCountry: 'DE' });
+		});
+
+		describe('browser region country', () => {
+			const navigateResult = {
+				content: [{ type: 'text' as const, text: 'opened https://example.com' }],
+				structuredContent: { url: 'https://example.com' },
+			};
+
+			function setupWithRegionCountry(regionCountry?: string) {
+				const context = setup();
+				context.sessionProvider.createSession.mockResolvedValueOnce({
+					id: 'sess-1',
+					connectUrl: 'wss://connect/1',
+					...(regionCountry ? { regionCountry } : {}),
+				});
+				context.createToolkit.mockImplementationOnce(() => {
+					const toolkit = fakeToolkit();
+					vi.mocked(toolkit.tools[0].execute).mockResolvedValue(navigateResult);
+					return toolkit;
+				});
+				return context;
+			}
+
+			it('returns where sites see the browser', async () => {
+				const { start } = setupWithRegionCountry('DE');
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual({
+					...navigateResult,
+					structuredContent: {
+						url: 'https://example.com',
+						browserLocation: { regionCountry: 'DE' },
+					},
+				});
+			});
+
+			it('returns the proxy country next to the region country', async () => {
+				const { start } = setupWithRegionCountry('US');
+
+				const result = await start({ url: 'https://example.com', proxyCountry: 'de' });
+
+				expect(result.structuredContent).toEqual({
+					url: 'https://example.com',
+					browserLocation: { regionCountry: 'US', proxyCountry: 'DE' },
+				});
+			});
+
+			it('returns the navigate result unchanged without a region country or proxy', async () => {
+				const { start } = setupWithRegionCountry();
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual(navigateResult);
+			});
+
+			it('returns a failed navigate result unchanged', async () => {
+				const { sessionProvider, createToolkit, start } = setup();
+				sessionProvider.createSession.mockResolvedValueOnce({
+					id: 'sess-1',
+					connectUrl: 'wss://connect/1',
+					regionCountry: 'DE',
+				});
+				createToolkit.mockImplementationOnce(() => {
+					const toolkit = fakeToolkit();
+					vi.mocked(toolkit.tools[0].execute).mockResolvedValue({
+						content: [{ type: 'text', text: 'navigation failed' }],
+						isError: true,
+					});
+					return toolkit;
+				});
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual({
+					content: [{ type: 'text', text: 'navigation failed' }],
+					isError: true,
+				});
+			});
+		});
+
+		it.each(['DEU', 'D', '12', ''])(
+			'returns an error for the country code "%s" and opens no session',
+			async (proxyCountry) => {
+				const { sessionProvider, start } = setup();
+
+				const result = await start({ url: 'https://example.com', proxyCountry });
+
+				expect(result).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: 'proxyCountry must be a two-letter country code, for example "DE".',
+						},
+					],
+					isError: true,
+				});
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns an error for each invalid argument', async () => {
+			const { sessionProvider, start } = setup();
+
+			const result = await start({ url: 'not a url', proxyCountry: 'DEU' });
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text:
+							'browser_start_session needs a URL. ' +
+							'proxyCountry must be a two-letter country code, for example "DE".',
+					},
+				],
+				isError: true,
+			});
+			expect(sessionProvider.createSession).not.toHaveBeenCalled();
 		});
 
 		it('ends the open session before it opens the next one', async () => {
@@ -627,6 +790,63 @@ describe('CloudBrowserLocalMcpServer', () => {
 	});
 
 	describe('other browser tools', () => {
+		it('refuses a call on a tab other than the active one', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			const result = await server.callTool({
+				name: 'browser_click',
+				arguments: { ref: 'e1', pageId: 'page-2' },
+			});
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text: 'Browser tools work only in the current window. When a site opens a new window, the tools move to it.',
+					},
+				],
+				isError: true,
+			});
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('refuses a call with a pageId when the connection is gone', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			toolkits[0].connection.getConnection = () => {
+				throw new Error('Not connected');
+			};
+
+			const result = await server.callTool({
+				name: 'browser_click',
+				arguments: { ref: 'e1', pageId: 'page-1' },
+			});
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text: 'Browser tools work only in the current window. When a site opens a new window, the tools move to it.',
+					},
+				],
+				isError: true,
+			});
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('runs a call that names the active tab', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			await server.callTool({ name: 'browser_click', arguments: { ref: 'e1', pageId: 'page-1' } });
+
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).toHaveBeenCalled();
+		});
+
 		it('asks for browser_start_session when no session is open', async () => {
 			const { server } = setup();
 
@@ -708,7 +928,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(click?.execute).toHaveBeenCalledWith({ ref: 'e1' }, { dir: '/tmp' });
 		});
 
-		it.each(['browser_connect', 'browser_cookies', 'browser_does_not_exist'])(
+		it.each(['browser_connect', 'browser_does_not_exist'])(
 			'refuses %s, which is not a tool the model can call',
 			async (name) => {
 				const { server, toolkits, start } = setup();
@@ -720,12 +940,8 @@ describe('CloudBrowserLocalMcpServer', () => {
 					content: [{ type: 'text', text: `Unknown browser tool: ${name}` }],
 					isError: true,
 				});
-				const hiddenTools = toolkits[0].tools.filter((tool) =>
-					['browser_connect', 'browser_cookies'].includes(tool.name),
-				);
-				for (const tool of hiddenTools) {
-					expect(tool.execute).not.toHaveBeenCalled();
-				}
+				const connect = toolkits[0].tools.find((tool) => tool.name === 'browser_connect');
+				expect(connect?.execute).not.toHaveBeenCalled();
 			},
 		);
 	});
@@ -860,6 +1076,1004 @@ describe('CloudBrowserLocalMcpServer', () => {
 			await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
 
 			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('user control', () => {
+		const releasedMessage = 'The browser task has ended. No browser tools can run.';
+		const userControlTimeoutMessage =
+			'The browser session was closed because the user did not return control within 30 minutes. Its pages, sign-ins and cookies are gone. Report the task as blocked.';
+		const skippedResult = {
+			content: [
+				{
+					type: 'text',
+					text: 'The user took control of the browser, so this call did not run. Call browser_snapshot to see the page, then continue.',
+				},
+			],
+		};
+		const clickOn = (toolkit: ReturnType<typeof fakeToolkit>) =>
+			toolkit.tools.find(({ name }) => name === 'browser_click')!.execute;
+
+		it('refuses to give control when no session is open', () => {
+			const { server } = setup();
+
+			expect(server.giveControlToUser()).toBe(
+				'No browser session is open. Call browser_start_session with a URL to open a session.',
+			);
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it('refuses to give control after the release', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			expect(server.giveControlToUser()).toBe(releasedMessage);
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it('says whether the user is in control', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			expect(server.isUserInControl()).toBe(false);
+			expect(server.giveControlToUser()).toBeUndefined();
+			expect(server.isUserInControl()).toBe(true);
+			expect(server.returnControlToAgent()).toBeUndefined();
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it('holds a tool call until control returns, then skips it', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			server.returnControlToAgent();
+
+			expect(await call).toEqual(skippedResult);
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		describe('user control notes', () => {
+			it('keeps the note out of the skipped tool result and queues it for the agent', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+				server.returnControlToAgent('I accepted the cookie banner');
+
+				expect(await call).toEqual(skippedResult);
+				expect(server.drainUserControlNotes()).toEqual(['I accepted the cookie banner']);
+			});
+
+			it('queues the note when no tool call was waiting', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				server.returnControlToAgent('I signed in');
+
+				expect(server.drainUserControlNotes()).toEqual(['I signed in']);
+			});
+
+			it('returns the notes oldest first and clears them', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				server.returnControlToAgent('first');
+				server.giveControlToUser();
+				server.returnControlToAgent('second');
+
+				expect(server.drainUserControlNotes()).toEqual(['first', 'second']);
+				expect(server.drainUserControlNotes()).toEqual([]);
+			});
+
+			it('queues nothing when the user gives no note', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				server.returnControlToAgent();
+
+				expect(server.drainUserControlNotes()).toEqual([]);
+			});
+
+			it('queues nothing when the user is not in control', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				server.returnControlToAgent('x');
+
+				expect(server.drainUserControlNotes()).toEqual([]);
+			});
+		});
+
+		it('skips a call when the user takes control while it waits for the access check', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click')!;
+			click.getAffectedResources = () => {
+				server.giveControlToUser();
+				return [hostResource('current.example.com')];
+			};
+
+			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+			expect(result).toEqual(skippedResult);
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		it('runs tool calls again after control returns', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+			server.returnControlToAgent();
+
+			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+			expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			expect(clickOn(toolkits[0])).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns the released error to a held tool call on release', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			await server.release();
+
+			expect(await call).toEqual({
+				content: [{ type: 'text', text: releasedMessage }],
+				isError: true,
+			});
+			expect(server.isUserInControl()).toBe(false);
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		it('refuses to return control when the user is not in control', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			const listener = vi.fn();
+			server.setControlReturnedListener(listener);
+
+			expect(server.returnControlToAgent('x')).toBe(
+				'The user does not have control of the browser.',
+			);
+			expect(listener).not.toHaveBeenCalled();
+		});
+
+		it('tells the listener when the user gives control back', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			const listener = vi.fn();
+			server.setControlReturnedListener(listener);
+			server.giveControlToUser();
+
+			server.returnControlToAgent();
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps one wait when control is given twice', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const first = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			expect(server.giveControlToUser()).toBeUndefined();
+			const second = server.callTool({ name: 'browser_click', arguments: { ref: 'e2' } });
+			server.returnControlToAgent('done');
+
+			expect(await first).toEqual(skippedResult);
+			expect(await second).toEqual(skippedResult);
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		describe('requestUserAction', () => {
+			it('gives the user control and resolves when they return it', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				expect(server.isUserInControl()).toBe(true);
+				server.returnControlToAgent('Signed in');
+
+				expect(await request).toEqual({ returned: true });
+				expect(server.drainUserControlNotes()).toEqual(['Signed in']);
+			});
+
+			it('does not give control when no session is open', async () => {
+				const { server } = setup();
+
+				expect(await server.requestUserAction()).toEqual({
+					returned: false,
+					error:
+						'No browser session is open. Call browser_start_session with a URL to open a session.',
+				});
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('resolves as not returned when the browser is released', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				await server.release();
+
+				expect(await request).toEqual({ returned: false, error: releasedMessage });
+			});
+		});
+
+		describe('idle limit', () => {
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('keeps the session open for the longer limit while the user is in control', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				expect([...openSessions]).toEqual(['sess-1']);
+
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS - SESSION_IDLE_TIMEOUT_MS);
+
+				expect(openSessions.size).toBe(0);
+			});
+
+			it('ends the wait when the user does not return control in time', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
+
+				expect(await request).toEqual({ returned: false, error: userControlTimeoutMessage });
+				expect(await call).toEqual({
+					content: [{ type: 'text', text: userControlTimeoutMessage }],
+					isError: true,
+				});
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('refuses a new session after the user does not return control in time', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
+
+				expect(await start({ url: 'https://example.com' })).toEqual({
+					content: [{ type: 'text', text: userControlTimeoutMessage }],
+					isError: true,
+				});
+				expect(openSessions.size).toBe(0);
+			});
+
+			it('opens a new session after a normal idle timeout', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				await start({ url: 'https://example.com' });
+
+				expect(openSessions.size).toBe(1);
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('uses the normal limit again after control returns', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS + 1000);
+
+				server.returnControlToAgent();
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS - 1000);
+
+				expect([...openSessions]).toEqual(['sess-1']);
+
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(openSessions.size).toBe(0);
+				const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+				expect(result).toEqual(idleResult);
+			});
+		});
+	});
+
+	describe('getLiveView', () => {
+		it('has no session before the agent opens one', async () => {
+			const { server } = setup();
+
+			expect(await server.getLiveView()).toEqual({ status: 'no-session' });
+		});
+
+		it('is starting while the session opens', async () => {
+			const { server, sessionProvider, start } = setup();
+			let openSession!: () => void;
+			sessionProvider.createSession.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => (openSession = resolve));
+				return { id: 'sess-1', connectUrl: 'wss://connect/1' };
+			});
+
+			const started = start({ url: 'https://example.com' });
+			await vi.waitFor(() => expect(sessionProvider.createSession).toHaveBeenCalled());
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+			openSession();
+			await started;
+		});
+
+		it('has no session after a session failed to open', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.createSession.mockRejectedValueOnce(new Error('HTTP 502'));
+
+			const result = await start({ url: 'https://example.com' });
+
+			expect(result.isError).toBe(true);
+			expect(await server.getLiveView()).toEqual({ status: 'no-session' });
+		});
+
+		it('rejects when the live view link cannot be fetched', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockRejectedValue(new Error('HTTP 502'));
+			await start({ url: 'https://example.com' });
+
+			await expect(server.getLiveView()).rejects.toThrow('HTTP 502');
+		});
+
+		it("returns the session's live view link", async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
+			});
+			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+				scope,
+				'sess-1',
+				undefined,
+			);
+		});
+
+		it('says the user is in control while they have the browser', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
+				userHasTakenOver: true,
+			});
+
+			server.returnControlToAgent();
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
+			});
+		});
+
+		it('says the user is in control only after they take over, when the agent asked', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+			const live = {
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
+			};
+
+			const request = server.requestUserAction();
+			expect(server.isUserInControl()).toBe(true);
+			expect(await server.getLiveView()).toEqual(live);
+
+			expect(server.giveControlToUser()).toBeUndefined();
+			expect(await server.getLiveView()).toEqual({ ...live, userHasTakenOver: true });
+
+			server.returnControlToAgent();
+			expect(await request).toEqual({ returned: true });
+			expect(await server.getLiveView()).toEqual(live);
+		});
+
+		it('is starting when a new session replaced the one it asked about', async () => {
+			const { server, sessionProvider, start } = setup();
+			await start({ url: 'https://example.com' });
+			sessionProvider.createSession.mockResolvedValueOnce({
+				id: 'sess-2',
+				connectUrl: 'wss://connect/2',
+			});
+			sessionProvider.getSessionLiveViewUrl.mockImplementation(async (_scope, sessionId) => {
+				// The agent opens a new session while the gateway answers for the first one.
+				if (sessionId === 'sess-1') await start({ url: 'https://example.org' });
+				return `https://live.example.com/${sessionId}`;
+			});
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+		});
+
+		it('is disconnected when the connection dropped', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			toolkits[0].connection.isConnected = false;
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'disconnected',
+				reason: 'connectionLost',
+			});
+		});
+
+		it('is not found once the task released its browser', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			expect(await server.getLiveView()).toEqual({ status: 'not-found' });
+		});
+
+		describe('after an idle timeout', () => {
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('is disconnected', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'disconnected',
+					reason: 'idleTimeout',
+				});
+			});
+
+			it('is disconnected for a user control timeout when the user had the browser', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'disconnected',
+					reason: 'userControlTimeout',
+				});
+			});
+		});
+	});
+
+	describe('windows', () => {
+		const otherWindowResult = {
+			content: [
+				{
+					type: 'text',
+					text: 'Browser tools work only in the current window. When a site opens a new window, the tools move to it.',
+				},
+			],
+			isError: true,
+		};
+		const openedNote = (pageId: string, host?: string) =>
+			`A new window opened${host ? ` on ${host}` : ''}. Browser tools now act in it. ` +
+			`If you do not need it, close it with browser_tab_close and pageId "${pageId}". ` +
+			'When it closes, the tools act on the previous window again.';
+		const closedNote = (host: string) =>
+			`The window closed. Browser tools act on the previous window on ${host} again.`;
+
+		async function setupWithSession() {
+			const context = setup();
+			await context.start({ url: 'https://example.com' });
+			const toolkit = context.toolkits[0];
+			const toolOn = (name: string) => toolkit.tools.find((tool) => tool.name === name)!;
+			return {
+				...context,
+				toolkit,
+				toolOn,
+				openWindow: (pageId: string) => toolkit.adapter.onPageChange?.({ type: 'opened', pageId }),
+				closeWindow: (pageId: string) => toolkit.adapter.onPageChange?.({ type: 'closed', pageId }),
+				currentWindow: () => toolkit.connection.getConnection().activePageId,
+				click: async () =>
+					await context.server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } }),
+			};
+		}
+
+		describe('current window', () => {
+			it('makes a window that opens the current window', async () => {
+				const { openWindow, currentWindow } = await setupWithSession();
+
+				openWindow('page-2');
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
+			it('makes the previous window current again when the current one closes', async () => {
+				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				closeWindow('page-2');
+
+				expect(currentWindow()).toBe('page-1');
+			});
+
+			it('follows a popup that opens from a popup', async () => {
+				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
+
+				openWindow('page-2');
+				openWindow('page-3');
+				expect(currentWindow()).toBe('page-3');
+
+				closeWindow('page-3');
+				expect(currentWindow()).toBe('page-2');
+
+				closeWindow('page-2');
+				expect(currentWindow()).toBe('page-1');
+			});
+
+			it('moves the tools to a window that a tool call opened only after the call returns', async () => {
+				const { server, toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				let windowWhileRunning: string | undefined;
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					// The toolkit builds the result from the active page at this point.
+					windowWhileRunning = currentWindow();
+					return { content: [{ type: 'text', text: 'clicked e1' }] };
+				});
+
+				await click();
+
+				expect(windowWhileRunning).toBe('page-1');
+				expect(currentWindow()).toBe('page-2');
+				// The live view still shows the new window at once.
+				expect(listener).toHaveBeenCalledTimes(1);
+			});
+
+			it('moves the tools to a new window only after every parallel tool call returns', async () => {
+				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				let finishFirst: () => void = () => {};
+				let finishSecond: () => void = () => {};
+				vi.mocked(toolOn('browser_click').execute)
+					.mockImplementationOnce(async () => {
+						await new Promise<void>((resolve) => {
+							finishFirst = resolve;
+						});
+						return { content: [{ type: 'text', text: 'clicked e1' }] };
+					})
+					.mockImplementationOnce(async () => {
+						await new Promise<void>((resolve) => {
+							finishSecond = resolve;
+						});
+						return { content: [{ type: 'text', text: 'clicked e2' }] };
+					});
+
+				const first = click();
+				const second = click();
+				await vi.waitFor(() => expect(toolOn('browser_click').execute).toHaveBeenCalledTimes(2));
+				openWindow('page-2');
+				finishFirst();
+				await first;
+
+				// The second call still runs in the first window.
+				expect(currentWindow()).toBe('page-1');
+
+				finishSecond();
+				await second;
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
+			it('moves the tools to the current window when a tool call fails', async () => {
+				const { toolOn, openWindow, currentWindow, click } = await setupWithSession();
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					throw new Error('Click failed');
+				});
+
+				await click();
+
+				expect(currentWindow()).toBe('page-2');
+			});
+
+			it('keeps the top window current when a window below it closes', async () => {
+				const { openWindow, closeWindow, currentWindow } = await setupWithSession();
+				openWindow('page-2');
+				openWindow('page-3');
+
+				closeWindow('page-2');
+				expect(currentWindow()).toBe('page-3');
+
+				closeWindow('page-3');
+				expect(currentWindow()).toBe('page-1');
+			});
+		});
+
+		describe('current window listener', () => {
+			it('is called only when the current window changes', async () => {
+				const { server, openWindow, closeWindow } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+
+				openWindow('page-2');
+				expect(listener).toHaveBeenCalledTimes(1);
+
+				// Known windows, unknown windows and windows below the top change nothing.
+				openWindow('page-2');
+				closeWindow('page-9');
+				openWindow('page-3');
+				closeWindow('page-2');
+				expect(listener).toHaveBeenCalledTimes(2);
+
+				closeWindow('page-3');
+				expect(listener).toHaveBeenCalledTimes(3);
+			});
+
+			it('is not called for a session that was replaced', async () => {
+				const { server, toolkits, start } = setup();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				await start({ url: 'https://one.example.com' });
+				await start({ url: 'https://two.example.com' });
+
+				toolkits[0].adapter.onPageChange?.({ type: 'opened', pageId: 'page-2' });
+				expect(listener).not.toHaveBeenCalled();
+
+				toolkits[1].adapter.onPageChange?.({ type: 'opened', pageId: 'page-2' });
+				expect(listener).toHaveBeenCalledTimes(1);
+			});
+
+			it('is not called when the connection is gone', async () => {
+				const { server, toolkit, openWindow } = await setupWithSession();
+				const listener = vi.fn();
+				server.setCurrentWindowListener(listener);
+				toolkit.connection.getConnection = () => {
+					throw new Error('Not connected');
+				};
+
+				openWindow('page-2');
+
+				expect(listener).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('window change note', () => {
+			it('notes a window that a tool call opened', async () => {
+				const { toolkit, toolOn, openWindow, click } = await setupWithSession();
+				toolkit.adapter.getPageUrl.mockReturnValue('https://login.example.com/sign-in');
+				vi.mocked(toolOn('browser_click').execute).mockImplementationOnce(async () => {
+					openWindow('page-2');
+					return { content: [{ type: 'text', text: 'clicked e1' }] };
+				});
+
+				const result = await click();
+
+				expect(result).toEqual({
+					content: [
+						{ type: 'text', text: 'clicked e1' },
+						{ type: 'text', text: openedNote('page-2', 'login.example.com') },
+					],
+				});
+				expect(toolkit.adapter.getPageUrl).toHaveBeenCalledWith('page-2');
+			});
+
+			it('notes a window change once', async () => {
+				const { openWindow, click } = await setupWithSession();
+				openWindow('page-2');
+				await click();
+
+				const result = await click();
+
+				expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			});
+
+			it('notes a window that closed', async () => {
+				const { toolkit, openWindow, closeWindow, click } = await setupWithSession();
+				toolkit.adapter.getPageUrl.mockReturnValue('https://example.com/');
+				openWindow('page-2');
+				await click();
+				closeWindow('page-2');
+
+				const result = await click();
+
+				expect(result.content).toEqual([
+					{ type: 'text', text: 'clicked e1' },
+					{ type: 'text', text: closedNote('example.com') },
+				]);
+			});
+
+			it('notes a window that opened while the user had control', async () => {
+				const { server, openWindow, click } = await setupWithSession();
+				server.giveControlToUser();
+				openWindow('page-2');
+				server.returnControlToAgent();
+
+				const result = await click();
+
+				expect(result.content).toEqual([
+					{ type: 'text', text: 'clicked e1' },
+					{ type: 'text', text: openedNote('page-2') },
+				]);
+			});
+
+			it('notes nothing when a window opened and closed between two calls', async () => {
+				const { openWindow, closeWindow, click } = await setupWithSession();
+				openWindow('page-2');
+				closeWindow('page-2');
+
+				const result = await click();
+
+				expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			});
+
+			it('puts the note first in the structured content', async () => {
+				const { toolOn, openWindow, click } = await setupWithSession();
+				vi.mocked(toolOn('browser_click').execute).mockResolvedValueOnce({
+					content: [{ type: 'text', text: 'clicked e1' }],
+					structuredContent: { clicked: true },
+				});
+				openWindow('page-2');
+
+				const result = await click();
+
+				expect(result.structuredContent).toEqual({
+					windowChange: openedNote('page-2'),
+					clicked: true,
+				});
+				expect(Object.keys(result.structuredContent ?? {})[0]).toBe('windowChange');
+			});
+		});
+
+		describe('tool calls', () => {
+			it('runs a call that names the current window', async () => {
+				const { server, toolOn, openWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				await server.callTool({
+					name: 'browser_click',
+					arguments: { ref: 'e1', pageId: 'page-2' },
+				});
+
+				expect(toolOn('browser_click').execute).toHaveBeenCalled();
+			});
+
+			it('refuses a call with the pageId of a window below the current one', async () => {
+				const { server, toolOn, openWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				const result = await server.callTool({
+					name: 'browser_click',
+					arguments: { ref: 'e1', pageId: 'page-1' },
+				});
+
+				expect(result).toEqual(otherWindowResult);
+				expect(toolOn('browser_click').execute).not.toHaveBeenCalled();
+			});
+
+			it('refuses to close the first window', async () => {
+				const { server, toolOn } = await setupWithSession();
+
+				const result = await server.callTool({
+					name: 'browser_tab_close',
+					arguments: { pageId: 'page-1' },
+				});
+
+				expect(result).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: 'This is the first window of the session, so it cannot be closed. Only a window that a site opened can be closed.',
+						},
+					],
+					isError: true,
+				});
+				expect(toolOn('browser_tab_close').execute).not.toHaveBeenCalled();
+			});
+
+			it('closes a window that a site opened', async () => {
+				const { server, toolOn, openWindow, closeWindow, currentWindow } = await setupWithSession();
+				openWindow('page-2');
+				vi.mocked(toolOn('browser_tab_close').execute).mockImplementationOnce(async () => {
+					closeWindow('page-2');
+					return { content: [{ type: 'text', text: 'closed page-2' }] };
+				});
+
+				const result = await server.callTool({
+					name: 'browser_tab_close',
+					arguments: { pageId: 'page-2' },
+				});
+
+				// The agent never saw page-2, so no change is noted.
+				expect(result).toEqual({ content: [{ type: 'text', text: 'closed page-2' }] });
+				expect(currentWindow()).toBe('page-1');
+			});
+
+			it('refuses to close a window other than the current one', async () => {
+				const { server, toolOn, openWindow } = await setupWithSession();
+				openWindow('page-2');
+
+				const result = await server.callTool({
+					name: 'browser_tab_close',
+					arguments: { pageId: 'page-1' },
+				});
+
+				expect(result).toEqual(otherWindowResult);
+				expect(toolOn('browser_tab_close').execute).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('live view', () => {
+			it('looks up no target id with one window', async () => {
+				const { server, sessionProvider, toolkit } = await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'live',
+					liveViewUrl: 'https://live.example.com/1',
+					windowId: 'page-1',
+				});
+				expect(toolkit.adapter.getTargetId).not.toHaveBeenCalled();
+				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+					scope,
+					'sess-1',
+					undefined,
+				);
+			});
+
+			it('shows the current window when a site opened one', async () => {
+				const { server, sessionProvider, toolkit, openWindow } = await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/2');
+				openWindow('page-2');
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'live',
+					liveViewUrl: 'https://live.example.com/2',
+					windowId: 'page-2',
+				});
+				expect(toolkit.adapter.getTargetId).toHaveBeenCalledWith('page-2');
+				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+					scope,
+					'sess-1',
+					'target-page-2',
+				);
+			});
+
+			it('asks for the first tab when the current window has no target id', async () => {
+				const { server, sessionProvider, toolkit, openWindow } = await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+				toolkit.adapter.getTargetId.mockResolvedValue(undefined);
+				openWindow('page-2');
+
+				expect(await server.getLiveView()).toMatchObject({ status: 'live', windowId: 'page-2' });
+				expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(
+					scope,
+					'sess-1',
+					undefined,
+				);
+			});
+
+			it('shows the first window again when the popup closes', async () => {
+				const { server, sessionProvider, toolkit, openWindow, closeWindow } =
+					await setupWithSession();
+				sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+				openWindow('page-2');
+				closeWindow('page-2');
+
+				expect(await server.getLiveView()).toMatchObject({ status: 'live', windowId: 'page-1' });
+				expect(toolkit.adapter.getTargetId).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	// Tests for ending the session when its connection drops.
+	describe('connection drop', () => {
+		const dropConnection = (toolkit: ReturnType<typeof fakeToolkit>) =>
+			toolkit.adapter.onDisconnect?.('browser_closed');
+
+		it('releases the session and says the connection was lost', async () => {
+			const { server, openSessions, sessionProvider, toolkits, logger, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			dropConnection(toolkits[0]);
+
+			await vi.waitFor(() => expect(openSessions.size).toBe(0));
+			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith('Cloud browser session lost', {
+				taskId: 'task-1',
+				sessionId: 'sess-1',
+			});
+			expect(await server.getLiveView()).toEqual({
+				status: 'disconnected',
+				reason: 'connectionLost',
+			});
+			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			expect(result).toEqual(disconnectedResult);
+		});
+
+		it('ends a wait for the user with the closed unexpectedly error', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			const request = server.requestUserAction();
+			const heldCall = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+			dropConnection(toolkits[0]);
+
+			expect(await request).toEqual({
+				returned: false,
+				error: disconnectedResult.content[0].text,
+			});
+			expect(await heldCall).toEqual(disconnectedResult);
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it("runs the connection's own disconnect hook first", async () => {
+			const { sessionProvider, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			const details = { blockingExtensionIds: [] };
+
+			toolkits[0].adapter.onDisconnect?.('browser_closed', details);
+
+			const { connectionOnDisconnect } = toolkits[0];
+			expect(connectionOnDisconnect).toHaveBeenCalledWith('browser_closed', details);
+			await vi.waitFor(() => expect(sessionProvider.releaseSession).toHaveBeenCalled());
+			expect(connectionOnDisconnect.mock.invocationCallOrder[0]).toBeLessThan(
+				sessionProvider.releaseSession.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the reason of a session the task released', async () => {
+			const { server, sessionProvider, toolkits, logger, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			dropConnection(toolkits[0]);
+
+			expect(await server.getLiveView()).toEqual({ status: 'not-found' });
+			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+			expect(logger.warn).not.toHaveBeenCalledWith('Cloud browser session lost', expect.anything());
+		});
+
+		it('does not touch the new session when a replaced session drops', async () => {
+			const { server, openSessions, sessionProvider, toolkits, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/2');
+			await start({ url: 'https://one.example.com' });
+			await start({ url: 'https://two.example.com' });
+
+			dropConnection(toolkits[0]);
+
+			expect([...openSessions]).toEqual(['sess-2']);
+			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+			expect(await server.getLiveView()).toMatchObject({ status: 'live' });
+		});
+
+		describe('after an idle timeout', () => {
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('keeps the idle timeout reason', async () => {
+				const { server, sessionProvider, toolkits, logger, start } = setup();
+				await start({ url: 'https://example.com' });
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				dropConnection(toolkits[0]);
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'disconnected',
+					reason: 'idleTimeout',
+				});
+				expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+				expect(logger.warn).not.toHaveBeenCalledWith(
+					'Cloud browser session lost',
+					expect.anything(),
+				);
+			});
 		});
 	});
 });

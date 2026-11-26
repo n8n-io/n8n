@@ -1,0 +1,41 @@
+{
+  "name": "@n8n/rig",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CLI to create and run local n8n environments",
+  "bin": {
+    "rig": "./bin/rig.mjs"
+  },
+  "scripts": {
+    "rig": "node ./bin/rig.mjs",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.9.0",
+    "@n8n/utils": "workspace:*",
+    "chokidar": "catalog:",
+    "citty": "catalog:",
+    "n8n-containers": "workspace:*",
+    "picocolors": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript-tooling",
+    "yaml": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@typescript/native": "catalog:typescript-tooling",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}

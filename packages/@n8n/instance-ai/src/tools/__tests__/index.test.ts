@@ -5,12 +5,28 @@ import {
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
-import type { InstanceAiContext, OrchestrationContext } from '../../types';
+import type { InstanceAiContext, InstanceAiListedFile, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES, getMcpToolGroup, getToolGroup } from '../tool-ids';
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
 	createParseStoredFileTool: vi.fn(() => ({ id: 'parse-file', storedFiles: true })),
+}));
+
+vi.mock('../attachments/import-files.tool', () => ({
+	createImportFilesTool: vi.fn(() => ({ id: 'import-files' })),
+}));
+
+vi.mock('../attachments/list-files.tool', () => ({
+	createListFilesTool: vi.fn((list: unknown) => ({ id: 'list-files', list })),
+}));
+
+vi.mock('../attachments/view-file.tool', () => ({
+	createViewFileTool: vi.fn((storedFiles: unknown) => ({ id: 'view-file', storedFiles })),
+}));
+
+vi.mock('../attachments/share-files.tool', () => ({
+	createShareFilesTool: vi.fn(() => ({ id: 'share-files' })),
 }));
 
 vi.mock('../credentials.tool', () => ({
@@ -26,6 +42,10 @@ vi.mock('../data-tables.tool', () => ({
 	createDataTableTool: vi.fn((_context: unknown, action: string) => ({
 		id: `data-table:${action}`,
 	})),
+}));
+
+vi.mock('../data-tables/change-data-tables.tool', () => ({
+	createChangeDataTablesTool: vi.fn(() => ({ id: 'change_data_tables' })),
 }));
 
 vi.mock('../agent-context.tool', () => ({
@@ -155,8 +175,9 @@ describe('domain tool construction', () => {
 			test_credential: { id: 'test_credential' },
 			delete_credential: { id: 'delete_credential' },
 			list_data_tables: { id: 'data-table:list' },
+			get_data_table_schema: { id: 'data-table:schema' },
 			query_data_table: { id: 'data-table:query' },
-			delete_data_table_rows: { id: 'data-table:delete-rows' },
+			change_data_tables: { id: 'change_data_tables' },
 			list_projects: { id: 'workspace:list-projects' },
 			list_tags: { id: 'workspace:list-tags' },
 			tag_workflow: { id: 'workspace:tag-workflow' },
@@ -206,8 +227,20 @@ describe('domain tool construction', () => {
 		expect(createExecuteNodeTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTableTool).toHaveBeenCalledWith(context, 'list');
-		expect(createDataTableTool).toHaveBeenCalledWith(context, 'delete-rows');
+		expect(createDataTableTool).toHaveBeenCalledTimes(3);
 		expect(orchestratorTools.has('data_tables')).toBe(false);
+		for (const name of [
+			'create_data_table',
+			'delete_data_table',
+			'add_data_table_column',
+			'delete_data_table_column',
+			'rename_data_table_column',
+			'insert_data_table_rows',
+			'update_data_table_rows',
+			'delete_data_table_rows',
+		]) {
+			expect(orchestratorTools.has(name)).toBe(false);
+		}
 		expect(orchestratorTools.has('workflow_builder_executions')).toBe(false);
 	});
 
@@ -237,7 +270,8 @@ describe('domain tool construction', () => {
 		expect(getToolGroup('list_workflows')).toBe('workflows');
 		expect(getToolGroup('workflow_builder_build_workflow')).toBe('workflows');
 		expect(getToolGroup('run_workflow')).toBe('executions');
-		expect(getToolGroup('insert_data_table_rows')).toBe('data_tables');
+		expect(getToolGroup('query_data_table')).toBe('data_tables');
+		expect(getToolGroup('change_data_tables')).toBe('data_tables');
 		expect(getToolGroup('setup_credentials')).toBe('credentials');
 		expect(getToolGroup('agent_builder_write_config')).toBe('agents');
 		expect(getToolGroup('list_folders')).toBe('instance');
@@ -288,6 +322,127 @@ describe('domain tool construction', () => {
 
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			storedFiles: true,
+		});
+	});
+
+	describe('import-files registration', () => {
+		const storedFiles = { read: vi.fn() };
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
+
+		it.each([
+			['nothing', {}],
+			['only a file reader', { storedFiles }],
+			['no workspace', { storedFiles, sandboxFiles }],
+			['the feature off', { storedFiles, workspace }],
+			['no file reader', { workspace, sandboxFiles }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('import-files')).toBe(false);
+		});
+
+		it('registers the tool with a file reader, a workspace and the feature on', () => {
+			const context = makeContext({ storedFiles, workspace, sandboxFiles });
+
+			expect(createOrchestratorDomainTools(context).get('import-files')).toEqual({
+				id: 'import-files',
+			});
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('import-files')).toBe(true);
+		});
+	});
+
+	describe('list-files registration', () => {
+		it.each([
+			['nothing', {}],
+			['a file reader without a list', { storedFiles: { read: vi.fn() } }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('list-files')).toBe(false);
+		});
+
+		it('registers the tool when the file reader can list the files', async () => {
+			const files: InstanceAiListedFile[] = [
+				{
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					origin: 'sandbox',
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			const storedFiles = { read: vi.fn(), list: vi.fn(async () => await Promise.resolve(files)) };
+			const context = makeContext({ storedFiles });
+
+			const tool = createOrchestratorDomainTools(context).get('list-files') as unknown as {
+				list: () => Promise<unknown>;
+			};
+
+			// The list keeps the reader as `this`.
+			await expect(tool.list()).resolves.toBe(files);
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('list-files')).toBe(true);
+		});
+	});
+
+	describe('view-file registration', () => {
+		it.each([
+			['nothing', {}],
+			['a file reader without a list', { storedFiles: { read: vi.fn(), canView: vi.fn() } }],
+			[
+				'a file reader without the viewable types',
+				{ storedFiles: { read: vi.fn(), list: vi.fn() } },
+			],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('view-file')).toBe(false);
+		});
+
+		it('registers the tool with the file reader when the sandbox files feature is on', async () => {
+			const file = {
+				fileName: 'hat.png',
+				mimeType: 'image/png',
+				sizeBytes: 3,
+				hasContent: vi.fn(),
+				readContent: vi.fn(),
+			};
+			const storedFiles = {
+				read: vi.fn(async () => await Promise.resolve(file)),
+				list: vi.fn(),
+				canView: vi.fn(() => true),
+			};
+
+			const tool = createOrchestratorDomainTools(makeContext({ storedFiles })).get(
+				'view-file',
+			) as unknown as {
+				storedFiles: {
+					read: (fileId: string) => Promise<unknown>;
+					canView: (type: string) => boolean;
+				};
+			};
+
+			await expect(tool.storedFiles.read('file-1')).resolves.toBe(file);
+			expect(tool.storedFiles.canView('image/png')).toBe(true);
+			expect(storedFiles.canView).toHaveBeenCalledWith('image/png');
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('view-file')).toBe(true);
+		});
+	});
+
+	describe('share-files registration', () => {
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
+
+		it.each([
+			['nothing', {}],
+			['the feature off', { workspace }],
+			['no workspace', { sandboxFiles }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('share-files')).toBe(false);
+		});
+
+		it('registers the tool with a workspace and the feature on', () => {
+			const context = makeContext({ workspace, sandboxFiles });
+
+			expect(createOrchestratorDomainTools(context).get('share-files')).toEqual({
+				id: 'share-files',
+			});
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('share-files')).toBe(true);
 		});
 	});
 
@@ -379,6 +534,26 @@ describe('domain tool construction', () => {
 		expect(withService.has('save_user_preference')).toBe(true);
 	});
 
+	it('registers send_feedback only when the feedback service is wired', () => {
+		expect(createOrchestratorDomainTools(makeContext()).get('send_feedback')).toBeUndefined();
+
+		const enabled = makeContext({ agentFeedbackService: { send: vi.fn() } });
+		expect(createOrchestratorDomainTools(enabled).get('send_feedback')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('send_feedback');
+	});
+
+	it('does not register send_feedback when the instance does not share data', () => {
+		const context = makeContext({
+			agentFeedbackService: { send: vi.fn() },
+			allowSendingParameterValues: false,
+		});
+		expect(createOrchestratorDomainTools(context).get('send_feedback')).toBeUndefined();
+	});
+
+	it('never defers send_feedback behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('send_feedback')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
@@ -449,6 +624,19 @@ describe('domain tool construction', () => {
 			} as Partial<InstanceAiContext>) as never,
 		);
 		expect(withSession.has('get-session')).toBe(true);
+	});
+
+	it('registers start-cloud-browser-task only when the host sets startCloudBrowserTask', () => {
+		const withoutCloudBrowser = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutCloudBrowser.has('start-cloud-browser-task')).toBe(false);
+
+		const withCloudBrowser = createOrchestrationTools({
+			...makeContext({ domainContext: {} } as Partial<InstanceAiContext>),
+			startCloudBrowserTask: vi.fn(),
+		} as never);
+		expect(withCloudBrowser.has('start-cloud-browser-task')).toBe(true);
 	});
 });
 

@@ -1,6 +1,7 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import type Bull from 'bull';
 import type {
+	FailedBeforeStartMarker,
 	ExecutionError,
 	ExecutionStatus,
 	IDataObject,
@@ -94,7 +95,7 @@ export type JobFinishedProps = {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
-	failedBeforeStart?: true;
+	failedBeforeStart?: FailedBeforeStartMarker;
 	nodeTimeSavedMinutes?: number;
 };
 
@@ -133,6 +134,8 @@ export type McpResponseMessage = {
 	mcpType: 'service' | 'trigger';
 	sessionId: string;
 	messageId: string;
+	/** Name of the tool that produced `response`, for MCP Trigger tool calls. */
+	toolName?: string;
 	response: unknown;
 	workerId: string;
 };

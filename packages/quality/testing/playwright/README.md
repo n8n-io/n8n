@@ -12,6 +12,7 @@ Commands in this table run from the repository root. Container-backed tests need
 | --- | --- | --- | --- |
 | Test a product UI or API journey | `e2e` (local) or `<mode>:e2e` (container) | `pnpm --filter n8n-playwright test:local` | [E2E tests](tests/e2e/) |
 | Test PostgreSQL, queue mode, multi-main, or process lifecycle | `<mode>:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=postgres:infrastructure` | [Infrastructure tests](tests/infrastructure/) |
+| Test published images with API-only deployment compatibility cells | `deployment` | `TEST_IMAGE_N8N=<n8n-image> TEST_IMAGE_TASK_RUNNER=<runners-image> pnpm --filter n8n-playwright test:deployment <spec>` | [Deployment cells](tests/deployment/README.md) |
 | Check accessibility within a product journey | E2E project with the `a11y` fixture | `pnpm --filter n8n-playwright test:local` | [Accessibility checks](docs/ACCESSIBILITY.md) |
 | Measure memory retention or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
 | Measure idle memory | `@n8n/efficiency` memory project | `pnpm --filter @n8n/efficiency test:memory` | [Idle memory baselines](../../efficiency/memory/idle/README.md) |
@@ -20,7 +21,6 @@ Commands in this table run from the repository root. Container-backed tests need
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
 | Test workflow execution and schemas | `cli-workflows` | `pnpm --filter n8n-playwright test:workflows` | [Workflow tests](tests/cli-workflows/README.md) |
 | Check fixture, reporter, or helper code without a browser | Vitest | `pnpm --filter n8n-playwright test:unit` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
-| Check browser-backed harness contracts | Harness Vitest config | `pnpm --filter n8n-playwright test:harness` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
 | Run evaluation scenarios | `eval` | `pnpm --filter n8n-playwright test:evals` | [Evaluation tests](tests/evals/) |
 
 The Playwright package owns shared test tooling and product suites. Efficiency suites can reuse its exports from the [efficiency workspace](../../efficiency/README.md). Read [AGENTS.md](AGENTS.md) before you change a test. The examples below run from this package unless noted.
@@ -90,15 +90,11 @@ Product Playwright tests live under `tests/`. Most product tests are grouped
 under `tests/e2e/`, with infrastructure, performance, evaluation, and other
 test suites beside it.
 
-Framework and harness tests live under `tests/framework/`. These tests verify
-the test framework, fixtures, startup lifecycle, diagnostics, and harness
-contracts. They are not product E2E tests and must not be added under
-`tests/e2e/`.
-
-Run browser-free fixture, reporter, and helper tests with `pnpm test:unit`. The default Vitest configuration does not include `tests/framework/`. Run its browser-backed harness contracts with the dedicated configuration:
+Fixtures have no separate harness suite. The product specs exercise them. Unit
+tests for pure fixture logic live next to the code and run with:
 
 ```bash
-pnpm test:harness
+pnpm test:unit
 ```
 
 Inspect the full E2E distribution without running tests or containers:
@@ -266,12 +262,17 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 
 The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
 that runs engine v2 in its own container (`containerConfig.engine:
-'container'`, Postgres, single main). The main runs the `engine-v2` module in
-remote mode and dials the engine over the stack network. The engine container
-runs `n8n engine`, has no `DB_*` env and no encryption key, resolves
-credentials through the main's control plane server, and keeps its own
-`n8n_engine` database on the dedicated `engine-postgres` service. Execution
-responses travel back to the main over the stack's Redis. Under that stack
+'container'`, Postgres, two mains in multi-main, one worker). Each main runs the
+`engine-v2` module in remote mode and dials the engine over the stack network.
+The worker runs only what stays on the legacy engine, because the mains send
+manual runs to workers in multi-main.
+The engine container runs `n8n engine`, has no `DB_*` env and no encryption
+key, resolves credentials through the control plane server of main 1, and
+keeps its own `n8n_engine` database on the dedicated `engine-postgres`
+service. Execution responses and lifecycle events travel back to the mains
+over the stack's Redis, and the engine keeps its work queues there too.
+Multi-main needs a license: set
+`N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT`. Under that stack
 every workflow the API helpers create gets `settings.engineType = 'v2'`, so a
 spec proves parity without changes.
 
@@ -301,6 +302,7 @@ pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-r
 ```
 
 For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.
+Add `--mains 2 --workers 1` for the topology of the project.
 
 ### Worker Isolation (Fresh Database)
 

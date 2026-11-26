@@ -1,0 +1,17 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"data": {
+			"properties": {
+				"approved": {
+					"type": "boolean"
+				},
+				"respondedAt": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

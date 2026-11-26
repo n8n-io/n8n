@@ -1,10 +1,9 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, Person, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@n8n/errors';
-import type { PasswordUtility } from '@/services/password.utility';
 
 import { EmailAuthHandler } from '../email.auth-handler';
 
@@ -53,16 +52,36 @@ describe('EmailAuthHandler', () => {
 
 			expect(result).toBe(person);
 			expect(personRepository.findByEmailWithAuthIdentities).toHaveBeenCalledWith(email);
+			expect(passwordUtility.compare).toHaveBeenCalledTimes(1);
 			expect(passwordUtility.compare).toHaveBeenCalledWith(password, person.password);
 		});
 
 		it('should return undefined when user is not found', async () => {
 			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(null);
+			passwordUtility.compare.mockResolvedValue(false);
 
 			const result = await handler.handleLogin(email, password);
 
 			expect(result).toBeUndefined();
-			expect(passwordUtility.compare).not.toHaveBeenCalled();
+		});
+
+		it('should still run one password comparison when user is not found', async () => {
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(null);
+			passwordUtility.compare.mockResolvedValue(false);
+
+			await handler.handleLogin(email, password);
+
+			expect(passwordUtility.compare).toHaveBeenCalledTimes(1);
+			expect(passwordUtility.compare).toHaveBeenCalledWith(password, null);
+		});
+
+		it('should return undefined when user is not found even if the comparison matches', async () => {
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(null);
+			passwordUtility.compare.mockResolvedValue(true);
+
+			const result = await handler.handleLogin(email, password);
+
+			expect(result).toBeUndefined();
 		});
 
 		it('should return undefined when password is incorrect', async () => {
@@ -78,6 +97,7 @@ describe('EmailAuthHandler', () => {
 			const result = await handler.handleLogin(email, password);
 
 			expect(result).toBeUndefined();
+			expect(passwordUtility.compare).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return undefined when user has no password', async () => {
@@ -88,11 +108,42 @@ describe('EmailAuthHandler', () => {
 			});
 
 			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+			passwordUtility.compare.mockResolvedValue(false);
 
 			const result = await handler.handleLogin(email, password);
 
 			expect(result).toBeUndefined();
-			expect(passwordUtility.compare).not.toHaveBeenCalled();
+		});
+
+		it('should still run one password comparison when user has no password', async () => {
+			const person = mock<Person>({
+				email,
+				password: null,
+				authIdentities: [],
+			});
+
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+			passwordUtility.compare.mockResolvedValue(false);
+
+			await handler.handleLogin(email, password);
+
+			expect(passwordUtility.compare).toHaveBeenCalledTimes(1);
+			expect(passwordUtility.compare).toHaveBeenCalledWith(password, null);
+		});
+
+		it('should return undefined when user has no password even if the comparison matches', async () => {
+			const person = mock<Person>({
+				email,
+				password: null,
+				authIdentities: [],
+			});
+
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+			passwordUtility.compare.mockResolvedValue(true);
+
+			const result = await handler.handleLogin(email, password);
+
+			expect(result).toBeUndefined();
 		});
 
 		describe('LDAP user handling', () => {

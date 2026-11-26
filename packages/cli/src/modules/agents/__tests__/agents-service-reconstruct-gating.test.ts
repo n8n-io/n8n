@@ -159,7 +159,7 @@ function makeAgentEntity(
 ): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		...(schemaConfig !== undefined ? { config: schemaConfig } : {}),
 		...(overrides ?? {}),
@@ -248,7 +248,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			await service.reconstructFromResolvedSource({
 				config: {
 					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help',
 					mcpServers: [
 						{
@@ -273,6 +273,30 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			expect(deps.nonInterrupting).toBe(nonInterrupting);
 		},
 	);
+
+	it.each([
+		['hands the tool call interceptor of the instrumentation to the agent', true],
+		['installs no interceptor without one', false],
+	])('%s', async (_label, withInterceptor) => {
+		const { service, credentialProvider } = setup();
+		builtAgent.toolCallInterceptor.mockClear();
+		const toolCallInterceptor = vi.fn();
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			withInterceptor ? ({ toolCallInterceptor } as never) : undefined,
+		);
+
+		if (withInterceptor) {
+			expect(builtAgent.toolCallInterceptor).toHaveBeenCalledWith(toolCallInterceptor);
+		} else {
+			expect(builtAgent.toolCallInterceptor).not.toHaveBeenCalled();
+		}
+	});
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
@@ -490,7 +514,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await service.reconstructFromResolvedSource({
 			config: {
 				name: 'Inline',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help',
 			},
 			memoryOwnerAgentId: 'agent-1',
@@ -780,7 +804,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -800,7 +824,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -852,7 +876,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
 					},
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 				},
 			},
 		});
@@ -878,7 +902,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				privateKey: 'private-key',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'anthropic/claude-sonnet-5-5',
 				apiKey: 'high-key',
 			},
 		});
@@ -899,7 +923,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				model: 'openai/gpt-4o',
 				subAgents: {
 					modelsByDifficulty: {
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 					},
 				},
 			},
@@ -920,6 +944,35 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const providerTools = await resolveInlineSubAgentProviderTools?.(highModel!);
 		expect(providerTools?.map((tool) => tool.name)).toEqual(['anthropic.web_search_20250305']);
 		expect(providerTools?.map((tool) => tool.name)).not.toContain('openai.web_search');
+	});
+
+	it('gives inline children no provider tools in a test run', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'high-key' });
+		const service = makeReconstructionService();
+		const entity = makeAgentEntity(
+			{ webSearch: { enabled: true } },
+			{
+				model: 'openai/gpt-4o',
+				subAgents: {
+					modelsByDifficulty: {
+						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					},
+				},
+			},
+		);
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'test',
+			undefined,
+			undefined,
+			{ disableProviderTools: true },
+		);
+
+		expect(getInjectedDelegateTool()).toBeDefined();
+		expect(getInjectedResolveInlineSubAgentProviderTools()).toBeUndefined();
 	});
 
 	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {
@@ -1031,7 +1084,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 			'production',
 		);
 
-		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
+		// The definition hash lets a pending approval detect a changed Agent.
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1', expect.any(String));
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
 	});
 });
@@ -1049,7 +1103,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 
 		const config: AgentJsonConfig = {
 			name: 'Child',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help',
 		};
 
@@ -1101,6 +1155,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		);
 		expect(getInjectedToolNames()).toContain(WRITE_TODOS_TOOL_NAME);
 		for (const name of planToolNames) expect(getInjectedToolNames()).not.toContain(name);
+		expect(builtAgent.contextCueProvider).not.toHaveBeenCalled();
 		expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
 	});
 
@@ -1118,17 +1173,33 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
 			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
 			expect(eagerToolNames.includes('background_jobs')).toBe(backgroundTasksEnabled);
+			expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
 			if (backgroundTasksEnabled) {
 				expect(getInjectedToolNames()).toContain('background_jobs');
-				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
-				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
-				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
+				expect(builtAgent.contextCueProvider).toHaveBeenCalledTimes(1);
+				const provider = builtAgent.contextCueProvider.mock.calls[0][0];
+				const cues = [
+					{ id: 'background-updates:job:job-1:completed', content: 'Background result' },
+				];
+				const sentCueIds = new Set(['background-updates:job:earlier:completed']);
+				wakeService.getBackgroundUpdateCues.mockResolvedValue(cues);
 				expect(
-					await provider({ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } }),
-				).toBe('Background result');
-				expect(wakeService.getBackgroundUpdates).toHaveBeenCalledWith('thread-1', 'resource-1');
+					await provider({
+						messages: [],
+						sentCueIds,
+						persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+					}),
+				).toEqual(cues);
+				expect(wakeService.getBackgroundUpdateCues).toHaveBeenCalledWith(
+					'thread-1',
+					'resource-1',
+					sentCueIds,
+				);
+				expect(
+					await provider({ messages: [], sentCueIds: new Set(), persistence: undefined }),
+				).toEqual([]);
 			} else {
-				expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
+				expect(builtAgent.contextCueProvider).not.toHaveBeenCalled();
 			}
 		},
 	);
@@ -1155,7 +1226,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		async (runtimeProfile) => {
 			Container.get(AgentsConfig).planToolsEnabled = true;
 			await makeReconstructionService().reconstructFromResolvedSource({
-				config: { name: 'Child', model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
+				config: { name: 'Child', model: 'anthropic/claude-sonnet-5-5', instructions: 'Help' },
 				memoryOwnerAgentId: 'child-agent-1',
 				projectId: 'project-1',
 				credentialProvider: mock<CredentialProvider>(),

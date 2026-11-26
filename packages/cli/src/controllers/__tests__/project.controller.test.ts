@@ -1,4 +1,4 @@
-import { ListProjectsQueryDto } from '@n8n/api-types';
+import { ListProjectsQueryDto, ListSharingCandidatesQueryDto } from '@n8n/api-types';
 import { Person, ServiceAccount, ServiceAccountDetails, type AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock } from 'vitest';
@@ -112,9 +112,10 @@ describe('ProjectController', () => {
 			(projectsService.addUserScopes as Mock).mockResolvedValue([]);
 
 			const res = makeRes();
-			const parsed = ListProjectsQueryDto.safeParse({});
+			const parsed = ListSharingCandidatesQueryDto.safeParse({});
 			expect(parsed.success).toBe(true);
 			const query = parsed.data!;
+			expect(query.includeServiceAccounts).toBe(false);
 
 			await controller.getSharingCandidates(req, res, query);
 

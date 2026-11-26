@@ -2,11 +2,23 @@ import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed } from 'vue';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { PolicyViolation } from '@n8n/api-types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
+import { AGENT_TOOL_STEP_LABEL_KEY } from '../components/agentChatInjectionKeys';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatHostEventItem,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import {
+	TEST_HOST_EVENT,
+	TEST_OUTPUT_TOOL_NAME,
+	TestHostEvent,
+	testToolOutputExtension,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
@@ -53,6 +65,10 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['click'],
 		template:
 			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+	},
+	N8nCodeBlock: {
+		props: ['code', 'language'],
+		template: '<pre :data-language="language">{{ code }}</pre>',
 	},
 	N8nCallout: {
 		props: ['theme'],
@@ -379,6 +395,84 @@ describe('AgentChatToolSteps', () => {
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Slack');
+	});
+
+	it('shows JSON tool data as JSON and other text as plain text', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'workspace_execute_command',
+				toolCallId: 'tc-shell',
+				state: TOOL_CALL_STATE.DONE,
+				input: { command: 'ls' },
+				output: 'README.md\npackage.json',
+			},
+		]);
+
+		await wrapper.get('button').trigger('click');
+		const [input, output] = wrapper.findAll('pre');
+		expect(input.attributes('data-language')).toBe('json');
+		expect(output.attributes('data-language')).toBe('plaintext');
+		expect(output.text()).toBe('README.md\npackage.json');
+	});
+
+	it('shows the host output of a finished call inside its step, below the default input', async () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: TEST_OUTPUT_TOOL_NAME,
+						toolCallId: 'tc-rows',
+						state: TOOL_CALL_STATE.DONE,
+						input: { limit: 2 },
+						output: { rows: [{ id: 1 }] },
+					},
+				],
+				projectId: 'project-1',
+			},
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolOutputExtension]),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-tool-output"]').exists()).toBe(false);
+		await wrapper.get('button').trigger('click');
+
+		const output = wrapper.get('[data-testid="test-tool-output"]');
+		expect(output.text()).toContain('{"rows":[{"id":1}]}');
+		// The host renders the output label, so the chat does not add a second one.
+		const label = wrapper.get('[data-testid="test-tool-output-label"]').text();
+		expect(label).not.toBe('');
+		expect(wrapper.text().split(label)).toHaveLength(2);
+		const blocks = wrapper.findAll('pre');
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].text()).toContain('"limit": 2');
+	});
+
+	it('keeps the default output of a call that failed, even when a host renders its output', async () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: TEST_OUTPUT_TOOL_NAME,
+						toolCallId: 'tc-rows',
+						state: TOOL_CALL_STATE.ERROR,
+						input: { limit: 2 },
+						output: { error: 'No access' },
+					},
+				],
+				projectId: 'project-1',
+			},
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolOutputExtension]),
+				},
+			},
+		});
+
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.find('[data-testid="test-tool-output"]').exists()).toBe(false);
 	});
 
 	it('does not make generic tool steps without data expandable', () => {
@@ -1100,5 +1194,93 @@ describe('AgentChatToolSteps — output files', () => {
 		});
 
 		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
+	});
+});
+
+describe('AgentChatToolSteps — host events', () => {
+	const item: AgentsChatHostEventItem = {
+		event: { id: 'approval-1', name: TEST_HOST_EVENT.TOOL_CALL, payload: { toolCallId: 'tc-2' } },
+		message: { id: 'assistant-1', role: 'assistant', content: '' },
+		component: TestHostEvent,
+		placement: 'tool-call',
+	};
+
+	/** The children of `element` in order: a host event as its placement, a step as its text. */
+	function order(element: Element): string[] {
+		return [...element.children]
+			.map(
+				(child) =>
+					child
+						.querySelector('[data-testid="agent-chat-host-event"]')
+						?.getAttribute('data-placement') ??
+					child.textContent?.trim() ??
+					'',
+			)
+			.filter(Boolean);
+	}
+
+	it.each([
+		{
+			name: 'in a group of steps',
+			toolCalls: [
+				{ tool: 'search_nodes', toolCallId: 'tc-1', state: TOOL_CALL_STATE.DONE },
+				{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE },
+			],
+			container: '[data-test-id="n8n-ai-activity-step-group"]',
+			expected: ['Search nodes', 'tool-call', 'Web search'],
+		},
+		{
+			name: 'for a single step',
+			toolCalls: [{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE }],
+			container: 'div',
+			expected: ['tool-call', 'Web search'],
+		},
+	])(
+		'renders the host events of a call right before its step, $name',
+		({ toolCalls, container, expected }) => {
+			const wrapper = mount(AgentChatToolSteps, {
+				props: { toolCalls, hostEvents: new Map([['tc-2', [item]]]) },
+			});
+
+			expect(order(wrapper.get(container).element)).toEqual(expected);
+			expect(wrapper.get('[data-testid="test-host-event"]').find('em').text()).toBe('assistant-1');
+		},
+	);
+});
+
+describe('AgentChatToolSteps, host tool labels', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	const searchCall: ToolCall = {
+		tool: 'search_nodes',
+		toolCallId: 'tc-search',
+		input: { queries: ['gmail'] },
+		state: TOOL_CALL_STATE.RUNNING,
+	};
+
+	it('names a step with the label of the host', () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [searchCall], projectId: 'project-1' },
+			global: {
+				provide: {
+					[AGENT_TOOL_STEP_LABEL_KEY as symbol]: (tool: string) =>
+						tool === 'search_nodes' ? 'Searching for gmail' : undefined,
+				},
+			},
+		});
+
+		expect(wrapper.text()).toContain('Searching for gmail');
+	});
+
+	it('keeps its own label when the host gives none', () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [searchCall], projectId: 'project-1' },
+			global: { provide: { [AGENT_TOOL_STEP_LABEL_KEY as symbol]: () => undefined } },
+		});
+
+		expect(wrapper.text()).toContain('Search nodes');
+		expect(wrapper.text()).not.toContain('Searching for gmail');
 	});
 });

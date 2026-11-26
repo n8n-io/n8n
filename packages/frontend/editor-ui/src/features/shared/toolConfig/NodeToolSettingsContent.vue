@@ -16,6 +16,7 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -28,7 +29,7 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nNotice, N8nSpinner, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nNotice, N8nSpinner, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
@@ -88,6 +89,8 @@ const settingsStore = useSettingsStore();
 const nodeTypesLoaded = computed(() => Object.keys(nodeTypesStore.nodeTypes).length > 0);
 
 const node = shallowRef<INode | null>(props.initialNode);
+// The defaults come from the node type. Fill them one time, after the node types load.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 const userEditedName = ref(false);
 const nodeTypeError = ref(false);
 const nodeTypesLoadFailed = ref(false);
@@ -190,13 +193,14 @@ const hasCredentialIssues = computed(() => {
 		nodeTypeDescription.value,
 		node.value,
 		{ getNode: () => node.value } as unknown as Workflow,
-		['parameters', 'execution', 'typeUnknown', 'input'],
+		['parameters', 'typeUnknown', 'input'],
 	);
 
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+// The tool document has a local key and no saved workflow ID.
+const toolWorkflowDocumentId = createWorkflowDocumentId('', 'node-tool-workflow');
 const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
 const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);
@@ -231,7 +235,9 @@ const hasUnavailableAgentCredential = computed(() => {
 });
 
 const isValid = computed(() => {
+	// Without the node type, the parameters can't be checked and have no defaults yet.
 	return (
+		!nodeTypesLoading.value &&
 		node.value?.name &&
 		!hasParameterIssues.value &&
 		!hasCredentialIssues.value &&
@@ -363,15 +369,19 @@ function handleChangeName(name: string) {
 
 // Hydrate initial node with defaults once node types are available.
 watch(
-	[() => props.initialNode, nodeTypeDescription, nodeTypesLoaded],
-	([initialNode]) => {
+	() => [props.initialNode, nodeTypesLoading.value] as const,
+	([initialNode, loading]) => {
+		if (loading) return;
 		if (!initialNode) {
 			node.value = null;
 			userEditedName.value = false;
 			hydratedInitialNode.value = null;
-			nodeTypeError.value = false;
 			return;
 		}
+
+		const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
+		let nodeData =
+			uniqueName !== initialNode.name ? { ...initialNode, name: uniqueName } : { ...initialNode };
 
 		const initialNodeId = initialNode.id || initialNode.name;
 		// Short-circuit if already hydrated for this node identity to prevent background
@@ -593,7 +603,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			@update:model-value="activeTab = $event"
 		/>
 
-		<div :class="$style.tabContent">
+		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
+			<N8nIcon icon="loader-circle" size="large" spin />
+		</div>
+		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->
 			<div v-show="activeTab === 'params'">
 				<ParameterInputList
@@ -693,6 +706,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 	overflow-y: auto;
 	min-height: 0;
 	padding-right: var(--spacing--lg);
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 
 .noParameters {

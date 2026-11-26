@@ -1,5 +1,14 @@
 import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
+import type { SkillScanVerdict } from '@n8n/api-types';
+
+/** Discovery metadata only. Content is read again when the user opens the review. */
+export type UnlinkedSkill = {
+	key: string;
+	contentHash: string;
+	verdict: SkillScanVerdict;
+	skipped: boolean;
+};
 
 /** The source types that have a client. */
 export type SkillSourceType = 'github';
@@ -29,7 +38,7 @@ export class SkillSourceConnection extends WithTimestamps {
 	@JsonColumn()
 	locator: OpaqueSourceValue;
 
-	/** Source type, host, owner and repository in lower case. The duplicate rules compare it. */
+	/** Repository key for roots and legacy sources. New folder sources use a bounded hash key. */
 	@Column({ type: 'varchar', length: 255 })
 	identityKey: string;
 
@@ -41,11 +50,19 @@ export class SkillSourceConnection extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 
+	/** Stays true after the credential is deleted, so the source never falls back to public access. */
+	@Column({ type: 'boolean', default: false })
+	credentialRequired: boolean;
+
 	@Column({ type: 'varchar', length: 32, default: 'connected' })
 	status: SkillSourceStatus;
 
 	@Column({ type: 'text', nullable: true })
 	probeCursor: string | null;
+
+	/** Null until the first complete discovery. */
+	@JsonColumn({ nullable: true })
+	unlinkedSkills: UnlinkedSkill[] | null;
 
 	@DateTimeColumn({ nullable: true })
 	lastCheckedAt: Date | null;

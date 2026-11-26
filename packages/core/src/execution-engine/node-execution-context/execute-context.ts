@@ -92,7 +92,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				runExecutionData,
 				connectionInputData,
 			),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getCredentialCheckHelperFunctions(additionalData),
 			...getSSHTunnelFunctions(),
@@ -108,11 +108,18 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 					propertyName,
 					0,
 					workflow.settings.binaryMode,
+					additionalData,
+					workflow.id,
+					runExecutionData,
 				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
-		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
+		this.nodeHelpers = getNodeBinaryHelperFunctions(
+			this.workflow,
+			this.additionalData,
+			runExecutionData,
+		);
 
 		this.getNodeParameter = ((
 			parameterName: string,
@@ -152,7 +159,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
 		}

@@ -3,8 +3,9 @@ import { Container } from '@n8n/di';
 
 import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
-import { createDataSource } from './database';
+import { createDataSource, runMigrations } from './database';
 import { createConsoleLogger } from './logging';
+import { createInMemoryWorkQueues } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
 import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
@@ -28,9 +29,15 @@ async function main(): Promise<void> {
 	const tls = openEngineTls(config, logger);
 	assertSecureTransport(config, tls !== undefined, {}, logger);
 
-	const dataSource = createDataSource(config.databaseUrl);
+	const dataSource = createDataSource(config.databaseUrl, {
+		poolSize: config.databasePoolSize,
+		connectTimeoutMS: config.databaseConnectionTimeoutMs,
+	});
 	await dataSource.initialize();
-	await dataSource.runMigrations();
+	logger.info(
+		'Running the engine migrations. This waits while another engine process holds the migration lock.',
+	);
+	await runMigrations(dataSource);
 
 	const runtime = createEngineRuntime({
 		dataSource,
@@ -40,6 +47,13 @@ async function main(): Promise<void> {
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
 		responseSender: noopExecutionResponseSender,
+		queues: createInMemoryWorkQueues({
+			concurrency: {
+				step: config.stepConcurrency,
+				orchestration: config.orchestrationConcurrency,
+			},
+			logger,
+		}),
 	});
 	runtime.start();
 

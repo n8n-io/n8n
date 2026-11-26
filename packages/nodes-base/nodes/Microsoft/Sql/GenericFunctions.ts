@@ -1,12 +1,27 @@
 import { routeBinaryProperties } from '@utils/binary';
 import { isInsideQuotes } from '@utils/sql-query-parameters';
-import { chunk, flatten } from '@utils/utilities';
+import { chunk, flatten, resolveExpressions } from '@utils/utilities';
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
 import { deepCopy, NodeOperationError, safeRegex } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { ITables, OperationInputData } from './interfaces';
+
+export function resolveQuery(this: IExecuteFunctions, itemIndex: number): string {
+	const legacy = this.getNode().typeVersion < 1.3;
+
+	// Before 1.3 each expression was replaced in turn with a function replacer. Doubling `$`
+	// makes the legacy String.replace insert the value literally, which gives the same result.
+	return resolveExpressions(
+		this.getNodeParameter('query', itemIndex) as string,
+		(resolvable) => {
+			const value = String(this.evaluateExpression(resolvable, itemIndex));
+			return legacy ? value.replaceAll('$', '$$$$') : value;
+		},
+		{ legacy },
+	);
+}
 
 function toOptionalNumber(value: unknown) {
 	return value === undefined || value === null || value === '' ? undefined : Number(value);
@@ -341,10 +356,13 @@ export function bindQueryParameters(
 	// $1..$N were all replaced above (none were, if queryValues is empty), so
 	// anything still shaped like a placeholder here references a number past
 	// the last bound value. SQL Server reads it as a money literal instead of
-	// failing. A $N inside a quoted string is text, not a placeholder.
+	// failing. A $N inside a quoted string or [bracketed] identifier is text,
+	// not a placeholder.
 	const unboundNumbers = safeRegex
 		.matchAll('\\$(\\d+)(?!\\d)', processedQuery, 'g')
-		.filter((match) => !isInsideQuotes(processedQuery, match.index ?? 0))
+		.filter(
+			(match) => !isInsideQuotes(processedQuery, match.index ?? 0, { bracketIdentifiers: true }),
+		)
 		.map((match) => Number(match[1]));
 
 	if (unboundNumbers.length > 0) {

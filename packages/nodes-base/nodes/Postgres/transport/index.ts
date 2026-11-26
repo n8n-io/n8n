@@ -153,7 +153,9 @@ export async function configurePostgres(
 
 		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.7) {
 			// Also return DATE and date/timestamp array columns as strings
-			dbConfig.types = getDateAsStringTypeParsers(pgp);
+			dbConfig.types = getDateAsStringTypeParsers(pgp, {
+				legacyUtcTimestamps: options.nodeVersion < 2.9,
+			});
 		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 			// DATE columns still return Date objects on these versions
 			dbConfig.types = getLegacyDateTypeParsers(pgp);

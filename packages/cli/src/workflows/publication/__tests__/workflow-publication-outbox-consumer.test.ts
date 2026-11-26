@@ -808,7 +808,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			[{ type: 'unpublished' }, 'unpublished', 'none'],
 			[{ type: 'skipped', reason: 'workflow-not-found' }, 'skipped', 'workflow_not_found'],
 			[{ type: 'version-missing' }, 'failed', 'version_missing'],
-			[{ type: 'partial', triggerStatuses: [] }, 'partial_success', 'none'],
+			[
+				{ type: 'partial', triggerStatuses: [], error: new Error('boom') },
+				'partial_success',
+				'none',
+			],
 			[{ type: 'failed', error: new Error('boom') }, 'failed', 'none'],
 		] as Array<[PublicationResult, string, string]>)(
 			'emits result=%o as result=%s reason=%s',

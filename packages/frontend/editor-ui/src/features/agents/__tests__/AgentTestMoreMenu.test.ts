@@ -169,7 +169,7 @@ const defaultProps = {
 	isExporting: false,
 	isDeletingSession: false,
 	canDeleteSession: true,
-	getConversationMarkdown: function getConversationMarkdown() {
+	getConversationMarkdown: async function getConversationMarkdown() {
 		return '**User:**\n\nHello';
 	},
 } satisfies MenuProps;
@@ -258,7 +258,7 @@ describe('AgentTestMoreMenu', function describeMenu() {
 	});
 
 	it('does not copy an empty conversation', async function skipsEmptyConversation() {
-		const wrapper = mountMenu({ getConversationMarkdown: vi.fn().mockReturnValue('') });
+		const wrapper = mountMenu({ getConversationMarkdown: vi.fn().mockResolvedValue('') });
 
 		getDropdown(wrapper).vm.$emit('select', 'copy-conversation');
 		await flushPromises();

@@ -26,6 +26,13 @@ function makeStepStore(resumeDueSteps = vi.fn().mockResolvedValue([])): StepStor
 		resumeStep: vi.fn(),
 		resumeDueSteps,
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
+		findStaleQueuedSteps: vi.fn().mockResolvedValue([]),
+		renewQueuedStep: vi.fn(),
+		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
+		failStaleRunningStep: vi.fn(),
+		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
+		renewSettledStep: vi.fn(),
+		acknowledgeSettledStep: vi.fn(),
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
@@ -304,6 +311,16 @@ describe('WaitSweeper', () => {
 			await sweeper.stop();
 
 			vi.mocked(stepStore.nextWaitDeadline).mockResolvedValue(new Date(Date.now() + 200));
+			sweeper.noteSuspended();
+			await vi.advanceTimersByTimeAsync(SWEEP_MS);
+
+			expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
+		});
+
+		it('does not sweep when a step suspends before the sweeper has started', async () => {
+			const stepStore = storeDueAt(new Date(Date.now() + 200));
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
 			sweeper.noteSuspended();
 			await vi.advanceTimersByTimeAsync(SWEEP_MS);
 

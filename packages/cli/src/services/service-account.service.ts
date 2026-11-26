@@ -6,7 +6,11 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { UserService } from '@/services/user.service';
+import {
+	type ServiceAccountOwnerRemoval,
+	type SystemDeletionActor,
+	UserService,
+} from '@/services/user.service';
 
 /**
  * Creates and removes service accounts. A service account always has a
@@ -33,12 +37,28 @@ export class ServiceAccountService {
 	 * cleanup runs for it too. `actor` is the person who caused the removal, for
 	 * the audit event. With `transferId`, the work of the personal project moves
 	 * to that project. Without it, the work is deleted with the account.
-	 * Does nothing when no service account has this id.
+	 *
+	 * `owner` removes what acts as the account, such as an agent, in the same
+	 * deletion. See {@link ServiceAccountOwnerRemoval}. It also runs when no
+	 * service account has this id.
+	 *
+	 * Returns `false` when no service account has this id.
 	 */
-	async remove(serviceAccountId: string, actor: User, transferId?: string) {
+	async remove(
+		serviceAccountId: string,
+		actor: User | SystemDeletionActor,
+		transferId: string | undefined,
+		ctx: OperationContext,
+		owner: ServiceAccountOwnerRemoval,
+	): Promise<boolean> {
 		const serviceAccount = await this.serviceAccountRepository.findById(serviceAccountId);
-		if (!serviceAccount) return;
+		if (!serviceAccount) {
+			await owner.cleanUp();
+			await owner.deleteInTransaction(ctx);
+			return false;
+		}
 
-		await this.userService.deleteUser(actor, serviceAccountId, transferId);
+		await this.userService.deleteServiceAccount(actor, serviceAccountId, transferId, ctx, owner);
+		return true;
 	}
 }

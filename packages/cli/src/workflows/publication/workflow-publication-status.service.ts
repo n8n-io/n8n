@@ -1,119 +1,225 @@
 import type { WorkflowPublicationStatus, WorkflowListPublicationStatus } from '@n8n/api-types';
 import {
 	WorkflowPublicationOutboxRepository,
+	UNPUBLISH_VERSION_SENTINEL,
 	type OperationContext,
+	type WorkflowPublicationOutbox,
 	type WorkflowPublicationTriggerStatus,
 	WorkflowPublicationTriggerStatusRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
+import { sleep } from '@n8n/utils/sleep';
+import groupBy from 'lodash/groupBy';
 import type { INode } from 'n8n-workflow';
 
 import { UNKNOWN_FAILURE_REASON } from '@/constants';
 import { formatFailedActivationError } from '@/workflows/publication/format-node-failures';
+
+export type WorkflowPublicationStatusWithDetails = WorkflowPublicationStatus & {
+	versionId: string | null;
+	errorMessage: string | null;
+};
 
 @Service()
 export class WorkflowPublicationStatusService {
 	constructor(
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
-	/**
-	 * Get the publication status of a workflow.
-	 *
-	 * The status is derived from the in-flight publication (if any) and the current
-	 * trigger statuses. The outbox is consulted only to detect an in-flight
-	 * publication; settled state comes entirely from the trigger statuses.
-	 *
-	 * NOTE: we only update the trigger statuses when a publication is completed,
-	 * so if there is a publication in progress, the trigger statuses may not reflect the latest state.
-	 */
+	/** Report the current request outcome and the triggers that still run. */
 	async getStatus(
 		workflowId: string,
 		ctx: OperationContext = {},
 	): Promise<WorkflowPublicationStatus> {
-		const [inFlightPublication, currentTriggerStatuses] = await Promise.all([
-			this.outboxRepository.findInFlightByWorkflowId(workflowId, ctx),
-			this.triggerStatusRepository.findByWorkflowId(workflowId, ctx),
-		]);
-
-		const triggers = currentTriggerStatuses.map((r) => ({
-			nodeId: r.nodeId,
-			status: r.status,
-			errorMessage: r.errorMessage,
-		}));
-
-		const isPublishing = inFlightPublication !== null;
-		const pendingVersionId = inFlightPublication?.publishedVersionId ?? null;
-
-		// The settled rows ARE the running triggers; if none are activated, nothing is live.
-		const activatedRow = currentTriggerStatuses.find((r) => r.status === 'activated');
-		const liveVersionId = activatedRow?.versionId ?? null;
-
-		const status = this.deriveStatus(isPublishing, currentTriggerStatuses);
+		const { status, liveVersionId, pendingVersionId, triggers } = await this.readStatus(
+			workflowId,
+			ctx,
+		);
 		return { status, liveVersionId, pendingVersionId, triggers };
 	}
 
-	/**
-	 * Batch-derive the terminal publication status for many workflows, for the list view.
-	 *
-	 * Unlike getStatus, this does NOT consult the outbox: the list surfaces only settled
-	 * states (published/partial/failed) and deliberately never shows in_progress. Workflows
-	 * with no trigger rows are omitted (the card falls back to its legacy indicator).
-	 */
+	/** Include the request version and error for publication callers. */
+	async getLatestStatus(workflowId: string): Promise<WorkflowPublicationStatusWithDetails> {
+		return await this.readStatus(workflowId);
+	}
+
+	private async readStatus(
+		workflowId: string,
+		ctx: OperationContext = {},
+		nodes: Array<Pick<INode, 'id' | 'name'>> = [],
+	): Promise<WorkflowPublicationStatusWithDetails> {
+		const [record, rows, activeVersions] = await Promise.all([
+			this.outboxRepository.findLatestByWorkflowId(workflowId, ctx),
+			this.triggerStatusRepository.findByWorkflowId(workflowId, ctx),
+			this.workflowRepository.findActiveVersionIds([workflowId], ctx),
+		]);
+		return this.derivePublicationStatus(
+			record,
+			rows,
+			activeVersions.get(workflowId) ?? null,
+			true,
+			nodes,
+		);
+	}
+
+	/** Wait for this version only. Return the latest state when the wait expires or is replaced. */
+	async waitForPublication(
+		workflowId: string,
+		versionId: string,
+		timeoutMs = 5_000,
+	): Promise<WorkflowPublicationStatusWithDetails> {
+		const deadline = Date.now() + timeoutMs;
+		// A blocked first read must still return a pollable response at the deadline.
+		let status: WorkflowPublicationStatusWithDetails = {
+			status: 'in_progress',
+			versionId,
+			liveVersionId: null,
+			pendingVersionId: versionId,
+			triggers: [],
+			errorMessage: null,
+		};
+		const timeout = new OperationalError('Workflow publication is still in progress');
+		try {
+			do {
+				status = await withTimeout(
+					this.getLatestStatus(workflowId),
+					Math.max(0, deadline - Date.now()),
+					() => timeout,
+				);
+				if (!this.isWaitingForPublication(status, versionId)) break;
+				await sleep(Math.max(0, Math.min(100, deadline - Date.now())));
+			} while (Date.now() < deadline);
+		} catch (error) {
+			if (error !== timeout) throw error;
+		}
+		return status;
+	}
+
+	private isWaitingForPublication(
+		status: WorkflowPublicationStatusWithDetails,
+		versionId: string,
+	): boolean {
+		return (
+			status.versionId === versionId &&
+			(status.status === 'in_progress' ||
+				((status.status === 'published' || status.status === 'partial') &&
+					status.liveVersionId !== versionId))
+		);
+	}
+
+	/** Share settled outcomes and live versions with list and activity readers. */
+	async getSettledStatusesByWorkflowIds(
+		workflowIds: string[],
+	): Promise<Map<string, WorkflowPublicationStatusWithDetails>> {
+		const [records, rows, activeVersions] = await Promise.all([
+			this.outboxRepository.findLatestByWorkflowIds(workflowIds),
+			this.triggerStatusRepository.findByWorkflowIds(workflowIds),
+			this.workflowRepository.findActiveVersionIds(workflowIds),
+		]);
+		const recordsByWorkflowId = new Map(records.map((record) => [record.workflowId, record]));
+		const rowsByWorkflowId = groupBy(rows, 'workflowId');
+		return new Map(
+			workflowIds.map((workflowId) => [
+				workflowId,
+				this.derivePublicationStatus(
+					recordsByWorkflowId.get(workflowId) ?? null,
+					rowsByWorkflowId[workflowId] ?? [],
+					activeVersions.get(workflowId) ?? null,
+					false,
+				),
+			]),
+		);
+	}
+
+	/** Omit unpublished workflows. Keep the last settled state while a request is in flight. */
 	async getListStatusesByWorkflowIds(
 		workflowIds: string[],
 	): Promise<Map<string, WorkflowListPublicationStatus>> {
-		const counts = await this.triggerStatusRepository.getStatusCountsByWorkflowIds(workflowIds);
-
+		const publications = await this.getSettledStatusesByWorkflowIds(workflowIds);
 		const statuses = new Map<string, WorkflowListPublicationStatus>();
-		// getStatusCountsByWorkflowIds only returns workflows with ≥1 settled row, so total is always ≥1.
-		for (const [workflowId, { total, failed }] of counts) {
-			statuses.set(workflowId, this.deriveSettledStatus(total, failed));
+		for (const [workflowId, { status }] of publications) {
+			if (status === 'published' || status === 'partial' || status === 'failed') {
+				statuses.set(workflowId, status);
+			}
 		}
 		return statuses;
 	}
 
-	/**
-	 * The activation error of a workflow whose last publication failed, worded
-	 * like the outbox record and the push on the activation-outcome path. Null
-	 * unless every trigger row is `failed`. Rows carry no node name and no order,
-	 * so `nodes` supplies both (nodeId fallback, unknown ids last, by id).
-	 */
+	/** Report the current publication failure. Use node names when only trigger rows remain. */
 	async getFailedActivationError(
 		workflowId: string,
 		nodes: Array<Pick<INode, 'id' | 'name'>>,
 	): Promise<string | null> {
-		const rows = await this.triggerStatusRepository.findByWorkflowId(workflowId);
-		if (this.deriveStatus(false, rows) !== 'failed') return null;
+		const publication = await this.readStatus(workflowId, {}, nodes);
+		return publication.status === 'failed' ? publication.errorMessage : null;
+	}
 
+	private derivePublicationStatus(
+		record: WorkflowPublicationOutbox | null,
+		rows: WorkflowPublicationTriggerStatus[],
+		activeVersionId: string | null,
+		includeInFlight: boolean,
+		nodes: Array<Pick<INode, 'id' | 'name'>> = [],
+	): WorkflowPublicationStatusWithDetails {
+		const inFlight = record?.status === 'pending' || record?.status === 'in_progress';
+		// Cleanup can retain a failure after a newer publish or unpublish record expires.
+		const request =
+			record &&
+			(inFlight ||
+				(record.publishedVersionId === activeVersionId &&
+					!rows.some((row) => row.updatedAt > record.updatedAt)))
+				? record
+				: null;
+		const outcome =
+			request?.status === 'failed'
+				? 'failed'
+				: request?.status === 'partial_success'
+					? 'partial'
+					: undefined;
+		const requestedVersionId = request?.publishedVersionId ?? rows[0]?.versionId ?? null;
+		const versionId = requestedVersionId === UNPUBLISH_VERSION_SENTINEL ? null : requestedVersionId;
+		return {
+			status: includeInFlight && inFlight ? 'in_progress' : (outcome ?? this.deriveStatus(rows)),
+			versionId,
+			liveVersionId: rows.find((row) => row.status === 'activated')?.versionId ?? null,
+			pendingVersionId: inFlight ? versionId : null,
+			triggers: rows.map(({ nodeId, status, errorMessage }) => ({ nodeId, status, errorMessage })),
+			errorMessage: inFlight
+				? null
+				: outcome
+					? (request?.errorMessage ?? UNKNOWN_FAILURE_REASON)
+					: this.formatRowFailures(rows, nodes),
+		};
+	}
+
+	private formatRowFailures(
+		rows: WorkflowPublicationTriggerStatus[],
+		nodes: Array<Pick<INode, 'id' | 'name'>>,
+	): string | null {
+		const failures = rows.filter((row) => row.status === 'failed');
+		if (failures.length === 0) return null;
 		const position = new Map(nodes.map((node, index) => [node.id, index]));
 		const at = (row: WorkflowPublicationTriggerStatus) => position.get(row.nodeId) ?? nodes.length;
-		const ordered = [...rows].sort((a, b) => at(a) - at(b) || a.nodeId.localeCompare(b.nodeId));
+		failures.sort((a, b) => at(a) - at(b) || a.nodeId.localeCompare(b.nodeId));
 		return formatFailedActivationError(
-			ordered.map((row) => ({
-				nodeName: nodes[at(row)]?.name ?? row.nodeId, // unknown id: index out of range
+			failures.map((row) => ({
+				nodeName: nodes[at(row)]?.name ?? row.nodeId,
 				message: row.errorMessage || UNKNOWN_FAILURE_REASON,
 			})),
 		);
 	}
 
 	private deriveStatus(
-		isPublishing: boolean,
-		currentTriggerStatuses: WorkflowPublicationTriggerStatus[],
+		rows: WorkflowPublicationTriggerStatus[],
 	): WorkflowPublicationStatus['status'] {
-		if (isPublishing) return 'in_progress';
-		if (currentTriggerStatuses.length === 0) return 'not_published';
-		const failed = currentTriggerStatuses.filter((r) => r.status === 'failed').length;
-		return this.deriveSettledStatus(currentTriggerStatuses.length, failed);
-	}
-
-	/**
-	 * The one settled-state ladder, shared by the detail and list derivations so
-	 * the two endpoints can never disagree about the same trigger rows.
-	 */
-	private deriveSettledStatus(total: number, failed: number): WorkflowListPublicationStatus {
+		if (rows.length === 0) return 'not_published';
+		const failed = rows.filter((row) => row.status === 'failed').length;
 		if (failed === 0) return 'published';
-		return failed < total ? 'partial' : 'failed';
+		return failed < rows.length ? 'partial' : 'failed';
 	}
 }

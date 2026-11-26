@@ -1,7 +1,12 @@
 import { UserError } from '@n8n/errors';
 
-import { buildRequestHeaders, toHeaderRecord } from './headers';
-import type { EndpointCredential, LoginMethod } from './types';
+import {
+	buildRequestHeaders,
+	credentialSecrets,
+	oauth2BasicCredentials,
+	toHeaderRecord,
+} from './headers';
+import type { EndpointCredential, LoginMethod, OAuth2Login } from './types';
 
 const endpoint = (
 	login: LoginMethod,
@@ -104,6 +109,31 @@ describe('buildRequestHeaders', () => {
 			expect(headers.authorization).toBe('Bearer sk-test');
 		});
 
+		it('never lets a minted token override the login header either', () => {
+			const headers = buildRequestHeaders({
+				endpoint: endpoint(login),
+				bearerToken: 'minted',
+			});
+
+			expect(headers.authorization).toBe('Bearer sk-test');
+		});
+
+		it('sends the minted token for OAuth2, whose own login header is empty', () => {
+			const headers = buildRequestHeaders({
+				endpoint: endpoint({
+					type: 'oauth2',
+					tokenUrl: 'https://login.example.com/token',
+					clientId: 'id',
+					clientSecret: 'secret',
+					scope: '',
+					sendCredentialsIn: 'header',
+				}),
+				bearerToken: 'minted',
+			});
+
+			expect(headers.authorization).toBe('Bearer minted');
+		});
+
 		it('never lets another header override the key of "API key in header"', () => {
 			const headers = buildRequestHeaders({
 				endpoint: endpoint(
@@ -137,6 +167,43 @@ describe('buildRequestHeaders', () => {
 	});
 });
 
+describe('oauth2BasicCredentials', () => {
+	const oauth2 = (clientId: string, clientSecret: string): OAuth2Login => ({
+		type: 'oauth2',
+		tokenUrl: 'https://login.example.com/oauth2/token',
+		clientId,
+		clientSecret,
+		scope: '',
+		sendCredentialsIn: 'header',
+	});
+
+	it.each([
+		['nothing that needs encoding', 'client-1', 'cs-9f2a71c4', 'client-1:cs-9f2a71c4'],
+		[
+			'a colon in the client id, which splits the pair early when it is left raw',
+			'client:1',
+			'cs-9f2a71c4',
+			'client%3A1:cs-9f2a71c4',
+		],
+		[
+			'a space, which the form encoding writes as a plus',
+			'client 1',
+			'cs 9f2a71c4',
+			'client+1:cs+9f2a71c4',
+		],
+		[
+			'the characters base64 reads back ambiguously',
+			'client-1',
+			'cs+a/b=9f2a71c4',
+			'client-1:cs%2Ba%2Fb%3D9f2a71c4',
+		],
+	])('encodes the pair that holds %s', (_name, clientId, clientSecret, pair) => {
+		const decoded = Buffer.from(oauth2BasicCredentials(oauth2(clientId, clientSecret)), 'base64');
+
+		expect(decoded.toString('utf8')).toBe(pair);
+	});
+});
+
 describe('toHeaderRecord', () => {
 	it('returns an empty record when there are no headers', () => {
 		expect(toHeaderRecord(undefined)).toEqual({});
@@ -152,5 +219,69 @@ describe('toHeaderRecord', () => {
 		});
 
 		expect(headers).toEqual({ 'x-text': 'a', 'x-number': '5', 'x-flag': 'true' });
+	});
+});
+
+describe('credentialSecrets', () => {
+	const SECRET = 'Zx7Qw2Lm9Rt4Bv6N';
+
+	const oauth2 = (clientSecret: string): OAuth2Login => ({
+		type: 'oauth2',
+		tokenUrl: 'https://login.example.com/token',
+		clientId: 'cid',
+		clientSecret,
+		scope: '',
+		sendCredentialsIn: 'header',
+	});
+
+	it.each([
+		['bearer', { type: 'bearer', token: SECRET } as const, `Bearer ${SECRET}`],
+		[
+			'header',
+			{ type: 'header', name: 'x-api-key', prefix: 'Token', key: SECRET } as const,
+			`Token ${SECRET}`,
+		],
+		[
+			'basic',
+			{ type: 'basic', username: 'tenant', password: SECRET } as const,
+			`Basic ${Buffer.from(`tenant:${SECRET}`).toString('base64')}`,
+		],
+		['oauth2', oauth2(SECRET), oauth2BasicCredentials(oauth2(SECRET))],
+	])('carries the %s secret and the value built from it', (_name, login, built) => {
+		const secrets = credentialSecrets(endpoint(login));
+
+		expect(secrets).toContain(SECRET);
+		expect(secrets).toContain(built);
+	});
+
+	// `String.trim` also takes a no-break space, which `Headers.set` sends
+	it('keeps a gateway header value spelled with a no-break space', () => {
+		const padded = `\u00a0${SECRET}\u00a0`;
+
+		expect(credentialSecrets(endpoint({ type: 'none' }, { 'x-api-key': padded }))).toEqual([
+			padded,
+		]);
+	});
+
+	// With the field blank the built header is the bare scheme word, and redacting
+	// `Bearer ` takes it out of the gateway's own advice on how to send one
+	it.each([
+		['bearer', { type: 'bearer', token: '' } as const],
+		['header', { type: 'header', name: 'x-api-key', prefix: 'Token', key: '' } as const],
+		['basic', { type: 'basic', username: 'tenant', password: '' } as const],
+		['oauth2', oauth2('')],
+		['none', { type: 'none' } as const],
+	])('carries nothing for %s with its secret left blank', (_name, login) => {
+		expect(credentialSecrets(endpoint(login))).toEqual([]);
+	});
+
+	it('trims a gateway header value, because Headers.set trims it on the way out', () => {
+		const secrets = credentialSecrets(endpoint({ type: 'none' }, { 'x-api-key': `  ${SECRET}\n` }));
+
+		expect(secrets).toEqual([SECRET]);
+	});
+
+	it('drops a gateway header value that is only whitespace', () => {
+		expect(credentialSecrets(endpoint({ type: 'none' }, { 'x-trace': '   ' }))).toEqual([]);
 	});
 });

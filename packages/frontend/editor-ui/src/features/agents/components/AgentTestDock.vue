@@ -157,8 +157,8 @@ function close() {
 	emit('close');
 }
 
-function getConversationMarkdown() {
-	return previewChatPage.value?.getConversationMarkdown() ?? '';
+async function getConversationMarkdown(): Promise<string> {
+	return (await previewChatPage.value?.getConversationMarkdown()) ?? '';
 }
 
 function clearBudgetStops(fields: BudgetAmountField[]) {

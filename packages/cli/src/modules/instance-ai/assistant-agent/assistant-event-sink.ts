@@ -6,7 +6,7 @@ import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { SystemAgentStartTurn } from '@/modules/agents/system-agents/system-agent.types';
 
-type HostEventEmitter = SystemAgentStartTurn['emitHostEvent'];
+type HostEventEmitters = Pick<SystemAgentStartTurn, 'emitHostEvent' | 'emitTransientHostEvent'>;
 
 /**
  * The events that the shared turn setup and the Assistant tools publish, and
@@ -21,8 +21,16 @@ const HOST_EVENT_KEYS: Partial<
 	'tasks-update': () => 'tasks',
 	'setup-items': (event) =>
 		event.type === 'setup-items' ? `workflow:${event.payload.workflowId}` : 'workflow',
+	'auto-approval': (event) =>
+		event.type === 'auto-approval' ? `tool-call:${event.payload.toolCallId}` : 'tool-call',
 	status: () => 'status',
 };
+
+/** Live previews. History does not keep them: a later draft or the saved workflow replaces each one. */
+const TRANSIENT_EVENT_TYPES: ReadonlySet<InstanceAiEvent['type']> = new Set([
+	'workflow-draft',
+	'workflow-draft-issues',
+]);
 
 /**
  * The event bus of an Assistant turn on the Agents runtime. It sends the
@@ -31,7 +39,7 @@ const HOST_EVENT_KEYS: Partial<
  */
 export class AssistantEventSink implements InstanceAiEventBus {
 	constructor(
-		private readonly emitHostEvent: HostEventEmitter,
+		private readonly emitters: HostEventEmitters,
 		private readonly logger: Logger,
 		/** Sees every published event, also the ones that the chat does not show. */
 		private readonly onEvent?: (event: InstanceAiEvent) => void,
@@ -40,10 +48,13 @@ export class AssistantEventSink implements InstanceAiEventBus {
 	publish(_threadId: string, event: InstanceAiEvent): void {
 		this.onEvent?.(event);
 		const keyOf = HOST_EVENT_KEYS[event.type];
-		if (!keyOf) return;
-		const payload = 'payload' in event ? event.payload : undefined;
+		const transient = TRANSIENT_EVENT_TYPES.has(event.type);
+		if (!keyOf && !transient) return;
 		try {
-			this.emitHostEvent(event.type, toJsonValue(payload), { key: keyOf(event) });
+			// Inside the `try`: a payload that does not convert must not stop the turn.
+			const payload = toJsonValue('payload' in event ? event.payload : undefined);
+			if (keyOf) this.emitters.emitHostEvent(event.type, payload, { key: keyOf(event) });
+			else this.emitters.emitTransientHostEvent(event.type, payload);
 		} catch (error) {
 			// An event that is too large or comes after the turn settled is not shown.
 			this.logger.warn('Failed to send an Assistant event to the chat', {

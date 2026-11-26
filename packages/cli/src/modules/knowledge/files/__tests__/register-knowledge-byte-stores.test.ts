@@ -1,10 +1,9 @@
+import type { ExecutionDataJsonStore } from '@n8n/backend-services';
 import { AzureByteStore, S3ByteStore } from '@n8n/blob-storage';
 import { AzureBlobService } from '@n8n/blob-storage/azure-blob';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
-
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
 import type { KnowledgeFileStore } from '../knowledge-file-store';
 import { registerKnowledgeByteStores } from '../register-knowledge-byte-stores';

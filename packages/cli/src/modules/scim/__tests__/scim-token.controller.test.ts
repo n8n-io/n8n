@@ -1,20 +1,18 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { NextFunction, Request, Response } from 'express';
+import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
-import { scimOptInGate } from '../scim-opt-in';
 import type { ScimSettingsService } from '../scim-settings.service';
 import type { ScimSsoService } from '../scim-sso.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
-
-vi.mock('../scim-opt-in', () => ({ scimOptInGate: vi.fn() }));
 
 describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
@@ -22,6 +20,7 @@ describe('ScimTokenController', () => {
 	let moduleRegistry: Mocked<ModuleRegistry>;
 	let scimSsoService: Mocked<ScimSsoService>;
 	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
+	let eventService: Mocked<EventService>;
 	let controller: ScimTokenController;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
@@ -45,6 +44,7 @@ describe('ScimTokenController', () => {
 			dataAction: 'transfer',
 			transferProjectId: null,
 		});
+		eventService = mock<EventService>();
 		controller = new ScimTokenController(
 			mock<Logger>(),
 			scimTokenService,
@@ -52,22 +52,8 @@ describe('ScimTokenController', () => {
 			moduleRegistry,
 			scimSsoService,
 			scimDeprovisioningService,
+			eventService,
 		);
-	});
-
-	describe('opt-in gate', () => {
-		it('runs the shared opt-in gate before every route', () => {
-			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				ScimTokenController as never,
-			);
-			const [gateReq, gateRes] = [mock<Request>(), mock<Response>()];
-			const next: NextFunction = vi.fn();
-
-			controller.requireOptIn(gateReq, gateRes, next);
-
-			expect(metadata.middlewares).toEqual(['requireOptIn']);
-			expect(scimOptInGate).toHaveBeenCalledWith(gateReq, gateRes, next);
-		});
 	});
 
 	// Every one of these routes administers the credential an IdP uses to
@@ -96,6 +82,50 @@ describe('ScimTokenController', () => {
 				'setDeprovisioningPolicy',
 				'updateConfig',
 			]);
+		});
+	});
+
+	describe('PUT /deprovisioning', () => {
+		const previous = {
+			onDelete: 'disable',
+			dataAction: 'transfer',
+			transferProjectId: null,
+		} as const;
+
+		it('reports a policy change with both policies', async () => {
+			const body = {
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: 'p-1',
+			} as const;
+			scimDeprovisioningService.savePolicy.mockResolvedValue({ saved: body, previous });
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+
+			await expect(controller.setDeprovisioningPolicy(req, makeRes(), body)).resolves.toEqual(body);
+
+			expect(eventService.emit).toHaveBeenCalledWith('scim-deprovisioning-policy-updated', {
+				user: req.user,
+				isActive: true,
+				before: previous,
+				after: body,
+			});
+		});
+
+		it('reports nothing when the policy does not change', async () => {
+			scimDeprovisioningService.savePolicy.mockResolvedValue({ saved: previous, previous });
+
+			await controller.setDeprovisioningPolicy(req, makeRes(), { ...previous });
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('still saves the policy when the switch read fails', async () => {
+			const body = { onDelete: 'delete', dataAction: 'delete', transferProjectId: null } as const;
+			scimDeprovisioningService.savePolicy.mockResolvedValue({ saved: body, previous });
+			scimSettingsService.isEnabled.mockRejectedValue(new Error('cache down'));
+
+			await expect(controller.setDeprovisioningPolicy(req, makeRes(), body)).resolves.toEqual(body);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -235,9 +265,72 @@ describe('ScimTokenController', () => {
 		});
 	});
 
+	describe('PATCH /config telemetry', () => {
+		const savedSettings = (wasEnabled: boolean) =>
+			scimSettingsService.update.mockImplementation(async ({ enabled }) => ({
+				wasEnabled,
+				enabled,
+			}));
+
+		it.each([
+			[false, true, 'enabled'],
+			[true, false, 'disabled'],
+		] as const)(
+			'reports the change when SCIM goes from %s to %s',
+			async (wasEnabled, enabled, change) => {
+				savedSettings(wasEnabled);
+
+				await controller.updateConfig(req, makeRes(), { enabled });
+
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('scim-settings-updated', {
+					user: req.user,
+					isActive: enabled,
+					change,
+					source: 'user',
+				});
+			},
+		);
+
+		it.each([true, false])('reports nothing when SCIM stays %s', async (enabled) => {
+			savedSettings(enabled);
+
+			await controller.updateConfig(req, makeRes(), { enabled });
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('POST /token', () => {
+		it.each([
+			[false, 'token_created'],
+			[true, 'token_rotated'],
+		] as const)('reports the token change when replaced is %s', async (replaced, change) => {
+			scimTokenService.rotateToken.mockResolvedValue({ token: 'the-token', replaced });
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+
+			await controller.generateToken(req, makeRes());
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('scim-settings-updated', {
+				user: req.user,
+				isActive: true,
+				change,
+				source: 'user',
+			});
+		});
+
+		it('still returns the new token when the switch read for the report fails', async () => {
+			scimTokenService.rotateToken.mockResolvedValue({ token: 'the-token', replaced: false });
+			scimSettingsService.isEnabled.mockRejectedValue(new Error('db down'));
+			const res = makeRes();
+
+			await controller.generateToken(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(201);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('returns 201 with the token and base URL', async () => {
-			scimTokenService.rotateToken.mockResolvedValue('the-token');
+			scimTokenService.rotateToken.mockResolvedValue({ token: 'the-token', replaced: false });
 			const res = makeRes();
 
 			await controller.generateToken(req, res);
@@ -261,7 +354,7 @@ describe('ScimTokenController', () => {
 		});
 
 		it('still returns the new token when the settings refresh fails', async () => {
-			scimTokenService.rotateToken.mockResolvedValue('the-token');
+			scimTokenService.rotateToken.mockResolvedValue({ token: 'the-token', replaced: false });
 			moduleRegistry.refreshModuleSettings.mockRejectedValue(new Error('db down'));
 			const res = makeRes();
 
@@ -285,6 +378,21 @@ describe('ScimTokenController', () => {
 	});
 
 	describe('DELETE /token', () => {
+		it('reports a revoke only when a token was there', async () => {
+			scimSettingsService.isEnabled.mockResolvedValue(false);
+			scimTokenService.revokeToken.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+			await controller.deleteToken(req, makeRes());
+			await controller.deleteToken(req, makeRes());
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('scim-settings-updated', {
+				user: req.user,
+				isActive: false,
+				change: 'token_revoked',
+				source: 'user',
+			});
+		});
+
 		it('revokes the instance token and refreshes the settings', async () => {
 			const res = makeRes();
 

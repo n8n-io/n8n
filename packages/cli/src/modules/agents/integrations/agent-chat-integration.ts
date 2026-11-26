@@ -1,5 +1,7 @@
+import type { ChannelHitlDefinition } from './channel-hitl';
 import {
 	AgentIntegrationConfig,
+	type AgentIntegrationAccountResponse,
 	type AgentIntegrationDisconnectWarning,
 	type AgentMessageAuthor,
 	type AgentMessageIntegrationOrigin,
@@ -23,6 +25,7 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from './integration-tool-definitions';
 import type {
+	ConversationToolName,
 	IntegrationAction,
 	IntegrationActionDefinition,
 	IntegrationActionParams,
@@ -30,6 +33,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationContextQueryParams,
+	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
@@ -286,6 +290,8 @@ export type SettleActionMessage = (params: SettleActionMessageParams) => Promise
  * The concrete subclasses live under `./platforms/`.
  */
 export abstract class AgentChatIntegration {
+	readonly hitl: ChannelHitlDefinition = { supported: false };
+
 	/** Platform identifier (`'slack'`, `'telegram'`, …). */
 	abstract readonly type: string;
 
@@ -373,6 +379,16 @@ export abstract class AgentChatIntegration {
 	/** Side-effecting actions exposed through the generated integration action tool. */
 	get actions(): IntegrationAction[] {
 		return this.actionToolDefinitions.map((definition) => definition.name);
+	}
+
+	/**
+	 * Eager conversation tools use the channel's existing action handlers.
+	 * New channels declare the silence action to opt in.
+	 */
+	get conversationTools(): ConversationToolName[] {
+		const tools: ConversationToolName[] = [];
+		if (this.actions.includes('do_not_respond')) tools.push('do_not_respond');
+		return tools;
 	}
 
 	/**
@@ -492,6 +508,15 @@ export abstract class AgentChatIntegration {
 	): Promise<OriginNames | undefined>;
 
 	/**
+	 * Looks up the bot name and workspaces of a credential for display labels.
+	 * The caller caches the result and treats a rejection as "unknown".
+	 * Channels without a mention model leave this undefined.
+	 */
+	describeAccount?(
+		credential: Record<string, unknown>,
+	): Promise<AgentIntegrationAccountResponse | undefined>;
+
+	/**
 	 * Decides who owns the episodic memories of an incoming chat turn. Every
 	 * channel must decide. Build identifiers from trusted source context and
 	 * namespace them by agent, platform, and workspace or account. Return `null`
@@ -601,6 +626,17 @@ export abstract class AgentChatIntegration {
 	normalizeChannelId(channelId: string, _adapter: unknown): string {
 		return normalizePlatformId(this.type, channelId);
 	}
+
+	/**
+	 * Refuses a send to a recipient that the run may not message. Return the
+	 * reason in words the agent can act on, or undefined to allow the send.
+	 */
+	checkActionRecipient?(params: {
+		action: IntegrationAction;
+		input: Record<string, unknown>;
+		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
+	}): string | undefined;
 
 	/**
 	 * Explains a failed send in words the agent can act on, for errors where the
@@ -714,6 +750,12 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		message: Message<unknown>;
 	}): Promise<Attachment[]>;
+
+	/**
+	 * Puts a user ID given to `send_dm` into the form the platform uses for
+	 * inbound messages, so one person always maps to one thread and session.
+	 */
+	normalizeUserId?(userId: string): string;
 
 	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).

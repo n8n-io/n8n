@@ -195,33 +195,29 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
-	 * The files of a session for the session files list, newest first. A
-	 * sandbox file can have many versions with the same name and bytes, so the
-	 * list keeps the newest file for each name and hash. Older files have no
-	 * hash and all stay. The caller checks access to the session.
+	 * The files of a session for the session files list, newest first, with
+	 * one file for each name and bytes. The caller checks access to the session.
 	 */
 	async listForSession(
 		scope: { projectId: string; threadId: string },
 		excludeSource?: string,
 	): Promise<AgentSessionFile[]> {
 		const files = await this.repository.findInThreadNewestFirst(scope, excludeSource, {});
-		const seen = new Set<string>();
-		return files
-			.filter((file) => {
-				if (!file.contentHash) return true;
-				const key = `${file.contentHash}:${file.fileName}`;
-				if (seen.has(key)) return false;
-				seen.add(key);
-				return true;
-			})
-			.map((file) => ({
-				fileId: file.id,
-				fileName: file.fileName,
-				mimeType: file.mimeType,
-				sizeBytes: file.fileSizeBytes,
-				source: file.source,
-				createdAt: file.createdAt.toISOString(),
-			}));
+		return toSessionFiles(files);
+	}
+
+	/**
+	 * The files of a system-chat thread for one memory resource, newest first,
+	 * in the same form as `listForSession`. A read by id with the same scope
+	 * (`getForSystemAgent`) finds each listed file. The caller checks access to
+	 * the thread.
+	 */
+	async listForSystemAgentThread(
+		threadId: string,
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
+	): Promise<AgentSessionFile[]> {
+		const files = await this.repository.findInSystemThreadNewestFirst(threadId, scope, {});
+		return toSessionFiles(files);
 	}
 
 	/**
@@ -389,12 +385,12 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
-	 * An attachment that a system chat stored for one memory resource. The
-	 * caller checks access to its thread.
+	 * A file that a system chat stored for one memory resource, from one of
+	 * the given sources. The caller checks access to its thread.
 	 */
 	async getForSystemAgent(
 		attachmentId: string,
-		scope: { agentId: string; resourceId: string; source: string },
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
 	): Promise<AgentChatAttachment | null> {
 		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}
@@ -629,4 +625,29 @@ export class AgentChatAttachmentService {
 			isMediaTypeSupported: (mediaType) => isAttachmentMediaTypeSupported(provider, mediaType),
 		};
 	}
+}
+
+/**
+ * Files for a files list, from files ordered newest first. A sandbox file can
+ * have many versions with the same name and bytes, so the list keeps the
+ * newest file for each name and hash. Older files have no hash and all stay.
+ */
+function toSessionFiles(files: AgentChatAttachment[]): AgentSessionFile[] {
+	const seen = new Set<string>();
+	return files
+		.filter((file) => {
+			if (!file.contentHash) return true;
+			const key = `${file.contentHash}:${file.fileName}`;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		})
+		.map((file) => ({
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+			source: file.source,
+			createdAt: file.createdAt.toISOString(),
+		}));
 }

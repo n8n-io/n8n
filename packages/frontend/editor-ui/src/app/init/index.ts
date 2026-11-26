@@ -5,7 +5,6 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { registerExperimentModals } from '@/app/modals.manifest';
-import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { AuthenticationMethod } from '@n8n/api-types';
@@ -16,6 +15,7 @@ import {
 	registerModuleProjectTabs,
 	registerModulePushHandlers,
 	registerModuleResources,
+	registerModuleRunDataDisplayModes,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -94,6 +94,9 @@ export async function initializeCore() {
 	const ssoStore = useSSOStore();
 
 	registerAuthenticationHooks();
+
+	// Before the login check: in preview mode a visitor who is not logged in sees run data.
+	registerModuleRunDataDisplayModes();
 
 	/**
 	 * Initialize stores
@@ -193,7 +196,13 @@ export async function initializeAuthenticatedFeatures(
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
 	}
 
-	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
+	// Started here and awaited with the batch below, so no other startup request waits for it.
+	// A failure shows a toast and does not reject the batch.
+	const loadSourceControlPreferences = async () => {
+		if (!sourceControlStore.isEnterpriseSourceControlEnabled) {
+			return;
+		}
+
 		try {
 			await sourceControlStore.getPreferences();
 		} catch (e) {
@@ -205,7 +214,9 @@ export async function initializeAuthenticatedFeatures(
 			});
 			console.error('Failed to initialize source control store', e);
 		}
-	}
+	};
+
+	const sourceControlPreferencesLoad = loadSourceControlPreferences();
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
@@ -266,31 +277,25 @@ export async function initializeAuthenticatedFeatures(
 		void versionsStore.checkForNewVersions();
 	}
 
-	const loadTypes = async () => {
-		// The node types store reads from the data worker, so the worker must be initialized first.
-		if (isDataWorkerEnabled()) {
-			const coordinator = await import('@/app/workers');
-			await coordinator.initialize({ version: settingsStore.settings.versionCli });
-			await coordinator.loadNodeTypes(rootStore.baseUrl);
-		}
-
-		const results = await Promise.allSettled([
-			nodeTypesStore.loadNodeTypesIfNotLoaded(),
-			credentialsStore.fetchCredentialTypes(false),
-		]);
+	// Start to load the node and credential types, but do not wait for them. The pages that need
+	// the types wait for the same load through the stores, so no route waits for them by default.
+	void Promise.allSettled([
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
+		credentialsStore.fetchCredentialTypes(false),
+	]).then((results) => {
 		results.forEach((result) => {
 			if (result.status === 'rejected') {
 				console.error('Failed to initialize n8n types', result.reason);
 			}
 		});
-	};
+	});
 
 	await Promise.all([
+		sourceControlPreferencesLoad,
 		projectsStore.getMyProjects(),
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
-		loadTypes(),
 	]);
 
 	await projectsStore.refreshCurrentProject();

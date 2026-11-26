@@ -17,6 +17,7 @@ const ENGINE_AWARE = [
 	'**/lazy-sync-cold-start.test.ts',
 	'**/replaced-builtins.test.ts',
 	'**/to-ascii.test.ts',
+	'**/extract-url-path.test.ts',
 ];
 
 export default defineConfig({

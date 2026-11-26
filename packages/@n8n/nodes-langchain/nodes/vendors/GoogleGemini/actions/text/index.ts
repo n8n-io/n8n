@@ -16,6 +16,7 @@ export const description: INodeProperties[] = [
 				value: 'message',
 				action: 'Message a model',
 				description: 'Create a completion with Google Gemini model',
+				// Stays at default because connected AI tools can execute arbitrary side effects.
 			},
 		],
 		default: 'message',

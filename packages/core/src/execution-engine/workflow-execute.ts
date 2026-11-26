@@ -11,6 +11,7 @@ import { setMaxListeners } from 'events';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
+	ExecutionBlockedReason,
 	ExecutionStatus,
 	ExecutionStorageLocation,
 	ExecutionError,
@@ -56,13 +57,16 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	deepCopy,
 	applyDynamicCredentialsUsage,
 	hasExecutionRunNodes,
+	hasPolicyRefusalMarker,
 	isExecutionOutputRedacted,
 	redactErrorReport,
 } from 'n8n-workflow';
 import { BaseError, UnexpectedError, UserError, OperationalError } from '@n8n/errors';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
+import { types } from 'util';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
@@ -105,6 +109,11 @@ interface RunWorkflowOptions {
 	 * By default run() executes only destinationNode and its parents, others are not allowed to run
 	 */
 	additionalRunFilterNodes?: string[];
+}
+
+/** Returns the data as plain values. Makes a deep copy only when the data is a proxy. */
+function toPlainData(data: IDataObject): IDataObject {
+	return types.isProxy(data) ? deepCopy(data) : data;
 }
 
 function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
@@ -219,6 +228,7 @@ export class WorkflowExecute {
 		];
 
 		this.runExecutionData = createRunExecutionData({
+			binaryDataAccess: this.runExecutionData.binaryDataAccess,
 			startData: {
 				destinationNode,
 				runNodeFilter,
@@ -343,6 +353,7 @@ export class WorkflowExecute {
 
 		this.status = 'running';
 		this.runExecutionData = createRunExecutionData({
+			binaryDataAccess: this.runExecutionData.binaryDataAccess,
 			startData: {
 				destinationNode,
 				originalDestinationNode: originalDestination,
@@ -1550,7 +1561,10 @@ export class WorkflowExecute {
 			// shares this node object (legacy `executionOrder: 'v0'` with multiple wires
 			// into the node): keeping the node enabled lets those later entries execute
 			// normally instead of passing their input through in disabled mode.
-			if (!executionStackEntry.metadata?.resumeError) {
+			if (
+				!executionStackEntry.metadata?.resumeError &&
+				executionStackEntry.metadata?.resumeMode !== 'reexecute'
+			) {
 				executionStackEntry.node.disabled = true;
 			}
 
@@ -1582,17 +1596,20 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			this.markFailedBeforeStart();
+			this.markFailedBeforeStart('invalidWorkflow');
 			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
 	}
 
-	private markFailedBeforeStart(): boolean {
+	/** Returns the reason when no node of this execution ran, and marks the run with it. */
+	private markFailedBeforeStart(
+		reason: ExecutionBlockedReason,
+	): ExecutionBlockedReason | undefined {
 		const { resultData } = this.runExecutionData;
 		const isResume = this.additionalData.restartExecutionId !== undefined;
-		if (hasExecutionRunNodes(resultData.runData, isResume)) return false;
-		resultData.failedBeforeStart = true;
-		return true;
+		if (hasExecutionRunNodes(resultData.runData, isResume)) return undefined;
+		resultData.failedBeforeStart = reason;
+		return reason;
 	}
 
 	private setupExecution(): {
@@ -1694,8 +1711,10 @@ export class WorkflowExecute {
 		// A retry copies the original's data, flag included; this run decides it afresh.
 		delete this.runExecutionData.resultData.failedBeforeStart;
 
+		let stage: ExecutionBlockedReason = 'startFailed';
 		try {
 			await workflow.expression.acquireIsolate();
+			stage = 'contextHook';
 
 			// Establish the execution context
 			await establishExecutionContext(
@@ -1714,7 +1733,9 @@ export class WorkflowExecute {
 			const e = error as unknown as ExecutionBaseError;
 
 			// Read before the start-node task below fills `runData`.
-			const failedBeforeStart = this.markFailedBeforeStart();
+			const failedBeforeStart = this.markFailedBeforeStart(
+				hasPolicyRefusalMarker(error) ? 'policy' : stage,
+			);
 
 			// Set the error that it can be saved correctly
 			const executionError: ExecutionBaseError = {
@@ -1746,7 +1767,7 @@ export class WorkflowExecute {
 					},
 					lastNodeExecuted: startItem.node.name,
 					error: executionError,
-					...(failedBeforeStart && { failedBeforeStart: true }),
+					...(failedBeforeStart && { failedBeforeStart }),
 				};
 			} else {
 				this.runExecutionData.resultData.error = executionError;
@@ -3164,7 +3185,9 @@ export class WorkflowExecute {
 							errorItems.push({
 								...item,
 								json: {
-									...pairedInputItem.json,
+									// The data proxy of a scripting node returns nested values as
+									// proxies. Run data must hold plain values.
+									...toPlainData(pairedInputItem.json),
 									...item.json,
 								},
 							});

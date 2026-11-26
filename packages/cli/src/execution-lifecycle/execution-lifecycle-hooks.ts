@@ -22,12 +22,18 @@ import type {
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	ITaskData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import {
+	redactExecutionError,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
@@ -36,12 +42,13 @@ import { saveExecutionProgress } from './save-execution-progress';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
-	updateExistingExecution,
+	saveExecutionOutcome,
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { UnsavedManualExecutionService } from './unsaved-manual-execution.service';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -53,6 +60,9 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 import { getLastExecutedNodeData, getLastExecutedNodeRuns } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** Runs whose save, in this hook run, moved them from an unfinished to a terminal status. */
+const runsEndedBySave = new WeakSet<IRun>();
 
 @Service()
 class ModulesHooksRegistry {
@@ -84,6 +94,7 @@ class ModulesHooksRegistry {
 							retryOf: this.retryOf,
 							source,
 							executedInThisProcess,
+							endedByThisSave: runsEndedBySave.has(runData),
 						};
 
 						return await instance[methodName].call(instance, context);
@@ -172,6 +183,7 @@ function hookFunctionsWorkflowEvents(
 	projectName?: string,
 	source?: IWorkflowExecutionDataProcess['source'],
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
+	parentAgentRun?: RelatedAgentRun,
 ) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
@@ -183,6 +195,7 @@ function hookFunctionsWorkflowEvents(
 			mode,
 			projectId,
 			projectName,
+			...(parentAgentRun ? { parentAgentRun } : {}),
 		});
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
@@ -223,6 +236,7 @@ function hookFunctionsWorkflowEvents(
 			projectName,
 			...(source ? { source } : {}),
 			...(telemetryMetadata ? { telemetryMetadata } : {}),
+			...(parentAgentRun ? { parentAgentRun } : {}),
 		});
 	});
 }
@@ -294,6 +308,21 @@ function buildRedactableExecution(
 }
 
 /**
+ * Task data for the node metadata push when the redaction decision is not known.
+ * Keeps only the metadata that redaction keeps, so the editor can still show the node status.
+ */
+function toMinimalTaskMetadata(taskData: ITaskData): Omit<ITaskData, 'data'> {
+	const { data: _, inputOverride: __, error, metadata, ...rest } = taskData;
+	const result: Omit<ITaskData, 'data'> = { ...rest };
+	if (metadata) {
+		const { subNodeExecutionData: ___, ...safeMetadata } = metadata;
+		result.metadata = safeMetadata;
+	}
+	if (error) result.redactedError = redactExecutionError(error);
+	return result;
+}
+
+/**
  * Returns hook functions to push data to Editor-UI
  */
 function hookFunctionsPush(
@@ -359,25 +388,26 @@ function hookFunctionsPush(
 		});
 
 		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
-		const { data: _, ...taskData } = data;
-
-		pushInstance.send(
-			{
-				type: 'nodeExecuteAfter',
-				data: {
-					executionId,
-					nodeName,
-					sequenceNumber: nodeEventSequence++,
-					itemCountByConnectionType,
-					data: taskData,
+		// Take the sequence number before any await to keep engine order.
+		const sequenceNumber = nodeEventSequence++;
+		const sendMetadata = (taskData: Omit<ITaskData, 'data'>) =>
+			pushInstance.send(
+				{
+					type: 'nodeExecuteAfter',
+					data: {
+						executionId,
+						nodeName,
+						sequenceNumber,
+						itemCountByConnectionType,
+						data: taskData,
+					},
 				},
-			},
-			pushRef,
-			pushRefUserId,
-		);
+				pushRef,
+				pushRefUserId,
+			);
 
-		// Fail-closed redaction: if user cannot be resolved, skip the data push
-		// entirely rather than sending unredacted data to the client.
+		// Fail-closed redaction: if user cannot be resolved, send only minimal
+		// metadata and skip the data push.
 		const user = await getUser();
 		if (!user) {
 			logger.warn('Skipping execution data push: unable to resolve user for redaction', {
@@ -385,14 +415,16 @@ function hookFunctionsPush(
 				nodeName,
 				userId: pushRefUserId,
 			});
+			if (!memoryStoppedExecutions.isStopped(executionId))
+				sendMetadata(toMinimalTaskMetadata(data));
 			return;
 		}
 
 		// Apply copy-on-write redaction before sending binary data.
 		// Returns the original data if no redaction is needed (zero-copy),
 		// or a structuredClone with redaction applied.
-		// Fail-closed: if redaction throws, skip the data push rather than
-		// sending unredacted data. The metadata-only push above already fired.
+		// Fail-closed: if redaction throws, send only minimal metadata and skip
+		// the data push.
 		let dataToSend = data;
 		try {
 			const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
@@ -409,11 +441,17 @@ function hookFunctionsPush(
 				nodeName,
 				error,
 			});
+			if (!memoryStoppedExecutions.isStopped(executionId))
+				sendMetadata(toMinimalTaskMetadata(data));
 			return;
 		}
 
 		// The guard can stop the execution while the user or the redaction is awaited.
 		if (memoryStoppedExecutions.isStopped(executionId)) return;
+
+		// The metadata comes from the same redacted task data as the data push.
+		const { data: _, ...taskData } = dataToSend;
+		sendMetadata(taskData);
 
 		// We send the node execution data as a WS binary message to the FE. Not
 		// because it's more efficient on the wire: the content is a JSON string
@@ -589,12 +627,21 @@ function hookFunctionsStatistics(
  * This ensures the parent can access the binary data after the subworkflow
  * execution is cleaned up. The duplicateBinaryData method also updates
  * the binary data IDs in the data to point to the new location.
+ * Only binary data that the subworkflow may read is duplicated. Other IDs stay
+ * unchanged, so the read check of the parent applies to them. Call this before
+ * the subworkflow execution is deleted, because the check looks it up.
  */
 async function duplicateBinaryDataToParent(
 	fullRunData: IRun,
 	parentExecution: RelatedExecution,
+	subWorkflowId: string,
 	binaryDataService: BinaryDataService,
 ) {
+	const grantedIds = fullRunData.data.binaryDataAccess;
+	const shouldDuplicate = async (binaryDataId: string) =>
+		grantedIds?.includes(binaryDataId) === true ||
+		(await Container.get(BinaryDataAccessService).isOwnedByWorkflow(subWorkflowId, binaryDataId));
+
 	const outputRuns =
 		fullRunData.data.subWorkflowOutput?.lastRunOnly === false
 			? getLastExecutedNodeRuns(fullRunData)
@@ -604,6 +651,7 @@ async function duplicateBinaryDataToParent(
 		const duplicatedData = await binaryDataService.duplicateBinaryData(
 			FileLocation.ofExecution(parentExecution.workflowId, parentExecution.executionId),
 			outputData.data.main,
+			{ shouldDuplicate },
 		);
 		// Update the run data with the new binary data IDs
 		outputData.data.main = duplicatedData;
@@ -638,6 +686,10 @@ function hookFunctionsSave(
 			executionId: this.executionId,
 			workflowId: this.workflowData.id,
 		});
+		runsEndedBySave.delete(fullRunData);
+		const markEnded = ({ ended }: { ended: boolean }) => {
+			if (ended) runsEndedBySave.add(fullRunData);
+		};
 
 		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
@@ -646,7 +698,12 @@ function hookFunctionsSave(
 		// data, and updates the binary data IDs in fullRunData to point to the parent location.
 		const parent = parentExecution ?? fullRunData.data.parentExecution;
 		if (parent) {
-			await duplicateBinaryDataToParent(fullRunData, parent, binaryDataService);
+			await duplicateBinaryDataToParent(
+				fullRunData,
+				parent,
+				this.workflowData.id,
+				binaryDataService,
+			);
 		}
 
 		const isManualMode = this.mode === 'manual';
@@ -691,6 +748,13 @@ function hookFunctionsSave(
 			// the cancel and would otherwise write `success` over `canceled`.
 			const saveConditions = { requireNotCanceled: true };
 
+			const finalState = {
+				status: fullRunData.status,
+				// oxlint-disable-next-line typescript/no-deprecated
+				finished: fullRunData.finished ?? false,
+				stoppedAt: fullRunData.stoppedAt,
+			};
+
 			if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 				/**
 				 * When manual executions are not being saved, we only soft-delete
@@ -707,10 +771,18 @@ function hookFunctionsSave(
 				 * Known limit: in blob storage, a write that stalls for longer than the
 				 * buffer can leave its data behind after pruning removes the execution.
 				 */
+				if (!(await unsavedManualExecutionService.keep(this.executionId))) {
+					// The final status goes in the same write, so a crash sweep cannot finish the run again.
+					markEnded(await executionPersistence.softDeleteWithOutcome(this.executionId, finalState));
+					return;
+				}
+
+				// A kept run writes its status with its run data: readers take a start status as
+				// "no run data yet". A failed write leaves the run to a crash sweep.
 				await executionRepository.softDelete(this.executionId);
-				if (await unsavedManualExecutionService.keep(this.executionId)) {
-					try {
-						await updateExistingExecution({
+				try {
+					markEnded(
+						await saveExecutionOutcome({
 							executionId: this.executionId,
 							workflowId: this.workflowData.id,
 							executionData: prepareFullExecutionData(),
@@ -719,16 +791,16 @@ function hookFunctionsSave(
 								fullRunData.status === 'canceled'
 									? { includeDeleted: true }
 									: { ...saveConditions, includeDeleted: true },
-						});
-					} catch (error) {
-						// The run data is only kept for reading. Failing to keep it must not
-						// replace the run's own outcome.
-						logger.warn('Failed to keep the run data of an unsaved manual execution', {
-							executionId: this.executionId,
-							workflowId: this.workflowData.id,
-							error: ensureError(error),
-						});
-					}
+						}),
+					);
+				} catch (error) {
+					// The run data is only kept for reading. Failing to keep it must not
+					// replace the run's own outcome.
+					logger.warn('Failed to keep the run data of an unsaved manual execution', {
+						executionId: this.executionId,
+						workflowId: this.workflowData.id,
+						error: ensureError(error),
+					});
 				}
 
 				return;
@@ -749,18 +821,15 @@ function hookFunctionsSave(
 					);
 				}
 
-				await executionPersistence.deleteInFlightExecution(
-					{
-						workflowId: this.workflowData.id,
-						executionId: this.executionId,
-						storedAt: fullRunData.storedAt,
-					},
-					{
-						status: fullRunData.status,
-						// oxlint-disable-next-line typescript/no-deprecated
-						finished: fullRunData.finished ?? false,
-						stoppedAt: fullRunData.stoppedAt,
-					},
+				markEnded(
+					await executionPersistence.deleteInFlightExecution(
+						{
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+							storedAt: fullRunData.storedAt,
+						},
+						finalState,
+					),
 				);
 
 				return;
@@ -774,12 +843,14 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRefUserId = pushRefUserId;
 			}
 
-			await updateExistingExecution({
-				executionId: this.executionId,
-				workflowId: this.workflowData.id,
-				executionData: fullExecutionData,
-				conditions: saveConditions,
-			});
+			markEnded(
+				await saveExecutionOutcome({
+					executionId: this.executionId,
+					workflowId: this.workflowData.id,
+					executionData: fullExecutionData,
+					conditions: saveConditions,
+				}),
+			);
 
 			await updateExistingExecutionMetadata(
 				this.executionId,
@@ -829,10 +900,16 @@ function hookFunctionsSaveWorker(
 			executionId: this.executionId,
 			workflowId: this.workflowData.id,
 		});
+		runsEndedBySave.delete(fullRunData);
 
 		const { parentExecution } = fullRunData.data;
 		if (parentExecution) {
-			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+			await duplicateBinaryDataToParent(
+				fullRunData,
+				parentExecution,
+				this.workflowData.id,
+				binaryDataService,
+			);
 		}
 
 		const isManualMode = this.mode === 'manual';
@@ -898,12 +975,14 @@ function hookFunctionsSaveWorker(
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			// The guard only applies for a non-canceled outcome. This run's own canceled
 			// completion must still persist its accumulated data.
-			wasUpdated = await updateExistingExecution({
+			const saved = await saveExecutionOutcome({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData,
 				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
+			wasUpdated = saved.updated;
+			if (saved.ended) runsEndedBySave.add(fullRunData);
 		} finally {
 			// Counted only when the write above lands, so completions stay in sync with the database.
 			if (wasUpdated) {
@@ -934,6 +1013,7 @@ export function getLifecycleHooksForSubExecutions(
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsMemoryGuard(hooks);
+	// No `parentAgentRun`: only the execution that an agent's workflow tool starts names the agent.
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, undefined, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -1046,7 +1126,16 @@ export function getLifecycleHooksForScalingMain(
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
+	// Read the marker here: the run that main gets back from a worker can be a slim summary without it.
+	hookFunctionsWorkflowEvents(
+		hooks,
+		userId,
+		projectId,
+		projectName,
+		source,
+		telemetryMetadata,
+		data.executionData?.parentAgentRun,
+	);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
@@ -1157,7 +1246,16 @@ export function getLifecycleHooksForRegularMain(
 		suppressErrorWorkflow,
 	};
 	hookFunctionsMemoryGuard(hooks);
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
+	// Read the marker here, so that a failed run without run data still names the agent.
+	hookFunctionsWorkflowEvents(
+		hooks,
+		userId,
+		projectId,
+		projectName,
+		source,
+		telemetryMetadata,
+		data.executionData?.parentAgentRun,
+	);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

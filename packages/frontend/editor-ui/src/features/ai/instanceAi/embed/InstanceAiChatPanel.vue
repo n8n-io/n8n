@@ -50,6 +50,7 @@ import {
 	isKnownAssistantAgentThread,
 	knownAssistantThreadRuntime,
 	lookUpAssistantThreadRuntime,
+	markAssistantAgentLaunch,
 	rememberAssistantAgentThread,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
@@ -126,9 +127,13 @@ const subject = computed(() => props.subject);
 const { threads } = useInstanceAiEmbedThreads(subject);
 provide(INSTANCE_AI_EMBED_SUBJECT_KEY, subject);
 
-/** With the flag on, an agent panel starts its new threads on the Assistant agent. */
+/** An agent panel lists and opens the Assistant agent threads of its agent. */
 const usesAssistantAgent = computed(
 	() => settingsStore.isAssistantAgentEnabled && props.subject.type === 'agent',
+);
+/** For a user in the rollout, an agent panel starts its new threads on the Assistant agent. */
+const startsAssistantAgentThreads = computed(
+	() => usesAssistantAgent.value && settingsStore.newThreadsUseAssistantAgent,
 );
 /**
  * The Assistant agent threads that this panel created, and if each one is still
@@ -392,7 +397,7 @@ async function mintThread() {
 			// error — the hook owns its error UI, so just stop here.
 			return;
 		}
-		if (usesAssistantAgent.value) {
+		if (startsAssistantAgentThreads.value) {
 			// The server creates the thread with its first message.
 			if (
 				!mounted ||
@@ -651,6 +656,14 @@ async function openFullAssistant() {
 	if (!mounted || props.subject.id !== subjectIdAtStart || activeThreadId.value !== threadId) {
 		return;
 	}
+	// The server does not know a thread before its first message. The full view then
+	// opens it as new, shows the agent, and its first message binds it.
+	if (panelAgentThreads.get(threadId) === true && props.subject.type !== 'workflow') {
+		markAssistantAgentLaunch(threadId, {
+			projectId: props.subject.projectId,
+			subject: props.subject,
+		});
+	}
 	handedOffThreadId = threadId;
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 }
@@ -756,6 +769,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 		>
 			<template #actions>
 				<N8nTooltip
+					as-child
 					:content="i18n.baseText('instanceAi.thread.new')"
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
@@ -766,6 +780,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 						size="small"
 						icon-size="large"
 						:disabled="building"
+						focusable-when-disabled
 						:aria-label="i18n.baseText('instanceAi.thread.new')"
 						data-test-id="instance-ai-embed-new-thread"
 						@click="onNewThreadRequested"

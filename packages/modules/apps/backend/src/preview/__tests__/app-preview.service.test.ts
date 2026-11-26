@@ -1,23 +1,29 @@
 import { CacheService, JwtService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
+import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { AppPreviewService } from '../app-preview.service';
 import type { App } from '../../app.entity';
 import { AppRepository } from '../../app.repository';
 import { AppsConfig } from '../../apps.config';
-import type { AppRequest } from '../../auth/app-auth.service';
-import { AppProtectedResource } from '../../auth/app-protected-resource';
+import { AppAuthService, type AppRequest } from '../../auth/app-auth.service';
 import { AppHostService } from '../../serving/app-host.service';
 import type { AppVersion } from '../../versions/app-version.entity';
 import { AppVersionRepository } from '../../versions/app-version.repository';
 
 const appId = '11111111-1111-4111-8111-111111111111';
 const versionId = '22222222-2222-4222-8222-222222222222';
-const now = Math.floor(Date.now() / 1000);
+const authorizeUrl = 'https://n8n.example.net/oauth/authorize?state=state-1';
+const signIn = { authorizeUrl, state: 'state-1', nonce: 'nonce-1' };
+const sessionCookie = '__Host-n8n-app-session';
+const versionCookie = '__Host-n8n-app-preview';
+const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const versionClaims = (overrides: Record<string, string> = {}) =>
+	JSON.stringify({ appId, versionId, tokenHash: hash('preview-token'), ...overrides });
+const security = mock<SecurityContext>({ subject: { id: 'user-1' } });
 
 function setup(baseUrl = 'https://apps.example.com') {
 	const app = mock<App>({ id: appId, namespace: 'sales', projectId: 'project-1' });
@@ -36,45 +42,47 @@ function setup(baseUrl = 'https://apps.example.com') {
 			getWebhookBaseUrl: () => 'https://hooks.example.net',
 		}),
 	);
-	const resources = mock<AppProtectedResource>();
-	resources.canRead.mockResolvedValue(true);
-	const users = mock<UserRepository>();
-	users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1', disabled: false }));
+	const auth = mock<AppAuthService>();
+	auth.admit.mockResolvedValue({ ok: true, app, security, token: 'preview-token' });
+	auth.startSignIn.mockResolvedValue(signIn);
+	auth.finishSignIn.mockResolvedValue({
+		app,
+		token: 'preview-token',
+		expiresIn: 3600,
+		userId: 'user-1',
+		metadata: { userId: 'user-1', versionId },
+	});
 	const store = new Map<string, unknown>();
 	const cache = mock<CacheService>();
 	cache.set.mockImplementation(async (key, value) => {
 		store.set(key, value);
 	});
+	cache.get.mockImplementation(async (key) => store.get(key) as never);
 	cache.take.mockImplementation(async (key) => {
 		const value = store.get(key);
 		store.delete(key);
 		return value as never;
 	});
 	const jwt = mock<JwtService>();
-	jwt.sign.mockImplementation((_purpose, payload) =>
-		JSON.stringify({ ...payload, exp: now + 3600 }),
-	);
+	jwt.sign.mockImplementation((_purpose, payload) => JSON.stringify(payload));
 	jwt.verify.mockImplementation((_purpose, token) => JSON.parse(token) as never);
-	const service = new AppPreviewService(
-		apps,
-		versions,
-		hosts,
-		resources,
-		users,
-		cache,
-		jwt,
-		mock<UrlService>({ getInstanceBaseUrl: () => 'https://n8n.example.net/base' }),
-	);
+	const service = new AppPreviewService(apps, versions, hosts, auth, cache, jwt);
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, versions, resources, users, store, cache, jwt, res };
+	res.type.mockReturnValue(res);
+	return { service, app, apps, versions, auth, store, cache, jwt, res };
 }
 
-function previewRequest(query: Record<string, string> = {}, cookies: Record<string, string> = {}) {
+function previewRequest(
+	query: Record<string, string> = {},
+	cookies: Record<string, string> = {},
+	fetchHeaders: Record<string, string> = { 'sec-fetch-site': 'cross-site' },
+) {
 	const req = mock<AppRequest>({ headers: { host: 'sales--preview.apps.example.com' }, cookies });
 	req.query = query;
 	req.appContext = undefined;
+	req.get.mockImplementation(((name: string) => fetchHeaders[name]) as AppRequest['get']);
 	return req;
 }
 
@@ -84,29 +92,26 @@ async function grantCode(service: AppPreviewService) {
 }
 
 describe('AppPreviewService', () => {
-	it('exposes the editor origin for frame-ancestors', () => {
-		expect(setup().service.editorOrigin).toBe('https://n8n.example.net');
-	});
-
 	describe('createGrant', () => {
-		it('returns a preview host URL with a code that is stored for one minute', async () => {
-			const { service, store, cache } = setup();
+		it('starts the sign-in and stores it under a one-time code for one minute', async () => {
+			const { service, store, cache, auth, app } = setup();
 
-			const { url } = await service.createGrant('user-1', 'project-1', appId, versionId);
+			const result = await service.createGrant('user-1', 'project-1', appId, versionId);
 
+			expect(auth.startSignIn).toHaveBeenCalledExactlyOnceWith(app, 'preview', {
+				userId: 'user-1',
+				versionId,
+			});
 			expect(cache.set).toHaveBeenCalledWith(expect.any(String), expect.any(String), 60_000);
+			expect(result.authorizeUrl).toBe(authorizeUrl);
 
-			const parsed = new URL(url);
+			const parsed = new URL(result.url);
 			expect(parsed.origin).toBe('https://sales--preview.apps.example.com');
 			expect(parsed.pathname).toBe('/_n8n/preview');
 			expect(parsed.searchParams.get('code')).toMatch(/^[0-9a-f]{64}$/);
 			expect([...store.keys()]).toEqual([expect.stringMatching(/^apps-preview:[0-9a-f]{64}$/)]);
 			expect([...store.keys()][0]).not.toContain(parsed.searchParams.get('code'));
-			expect(JSON.parse([...store.values()][0] as string)).toEqual({
-				userId: 'user-1',
-				appId,
-				versionId,
-			});
+			expect(JSON.parse([...store.values()][0] as string)).toEqual({ appId, ...signIn });
 		});
 
 		it.each([
@@ -150,45 +155,61 @@ describe('AppPreviewService', () => {
 	});
 
 	describe('exchange', () => {
-		it('sets a partitioned session cookie and redirects to a clean URL', async () => {
-			const { service, res, jwt } = setup();
+		it.each<[string, Record<string, string>]>([
+			[
+				'with fetch metadata headers',
+				{ 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'iframe' },
+			],
+			['without fetch metadata headers', {}],
+		])(
+			'sets the flow cookie and leaves the sign-in to the editor in a marked frame load %s',
+			async (_case, fetchHeaders) => {
+				const { service, res, auth, store } = setup();
+				const code = await grantCode(service);
+				const req = previewRequest({ code, frame: '1' }, {}, fetchHeaders);
+
+				await service.exchange(req, res);
+
+				expect(auth.setFlowCookie).toHaveBeenCalledExactlyOnceWith(
+					res,
+					'preview',
+					expect.objectContaining({ state: signIn.state, nonce: signIn.nonce }),
+				);
+				expect(store.size).toBe(0);
+				expect(res.set).toHaveBeenCalledWith({
+					'Cache-Control': 'no-store',
+					'Referrer-Policy': 'no-referrer',
+				});
+				expect(res.type).toHaveBeenCalledWith('html');
+				expect(res.end).toHaveBeenCalledOnce();
+				expect(res.redirect).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each<[string, Record<string, string>]>([
+			['a new tab', { 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'document' }],
+			['an unmarked frame load', { 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'iframe' }],
+			['a request without fetch metadata headers', {}],
+		])('redirects to the sign-in for %s', async (_case, fetchHeaders) => {
+			const { service, res, auth } = setup();
 			const code = await grantCode(service);
-
-			await service.exchange(previewRequest({ code }), res);
-
-			expect(jwt.sign).toHaveBeenCalledWith(
-				'appPreview',
-				{ sub: 'user-1', appId, versionId },
-				{ expiresIn: 3600 },
-			);
-			expect(res.cookie).toHaveBeenCalledWith('__Host-n8n-app-preview', expect.any(String), {
-				httpOnly: true,
-				secure: true,
-				sameSite: 'none',
-				partitioned: true,
-				path: '/',
-			});
-			expect(res.set).toHaveBeenCalledWith({
-				'Cache-Control': 'no-store',
-				'Referrer-Policy': 'no-referrer',
-			});
-			expect(res.redirect).toHaveBeenCalledWith('/');
-		});
-
-		it('uses a same-site cookie on a plain HTTP apps domain', async () => {
-			const { service, res } = setup('http://apps.localhost:5678');
-			const code = await grantCode(service);
-			const req = previewRequest({ code });
-			req.headers.host = 'sales--preview.apps.localhost:5678';
+			const req = previewRequest({ code }, {}, fetchHeaders);
 
 			await service.exchange(req, res);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-app-preview', expect.any(String), {
-				httpOnly: true,
-				secure: false,
-				sameSite: 'lax',
-				path: '/',
-			});
+			expect(auth.setFlowCookie).toHaveBeenCalledOnce();
+			expect(res.end).not.toHaveBeenCalled();
+			expect(res.redirect).toHaveBeenCalledExactlyOnceWith(authorizeUrl);
+		});
+
+		it('rejects a request from the preview host itself', async () => {
+			const { service, res, auth, store } = setup();
+			const code = await grantCode(service);
+			const req = previewRequest({ code }, {}, { 'sec-fetch-site': 'same-origin' });
+
+			await expect(service.exchange(req, res)).rejects.toThrow('no longer valid');
+			expect(auth.setFlowCookie).not.toHaveBeenCalled();
+			expect(store.size).toBe(1);
 		});
 
 		it('accepts a code only once', async () => {
@@ -204,22 +225,23 @@ describe('AppPreviewService', () => {
 		it.each<Record<string, string>>([{}, { code: 'unknown' }])(
 			'rejects a missing or unknown code: %j',
 			async (query) => {
-				const { service, res } = setup();
+				const { service, res, auth } = setup();
 				await expect(service.exchange(previewRequest(query), res)).rejects.toThrow(
 					'no longer valid',
 				);
-				expect(res.cookie).not.toHaveBeenCalled();
+				expect(auth.setFlowCookie).not.toHaveBeenCalled();
 			},
 		);
 
 		it('rejects a code for another app', async () => {
-			const { service, apps, res } = setup();
+			const { service, apps, res, auth } = setup();
 			const code = await grantCode(service);
 			apps.findByNamespace.mockResolvedValue(mock<App>({ id: 'other-app' }));
 
 			await expect(service.exchange(previewRequest({ code }), res)).rejects.toThrow(
 				'no longer valid',
 			);
+			expect(auth.setFlowCookie).not.toHaveBeenCalled();
 		});
 
 		it('rejects the exchange on a published app host', async () => {
@@ -232,18 +254,86 @@ describe('AppPreviewService', () => {
 		});
 	});
 
-	describe('authenticate', () => {
-		const session = (fields: Record<string, unknown> = {}) =>
-			JSON.stringify({ sub: 'user-1', appId, versionId, exp: now + 3600, ...fields });
+	describe('complete', () => {
+		it('signs the editor in with the token and a version bound to it', async () => {
+			const { service, res, auth, jwt } = setup();
+			const req = previewRequest();
 
-		async function authenticate(ctx: ReturnType<typeof setup>, cookie = session()) {
-			const req = previewRequest({}, cookie ? { '__Host-n8n-app-preview': cookie } : {});
+			await service.complete(req, res, appId);
+
+			const cookieOptions = {
+				httpOnly: true,
+				secure: true,
+				sameSite: 'none',
+				partitioned: true,
+				path: '/',
+				maxAge: 3_600_000,
+			};
+			expect(auth.finishSignIn).toHaveBeenCalledExactlyOnceWith(req, res, appId, 'preview');
+			expect(jwt.sign).toHaveBeenCalledExactlyOnceWith(
+				'appPreview',
+				{ appId, versionId, tokenHash: hash('preview-token') },
+				{ expiresIn: 3600 },
+			);
+			expect(res.cookie).toHaveBeenCalledWith(sessionCookie, 'preview-token', cookieOptions);
+			expect(res.cookie).toHaveBeenCalledWith(versionCookie, versionClaims(), cookieOptions);
+			expect(res.redirect).toHaveBeenCalledWith('/');
+		});
+
+		it('uses a same-site cookie on a plain HTTP apps domain', async () => {
+			const { service, res } = setup('http://apps.localhost:5678');
+
+			await service.complete(previewRequest(), res, appId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-app-session', 'preview-token', {
+				httpOnly: true,
+				secure: false,
+				sameSite: 'lax',
+				path: '/',
+				maxAge: 3_600_000,
+			});
+		});
+
+		it('rejects a request from the preview host itself', async () => {
+			const { service, res, auth } = setup();
+			const req = previewRequest({}, {}, { 'sec-fetch-site': 'same-origin' });
+
+			await expect(service.complete(req, res, appId)).rejects.toThrow('no longer valid');
+			expect(auth.finishSignIn).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['another n8n user', { userId: 'user-2', versionId }],
+			['no version', { userId: 'user-1' }],
+		])('rejects a sign-in for %s', async (_case, metadata) => {
+			const { service, res, auth, app } = setup();
+			auth.finishSignIn.mockResolvedValue({
+				app,
+				token: 'preview-token',
+				expiresIn: 3600,
+				userId: 'user-1',
+				metadata,
+			});
+
+			await expect(service.complete(previewRequest(), res, appId)).rejects.toThrow(
+				'no longer valid',
+			);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('authenticate', () => {
+		async function authenticate(
+			ctx: ReturnType<typeof setup>,
+			cookies: Record<string, string> = { [versionCookie]: versionClaims() },
+		) {
+			const req = previewRequest({}, cookies);
 			const next = vi.fn();
 			await ctx.service.authenticate(req, ctx.res, next);
 			return { req, next };
 		}
 
-		it('serves the session version', async () => {
+		it('serves the version bound to the token without server-side state', async () => {
 			const ctx = setup();
 
 			const { req, next } = await authenticate(ctx);
@@ -255,53 +345,44 @@ describe('AppPreviewService', () => {
 				preview: true,
 				previewUserId: 'user-1',
 			});
-			expect(ctx.res.cookie).not.toHaveBeenCalled();
+			expect(ctx.auth.admit).toHaveBeenCalledExactlyOnceWith(req, 'preview');
 		});
 
-		it('keeps the session expiry close to its end', async () => {
+		it.each<[string, Record<string, string>, (ctx: ReturnType<typeof setup>) => void]>([
+			['a session without a version cookie', {}, () => {}],
+			[
+				'a version cookie for another token',
+				{ [versionCookie]: versionClaims({ tokenHash: hash('other-token') }) },
+				() => {},
+			],
+			[
+				'a version cookie for another app',
+				{ [versionCookie]: versionClaims({ appId: '33333333-3333-4333-8333-333333333333' }) },
+				() => {},
+			],
+			[
+				'a version cookie that does not verify',
+				{ [versionCookie]: versionClaims() },
+				(ctx) =>
+					ctx.jwt.verify.mockImplementation(() => {
+						throw new Error('jwt expired');
+					}),
+			],
+			[
+				'a session that is not admitted',
+				{ [versionCookie]: versionClaims() },
+				(ctx) =>
+					ctx.auth.admit.mockResolvedValue({
+						ok: false,
+						app: ctx.app,
+						reason: 'unauthenticated',
+					}),
+			],
+		])('rejects %s', async (_case, cookies, arrange) => {
 			const ctx = setup();
+			arrange(ctx);
 
-			await authenticate(ctx, session({ exp: now + 1000 }));
-
-			expect(ctx.res.cookie).not.toHaveBeenCalled();
-		});
-
-		it.each<[string, (ctx: ReturnType<typeof setup>) => string]>([
-			['no cookie', () => ''],
-			['an invalid token', () => 'invalid'],
-			['an incomplete token', () => JSON.stringify({ sub: 'user-1' })],
-			[
-				'a token for another app',
-				(ctx) => {
-					ctx.apps.findByNamespace.mockResolvedValue(mock<App>({ id: 'other-app' }));
-					return session();
-				},
-			],
-			[
-				'an unknown user',
-				(ctx) => {
-					ctx.users.findByIdWithRole.mockResolvedValue(null);
-					return session();
-				},
-			],
-			[
-				'a disabled user',
-				(ctx) => {
-					ctx.users.findByIdWithRole.mockResolvedValue(mock<User>({ disabled: true }));
-					return session();
-				},
-			],
-			[
-				'a user without read access',
-				(ctx) => {
-					ctx.resources.canRead.mockResolvedValue(false);
-					return session();
-				},
-			],
-		])('rejects %s', async (_case, arrange) => {
-			const ctx = setup();
-
-			const { req, next } = await authenticate(ctx, arrange(ctx));
+			const { req, next } = await authenticate(ctx, cookies);
 
 			expect(next).not.toHaveBeenCalled();
 			expect(req.appContext).toBeUndefined();

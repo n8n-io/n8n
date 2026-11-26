@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, PasswordUtility } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Person, PersonRepository } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
@@ -6,7 +6,6 @@ import { AuthHandler } from '@n8n/decorators';
 import { Constructable } from '@n8n/di';
 
 import { AuthError } from '@n8n/errors';
-import { PasswordUtility } from '@/services/password.utility';
 
 @AuthHandler()
 export class EmailAuthHandler implements IPasswordAuthHandler<Person> {
@@ -23,7 +22,9 @@ export class EmailAuthHandler implements IPasswordAuthHandler<Person> {
 	async handleLogin(email: string, password: string): Promise<Person | undefined> {
 		const person = await this.personRepository.findByEmailWithAuthIdentities(email);
 
-		if (person?.password && (await this.passwordUtility.compare(password, person.password))) {
+		// Always run the comparison, so the cost does not depend on whether the person exists.
+		const isMatch = await this.passwordUtility.compare(password, person?.password || null);
+		if (person?.password && isMatch) {
 			return person;
 		}
 

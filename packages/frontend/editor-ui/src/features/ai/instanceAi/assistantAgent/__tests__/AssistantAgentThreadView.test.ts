@@ -1,4 +1,5 @@
 import {
+	EXTENDED_PROMPT_MAX_LENGTH,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type AssistantAgentTargetsState,
 	type AssistantThreadTabsState,
@@ -8,23 +9,36 @@ import {
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref, type Ref } from 'vue';
+import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
-import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import {
+	mergeClientContextPatches,
+	type AgentChatComposerAttachment,
+} from '@/features/agents/utils/composer-attachments';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactAgentTargets } from '../../artifactAgentTargets';
 import type { ArtifactThread } from '../../artifactThread';
 import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
-import { INSTANCE_AI_VIEW } from '../../constants';
+import { INSTANCE_AI_THREAD_SESSION_VIEW, INSTANCE_AI_VIEW } from '../../constants';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import {
+	AGENT_CHAT_MARKDOWN_HOST_KEY,
+	AGENT_TOOL_STEP_LABEL_KEY,
+	type AgentChatMarkdownHost,
+	type AgentToolStepLabeler,
+} from '@/features/agents/components/agentChatInjectionKeys';
+import { mockedStore } from '@/__tests__/utils';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 import {
 	getPendingComposerDraft,
@@ -81,6 +95,8 @@ const {
 	},
 }));
 
+const { routeQuery } = vi.hoisted(() => ({ routeQuery: {} as Record<string, string> }));
+
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 	fetchTabs: vi.fn(),
 	saveTabs: vi.fn(),
@@ -105,6 +121,18 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage: vi.fn() }),
+}));
+
+const { postFeedback } = vi.hoisted(() => ({
+	postFeedback: vi.fn(async () => ({ ok: true })),
+}));
+vi.mock('../assistantAgentFeedback.api', () => ({
+	postAssistantAgentFeedback: postFeedback,
+}));
+
 // The test view has no layout, so the tests set the width of the thread area.
 const { threadArea } = vi.hoisted(() => ({
 	threadArea: { width: undefined as Ref<number> | undefined },
@@ -121,12 +149,24 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
 const isBusy = ref(false);
+const isPanelStreaming = ref(false);
+const isAwaitingUserAnswer = ref(false);
+const isAwaitingUserApproval = ref(false);
+const focusOpenInteraction = vi.fn();
+// The tool step labeler that the view gives the chat.
+const panelToolStepLabel: { current?: AgentToolStepLabeler } = {};
+// The resources that the view gives the chat markdown.
+const panelMarkdownHost: { current?: AgentChatMarkdownHost } = {};
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
+// The user message whose references the stub panel renders through its slot.
+const referencedMessage = ref<ChatMessage>();
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose, slots }) {
+			panelToolStepLabel.current = inject(AGENT_TOOL_STEP_LABEL_KEY, undefined);
+			panelMarkdownHost.current = inject(AGENT_CHAT_MARKDOWN_HOST_KEY, undefined);
 			// A chip with the same id replaces the old one, as in the real panel.
 			const addComposerAttachment = (
 				chip: AgentChatComposerAttachment['chip'],
@@ -151,17 +191,34 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				removeComposerAttachment,
 				composerAttachments,
 				messages: chatMessages,
-				isStreaming: ref(false),
+				isStreaming: isPanelStreaming,
+				isAwaitingUserAnswer,
+				isAwaitingUserApproval,
+				focusOpenInteraction,
+				isSubmitting: ref(false),
 				isBusy,
 				isLoadingHistory,
+				getInputElement: () => undefined,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
 				panelSlots.current = Object.keys(slots);
+				// The real list shows the message actions under each finished answer.
+				const answers = chatMessages.value.filter((message) => message.role === 'assistant');
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
+					...answers.map((message) =>
+						h('div', { 'data-test-id': `message-actions-${message.id}` }, [
+							slots['message-actions']?.({ message, executionId: message.executionId }),
+						]),
+					),
 					slots['inline-offers']?.(),
+					slots['above-input']?.(),
 					slots['composer-attachments']?.(),
 					slots['footer-start']?.({ disabled: composerBlocked.current }),
+					slots['composer-actions']?.(),
+					referencedMessage.value
+						? slots['user-message-references']?.({ message: referencedMessage.value })
+						: undefined,
 				]);
 			};
 		},
@@ -184,6 +241,18 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 		}),
 	};
 });
+
+// The real draft preview renders a canvas, which has its own tests.
+vi.mock('../../components/InstanceAiWorkflowDraftPreview.vue', () => ({
+	default: defineComponent({
+		props: { draft: { type: Object, required: true }, building: Boolean },
+		setup: (props) => () =>
+			h('div', {
+				'data-test-id': 'workflow-draft-preview-stub',
+				'data-file-path': (props.draft as { filePath: string }).filePath,
+			}),
+	}),
+}));
 
 // Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
 vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
@@ -244,6 +313,34 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+// The real editor has its own tests. The stub keeps a local draft, so a remount loses it.
+vi.mock('../../components/InstanceAiSkillPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			const draft = ref('');
+			return () =>
+				h(
+					'div',
+					{
+						'data-test-id': 'skill-preview-stub',
+						'data-skill-id': attrs['skill-id'],
+						'data-refresh-key': attrs['refresh-key'],
+					},
+					[
+						h('input', {
+							'data-test-id': 'skill-preview-draft',
+							value: draft.value,
+							onInput: (event: Event) => {
+								if (event.target instanceof HTMLInputElement) draft.value = event.target.value;
+							},
+						}),
+					],
+				);
+		},
+	}),
+}));
+
 // The tab that the `tab-bar-open-tab` button opens.
 const { tabBarTabToOpen } = vi.hoisted(() => ({
 	tabBarTabToOpen: { current: undefined as unknown },
@@ -286,6 +383,48 @@ vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 	}),
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('../../components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'approval-mode-selector-stub' }),
+	}),
+}));
+
+// The real notice reads the settings and users stores, and has its own tests.
+vi.mock('../../components/LimitedModeNotice.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'limited-mode-notice-stub' }),
+	}),
+}));
+
+// The real banner reads the cloud plan stores, and has its own tests. Like the real
+// banner, the stub shows the dismiss button only when the banner is dismissible.
+vi.mock('@/features/ai/assistant/components/Agent/CreditWarningBanner.vue', () => ({
+	default: defineComponent({
+		props: {
+			message: { type: String, default: undefined },
+			dismissible: { type: Boolean, default: true },
+		},
+		emits: ['dismiss', 'upgrade-click'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h(
+					'div',
+					{ 'data-test-id': 'credit-warning-banner-stub', 'data-dismissible': props.dismissible },
+					[
+						props.message,
+						props.dismissible
+							? h('button', {
+									'data-test-id': 'credit-warning-banner-dismiss',
+									onClick: () => emit('dismiss'),
+								})
+							: null,
+					],
+				),
+	}),
+}));
+
 // The real chips resolve the nodes from the workflow document, which has its own tests.
 vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 	default: defineComponent({
@@ -314,7 +453,20 @@ vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 
 vi.mock('../../components/InstanceAiArtifactsPanel.vue', () => ({
 	default: defineComponent({
-		setup: () => () => h('div', { 'data-test-id': 'artifacts-panel-stub' }),
+		setup() {
+			// The real panel opens a skill row through this injected opener.
+			const openSkillPreview = inject<((id: string) => boolean) | undefined>(
+				'openSkillPreview',
+				undefined,
+			);
+			return () =>
+				h('div', { 'data-test-id': 'artifacts-panel-stub' }, [
+					h('button', {
+						'data-test-id': 'artifacts-panel-open-skill',
+						onClick: () => openSkillPreview?.('skill-1'),
+					}),
+				]);
+		},
 	}),
 }));
 
@@ -329,9 +481,54 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 	}),
 }));
 
+// The real picker searches the project, which its own tests cover. The stub emits the
+// selection that a test sets, and shows the props that the view passes.
+const { mentionsEnabled, mentionSelection, mentionPickerProps } = vi.hoisted(() => ({
+	mentionsEnabled: { current: true },
+	mentionSelection: { current: undefined as unknown },
+	mentionPickerProps: { current: undefined as Record<string, unknown> | undefined },
+}));
+vi.mock('@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		emits: ['select'],
+		setup(_props, { attrs, emit, expose }) {
+			expose({
+				handleExternalKeydown: () => false,
+				getOpenMetrics: () => ({}),
+				flushEmptySearch: () => {},
+			});
+			return () => {
+				mentionPickerProps.current = { ...attrs };
+				return h('button', {
+					'data-test-id': 'mention-picker-stub',
+					onClick: () => emit('select', mentionSelection.current),
+				});
+			};
+		},
+	}),
+}));
+vi.mock(
+	'@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled',
+	async () => {
+		const { computed } = await import('vue');
+		return { useIsAssistantAtMentionsEnabled: () => computed(() => mentionsEnabled.current) };
+	},
+);
+vi.mock(
+	'@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability',
+	async () => {
+		const { computed } = await import('vue');
+		return {
+			useAssistantMentionAvailability: () => ({ isAvailable: computed(() => true) }),
+		};
+	},
+);
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
+	useRoute: () => ({ query: routeQuery }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
@@ -366,6 +563,26 @@ function buildMessage(toolCallId: string): ChatMessage {
 	};
 }
 
+function skillMessage(toolCallId: string, action: 'create' | 'update'): ChatMessage {
+	return {
+		id: `a-${toolCallId}`,
+		role: 'assistant',
+		content: '',
+		toolCalls: [
+			{
+				tool: 'skills',
+				toolCallId,
+				input: { action, ...(action === 'update' ? { skillId: 'skill-1' } : {}) },
+				output:
+					action === 'create'
+						? { success: true, skill: { id: 'skill-1', name: 'Tone guide' } }
+						: { success: true, saved: { id: 'skill-1' } },
+				state: 'done',
+			},
+		],
+	};
+}
+
 function noTargets(): AssistantAgentTargetsState {
 	return { bound: null, pending: null, targets: [], previewSession: null };
 }
@@ -381,15 +598,25 @@ describe('AssistantAgentThreadView', () => {
 		previewThread.current = undefined;
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		focusInput.mockReset();
 		openFilePicker.mockReset();
 		composerBlocked.current = false;
 		setDraft.mockReset();
 		localStorage.clear();
 		composerAttachments.value = [];
+		referencedMessage.value = undefined;
+		mentionsEnabled.current = true;
+		mentionSelection.current = undefined;
+		mentionPickerProps.current = undefined;
+		showError.mockReset();
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 		isBusy.value = false;
+		isPanelStreaming.value = false;
+		isAwaitingUserAnswer.value = false;
+		isAwaitingUserApproval.value = false;
+		focusOpenInteraction.mockReset();
 		panelSlots.current = [];
 		if (threadArea.width) threadArea.width.value = 0;
 		fetchTabs.mockReset().mockResolvedValue({ state: null });
@@ -402,6 +629,202 @@ describe('AssistantAgentThreadView', () => {
 		agentPreview.emit = undefined;
 		agentPreview.targets = undefined;
 		agentPreview.thread = undefined;
+	});
+
+	describe('draft workflow preview experiment', () => {
+		const DRAFT_FILE = 'src/workflows/demo.workflow.ts';
+
+		function setVariant(variant: string) {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? variant : undefined,
+			);
+		}
+
+		async function renderLoadedThread() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return result;
+		}
+
+		function streamDraft() {
+			const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+			onStreamEvent({
+				type: 'transient-host-event',
+				name: 'workflow-draft',
+				payload: {
+					filePath: DRAFT_FILE,
+					revision: 1,
+					workflow: {
+						name: 'Demo',
+						nodes: [
+							{
+								id: 'node-1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+					},
+				},
+			});
+		}
+
+		const buildingTurn: ChatMessage = {
+			id: 'a-build',
+			role: 'assistant',
+			content: '',
+			toolCalls: [
+				{
+					tool: 'load_skill',
+					toolCallId: 'call-skill',
+					input: { name: 'workflow-builder' },
+					output: {},
+					state: 'done',
+				},
+			],
+		};
+
+		it('shows a streamed workflow draft on the canvas', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			streamDraft();
+
+			const preview = await findByTestId('workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', DRAFT_FILE);
+		});
+
+		it('shows the staging canvas while a new workflow builds', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			const preview = await findByTestId('workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', 'staging:a-build');
+		});
+
+		it('shows the building wave over the staging canvas while the agent works', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId, queryByTestId } = await renderLoadedThread();
+
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			await findByTestId('instance-ai-draft-building-wave');
+			expect(queryByTestId('instance-ai-canvas-waiting-pill')).toBeNull();
+		});
+
+		it('shows a waiting pill instead of the wave while the run waits for an answer', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId, queryByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			isAwaitingUserAnswer.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
+		});
+
+		it('shows the waiting pill when the run ends its stream to wait for the answer', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+			await findByTestId('instance-ai-draft-building-wave');
+
+			isPanelStreaming.value = false;
+			isAwaitingUserAnswer.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+		});
+
+		it('asks for the approval while the run waits for one', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			isAwaitingUserAnswer.value = true;
+			isAwaitingUserApproval.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your approval in the chat',
+			);
+		});
+
+		it('focuses the open card of the chat when the user clicks the waiting pill', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+			isAwaitingUserAnswer.value = true;
+
+			await userEvent.click(await findByTestId('instance-ai-canvas-waiting-pill'));
+
+			expect(focusOpenInteraction).toHaveBeenCalledOnce();
+		});
+
+		it('shows no draft in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			const { queryByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			streamDraft();
+			await flushPromises();
+
+			expect(queryByTestId('workflow-draft-preview-stub')).toBeNull();
+		});
+
+		it('gives the chat a thinking word while the thread runs', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			await renderLoadedThread();
+
+			isPanelStreaming.value = true;
+			await flushPromises();
+
+			expect(panelProps.current['thinking-label']).toEqual(expect.any(String));
+		});
+
+		it('gives the chat the specific tool labels of the experiment', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			await renderLoadedThread();
+
+			expect(panelToolStepLabel.current?.('search_nodes', { queries: ['gmail'] })).toBe(
+				'Searching for gmail',
+			);
+			expect(panelToolStepLabel.current?.('list_credentials', {})).toBeUndefined();
+		});
+
+		it('gives the chat no specific tool label in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			await renderLoadedThread();
+
+			expect(panelToolStepLabel.current?.('search_nodes', { queries: ['gmail'] })).toBeUndefined();
+		});
+
+		it('gives the chat no thinking word in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			await renderLoadedThread();
+
+			isPanelStreaming.value = true;
+			await flushPromises();
+
+			expect(panelProps.current['thinking-label']).toBeUndefined();
+		});
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {
@@ -417,10 +840,24 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_answered_questions' }),
+			expect.objectContaining({ key: 'assistant_auto_approval' }),
+			expect.objectContaining({ key: 'assistant_preference_card' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
+			expect.objectContaining({ key: 'assistant_tool_result_table' }),
+			expect.objectContaining({ key: 'assistant_tool_result_code' }),
+			expect.objectContaining({ key: 'assistant_shared_files' }),
+			expect.objectContaining({ key: 'assistant_artifact_card' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
+	});
+
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
 	});
 
 	it('replaces the attach button with the Assistant "+" menu, which opens the file picker', async () => {
@@ -440,6 +877,15 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(getByTestId('input-menu-attach')).toBeDisabled();
+	});
+
+	it('shows the approval mode selector right after the "+" menu', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach').nextElementSibling).toBe(
+			getByTestId('approval-mode-selector-stub'),
+		);
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {
@@ -546,6 +992,31 @@ describe('AssistantAgentThreadView', () => {
 		]);
 	});
 
+	it('reports the response to a sent message with the context of that message', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onStreamEvent({ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'finish', finishReason: 'stop' });
+
+		await vi.waitFor(() =>
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				expect.objectContaining({
+					thread_id: 'thread-1',
+					run_id: 'exec-1',
+					is_first_user_message: true,
+					response_kind: 'completed',
+					runtime: 'agents',
+				}),
+			),
+		);
+	});
+
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {
 		stashPendingAssistantAgentMessage({
 			threadId: 'thread-3',
@@ -609,9 +1080,9 @@ describe('AssistantAgentThreadView', () => {
 			content: '',
 			toolCalls: [
 				{
-					tool: 'apps',
+					tool: 'commit_app',
 					toolCallId,
-					input: { action: 'commit', appId: 'app-1', label: 'Change' },
+					input: { appId: 'app-1', label: 'Change' },
 					output: {
 						app: { id: 'app-1', name: 'Todos', projectId: 'project-1' },
 						versionId: toolCallId,
@@ -636,6 +1107,269 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	describe('credits and limited mode', () => {
+		function setCredits(quota: number, claimed: number): void {
+			const creditsStore = useAssistantCreditsStore();
+			creditsStore.creditsQuota = quota;
+			creditsStore.creditsClaimed = claimed;
+		}
+
+		async function beforeSend(): Promise<void> {
+			const hook = panelProps.current['before-send'];
+			if (typeof hook !== 'function') throw new Error('The panel has no before-send hook');
+			await hook();
+		}
+
+		it('shows the limited mode notice above the composer', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('limited-mode-notice-stub')).toBeInTheDocument();
+		});
+
+		it('shows no credit banner while enough credits are left', async () => {
+			setCredits(100, 50);
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+			expect(panelProps.current.disabled).toBe(false);
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
+
+		it('shows a dismissible warning when credits are low, and still sends', async () => {
+			setCredits(100, 95);
+			const { getByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('credit-warning-banner-stub')).toHaveAttribute('data-dismissible', 'true');
+			await expect(beforeSend()).resolves.toBeUndefined();
+
+			await userEvent.click(getByTestId('credit-warning-banner-dismiss'));
+
+			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+		});
+
+		it('disables the composer, refuses host sends and shows a banner that cannot be dismissed when no credits are left', async () => {
+			setCredits(100, 100);
+			const { getByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			const banner = getByTestId('credit-warning-banner-stub');
+			expect(banner).toHaveAttribute('data-dismissible', 'false');
+			expect(queryByTestId('credit-warning-banner-dismiss')).not.toBeInTheDocument();
+			expect(banner).toHaveTextContent("You've run out of Assistant credits");
+			expect(panelProps.current.disabled).toBe(true);
+			await expect(beforeSend()).rejects.toThrow();
+		});
+
+		it('sends again once credits come back', async () => {
+			setCredits(100, 100);
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			await expect(beforeSend()).rejects.toThrow();
+
+			setCredits(200, 100);
+			await flushPromises();
+
+			expect(panelProps.current.disabled).toBe(false);
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('skill artifacts', () => {
+		async function renderWithSkill() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			chatMessages.value = [skillMessage('tc-1', 'create')];
+			await flushPromises();
+			return result;
+		}
+
+		it('opens the skill that the Assistant writes and reloads it on the next update', async () => {
+			const { getByTestId } = await renderWithSkill();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			const skillPreview = getByTestId('skill-preview-stub');
+			expect(skillPreview).toHaveAttribute('data-skill-id', 'skill-1');
+			const firstKey = Number(skillPreview.dataset.refreshKey);
+
+			chatMessages.value = [...chatMessages.value, skillMessage('tc-2', 'update')];
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute(
+				'data-refresh-key',
+				String(firstKey + 1),
+			);
+		});
+
+		it.each([
+			{ destination: 'another skill', tab: { type: 'skill', id: 'skill-2', name: 'Other' } },
+			{ destination: 'a workflow', tab: { type: 'workflow', id: 'wf-1', name: 'Workflow' } },
+		])('keeps the unsaved skill draft after the user visits $destination', async ({ tab }) => {
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			await fireEvent.update(getByTestId('skill-preview-draft'), 'Unsaved instructions');
+
+			tabBarTabToOpen.current = tab;
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+			if (tab.type === 'skill') {
+				expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-2');
+				expect(getByTestId('skill-preview-draft')).toHaveValue('');
+			} else {
+				expect(queryByTestId('skill-preview-stub')).not.toBeInTheDocument();
+			}
+
+			tabBarTabToOpen.current = { type: 'skill', id: 'skill-1', name: 'Tone guide' };
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+			expect(getByTestId('skill-preview-draft')).toHaveValue('Unsaved instructions');
+		});
+
+		it('shows the artifacts panel over the chat while the preview is open', async () => {
+			if (threadArea.width) threadArea.width.value = 1200;
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+
+			// A pick opens another tab, so the panel over the chat closes.
+			tabBarTabToOpen.current = { type: 'workflow', id: 'wf-1', name: 'Workflow' };
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('gives the chat markdown the resources of the thread', async () => {
+			await renderWithSkill();
+
+			const skill = { type: 'skill', id: 'skill-1' };
+			expect(panelMarkdownHost.current?.resources()).toContainEqual(expect.objectContaining(skill));
+			expect(panelMarkdownHost.current?.linkableResources()).toContainEqual(
+				expect.objectContaining(skill),
+			);
+		});
+
+		it('opens a skill from the artifacts panel', async () => {
+			if (threadArea.width) threadArea.width.value = 1200;
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			// The panel shows only while the preview is hidden.
+			await userEvent.click(getByTestId('tab-bar-preview-toggle'));
+			await flushPromises();
+			expect(queryByTestId('skill-preview-stub')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('artifacts-panel-open-skill'));
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+		});
+	});
+
+	describe('app chats', () => {
+		const APP_ID = '019a4012-272c-7313-91af-5c94a3d819a9';
+		const OTHER_APP_ID = '019a4012-272c-7313-91af-5c94a3d819aa';
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens the app of a new thread and binds it with the first message', async () => {
+			routeQuery.appId = APP_ID;
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' },
+			});
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-new', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(appPreviewProps.current).toMatchObject({
+				'project-id': 'project-1',
+				'app-id': APP_ID,
+			});
+			const subject = { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' };
+			expect(clientContext()).toMatchObject({ subject });
+
+			// A refused send keeps the app for the retry.
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+			onMessageAccepted({ clientContext: clientContext() });
+			expect(clientContext()).toMatchObject({ subject });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('sends a pending app without opening a preview', async () => {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+		});
+
+		it('opens the app from the URL among the apps of the thread metadata', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: 'Apps',
+					updatedAt: '2026-11-02T10:00:00.000Z',
+					projectId: 'project-1',
+					metadata: {
+						instanceAiAppTargets: [
+							{ appId: APP_ID, projectId: 'project-1' },
+							{ appId: OTHER_APP_ID, projectId: 'project-1', name: 'Other' },
+						],
+					},
+				},
+			];
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toMatchObject({ 'app-id': OTHER_APP_ID });
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('ignores an app in the URL that the thread does not have', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+		});
 	});
 
 	it('does not open the preview for a workflow built before the thread loaded', async () => {
@@ -816,6 +1550,20 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 		});
 
+		it('hides the offer while no credits are left, and offers it again once they come back', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+			const creditsStore = useAssistantCreditsStore();
+
+			creditsStore.creditsQuota = 100;
+			creditsStore.creditsClaimed = 100;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+
+			creditsStore.creditsQuota = 200;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+		});
+
 		it('clears the offer when a later run of the same workflow succeeds', async () => {
 			const { queryByTestId } = await renderWithFailedRun();
 
@@ -865,6 +1613,30 @@ describe('AssistantAgentThreadView', () => {
 			localStorage.removeItem('instanceAi.debugMode');
 		});
 
+		it('hides the session timeline button without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-view-session')).not.toBeInTheDocument();
+		});
+
+		it('opens the session timeline of the thread from the header with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await fireEvent.click(getByTestId('assistant-agent-view-session'));
+
+			expect(routerPush).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_SESSION_VIEW,
+				params: { threadId: 'thread-1' },
+			});
+		});
+
 		it('hides the trace menu without the debug flag', async () => {
 			const { queryByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
@@ -883,6 +1655,33 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
 			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
+		});
+	});
+
+	describe('answer rating', () => {
+		it('shows the thumbs under the latest answer and sends the rating of its turn', async () => {
+			chatMessages.value = [
+				{ id: 'u1', role: 'user', content: 'Hi' },
+				{ id: 'a1', role: 'assistant', content: 'Hello', executionId: 'exec-1' },
+				{ id: 'u2', role: 'user', content: 'Build it' },
+				{ id: 'a2', role: 'assistant', content: 'Done', executionId: 'exec-2' },
+			];
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(
+				within(getByTestId('message-actions-a1')).queryByTestId('message-thumbs-up-button'),
+			).not.toBeInTheDocument();
+			const latest = within(getByTestId('message-actions-a2'));
+			await fireEvent.click(latest.getByTestId('message-thumbs-up-button'));
+
+			expect(postFeedback).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
+				executionId: 'exec-2',
+				rating: 'up',
+			});
+			expect(latest.getByTestId('message-rating-success')).toBeInTheDocument();
 		});
 	});
 
@@ -958,6 +1757,25 @@ describe('AssistantAgentThreadView', () => {
 			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 			expect(clientContext().threadArtifacts).toEqual({
 				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('names the run that the user started in the preview of a tab', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			// The preview remembers the run on the thread when the run starts.
+			previewThread.current?.rememberManualExecution('wf-9', 'exec-1', undefined);
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-9', name: 'Opened by hand', executionId: 'exec-1' },
+				],
 				activeId: 'wf-9',
 			});
 		});
@@ -1332,12 +2150,9 @@ describe('AssistantAgentThreadView', () => {
 			expect(clientContext()).not.toHaveProperty('context');
 		});
 
-		it('opens the handed-off workflow and sends it with the first message', async () => {
-			stashPendingWorkflowAttachment('thread-new', {
-				type: 'workflow',
-				id: 'wf-7',
-				name: 'Handed off',
-			});
+		it('opens the handed-off workflow and stages it as a composer chip', async () => {
+			const workflow = { type: 'workflow' as const, id: 'wf-7', name: 'Handed off' };
+			stashPendingWorkflowAttachment('thread-new', workflow);
 
 			const { getByTestId } = await renderNewThread();
 			isLoadingHistory.value = false;
@@ -1346,9 +2161,14 @@ describe('AssistantAgentThreadView', () => {
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
 			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-7' });
-			expect(clientContext()).toMatchObject({
-				attachments: [{ type: 'workflow', id: 'wf-7', name: 'Handed off' }],
-			});
+			// The chip sends the workflow, so a removed chip does not send it.
+			expect(composerAttachments.value).toEqual([
+				{
+					chip: { id: 'mention:workflow:wf-7', label: 'Handed off', icon: 'workflow' },
+					clientContextPatch: { attachments: [workflow] },
+				},
+			]);
+			expect(clientContext()).not.toHaveProperty('attachments');
 		});
 
 		it('puts a handed-off draft into the composer without sending it', async () => {
@@ -1409,15 +2229,37 @@ describe('AssistantAgentThreadView', () => {
 			const { unmount } = await renderNewThread();
 			unmount();
 			setDraft.mockReset();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
 
 			await renderNewThread();
 			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
-			expect(clientContext()).toMatchObject({ attachments: [{ type: 'workflow', id: 'wf-7' }] });
+			expect(stagedNodes()).toEqual([
+				{ id: 'mention:workflow:wf-7', attachments: [{ type: 'workflow', id: 'wf-7' }] },
+			]);
 
 			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 			onSessionCreated();
 			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
 			expect(getPendingComposerDraft('thread-new')).toBeNull();
+		});
+
+		it('does not stage a removed handed-off workflow again after a reload', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			const { unmount } = await renderNewThread();
+			const onRemoved = panelProps.current.onComposerAttachmentRemoved as (id: string) => void;
+
+			onRemoved('mention:workflow:other');
+			expect(getPendingWorkflowAttachment('thread-new')).toEqual({ type: 'workflow', id: 'wf-7' });
+
+			onRemoved('mention:workflow:wf-7');
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+
+			unmount();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
+			await renderNewThread();
+			expect(composerAttachments.value).toEqual([]);
 		});
 
 		it('drops the launch marker once the server accepts the first message', async () => {
@@ -1428,6 +2270,82 @@ describe('AssistantAgentThreadView', () => {
 			onSessionCreated();
 
 			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
+		});
+	});
+
+	describe('agent subject of a new thread', () => {
+		function launchWith(subject: Record<string, unknown>) {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'agent_builder_page',
+				origin: 'internal',
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', ...subject } as never,
+			});
+		}
+
+		async function renderNewThread() {
+			const view = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return view;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a saved agent before the first message and binds it with that message', async () => {
+			launchWith({ name: 'Triage' });
+
+			const { getByTestId } = await renderNewThread();
+
+			expect(getByTestId('agent-preview-stub')).toBeInTheDocument();
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'project-id': 'project-1',
+			});
+			expect(fetchTargets).not.toHaveBeenCalled();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Triage' },
+			});
+		});
+
+		it('binds a change from the preview once the server accepts the first message', async () => {
+			launchWith({ name: 'Triage' });
+			await renderNewThread();
+			const renamed = { agentId: 'agent-1', projectId: 'project-1', name: 'Refund triage' };
+
+			expect(agentPreview.targets).toBeDefined();
+			await agentPreview.targets?.bind(renamed);
+			expect(bindTarget).not.toHaveBeenCalled();
+
+			// The first turn bound the subject under its old name.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			bindTarget.mockResolvedValue({ targets: noTargets() });
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			await flushPromises();
+
+			expect(bindTarget).toHaveBeenCalledExactlyOnceWith(expect.anything(), 'thread-new', renamed);
+		});
+
+		it('sends a pending agent without a preview before the first message', async () => {
+			launchWith({ pending: true });
+
+			const { queryByTestId } = await renderNewThread();
+
+			expect(queryByTestId('agent-preview-stub')).not.toBeInTheDocument();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			});
 		});
 	});
 
@@ -1711,6 +2629,256 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(composerAttachments.value).toEqual([]);
+		});
+	});
+
+	describe('mentions', () => {
+		const workflowMention = {
+			item: {
+				key: 'workflow:wf-1:wf-1',
+				kind: 'workflow',
+				source: 'workflows',
+				label: 'Uptime monitor',
+				breadcrumbs: ['Uptime monitor'],
+				workflowId: 'wf-1',
+				entityId: 'wf-1',
+				workflowName: 'Uptime monitor',
+			},
+			attachment: { type: 'workflow', id: 'wf-1', name: 'Uptime monitor' },
+			truncated: false,
+			telemetry: { mode: 'browse', resultPosition: 1, queryLength: 0 },
+		};
+		const agentMention = {
+			item: {
+				key: 'agent:agent-1',
+				kind: 'agent',
+				source: 'agents',
+				label: 'Support agent',
+				breadcrumbs: ['Support agent'],
+				entityId: 'agent-1',
+				projectId: 'project-1',
+			},
+			attachment: { type: 'agent', id: 'agent-1', name: 'Support agent', projectId: 'project-1' },
+			truncated: false,
+		};
+		const nodeMention = {
+			item: {
+				key: 'node:wf-1:id-Slack',
+				kind: 'node',
+				source: 'artifacts',
+				label: 'Slack',
+				breadcrumbs: ['Uptime monitor', 'Slack'],
+				workflowId: 'wf-1',
+				entityId: 'id-Slack',
+				workflowName: 'Uptime monitor',
+			},
+			attachment: {
+				type: 'nodes',
+				workflowId: 'wf-1',
+				workflowName: 'Uptime monitor',
+				sets: [{ nodes: [{ id: 'id-Slack', name: 'Slack' }] }],
+			},
+			truncated: false,
+		};
+
+		async function pick(selection: unknown, getByTestId: (id: string) => HTMLElement) {
+			mentionSelection.current = selection;
+			await userEvent.click(getByTestId('mention-picker-stub'));
+			await flushPromises();
+		}
+
+		it('hides the picker when mentions are off', async () => {
+			mentionsEnabled.current = false;
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('mention-picker-stub')).not.toBeInTheDocument();
+		});
+
+		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+
+			expect(stagedNodes()).toEqual([
+				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
+				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
+			]);
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual([
+				'Uptime monitor',
+				'Support agent',
+			]);
+			expect(mentionPickerProps.current?.['excluded-keys']).toEqual([
+				'workflow:wf-1:wf-1',
+				'agent:agent-1',
+			]);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
+				expect.objectContaining({ thread_id: 'thread-1', kind: 'workflow', source: 'workflows' }),
+			);
+		});
+
+		it('adds a mentioned node to the nodes chip of its workflow', async () => {
+			// The canvas staged a node of the same workflow.
+			composerAttachments.value = [
+				{
+					chip: { id: 'nodes:wf-1', label: '1 node', icon: 'layers' },
+					clientContextPatch: {
+						attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+					},
+				},
+			];
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(nodeMention, getByTestId);
+
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							sets: [nodeSet('Webhook'), nodeSet('Slack')],
+						},
+					],
+				},
+			]);
+		});
+
+		it('refuses a mention past the attachment limit of a message', async () => {
+			composerAttachments.value = Array.from({ length: 10 }, (_, index) => ({
+				chip: { id: `mention:workflow:wf-${index}`, label: `Workflow ${index}` },
+				clientContextPatch: { attachments: [{ type: 'workflow', id: `wf-${index}` }] },
+			}));
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(agentMention, getByTestId);
+
+			expect(composerAttachments.value).toHaveLength(10);
+			expect(showError).toHaveBeenCalled();
+		});
+
+		it('reports the staged mentions with the sent message, and opens the mentioned workflow', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+			// The context that the panel sends: the host context with the staged chip patches.
+			const hostContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			const clientContext = mergeClientContextPatches(composerAttachments.value, hostContext());
+			expect(clientContext?.attachments).toEqual([
+				workflowMention.attachment,
+				agentMention.attachment,
+			]);
+
+			const onMessageSending = panelProps.current.onMessageSending as (payload: {
+				text: string;
+				files: File[];
+				clientContext?: Record<string, unknown>;
+				isFirstMessage: boolean;
+			}) => void;
+			onMessageSending({ text: 'Compare them', files: [], clientContext, isFirstMessage: false });
+			(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext });
+			await flushPromises();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					mention_counts: { total: 2, workflow: 1, node: 0, group: 0, agent: 1 },
+				}),
+			);
+			expect(getByTestId('workflow-preview-stub')).toBeInTheDocument();
+			expect(previewProps.current?.['workflow-id']).toBe('wf-1');
+		});
+
+		it('reports no mentions for a send that leaves the staged chips in the composer', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(agentMention, getByTestId);
+
+			// The answer to a question card sends the text without the client context.
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Yes', files: [], isFirstMessage: false });
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS }),
+			);
+		});
+
+		it('gives a sent message the resources of its client context, and shows them', async () => {
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			const messageReferences = panelProps.current['message-references'] as (
+				context: Record<string, unknown> | undefined,
+			) => unknown[];
+			expect(
+				messageReferences({
+					timeZone: 'Europe/Helsinki',
+					attachments: [workflowMention.attachment, { type: 'unknown' }],
+				}),
+			).toEqual([workflowMention.attachment]);
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Compare them',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(2);
+			expect(cards[0]).toHaveTextContent('Uptime monitor');
+			expect(cards[1]).toHaveTextContent('Support agent');
+		});
+
+		it('does not show the agent that the thread builds as a reference', async () => {
+			// The Agent Builder panel attaches its agent to each message.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Support agent' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Add a tool',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(1);
+			expect(cards[0]).toHaveTextContent('Uptime monitor');
 		});
 	});
 });
