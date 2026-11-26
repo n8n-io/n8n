@@ -32,10 +32,12 @@ const visibleLabel = computed(() => countText('labelWithoutCount'));
 </script>
 
 <template>
+	<!-- `ignore-key-press-canvas`: the canvas shortcuts skip it, so Enter opens the findings
+	and not the panel of the selected node. -->
 	<N8nButton
 		variant="outline"
 		size="small"
-		:class="$style.button"
+		:class="[$style.button, 'ignore-key-press-canvas']"
 		:aria-label="accessibleName"
 		data-test-id="engine-v2-compatibility-button"
 		data-attr="engine-v2-compatibility-button"

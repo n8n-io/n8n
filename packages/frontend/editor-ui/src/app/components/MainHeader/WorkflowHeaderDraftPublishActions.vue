@@ -16,7 +16,6 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nIconButton,
-	N8nLink,
 	N8nSpinner,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -954,14 +953,16 @@ onBeforeUnmount(() => {
 								<span :class="$style.tooltipReason">{{ publishButtonConfig.tooltip }}</span>
 								<template v-if="showEngineV2FindingsLink">
 									{{ ' ' }}
-									<N8nLink
-										size="small"
+									<!-- A button, not a link: it opens a dialog, and it keeps the tooltip's text color. -->
+									<button
+										type="button"
+										:class="$style.tooltipAction"
 										data-test-id="engine-v2-publish-blocked-link"
 										data-attr="engine-v2-publish-blocked-link"
 										@click="openEngineV2Findings(props.id)"
 									>
 										{{ i18n.baseText('engineV2Compatibility.publishBlocked.link') }}
-									</N8nLink>
+									</button>
 								</template>
 								<br />
 							</template>
@@ -1069,6 +1070,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .container {
 	display: contents;
 }
@@ -1076,6 +1079,20 @@ onBeforeUnmount(() => {
 /* A restricted node list puts one scope on each line. */
 .tooltipReason {
 	white-space: pre-line;
+}
+
+// Text on the dark tooltip: the inherited color keeps the contrast of the reason text.
+.tooltipAction {
+	padding: 0;
+	border: none;
+	background: none;
+	color: inherit;
+	font: inherit;
+	font-weight: var(--font-weight--bold);
+	text-decoration: underline;
+	cursor: pointer;
+
+	@include focus.focus-visible-ring;
 }
 
 .activeVersionIndicator {
