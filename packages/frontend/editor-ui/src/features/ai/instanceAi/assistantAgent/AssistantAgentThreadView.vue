@@ -563,8 +563,9 @@ provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
 provideOpenResource({
 	projectId: () => props.projectId,
-	// The history can open tabs for past builds, so the item waits for it.
-	isAvailable: () => !thread.isHydratingThread,
+	// A resource opened before the stored tabs load replaces them, and the history can open
+	// tabs for past builds, so the item waits for both.
+	isAvailable: () => preview.tabsLoaded.value && !thread.isHydratingThread,
 	excludedTabs: () => preview.openTabs.value.filter(isArtifactTab),
 	open: preview.openTab,
 });

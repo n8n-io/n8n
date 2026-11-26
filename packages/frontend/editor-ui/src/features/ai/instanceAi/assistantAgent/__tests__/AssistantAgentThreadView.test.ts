@@ -1427,6 +1427,18 @@ describe('AssistantAgentThreadView', () => {
 		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-picked' });
 	});
 
+	it('does not offer to open a resource until the stored tabs load', async () => {
+		fetchTabs.mockReturnValue(new Promise(() => {}));
+		const { queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(queryByTestId('input-menu-open-resource')).toBeNull();
+	});
+
 	it('shows the preview toggle while tabs are open', async () => {
 		const { getByTestId } = renderView({
 			props: { threadId: 'thread-1', projectId: 'project-1' },
