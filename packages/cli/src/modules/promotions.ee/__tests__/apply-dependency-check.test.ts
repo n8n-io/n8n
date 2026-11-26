@@ -9,8 +9,10 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 
 import {
 	callerPolicyAllows,
+	idsMissingOnSource,
 	missingWorkflowDependencies,
 	sortDependencies,
+	toSourceWarning,
 	type ApplyDependencyFacts,
 	type ReferencedWorkflowState,
 } from '../apply-dependency-check';
@@ -89,6 +91,7 @@ function check(
 		} as unknown as PackageManifest,
 		facts: {
 			credentialProjectIds: new Set(),
+			unusableCredentials: new Map(),
 			appliedWorkflowIds,
 			removedWorkflowIds: new Set(),
 			selectableWorkflowIds: new Set(),
@@ -637,6 +640,42 @@ describe('missingWorkflowDependencies: the preview of a project, before the sele
 			entry('own', 'caller-policy', 'target-selected', 'own'),
 		]);
 		expect(preview([own])).toEqual([entry('own', 'caller-policy', 'target-selected', 'own')]);
+	});
+});
+
+describe('references that Promote marked as broken on the source instance', () => {
+	it('reads only the rows with the reason `missing-on-source`', () => {
+		expect([
+			...idsMissingOnSource([
+				{ id: 'broken', reason: 'missing-on-source' },
+				{ id: 'confirmed', reason: 'confirmed-missing' },
+				{ id: 'unmarked' },
+			]),
+		]).toEqual(['broken']);
+		expect(idsMissingOnSource(undefined).size).toBe(0);
+	});
+
+	it('turns an entry into a warning that keeps the id, the name and the workflows only', () => {
+		const consumers = [consumer(ALPHA, 'caller')];
+
+		expect(
+			toSourceWarning({
+				kind: 'workflow',
+				id: 'sub',
+				name: 'Helper',
+				group: 'outside-access',
+				reason: 'not-on-instance',
+				accessible: false,
+				blocking: false,
+				consumers,
+			}),
+		).toEqual({
+			kind: 'workflow',
+			code: 'missing-on-source',
+			id: 'sub',
+			name: 'Helper',
+			consumers,
+		});
 	});
 });
 

@@ -174,7 +174,8 @@ function entryLine(
 	const facts = [
 		'project' in entry && entry.project ? `in project "${entry.project.name}"` : undefined,
 		dependency ? applyReason(dependency) : undefined,
-		entry.blocking ? `stops the ${operation}` : undefined,
+		// A warning has no `blocking`. Only an older server sends it.
+		'blocking' in entry && entry.blocking ? `stops the ${operation}` : undefined,
 		`used by ${listNames(workflowNames)}`,
 		condition ? `${condition} ${entry.id ?? 'this workflow'}` : undefined,
 	].filter((fact) => fact !== undefined);

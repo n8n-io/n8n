@@ -7,7 +7,10 @@ import type {
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
-import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
+import type {
+	PackageRequirementConsumer,
+	PackageRequirementReason,
+} from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { isUnder, projectHolding } from './branch-placement';
 import { compare, consumersOf, variableKey, type ConsumerWorkflow } from './package-references';
@@ -38,8 +41,6 @@ export type PromoteDependencyFacts = {
 	readableWorkflowIds: ReadonlySet<string>;
 	/** Every variable of this instance. `projectId` is `null` for a global variable. */
 	variables: ReadonlyArray<{ name: string; projectId: string | null }>;
-	/** An instance Promote stops on a workflow reference that its export does not hold. */
-	stopsOnWorkflowOutsideExport: boolean;
 };
 
 export type PromoteDependencyCheck = {
@@ -58,7 +59,8 @@ type ConsumersOfRow = (
  * Lists what the promoted workflows use and the branch does not hold after the Promote, and the
  * references to something that this instance does not hold. It names the project of a dependency
  * only when that project is a team project that the user can read. References in expressions are
- * not checked.
+ * not checked. Nothing in the lists stops the Promote: the caller confirms the missing
+ * dependencies instead.
  */
 export function checkPromoteDependencies(facts: PromoteDependencyFacts): PromoteDependencyCheck {
 	const result: PromoteDependencyCheck = { missingDependencies: [], warnings: [] };
@@ -86,7 +88,7 @@ function addCredentialRows(
 	for (const row of facts.manifest.requirements?.credentials ?? []) {
 		const consumers = consumersOfRow(row.usedBy);
 		if (consumers.length === 0) continue;
-		const item = { id: row.id, name: row.name ?? row.id, blocking: false, consumers };
+		const item = { id: row.id, name: row.name ?? row.id, consumers };
 		if (!facts.existingCredentialIds.has(row.id)) {
 			result.warnings.push({ kind: 'credential', code: 'missing-on-source', ...item });
 			continue;
@@ -104,6 +106,7 @@ function addCredentialRows(
 			...item,
 			...(row.type !== undefined ? { credentialType: row.type } : {}),
 			...placement,
+			blocking: false,
 		});
 	}
 }
@@ -121,12 +124,7 @@ function addWorkflowRows(
 		if (exported.has(row.id)) continue;
 		const consumers = consumersOfRow(row.usedBy);
 		if (consumers.length === 0) continue;
-		const item = {
-			id: row.id,
-			name: row.name ?? row.id,
-			blocking: facts.stopsOnWorkflowOutsideExport,
-			consumers,
-		};
+		const item = { id: row.id, name: row.name ?? row.id, consumers };
 		const owner = facts.workflowOwners.get(row.id);
 		if (!owner) {
 			result.warnings.push({ kind: 'workflow', code: 'missing-on-source', ...item });
@@ -136,7 +134,9 @@ function addWorkflowRows(
 			onBranch: onBranch.has(row.id),
 			readable: facts.readableWorkflowIds.has(row.id),
 		});
-		if (placement) result.missingDependencies.push({ kind: 'workflow', ...item, ...placement });
+		if (placement) {
+			result.missingDependencies.push({ kind: 'workflow', ...item, ...placement, blocking: false });
+		}
 	}
 }
 
@@ -157,14 +157,57 @@ function addVariableRows(
 				!defined.has(variableKey(name, projectId)) && !defined.has(variableKey(name, null)),
 		);
 		if (consumers.length === 0) continue;
-		result.warnings.push({
-			kind: 'variable',
-			code: 'missing-on-source',
-			name,
-			blocking: false,
-			consumers,
-		});
+		result.warnings.push({ kind: 'variable', code: 'missing-on-source', name, consumers });
 	}
+}
+
+/**
+ * Writes on the requirement rows why the package does not hold a dependency: the caller confirmed
+ * a missing dependency, or the reference is broken on this instance. Apply and a review read it
+ * from the branch. A variable row gets no reason. Returns the same manifest when no row changes.
+ */
+export function markRequirementRows(
+	manifest: PackageManifest,
+	{ missingDependencies, warnings }: PromoteDependencyCheck,
+): PackageManifest {
+	const reasons = new Map<string, PackageRequirementReason>();
+	for (const { kind, id } of warnings) {
+		if (id !== undefined) reasons.set(`${kind}:${id}`, 'missing-on-source');
+	}
+	for (const { kind, id } of missingDependencies) {
+		if (id !== undefined) reasons.set(`${kind}:${id}`, 'confirmed-missing');
+	}
+	const requirements = reasons.size > 0 ? manifest.requirements : undefined;
+	if (!requirements) return manifest;
+
+	const mark = <T extends { id: string }>(kind: 'credential' | 'workflow', rows: T[]) =>
+		rows.map((row) => {
+			const reason = reasons.get(`${kind}:${row.id}`);
+			return reason ? { ...row, reason } : row;
+		});
+	return {
+		...manifest,
+		requirements: {
+			...requirements,
+			...(requirements.credentials && {
+				credentials: mark('credential', requirements.credentials),
+			}),
+			...(requirements.workflows && { workflows: mark('workflow', requirements.workflows) }),
+		},
+	};
+}
+
+/** The manifest with only the requirement rows of the dependencies that a Promote confirmed. */
+export function confirmedMissingRows(manifest: PackageManifest): PackageManifest {
+	const confirmed = <T extends { reason?: PackageRequirementReason }>(rows: T[] = []) =>
+		rows.filter(({ reason }) => reason === 'confirmed-missing');
+	return {
+		...manifest,
+		requirements: {
+			credentials: confirmed(manifest.requirements?.credentials),
+			workflows: confirmed(manifest.requirements?.workflows),
+		},
+	};
 }
 
 /** How to report a dependency that a project owns. `null` when the Promote does not miss it. */

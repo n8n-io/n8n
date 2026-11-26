@@ -5,7 +5,7 @@ summary: 'Beta: Promote all team projects'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. Only instance owners and admins can promote all team projects. Another operation on the same environment returns 423.
+  Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Promote does not write a credential of a personal project to the branch. A credential, sub-workflow or error workflow of a personal project that a promoted workflow uses is a missing dependency: the branch does not hold it after the Promote. When the Promote has missing dependencies, send confirmMissingDependencies to promote without them. Without it, status `missing-dependencies` returns them in `missingDependencies`, and nothing is pushed. Optionally send expectedPreviewRevision with the `revision` of the Promote check, so that the confirmation covers exactly the reviewed lists. Status `preview-changed` means the lists changed since that check, and nothing was pushed. Status `promoted` includes counts and git, and lists the confirmed entries in `missingDependencies`. Inspect status before reading counts. Requires a Promote environment with instance scope. Only instance owners and admins can promote all team projects. Another operation on the same environment returns 423.
 
   Requires the `promotions:promote` API key scope.
 x-required-scope: promotions:promote
@@ -31,6 +31,13 @@ requestBody:
             description: Message for the promotion commit. If you omit it, the commit uses a generated message.
           force:
             type: boolean
+          expectedPreviewRevision:
+            type: string
+            pattern: ^[0-9a-f]{64}$
+            description: The `revision` of the reviewed Promote check. The Promote reads the check again. When it differs, the Promote returns status `preview-changed` and pushes nothing.
+          confirmMissingDependencies:
+            type: boolean
+            description: 'Confirms the `missingDependencies` that a Promote leaves out, and the ones that an Apply can continue without (`blocking: false`). An Apply still stops on an entry with `blocking: true`, with and without this confirmation. Without this confirmation, an operation that has confirmable entries changes nothing and returns them. Send it with `expectedPreviewRevision` to confirm exactly the list of the reviewed preview. Without `expectedPreviewRevision`, the confirmation covers every confirmable missing dependency when the operation runs.'
         additionalProperties: false
 responses:
   '200':
@@ -38,80 +45,130 @@ responses:
     content:
       application/json:
         schema:
-          type: object
-          properties:
-            environmentId:
-              type: string
-              minLength: 1
-              maxLength: 36
-            counts:
-              type: object
+          oneOf:
+            - type: object
               properties:
-                workflows:
-                  type: integer
-                  minimum: 0
-                folders:
-                  type: integer
-                  minimum: 0
-                credentials:
-                  type: integer
-                  minimum: 0
-                dataTables:
-                  type: integer
-                  minimum: 0
-                variables:
-                  type: integer
-                  minimum: 0
-                tags:
-                  type: integer
-                  minimum: 0
-              required:
-                - workflows
-                - folders
-                - credentials
-                - dataTables
-                - variables
-                - tags
-            git:
-              type: object
-              properties:
-                commitSha:
-                  type: string
-                branchName:
-                  type: string
-              required:
-                - commitSha
-                - branchName
-            review:
-              type: object
-              properties:
-                reviewId:
+                environmentId:
                   type: string
                   minLength: 1
                   maxLength: 36
-                number:
-                  type: integer
-                webUrl:
+                counts:
+                  type: object
+                  properties:
+                    workflows:
+                      type: integer
+                      minimum: 0
+                    folders:
+                      type: integer
+                      minimum: 0
+                    credentials:
+                      type: integer
+                      minimum: 0
+                    dataTables:
+                      type: integer
+                      minimum: 0
+                    variables:
+                      type: integer
+                      minimum: 0
+                    tags:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - workflows
+                    - folders
+                    - credentials
+                    - dataTables
+                    - variables
+                    - tags
+                git:
+                  type: object
+                  properties:
+                    commitSha:
+                      type: string
+                    branchName:
+                      type: string
+                  required:
+                    - commitSha
+                    - branchName
+                review:
+                  type: object
+                  properties:
+                    reviewId:
+                      type: string
+                      minLength: 1
+                      maxLength: 36
+                    number:
+                      type: integer
+                    webUrl:
+                      type: string
+                  required:
+                    - reviewId
+                    - number
+                    - webUrl
+                warnings:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                      linkUrl:
+                        type: string
+                    required:
+                      - message
+                missingDependencies:
+                  type: array
+                  items:
+                    $ref: ../../../../shared/spec/schemas/promotionMissingDependency.generated.yml
+                  description: The missing dependencies that the caller confirmed. The branch does not hold them after this Promote.
+                status:
                   type: string
+                  enum:
+                    - promoted
               required:
-                - reviewId
-                - number
-                - webUrl
-            warnings:
-              type: array
-              items:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  linkUrl:
-                    type: string
-                required:
-                  - message
-          required:
-            - environmentId
-            - counts
-            - git
+                - environmentId
+                - counts
+                - git
+                - missingDependencies
+                - status
+            - type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - preview-changed
+                environmentId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+              required:
+                - status
+                - environmentId
+            - type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - missing-dependencies
+                environmentId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                missingDependencies:
+                  type: array
+                  items:
+                    $ref: ../../../../shared/spec/schemas/promotionMissingDependency.generated.yml
+                  minItems: 1
+                warnings:
+                  type: array
+                  items:
+                    $ref: ../../../../shared/spec/schemas/promotionDependencyWarning.generated.yml
+              required:
+                - status
+                - environmentId
+                - missingDependencies
+                - warnings
+          type: object
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

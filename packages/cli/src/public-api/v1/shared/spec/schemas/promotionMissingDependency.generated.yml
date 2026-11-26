@@ -53,7 +53,7 @@ properties:
     description: The team project that holds the dependency. Only an entry of the group `other-project` has it, because you can access that project.
   blocking:
     type: boolean
-    description: Whether the operation stops on this dependency. When false, the operation continues without it.
+    description: Whether the operation stops on this dependency until you resolve it. When false, the operation continues without it when the request sends `confirmMissingDependencies`.
   condition:
     type: string
     enum:

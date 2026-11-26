@@ -218,74 +218,82 @@ oneOf:
       warnings:
         type: array
         items:
-          type: object
-          properties:
-            kind:
-              type: string
-              enum:
-                - variable
-            code:
-              type: string
-              enum:
-                - variable-shadowed
-            name:
-              type: string
-              minLength: 1
-            scope:
-              type: object
+          oneOf:
+            - type: object
               properties:
                 kind:
                   type: string
                   enum:
-                    - global
-              required:
-                - kind
-            consumers:
-              type: array
-              items:
-                type: object
-                properties:
-                  project:
+                    - variable
+                code:
+                  type: string
+                  enum:
+                    - variable-shadowed
+                name:
+                  type: string
+                  minLength: 1
+                scope:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - global
+                  required:
+                    - kind
+                consumers:
+                  type: array
+                  items:
                     type: object
                     properties:
-                      id:
-                        type: string
-                        minLength: 1
-                      name:
-                        type: string
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                        required:
+                          - id
+                          - name
+                      workflows:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                        minItems: 1
                     required:
-                      - id
-                      - name
-                  workflows:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          minLength: 1
-                        name:
-                          type: string
-                      required:
-                        - id
-                        - name
-                    minItems: 1
-                required:
-                  - project
-                  - workflows
-              minItems: 1
-          required:
-            - kind
-            - code
-            - name
-            - scope
-            - consumers
+                      - project
+                      - workflows
+                  minItems: 1
+              required:
+                - kind
+                - code
+                - name
+                - scope
+                - consumers
+            - $ref: promotionDependencyWarning.generated.yml
+      missingDependencies:
+        type: array
+        items:
+          $ref: promotionMissingDependency.generated.yml
+        description: The missing dependencies that the caller confirmed. They are still missing on this instance after this Apply.
     required:
       - environmentId
       - git
       - status
       - counts
       - warnings
+      - missingDependencies
   - type: object
     properties:
       environmentId:

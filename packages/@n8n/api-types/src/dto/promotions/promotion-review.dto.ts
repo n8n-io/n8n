@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { promotionMissingDependencySchema } from './promotion-apply-check.dto';
 import {
 	promotionResourceDependencySchema,
 	promotionResourceSchema,
@@ -128,6 +129,11 @@ export const promotionReviewChangesSchema = z.object({
 	warnings: z.array(promotionReviewWarningSchema),
 	/** NULL while the review is open. */
 	outcome: promotionReviewOutcomeSchema.nullable(),
+	/**
+	 * The missing dependencies that the author confirmed at Promote. The commits of the review
+	 * do not hold them.
+	 */
+	missingDependencies: z.array(promotionMissingDependencySchema),
 });
 export type PromotionReviewChanges = z.infer<typeof promotionReviewChangesSchema>;
 

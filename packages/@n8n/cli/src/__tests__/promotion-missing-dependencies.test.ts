@@ -32,7 +32,6 @@ const warning = (
 	kind: 'variable',
 	code: 'missing-on-source',
 	name: 'API_URL',
-	blocking: false,
 	consumers: usedBy('Weekly report'),
 	...overrides,
 });
@@ -116,7 +115,8 @@ describe('promoteDependencyLines', () => {
 	it('says when an entry or a warning stops the Promote', () => {
 		const lines = promoteDependencyLines(
 			[{ ...PERSONAL, kind: 'workflow', credentialType: undefined, blocking: true }],
-			[warning({ kind: 'workflow', name: 'Deleted helper', blocking: true })],
+			// An older server sends `blocking` on a warning.
+			[{ ...warning({ kind: 'workflow', name: 'Deleted helper' }), blocking: true } as never],
 		);
 
 		expect(lines).toContain('  Workflow "My token": stops the Promote; used by Weekly report');

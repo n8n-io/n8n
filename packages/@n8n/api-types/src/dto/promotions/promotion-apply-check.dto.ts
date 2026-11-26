@@ -257,7 +257,7 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	}),
 ]);
 
-export const promotionBindingWarningSchema = z.object({
+const promotionVariableShadowedWarningSchema = z.object({
 	kind: z.literal('variable'),
 	code: z.literal('variable-shadowed'),
 	name: z.string().min(1),
@@ -331,7 +331,7 @@ export const promotionMissingDependencySchema = z
 		}),
 		blocking: z.boolean().openapi({
 			description:
-				'Whether the operation stops on this dependency. When false, the operation continues without it.',
+				'Whether the operation stops on this dependency until you resolve it. When false, the operation continues without it when the request sends `confirmMissingDependencies`.',
 		}),
 		condition: z.enum(['target-selected', 'target-not-selected']).optional().openapi({
 			description:
@@ -348,12 +348,18 @@ export const promotionDependencyWarningSchema = z
 		code: z.literal('missing-on-source'),
 		id: sourceId.optional(),
 		name: z.string(),
-		blocking: z.boolean().openapi({
-			description: 'Whether the operation stops on this reference.',
-		}),
 		consumers: consumersSchema,
 	})
 	.openapi('PromotionDependencyWarning');
+
+/**
+ * What an Apply reports without stopping. `missing-on-source`: Promote marked the reference as
+ * broken on the source instance, so it is not a missing dependency and needs no confirmation.
+ */
+export const promotionBindingWarningSchema = z.discriminatedUnion('code', [
+	promotionVariableShadowedWarningSchema,
+	promotionDependencyWarningSchema,
+]);
 
 /**
  * What stops an Apply. Source IDs define creation scope.
@@ -416,3 +422,4 @@ export type PromotionMissingDependencyReason = z.infer<
 >;
 export type PromotionMissingDependency = z.infer<typeof promotionMissingDependencySchema>;
 export type PromotionDependencyWarning = z.infer<typeof promotionDependencyWarningSchema>;
+export type PromotionBindingWarning = z.infer<typeof promotionBindingWarningSchema>;

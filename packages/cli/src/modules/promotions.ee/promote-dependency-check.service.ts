@@ -37,7 +37,6 @@ export class PromoteDependencyCheckService {
 		manifest,
 		projectIds,
 		branchManifest,
-		stopsOnWorkflowOutsideExport,
 	}: {
 		user: User;
 		/** The export of the promoted projects. */
@@ -45,7 +44,6 @@ export class PromoteDependencyCheckService {
 		projectIds: readonly string[];
 		/** `null` when the branch holds no package, or when the Promote replaces the whole package. */
 		branchManifest: PackageManifest | null;
-		stopsOnWorkflowOutsideExport: boolean;
 	}): Promise<PromoteDependencyCheck> {
 		const { requirements } = manifest;
 		const credentialIds = (requirements?.credentials ?? []).map(({ id }) => id);
@@ -76,7 +74,6 @@ export class PromoteDependencyCheckService {
 				name: key,
 				projectId: project?.id ?? null,
 			})),
-			stopsOnWorkflowOutsideExport,
 		});
 	}
 

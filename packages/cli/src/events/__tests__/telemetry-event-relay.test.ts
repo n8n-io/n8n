@@ -6171,6 +6171,7 @@ describe('TelemetryEventRelay', () => {
 				},
 				selectedWorkflowCount: 3,
 				openedReview: false,
+				confirmedMissingDependencyCount: 1,
 			});
 
 			const payload = {
@@ -6189,10 +6190,36 @@ describe('TelemetryEventRelay', () => {
 				tag_count: 5,
 				selected_workflow_count: 3,
 				opened_review: false,
+				confirmed_missing_dependency_count: 1,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES,
 				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a promotion that stopped on missing dependencies without counts', () => {
+			eventService.emit('promotion-promoted', {
+				user,
+				environmentId: 'env-1',
+				scope: 'instance',
+				outcome: 'missing_dependencies',
+				durationMs: 40,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				scope: 'instance',
+				outcome: 'missing_dependencies',
+				duration_ms: 40,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES,
+				expect.objectContaining({ ...payload, confirmed_missing_dependency_count: undefined }),
 			);
 			expect(
 				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES.getValidationError(payload),
@@ -6229,6 +6256,7 @@ describe('TelemetryEventRelay', () => {
 				durationMs: 2000,
 				workflowsChanged: 6,
 				workflowsFailedToPublish: 1,
+				confirmedMissingDependencyCount: 2,
 			});
 
 			const payload = {
@@ -6241,6 +6269,7 @@ describe('TelemetryEventRelay', () => {
 				duration_ms: 2000,
 				workflows_changed: 6,
 				workflows_failed_to_publish: 1,
+				confirmed_missing_dependency_count: 2,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES,

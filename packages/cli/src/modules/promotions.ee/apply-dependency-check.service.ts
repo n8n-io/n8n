@@ -3,6 +3,7 @@ import { SharedWorkflowRepository, WorkflowRepository, type User } from '@n8n/db
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import type {
 	InventoryWorkflow,
@@ -20,6 +21,7 @@ export class ApplyDependencyCheckService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectService: ProjectService,
+		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
@@ -56,13 +58,17 @@ export class ApplyDependencyCheckService {
 			...inventory.workflows.filter(({ id }) => referencedIds.has(id)),
 			...instanceWorkflows.values(),
 		];
-		const [credentialProjectIds, readableProjectIds] = await Promise.all([
+		const [credentialProjectIds, readableProjectIds, unusableCredentials] = await Promise.all([
 			this.credentialProjectIds(user, missingCredentialProjectIds(plan, inventory)),
 			this.readableProjectIds(user, projectIdsOf(holders)),
+			// Apply continues only without a credential that this instance does not hold, so the
+			// lookup does not depend on what the user can read.
+			this.credentialsService.findUsageScopes(notFoundCredentialIds(plan)),
 		]);
 
 		return {
 			credentialProjectIds,
+			unusableCredentials,
 			appliedWorkflowIds,
 			removedWorkflowIds,
 			selectableWorkflowIds: new Set(
@@ -146,6 +152,17 @@ function missingCredentialProjectIds(
 	return projectIdsOf(
 		inventory.credentials.filter(({ credential }) => unresolvedIds.has(credential.id)),
 	);
+}
+
+/** The credentials that the import looked for by their id, and did not find for the project. */
+function notFoundCredentialIds(plan: PackageImportPlan): string[] {
+	return [
+		...new Set(
+			plan.issues.flatMap((issue) =>
+				issue.type === 'credential-unresolved' && issue.kind === 'not_found' ? issue.sourceId : [],
+			),
+		),
+	];
 }
 
 function projectIdsOf(entries: ReadonlyArray<{ projectId: string | null }>): string[] {

@@ -36,10 +36,11 @@ export function instancePromotionExportRequest({
 		includeTags: true,
 		// Archived workflows travel too, so the target archives them instead of removing them.
 		includeArchived: true,
-		// personal projects are excluded, so a team workflow calling a personal
-		// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-		dependencyPolicy: ExportDependencyPolicy.Fail,
+		// Personal projects stay out, so a sub-workflow of a personal project stays a reference.
+		// Promote lists it as a missing dependency, and the caller confirms it.
+		dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 		versionPolicy: ExportVersionPolicy.Latest,
+		omitCredentialsOutsideExportedProjects: true,
 	};
 }
 
@@ -69,6 +70,8 @@ export async function exportInstancePackage(
 			includeVariableValues: true,
 			versionPolicy: ExportVersionPolicy.Latest,
 			dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+			// As a Promote writes it, so a preview does not list a credential of another project.
+			omitCredentialsOutsideExportedProjects: true,
 		},
 		{
 			writeDirectory: (path) => writer.writeDirectory(path),

@@ -7,8 +7,11 @@ import { Z } from '../../zod-class';
 import {
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
+	promotionDependencyWarningSchema,
+	promotionMissingDependencySchema,
 } from './promotion-apply-check.dto';
 import {
+	confirmMissingDependenciesSchema,
 	expectedPreviewRevisionSchema,
 	promotionCommitMessageSchema,
 	promotionSelectedIdsSchema,
@@ -19,6 +22,12 @@ export class PromotePackageDto extends Z.class(
 	{
 		commitMessage: promotionCommitMessageSchema,
 		force: z.boolean().optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema.openapi({
+			description:
+				'The `revision` of the reviewed Promote check. The Promote reads the check again. ' +
+				'When it differs, the Promote returns status `preview-changed` and pushes nothing.',
+		}),
+		confirmMissingDependencies: confirmMissingDependenciesSchema,
 	},
 	{ strict: true },
 ) {}
@@ -62,16 +71,37 @@ export const promotePackageResultSchema = z.object({
 	review: promotionReviewResultSchema.optional(),
 	/** The push succeeded, but a follow-up step did not. The admin can finish it on the host. */
 	warnings: z.array(promotionPromoteWarningSchema).optional(),
+	/** The confirmed missing dependencies. The branch does not hold them after this Promote. */
+	missingDependencies: z.array(promotionMissingDependencySchema).openapi({
+		description:
+			'The missing dependencies that the caller confirmed. The branch does not hold them after this Promote.',
+	}),
 });
 
-export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}
-
-/** The result of a project Promote. Read `status` before the other fields. */
-export const promoteSelectionResultSchema = z.discriminatedUnion('status', [
+/** The result of a Promote, of a project or of the instance. Read `status` before the other fields. */
+export const promoteResultSchema = z.discriminatedUnion('status', [
 	promotePackageResultSchema.extend({ status: z.literal('promoted') }),
-	/** The project or its branch changed after the reviewed preview. Nothing was pushed. */
+	/** The projects or the branch changed after the reviewed preview. Nothing was pushed. */
 	z.object({ status: z.literal('preview-changed'), environmentId: n8nIdSchema }),
+	/** The Promote has missing dependencies that the caller did not confirm. Nothing was pushed. */
+	z.object({
+		status: z.literal('missing-dependencies'),
+		environmentId: n8nIdSchema,
+		missingDependencies: z.array(promotionMissingDependencySchema).min(1),
+		warnings: z.array(promotionDependencyWarningSchema),
+	}),
 ]);
+
+export const PromotePackageResultDto = {
+	name: 'PromotePackageResultDto',
+	schema: promoteResultSchema,
+	parse: (value: unknown) => promoteResultSchema.parse(value),
+};
+
+export type PromotePackageResultDto = z.infer<typeof promoteResultSchema>;
+
+/** A project Promote returns the same result as an instance Promote. */
+export const promoteSelectionResultSchema = promoteResultSchema;
 
 export const PromoteSelectionResultDto = {
 	name: 'PromoteSelectionResultDto',
@@ -172,6 +202,7 @@ export class ContinueApplyPackageDto extends Z.class(
 		expectedSource: expectedSourceSchema,
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+		confirmMissingDependencies: confirmMissingDependenciesSchema,
 	},
 	{ strict: true },
 ) {}
@@ -203,6 +234,7 @@ export class ContinueApplySelectionDto extends Z.class(
 		expectedSource: expectedSourceSchema,
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+		confirmMissingDependencies: confirmMissingDependenciesSchema,
 	},
 	{ strict: true },
 ) {}
@@ -217,6 +249,11 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		status: z.literal('applied'),
 		counts: applyPackageCountsSchema,
 		warnings: z.array(promotionBindingWarningSchema),
+		/** The confirmed missing dependencies. They are still missing after this Apply. */
+		missingDependencies: z.array(promotionMissingDependencySchema).openapi({
+			description:
+				'The missing dependencies that the caller confirmed. They are still missing on this instance after this Apply.',
+		}),
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),

@@ -1,4 +1,5 @@
 import {
+	appendMissingDependencies,
 	buildInstancePromotionCommitMessage,
 	buildSelectionPromotionCommitMessage,
 } from '../promotion-commit-message';
@@ -83,5 +84,49 @@ describe('buildSelectionPromotionCommitMessage', () => {
 		).toBe(
 			['Promote 1 credential from "Marketing Ops"', 'Credentials:\n- CRM key (c1)'].join('\n\n'),
 		);
+	});
+});
+
+describe('appendMissingDependencies', () => {
+	const missing = [
+		{ kind: 'credential' as const, id: 'c9', name: 'CRM key' },
+		{ kind: 'workflow' as const, id: 'w9', name: 'Notify' },
+	];
+	const section = 'Missing dependencies:\n- credential: CRM key (c9)\n- workflow: Notify (w9)';
+
+	it('adds the section after the sections of a generated message', () => {
+		const generated = buildSelectionPromotionCommitMessage({
+			projectName: 'Marketing Ops',
+			added: [{ id: 'w1', name: 'Lead intake' }],
+			updated: [],
+			removed: [],
+		});
+
+		expect(appendMissingDependencies(generated, missing)).toBe(
+			['Promote 1 workflow from "Marketing Ops"', 'Added:\n- Lead intake (w1)', section].join(
+				'\n\n',
+			),
+		);
+	});
+
+	it('adds the section to a message of the caller, after a blank line', () => {
+		expect(appendMissingDependencies('Release 12', missing)).toBe(`Release 12\n\n${section}`);
+	});
+
+	it('leaves the message as it is when nothing is missing', () => {
+		expect(appendMissingDependencies('Release 12', [])).toBe('Release 12');
+	});
+
+	it('caps a long list', () => {
+		const many = Array.from({ length: 52 }, (_, i) => ({
+			kind: 'credential' as const,
+			id: `c${i}`,
+			name: `Key ${i}`,
+		}));
+
+		const message = appendMissingDependencies('Release 12', many);
+
+		expect(message).toContain('- credential: Key 49 (c49)\n- …and 2 more');
+		expect(message).not.toContain('Key 50');
 	});
 });

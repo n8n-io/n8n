@@ -1,4 +1,8 @@
-import type { PromotionApplyCheck } from '@n8n/api-types';
+import type {
+	PromotionApplyCheck,
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
+} from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
@@ -14,7 +18,7 @@ import { Container } from '@n8n/di';
 import type { SecurityContext } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { MockInstance } from 'vitest';
@@ -88,6 +92,46 @@ const emptyManifest = packageManifestSchema.parse({
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'inst-1',
 });
+
+const dependencyConsumers = [
+	{ project: { id: 'p1', name: 'Alpha' }, workflows: [{ id: 'w1', name: 'W1' }] },
+];
+
+/** A credential that a promoted workflow uses and that the Promote leaves out. */
+const missingCredential: PromotionMissingDependency = {
+	kind: 'credential',
+	id: 'c9',
+	name: 'CRM key',
+	credentialType: 'httpHeaderAuth',
+	group: 'other-project',
+	reason: 'not-on-branch',
+	accessible: true,
+	blocking: false,
+	consumers: dependencyConsumers,
+};
+
+/** A reference to a workflow that this instance does not hold. */
+const brokenReference: PromotionDependencyWarning = {
+	kind: 'workflow',
+	code: 'missing-on-source',
+	id: 'gone',
+	name: 'gone',
+	consumers: dependencyConsumers,
+};
+
+const requirementsWithMissing = {
+	credentials: [
+		{
+			id: 'c9',
+			name: 'CRM key',
+			type: 'httpHeaderAuth',
+			usedBy: [{ kind: 'workflow', id: 'w1' }],
+		},
+	],
+	workflows: [{ id: 'gone', usedBy: [{ kind: 'workflow', id: 'w1' }] }],
+};
+
+const missingDependenciesSection = 'Missing dependencies:\n- credential: CRM key (c9)';
 
 /** What an export writes for a workflow, so the branch can be read back. */
 const branchWorkflowFile = (id: string, name: string) =>
@@ -202,6 +246,12 @@ describe('PromotionsService', () => {
 		// The base commit a promote resets to holds no package by default.
 		gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'b'.repeat(40) });
 		gitService.findPathsAtCommit.mockResolvedValue(new Set());
+		// The export of a Promote has no missing dependencies by default.
+		promotePreviewService.checkExport.mockResolvedValue({
+			missingDependencies: [],
+			warnings: [],
+			revision: 'check-revision',
+		});
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
 		environmentLock = new PromotionEnvironmentLockService(Container.get(LockService));
@@ -871,11 +921,19 @@ describe('PromotionsService', () => {
 					includeVariableValues: true,
 					includeTags: true,
 					includeArchived: true,
-					dependencyPolicy: ExportDependencyPolicy.Fail,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,
+					omitCredentialsOutsideExportedProjects: true,
 				},
 				{ targetDir: stagingFolder },
 			);
+			// The check reads the export of this Promote. The branch adds nothing to a whole package.
+			expect(promotePreviewService.checkExport).toHaveBeenCalledWith({
+				user: actor,
+				manifest: emptyManifest,
+				projectIds: ['project-a', 'project-b'],
+				branchManifest: null,
+			});
 			expect(path.dirname(stagingFolder)).toBe(repositoryFolder);
 			expect(path.basename(stagingFolder)).toMatch(/^\.n8n-/);
 			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(
@@ -887,6 +945,7 @@ describe('PromotionsService', () => {
 			);
 			expect(await readFile(path.join(repositoryFolder, 'README.md'), 'utf-8')).toBe('# my repo');
 			expect(result).toEqual({
+				status: 'promoted',
 				environmentId: ENVIRONMENT_ID,
 				counts: {
 					agents: 0,
@@ -898,6 +957,7 @@ describe('PromotionsService', () => {
 					tags: 0,
 				},
 				git: { commitSha: 'newsha', branchName: 'staging' },
+				missingDependencies: [],
 			});
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -947,6 +1007,7 @@ describe('PromotionsService', () => {
 					tags: 0,
 				},
 				openedReview: false,
+				confirmedMissingDependencyCount: 0,
 			});
 		});
 
@@ -958,6 +1019,160 @@ describe('PromotionsService', () => {
 					commitMessage: 'Promote instance: 2 projects, 0 workflows',
 				}),
 			);
+		});
+
+		describe('missing dependencies', () => {
+			const exported = packageManifestSchema.parse({
+				...emptyManifest,
+				requirements: requirementsWithMissing,
+			});
+			const noCounts = {
+				agents: 0,
+				workflows: 0,
+				folders: 0,
+				credentials: 0,
+				dataTables: 0,
+				variables: 0,
+				tags: 0,
+			};
+			const previousManifest = '{"previous":true}';
+			let packageFolder: string;
+
+			const readPackageManifest = async () =>
+				await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8');
+
+			beforeEach(async () => {
+				packageFolder = path.join(workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder, 'n8n');
+				await mkdir(packageFolder, { recursive: true });
+				await writeFile(path.join(packageFolder, 'manifest.json'), previousManifest);
+				n8nPackagesService.exportPackageToDirectory.mockImplementation(
+					async (_request, { targetDir }) => {
+						await writeFile(path.join(targetDir, 'manifest.json'), JSON.stringify(exported));
+						return { manifest: exported, counts: noCounts };
+					},
+				);
+				promotePreviewService.checkExport.mockResolvedValue({
+					missingDependencies: [missingCredential],
+					warnings: [brokenReference],
+					revision: 'reviewed',
+				});
+			});
+
+			it('pushes nothing and returns the lists when the caller did not confirm them', async () => {
+				const result = await service.promote(ENVIRONMENT_ID, actor, {});
+
+				expect(result).toEqual({
+					status: 'missing-dependencies',
+					environmentId: ENVIRONMENT_ID,
+					missingDependencies: [missingCredential],
+					warnings: [brokenReference],
+				});
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(runRepository.insertRun).not.toHaveBeenCalled();
+				expect(await readPackageManifest()).toBe(previousManifest);
+				const stagingFolder =
+					n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+				await expect(stat(stagingFolder)).rejects.toThrow();
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('promotion-promoted', {
+					user: actor,
+					environmentId: ENVIRONMENT_ID,
+					scope: 'instance',
+					outcome: 'missing_dependencies',
+					durationMs: expect.any(Number),
+				});
+			});
+
+			it('pushes with the confirmation, marks the requirement rows and lists the entries in the commit message', async () => {
+				const result = await service.promote(ENVIRONMENT_ID, actor, {
+					commitMessage: 'sync projects',
+					confirmMissingDependencies: true,
+				});
+
+				expect(result).toMatchObject({
+					status: 'promoted',
+					missingDependencies: [missingCredential],
+				});
+				expect(JSON.parse(await readPackageManifest()).requirements).toEqual({
+					credentials: [{ ...requirementsWithMissing.credentials[0], reason: 'confirmed-missing' }],
+					workflows: [{ ...requirementsWithMissing.workflows[0], reason: 'missing-on-source' }],
+				});
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({
+						commitMessage: `sync projects\n\n${missingDependenciesSection}`,
+					}),
+				);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					'promotion-promoted',
+					expect.objectContaining({ outcome: 'success', confirmedMissingDependencyCount: 1 }),
+				);
+			});
+
+			it('lists the confirmed entries after a generated commit message', async () => {
+				await service.promote(ENVIRONMENT_ID, actor, {
+					confirmMissingDependencies: true,
+				});
+
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({
+						commitMessage: `Promote instance: 2 projects, 0 workflows\n\n${missingDependenciesSection}`,
+					}),
+				);
+			});
+
+			it('needs no confirmation when the export has only warnings', async () => {
+				promotePreviewService.checkExport.mockResolvedValue({
+					missingDependencies: [],
+					warnings: [brokenReference],
+					revision: 'reviewed',
+				});
+
+				const result = await service.promote(ENVIRONMENT_ID, actor, {
+					commitMessage: 'sync projects',
+				});
+
+				expect(result).toMatchObject({ status: 'promoted', missingDependencies: [] });
+				expect(JSON.parse(await readPackageManifest()).requirements).toEqual({
+					credentials: requirementsWithMissing.credentials,
+					workflows: [{ ...requirementsWithMissing.workflows[0], reason: 'missing-on-source' }],
+				});
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({ commitMessage: 'sync projects' }),
+				);
+			});
+
+			it('pushes nothing when the lists changed after the reviewed check', async () => {
+				const result = await service.promote(ENVIRONMENT_ID, actor, {
+					confirmMissingDependencies: true,
+					expectedPreviewRevision: 'older',
+				});
+
+				expect(result).toEqual({ status: 'preview-changed', environmentId: ENVIRONMENT_ID });
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(await readPackageManifest()).toBe(previousManifest);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					'promotion-promoted',
+					expect.objectContaining({ outcome: 'preview_changed' }),
+				);
+			});
+
+			it('pushes when the lists still match the reviewed check', async () => {
+				const result = await service.promote(ENVIRONMENT_ID, actor, {
+					confirmMissingDependencies: true,
+					expectedPreviewRevision: 'reviewed',
+				});
+
+				expect(result).toMatchObject({ status: 'promoted' });
+				expect(gitService.commitAndPush).toHaveBeenCalled();
+			});
+
+			it('returns the lists, not a changed preview, when the reviewed check matches without a confirmation', async () => {
+				const result = await service.promote(ENVIRONMENT_ID, actor, {
+					expectedPreviewRevision: 'reviewed',
+				});
+
+				expect(result).toMatchObject({ status: 'missing-dependencies' });
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			});
 		});
 
 		it('keeps the previous package when the export fails', async () => {
@@ -1152,6 +1367,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				force: true,
 			});
+			expectPushed(result);
 			const targetBranchName = result.git.branchName;
 
 			expect(targetBranchName).toMatch(
@@ -1189,6 +1405,7 @@ describe('PromotionsService', () => {
 				const result = await service.promote(ENVIRONMENT_ID, actor, {
 					commitMessage: '\nReal title\nMore detail',
 				});
+				expectPushed(result);
 
 				expect(gitService.commitAndPush).toHaveBeenCalledWith(
 					expect.objectContaining({ commitMessage: '\nReal title\nMore detail' }),
@@ -1229,6 +1446,7 @@ describe('PromotionsService', () => {
 				resolver.resolveForEnvironment.mockResolvedValue(input);
 
 				const result = await service.promote(ENVIRONMENT_ID, actor, {});
+				expectPushed(result);
 
 				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 					input,
@@ -1248,6 +1466,7 @@ describe('PromotionsService', () => {
 				const result = await service.promote(ENVIRONMENT_ID, actor, {
 					commitMessage: 'm',
 				});
+				expectPushed(result);
 
 				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
 				expect(runRepository.insertRun).toHaveBeenCalledWith({
@@ -1269,6 +1488,7 @@ describe('PromotionsService', () => {
 				const plain = await service.promote(ENVIRONMENT_ID, actor, {
 					commitMessage: 'm',
 				});
+				expectPushed(plain);
 
 				expect(plain.git.commitSha).toBe('newsha');
 				expect(plain.review).toBeUndefined();
@@ -1286,6 +1506,7 @@ describe('PromotionsService', () => {
 				const gitlab = await service.promote(ENVIRONMENT_ID, actor, {
 					commitMessage: 'm',
 				});
+				expectPushed(gitlab);
 
 				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
 				expect(gitlab.warnings).toEqual([
@@ -1526,6 +1747,7 @@ describe('PromotionsService', () => {
 					includeArchived: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,
+					omitCredentialsOutsideExportedProjects: true,
 				}),
 				expect.any(Object),
 			);
@@ -1875,6 +2097,139 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		describe('missing dependencies', () => {
+			const projectFile = JSON.stringify({ id: alpha.id, name: alpha.name });
+			const branchManifest = buildManifest({ projects: [alpha] });
+			const exportedManifest = buildManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				requirements: requirementsWithMissing,
+			});
+
+			beforeEach(async () => {
+				await writeExportTree(packageFolder, {
+					'manifest.json': branchManifest,
+					'projects/alpha/project.json': projectFile,
+				});
+				mockExport({
+					'manifest.json': exportedManifest,
+					'projects/alpha/project.json': projectFile,
+					'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				});
+				ownedByP1('w1');
+				promotePreviewService.checkExport.mockResolvedValue({
+					missingDependencies: [missingCredential],
+					warnings: [brokenReference],
+					revision: 'revision',
+				});
+			});
+
+			it('writes nothing and returns the lists when the caller did not confirm them', async () => {
+				const result = await service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+				});
+
+				expect(result).toEqual({
+					status: 'missing-dependencies',
+					environmentId: ENVIRONMENT_ID,
+					missingDependencies: [missingCredential],
+					warnings: [brokenReference],
+				});
+				// The check reads the export of the selection and the manifest of the branch.
+				expect(promotePreviewService.checkExport).toHaveBeenCalledWith({
+					user: actor,
+					manifest: packageManifestSchema.parse(JSON.parse(exportedManifest)),
+					projectIds: ['p1'],
+					branchManifest: packageManifestSchema.parse(JSON.parse(branchManifest)),
+				});
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(await readExported('manifest.json')).toBe(branchManifest);
+				await expect(stat(path.join(packageFolder, 'projects/alpha/workflows'))).rejects.toThrow();
+				// Neither the staging folder nor the backup of the package stays in the checkout.
+				expect(await readdir(repositoryFolder)).toEqual(['n8n']);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('promotion-promoted', {
+					user: actor,
+					environmentId: ENVIRONMENT_ID,
+					scope: 'project',
+					projectId: 'p1',
+					selectedWorkflowCount: 1,
+					selectedFolderCount: 0,
+					outcome: 'missing_dependencies',
+					durationMs: expect.any(Number),
+				});
+			});
+
+			it('writes the reasons to the manifest and lists the entries after the message of the caller', async () => {
+				const result = await service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+					confirmMissingDependencies: true,
+				});
+
+				expectPushed(result);
+				expect(result.missingDependencies).toEqual([missingCredential]);
+				expect(JSON.parse(await readExported('manifest.json')).requirements).toEqual({
+					credentials: [{ ...requirementsWithMissing.credentials[0], reason: 'confirmed-missing' }],
+					workflows: [{ ...requirementsWithMissing.workflows[0], reason: 'missing-on-source' }],
+				});
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({ commitMessage: `m\n\n${missingDependenciesSection}` }),
+				);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					'promotion-promoted',
+					expect.objectContaining({ outcome: 'success', confirmedMissingDependencyCount: 1 }),
+				);
+			});
+
+			it('puts the entries in the description of the review of a generated message', async () => {
+				const input = operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				});
+				resolver.resolveForProject.mockResolvedValue(input);
+
+				const result = await service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					confirmMissingDependencies: true,
+				});
+
+				expectPushed(result);
+				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
+					input,
+					actor,
+					expect.objectContaining({
+						title: 'Promote 1 workflow from "Alpha"',
+						body: `\nAdded:\n- W1 (w1)\n\n${missingDependenciesSection}`,
+					}),
+					'run-1',
+				);
+			});
+
+			it('needs no confirmation when the export has only warnings', async () => {
+				promotePreviewService.checkExport.mockResolvedValue({
+					missingDependencies: [],
+					warnings: [brokenReference],
+					revision: 'revision',
+				});
+
+				const result = await service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+				});
+
+				expectPushed(result);
+				expect(result.missingDependencies).toEqual([]);
+				expect(JSON.parse(await readExported('manifest.json')).requirements).toEqual({
+					credentials: requirementsWithMissing.credentials,
+					workflows: [{ ...requirementsWithMissing.workflows[0], reason: 'missing-on-source' }],
+				});
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({ commitMessage: 'm' }),
+				);
+			});
+		});
+
 		it('writes an import inventory that still lists unselected workflows', async () => {
 			await writeExportTree(packageFolder, {
 				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
@@ -2186,6 +2541,8 @@ describe('PromotionsService', () => {
 			resolver.resolveForProject.mockResolvedValue(promoteInput());
 		});
 
+		const pushed = { status: 'promoted', missingDependencies: [] };
+
 		// promoteSelectionResolved is private; the cast lets the spy see it.
 		const spyPromoteSelectionResolved = () =>
 			vi.spyOn(
@@ -2227,7 +2584,7 @@ describe('PromotionsService', () => {
 					// w3 is left out on purpose: it no longer exists.
 				]),
 			);
-			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue(pushed);
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w2', 'w3', 'w4'],
@@ -2260,11 +2617,32 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		it('forwards the confirmation of the missing dependencies', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['w1', mock<Project>({ id: 'p1' })]]),
+			);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue(pushed);
+
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				confirmMissingDependencies: true,
+			});
+
+			expect(promoteSelectionResolved).toHaveBeenCalledWith(
+				promoteInput(),
+				actor,
+				expect.objectContaining({ confirmMissingDependencies: true }),
+				expect.objectContaining({ workflowIds: ['w1'] }),
+				new Map(),
+				expect.any(AbortSignal),
+			);
+		});
+
 		it('forwards a client commit message when one is sent', async () => {
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([['w1', mock<Project>({ id: 'p1' })]]),
 			);
-			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue(pushed);
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
@@ -2293,7 +2671,7 @@ describe('PromotionsService', () => {
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([['w1', mock<Project>({ id: 'p1' })]]),
 			);
-			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue(pushed);
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w9'],
@@ -2323,7 +2701,7 @@ describe('PromotionsService', () => {
 					['w9', mock<Project>({ id: 'other', name: 'Ops', type: 'team' })],
 				]),
 			);
-			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue(pushed);
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w9'],
@@ -2856,6 +3234,7 @@ describe('PromotionsService', () => {
 				git: { commitSha: 'remotesha', branchName: 'dev' },
 				status: 'applied',
 				warnings: [],
+				missingDependencies: [],
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-applied', {
 				user: actor,
@@ -2867,6 +3246,7 @@ describe('PromotionsService', () => {
 				workflowsFailedToPublish: 0,
 				foldersChanged: 7,
 				projectsChanged: 2,
+				confirmedMissingDependencyCount: 0,
 			});
 		});
 
@@ -2916,7 +3296,10 @@ describe('PromotionsService', () => {
 			missingDependencies: [],
 		};
 		/** A check that holds one missing dependency, which no other list repeats. */
-		const withDependency = (blocking: boolean): PromotionApplyCheck => ({
+		const withDependency = (
+			blocking: boolean,
+			kind: 'credential' | 'workflow' = 'credential',
+		): PromotionApplyCheck => ({
 			missingProjects: [],
 			missingBindings: [],
 			accessRequirements: [],
@@ -2924,10 +3307,10 @@ describe('PromotionsService', () => {
 			warnings: [],
 			missingDependencies: [
 				{
-					kind: 'credential',
+					kind,
 					id: 'c1',
 					name: 'Header',
-					credentialType: 'httpHeaderAuth',
+					...(kind === 'credential' ? { credentialType: 'httpHeaderAuth' } : {}),
 					group: 'outside-access',
 					reason: 'not-on-instance',
 					accessible: false,
@@ -2935,6 +3318,9 @@ describe('PromotionsService', () => {
 					consumers,
 				},
 			],
+		});
+		const unconfirmedPlan = expect.not.objectContaining({
+			allowUnresolvedCredentialIds: expect.anything(),
 		});
 		const request = {
 			expectedSource: { environmentId: ENVIRONMENT_ID, branchName: 'dev', commitSha: 'remotesha' },
@@ -3065,16 +3451,140 @@ describe('PromotionsService', () => {
 				await service.continueApply(ENVIRONMENT_ID, actor, {
 					...request,
 					confirmDestructiveChanges: true,
+					confirmMissingDependencies: true,
 				}),
 			).toEqual(blocked);
 			expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
 		});
 
-		it('imports when no missing dependency stops the Apply', async () => {
-			check.mockResolvedValueOnce(checked(withDependency(false)));
+		it('returns a missing dependency that does not stop the Apply until Continue confirms it', async () => {
+			const applyCheck = withDependency(false);
+			check.mockResolvedValue(checked(applyCheck));
+			const blocked = {
+				status: 'blocked',
+				environmentId: ENVIRONMENT_ID,
+				git: { commitSha: 'remotesha', branchName: 'dev' },
+				check: applyCheck,
+			};
 
-			expect(await service.apply(ENVIRONMENT_ID, actor)).toMatchObject({ status: 'applied' });
-			expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalledWith(plan);
+			expect(await service.apply(ENVIRONMENT_ID, actor)).toEqual(blocked);
+			expect(await service.continueApply(ENVIRONMENT_ID, actor, request)).toEqual(blocked);
+			// The confirmation of the destructive changes does not confirm the list.
+			expect(
+				await service.continueApply(ENVIRONMENT_ID, actor, {
+					...request,
+					confirmDestructiveChanges: true,
+				}),
+			).toEqual(blocked);
+			expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
+			expect(n8nPackagesService.planPackage).toHaveBeenCalledTimes(3);
+			for (const [planRequest] of n8nPackagesService.planPackage.mock.calls) {
+				expect(planRequest).toEqual(unconfirmedPlan);
+			}
+		});
+
+		it('plans again without the confirmed credentials, and returns the confirmed list', async () => {
+			const applyCheck = withDependency(false);
+			check.mockResolvedValue(checked(applyCheck));
+			const confirmedPlan = mock<PackageImportPlan>({ issues: [] });
+			n8nPackagesService.planPackage
+				.mockResolvedValueOnce(plan)
+				.mockResolvedValueOnce(confirmedPlan);
+
+			const result = await service.continueApply(ENVIRONMENT_ID, actor, {
+				...request,
+				confirmMissingDependencies: true,
+			});
+
+			expect(result).toMatchObject({
+				status: 'applied',
+				missingDependencies: applyCheck.missingDependencies,
+			});
+			// The check reads the plan that stops on every unresolved credential.
+			expect(check).toHaveBeenCalledExactlyOnceWith(plan, packageInventory, undefined, noMoves);
+			expect(n8nPackagesService.planPackage).toHaveBeenNthCalledWith(
+				1,
+				unconfirmedPlan,
+				expect.any(GitCommitPackageReader),
+				'enforce',
+			);
+			expect(n8nPackagesService.planPackage).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					allowUnresolvedCredentialIds: ['c1'],
+					dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+				}),
+				expect.any(GitCommitPackageReader),
+				'enforce',
+			);
+			expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalledExactlyOnceWith(confirmedPlan);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-applied',
+				expect.objectContaining({ outcome: 'applied', confirmedMissingDependencyCount: 1 }),
+			);
+		});
+
+		it('writes the checked plan when the confirmed list holds no credential', async () => {
+			check.mockResolvedValue(checked(withDependency(false, 'workflow')));
+
+			const result = await service.continueApply(ENVIRONMENT_ID, actor, {
+				...request,
+				confirmMissingDependencies: true,
+			});
+
+			expect(result).toMatchObject({ status: 'applied' });
+			expect(n8nPackagesService.planPackage).toHaveBeenCalledOnce();
+			expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalledExactlyOnceWith(plan);
+		});
+
+		it('plans again without a credential that Promote marked as broken on the source, without a confirmation', async () => {
+			const warning = {
+				kind: 'credential' as const,
+				code: 'missing-on-source' as const,
+				id: 'c2',
+				name: 'Header',
+				consumers,
+			};
+			check.mockResolvedValue(
+				checked({ ...withDependency(false), missingDependencies: [], warnings: [warning] }),
+			);
+
+			const result = await service.apply(ENVIRONMENT_ID, actor);
+
+			expect(result).toMatchObject({
+				status: 'applied',
+				warnings: [warning],
+				missingDependencies: [],
+			});
+			expect(n8nPackagesService.planPackage).toHaveBeenLastCalledWith(
+				expect.objectContaining({ allowUnresolvedCredentialIds: ['c2'] }),
+				expect.any(GitCommitPackageReader),
+				'enforce',
+			);
+		});
+
+		it('writes nothing when the second plan has an issue, because the instance changed after the check', async () => {
+			check.mockResolvedValue(checked(withDependency(false)));
+			n8nPackagesService.planPackage.mockResolvedValueOnce(plan).mockResolvedValueOnce(
+				mock<PackageImportPlan>({
+					issues: [
+						{ type: 'credential-unresolved', kind: 'not_found', sourceId: 'c1', usedBy: [] },
+					],
+				}),
+			);
+
+			const result = await service.continueApply(ENVIRONMENT_ID, actor, {
+				...request,
+				confirmMissingDependencies: true,
+			});
+
+			expect(result).toEqual({
+				status: 'preview-changed',
+				environmentId: ENVIRONMENT_ID,
+				git: { commitSha: 'remotesha', branchName: 'dev' },
+			});
+			expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
+			expect(projectService.deleteProject).not.toHaveBeenCalled();
 		});
 
 		it.each([{ commitSha: 'older' }, { branchName: 'older' }, { environmentId: 'older' }])(
@@ -3393,6 +3903,32 @@ describe('PromotionsService', () => {
 			// Duplicate ids are rejected by ApplySelectionDto before the service runs.
 			// See promotion-operations.dto.test.ts.
 
+			it('continues a selection without the confirmed credentials, and plans the selection again', async () => {
+				const applyCheck = withDependency(false);
+				check.mockResolvedValue(checked(applyCheck));
+				const selection = { workflowIds: ['w1'], ...request };
+
+				const unconfirmed = await service.continueApplyProjectSelection('p1', actor, selection);
+				const confirmed = await service.continueApplyProjectSelection('p1', actor, {
+					...selection,
+					confirmMissingDependencies: true,
+				});
+
+				expect(unconfirmed).toMatchObject({ status: 'blocked', check: applyCheck });
+				expect(confirmed).toMatchObject({
+					status: 'applied',
+					missingDependencies: applyCheck.missingDependencies,
+				});
+				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledTimes(3);
+				expect(n8nPackagesService.planPackageSelection).toHaveBeenLastCalledWith(
+					expect.objectContaining({ allowUnresolvedCredentialIds: ['c1'] }),
+					expect.any(GitCommitPackageReader),
+					expect.objectContaining({ selectedProjectId: 'p1', selectedWorkflowIds: ['w1'] }),
+					'enforce',
+				);
+				expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalledOnce();
+			});
+
 			describe.each(['applyProjectSelection', 'continueApplyProjectSelection'] as const)(
 				'%s',
 				(method) => {
@@ -3482,13 +4018,19 @@ describe('PromotionsService', () => {
 						expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
 					});
 
-					it('imports the selection when no missing dependency stops the Apply', async () => {
-						check.mockResolvedValueOnce(checked(withDependency(false)));
+					it('returns a missing dependency that does not stop the Apply, and writes nothing', async () => {
+						const applyCheck = withDependency(false);
+						check.mockResolvedValueOnce(checked(applyCheck));
 
-						expect(
-							await service[method]('p1', actor, { workflowIds: ['w1'], ...request }),
-						).toMatchObject({ status: 'applied' });
-						expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalledOnce();
+						expect(await service[method]('p1', actor, { workflowIds: ['w1'], ...request })).toEqual(
+							{
+								status: 'blocked',
+								environmentId: ENVIRONMENT_ID,
+								git: { branchName: 'dev', commitSha: 'remotesha' },
+								check: applyCheck,
+							},
+						);
+						expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
 					});
 
 					it('imports the selection and returns counts without project reconciliation', async () => {

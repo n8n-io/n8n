@@ -165,6 +165,11 @@ export function usePromotionOperation(
 			await refresh();
 			return;
 		}
+		if (result.status === 'missing-dependencies') {
+			// The Issues tab lists them. This page cannot confirm them yet.
+			error.value = { message: '', kind: 'explained' };
+			return;
+		}
 		outcome.showPromoted(id, result);
 		await leave();
 	}

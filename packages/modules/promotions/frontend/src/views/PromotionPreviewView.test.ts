@@ -1001,6 +1001,7 @@ describe('PromotionPreviewView', () => {
 				environmentId: 'environment-1',
 				counts: { workflows: 4, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
 				git: { branchName: 'main', commitSha: COMMIT_SHA },
+				missingDependencies: [],
 			});
 
 		const { getByTestId, queryByTestId } = await render();
@@ -1023,6 +1024,29 @@ describe('PromotionPreviewView', () => {
 			expectedPreviewRevision: newRevision,
 		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should say that nothing changed when Promote stops on missing dependencies', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			billingPreview({ missingDependencies: [otherProjectCredential] }),
+		);
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			status: 'missing-dependencies',
+			environmentId: 'environment-1',
+			missingDependencies: [otherProjectCredential],
+			warnings: [],
+		});
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId);
+
+		expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
+			"Couldn't promote the changes Nothing changed.",
+		);
+		expect(queryByTestId('promotion-preview-operation-notice')).not.toBeInTheDocument();
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(1);
+		expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
 	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {

@@ -3246,6 +3246,7 @@ export class TelemetryEventRelay extends EventRelay {
 		selectedWorkflowCount,
 		selectedFolderCount,
 		openedReview,
+		confirmedMissingDependencyCount,
 	}: RelayEventMap['promotion-promoted']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
 			user_id: user.id,
@@ -3264,6 +3265,7 @@ export class TelemetryEventRelay extends EventRelay {
 			selected_workflow_count: selectedWorkflowCount,
 			selected_folder_count: selectedFolderCount,
 			opened_review: openedReview,
+			confirmed_missing_dependency_count: confirmedMissingDependencyCount,
 		});
 	}
 
@@ -3279,6 +3281,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowsFailedToPublish,
 		foldersChanged,
 		projectsChanged,
+		confirmedMissingDependencyCount,
 	}: RelayEventMap['promotion-applied']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
 			user_id: user.id,
@@ -3292,6 +3295,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_failed_to_publish: workflowsFailedToPublish,
 			folders_changed: foldersChanged,
 			projects_changed: projectsChanged,
+			confirmed_missing_dependency_count: confirmedMissingDependencyCount,
 		});
 	}
 

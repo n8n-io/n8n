@@ -93,6 +93,18 @@ The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/pro
 Read `status` before you read `counts` and `git`.
 The change preview now always returns `revision`, also for `promote`.
 
+A Promote that has missing dependencies now needs `confirmMissingDependencies: true`.
+This applies to `POST /api/v1/promotions/projects/{projectId}/promote` and to `POST /api/v1/promotions/environments/{promotionEnvironmentId}/promote`.
+Without the confirmation, the Promote returns the status `missing-dependencies` with the list, and it pushes nothing.
+Send it with `expectedPreviewRevision` to confirm only the reviewed list.
+Without `expectedPreviewRevision`, the Promote confirms every missing dependency that it finds when it runs.
+A warning needs no confirmation.
+The instance Promote now returns a `status`, as the selective Promote does. Read `status` before you read `counts` and `git`.
+The status `promoted` now has `missingDependencies`. It lists the confirmed entries.
+The instance Promote no longer fails on a sub-workflow or an error workflow of a personal project. It is a missing dependency.
+Promote no longer writes a credential of another project, or a credential of a personal project, to the branch. The requirement row of the credential stays in the manifest.
+The entries of the Promote preview and of the Promote check now always have `blocking: false`. Their warnings no longer have `blocking`.
+
 The Apply check now has `missingDependencies`.
 The Apply previews return the check as `check`, and a `blocked` Apply result returns it too.
 The list holds each credential, variable, sub-workflow and error workflow that the applied workflows use and that is not usable on this instance after the Apply.
@@ -100,7 +112,20 @@ An entry with `blocking: true` stops the Apply.
 The Apply check no longer returns the conflict `unknown-owner`.
 A missing credential without an owner project on the branch is now an entry in `missingDependencies`, with the group `outside-access`.
 A missing credential in a project where you cannot create a credential is now only in `missingDependencies`, with the group `outside-access`. It is no longer in `missingBindings`.
-Such an Apply still returns `blocked`.
+
+An Apply that has an entry with `blocking: false` in `missingDependencies` now returns `blocked` and changes nothing.
+This includes a missing sub-workflow and a missing error workflow, which did not stop an Apply before.
+Send `confirmMissingDependencies: true` with Continue to apply without these entries.
+Send it with `expectedPreviewRevision` to confirm only the reviewed list.
+Without `expectedPreviewRevision`, Continue confirms every such entry that it finds when it runs.
+This applies to `POST /api/v1/promotions/projects/{projectId}/apply/continue` and to `POST /api/v1/promotions/environments/{promotionEnvironmentId}/apply/continue`.
+An entry with `blocking: true` stops the Apply with and without the confirmation.
+An Apply no longer stops for good on a missing credential that you cannot create. Such an entry now has `blocking: false`.
+The Apply creates no credential for it, and the workflow keeps its reference to the credential.
+A credential that exists on this instance, and that the project cannot use, still stops the Apply.
+The status `applied` now has `missingDependencies`. It lists the confirmed entries.
+`warnings` now has a second kind of entry, with the code `missing-on-source`. Read `code` before you read the other fields.
+It is a reference that was already broken on the source instance. It needs no confirmation.
 
 # 2.0.0
 

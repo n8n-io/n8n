@@ -24,6 +24,7 @@ const reviewChanges = (overrides: Partial<ReviewChanges> = {}): ReviewChanges =>
 		dependencies,
 		warnings: [],
 		outcome: null,
+		missingDependencies: [],
 		...overrides,
 	};
 };

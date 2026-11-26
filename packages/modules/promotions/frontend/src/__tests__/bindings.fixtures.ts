@@ -74,6 +74,7 @@ export function blocked(check: Partial<BlockedApplyResult['check']> = {}): Block
 
 export const applied: AppliedResult = {
 	status: 'applied',
+	missingDependencies: [],
 	environmentId: 'environment-id',
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	counts: {

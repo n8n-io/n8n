@@ -48,9 +48,7 @@ const CHECK: PromotionPromoteCheck = {
 			consumers,
 		},
 	],
-	warnings: [
-		{ kind: 'variable', code: 'missing-on-source', name: 'API_URL', blocking: false, consumers },
-	],
+	warnings: [{ kind: 'variable', code: 'missing-on-source', name: 'API_URL', consumers }],
 	revision: 'c'.repeat(64),
 };
 

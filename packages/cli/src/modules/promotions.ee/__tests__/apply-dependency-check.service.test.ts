@@ -9,11 +9,13 @@ import type {
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import type {
 	InventoryWorkflow,
 	PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import { ApplyDependencyCheckService } from '../apply-dependency-check.service';
@@ -33,10 +35,12 @@ describe('ApplyDependencyCheckService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectService = mock<ProjectService>();
+	const credentialsService = mock<CredentialsService>();
 	const service = new ApplyDependencyCheckService(
 		workflowRepository,
 		sharedWorkflowRepository,
 		projectService,
+		credentialsService,
 		mock<GlobalConfig>({ workflows: { callerPolicyDefaultOption: 'none' } }),
 	);
 
@@ -51,6 +55,7 @@ describe('ApplyDependencyCheckService', () => {
 		missingCredentialIds = ['beta-key'],
 		wholeInstance = false,
 		selectionOpen = false,
+		issues = [],
 	}: {
 		user?: User;
 		references?: WorkflowReference[];
@@ -58,6 +63,7 @@ describe('ApplyDependencyCheckService', () => {
 		missingCredentialIds?: string[];
 		wholeInstance?: boolean;
 		selectionOpen?: boolean;
+		issues?: BlockingIssue[];
 	}) =>
 		await service.facts({
 			plan: {
@@ -66,6 +72,7 @@ describe('ApplyDependencyCheckService', () => {
 				issues: [
 					{ type: 'workflow-conflict', sourceWorkflowId: 'applied' },
 					...missingCredentialIds.map((sourceId) => ({ type: 'credential-unresolved', sourceId })),
+					...issues,
 				],
 			} as unknown as PackageImportPlan,
 			inventory: {
@@ -92,6 +99,7 @@ describe('ApplyDependencyCheckService', () => {
 		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 		projectService.getProjectIdsWithScope.mockResolvedValue([]);
 		projectService.findExistingProjectIds.mockResolvedValue(new Set());
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 	});
 
 	it('gives the default caller policy and the applied workflows, and reads no workflow without a reference', async () => {
@@ -157,6 +165,29 @@ describe('ApplyDependencyCheckService', () => {
 		const result = await facts({ user: userWith('project:create') });
 
 		expect([...result.credentialProjectIds]).toEqual([]);
+	});
+
+	it('reads which of the credentials that the plan did not find exist on this instance', async () => {
+		const unresolved = (
+			sourceId: string,
+			kind: Extract<BlockingIssue, { type: 'credential-unresolved' }>['kind'] = 'not_found',
+		): BlockingIssue => ({ type: 'credential-unresolved', kind, sourceId, usedBy: [] });
+		credentialsService.findUsageScopes.mockResolvedValue(new Map([['unshared', 'project']]));
+
+		const result = await facts({
+			issues: [
+				unresolved('unshared'),
+				unresolved('missing'),
+				// Two projects of the package raise the issue for one credential.
+				unresolved('missing'),
+				unresolved('other-type', 'type_mismatch'),
+				{ type: 'policy-check-failed', point: 'contentImport' },
+			],
+		});
+
+		// The lookup does not depend on the access of the user.
+		expect(credentialsService.findUsageScopes).toHaveBeenCalledWith(['unshared', 'missing']);
+		expect([...result.unusableCredentials]).toEqual([['unshared', 'project']]);
 	});
 
 	it('reads the state and the owner project of a referenced workflow that the Apply does not import', async () => {

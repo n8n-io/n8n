@@ -1,5 +1,6 @@
 import {
 	promotionRunDetailsSchemas,
+	type PromotionMissingDependency,
 	type PromotionResourceDetail,
 	type PromotionResourceDetails,
 	type PromotionReviewChanges,
@@ -27,6 +28,8 @@ import {
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
+import { confirmedMissingRows } from './promote-dependency-check';
+import { PromoteDependencyCheckService } from './promote-dependency-check.service';
 import { toDetail, type DetailSide } from './promotion-change.service';
 import {
 	buildPreview,
@@ -64,10 +67,11 @@ export class PromotionReviewChangesService {
 		private readonly hostResolver: PromotionReviewHostResolver,
 		private readonly mergeRequests: GitLabMergeRequestClient,
 		private readonly promotionsService: PromotionsService,
+		private readonly dependencyCheck: PromoteDependencyCheckService,
 	) {}
 
 	/** Reads the head from the host, so the summary shows the review as it is now. */
-	async getChanges(reviewId: string): Promise<PromotionReviewChanges> {
+	async getChanges(user: User, reviewId: string): Promise<PromotionReviewChanges> {
 		const target = await this.findReview(reviewId);
 		const mergeRequest = await this.readMergeRequest(target);
 		const headCommitSha = mergeRequest.sha ?? mergeRequest.diff_refs?.head_sha;
@@ -94,6 +98,7 @@ export class PromotionReviewChangesService {
 				dependencies: [],
 				warnings: ['commitsUnavailable'],
 				outcome,
+				missingDependencies: [],
 			};
 		}
 		const [base, head] = [await readSide(commits.baseline), await readSide(commits.head)];
@@ -106,7 +111,9 @@ export class PromotionReviewChangesService {
 		if (base.manifestUnreadable) warnings.push('baselineManifestUnreadable');
 		if (head.manifestUnreadable) warnings.push('headManifestUnreadable');
 		// Without a manifest, every resource of the other side looks added or deleted.
-		if (warnings.length > 0) return { ...commitShas, resources: [], dependencies: [], warnings };
+		if (warnings.length > 0) {
+			return { ...commitShas, resources: [], dependencies: [], warnings, missingDependencies: [] };
+		}
 
 		const projectIds = projectIdsOf(base.side.manifest, head.side.manifest);
 		const { resources, dependencies } = buildPreview({
@@ -115,7 +122,32 @@ export class PromotionReviewChangesService {
 			base: base.side,
 			desired: head.side,
 		});
-		return { ...commitShas, resources, dependencies, warnings };
+		const missingDependencies = await this.confirmedMissingDependencies(user, head.side.manifest);
+		return { ...commitShas, resources, dependencies, warnings, missingDependencies };
+	}
+
+	/**
+	 * The dependencies that the author confirmed as missing at Promote, as the reviewer sees them
+	 * on this instance now. The Promote rules place them again for this user. An entry shows the
+	 * name that the branch holds, and never the owner. One that this instance no longer holds, or
+	 * that the head holds, is left out.
+	 */
+	private async confirmedMissingDependencies(
+		user: User,
+		head: PackageManifest | null,
+	): Promise<PromotionMissingDependency[]> {
+		if (!head) return [];
+		const confirmed = confirmedMissingRows(head);
+		const { credentials = [], workflows = [] } = confirmed.requirements ?? {};
+		if (credentials.length + workflows.length === 0) return [];
+		const { missingDependencies } = await this.dependencyCheck.check({
+			user,
+			manifest: confirmed,
+			// A confirmed row never belongs to a promoted project, so no owner is left out as one.
+			projectIds: [],
+			branchManifest: head,
+		});
+		return missingDependencies;
 	}
 
 	/** Reads both sides at the commits of the summary, without the host. */

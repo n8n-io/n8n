@@ -115,8 +115,6 @@ export class PromotePreviewService {
 			manifest: instance.manifest,
 			projectIds: [projectId],
 			branchManifest: promoteBase,
-			// A project Promote writes the reference and continues.
-			stopsOnWorkflowOutsideExport: false,
 		});
 		// The branch read resolves the environment again. Name the one it read.
 		const source = previewSource(branch.input);
@@ -146,14 +144,21 @@ export class PromotePreviewService {
 	 */
 	async buildInstanceCheck(user: User, projectIds: string[]): Promise<PromotionPromoteCheck> {
 		const { manifest } = await exportInstancePackage(this.packagesService, user, projectIds);
-		const check = await this.dependencyCheck.check({
-			user,
-			manifest,
-			projectIds,
-			branchManifest: null,
-			// The instance Promote exports with the `fail` dependency policy.
-			stopsOnWorkflowOutsideExport: true,
-		});
+		return await this.checkExport({ user, manifest, projectIds, branchManifest: null });
+	}
+
+	/**
+	 * What an export of these projects leaves out. Promote runs it on the package that it is about
+	 * to write, so the caller confirms the list of that package and not of an older preview.
+	 */
+	async checkExport(facts: {
+		user: User;
+		manifest: PackageManifest;
+		projectIds: string[];
+		/** `null` when the branch holds no package, or when the Promote replaces the whole package. */
+		branchManifest: PackageManifest | null;
+	}): Promise<PromotionPromoteCheck> {
+		const check = await this.dependencyCheck.check(facts);
 		return { ...check, revision: promoteCheckRevision(check) };
 	}
 

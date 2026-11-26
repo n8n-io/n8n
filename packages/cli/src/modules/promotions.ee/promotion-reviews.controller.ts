@@ -47,11 +47,11 @@ export class PromotionReviewsController {
 	@GlobalScope('promotions:readReviews')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getChanges(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('reviewId') reviewId: string,
 	): Promise<PromotionReviewChanges> {
-		return await this.changes.getChanges(reviewId);
+		return await this.changes.getChanges(req.user, reviewId);
 	}
 
 	@Post('/:reviewId/changes/details')

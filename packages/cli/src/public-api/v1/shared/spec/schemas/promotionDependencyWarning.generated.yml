@@ -15,9 +15,6 @@ properties:
     minLength: 1
   name:
     type: string
-  blocking:
-    type: boolean
-    description: Whether the operation stops on this reference.
   consumers:
     type: array
     items:
@@ -56,5 +53,4 @@ required:
   - kind
   - code
   - name
-  - blocking
   - consumers

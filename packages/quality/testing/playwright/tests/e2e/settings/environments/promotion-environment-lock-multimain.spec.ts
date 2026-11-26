@@ -156,8 +156,10 @@ test.describe(
 				const result = await mainOne.promote(environmentId, {
 					commitMessage: 'Promotion after the lock',
 				});
-				expect(result.git.branchName).toBe('main');
-				expect(result.git.commitSha).toMatch(/^[0-9a-f]{40}$/);
+				expect(result).toMatchObject({
+					status: 'promoted',
+					git: { branchName: 'main', commitSha: expect.stringMatching(/^[0-9a-f]{40}$/) },
+				});
 				// The operation released its own lock.
 				expect(await redisCli(redisContainer, ['EXISTS', lockKey])).toBe('0');
 			});
