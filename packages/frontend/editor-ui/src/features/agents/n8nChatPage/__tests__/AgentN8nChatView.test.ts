@@ -186,14 +186,14 @@ describe('AgentN8nChatView', () => {
 			expect(toggleText(wrapper)).toBe('New conversation');
 		});
 
-		it('uses the first user message, cut to 60 characters, until the thread has a title', async () => {
+		it('shows the placeholder, not the first user message, until the thread has a title', async () => {
 			const wrapper = renderView({ agentThreadId: 'thread-9' });
 			await flushPromises();
 			const message = 'Please review this offer letter for the senior engineer role in Berlin';
 			wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('first-user-message', message);
 			await flushPromises();
 
-			expect(toggleText(wrapper)).toBe(`${message.slice(0, 60)}…`);
+			expect(toggleText(wrapper)).toBe('New conversation');
 		});
 
 		it('keeps "Chat history" on a new chat', async () => {

@@ -11,6 +11,10 @@ import {
 	getN8nChatThread,
 	listN8nChatThreads,
 } from '../composables/useAgentApi';
+import {
+	useAgentThreadTitleUpdates,
+	type AgentThreadTitleUpdate,
+} from '../composables/useAgentThreadTitleUpdates';
 
 /**
  * The user's own n8n Chat threads across every agent they can reach, for the sidebar's
@@ -78,6 +82,26 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 	}
 
 	/**
+	 * Shows a generated title as soon as the server stores it, before the turn ends.
+	 * Ignores threads that this store does not hold, such as preview sessions of the
+	 * agent builder: only n8n Chat threads can load through this store.
+	 */
+	function applyGeneratedTitle({ projectId, agentId, threadId, title }: AgentThreadTitleUpdate) {
+		const retitle = (threads: AgentN8nChatThreadSummary[]) =>
+			threads.map((thread) =>
+				thread.id === threadId &&
+				thread.agent.id === agentId &&
+				thread.agent.projectId === projectId
+					? { ...thread, title }
+					: thread,
+			);
+		recentThreads.value = retitle(recentThreads.value);
+		openedThreads.value = retitle(openedThreads.value);
+	}
+
+	useAgentThreadTitleUpdates(applyGeneratedTitle);
+
+	/**
 	 * Delete one of the user's own threads, like the preview chat deletes sessions.
 	 * Rename is out of scope — the preview chat has none either. Takes the thread itself,
 	 * not just its id, so a thread a pager loaded past the recent page can still delete.
@@ -108,6 +132,7 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 		deletedThreadIds,
 		fetchRecent,
 		loadThread,
+		applyGeneratedTitle,
 		deleteThread,
 	};
 });

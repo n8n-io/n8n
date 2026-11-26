@@ -9,6 +9,7 @@ import {
 	type ThreadsPage,
 } from '../composables/useAgentThreadsApi';
 import { useAgentSessionsStore } from '../agentSessions.store';
+import type { PushMessage } from '@n8n/api-types';
 
 const { listThreads, listPreviewThreads } = vi.hoisted(() => ({
 	listThreads: vi.fn(),
@@ -24,6 +25,26 @@ vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
+
+const pushListeners = vi.hoisted(() => new Set<(event: PushMessage) => void>());
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		addEventListener: (handler: (event: PushMessage) => void) => {
+			pushListeners.add(handler);
+			return () => pushListeners.delete(handler);
+		},
+	}),
+}));
+
+function pushTitle(threadId: string, title: string, agentId = 'agent-1') {
+	for (const listener of pushListeners) {
+		listener({
+			type: 'agentThreadTitleUpdated',
+			data: { projectId: 'project-1', agentId, threadId, title, emoji: '📦' },
+		});
+	}
+}
 
 function thread(id: string): AgentExecutionThread {
 	return {
@@ -64,7 +85,52 @@ describe('useAgentSessionsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		pushListeners.clear();
 		listPreviewThreads.mockReset().mockResolvedValue(page([], null));
+	});
+
+	describe('generated titles', () => {
+		it('retitles the session in history and Preview when the title push arrives', async () => {
+			const untitled = { ...thread('session-1'), title: null };
+			listThreads.mockResolvedValueOnce({ threads: [untitled], nextCursor: null });
+			listPreviewThreads.mockResolvedValueOnce({ threads: [untitled], nextCursor: null });
+			const store = useAgentSessionsStore();
+			await store.fetchThreads('project-1', 'agent-1');
+			listPreviewThreads.mockClear();
+
+			pushTitle('session-1', 'Refund policy question');
+
+			expect(store.threads[0]).toMatchObject({ title: 'Refund policy question', emoji: '📦' });
+			expect(store.previewThreads[0]).toMatchObject({ title: 'Refund policy question' });
+			expect(listPreviewThreads).not.toHaveBeenCalled();
+		});
+
+		it('loads Preview again for a new session of the open agent', async () => {
+			listThreads.mockResolvedValueOnce(page([], null));
+			const store = useAgentSessionsStore();
+			await store.fetchThreads('project-1', 'agent-1');
+			listPreviewThreads.mockResolvedValueOnce(page(['new-session'], null));
+
+			pushTitle('new-session', 'Refund policy question');
+			await vi.waitFor(() =>
+				expect(store.previewThreads.map(({ id }) => id)).toEqual(['new-session']),
+			);
+
+			expect(listPreviewThreads).toHaveBeenCalledTimes(2);
+		});
+
+		it('ignores a push for another agent', async () => {
+			const untitled = { ...thread('session-1'), title: null };
+			listThreads.mockResolvedValueOnce({ threads: [untitled], nextCursor: null });
+			const store = useAgentSessionsStore();
+			await store.fetchThreads('project-1', 'agent-1');
+			listPreviewThreads.mockClear();
+
+			pushTitle('session-1', 'Other agent', 'agent-2');
+
+			expect(store.threads[0].title).toBeNull();
+			expect(listPreviewThreads).not.toHaveBeenCalled();
+		});
 	});
 
 	it('clears the current page while replacing it with filtered results', async () => {

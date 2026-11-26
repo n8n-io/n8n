@@ -25,7 +25,6 @@ import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import { consumePendingN8nChatMessage, type PendingN8nChatMessage } from './pendingN8nChatMessage';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import { firstMessageTitle } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
 
 // `agentThreadId` (not `threadId`): this route's sibling `InstanceAiLayout` reads
 // `route.params.threadId` for an n8n Assistant thread id, and the two must not collide.
@@ -118,15 +117,14 @@ watch(panel, (current) => {
 // The same recent-threads list the sidebar shows, so both name the open chat the same way.
 // A thread outside the newest page (e.g. opened directly by URL) is missing here until
 // `loadThread` below adds it.
-const firstUserMessage = ref<string>();
-// Like the n8n Assistant: the generated title, else the first user message until the
-// title arrives, else a generic label for a known but untitled thread.
+// Like the n8n Assistant: the generated title, else the placeholder that the sidebar
+// shows until the title arrives. A new chat with no thread yet has no title.
 const threadTitle = computed(() => {
 	if (!props.agentThreadId) return undefined;
-	const thread = threadsStore.threadsById.get(props.agentThreadId);
-	if (thread?.title) return thread.title;
-	if (firstUserMessage.value?.trim()) return firstMessageTitle(firstUserMessage.value);
-	return thread ? i18n.baseText('commandBar.instanceAi.newThread') : undefined;
+	return (
+		threadsStore.threadsById.get(props.agentThreadId)?.title ||
+		i18n.baseText('commandBar.instanceAi.newThread')
+	);
 });
 
 // Fetches a thread the store doesn't know yet, once per (agent, thread) pair — not on
@@ -247,7 +245,6 @@ const agentPageRoute = computed(() => {
 			center-empty-state
 			@session-created="onSessionCreated"
 			@update:streaming="onStreamingChange"
-			@first-user-message="firstUserMessage = $event"
 			@agent-unavailable="notFound = true"
 		>
 			<template #empty-state>
