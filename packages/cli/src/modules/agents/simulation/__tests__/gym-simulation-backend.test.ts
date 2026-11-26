@@ -260,6 +260,32 @@ describe('GymSimulationBackend', () => {
 		expect(handle).not.toHaveBeenCalled();
 	});
 
+	it('reports a closed world, not a missing host, when the world closes during the lookup', async () => {
+		const { backend, gym } = setup();
+		const world = await backend.openWorld(openInput);
+		vi.mocked(gym.vendorForHost).mockImplementation(async () => {
+			await backend.closeWorld(world.worldId);
+			return undefined;
+		});
+
+		const reply = await world.handleRequest(get('/api/x', 'unknown.example'), call);
+
+		expect(reply).toEqual({ outcome: 'unavailable', detail: 'The test world is closed.' });
+	});
+
+	it('does not serve a reply when the world closes while the tenant answers', async () => {
+		const { backend, tenants } = setup();
+		const world = await backend.openWorld(openInput);
+		vi.spyOn(tenants[0], 'handle').mockImplementation(async () => {
+			await backend.closeWorld(world.worldId);
+			return { statusCode: 200, headers: {}, body: { ok: true } };
+		});
+
+		const reply = await world.handleRequest(post('closed mid-request'), call);
+
+		expect(reply).toEqual({ outcome: 'unavailable', detail: 'The test world is closed.' });
+	});
+
 	it('fails to open a world when the Gym cannot open a tenant', async () => {
 		const { backend, gym } = setup();
 		vi.mocked(gym.openTenant).mockRejectedValue(new Error('no free tenant slot'));

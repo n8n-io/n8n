@@ -149,11 +149,11 @@ export class GymSimulationBackend implements SimulationBackend {
 		let response: GymResponse | undefined;
 		try {
 			vendor = await untilStopped(gym.vendorForHost(host), signal);
-			if (!vendor)
-				return { outcome: 'unsupported', detail: `The test world does not have ${host}.` };
 			if (signal?.aborted) throw stoppedError();
 			// closeWorld can run while the Gym looks up the vendor.
 			if (!this.isOpen(tenant)) return WORLD_CLOSED;
+			if (!vendor)
+				return { outcome: 'unsupported', detail: `The test world does not have ${host}.` };
 			response = await untilStopped(
 				tenant.handle(
 					vendor,
@@ -175,6 +175,8 @@ export class GymSimulationBackend implements SimulationBackend {
 			});
 			return { outcome: 'unavailable', detail: 'The test world failed to answer.' };
 		}
+		// A reply from a world that closed during the request is never served.
+		if (!this.isOpen(tenant)) return WORLD_CLOSED;
 
 		if (!response || response.statusCode === 501) {
 			return {
