@@ -2184,14 +2184,13 @@ export interface InstanceAiMemoryConfig {
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
 	/**
-	 * Generate a title for a thread that has none, after the first turn. The
-	 * runtime reports the usage of the title call through `onSideCallUsage`.
+	 * Generate a title for a thread that has none. The title call runs beside the
+	 * first turn, and the run does not wait for it. The runtime reports the usage
+	 * of the title call through `onSideCallUsage`.
 	 */
 	titleGeneration?: {
 		/** Model for the title call. Defaults to the agent's model. */
 		model?: ModelConfig;
-		/** Saves the title before the run ends, instead of after it in the background. */
-		sync?: boolean;
 	};
 }
 

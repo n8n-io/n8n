@@ -442,7 +442,9 @@ export function createSkillsTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.' +
+				'Before creating a new skill or building an agent, list existing skills (pass ' +
+				'attachableToAgentId for an agent) and reuse a matching skill instead of creating a ' +
+				'duplicate. This tool does not attach a skill to an agent.' +
 				(context.skillService?.workflowsInSkillsEnabled === true
 					? ` ${SKILL_WORKFLOW_MENTION_HINT}`
 					: '') +

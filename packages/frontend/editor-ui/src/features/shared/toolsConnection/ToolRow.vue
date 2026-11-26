@@ -20,11 +20,14 @@ const props = defineProps<{
 	connectLabel?: string;
 	connectAriaLabel?: string;
 	connectedLabel?: string;
+	/** The picker draws no leading icons. */
+	iconless?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	disconnect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -106,7 +109,12 @@ const installBlocked = computed(
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
-const isRowNavigable = computed(() => props.item.kind !== 'service');
+// Skill rows never had an icon, so they stay icon-less in a picker that does not opt in.
+const isIconless = computed(() => props.iconless || props.item.kind === 'skill');
+// A collection row has nothing to open in the picker. Its buttons do all the work.
+const isRowNavigable = computed(
+	() => props.item.kind !== 'service' && props.item.kind !== 'collection',
+);
 
 const restriction = computed(() =>
 	props.item.kind === 'node' ? props.item.restriction : undefined,
@@ -168,28 +176,51 @@ function handleRowClick() {
 }
 
 const mainActionRef = ref<HTMLElement | null>(null);
-/** Set when "Add" had focus, so focus can move once the button is gone. */
-let refocusAfterAdd = false;
+const addRef = ref<InstanceType<typeof N8nButton> | null>(null);
+const removeRef = ref<InstanceType<typeof N8nButton> | null>(null);
+/** Set when "Add" or "Remove" had focus, so focus can move once the button is gone. */
+let refocusAfterToggle = false;
+
+function hadFocus(event: MouseEvent) {
+	return (
+		event.currentTarget instanceof HTMLElement &&
+		event.currentTarget.contains(document.activeElement)
+	);
+}
 
 function handleSkillAdd(event: MouseEvent) {
-	refocusAfterAdd =
-		event.currentTarget instanceof HTMLElement &&
-		event.currentTarget.contains(document.activeElement);
+	refocusAfterToggle = hadFocus(event);
 	emit('connect', props.item);
 }
 
+function handleRemove(event: MouseEvent) {
+	refocusAfterToggle = hadFocus(event);
+	emit('disconnect', props.item);
+}
+
+function elementOf(button: InstanceType<typeof N8nButton> | null) {
+	const element: unknown = button?.$el;
+	return element instanceof HTMLElement ? element : null;
+}
+
 /**
- * "Added" is static text, so the focused "Add" button leaves the page when the
- * skill is added. Move focus to the row's own button (it opens the skill) so
- * keyboard users stay on the same row instead of falling back to the page.
+ * The focused "Add" or "Remove" button leaves the page when the item is added or
+ * removed. Move focus to the button that replaces it: Remove on a collection, the
+ * row's own button on a skill (it opens the skill), or Add after a remove. So
+ * keyboard users stay on the same row.
  */
 watch(
-	() => props.item.kind === 'skill' && props.item.attached,
+	() => (props.item.kind === 'skill' || props.item.kind === 'collection') && props.item.attached,
 	async (attached) => {
-		if (!attached || !refocusAfterAdd) return;
-		refocusAfterAdd = false;
+		if (!refocusAfterToggle) {
+			return;
+		}
+		refocusAfterToggle = false;
 		await nextTick();
-		mainActionRef.value?.focus();
+		const target = attached
+			? (elementOf(removeRef.value) ?? mainActionRef.value)
+			: elementOf(addRef.value);
+		target?.focus();
 	},
 );
 
@@ -208,6 +239,7 @@ function handleConnect() {
 			$style.row,
 			$style[`row--${item.kind}`],
 			{
+				[$style.rowIconless]: isIconless,
 				[$style.rowDisabled]: isDisabled,
 				[$style.rowRestricted]: !!restriction,
 				[$style.rowBlocked]: isActivationBlocked,
@@ -245,11 +277,7 @@ function handleConnect() {
 				</template>
 
 				<template v-else>
-					<ToolIcon
-						v-if="item.kind !== 'skill'"
-						:source="resolvedIcon"
-						:fallback-icon="placeholderIcon"
-					/>
+					<ToolIcon v-if="!isIconless" :source="resolvedIcon" :fallback-icon="placeholderIcon" />
 					<span :class="$style.text">
 						<span :class="$style.titleRow">
 							<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
@@ -310,6 +338,14 @@ function handleConnect() {
 		</div>
 
 		<div :class="$style.action">
+			<N8nText
+				v-if="item.kind === 'collection'"
+				size="small"
+				color="text-light"
+				data-test-id="tools-connection-row-summary"
+			>
+				{{ item.summary }}
+			</N8nText>
 			<RestrictedNodePopover
 				v-if="restriction"
 				:node-type-name="item.title"
@@ -330,7 +366,8 @@ function handleConnect() {
 				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
 			<N8nButton
-				v-else-if="item.kind === 'skill' && !item.attached"
+				v-else-if="(item.kind === 'skill' || item.kind === 'collection') && !item.attached"
+				ref="addRef"
 				variant="outline"
 				size="small"
 				:aria-label="connectAriaLabel"
@@ -339,14 +376,27 @@ function handleConnect() {
 			>
 				{{ connectLabel ?? i18n.baseText('generic.add') }}
 			</N8nButton>
-			<span
-				v-else-if="item.kind === 'skill'"
-				:class="$style.statusMarker"
-				data-test-id="tools-connection-row-added"
-			>
-				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
-				{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
-			</span>
+			<template v-else-if="item.kind === 'skill' || item.kind === 'collection'">
+				<span :class="$style.statusMarker" data-test-id="tools-connection-row-added">
+					<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
+					{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
+				</span>
+				<N8nButton
+					v-if="item.kind === 'collection'"
+					ref="removeRef"
+					variant="ghost"
+					size="small"
+					:aria-label="
+						i18n.baseText('tools.connection.action.removeAriaLabel', {
+							interpolate: { name: item.title },
+						})
+					"
+					data-test-id="tools-connection-row-remove"
+					@click="handleRemove"
+				>
+					{{ i18n.baseText('tools.connection.settings.remove') }}
+				</N8nButton>
+			</template>
 			<N8nButton
 				v-else-if="item.kind === 'service'"
 				variant="outline"
@@ -453,8 +503,8 @@ function handleConnect() {
 	}
 }
 
-.row--skill {
-	// Skill rows have no icon. Start the text on the same edge as the search icon.
+.rowIconless {
+	// The row has no icon. Start the text on the same edge as the search icon.
 	padding-inline-start: var(--spacing--xs);
 }
 

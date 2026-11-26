@@ -278,16 +278,15 @@ describe('SkillsTable', () => {
 	});
 
 	it('sorts by name and by last update only', async () => {
-		const { container, emitted } = render([skill()]);
-		const header = (title: string) =>
-			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+		const { getByRole, queryByRole, emitted } = render([skill()]);
 
-		await userEvent.click(header('Scope'));
-		await userEvent.click(header('Created by'));
+		expect(queryByRole('button', { name: 'Scope' })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Created by' })).not.toBeInTheDocument();
+		await userEvent.click(getByRole('columnheader', { name: 'Scope' }));
 		expect(emitted('update:options')).toBeUndefined();
 
-		await userEvent.click(header('Skill'));
-		await userEvent.click(header('Last updated'));
+		await userEvent.click(getByRole('button', { name: 'Skill' }));
+		await userEvent.click(getByRole('button', { name: 'Last updated' }));
 		expect(emitted('update:options')).toEqual([
 			[expect.objectContaining({ sortBy: [{ id: 'name', desc: false }] })],
 			[expect.objectContaining({ sortBy: [{ id: 'updatedAt', desc: false }] })],

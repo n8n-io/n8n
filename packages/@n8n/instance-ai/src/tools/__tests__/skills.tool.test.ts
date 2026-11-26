@@ -114,6 +114,14 @@ describe('skills tool', () => {
 		service = createSkillService();
 	});
 
+	it('prompts the assistant to list and reuse existing skills before creating a new one', () => {
+		const tool = createSkillsTool(createContext(service));
+
+		expect(tool.description).toContain('attachableToAgentId');
+		expect(tool.description).toMatch(/list existing skills/i);
+		expect(tool.description).toMatch(/reuse a matching skill/i);
+	});
+
 	describe('list', () => {
 		it('lists skills with the filters the model sent', async () => {
 			const tool = createSkillsTool(createContext(service));

@@ -210,6 +210,8 @@ jobs:
         env:
           SPECS: ${{ matrix.specs }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
         run: |
           set -euo pipefail
           read -r -a SPEC_ARGS <<< "$SPECS"
