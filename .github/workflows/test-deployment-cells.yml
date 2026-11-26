@@ -146,7 +146,7 @@ jobs:
   cells:
     name: ${{ needs.resolve.outputs.channel }} · ${{ matrix.arch }} · ${{ matrix.group }}
     needs: resolve
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || matrix.runner }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && (matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest') || matrix.runner }}
     timeout-minutes: 25
     permissions:
       contents: read
@@ -160,7 +160,7 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2204
             n8n_image_key: n8n
             runners_image_key: runners
-            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01'
+            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01|@cell:DEP-05|@cell:DEP-06'
           - group: distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
@@ -170,6 +170,32 @@ jobs:
           - group: pc-distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n_pc
+            runners_image_key: runners_distroless
+            specs: tests/deployment/cloud-image-pair.spec.ts
+          - group: redis-7
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners
+            redis_image: redis:7.4.12-alpine
+            specs: tests/deployment/redis-7.spec.ts
+          - group: valkey
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners
+            redis_image: valkey/valkey:9.2.1-alpine
+            specs: tests/deployment/valkey.spec.ts
+          - group: standard
+            arch: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+            n8n_image_key: n8n
+            runners_image_key: runners
+            specs: tests/deployment/standard-image-pair.spec.ts
+          - group: pc-distroless
+            arch: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
             n8n_image_key: n8n_pc
             runners_image_key: runners_distroless
             specs: tests/deployment/cloud-image-pair.spec.ts
@@ -201,19 +227,28 @@ jobs:
           login-ghcr: true
 
       - name: Pull pinned images
+        env:
+          REDIS_IMAGE: ${{ matrix.redis_image }}
         run: |
           set -euo pipefail
           docker pull --quiet "$TEST_IMAGE_N8N"
           docker pull --quiet "$TEST_IMAGE_TASK_RUNNER"
+          if [ -n "$REDIS_IMAGE" ]; then
+            docker pull --quiet "$REDIS_IMAGE"
+          fi
 
       - name: Run deployment cells
         env:
           SPECS: ${{ matrix.specs }}
+          REDIS_IMAGE: ${{ matrix.redis_image }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
         run: |
           set -euo pipefail
+          if [ -n "$REDIS_IMAGE" ]; then
+            export TEST_IMAGE_REDIS="$REDIS_IMAGE"
+          fi
           read -r -a SPEC_ARGS <<< "$SPECS"
           pnpm --filter=n8n-playwright test:deployment "${SPEC_ARGS[@]}"
 
