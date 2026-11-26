@@ -50,13 +50,3 @@ export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	const webhookEventSet = new Set(webhookEvents);
 	return currentEvents.every((event) => webhookEventSet.has(toApiEventName(event)));
 }
-
-export function validateJSON(json: string | undefined): any {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}

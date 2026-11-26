@@ -2,6 +2,47 @@
 	"name": "Customer.io Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "event",
+				"operation": "track",
+				"customerId": "cus_9000",
+				"eventName": "signup",
+				"jsonParameters": true,
+				"additionalFieldsJson": "={{ { \"data\": { \"plan\": \"pro\" } } }}"
+			},
+			"id": "a3b206e8-89fd-5e26-a938-0d53a8a9d7c6",
+			"name": "Event Track Expression",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 2750],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "upsert",
+				"id": "json@example.com",
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"email\":\"json@example.com\",\"plan\":\"pro\"}"
+			},
+			"id": "f6fd5468-d063-59b5-aa10-d8ba9815dbcb",
+			"name": "Customer Upsert JSON",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 2450],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -253,6 +294,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Event Track Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Upsert JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Campaign Get",
 						"type": "main",
