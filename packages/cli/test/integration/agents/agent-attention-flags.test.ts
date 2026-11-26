@@ -71,30 +71,26 @@ describe('Agent attention flags', () => {
 
 	it('reverts and reapplies the attention flag schema', async () => {
 		const dataSource = Container.get(DataSource);
-		const allMigrations = [...sqliteMigrations, ...postgresMigrations];
-		const migration = allMigrations.find(
+		const migration = [...sqliteMigrations, ...postgresMigrations].find(
 			(candidate) => candidate.name === 'CreateAgentAttentionFlags1795546358454',
 		);
 		if (!migration) throw new Error('Attention flag migration not found');
-		const executed = dataSource.migrations.map((instance) => instance.constructor.name);
-		const position = executed.indexOf(migration.name);
-		expect(position).toBeGreaterThanOrEqual(0);
-		// Migrations that run after this one are undone first, and `runMigrations` applies them again.
-		const toUndo = executed.slice(position);
 		// Template databases skip startup migration wrapping in this worker.
-		for (const name of toUndo) {
-			const candidate = allMigrations.find((entry) => entry.name === name);
-			if (candidate) wrapMigration(candidate);
-		}
+		wrapMigration(migration);
+		// Runs this migration directly, so a newer migration does not change what the test reverts.
+		const applied = dataSource.migrations.find(
+			(candidate) => candidate.constructor.name === migration.name,
+		);
+		if (!applied?.down) throw new Error('Attention flag migration is not registered');
+		const tablePath = dataSource.getMetadata(AgentAttentionFlagEntity).tablePath;
 		const runner = dataSource.createQueryRunner();
 		try {
-			for (let i = 0; i < toUndo.length; i++) await dataSource.undoLastMigration();
-			expect(
-				await runner.hasTable(dataSource.getMetadata(AgentAttentionFlagEntity).tablePath),
-			).toBe(false);
+			await applied.down(runner);
+			const tableExists = await runner.hasTable(tablePath);
+			if (!tableExists) await applied.up(runner);
+			expect(tableExists).toBe(false);
 		} finally {
 			await runner.release();
-			await dataSource.runMigrations();
 		}
 		expect(await dataSource.getRepository(AgentAttentionFlagEntity).count()).toBe(0);
 	});

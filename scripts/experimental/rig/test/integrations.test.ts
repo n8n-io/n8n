@@ -13,6 +13,7 @@ import {
 } from '../src/integrations/browser';
 import {
 	chooseEditor,
+	commandLineWaits,
 	editorCommandLine,
 	ENV_EDITOR,
 	installedEditors,
@@ -122,5 +123,21 @@ describe('editors', () => {
 		vi.stubEnv('EDITOR', 'nano');
 		rmSync(globalConfigFile(), { force: true });
 		expect(await chooseEditor()).toBe(ENV_EDITOR);
+	});
+});
+
+describe('commandLineWaits', () => {
+	it('should treat terminal editors and GUI editors with a wait flag as waiting', () => {
+		expect(commandLineWaits('vim')).toBe(true);
+		expect(commandLineWaits('/usr/bin/nvim -p')).toBe(true);
+		expect(commandLineWaits('vi')).toBe(true);
+		expect(commandLineWaits('code --wait')).toBe(true);
+		expect(commandLineWaits('subl -w')).toBe(true);
+	});
+
+	it('should not trust GUI editors without a wait flag or unknown commands', () => {
+		expect(commandLineWaits('code')).toBe(false);
+		expect(commandLineWaits('open -t')).toBe(false);
+		expect(commandLineWaits('my-editor')).toBe(false);
 	});
 });

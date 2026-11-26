@@ -3,11 +3,11 @@ import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import { EngineSubWorkflowClient } from '../engine-workflow-resolve-client';
 import type {
 	ResolveSubWorkflowRequest,
 	ResolveSubWorkflowResponse,
-} from '../engine-sub-workflow.contract';
+} from '../engine-workflow-resolve.contract';
 
 const request: ResolveSubWorkflowRequest = {
 	workflowId: 'wf-sub',
