@@ -4,9 +4,11 @@ import CollectionParameterLegacy, { type Props } from './CollectionParameterLega
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { NodeVersionNewParameterKey } from '@/app/constants';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -190,6 +192,21 @@ describe('CollectionParameterLegacy.vue', () => {
 			expect(options.length).toBe(2);
 			expect(options[0]).toHaveTextContent('Currency');
 			expect(options[1]).toHaveTextContent('Value');
+		});
+
+		it('shows the new tag only in the option that the node version added', () => {
+			const { getAllByTestId } = renderComponent({
+				global: {
+					provide: {
+						[NodeVersionNewParameterKey as symbol]: (path: string) =>
+							path === 'parameters.additionalFields.currency',
+					},
+				},
+			});
+
+			const [currency, value] = getAllByTestId('collection-parameter-option');
+			expect(within(currency).getByTestId('parameter-new-tag')).toBeInTheDocument();
+			expect(within(value).queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
 		});
 
 		it('emits valueChanged event when selecting an option', async () => {

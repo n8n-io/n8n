@@ -12,9 +12,18 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	inject,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 
-import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
+import { BASE_NODE_SURVEY_URL, NodeVersionNewParameterKey, VIEWS } from '@/app/constants';
 
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -44,7 +53,10 @@ import {
 } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { useNodeVersionPickerFlag } from '@/features/ndv/settings/composables/useNodeVersionPickerFlag';
-import { getNodeVersionChoices } from '@/features/ndv/settings/nodeVersionPicker.utils';
+import {
+	getNewParameterPaths,
+	getNodeVersionChoices,
+} from '@/features/ndv/settings/nodeVersionPicker.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -263,6 +275,24 @@ const isVersionPickerDisabled = computed(() => isReadOnly.value || isRestricted.
 const versionChange = computed(() =>
 	node.value ? ndvStore.value.nodeVersionChanges[node.value.id] : undefined,
 );
+
+const newParameterPaths = computed(() => {
+	if (!isVersionPickerEnabled.value || !versionChange.value || !node.value || !nodeType.value) {
+		return new Set<string>();
+	}
+	const { fromVersion } = versionChange.value;
+	const oldType = nodeTypesStore.getNodeType(node.value.type, fromVersion);
+	if (!oldType) return new Set<string>();
+
+	// The prefix is required: the node settings list has no prefix and must never match.
+	return new Set(
+		getNewParameterPaths(oldType, fromVersion, nodeType.value, node.value.typeVersion).map(
+			(path) => `parameters.${path}`,
+		),
+	);
+});
+
+provide(NodeVersionNewParameterKey, (path) => newParameterPaths.value.has(path));
 
 const hasNewerVersion = computed(() => {
 	const { latest } = versionChoices.value;

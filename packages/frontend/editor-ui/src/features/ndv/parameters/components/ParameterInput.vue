@@ -46,6 +46,7 @@ import type { CodeNodeLanguageOption } from '@/features/shared/editors/component
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/features/credentials/components/CredentialsSelect.vue';
 import ExpressionEditModal from './ExpressionEditModal.vue';
+import ParameterNewTag from './ParameterNewTag.vue';
 import ExpressionParameterInput from './ExpressionParameterInput.vue';
 import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEditor.vue';
 import InlineExpressionTip from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionTip.vue';
@@ -78,6 +79,7 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	NodeVersionNewParameterKey,
 	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
@@ -193,6 +195,8 @@ const emit = defineEmits<{
 
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
+// Checked here so that a dropdown option only mounts a tag when it is new.
+const isNewParameter = inject(NodeVersionNewParameterKey, undefined);
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const workflowHelpers = useWorkflowHelpers();
@@ -2150,7 +2154,12 @@ onUpdated(async () => {
 							class="option-headline"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
-							{{ getOptionsOptionDisplayName(option) }}
+							{{ getOptionsOptionDisplayName(option)
+							}}<ParameterNewTag
+								v-if="isNewParameter?.(`${path}=${option.value}`)"
+								class="option-new-tag"
+								:path="`${path}=${option.value}`"
+							/>
 						</div>
 						<div
 							v-if="option.description"
@@ -2185,7 +2194,14 @@ onUpdated(async () => {
 					:label="getOptionsOptionDisplayName(option)"
 				>
 					<div class="list-option">
-						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+						<div class="option-headline">
+							{{ getOptionsOptionDisplayName(option)
+							}}<ParameterNewTag
+								v-if="isNewParameter?.(`${path}=${option.value}`)"
+								class="option-new-tag"
+								:path="`${path}=${option.value}`"
+							/>
+						</div>
 						<div
 							v-if="option.description"
 							v-n8n-html="getOptionsOptionDescription(option)"
@@ -2373,6 +2389,10 @@ onUpdated(async () => {
 		font-weight: var(--font-weight--medium);
 		line-height: var(--line-height--md);
 		overflow-wrap: break-word;
+	}
+
+	.option-new-tag {
+		margin-inline-start: var(--spacing--3xs);
 	}
 
 	.option-description {

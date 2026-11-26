@@ -75,6 +75,9 @@ const onLabelClick = (event: MouseEvent) => {
 							{{ label }}
 							<N8nText v-if="required" color="danger" :bold="bold" :size="size">*</N8nText>
 						</N8nText>
+						<span v-if="$slots.labelSuffix" :class="$style.labelSuffix">
+							<slot name="labelSuffix" />
+						</span>
 					</div>
 					<span
 						v-if="tooltipText && label"
@@ -196,6 +199,20 @@ const onLabelClick = (event: MouseEvent) => {
 
 	> * {
 		white-space: nowrap;
+	}
+}
+
+.labelSuffix {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	margin-inline-start: var(--spacing--3xs);
+	// Keeps a badge from growing the label row
+	margin-block: calc(-1 * var(--spacing--5xs));
+
+	// A consumer can pass the slot and render nothing in it
+	&:empty {
+		display: none;
 	}
 }
 

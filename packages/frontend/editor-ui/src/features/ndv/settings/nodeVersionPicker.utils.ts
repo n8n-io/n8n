@@ -1,4 +1,5 @@
 import {
+	NodeHelpers,
 	isINodeProperties,
 	isINodePropertyCollection,
 	isINodePropertyOptions,
@@ -90,4 +91,16 @@ export function formatVersionChangeValue(
 	}
 
 	return String(value);
+}
+
+/**
+ * Returns the lookup keys of what the new version adds: a parameter path such as `options.timeout`,
+ * or `path=value` for a new dropdown value.
+ */
+export function getNewParameterPaths(
+	...args: Parameters<typeof NodeHelpers.getNodeVersionAdditions>
+): string[] {
+	return NodeHelpers.getNodeVersionAdditions(...args).map((addition) =>
+		addition.kind === 'parameter' ? addition.path : `${addition.path}=${addition.value}`,
+	);
 }

@@ -1,8 +1,9 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { MASK } from '@/app/utils/maskSecret';
 import {
 	collectPasswordNames,
 	formatVersionChangeValue,
+	getNewParameterPaths,
 	getNodeVersionChoices,
 } from './nodeVersionPicker.utils';
 
@@ -190,5 +191,30 @@ describe('formatVersionChangeValue', () => {
 				new Set(['secret']),
 			),
 		).toBe(`{"header":[{"name":"X-Key","secret":"${MASK}"}]}`);
+	});
+});
+
+describe('getNewParameterPaths', () => {
+	it('returns a path for a new parameter and `path=value` for a new dropdown value', () => {
+		const resource = (values: string[]): INodeProperties => ({
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			default: values[0],
+			options: values.map((value) => ({ name: value, value })),
+		});
+		const added: INodeProperties = {
+			displayName: 'Added',
+			name: 'added',
+			type: 'string',
+			default: '',
+		};
+		const oldType = { name: 'test', properties: [resource(['a'])] } as INodeTypeDescription;
+		const newType = {
+			name: 'test',
+			properties: [resource(['a', 'b']), added],
+		} as INodeTypeDescription;
+
+		expect(getNewParameterPaths(oldType, 1, newType, 2)).toEqual(['resource=b', 'added']);
 	});
 });

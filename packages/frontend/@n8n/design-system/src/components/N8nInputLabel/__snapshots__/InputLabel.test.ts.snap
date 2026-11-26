@@ -26,6 +26,7 @@ exports[`component > Text overflow behavior > displays ellipsis with options 1`]
               <!--v-if-->
               
             </span>
+            <!--v-if-->
           </div>
           <!--v-if-->
         </div>
@@ -71,6 +72,7 @@ exports[`component > Text overflow behavior > displays full text without options
               <!--v-if-->
               
             </span>
+            <!--v-if-->
           </div>
           <!--v-if-->
         </div>

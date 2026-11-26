@@ -9,6 +9,12 @@ import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
+import { NodeVersionNewParameterKey } from '@/app/constants';
+
+const collectionOverhaul = vi.hoisted(() => ({ isEnabled: { value: false } }));
+vi.mock('@/app/composables/useCollectionOverhaul', () => ({
+	useCollectionOverhaul: () => collectionOverhaul,
+}));
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -303,6 +309,52 @@ describe('ParameterInputFull.vue', () => {
 	// Guards the three capability reads in this component. Each test pairs a baseline
 	// with the flag set, so reverting a read back to the literal
 	// `isResourceLocator` list flips the flagged case and fails here.
+	describe('new parameter tag', () => {
+		const provide = {
+			[NodeVersionNewParameterKey as symbol]: (path: string) => path === 'parameters.myParam',
+		};
+
+		afterEach(() => {
+			collectionOverhaul.isEnabled.value = false;
+		});
+
+		it.each([
+			['a string parameter', 'string', ''],
+			['a boolean parameter with the inline switch', 'boolean', false],
+		] as const)('shows the tag on the label of %s', (_, type, value) => {
+			collectionOverhaul.isEnabled.value = true;
+			const parameter = createTestNodeProperties({
+				displayName: 'My Param',
+				name: 'myParam',
+				type,
+			});
+
+			const tagged = renderComponent({
+				props: { path: 'parameters.myParam', value, parameter },
+				global: { provide },
+			});
+			expect(tagged.getByText('My Param').parentElement).toContainElement(
+				tagged.getByTestId('parameter-new-tag'),
+			);
+			tagged.unmount();
+
+			const other = renderComponent({
+				props: { path: 'parameters.options.myParam', value, parameter },
+				global: { provide },
+			});
+			expect(other.queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
+		});
+
+		it('shows no tag when the label is hidden', () => {
+			const { queryByTestId } = renderComponent({
+				props: { path: 'parameters.myParam', hideLabel: true },
+				global: { provide },
+			});
+
+			expect(queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('module-contributed capabilities', () => {
 		const contributedInput = { render: () => null };
 

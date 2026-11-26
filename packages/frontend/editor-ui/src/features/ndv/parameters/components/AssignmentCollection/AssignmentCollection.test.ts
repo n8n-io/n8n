@@ -10,6 +10,7 @@ import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
+import { NodeVersionNewParameterKey } from '@/app/constants';
 
 vi.mock('vue-router');
 
@@ -81,6 +82,21 @@ async function dropAssignment({
 }
 
 describe('AssignmentCollection.vue', () => {
+	it('shows the new tag on the label of a parameter that the node version added', () => {
+		const provide = (newPath: string) => ({
+			[NodeVersionNewParameterKey as symbol]: (path: string) => path === newPath,
+		});
+
+		const tagged = renderComponent({ global: { provide: provide('parameters.fields') } });
+		expect(tagged.getByText('Fields To Set').parentElement).toContainElement(
+			tagged.getByTestId('parameter-new-tag'),
+		);
+		tagged.unmount();
+
+		const other = renderComponent({ global: { provide: provide('parameters.other') } });
+		expect(other.queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});

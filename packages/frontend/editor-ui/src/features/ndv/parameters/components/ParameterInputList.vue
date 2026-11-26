@@ -37,6 +37,7 @@ import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
 import FilterConditions from './FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from './ImportCurlParameter.vue';
 import MultipleParameter from './MultipleParameter.vue';
+import ParameterNewTag from './ParameterNewTag.vue';
 import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
@@ -884,6 +885,7 @@ watch(
 					:input-name="item.parameter.name"
 					color="text-dark"
 				>
+					<template #labelSuffix><ParameterNewTag :path="item.path" /></template>
 					<template
 						v-if="showIssuesInLabelFor.includes(item.parameter.type) && item.issues.length > 0"
 						#issues

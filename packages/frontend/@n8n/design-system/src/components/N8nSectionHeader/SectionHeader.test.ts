@@ -61,4 +61,15 @@ describe('N8nSectionHeader', () => {
 		const actionsContainer = container.querySelector('[class*="actions"]');
 		expect(actionsContainer).not.toBeInTheDocument();
 	});
+
+	it('renders titleSuffix slot content after the title', () => {
+		render(N8nSectionHeader, {
+			props: { title: 'Test Section' },
+			slots: { titleSuffix: '<span data-test-id="suffix">New</span>' },
+		});
+
+		expect(screen.getByTestId('section-header-title').nextElementSibling).toContainElement(
+			screen.getByTestId('suffix'),
+		);
+	});
 });
