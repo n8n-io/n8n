@@ -872,7 +872,13 @@ describe('NodeSettings', () => {
 					beforeMount: () => {
 						useNDVStore(
 							createWorkflowDocumentId(useWorkflowsStore().workflowId),
-						).setNodeVersionChange(node.id, { setAside: [], changedDefaults: [], fromVersion: 1 });
+						).setNodeVersionChange(node.id, {
+							setAside: [],
+							changedDefaults: [],
+							removedConnections: [],
+							droppedCredentials: [],
+							fromVersion: 1,
+						});
 					},
 				});
 				await findByTestId('tab-params');
@@ -980,6 +986,8 @@ describe('NodeSettings', () => {
 						changedDefaults: [
 							{ name: 'timeout', displayName: 'Timeout', oldDefault: 10, newDefault: 30 },
 						],
+						removedConnections: [],
+						droppedCredentials: [],
 						fromVersion: 1,
 					},
 				});

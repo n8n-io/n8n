@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { MASK } from '@/app/utils/maskSecret';
+import { getInactiveCredentials } from '@/app/utils/nodeTypesUtils';
 import type { NodeVersionChange } from '@/features/ndv/shared/ndv.types';
 import {
 	collectPasswordNames,
@@ -35,6 +36,23 @@ const hasIssues = computed(
 			props.nodeType,
 		) !== null,
 );
+
+// The entry stays on the node, so the line clears when the node uses the type again.
+const unusedCredentials = computed(() => {
+	const inactive = getInactiveCredentials(props.node, props.nodeType);
+
+	return props.change.droppedCredentials
+		.filter((type) => inactive.includes(type))
+		.map((type) => ({ type, name: props.node.credentials?.[type]?.name ?? type }));
+});
+
+const isDanger = computed(() => hasIssues.value || unusedCredentials.value.length > 0);
+
+const headlineKey = computed(() => {
+	if (hasIssues.value) return 'nodeSettings.versionChange.setHighlighted';
+	if (unusedCredentials.value.length > 0) return 'nodeSettings.versionChange.setAuthentication';
+	return 'nodeSettings.versionChange.allSet';
+});
 
 const oldType = computed(() =>
 	nodeTypesStore.getNodeType(props.node.type, props.change.fromVersion),
@@ -86,26 +104,19 @@ const changedDefaultRows = computed(() => {
 
 <template>
 	<N8nCallout
-		:theme="hasIssues ? 'danger' : 'success'"
+		:theme="isDanger ? 'danger' : 'success'"
 		iconless
 		aria-atomic="false"
 		data-test-id="node-version-change-banner"
 	>
 		<div :class="$style.content">
 			<N8nIcon
-				:icon="hasIssues ? 'triangle-alert' : 'circle-check'"
-				:class="[$style.icon, hasIssues ? $style.dangerIcon : $style.successIcon]"
+				:icon="isDanger ? 'triangle-alert' : 'circle-check'"
+				:class="[$style.icon, isDanger ? $style.dangerIcon : $style.successIcon]"
 			/>
 			<div :class="$style.body">
 				<div>
-					{{
-						i18n.baseText(
-							hasIssues
-								? 'nodeSettings.versionChange.setHighlighted'
-								: 'nodeSettings.versionChange.allSet',
-							{ interpolate: { version: String(node.typeVersion) } },
-						)
-					}}
+					{{ i18n.baseText(headlineKey, { interpolate: { version: String(node.typeVersion) } }) }}
 				</div>
 
 				<details
@@ -153,6 +164,41 @@ const changedDefaultRows = computed(() => {
 						</li>
 					</ul>
 				</details>
+
+				<details
+					v-if="change.removedConnections.length > 0"
+					:class="$style.bucket"
+					data-test-id="node-version-change-connections"
+				>
+					<summary :class="$style.summary">
+						{{
+							i18n.baseText('nodeSettings.versionChange.removedConnections.summary', {
+								adjustToNumber: change.removedConnections.length,
+								interpolate: { count: change.removedConnections.length },
+							})
+						}}
+						<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
+					</summary>
+					<ul :class="$style.rows" role="list">
+						<li v-for="(pair, index) in change.removedConnections" :key="index" :class="$style.row">
+							<span>{{ pair[0].node }}</span>
+							<span>→</span>
+							<span>{{ pair[1].node }}</span>
+						</li>
+					</ul>
+				</details>
+
+				<div
+					v-for="credential in unusedCredentials"
+					:key="credential.type"
+					data-test-id="node-version-change-unused-credential"
+				>
+					{{
+						i18n.baseText('nodeSettings.versionChange.unusedCredential', {
+							interpolate: { name: credential.name },
+						})
+					}}
+				</div>
 
 				<div :class="$style.hint">{{ i18n.baseText('nodeSettings.versionChange.behavior') }}</div>
 			</div>

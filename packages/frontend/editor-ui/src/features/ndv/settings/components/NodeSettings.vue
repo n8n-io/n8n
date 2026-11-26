@@ -694,6 +694,7 @@ const applyNodeVersion = (targetVersion: number) => {
 		parameters: carriedParameters,
 		setAside,
 		changedDefaults,
+		droppedCredentials,
 	} = NodeHelpers.carryOverNodeParameters(
 		{ ...currentNode, parameters: savedParameters ?? {} },
 		currentType,
@@ -714,6 +715,8 @@ const applyNodeVersion = (targetVersion: number) => {
 		ndvStore.value.setNodeVersionChange(currentNode.id, {
 			setAside,
 			changedDefaults,
+			removedConnections: [],
+			droppedCredentials,
 			fromVersion: currentNode.typeVersion,
 		});
 	}
