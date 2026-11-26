@@ -232,6 +232,9 @@ and always pass the right `appId`.
 ## Publishing and access
 
 You cannot publish apps. Tell the user to publish with the Publish button of
-the app. Only members of the app's project who can view apps can open it. To
-give other users access, the user adds them to the project. An app cannot be
-open to the whole instance.
+the app. Only members of the app's project who can view apps can open it.
+Instance owners and admins can open every app. To give other users access to an
+app in a team project, the user adds them to that project. A personal project
+cannot have other members, so only its owner and the instance owners and admins
+can open its apps. To share such an app, build it in a team project. An app
+cannot be open to the whole instance.
