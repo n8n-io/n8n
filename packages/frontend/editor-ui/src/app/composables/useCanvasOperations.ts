@@ -46,7 +46,6 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 } from '@/app/constants';
 import {
@@ -3358,19 +3357,28 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId
-					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const previousWebhookId = node.webhookId;
-						const pathMatchedWebhookId = node.parameters.path === previousWebhookId;
-						const optionsPathMatchedWebhookId =
-							(node.parameters.options as IDataObject)?.path === previousWebhookId;
+					// A caller that keeps node ids is restoring the nodes as they were, so only then does the webhookId stay.
+					if (regenerateIds && node.webhookId) {
+						// Whether a type declares webhooks does not change between versions, so the newest description will do.
+						const nodeTypeDescription =
+							nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+							nodeTypesStore.getNodeType(node.type);
 
-						nodeHelpers.assignWebhookId(node);
+						if (nodeTypeDescription?.webhooks?.length) {
+							const previousWebhookId = node.webhookId;
+							node.parameters = node.parameters ?? {};
+							const parameters = node.parameters as IDataObject;
+							const pathMatchedWebhookId = parameters.path === previousWebhookId;
+							const optionsPathMatchedWebhookId =
+								(parameters.options as IDataObject)?.path === previousWebhookId;
 
-						if (pathMatchedWebhookId) {
-							node.parameters.path = node.webhookId;
-						} else if (optionsPathMatchedWebhookId) {
-							(node.parameters.options as IDataObject).path = node.webhookId;
+							nodeHelpers.assignWebhookId(node);
+
+							if (pathMatchedWebhookId) {
+								parameters.path = node.webhookId;
+							} else if (optionsPathMatchedWebhookId) {
+								(parameters.options as IDataObject).path = node.webhookId;
+							}
 						}
 					}
 

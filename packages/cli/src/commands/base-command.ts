@@ -103,6 +103,9 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
 
+	/** Whether to load the node and credential types. */
+	protected needsNodeTypes = true;
+
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
 	 * Only server processes hold the encryption key these are derived from.
@@ -126,7 +129,7 @@ export abstract class BaseCommand<F = never> {
 
 		this.nodeTypes = Container.get(NodeTypes);
 
-		await Container.get(LoadNodesAndCredentials).init();
+		if (this.needsNodeTypes) await Container.get(LoadNodesAndCredentials).init();
 		Container.get(NodeTypesProxy).registerProvider(this.nodeTypes);
 
 		const useRedisForLocking =

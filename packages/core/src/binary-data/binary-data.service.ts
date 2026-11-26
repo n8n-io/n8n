@@ -48,13 +48,18 @@ export class BinaryDataService {
 		// DB, S3, and Azure managers are set via `setManager()` from `cli`
 	}
 
-	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {
+	createSignedToken(
+		binaryData: IBinaryData,
+		expiresIn: TimeUnitValue = '1 day',
+		ownerWorkflowId?: string,
+	) {
 		if (!binaryData.id) {
 			throw new UnexpectedError('URL signing is not available for inline binary data');
 		}
 
 		const signingPayload: BinaryData.SigningPayload = {
 			id: binaryData.id,
+			...(ownerWorkflowId && { workflowId: ownerWorkflowId }),
 		};
 
 		const { signingSecret } = this.config;
@@ -64,7 +69,7 @@ export class BinaryDataService {
 	validateSignedToken(token: string) {
 		const { signingSecret } = this.config;
 		const signedPayload = jwt.verify(token, signingSecret) as BinaryData.SigningPayload;
-		return signedPayload.id;
+		return signedPayload;
 	}
 
 	async copyBinaryFile(
@@ -201,6 +206,7 @@ export class BinaryDataService {
 	async duplicateBinaryData(
 		location: BinaryData.FileLocation,
 		inputData: Array<INodeExecutionData[] | null>,
+		options: BinaryData.DuplicateOptions = {},
 	) {
 		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
@@ -209,7 +215,7 @@ export class BinaryDataService {
 						return await Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return await this.duplicateBinaryDataInExecData(location, executionData);
+									return await this.duplicateBinaryDataInExecData(location, executionData, options);
 								}
 
 								return executionData;
@@ -246,6 +252,7 @@ export class BinaryDataService {
 	private async duplicateBinaryDataInExecData(
 		location: BinaryData.FileLocation,
 		executionData: INodeExecutionData,
+		{ shouldDuplicate }: BinaryData.DuplicateOptions,
 	) {
 		const manager = this.managers[this.mode];
 
@@ -259,6 +266,10 @@ export class BinaryDataService {
 				const binaryDataId = executionData.binary[key].id;
 				if (!binaryDataId) {
 					return { key, newId: undefined };
+				}
+
+				if (shouldDuplicate && !(await shouldDuplicate(binaryDataId))) {
+					return { key, newId: binaryDataId };
 				}
 
 				const [_mode, fileId] = binaryDataId.split(':');

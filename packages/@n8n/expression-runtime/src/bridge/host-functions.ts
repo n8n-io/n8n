@@ -4,6 +4,7 @@ import {
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_VALUE_KEY,
+	unboxPrimitive,
 } from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 import { prepareForGuest } from './guest-transfer';
@@ -110,6 +111,49 @@ export function getArrayElement(
 	return toHostMetadata(arr[index]);
 }
 
+/** Own string keys of a boxed primitive other than a String's indices and `length`. */
+function ownFieldsOf(
+	value: object,
+	primitive: string | number | boolean | bigint,
+): { keys: string[]; hiddenKeys: string[] } {
+	const isString = typeof primitive === 'string';
+	const indexCount = isString ? primitive.length : 0;
+	const names = Object.getOwnPropertyNames(value);
+	if (names.length <= (isString ? indexCount + 1 : 0)) {
+		return { keys: [], hiddenKeys: [] };
+	}
+	const keys: string[] = [];
+	const hiddenKeys: string[] = [];
+	for (let i = indexCount; i < names.length; i++) {
+		const key = names[i];
+		if (isString && key === 'length') continue;
+		if (Object.getOwnPropertyDescriptor(value, key)?.enumerable === true) {
+			keys.push(key);
+		} else {
+			hiddenKeys.push(key);
+		}
+	}
+	return { keys, hiddenKeys };
+}
+
+/**
+ * Describe a boxed primitive without reading its own fields. Without own fields
+ * it goes across as it is. With own fields it goes across with their key lists,
+ * because a direct transfer copies only the primitive.
+ */
+function boxedPrimitiveToHostMetadata(
+	value: object,
+	primitive: string | number | boolean | bigint,
+): unknown {
+	const { keys, hiddenKeys } = ownFieldsOf(value, primitive);
+	if (keys.length === 0 && hiddenKeys.length === 0) {
+		return value;
+	}
+	return hiddenKeys.length === 0
+		? { __isBoxed: true, __value: value, __keys: keys }
+		: { __isBoxed: true, __value: value, __keys: keys, __hiddenKeys: hiddenKeys };
+}
+
 /** Describe objects and arrays without reading their contents. */
 export function toHostMetadata(value: unknown): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
@@ -135,10 +179,13 @@ export function toHostMetadata(value: unknown): unknown {
 	}
 
 	if (value !== null && typeof value === 'object') {
-		return {
-			__isObject: true,
-			__keys: Object.keys(value),
-		};
+		const primitive = unboxPrimitive(value);
+		return primitive === undefined
+			? {
+					__isObject: true,
+					__keys: Object.keys(value),
+				}
+			: boxedPrimitiveToHostMetadata(value, primitive);
 	}
 
 	return value;

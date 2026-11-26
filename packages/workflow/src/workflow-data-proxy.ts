@@ -9,7 +9,7 @@ import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
 import { UnexpectedError, UserError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
-import { isExpression } from './expressions/expression-helpers';
+import { isExpression, toParameterAdditionalKeys } from './expressions/expression-helpers';
 import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './expressions/removed-globals';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -345,6 +345,17 @@ export class WorkflowDataProxy {
 		};
 	}
 
+	private parameterAdditionalKeysCache?: IWorkflowDataProxyAdditionalKeys;
+
+	/**
+	 * Node parameters are author-owned. Their expressions resolve without the keys
+	 * only a node description may read, whatever keys the outer expression runs with.
+	 */
+	private get parameterAdditionalKeys() {
+		this.parameterAdditionalKeysCache ??= toParameterAdditionalKeys(this.additionalKeys);
+		return this.parameterAdditionalKeysCache;
+	}
+
 	/**
 	 * Returns a proxy which allows to query parameter data of a given node
 	 *
@@ -421,7 +432,7 @@ export class WorkflowDataProxy {
 							that.activeNodeName,
 							that.connectionInputData,
 							that.mode,
-							that.additionalKeys,
+							that.parameterAdditionalKeys,
 							that.executeData,
 							false,
 							{},

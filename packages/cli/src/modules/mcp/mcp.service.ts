@@ -616,6 +616,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
+			this.executionsConfig.maxDisplaySize,
 		);
 		registerIfAllowed(getExecutionTool);
 

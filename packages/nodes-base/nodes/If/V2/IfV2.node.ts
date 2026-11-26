@@ -2,6 +2,7 @@ import set from 'lodash/set';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -22,6 +23,7 @@ export class IfV2 implements INodeType {
 			...baseDescription,
 			version: [2, 2.1, 2.2, 2.3, 2.4],
 			iconColor: 'green',
+			annotations: READ_ONLY_ANNOTATIONS,
 			defaults: {
 				name: 'If',
 			},

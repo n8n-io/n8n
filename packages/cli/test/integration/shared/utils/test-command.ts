@@ -1,4 +1,5 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { CommandMetadata, type CommandClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import argvParser from 'yargs-parser';
@@ -15,6 +16,9 @@ export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 	process.exit = vi.fn() as never;
 
 	beforeAll(async () => {
+		// `BaseCommand.init()` starts the PostHog client when diagnostics are on. Keep it off
+		// so a command test reads feature flags from `featureFlags.override` only.
+		Container.get(GlobalConfig).diagnostics.enabled = false;
 		await testDb.init();
 		// A command's base init wires the real key manager, which needs an active
 		// data-encryption key. Seed it here as production does at startup.

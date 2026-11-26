@@ -9,6 +9,11 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROMOTION_PROJECT_ACCESS_SETTING_KEYS,
+	readPromotionProjectAccess,
+	getPromotionScopesOfProjectRoles,
 } from '@n8n/permissions';
 
 import { In } from '@n8n/typeorm';
@@ -158,6 +163,16 @@ export class AuthRolesService {
 		return scopes.filter((slug) => !denied.includes(slug));
 	}
 
+	private async getPromotionProjectRoleScopes(
+		roleSlug: typeof PROJECT_ADMIN_ROLE_SLUG | typeof PROJECT_EDITOR_ROLE_SLUG,
+		tx: EntityManager,
+	): Promise<string[]> {
+		const rows = await tx.findBy(Settings, {
+			key: In(Object.values(PROMOTION_PROJECT_ACCESS_SETTING_KEYS)),
+		});
+		return getPromotionScopesOfProjectRoles(readPromotionProjectAccess(rows))[roleSlug];
+	}
+
 	/**
 	 * Modifies the expected scopes for a role based on settings.
 	 * Uses a "closed first" approach: certain scopes are not in the base definition
@@ -174,6 +189,10 @@ export class AuthRolesService {
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
 			return this.removeCanvasOnlyPersonalOwnerScopes(scopes);
+		}
+
+		if (roleSlug === PROJECT_ADMIN_ROLE_SLUG || roleSlug === PROJECT_EDITOR_ROLE_SLUG) {
+			scopes.push(...(await this.getPromotionProjectRoleScopes(roleSlug, tx)));
 		}
 
 		return scopes;
