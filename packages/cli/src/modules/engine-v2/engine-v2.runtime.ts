@@ -151,6 +151,7 @@ export class EngineV2Runtime {
 		const retention = retentionPolicyFromHours({
 			enabled: this.executionsConfig.pruneData,
 			maxAgeHours: this.executionsConfig.pruneDataMaxAge,
+			maxCount: this.executionsConfig.pruneDataMaxCount,
 		});
 
 		this.engine = createEngineRuntime({
