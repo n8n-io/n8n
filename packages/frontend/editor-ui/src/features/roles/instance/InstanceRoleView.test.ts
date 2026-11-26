@@ -207,6 +207,25 @@ describe('InstanceRoleView', () => {
 			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
 		});
 
+		it('leaves the scopes of hidden resources out of the Admin preset', async () => {
+			// The Apps module and the MCP servers module are off in this test.
+			rolesStore.processedInstanceRoles = [
+				{ ...mockSystemRole, scopes: [...GLOBAL_ADMIN_SCOPES] },
+			] as typeof rolesStore.processedInstanceRoles;
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockCustomRole, slug: 'support' });
+			const { container, getByRole, getByTestId } = renderComponent();
+
+			await fillName(container, 'Support');
+			await waitFor(() => expect(getByTestId('role-preset-global:admin')).toBeInTheDocument());
+			await userEvent.click(getByTestId('role-preset-global:admin'));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const { scopes } = rolesStore.createRole.mock.calls[0][0];
+			expect(scopes).toContain('tag:create');
+			expect(scopes.filter((scope: string) => /^(app|mcpServer):/.test(scope))).toEqual([]);
+		});
+
 		it('populates scopes from a system-role preset', async () => {
 			const { getByTestId } = renderComponent();
 

@@ -13,6 +13,7 @@ import {
 	ALL_INSTANCE_SCOPES,
 	TOTAL_INSTANCE_PERMISSIONS,
 	countGrantedInstancePermissions,
+	countInstancePermissions,
 	getCoveredOptions,
 	getOptionState,
 	getPresetScopes,
@@ -583,6 +584,17 @@ describe('system roles', () => {
 		expect(GLOBAL_ADMIN_SCOPES).not.toContain('role:manageProject');
 		expect(optionsInState(GLOBAL_ADMIN_SCOPES, 'checked')).toHaveLength(TOTAL_INSTANCE_PERMISSIONS);
 		expect(countGrantedInstancePermissions(GLOBAL_ADMIN_SCOPES)).toBe(TOTAL_INSTANCE_PERMISSIONS);
+	});
+
+	it('leaves the options of hidden resources out of both counts', () => {
+		const hidden = new Set(['mcpServer']);
+		const mcpServerOptions = Object.keys(INSTANCE_SCOPE_GROUPS.mcpServer).length;
+
+		expect(countInstancePermissions()).toBe(TOTAL_INSTANCE_PERMISSIONS);
+		expect(countInstancePermissions(hidden)).toBe(TOTAL_INSTANCE_PERMISSIONS - mcpServerOptions);
+		expect(countGrantedInstancePermissions(GLOBAL_ADMIN_SCOPES, hidden)).toBe(
+			TOTAL_INSTANCE_PERMISSIONS - mcpServerOptions,
+		);
 	});
 
 	it('Chat resolves no option as indeterminate', () => {
