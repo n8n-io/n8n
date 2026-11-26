@@ -15,6 +15,7 @@ packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
   s_d8911b797fa494::t_4ba53eb2e519d1 1993-1994
 packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
   s_d8911b797fa494::t_730eebfb04aea4 19
+  s_88e49051a12369::t_7bdf57e01253d2 203
 packages/frontend/editor-ui/src/features/agents/utils/__tests__/token-count.test.ts
   s_d8911b797fa494::t_4b8febe2c874b3 2-18
 packages/frontend/editor-ui/src/features/agents/utils/token-count.ts
@@ -26,6 +27,14 @@ packages/frontend/editor-ui/src/features/agents/utils/token-count.ts
   "base_commit_sha": "8de1509841e1b4c456daa65c8ea151364817fe4c",
   "prompts": {},
   "sessions": {
+    "s_88e49051a12369": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a21944-3240-71f6-8a19-6924bc5aa7e5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_d8911b797fa494": {
       "agent_id": {
         "tool": "pi",
