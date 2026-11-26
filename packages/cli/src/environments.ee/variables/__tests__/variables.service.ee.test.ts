@@ -62,6 +62,20 @@ describe('VariablesService', () => {
 		},
 	];
 
+	it('rejects moving a variable into a scope that already has the same key', async () => {
+		const otherProject = mock<Project>({ id: 'project-2' });
+		const conflicting = mock<Variables>({
+			id: 'conflicting-id',
+			key: variable.key,
+			project: otherProject,
+		});
+		cacheService.get.mockResolvedValue([variable, conflicting]);
+
+		await expect(
+			variablesService.update(user, variable.id, { projectId: otherProject.id }),
+		).rejects.toThrow('already exists in the specified project');
+	});
+
 	it.each(actions)(
 		'$action passes the login id to the $eventName event',
 		async ({ run, eventName }) => {
