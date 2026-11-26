@@ -10,12 +10,13 @@ import { PromotionEnvironmentProjectRepository } from './database/repositories/p
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
 import { promotionHostBaseUrl, resolvePromotionGitRemote } from './git-hosts/git-host-remote';
 import { resolveStoredConfig } from './promotion-config-settings';
+import { PromotionSettingsService } from './promotion-settings.service';
 import type { PromotionOperationInput } from './promotions.types';
 
 /**
  * Turns a route into the immutable snapshot an operation runs on. Resolution
  * reads nothing but configuration: it never exports, imports, or claims ownership
- * of content.
+ * of content. It also decides which projects an environment covers.
  */
 @Service()
 export class PromotionEnvironmentResolver {
@@ -23,6 +24,7 @@ export class PromotionEnvironmentResolver {
 		private readonly environmentRepository: PromotionEnvironmentRepository,
 		private readonly linkRepository: PromotionEnvironmentProjectRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly settingsService: PromotionSettingsService,
 	) {}
 
 	/**
@@ -62,6 +64,17 @@ export class PromotionEnvironmentResolver {
 			);
 		}
 		return this.toOperationInput(environment, direction);
+	}
+
+	/**
+	 * The team projects with their own environment for a direction, which the instance
+	 * environment does not cover. Empty while project environments are off.
+	 */
+	async findProjectIdsOutsideInstanceEnvironment(
+		direction: PromotionDirection,
+	): Promise<Set<string>> {
+		if (!(await this.settingsService.isProjectEnvironmentsEnabled())) return new Set();
+		return new Set(await this.linkRepository.findProjectIdsWithOwnEnvironment(direction));
 	}
 
 	/**

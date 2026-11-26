@@ -290,7 +290,7 @@ async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	};
 }
 
-/** A full promotion writes every team project, so the review can span several of them. */
+/** A full promotion writes or removes several team projects, so the review can span several of them. */
 function projectIdsOf(...manifests: Array<PackageManifest | null>): string[] {
 	return [
 		...new Set(manifests.flatMap((manifest) => manifest?.projects?.map(({ id }) => id) ?? [])),

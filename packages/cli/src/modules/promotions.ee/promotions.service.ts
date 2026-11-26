@@ -61,6 +61,7 @@ import { projectHolding } from './branch-placement';
 import { crossProjectMoves, describePromotedMoves } from './cross-project-moves';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import {
+	appendProjectsMovedToOwnEnvironment,
 	buildInstancePromotionCommitMessage,
 	buildSelectionPromotionCommitMessage,
 } from './promotion-commit-message';
@@ -231,7 +232,10 @@ export class PromotionsService {
 		};
 	}
 
-	/** Exports every team project and pushes the package to the configured branch. */
+	/**
+	 * Exports every team project that the instance environment covers and pushes the package to
+	 * the configured branch.
+	 */
 	async promote(
 		environmentId: string,
 		actor: User,
@@ -266,16 +270,19 @@ export class PromotionsService {
 		const targetBranchName = target?.targetBranchName;
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-		await this.assertNoProjectMovesSinceBranch(
+		const branch = await this.readBasePlacements(
 			input,
 			branchName,
 			credentials,
 			target?.baseCommitSha,
 		);
+		await this.assertNoProjectMovesSinceBranch(branch);
 
-		// The instance environment covers every team project, including projects with
-		// their own environment. Personal projects stay out of scope.
-		const projectIds = await this.projectRepository.findTeamProjectIds();
+		const outside = await this.resolver.findProjectIdsOutsideInstanceEnvironment('promote');
+		const projectIds = (await this.projectRepository.findTeamProjectIds()).filter(
+			(id) => !outside.has(id),
+		);
+		const removedProjects = (branch?.projects ?? []).filter(({ id }) => outside.has(id));
 
 		this.logger.info('Exporting projects for a promotion', {
 			environmentId: input.environmentId,
@@ -307,12 +314,14 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
-			const commitMessage =
+			const commitMessage = appendProjectsMovedToOwnEnvironment(
 				request.commitMessage ??
-				buildInstancePromotionCommitMessage({
-					projectCount: projectIds.length,
-					workflowCount: exportResult.counts.workflows,
-				});
+					buildInstancePromotionCommitMessage({
+						projectCount: projectIds.length,
+						workflowCount: exportResult.counts.workflows,
+					}),
+				removedProjects,
+			);
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -343,7 +352,9 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				commitMessage: pushed.commitMessage,
-				promotionRunContents: { projectIds },
+				promotionRunContents: {
+					projectIds: [...projectIds, ...removedProjects.map(({ id }) => id)],
+				},
 			})),
 		};
 	}
@@ -1543,15 +1554,8 @@ export class PromotionsService {
 	 *   refuses moves between projects, so the destination would be stuck until it moves back. Only
 	 *   an item whose branch project still exists here is refused, because only it can move back.
 	 */
-	private async assertNoProjectMovesSinceBranch(
-		input: PromotionOperationInput,
-		branchName: string,
-		credentials: PromotionGitCredentials,
-		baseCommitSha?: string,
-	): Promise<void> {
-		const manifest = await this.readRemoteManifest(input, branchName, credentials, baseCommitSha);
-		if (manifest === null) return;
-		const branch = readBranchPlacements(manifest, BRANCH_MANIFEST_PATH);
+	private async assertNoProjectMovesSinceBranch(branch: BranchPlacements | null): Promise<void> {
+		if (branch === null) return;
 		if (branch.workflows.length === 0 && branch.folders.length === 0) return;
 
 		const [owners, folders, existingProjects] = await Promise.all([
@@ -1586,6 +1590,17 @@ export class PromotionsService {
 		if (refused.workflows.length > 0 || refused.folders.length > 0) {
 			throw new BadRequestError(describePromotedMoves(refused));
 		}
+	}
+
+	/** `null` when the branch holds no package. */
+	private async readBasePlacements(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+		baseCommitSha?: string,
+	): Promise<BranchPlacements | null> {
+		const manifest = await this.readRemoteManifest(input, branchName, credentials, baseCommitSha);
+		return manifest === null ? null : readBranchPlacements(manifest, BRANCH_MANIFEST_PATH);
 	}
 
 	/**

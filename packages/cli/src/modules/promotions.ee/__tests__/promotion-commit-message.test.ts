@@ -1,4 +1,5 @@
 import {
+	appendProjectsMovedToOwnEnvironment,
 	buildInstancePromotionCommitMessage,
 	buildSelectionPromotionCommitMessage,
 } from '../promotion-commit-message';
@@ -14,6 +15,17 @@ describe('buildInstancePromotionCommitMessage', () => {
 		expect(buildInstancePromotionCommitMessage({ projectCount: 1, workflowCount: 1 })).toBe(
 			'Promote instance: 1 project, 1 workflow',
 		);
+	});
+});
+
+describe('appendProjectsMovedToOwnEnvironment', () => {
+	it('names every removed project, also past the list cap of other sections', () => {
+		const projects = Array.from({ length: 51 }, (_, i) => ({ id: `p${i}`, name: `Project ${i}` }));
+
+		const message = appendProjectsMovedToOwnEnvironment('Release 42', projects);
+
+		expect(message).toContain('- Project 50 (p50)');
+		expect(message).not.toContain('more');
 	});
 });
 
