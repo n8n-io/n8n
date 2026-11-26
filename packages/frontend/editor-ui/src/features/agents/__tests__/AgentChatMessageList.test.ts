@@ -11,6 +11,7 @@ import type {
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
 import { computed } from 'vue';
 import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { createStoppedMessage } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	TEST_HOST_EVENT,
 	TEST_RESULT_TOOL_NAME,
@@ -1045,6 +1046,26 @@ describe('AgentChatMessageList', () => {
 				wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-idle-label'),
 			).toBeUndefined();
 		});
+	});
+
+	it.each([
+		['the generic label', undefined, 'agentSessions.stopped'],
+		['the label of the host', 'You stopped this run', 'You stopped this run'],
+	])('shows a stopped turn as a status line with %s', (_name, stoppedLabel, expected) => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'answer', executionId: 'exec-1', role: 'assistant', content: 'Partial answer' },
+					createStoppedMessage('exec-1'),
+				],
+				messagingState: 'idle',
+				stoppedLabel,
+			},
+		});
+
+		expect(
+			wrapper.findAll('[data-testid="agent-chat-stopped"]').map((line) => line.text()),
+		).toEqual([expected]);
 	});
 
 	it('renders thinking below standalone assistant output', () => {

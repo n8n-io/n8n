@@ -187,6 +187,7 @@ onMounted(async () => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/mixins';
 @use '../../css/mixins/motion';
 
 .chatScrollArea {
@@ -204,6 +205,15 @@ onMounted(async () => {
 	overflow-y: auto;
 	overflow-anchor: none;
 	outline: none;
+	// A thin thumb only, with no track background or borders.
+	@include mixins.scroll-bar;
+	// The default thumb is too faint on the light chat background. In dark mode this
+	// token is about as light as the default thumb.
+	scrollbar-color: var(--border-color--stronger) transparent;
+
+	&::-webkit-scrollbar-thumb {
+		background-color: var(--border-color--stronger);
+	}
 
 	&:focus-visible {
 		@include focus.focus-ring;

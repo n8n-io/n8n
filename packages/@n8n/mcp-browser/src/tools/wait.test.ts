@@ -51,12 +51,6 @@ describe('createWaitTools', () => {
 				expect(() => getTool().inputSchema.parse({ loadState: 'complete' })).toThrow();
 			});
 
-			it('accepts predicate', () => {
-				expect(() =>
-					getTool().inputSchema.parse({ predicate: 'document.title === "Ready"' }),
-				).not.toThrow();
-			});
-
 			it('accepts text', () => {
 				expect(() => getTool().inputSchema.parse({ text: 'Welcome' })).not.toThrow();
 			});
@@ -88,7 +82,6 @@ describe('createWaitTools', () => {
 					selector: '#content',
 					url: '**/page',
 					loadState: 'networkidle' as const,
-					predicate: 'true',
 					text: 'Ready',
 					timeoutMs: 5000,
 				};
@@ -100,7 +93,6 @@ describe('createWaitTools', () => {
 					selector: '#content',
 					url: '**/page',
 					loadState: 'networkidle',
-					predicate: 'true',
 					text: 'Ready',
 					timeoutMs: 5000,
 				});
@@ -115,7 +107,6 @@ describe('createWaitTools', () => {
 					selector: undefined,
 					url: undefined,
 					loadState: undefined,
-					predicate: undefined,
 					text: undefined,
 					timeoutMs: undefined,
 				});
@@ -125,6 +116,17 @@ describe('createWaitTools', () => {
 				await getTool().execute({ pageId: 'page5' }, TOOL_CONTEXT);
 
 				expect(mockConnection.adapter.wait).toHaveBeenCalledWith('page5', expect.any(Object));
+			});
+
+			it('does not pass a predicate to the adapter', async () => {
+				const input = getTool().inputSchema.parse({ predicate: 'true', selector: '#content' });
+
+				await getTool().execute(input, TOOL_CONTEXT);
+
+				expect(mockConnection.adapter.wait).toHaveBeenCalledWith(
+					'page1',
+					expect.not.objectContaining({ predicate: expect.anything() }),
+				);
 			});
 		});
 	});
