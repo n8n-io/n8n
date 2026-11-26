@@ -419,6 +419,20 @@ describe('readBatchAtPath with the character budget of an evaluation', () => {
 				readItems([{ id: 1, big: 'x'.repeat(200) }], 0, 0, ['id', 'big'], budget),
 			chars: 118,
 		},
+		{
+			label: 'array items, with a start item that does not go across',
+			read: (budget: BatchReadBudget) =>
+				readItems([{ nums: [1, 2, 3], at: new Date(0) }], 0, 0, WHOLE_VALUES, budget),
+			// The object 8, `nums` 4 + 8 + 3 x 8, and `at` 2 + 8 until the walk stops at the Date.
+			chars: 54,
+		},
+		{
+			label: 'array items, with a later item that does not go across',
+			read: (budget: BatchReadBudget) =>
+				readItems([1, { at: new Date(0) }], 0, 0, SMALL_VALUES, budget),
+			// The later item is the start of the next read, which counts it.
+			chars: 8,
+		},
 	])('takes the characters of a read of $label from the budget', ({ read, chars }) => {
 		const budget = { remaining: 1000 };
 

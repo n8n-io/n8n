@@ -134,6 +134,8 @@ function wholeItemsFrom(
 		const maxChars = index === start ? childChars : Math.min(childChars, remaining);
 		const item = maxChars > 0 ? wholeChild(items, String(index), maxChars) : NO_COPY;
 		if (item.copy === undefined) {
+			// A later item that does not go across starts the next read, which counts it.
+			if (index === start) remaining -= item.chars;
 			break;
 		}
 		remaining -= item.chars;
