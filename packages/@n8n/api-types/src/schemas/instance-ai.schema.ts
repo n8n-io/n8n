@@ -1860,6 +1860,11 @@ export const instanceAiAgentPreviewHandoffContextSchema = z.object({
 	agentId: z.string().min(1).max(128),
 	threadId: z.string().min(1).max(128),
 	executionId: z.string().min(1).max(64).optional(),
+	/**
+	 * More sessions of the same agent for the Assistant to read with `agent-context`.
+	 * Includes `threadId` when set. Used to diagnose several flagged sessions in one turn.
+	 */
+	threadIds: z.array(z.string().min(1).max(128)).min(1).max(50).optional(),
 	/** Display-only — the target agent's name, surfaced in the context chip. */
 	agentName: z.string().max(128).optional(),
 	/** Display-only — the target agent's personalisation icon, surfaced in the context chip. */

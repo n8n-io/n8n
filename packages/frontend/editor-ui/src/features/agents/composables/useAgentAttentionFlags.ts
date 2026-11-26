@@ -30,11 +30,6 @@ export function useAgentAttentionFlags(
 		await dismiss(flags.value.filter((flag) => flag.sessionId === sessionId));
 	}
 
-	/** Dismisses every flag in the current list. Flags that arrive later stay visible. */
-	async function dismissAllSessions() {
-		await dismiss([...flags.value]);
-	}
-
 	return {
 		flags,
 		count,
@@ -43,6 +38,5 @@ export function useAgentAttentionFlags(
 		isFlagged,
 		dismiss,
 		dismissSession,
-		dismissAllSessions,
 	};
 }

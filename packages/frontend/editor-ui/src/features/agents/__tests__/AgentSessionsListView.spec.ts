@@ -59,7 +59,6 @@ vi.mock('../composables/useAgentAttentionFlags', async () => {
 			isFlagged: () => false,
 			dismiss: vi.fn(),
 			dismissSession: vi.fn(),
-			dismissAllSessions: vi.fn(),
 		}),
 	};
 });

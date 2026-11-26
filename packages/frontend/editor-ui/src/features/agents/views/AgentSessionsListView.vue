@@ -94,7 +94,7 @@ const {
 	flags: attentionFlags,
 	flaggedSessionIds,
 	count: flaggedSessionCount,
-	dismissAllSessions: dismissAll,
+	dismiss: dismissFlags,
 } = useAgentAttentionFlags(projectId, agentId);
 const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate, sessionIds } = sessionsStore.filters;
@@ -150,19 +150,55 @@ async function onFlagCardAction(actionId: string) {
 
 	if (actionId !== FLAG_CARD_ACTION.dismiss) return;
 	try {
-		await dismissAll();
+		await dismissFlags([...attentionFlags.value]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agentSessions.flagCard.showError.dismiss'));
 	}
 }
 
-function sendFlaggedSessionsToAssistant() {
-	if (!hasAssistantEnabled.value || hasSentToAssistant.value) return;
-	/**
-	 * TODO: Send the flagged sessions to the Assistant. The handoff context binds one session,
-	 * and get-session reads only that transcript. Decide the shape for several sessions first.
-	 * Set hasSentToAssistant to true after the handoff succeeds.
-	 */
+/**
+ * Hand all flagged sessions to the Assistant in one turn. The first session fills the
+ * context chip. The Assistant reads each session in `threadIds` with `agent-context`,
+ * finds the shared root cause, and fixes the agent.
+ * After a successful hand-off, dismiss the flags that were sent. The sessions stay, and
+ * flags that arrive later stay visible.
+ */
+async function sendFlaggedSessionsToAssistant() {
+	if (!sessionAssistant || !hasAssistantEnabled.value || hasSentToAssistant.value) return;
+
+	const sentFlags = [...attentionFlags.value];
+	const threadIds = [...flaggedSessionIds.value];
+	const [firstThreadId] = threadIds;
+	if (!firstThreadId) return;
+
+	const firstThread = sessionsStore.threads.find(({ id }) => id === firstThreadId);
+	try {
+		const handed = await sessionAssistant.handoff({
+			projectId: projectId.value,
+			agentId: agentId.value,
+			threadId: firstThreadId,
+			threadIds,
+			agentName: firstThread?.agentName,
+			initialDraft: {
+				text: i18n.baseText('agentSessions.flagCard.fixPrompt', {
+					adjustToNumber: threadIds.length,
+					interpolate: { count: String(threadIds.length) },
+				}),
+				prefillType: 'handoff_agent_change_request',
+			},
+		});
+		if (!handed) return;
+		hasSentToAssistant.value = true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
+		return;
+	}
+
+	try {
+		await dismissFlags(sentFlags);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.flagCard.showError.dismiss'));
+	}
 }
 
 /** Keep each label until its session leaves reasoning. Polls must not replace it. */
