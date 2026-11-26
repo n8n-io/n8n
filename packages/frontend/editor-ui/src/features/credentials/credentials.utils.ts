@@ -147,3 +147,13 @@ export function isCredentialTypeSupported(
 export function hasAutomaticOAuthApp(credentialType: ICredentialType | undefined): boolean {
 	return !!credentialType?.dynamicClientRegistration && !hasManagedOAuthApp(credentialType);
 }
+
+/**
+ * SPIKE (API-663): a credential type that the instance builds at run time. No record is
+ * stored, so the editor shows it as a fixed, disabled value.
+ */
+export function isSystemManagedCredentialType(credentialType?: object | null): boolean {
+	return (
+		!!credentialType && 'systemManaged' in credentialType && credentialType.systemManaged === true
+	);
+}

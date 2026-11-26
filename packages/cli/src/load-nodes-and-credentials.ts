@@ -52,6 +52,7 @@ import {
 } from '@/errors/response-errors/credential-type-conflict.error';
 import { defaultDiscriminators, getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
+import { applyManagedCredentialToTypes } from '@/spike-managed-credential-types';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -746,6 +747,8 @@ export class LoadNodesAndCredentials {
 		this.injectCustomApiCallOptions();
 
 		this.injectContextEstablishmentHooks();
+
+		applyManagedCredentialToTypes(this.types);
 
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();

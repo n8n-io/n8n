@@ -1,3 +1,4 @@
+import { isManagedCredentialMode } from '@/spike-managed-credential-types';
 import { NODE_ID_MAX_LENGTH, isNodeIdTooLong } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
@@ -126,7 +127,10 @@ export class WorkflowValidationService {
 					if (!executable.has(node.name)) continue;
 
 					const nodeIssues: string[] = [];
-					const credentialIssues = validateNodeCredentials(node, nodeType);
+					// SPIKE (API-663): in managed mode n8n builds every credential at run time.
+					const credentialIssues = isManagedCredentialMode()
+						? []
+						: validateNodeCredentials(node, nodeType);
 
 					// Convert credential issues to error messages
 					for (const issue of credentialIssues) {
