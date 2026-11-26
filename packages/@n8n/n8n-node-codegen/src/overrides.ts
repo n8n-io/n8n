@@ -1,8 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { loadModule } from './parse';
-
 const fieldsSchema = z.record(z.custom<Partial<INodeProperties>>());
 
 const entrySchema = z
@@ -18,7 +16,7 @@ const overridesSchema = z
 	.object({ '*': z.object({ fields: fieldsSchema }).strict().optional() })
 	.catchall(entrySchema);
 
-const moduleSchema = z.object({
+export const overridesModuleSchema = z.object({
 	overrides: overridesSchema,
 	defaultResource: z.string().optional(),
 });
@@ -26,6 +24,3 @@ const moduleSchema = z.object({
 export type OverridesEntry = z.infer<typeof entrySchema>;
 
 export type Overrides = z.infer<typeof overridesSchema>;
-
-export const loadOverrides = async (file: string) =>
-	await loadModule({ file, schema: moduleSchema, subject: 'the overrides' });

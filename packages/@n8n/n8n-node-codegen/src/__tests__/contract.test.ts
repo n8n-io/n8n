@@ -1,54 +1,32 @@
 import { buildProperties } from '../build-properties';
-import { compareOperations, findBreakingChanges } from '../contract';
+import { compareOperations, findBreakingChanges, loadProperties } from '../contract';
 import { N8N_NODE_CONFIG } from '../n8n-node.config';
-import type { ApiParameter, OperationRow, Schema } from '../types';
-import { parameter, row } from './fixtures';
+import type { OperationRow } from '../types';
+import {
+	asDefault,
+	getTag,
+	getWorkflow,
+	levels,
+	locator,
+	nodes,
+	optional,
+	required,
+	row,
+	workflowId,
+} from './fixtures';
 
 const node = (rows: OperationRow[], defaultResource = 'workflow') =>
 	buildProperties(rows, N8N_NODE_CONFIG.spec, defaultResource);
-
-const required = (name: string, schema: Schema = {}) =>
-	parameter(name, { required: true, schema: { type: 'string', ...schema } });
-
-const optional = (name: string, schema: Schema = {}) =>
-	parameter(name, { schema: { type: 'string', ...schema } });
-
-const workflowId = parameter('workflowId', { location: 'path', required: true });
-
-const locator = (...modes: string[]): OperationRow['fields'] => ({
-	workflowId: {
-		type: 'resourceLocator',
-		default: { mode: 'id', value: '' },
-		modes: modes.map((name) => ({ displayName: name, name, type: 'string' })),
-	},
-});
-
-const levels = (...values: Array<string | number>): OperationRow['fields'] => ({
-	level: {
-		type: 'options',
-		default: values[0],
-		options: values.map((value) => ({ name: String(value), value })),
-	},
-});
-
-const nodes = (type: 'array' | 'object') =>
-	parameter('nodes', { location: 'body', required: true, schema: { type } });
-
-const getWorkflow = (parameters: ApiParameter[] = [], fields: OperationRow['fields'] = {}) =>
-	row('getWorkflow', { apiPath: '/workflows/{workflowId}', parameters }, fields);
-
-const getTag: OperationRow = { ...row('getTag'), resource: { id: 'tag', displayName: 'Tag' } };
-
-const asDefault = (operation: OperationRow): OperationRow => ({ ...operation, isDefault: true });
 
 interface Case {
 	when: string;
 	base: OperationRow[];
 	current: OperationRow[];
+	expected?: string[];
 }
 
 describe('findBreakingChanges', () => {
-	it.each<Case & { expected: string[] }>([
+	it.each<Case>([
 		{
 			when: 'an operation is gone',
 			base: [row('deleteWorkflow'), getWorkflow()],
@@ -260,5 +238,13 @@ describe('compareOperations', () => {
 		const current = node([getWorkflow()]);
 
 		expect(compareOperations(current, current)).toEqual({ added: [], removed: [] });
+	});
+});
+
+describe('loadProperties', () => {
+	it('should read the operations from the committed node file', async () => {
+		const committed = await loadProperties(N8N_NODE_CONFIG.outputFile);
+
+		expect(compareOperations([], committed).added).toContain('workflow / getWorkflows');
 	});
 });

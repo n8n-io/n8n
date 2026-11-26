@@ -2,7 +2,8 @@ import type { INodeProperties } from 'n8n-workflow';
 import { readFile } from 'node:fs/promises';
 
 import { buildProperties, renderProperties } from './build-properties';
-import { loadOverrides } from './overrides';
+import { overridesModuleSchema } from './overrides';
+import { loadModule } from './parse';
 import { formatReport } from './report';
 import { resolveOperations } from './resolve-operations';
 import { parseYaml } from './spec/parse-yaml';
@@ -27,7 +28,11 @@ async function loadSpec(config: GenerateConfig): Promise<Spec> {
 export async function generate(config: GenerateConfig): Promise<GenerateResult> {
 	const [spec, { overrides, defaultResource }] = await Promise.all([
 		loadSpec(config),
-		loadOverrides(config.overridesFile),
+		loadModule({
+			file: config.overridesFile,
+			schema: overridesModuleSchema,
+			subject: 'the overrides',
+		}),
 	]);
 	const { rows, errors } = resolveOperations(spec, overrides, defaultResource);
 	const inNode = rows.filter((row) => row.excludeReason === undefined);

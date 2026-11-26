@@ -1,4 +1,3 @@
-import { compareOperations, loadProperties } from '../contract';
 import { generate } from '../generate';
 import { N8N_NODE_CONFIG } from '../n8n-node.config';
 
@@ -10,12 +9,4 @@ describe('generate', () => {
 		expect(errors).toEqual([]);
 		expect(content).toContain('export const properties: INodeProperties[] = ');
 	}, 60_000);
-});
-
-describe('loadProperties', () => {
-	it('should read the operations from the committed node file', async () => {
-		const committed = await loadProperties(N8N_NODE_CONFIG.outputFile);
-
-		expect(compareOperations([], committed).added).toContain('workflow / getWorkflows');
-	});
 });
