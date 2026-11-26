@@ -211,6 +211,21 @@ describe('McpClient — connection failure handling', () => {
 		]);
 	});
 
+	it('includes the HTTP status in connection failure messages', async () => {
+		clientConnect.mockRejectedValueOnce(
+			Object.assign(new Error('Error POSTing to endpoint:'), { code: 503 }),
+		);
+		const client = new McpClient([
+			{ name: 'http_mcp', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+
+		await client.listTools();
+
+		expect(client.getConnectionFailures()).toEqual([
+			{ server: 'http_mcp', error: 'HTTP 503: Error POSTing to endpoint:' },
+		]);
+	});
+
 	it('invokes onConnectionFailed for each failing server', async () => {
 		clientConnect.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('boom'));
 

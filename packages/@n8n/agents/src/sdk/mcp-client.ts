@@ -4,10 +4,16 @@ import type { McpConnectionFailedEvent, McpServerConfig, McpVerifyResult } from 
 import type { BuiltTool } from '../types/sdk/tool';
 
 function formatErrorWithCause(error: unknown): string {
-	const stringify = (obj: unknown) => (obj instanceof Error ? obj.message : String(obj));
+	const stringify = (obj: unknown) => {
+		const base = obj instanceof Error ? obj.message : String(obj);
+		// Streamable HTTP errors keep the status in `code`; without it, 429 and
+		// 503 with the same body look identical to the agent and the user.
+		const code = (obj as { code?: unknown } | null)?.code;
+		return typeof code === 'number' ? `HTTP ${code}: ${base}` : base;
+	};
 	if (!(error instanceof Error)) return stringify(error);
 
-	const messages: string[] = [error.message];
+	const messages: string[] = [stringify(error)];
 	if (error.cause) {
 		messages.push(stringify(error.cause));
 	}
