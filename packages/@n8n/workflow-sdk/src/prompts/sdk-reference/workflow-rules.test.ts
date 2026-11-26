@@ -8,6 +8,10 @@ describe('WORKFLOW_RULES', () => {
 		expect(WORKFLOW_RULES).toContain('mock-*');
 	});
 
+	it('forbids hardcoded secrets in Code nodes', () => {
+		expect(WORKFLOW_RULES).toContain('NEVER hardcode secrets, tokens, or passwords in Code nodes');
+	});
+
 	it('connects duplicate item-flow symptoms to executeOnce', () => {
 		expect(WORKFLOW_RULES).toContain('fetches shared context independently');
 		expect(WORKFLOW_RULES).toContain('Duplicate notifications');

@@ -190,6 +190,9 @@ unsolicited `sticky()`. Fix every reported finding, then build again.
 - Use string values for discriminators (`resource: 'message'`).
 - Always use `newCredential()` for authentication, never placeholder strings or
   invented IDs.
+- Never hardcode secrets, tokens or passwords in Code nodes. Code nodes cannot
+  use credentials. Use HTTP Request, Webhook auth, Crypto or a native
+  integration node for the authenticated step.
 
 Define nodes first, then compose:
 

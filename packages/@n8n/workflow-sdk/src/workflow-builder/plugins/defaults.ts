@@ -12,6 +12,7 @@ import type { ValidatorPlugin, CompositeHandlerPlugin, SerializerPlugin } from '
 import {
 	agentValidator,
 	chainLlmValidator,
+	codeNodeValidator,
 	dateMethodValidator,
 	disconnectedNodeValidator,
 	expressionPathValidator,
@@ -55,6 +56,7 @@ const coreValidators: ValidatorPlugin[] = [
 	// Node-specific validators (high priority)
 	agentValidator,
 	chainLlmValidator,
+	codeNodeValidator,
 	httpRequestValidator,
 	structuredOutputParserValidator,
 	toolNodeValidator,

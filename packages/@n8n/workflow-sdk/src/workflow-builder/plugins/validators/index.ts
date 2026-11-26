@@ -6,6 +6,7 @@
 
 export { agentValidator } from './agent-validator';
 export { chainLlmValidator } from './chain-llm-validator';
+export { codeNodeValidator } from './code-node-validator';
 export { dateMethodValidator } from './date-method-validator';
 export { disconnectedNodeValidator } from './disconnected-node-validator';
 export { expressionPathValidator } from './expression-path-validator';

@@ -19,6 +19,7 @@ describe('Default Plugins', () => {
 		const validatorIds = validators.map((v) => v.id);
 		expect(validatorIds).toContain('core:disconnected-node');
 		expect(validatorIds).toContain('core:agent');
+		expect(validatorIds).toContain('core:code-node');
 		expect(validatorIds).toContain('core:http-request');
 		expect(validatorIds).toContain('core:execute-workflow');
 		expect(validatorIds).toContain('core:structured-output-parser');
