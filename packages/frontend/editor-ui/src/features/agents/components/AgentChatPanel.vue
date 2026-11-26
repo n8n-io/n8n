@@ -1788,10 +1788,21 @@ const { tools: testRunTools, refresh: refreshTestRunTools } = useAgentTestRunToo
 	configKey: testRunConfigKey,
 });
 const isResettingTestRun = ref(false);
+let testRunResetRequest = 0;
+
+// A reset in flight on one chat must not keep the button busy on another.
+watch(
+	() => [props.projectId, props.agentId, props.continueSessionId],
+	() => {
+		testRunResetRequest++;
+		isResettingTestRun.value = false;
+	},
+);
 
 async function onNewTestRun() {
 	if (isResettingTestRun.value || isStreaming.value) return;
 	isResettingTestRun.value = true;
+	const request = ++testRunResetRequest;
 	// The panel can move to another chat while the request runs.
 	const target = {
 		projectId: props.projectId,
@@ -1821,7 +1832,7 @@ async function onNewTestRun() {
 	} catch (error) {
 		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.testRun.reset.error'));
 	} finally {
-		isResettingTestRun.value = false;
+		if (request === testRunResetRequest) isResettingTestRun.value = false;
 	}
 }
 const sessionFilesOpen = ref(false);
