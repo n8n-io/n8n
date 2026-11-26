@@ -91,7 +91,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 		};
 
-		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
+		this.nodeHelpers = getNodeBinaryHelperFunctions(
+			this.workflow,
+			this.additionalData,
+			runExecutionData,
+		);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {

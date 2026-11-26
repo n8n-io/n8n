@@ -115,7 +115,11 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
-		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
+		this.nodeHelpers = getNodeBinaryHelperFunctions(
+			this.workflow,
+			this.additionalData,
+			runExecutionData,
+		);
 
 		this.getNodeParameter = ((
 			parameterName: string,

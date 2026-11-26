@@ -302,9 +302,19 @@ export async function copyBinaryFile(
 export const getNodeBinaryHelperFunctions = (
 	workflow: { id: string },
 	additionalData: IWorkflowExecuteAdditionalData,
+	runExecutionData?: IRunExecutionData | null,
 ) => ({
-	copyBinaryFile: async (filePath: string, fileName: string, mimeType?: string) =>
-		await copyBinaryFile(workflow.id, additionalData.executionId!, filePath, fileName, mimeType),
+	copyBinaryFile: async (filePath: string, fileName: string, mimeType?: string) => {
+		const stored = await copyBinaryFile(
+			workflow.id,
+			additionalData.executionId!,
+			filePath,
+			fileName,
+			mimeType,
+		);
+		grantBinaryData(stored, additionalData, runExecutionData);
+		return stored;
+	},
 });
 
 /**

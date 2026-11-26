@@ -1212,6 +1212,27 @@ describe('copyBinaryFile', () => {
 		);
 	});
 
+	it('grants access to the copied file for the current execution', async () => {
+		const access = mock<NonNullable<IWorkflowExecuteAdditionalData['binaryDataAccess']>>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			executionId,
+			binaryDataAccess: access,
+		});
+		const data = createRunExecutionData();
+		const stored = { ...binaryData, id: 'stored-id' };
+		binaryDataService.copyBinaryFile.mockReset().mockResolvedValue(stored);
+		const { copyBinaryFile: copy } = getNodeBinaryHelperFunctions(
+			{ id: workflowId },
+			additionalData,
+			data,
+		);
+
+		await expect(copy(filePath, fileName, 'text/plain')).resolves.toBe(stored);
+
+		expect(access.grant).toHaveBeenCalledWith(stored.id);
+		expect(data.binaryDataAccess).toEqual([stored.id]);
+	});
+
 	it('should handle files without explicit mime type', async () => {
 		const result = await copyBinaryFile(workflowId, executionId, filePath, fileName);
 
