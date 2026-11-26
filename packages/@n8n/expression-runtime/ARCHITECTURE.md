@@ -66,18 +66,18 @@ The architecture is split into three distinct layers:
 
 ### Value transfer
 
-`runtime/prepare-object.ts` encodes each supported value type. It delegates child
+`src/runtime/prepare-object.ts` encodes each supported value type. It delegates child
 values to the caller. It does not own traversal state.
 
-`runtime/serialize.ts` prepares results for isolated-vm. It copies arrays with an
+`src/runtime/serialize.ts` prepares results for isolated-vm. It copies arrays with an
 index loop. After 32 nested containers, it switches to the guarded traversal in
-`runtime/prepare-transfer.ts`. This threshold starts cycle detection. It does not
+`src/runtime/prepare-transfer.ts`. This threshold starts cycle detection. It does not
 set a maximum result depth. A plain cycle raises an error before it can exhaust
 the native stack. Error traversal keeps its own cache and cycle rules.
 
-`runtime/quickjs-transfer.ts` installs the QuickJS result encoder and host-value
+`src/runtime/quickjs-transfer.ts` installs the QuickJS result encoder and host-value
 decoder. These functions use the runtime bundle, so TypeScript checks them.
-Only QuickJS calls the installer. `bridge/quickjs-value-transfer.ts` owns the
+Only QuickJS calls the installer. `src/bridge/quickjs-value-transfer.ts` owns the
 host side of the JSON transport. Both sides register a container before they
 decode its children. This preserves references through collections.
 
