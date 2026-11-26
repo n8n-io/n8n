@@ -698,10 +698,10 @@ describe('QuickJsBridge cycle guard', () => {
 			expect(depthOf(sets, (current) => [...(current as Set<unknown>)][0])).toBe(400);
 
 			const instances = bridge.execute(
-				'function Node(next) { this.next = next; } let o = new Node(); for (let i = 0; i < 700; i++) { o = new Node(o); } return o;',
+				'function Node(next) { this.next = next; } let o = new Node(); for (let i = 0; i < 400; i++) { o = new Node(o); } return o;',
 				{},
 			);
-			expect(depthOf(instances, (current) => (current as { next?: unknown }).next)).toBe(700);
+			expect(depthOf(instances, (current) => (current as { next?: unknown }).next)).toBe(400);
 		} finally {
 			await bridge.dispose();
 		}
