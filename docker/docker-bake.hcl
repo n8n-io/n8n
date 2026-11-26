@@ -34,7 +34,7 @@ variable "RUNTIME_IMAGE" {
   default = "n8nio/base:26.13.0-c86615646b167060211ad428f021f59099b62284@sha256:02079402e2a7f33a41e8bf8943a2f6a08b45fd7a749abafaa20ef44bf4b6fd76"
 }
 variable "DEBIAN_RUNTIME_IMAGE" {
-  default = "n8nio/base:26.13.0-debian-b23a3454e958998b052277c130ee6f9f027427f0@sha256:cbdcf28cd718a9a3c8490cd2ee80dd61869e19e3a663ab0f7b762eb5e7ee2f4a"
+  default = "n8nio/base:26.13.0-debian-b81d2d875b7643cee7242f234b8d853cbea3ad58@sha256:4ba00ab3af5b3925b03e76f7211dfbb150addf21b60702ce9d463f52d6105a75"
 }
 
 # Published by build-node-pc-image.yml on master. The n8n image compiles native
@@ -60,10 +60,10 @@ variable "PYTHON_IMAGE" {
 # Debian 13, the release of the distroless runtime. That image runs the glibc
 # of this Python image.
 variable "DEBIAN_PYTHON_IMAGE" {
-  default = "python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1"
+  default = "python:3.13.18-slim-trixie@sha256:7249d5587b78209a006dc4a3b5340678f84ea729239193aa559962cd8c1fce50"
 }
 variable "DISTROLESS_BASE_IMAGE" {
-  default = "gcr.io/distroless/cc-debian13:latest@sha256:e1f5543d45a2cd7c02a5b43dda5f0ff30729b4832113759d01ed39b0b152cddb"
+  default = "gcr.io/distroless/cc-debian13:latest@sha256:e8343d4a7da8bb210df0c3ea29de38bbadbba6c773bed0cd8bde506fca3a5c44"
 }
 
 variable "N8N_VERSION" { default = "snapshot" }
