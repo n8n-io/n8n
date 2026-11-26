@@ -43,6 +43,12 @@ const source: ResolveErrorWorkflowRequest['source'] = {
 	hasParent: false,
 };
 
+const errorRequest: ResolveErrorWorkflowRequest = {
+	kind: 'error-workflow',
+	executionId: '01a03900-0000-7000-8000-000000000002',
+	source,
+};
+
 const resolvedErrorWorkflow: ResolvedErrorWorkflow = {
 	kind: 'error-workflow',
 	workflowId: 'err-wf',
@@ -92,11 +98,6 @@ describe('EngineWorkflowResolveClient', () => {
 	});
 
 	it('returns a resolved error workflow for an error workflow request', async () => {
-		const errorRequest = {
-			kind: 'error-workflow' as const,
-			executionId: '01a03900-0000-7000-8000-000000000002',
-			source,
-		};
 		respondWith(200, resolvedErrorWorkflow);
 
 		await expect(client.resolve(errorRequest, signal)).resolves.toEqual(resolvedErrorWorkflow);
@@ -165,5 +166,11 @@ describe('EngineWorkflowResolveClient', () => {
 		respondWith(200, body);
 
 		await expect(client.resolve(request, signal)).rejects.toThrow(/malformed/);
+	});
+
+	it('rejects a 200 error workflow body without a projectId', async () => {
+		respondWith(200, { ...resolvedErrorWorkflow, projectId: undefined });
+
+		await expect(client.resolve(errorRequest, signal)).rejects.toThrow(/malformed/);
 	});
 });

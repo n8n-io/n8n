@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import type {
+	ResolvedErrorWorkflow,
 	ResolvedSubWorkflow,
 	ResolveErrorWorkflowRequest,
 	ResolveSubWorkflowRequest,
@@ -50,6 +51,16 @@ const resolved: ResolvedSubWorkflow = {
 	triggerOutputs: [[{ json: { a: 1 } }]],
 	returnLastRunOnly: false,
 	resolveErrorWorkflowOnFailure: false,
+};
+
+const resolvedErrorWorkflow: ResolvedErrorWorkflow = {
+	kind: 'error-workflow',
+	workflowId: 'err-wf',
+	graph: { nodes: [{ id: 't', name: 'Error Trigger', type: 'trigger' }], edges: [] },
+	workflow: { id: 'err-wf' },
+	triggerOutputs: [[{ json: { execution: { id: 'exec' } } }]],
+	resolveErrorWorkflowOnFailure: false,
+	projectId: 'project-1',
 };
 
 describe('EngineWorkflowResolveController', () => {
@@ -133,13 +144,14 @@ describe('EngineWorkflowResolveController', () => {
 		const source = errorWorkflowRequest.source;
 
 		it('answers the resolved workflow with 200', async () => {
+			vi.mocked(service.resolve).mockResolvedValue(resolvedErrorWorkflow);
 			const res = newResponse();
 
 			await controller.resolveWorkflow(newRequest(errorWorkflowRequest), res);
 
 			expect(service.resolve).toHaveBeenCalledExactlyOnceWith(errorWorkflowRequest);
 			expect(res.status).toHaveBeenCalledWith(200);
-			expect(res.json).toHaveBeenCalledWith(resolved);
+			expect(res.json).toHaveBeenCalledWith(resolvedErrorWorkflow);
 		});
 
 		it('accepts a failed execution without a failed step', async () => {

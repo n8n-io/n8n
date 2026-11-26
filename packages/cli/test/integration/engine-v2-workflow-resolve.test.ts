@@ -277,7 +277,7 @@ describe('Engine v2 workflow resolve (integration)', () => {
 		expect(response.status).toBe(401);
 	});
 	describe('an error workflow', () => {
-		const errorWorkflow = async (settings: Record<string, string> = {}) =>
+		const errorWorkflow = async (settings: Record<string, string> = {}, owner = member) =>
 			await createActiveWorkflow(
 				{
 					name: 'Error handler',
@@ -287,7 +287,7 @@ describe('Engine v2 workflow resolve (integration)', () => {
 						[errorTriggerNode.name]: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 					},
 				},
-				member,
+				owner,
 			);
 
 		/** The failed execution of the parent workflow, whose stored settings name the error workflow. */
@@ -339,8 +339,9 @@ describe('Engine v2 workflow resolve (integration)', () => {
 			expect(result.resolveErrorWorkflowOnFailure).toBe(false);
 		});
 
-		it('runs in the project of the failed workflow', async () => {
-			const workflow = await errorWorkflow();
+		it('runs in the project of the failed workflow, not of the error workflow', async () => {
+			// Another project, so the caller policy must allow any caller.
+			const workflow = await errorWorkflow({ callerPolicy: 'any' }, await createMember());
 
 			const result = await resolveError(source({ errorWorkflow: workflow.id }));
 
