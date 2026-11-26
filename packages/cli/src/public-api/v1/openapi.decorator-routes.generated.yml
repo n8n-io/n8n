@@ -290,6 +290,11 @@ paths:
       $ref: ./handlers/promotions/spec/paths/getPromotionSettings.generated.yml
     put:
       $ref: ./handlers/promotions/spec/paths/updatePromotionSettings.generated.yml
+  /promotions/settings/project-environments:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionProjectEnvironmentsSettings.generated.yml
+    put:
+      $ref: ./handlers/promotions/spec/paths/updatePromotionProjectEnvironmentsSettings.generated.yml
   /promotions/providers:
     post:
       $ref: ./handlers/promotions/spec/paths/createPromotionProvider.generated.yml

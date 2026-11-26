@@ -11,6 +11,7 @@ import type {
 	PromotionEnvironmentPublicDto,
 	PromotionEnvironmentSummary,
 	PromotionMissingProjectListPublicDto,
+	PromotionProjectEnvironmentsSettingsPublicDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromotionProviderCreatedPublicDto,
@@ -18,6 +19,7 @@ import type {
 	PromotionRepositoryListPublicDto,
 	PromotionBranchListPublicDto,
 	UpdatePromotionEnvironmentDto,
+	UpdatePromotionProjectEnvironmentsSettingsDto,
 	UpdatePromotionProviderDto,
 } from '@n8n/api-types';
 import type { PublicApiContext } from '@n8n/rest-api-client';
@@ -206,5 +208,21 @@ export const continueApplyPromotion = async (
 		context,
 		'POST',
 		`${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
+		payload,
+	);
+
+export const getPromotionProjectEnvironmentsSettings = async (
+	context: PublicApiContext,
+): Promise<PromotionProjectEnvironmentsSettingsPublicDto> =>
+	await makePublicApiRequest(context, 'GET', `${promotionsApiRoot}/settings/project-environments`);
+
+export const updatePromotionProjectEnvironmentsSettings = async (
+	context: PublicApiContext,
+	payload: UpdatePromotionProjectEnvironmentsSettingsDto,
+): Promise<PromotionProjectEnvironmentsSettingsPublicDto> =>
+	await makePublicApiRequest(
+		context,
+		'PUT',
+		`${promotionsApiRoot}/settings/project-environments`,
 		payload,
 	);

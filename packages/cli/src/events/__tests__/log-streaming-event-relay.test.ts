@@ -3862,6 +3862,36 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each([
+			[true, 'n8n.audit.promotions.project-environments.enabled'],
+			[false, 'n8n.audit.promotions.project-environments.disabled'],
+		])('should log project environments set to %s as `%s`', (value, eventName) => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user808',
+					email: 'admin11@example.com',
+					firstName: 'Eleventh',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'promotions_project_environments',
+				value,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: {
+					userId: 'user808',
+					_email: 'admin11@example.com',
+					_firstName: 'Eleventh',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
 	});
 
 	describe('policy enforcement events', () => {
