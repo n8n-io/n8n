@@ -238,6 +238,11 @@ describe('N8nClient', () => {
 					body: undefined,
 				},
 				{
+					send: async () => await client.getPromotionReview('rev-1'),
+					request: 'GET https://n8n.example.com/api/v1/promotions/reviews/rev-1',
+					body: undefined,
+				},
+				{
 					send: async () => await client.createPromotionEnvironment({ name: 'Production' }),
 					request: 'POST https://n8n.example.com/api/v1/promotions/environments',
 					body: { name: 'Production' },
@@ -269,15 +274,18 @@ describe('N8nClient', () => {
 						'DELETE https://n8n.example.com/api/v1/promotions/environments/env-1/projects/proj-1',
 					body: undefined,
 				},
-			])('calls the promotion environment routes: $request', async ({ send, request, body }) => {
-				fetchMock.mockResolvedValue(jsonResponse(200, {}));
+			])(
+				'calls the promotion environment and review routes: $request',
+				async ({ send, request, body }) => {
+					fetchMock.mockResolvedValue(jsonResponse(200, {}));
 
-				await send();
+					await send();
 
-				expect(requestLines(fetchMock)).toEqual([request]);
-				const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-				expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
-			});
+					expect(requestLines(fetchMock)).toEqual([request]);
+					const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+					expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
+				},
+			);
 
 			it('connects and disconnects the checkout of an environment', async () => {
 				const checkout = {
@@ -348,6 +356,17 @@ describe('N8nClient', () => {
 
 				expect(requestLines(fetchMock)).toEqual([
 					'GET https://n8n.example.com/api/v1/promotions/environments?scope=instance&direction=promote&providerId=prov-1',
+				]);
+			});
+
+			it('asks for the closed promotion reviews', async () => {
+				fetchMock.mockResolvedValue(jsonResponse(200, { data: [], nextCursor: null }));
+
+				await client.listPromotionReviews('closed');
+
+				// Without the state, the API answers with the open reviews.
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/reviews?state=closed',
 				]);
 			});
 

@@ -11,6 +11,7 @@ import {
 	type GraphEdge,
 	type ItemSource,
 	type StepOutputSources,
+	type StepSlots,
 	type WorkflowGraph,
 	type WorkflowLoop,
 } from '@n8n/engine';
@@ -30,17 +31,21 @@ export interface SourceLineage {
 	loops: WorkflowLoop[];
 	/** The last pass each node is known to have run. */
 	lastIterationByNodeId: Map<string, number>;
+	/** The outputs of a node's completed pass, else `undefined`. */
+	outputsAt: (nodeId: string, iteration: number) => StepSlots | undefined;
 }
 
 export function toSourceLineage(
 	graph: WorkflowGraph,
 	lastIterationByNodeId: Map<string, number>,
+	outputsAt: SourceLineage['outputsAt'],
 ): SourceLineage {
 	return {
 		namesById: nodeNamesById(graph),
 		incomingEdgesByNodeId: incomingEdgesByNodeId(graph),
 		loops: deriveLoops(graph),
 		lastIterationByNodeId,
+		outputsAt,
 	};
 }
 
@@ -55,8 +60,15 @@ export function toSourcesAt(
 	nodeId: string,
 	iteration: number,
 ): Array<ISourceData | null> {
-	return toSourceSlots(lineage.incomingEdgesByNodeId.get(nodeId) ?? [], lineage.namesById, (edge) =>
-		toPreviousNodeRun(lineage, edge, iteration),
+	const previousNodeRun = (edge: GraphEdge) => toPreviousNodeRun(lineage, edge, iteration);
+	// Live as `readEdgeValue` counts it: the source's pass completed and filled the slot.
+	const isLive = (edge: GraphEdge) =>
+		(lineage.outputsAt(edge.from, previousNodeRun(edge))?.[edge.outputIndex] ?? null) !== null;
+	return toSourceSlots(
+		lineage.incomingEdgesByNodeId.get(nodeId) ?? [],
+		lineage.namesById,
+		previousNodeRun,
+		isLive,
 	);
 }
 
@@ -101,26 +113,29 @@ export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEd
  *
  * @param edges The forward edges into the node, in concatenation order.
  * @param previousNodeRun Which run of the predecessor fed this one.
+ * @param isLive Whether the edge delivered data. A live edge wins over a dead one.
  */
-export function toSourceSlots(
+function toSourceSlots(
 	edges: GraphEdge[],
 	namesById: Map<string, string>,
-	previousNodeRun?: (edge: GraphEdge) => number,
+	previousNodeRun: (edge: GraphEdge) => number,
+	isLive: (edge: GraphEdge) => boolean,
 ): Array<ISourceData | null> {
 	const sources: Array<ISourceData | null> = [];
+	const ordered = [...edges.filter(isLive), ...edges.filter((edge) => !isLive(edge))];
 
-	for (const edge of edges) {
+	for (const edge of ordered) {
 		const previousNode = namesById.get(edge.from);
 		if (previousNode === undefined) continue;
 
 		const inputIndex = edge.inputIndex ?? 0;
 		while (sources.length <= inputIndex) sources.push(null);
-		// The first edge into a slot wins, even a dead one, so `$prevNode` names
-		// its node. When several edges feed a slot, every item carries its own
-		// source in `pairedItem` (`item-links.ts`).
+		// The first live edge into a slot wins, else the first edge, so `$prevNode`
+		// names a node that sent items when one did. When several edges feed a
+		// slot, every item carries its own source in `pairedItem` (`item-links.ts`).
 		if (sources[inputIndex] !== null) continue;
 
-		const run = previousNodeRun?.(edge) ?? 0;
+		const run = previousNodeRun(edge);
 		sources[inputIndex] = {
 			previousNode,
 			previousNodeOutput: edge.outputIndex,
@@ -153,7 +168,7 @@ export function emptyRun(
 /**
  * One link per item of `sources`, in item order: the item's index in its source
  * slot, with the source as `sourceOverwrite`. `undefined` for an item whose
- * source node is unknown.
+ * source node is not in `namesById`.
  */
 export function sourceLinks(
 	sources: ItemSource[],
