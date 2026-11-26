@@ -401,6 +401,7 @@ describe('the credential of the node never leaves the guard', () => {
 
 		// Only the real lookup of the playlist that the delete names is a real request, and it is a GET.
 		const methods = vi.mocked(sendToNetwork).mock.calls.map(([req]) => req.method);
+		expect(methods.length).toBeGreaterThan(0);
 		expect(methods.every((method) => method === 'GET')).toBe(true);
 		expect(gymRequests.map((r) => r.url)).toEqual(
 			expect.arrayContaining([

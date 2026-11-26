@@ -19,7 +19,7 @@ You may be given reads. "$reads[0]" is always the spreadsheet (id, title, tabs).
 World format, under "native.google_sheets":
 - spreadsheets[]: {ref, id, title, sheets: [{title, rows}]}. "rows" is a list of rows, each a list of cells, from cell A1. A cell that starts with "=" is a formula.
 Seed the spreadsheet with its real id, so that the agent can use it in later calls: "id": "$reads[0].spreadsheetId" (or take it from the call path when you have no read). Never invent an id. Never write "owner" or "shared_with": code places the spreadsheet in the one account that the call can read.
-Seed every tab with its title ("$reads[0].sheets[0].properties.title"). Give rows ("rows": "$result.grid", or "$reads[1].grid") only to the tabs that you have a grid for. Leave the other tabs without rows.
+Seed every tab with its own title: tab n has "$reads[0].sheets[n].properties.title". Never give two tabs the same title. Give rows ("rows": "$result.grid", or "$reads[1].grid") only to the tabs that you have a grid for. Leave the other tabs without rows.
 For a read of a range: seed the spreadsheet with the title, the tab of "$result.sheetTitle", and rows "$result.grid".
 
 Writes: a create ({properties: {title}}) needs no seed. An append, an update, a clear or a batch update names a spreadsheet in its path. Seed that spreadsheet and the rows of the tab that the call names, as above, so that the gym can find the place of the change. Do not apply the change yourself.

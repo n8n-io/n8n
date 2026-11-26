@@ -78,6 +78,7 @@ export const YOUTUBE_PROFILE: HttpVendorProfile = {
 		}));
 	},
 	hydrateRead: (args) => !YOUTUBE_STATIC_LISTS.test(args.path),
-	// An id that the gym made is not in the real service. Skip the real lookups of it.
+	// Skip the lookups when every named id is gym-made. With one real id, the lookup of a gym-made id
+	// is a real GET that finds nothing (1 quota unit).
 	hydrateWrite: (args, gymIds) => youtubeNamed(args).some(([, id]) => !gymIds.has(id)),
 };

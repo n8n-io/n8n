@@ -32,4 +32,4 @@ Calls and what they need:
 - A read of one file or a list: seed the files of the answer.
 - A write on a file (update, copy, move, delete, share, trash): the call names the file in its path. Seed that file with its real id from the read that you are given. For a move or a create under a folder, seed that folder too. Do not apply the change yourself.
 - A create (folder or file) needs no seed unless its parent is a real folder. Then seed the parent folder.
-- A write on a shared drive (get, update, delete): seed the shared drive with its real id and name.
+- A call on a shared drive (get, update, delete): seed the shared drive with its real id and name, and the ref "drive:<id>".

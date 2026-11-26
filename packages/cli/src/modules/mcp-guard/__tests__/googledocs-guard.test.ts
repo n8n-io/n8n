@@ -257,7 +257,7 @@ describe('the profile of Google Docs', () => {
 		});
 	});
 
-	it('copies a document to the gym', () => {
+	it('has no hydrateRead, since a document read copies nothing', () => {
 		const hydrateRead = GOOGLE_DOCS_PROFILE.hydrateRead;
 
 		expect(hydrateRead).toBeUndefined();
@@ -394,16 +394,15 @@ describe('the credential of the node never leaves the guard', () => {
 		expect(logs.join('\n')).not.toContain(REAL_TOKEN);
 	});
 
-	it('answers a read of a document that only the gym knows, and the real read stays a GET', async () => {
+	it('answers a read of a document that the gym made from the gym only', async () => {
 		const { created } = await setup();
 
 		await created.router.handle(call('POST', DOCS, '/v1/documents', { title: 'New' }));
 		vi.mocked(sendToNetwork).mockClear();
-		// The id of a gym document in a path is not known as an id of the gym here, so the read goes to the
-		// real service first and then to the gym. This is safe: the real read is a GET.
+		// The gym answered the create with `documentId`, so the router knows it as an id of the gym.
 		const res = await created.router.handle(call('GET', DOCS, '/v1/documents/gymmade12345'));
 
 		expect(res.status).toBe(200);
-		expect(vi.mocked(sendToNetwork).mock.calls.every(([req]) => req.method === 'GET')).toBe(true);
+		expect(sendToNetwork).not.toHaveBeenCalled();
 	});
 });

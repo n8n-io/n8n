@@ -156,6 +156,22 @@ describe('enrichSheets', () => {
 		expect(out.grid).toHaveLength(1000);
 	});
 
+	it('keeps a row far down the sheet at its offset', () => {
+		const out = enrichSheets({ range: 'Sheet1!A1001:A1001', values: [['far']] }) as {
+			grid: unknown[][];
+		};
+
+		expect(out.grid).toHaveLength(1001);
+		expect(out.grid[1000]).toEqual(['far']);
+	});
+
+	it('gives no grid when the offset is too large', () => {
+		const out = enrichSheets({ range: 'Sheet1!A50000:A50000', values: [['x']] });
+
+		expect(out).not.toHaveProperty('grid');
+		expect(out).toHaveProperty('sheetTitle', 'Sheet1');
+	});
+
 	it('enriches every range of a batchGet answer', () => {
 		const out = enrichSheets({
 			spreadsheetId: ID,
@@ -192,6 +208,25 @@ describe('Google Sheets lookups', () => {
 		);
 	});
 
+	it('reads the tabs that a batchClear names in ranges, and every named tab up to the cap', () => {
+		const tabs = (found: Array<{ args: Record<string, unknown> }>) =>
+			found.map((read) => decodeURIComponent(String(read.args.path).split('/values/')[1] ?? ''));
+
+		const clear = lookups('write_post_spreadsheets_values', {
+			method: 'POST',
+			path: `${BASE}/values:batchClear`,
+			body: { ranges: ['Plan!A1:B2', "'Q4 plan'!C:D"] },
+		});
+		const many = lookups('write_post_spreadsheets_values', {
+			method: 'POST',
+			path: `${BASE}/values:batchUpdate`,
+			body: { data: Array.from({ length: 5 }, (_, i) => ({ range: `T${i}!A1`, values: [] })) },
+		});
+
+		expect(tabs(clear.slice(1))).toEqual(["'Plan'", "'Q4 plan'"]);
+		expect(many).toHaveLength(6);
+	});
+
 	it('looks up the spreadsheet for a read with a fields filter, but not for the full read', () => {
 		expect(
 			lookups('read_get_spreadsheets', get(BASE, { fields: 'sheets.properties' })),
@@ -211,15 +246,16 @@ describe('Google Sheets lookups', () => {
 		]);
 	});
 
-	it('looks up the tabs that a batch update names, at most three', () => {
-		const data = ['A', 'B', 'C', 'D', 'A'].map((tab) => ({ range: `${tab}!A1:B2` }));
-		const found = lookups('write_post_spreadsheets', {
-			method: 'POST',
-			path: `${BASE}/values:batchUpdate`,
-			body: { data },
-		});
+	it('looks up each tab that a batch update names once, at most ten', () => {
+		const call = (tabs: string[]) =>
+			lookups('write_post_spreadsheets', {
+				method: 'POST',
+				path: `${BASE}/values:batchUpdate`,
+				body: { data: tabs.map((tab) => ({ range: `${tab}!A1:B2` })) },
+			});
 
-		expect(found).toHaveLength(4);
+		expect(call(['A', 'B', 'C', 'D', 'A'])).toHaveLength(5);
+		expect(call(Array.from({ length: 12 }, (_, i) => `T${i}`))).toHaveLength(11);
 	});
 
 	it('looks up the spreadsheet only for a write without a tab, and for a structure batch update', () => {

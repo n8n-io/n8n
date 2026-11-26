@@ -191,6 +191,19 @@ describe('enrichCalendar', () => {
 		]);
 	});
 
+	it('keeps up to 500 busy intervals and says when it cut the list', () => {
+		const busy = Array.from({ length: 501 }, (_, i) => ({ start: `s${i}`, end: `e${i}` }));
+		const cut = enrichCalendar({ calendars: { primary: { busy } } }) as {
+			busyIntervals: unknown[];
+			busyTruncated?: boolean;
+		};
+		const whole = enrichCalendar({ calendars: { primary: { busy: busy.slice(0, 500) } } });
+
+		expect(cut.busyIntervals).toHaveLength(500);
+		expect(cut.busyTruncated).toBe(true);
+		expect(whole).not.toHaveProperty('busyTruncated');
+	});
+
 	it('leaves other answers as they are', () => {
 		expect(enrichCalendar(null)).toBeNull();
 		expect(enrichCalendar([1])).toEqual([1]);

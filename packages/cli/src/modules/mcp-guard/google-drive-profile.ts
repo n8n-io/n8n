@@ -172,14 +172,15 @@ export const GOOGLE_DRIVE_PROFILE: HttpVendorProfile = {
 	},
 	hydrateRead: (args) => args.query?.alt !== 'media' && !CONTENT_PATH.test(args.path),
 	hydrateWrite: (args, gymIds) => {
-		// The body of an upload holds the bytes. They go to the gym only, never to the model.
-		if (args.path.startsWith('/upload/')) return false;
+		// The body of an upload holds the bytes. The router removes it before the model sees the call, so
+		// an update of a real file still gets its metadata copied.
+		const upload = args.path.startsWith('/upload/');
 		const file = fileInPath(args.path);
 		const drive = DRIVE_IN_PATH.exec(args.path)?.[1];
 		const ids = [
 			...(file === undefined ? [] : [file]),
 			...(drive === undefined ? [] : [safeDecode(drive)]),
-			...parentsOfWrite(args),
+			...(upload ? [] : parentsOfWrite(args)),
 		];
 		return ids.some((id) => !gymIds.has(id));
 	},

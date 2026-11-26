@@ -1,9 +1,13 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { HttpVendorProfile } from './http-profiles';
 import { looksLikeId } from './http-tool-caller';
 
 const MAX_ROWS = 1000;
-const MAX_SHEETS_TO_COPY = 3;
+const MAX_SHEETS_TO_COPY = 10;
+// A row offset above this has no grid: the empty rows before the first row would be too many.
+const MAX_GRID_OFFSET = 10_000;
 
 // `/v4/spreadsheets/<id>`, `/v4/spreadsheets/<id>/values/...` and `/v4/spreadsheets/<id>:batchUpdate`.
 const SPREADSHEET_IN_PATH = /^\/v4\/spreadsheets\/([^/:?]+)/;
@@ -21,7 +25,7 @@ const safeDecode = (text: string): string => {
 	}
 };
 
-/** The sheet title in an A1 range: `Sheet1!A1:C10`, `'My ''tab''!A:B'` or a quoted title alone. */
+/** The sheet title in an A1 range: `Sheet1!A1:C10`, `'My ''tab'''!A:B` or a quoted title alone. */
 export function sheetOfRange(range: string): string | undefined {
 	const withCells = /^(?:'((?:[^']|'')+)'|([^'!]+))!/.exec(range);
 	if (withCells) return (withCells[1]?.replace(/''/g, "'") ?? withCells[2]).trim() || undefined;
@@ -52,12 +56,14 @@ function toGrid(entry: Record<string, unknown>): Record<string, unknown> {
 	const rows = entry.values
 		.slice(0, MAX_ROWS)
 		.map((cells) => (Array.isArray(cells) ? [...lead, ...(cells as unknown[])] : [...lead]));
-	const empty: unknown[][] = Array.from({ length: row - 1 }, () => []);
 	const sheetTitle = sheetOfRange(range);
+	// The cap is on the rows that the answer holds. The empty rows before them keep their offset.
+	if (row - 1 > MAX_GRID_OFFSET) return { ...entry, ...(sheetTitle && { sheetTitle }) };
+	const empty: unknown[][] = Array.from({ length: row - 1 }, () => []);
 	return {
 		...entry,
 		...(sheetTitle && { sheetTitle }),
-		grid: [...empty, ...rows].slice(0, MAX_ROWS),
+		grid: [...empty, ...rows],
 	};
 }
 
@@ -95,8 +101,17 @@ function sheetsOfWrite(args: Record<string, unknown>): string[] {
 	for (const item of Array.isArray(body?.data) ? body.data : []) {
 		if (isRecord(item) && typeof item.range === 'string') ranges.push(item.range);
 	}
-	const titles = ranges.flatMap((range) => sheetOfRange(range) ?? []);
-	return [...new Set(titles)].slice(0, MAX_SHEETS_TO_COPY);
+	// `values:batchClear` names its ranges in `ranges`.
+	for (const range of Array.isArray(body?.ranges) ? body.ranges : []) {
+		if (typeof range === 'string') ranges.push(range);
+	}
+	const titles = [...new Set(ranges.flatMap((range) => sheetOfRange(range) ?? []))];
+	if (titles.length > MAX_SHEETS_TO_COPY) {
+		Container.get(Logger).warn(
+			`mcp-guard sheets write names ${titles.length} tabs, only ${MAX_SHEETS_TO_COPY} are copied`,
+		);
+	}
+	return titles.slice(0, MAX_SHEETS_TO_COPY);
 }
 
 const SPREADSHEET_KEYS = ['google_sheets', 'google-sheets'];

@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { HttpVendorProfile } from './http-profiles';
 
-const MAX_BUSY = 100;
+const MAX_BUSY = 500;
 const MAX_FREEBUSY_CALENDARS = 4;
 
 // `/calendar/v3/calendars/<calendar>`, then `/events` and `/events/<event>` with an optional action.
@@ -43,7 +43,7 @@ function enrichEvent(event: Record<string, unknown>): Record<string, unknown> {
 	};
 }
 
-function busyIntervals(calendars: Record<string, unknown>): unknown[] {
+function busyIntervals(calendars: Record<string, unknown>): { all: unknown[]; truncated: boolean } {
 	const found: unknown[] = [];
 	for (const [calendar, entry] of Object.entries(calendars)) {
 		const busy = isRecord(entry) && Array.isArray(entry.busy) ? entry.busy : [];
@@ -51,14 +51,15 @@ function busyIntervals(calendars: Record<string, unknown>): unknown[] {
 			if (isRecord(interval)) found.push({ calendar, start: interval.start, end: interval.end });
 		}
 	}
-	return found.slice(0, MAX_BUSY);
+	return { all: found.slice(0, MAX_BUSY), truncated: found.length > MAX_BUSY };
 }
 
 /** Adds flat fields to events (`startAt`, `endAt`, `isAllDay`, `attendeeEmails`) and to a freeBusy answer (`busyIntervals`). */
 export function enrichCalendar(json: unknown): unknown {
 	if (!isRecord(json)) return json;
 	if (isRecord(json.calendars)) {
-		return { ...json, busyIntervals: busyIntervals(json.calendars) };
+		const { all, truncated } = busyIntervals(json.calendars);
+		return { ...json, busyIntervals: all, ...(truncated && { busyTruncated: true }) };
 	}
 	if (Array.isArray(json.items)) {
 		return {

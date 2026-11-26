@@ -14,7 +14,7 @@ Real result shapes: an event has "id", "summary", "description", "location", "st
 - "startAt" and "endAt": the start and the end as text (the dateTime, or the date for an all-day event).
 - "isAllDay": true or false.
 - "attendeeEmails": the emails of the attendees, as a list.
-A freeBusy answer is {calendars: {<calendar id>: {busy: [{start, end}]}}}. Code adds "busyIntervals": [{calendar, start, end}], so that you can point at each busy interval.
+A freeBusy answer is {calendars: {<calendar id>: {busy: [{start, end}]}}}. Code adds "busyIntervals": [{calendar, start, end}], so that you can point at each busy interval. Code keeps the first 500 intervals and sets "busyTruncated": true when there are more.
 
 World format, under "native.google_calendar":
 - calendars[]: {ref, id, summary, description, location, timeZone}. Seed one only for a calendar that the call names and that is not "primary". Its "id" is the real calendar id ("$reads[0].id"). Use a ref such as "calendar:<id>".
@@ -30,5 +30,5 @@ For a list, seed one event for each item that you have, with "$result.items[n]."
 
 Calls and what they need:
 - A read of one event or a list: seed the events of the answer. A write on an event (patch, put, delete, move) names the event in its path: seed that event with its real id, from the read that you are given. A create needs no seed unless the path names a calendar that is not "primary".
-- freeBusy: seed one event for each busy interval, with only "start" and "end" ("$result.busyIntervals[n].start" and "...end"), and no "summary". Seed the calendar of each non-primary id in the request body.
+- freeBusy: seed one event for each busy interval, with only "start" and "end" ("$result.busyIntervals[n].start" and "...end"), and no "summary". For an interval of a non-primary calendar, set "calendar" to "calendar:<id>" ("<id>" is "$result.busyIntervals[n].calendar"), the ref of the calendar that you seed. Leave "calendar" out for "primary". Seed the calendar of each non-primary id in the request body, each from its own read ("$reads[n].id", the read of that calendar). "$result.busyTruncated" is true when code cut the list of intervals: the list is then not complete.
 - Reads of "colors" and of "calendarList/primary" need no seed.

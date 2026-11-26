@@ -22,7 +22,7 @@ For one real document, seed one file:
 The gym accepts the real document id. Write it with the pointer above, as the text of the real data. A ref is a name you choose: use "doc:<real id>", so the same document keeps one ref.
 Write only these five fields. Do not write "folder", "parents", "owner", "permissions", "shared_drives" or "folders": code removes them, and the one account of the gym owns every file.
 
-Writes: a ":batchUpdate" needs the document in the gym. Code reads the real document first, with a lookup that you are given ("$reads[0]"). Seed it as above. Do not apply the change of the write. A POST to /drive/v3/files (a new document) needs no seed. The gym makes its own id for a new document.
+Writes: a ":batchUpdate" needs the document in the gym. Code reads the real document first, with a lookup that you are given ("$reads[0]"). Seed it as above, but a write has no "$result": use "$reads[0].documentId", "$reads[0].title" and "$reads[0].plainText". Do not apply the change of the write. A POST to /drive/v3/files (a new document) needs no seed. The gym makes its own id for a new document.
 
 Known gaps (the safe default is written here):
 - The gym holds the plain text of a document. A real document with styles, tables or images shows as text only, and the "body.content" of the gym answer has simple paragraphs. A request on a style, a table or an image can fail in the gym.

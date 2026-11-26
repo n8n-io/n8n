@@ -287,13 +287,19 @@ describe('Google Drive lookups', () => {
 		).toBe(false);
 	});
 
-	it('never sends the body of an upload to the model', () => {
+	it('copies the file of an upload that updates a real file, and nothing for a new upload', () => {
 		const hydrate = GOOGLE_DRIVE_PROFILE.hydrateWrite!;
 
 		expect(
 			hydrate(
 				{ method: 'PATCH', path: `/upload/drive/v3/files/${FILE}`, body: 'bytes' },
 				new Set(),
+			),
+		).toBe(true);
+		expect(
+			hydrate(
+				{ method: 'PATCH', path: `/upload/drive/v3/files/${FILE}`, body: 'bytes' },
+				new Set([FILE]),
 			),
 		).toBe(false);
 		expect(
@@ -405,7 +411,7 @@ describe('the guard on a Drive request', () => {
 		expect(gym.callTool).toHaveBeenCalledTimes(1);
 	});
 
-	it('sends an upload with a binary body only to the gym and does not hydrate it', async () => {
+	it('sends an upload with a binary body only to the gym and hydrates the file without the body', async () => {
 		const { router, upstream, gym, hydrator } = setup();
 		const binary = Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x89, 0x50]);
 
@@ -416,7 +422,11 @@ describe('the guard on a Drive request', () => {
 		expect(res.status).toBe(200);
 		expect(upstream.callTool).not.toHaveBeenCalled();
 		expect(gym.callTool).toHaveBeenCalledTimes(1);
-		expect(hydrator.hydrateWrite).not.toHaveBeenCalled();
+		expect(hydrator.hydrateWrite).toHaveBeenCalledTimes(1);
+		expect(hydrator.hydrateWrite).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ body: undefined }),
+		);
 	});
 
 	it('answers an upload that the node sends as a stream (no body) from the gym alone', async () => {
