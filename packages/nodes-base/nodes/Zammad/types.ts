@@ -93,6 +93,9 @@ export declare namespace Zammad {
 			reply_to: string;
 			to?: string;
 			cc?: string;
+			from?: string;
+			content_type?: 'text/plain' | 'text/html';
+			attachments?: string;
 		};
 	};
 }

@@ -771,13 +771,38 @@ export class Zammad implements INodeType {
 						}
 
 						const {
-							articleDetails: { visibility, ...rest },
+							articleDetails: { visibility, from, attachments, ...rest },
 						} = article;
 
-						body.article = {
+						const articleBody: IDataObject = {
 							...rest,
 							internal: visibility === 'internal',
 						};
+
+						if (from) {
+							articleBody.from = from;
+						}
+
+						const binaryPropertyNames = (attachments ?? '')
+							.split(',')
+							.map((name) => name.trim())
+							.filter(Boolean);
+
+						if (binaryPropertyNames.length) {
+							const files: IDataObject[] = [];
+							for (const binaryPropertyName of binaryPropertyNames) {
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+								files.push({
+									filename: binaryData.fileName ?? binaryPropertyName,
+									'mime-type': binaryData.mimeType,
+									data: buffer.toString('base64'),
+								});
+							}
+							articleBody.attachments = files;
+						}
+
+						body.article = articleBody;
 
 						responseData = await zammadApiRequest.call(this, 'POST', requestPath`/tickets`, body);
 
