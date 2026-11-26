@@ -1988,7 +1988,7 @@ describe('InstanceAiThreadView', () => {
 		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 
 		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1::'],
 		});
 	});
 

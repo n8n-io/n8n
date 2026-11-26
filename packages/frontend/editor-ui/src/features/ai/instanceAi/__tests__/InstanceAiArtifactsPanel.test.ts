@@ -306,7 +306,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		});
 		const dismissPendingComposerContext = vi.fn((key: string) => {
 			pendingComposerContext.value = null;
-			return key === 'agent-preview:agent-1:preview-thread-1:';
+			return key === 'agent-preview:agent-1:preview-thread-1::';
 		});
 
 		const { getByTestId, queryByText } = renderComponent({
@@ -322,7 +322,7 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(pendingComposerContext.value).toBeNull();
 		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
-			'agent-preview:agent-1:preview-thread-1:',
+			'agent-preview:agent-1:preview-thread-1::',
 		);
 		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
@@ -364,7 +364,7 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(pendingComposerContext.value).toBeNull();
 		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
-			'agent-preview:agent-1:preview-thread-1:',
+			'agent-preview:agent-1:preview-thread-1::',
 		);
 		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).toBeInTheDocument();
@@ -443,7 +443,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1::'],
 		});
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
