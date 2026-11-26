@@ -1,7 +1,7 @@
 import { TelemetryProxy } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Delete, Get, Param, Post, ProjectScope, Put, RestController } from '@n8n/decorators';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Response } from 'express';
 import multer from 'multer';
@@ -118,6 +118,43 @@ export class AgentKnowledgeController {
 			});
 		}
 
+		return { success: true };
+	}
+
+	@Get('/:agentId/knowledge-collections')
+	@ProjectScope('agent:read')
+	async listCollections(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentKnowledgeService.listCollections(req.user, agentId, projectId);
+	}
+
+	@Put('/:agentId/knowledge-collections/:collectionId')
+	@ProjectScope('agent:update')
+	async addCollection(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('collectionId') collectionId: string,
+	) {
+		await this.agentKnowledgeService.addCollection(req.user, agentId, projectId, collectionId);
+		return { success: true };
+	}
+
+	@Delete('/:agentId/knowledge-collections/:collectionId')
+	@ProjectScope('agent:update')
+	async removeCollection(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('collectionId') collectionId: string,
+	) {
+		await this.agentKnowledgeService.removeCollection(req.user, agentId, projectId, collectionId);
 		return { success: true };
 	}
 

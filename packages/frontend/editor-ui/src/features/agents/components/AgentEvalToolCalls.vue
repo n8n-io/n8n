@@ -9,7 +9,7 @@
  */
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
-import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatActivity from './AgentChatActivity.vue';
 
 defineProps<{
 	toolCalls: ToolCall[];
@@ -19,7 +19,7 @@ defineProps<{
 
 <template>
 	<div :class="$style.toolCalls" data-testid="agent-eval-tool-calls">
-		<AgentChatToolSteps :tool-calls="toolCalls" :project-id="projectId" />
+		<AgentChatActivity :tool-calls="toolCalls" :project-id="projectId" />
 	</div>
 </template>
 

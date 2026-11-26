@@ -110,6 +110,20 @@ export function resolveDigest(tag) {
 	}
 }
 
+/**
+ * fetch, and once more after a network error. On the runners, a request after
+ * a long step can go out on a keep-alive connection that the server already closed.
+ */
+export async function fetchWithRetry(url, init) {
+	try {
+		return await fetch(url, init);
+	} catch (error) {
+		// fetch rejects with a TypeError for network errors. A timeout is not a TypeError.
+		if (!(error instanceof TypeError)) throw error;
+		return await fetch(url, init);
+	}
+}
+
 /** A GET request to the GitHub REST API of this repository. */
 export async function github(path, accept) {
 	const {
@@ -117,7 +131,7 @@ export async function github(path, accept) {
 		GITHUB_REPOSITORY,
 		GITHUB_TOKEN,
 	} = process.env;
-	const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/${path}`, {
+	const response = await fetchWithRetry(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/${path}`, {
 		headers: { authorization: `Bearer ${GITHUB_TOKEN}`, accept },
 		signal: AbortSignal.timeout(30_000),
 	});
