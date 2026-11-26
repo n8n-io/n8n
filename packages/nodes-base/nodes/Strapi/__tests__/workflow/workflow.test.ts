@@ -27,6 +27,12 @@ describe('Strapi', () => {
 			v4.get('/api/posts')
 				.query({ 'pagination[pageSize]': 2 })
 				.reply(200, { data: [entry] });
+			v4.get('/api/posts')
+				.query({ filters: { title: { $eq: 'Hello' } }, pagination: { pageSize: '3' } })
+				.reply(200, { data: [entry] });
+			v4.get('/api/posts')
+				.query({ filters: { title: { $eq: 'Hi' } }, pagination: { pageSize: '4' } })
+				.reply(200, { data: [entry] });
 
 			const v3 = nock('https://cms.example.com');
 			v3.post('/auth/local', { identifier: 'nathan@example.com', password: 'test-password' }).reply(

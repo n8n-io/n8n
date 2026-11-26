@@ -2,6 +2,50 @@
 	"name": "Strapi Request URLs",
 	"nodes": [
 		{
+			"parameters": {
+				"authentication": "token",
+				"operation": "getAll",
+				"contentType": "posts",
+				"limit": 4,
+				"options": {
+					"where": "={{ { \"title\": { \"$eq\": \"Hi\" } } }}"
+				}
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 2800],
+			"id": "dc9dd427-dc44-502a-b226-a8301b481d50",
+			"name": "Get Many Expression",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "5",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "token",
+				"operation": "getAll",
+				"contentType": "posts",
+				"limit": 3,
+				"options": {
+					"where": "{\"title\":{\"$eq\":\"Hello\"}}"
+				}
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 2800],
+			"id": "7765ca42-1445-58f0-8d33-b9c90b7ba264",
+			"name": "Get Many JSON",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "5",
+					"name": "Test account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
@@ -214,6 +258,16 @@
 		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
+					{
+						"node": "Get Many Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Input",
 						"type": "main",

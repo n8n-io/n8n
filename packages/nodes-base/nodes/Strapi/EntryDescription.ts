@@ -240,6 +240,7 @@ export const entryFields: INodeProperties[] = [
 				displayName: 'Where (JSON)',
 				name: 'where',
 				type: 'string',
+				validateType: 'object',
 				default: '',
 				description:
 					'JSON query to filter the data. <a href="https://docs.strapi.io/cms/api/rest/filters">More info</a>.',
