@@ -3,6 +3,7 @@ import type { SkillWorkflowMention } from '@n8n/api-types';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
+	N8nButton,
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
@@ -143,6 +144,10 @@ watch(
 	},
 );
 
+function retry() {
+	void runSearch(query.value);
+}
+
 function onSelect(itemId: string) {
 	if (itemId === SHOW_MORE_ITEM_ID) {
 		void loadMore();
@@ -233,7 +238,21 @@ defineExpose({ handleExternalKeydown });
 				↵
 			</N8nText>
 		</template>
-		<template #footer>
+		<template v-if="hasError && workflows.length === 0" #empty>
+			<div :class="$style.errorState">
+				<N8nText size="small">{{ emptyText }}</N8nText>
+				<N8nButton
+					size="small"
+					variant="outline"
+					data-testid="skill-workflow-mention-retry"
+					data-attr="skill-workflow-mention-retry"
+					@click="retry"
+				>
+					{{ i18n.baseText('generic.retry') }}
+				</N8nButton>
+			</div>
+		</template>
+		<template v-if="isButtonMode || items.length > 0" #footer>
 			<N8nText
 				size="small"
 				color="text-light"
@@ -284,6 +303,13 @@ defineExpose({ handleExternalKeydown });
 :global([data-virtual-highlighted]) .enterHint,
 :global([data-highlighted]) .enterHint {
 	visibility: visible;
+}
+
+.errorState {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs);
 }
 
 .footer {

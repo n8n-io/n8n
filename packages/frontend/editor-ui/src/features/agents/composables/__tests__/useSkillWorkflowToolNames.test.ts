@@ -1,8 +1,11 @@
 import { flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { effectScope, ref } from 'vue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { effectScope, ref, type EffectScope } from 'vue';
 
-import { useSkillWorkflowToolNames } from '@/features/agents/composables/useSkillWorkflowToolNames';
+import {
+	useSkillWorkflowNames,
+	useSkillWorkflowToolNames,
+} from '@/features/agents/composables/useSkillWorkflowToolNames';
 
 const searchWorkflows = vi.hoisted(() => vi.fn());
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -17,11 +20,23 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
+const scopes: EffectScope[] = [];
+
+function runInScope<T>(setup: () => T): T {
+	const scope = effectScope();
+	scopes.push(scope);
+	return scope.run(setup)!;
+}
+
 function useInScope(toolNames: () => string[]) {
-	return effectScope().run(() => useSkillWorkflowToolNames(toolNames))!;
+	return runInScope(() => useSkillWorkflowToolNames(toolNames));
 }
 
 describe('useSkillWorkflowToolNames', () => {
+	afterEach(() => {
+		for (const scope of scopes.splice(0)) scope.stop();
+	});
+
 	beforeEach(() => {
 		searchWorkflows.mockReset();
 		workflowsInSkillsEnabled.value = true;
@@ -66,6 +81,21 @@ describe('useSkillWorkflowToolNames', () => {
 		expect(skillWorkflowName('workflow_wf3')).toBeUndefined();
 	});
 
+	it('requests the names of many workflows in batches of 50', async () => {
+		const workflowIds = Array.from({ length: 120 }, (_, index) => `batch${index}`);
+		searchWorkflows.mockImplementation(async ({ ids }: { ids: string[] }) =>
+			ids.map((id) => ({ id, name: `Workflow ${id}` })),
+		);
+
+		const { skillWorkflowName } = useInScope(() => workflowIds.map((id) => `workflow_${id}`));
+		await flushPromises();
+
+		expect(searchWorkflows.mock.calls.map(([{ ids }]) => ids.length)).toEqual([50, 50, 20]);
+		expect(searchWorkflows.mock.calls.map(([{ options }]) => options.take)).toEqual([50, 50, 20]);
+		expect(skillWorkflowName('workflow_batch0')).toBe('Workflow batch0');
+		expect(skillWorkflowName('workflow_batch119')).toBe('Workflow batch119');
+	});
+
 	it('requests nothing when the feature flag is off', async () => {
 		workflowsInSkillsEnabled.value = false;
 
@@ -73,5 +103,19 @@ describe('useSkillWorkflowToolNames', () => {
 		await flushPromises();
 
 		expect(searchWorkflows).not.toHaveBeenCalled();
+	});
+
+	it('loads the current names again for each new builder view', async () => {
+		searchWorkflows.mockResolvedValueOnce([{ id: 'wf5', name: 'Old name' }]);
+		const first = runInScope(() => useSkillWorkflowNames(() => ['wf5']));
+		await flushPromises();
+
+		searchWorkflows.mockResolvedValueOnce([{ id: 'wf5', name: 'New name' }]);
+		const second = runInScope(() => useSkillWorkflowNames(() => ['wf5']));
+		await flushPromises();
+
+		expect(searchWorkflows).toHaveBeenCalledTimes(2);
+		expect(first.workflowName('wf5')).toBe('Old name');
+		expect(second.workflowName('wf5')).toBe('New name');
 	});
 });

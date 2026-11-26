@@ -42,6 +42,7 @@ const DropdownMenuStub = defineComponent({
 			<slot name="item-label" :item="item" :ui="{}" />
 			<slot name="item-trailing" :item="item" :ui="{}" />
 		</div>
+		<slot v-if="items.length === 0" name="empty" />
 		<slot name="footer" />
 	</div>`,
 });
@@ -213,7 +214,7 @@ describe('SkillWorkflowMentionPicker', () => {
 		});
 
 		it('searches with the text after @ and keeps focus in the editor', async () => {
-			searchWorkflows.mockResolvedValue([]);
+			searchWorkflows.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
 			const focusTarget = document.createElement('div');
 			const { wrapper, menu } = mountPicker({ mode: 'typed', query: 'wee', focusTarget });
 			await flushPromises();
@@ -305,6 +306,41 @@ describe('SkillWorkflowMentionPicker', () => {
 		await flushPromises();
 
 		expect(menu().props('emptyText')).toBe('agents.builder.skills.workflowMentions.loadError');
+	});
+
+	it('loads the workflows again from the retry button', async () => {
+		searchWorkflows
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValueOnce([{ id: 'wf1', name: 'Weekly report' }]);
+		const { wrapper, menu } = mountPicker();
+		await flushPromises();
+
+		await wrapper.find('[data-testid="skill-workflow-mention-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(searchWorkflows).toHaveBeenCalledTimes(2);
+		expect(menu().props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'wf1' })]),
+		);
+		expect(wrapper.find('[data-testid="skill-workflow-mention-retry"]').exists()).toBe(false);
+	});
+
+	it('hides the keyboard hints when the typed search finds no workflow', async () => {
+		searchWorkflows.mockResolvedValue([]);
+		const { wrapper } = mountPicker({ mode: 'typed', query: 'nothing' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="skill-workflow-mention-footer"]').exists()).toBe(false);
+	});
+
+	it('keeps the @ hint in the add popover when the search finds no workflow', async () => {
+		searchWorkflows.mockResolvedValue([]);
+		const { wrapper } = mountPicker();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="skill-workflow-mention-footer"]').text()).toBe(
+			'agents.builder.skills.workflowMentions.hint',
+		);
 	});
 
 	it('does not load workflows while closed', () => {

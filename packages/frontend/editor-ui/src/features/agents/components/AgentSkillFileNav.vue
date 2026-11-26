@@ -86,21 +86,26 @@ const mentionedWorkflowIds = computed(() =>
 );
 const { noteData } = useSkillWorkflowNoteData(mentionedWorkflowIds, workflowMentionsEnabled);
 const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
+	notFound: 'agents.builder.skills.workflowMentions.note.notFound',
+	archived: 'agents.builder.skills.workflowMentions.note.archived',
 	agentTrigger: 'agents.builder.skills.workflowMentions.note.agentTrigger',
 	mcpTrigger: 'agents.builder.skills.workflowMentions.note.mcpTrigger',
 	mcpUnavailable: 'agents.builder.skills.workflowMentions.note.mcpUnavailable',
 	unpublished: 'agents.builder.skills.workflowMentions.note.unpublished',
+	outsideProject: 'agents.builder.skills.workflowMentions.note.outsideProject',
 	instanceAccess: 'agents.builder.skills.workflowMentions.note.instanceAccess',
 };
 const workflowRows = computed(() =>
 	mentionedWorkflows.value.map((workflow) => {
 		const data = noteData.value.get(workflow.workflowId);
-		const allNotes = data
-			? getSkillWorkflowNotes(data, {
-					instanceSkill: props.instanceSkill,
-					availableToMCP: props.availableToMcp,
-				})
-			: [];
+		const allNotes =
+			data === undefined
+				? []
+				: getSkillWorkflowNotes(data, {
+						instanceSkill: props.instanceSkill,
+						availableToMCP: props.availableToMcp,
+						projectId: props.agentContext ? undefined : props.mentionProjectId,
+					});
 		const outsideProjectWarnings = props.outsideProjectWorkflowIds.includes(workflow.workflowId)
 			? [
 					i18n.baseText('agents.builder.validation.issue.tool.workflow.notInProject', {

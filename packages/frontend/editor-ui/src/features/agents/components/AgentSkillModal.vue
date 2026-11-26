@@ -1304,12 +1304,25 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 	}
 }
 
+function appendOnNewLine(text: string, mention: SkillWorkflowMention) {
+	const trimmed = text.trimEnd();
+	return `${trimmed}${trimmed ? '\n\n' : ''}${formatSkillWorkflowMention(mention)}`;
+}
+
 function onAddWorkflow(mention: SkillWorkflowMention) {
-	const instructions = skill.value.instructions.trimEnd();
-	const separator = instructions ? '\n\n' : '';
-	onSkillUpdate({
-		instructions: `${instructions}${separator}${formatSkillWorkflowMention(mention)}`,
-	});
+	const references = skill.value.references ?? [];
+	const openReference = references.find(({ path }) => path === selectedPath.value);
+	if (openReference && !openReference.isBinary && /\.(md|markdown)$/i.test(openReference.path)) {
+		onSkillUpdate({
+			references: references.map((reference) =>
+				reference === openReference
+					? { ...reference, content: appendOnNewLine(reference.content, mention) }
+					: reference,
+			),
+		});
+		return;
+	}
+	onSkillUpdate({ instructions: appendOnNewLine(skill.value.instructions, mention) });
 	selectedPath.value = SKILL_FILE;
 }
 
