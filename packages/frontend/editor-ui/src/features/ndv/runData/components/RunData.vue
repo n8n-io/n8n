@@ -594,7 +594,9 @@ const automaticDisplayMode = computed<IRunDataDisplayMode | undefined>(() => {
 const savedDisplayModeCanRender = computed(() =>
 	props.displayMode === 'binary'
 		? hasBinaryData.value
-		: isBuiltInDisplayMode(props.displayMode) || !!getAvailableDisplayMode(props.displayMode),
+		: props.displayMode === 'ai'
+			? hasParsedAiContent.value
+			: isBuiltInDisplayMode(props.displayMode) || !!getAvailableDisplayMode(props.displayMode),
 );
 const activeDisplayMode = computed<IRunDataDisplayMode>(() => {
 	if (!pickedOnThisNode.value && automaticDisplayMode.value) return automaticDisplayMode.value;

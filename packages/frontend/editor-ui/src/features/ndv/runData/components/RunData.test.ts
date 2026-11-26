@@ -759,6 +759,17 @@ describe('RunData', () => {
 			expect(emitted('displayModeChange')).toBeUndefined();
 		});
 
+		it('shows the pane default when the saved rendered mode has no AI content', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [{ json: { id: 1 } }],
+				displayMode: 'ai',
+			});
+
+			expect(await findByTestId('radio-button-table')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
 		it('shows AI content without saving the rendered mode', async () => {
 			const modelNode = {
 				...nodes[0],
