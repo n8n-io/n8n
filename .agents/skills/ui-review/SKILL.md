@@ -1,7 +1,7 @@
 ---
 name: n8n:ui-review
 description: >
-  Design review to ensure coherent interfaces. Use when reviewing code that contains .vue|scss|css changes. Triggers when working on UI components or during code review. Returns ranked report.
+  Design review to ensure coherent interfaces. Use when reviewing code that contains .vue|scss|css changes. Triggers when given a PR to review or when user asks for code review. Returns ranked report.
 ---
 
 ## UI Review
