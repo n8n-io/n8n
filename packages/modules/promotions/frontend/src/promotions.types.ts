@@ -1,5 +1,6 @@
 import type {
 	ApplyPackageResultDto,
+	PromotePackageResultDto,
 	PromotionPreviewCheck,
 	PromotionVariableScope,
 } from '@n8n/api-types';
@@ -10,6 +11,8 @@ export type ApplyCheckResult = Pick<ApplyPackageResultDto, 'environmentId' | 'gi
 export type BlockedApplyResult = Extract<ApplyPackageResultDto, { status: 'blocked' }>;
 export type AppliedResult = Extract<ApplyPackageResultDto, { status: 'applied' }>;
 export type SourceChangedResult = Extract<ApplyPackageResultDto, { status: 'source-changed' }>;
+/** A Promote that pushed. The other results of a Promote push nothing. */
+export type PromotedResult = Extract<PromotePackageResultDto, { status: 'promoted' }>;
 export type MissingPromotionBinding = BlockedApplyResult['check']['missingBindings'][number];
 
 export type CreatedPromotionBinding =

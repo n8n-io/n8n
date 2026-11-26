@@ -4,6 +4,10 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
+import {
+	otherProjectCredential,
+	outsideAccessWorkflow,
+} from '../../__tests__/missingDependencies.fixtures';
 import { billingPreview } from '../../__tests__/preview.fixtures';
 import * as api from '../../promotions.api';
 import PromotionReviewChanges from './PromotionReviewChanges.vue';
@@ -50,6 +54,16 @@ beforeEach(() => {
 	vi.mocked(api.getPromotionReviewDetails).mockResolvedValue({ details: [], missingKeys: [] });
 });
 
+it('reports how many dependencies the review leaves out, so the inbox can show the Issues tab', async () => {
+	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+		reviewChanges({ missingDependencies: [otherProjectCredential, outsideAccessWorkflow] }),
+	);
+
+	const { emitted } = await render();
+
+	expect(emitted().state.at(-1)).toEqual([{ status: 'ready', headCommitSha, issueCount: 2 }]);
+});
+
 it('lists what the review changes, read-only, and reads each card at the commits of the list', async () => {
 	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(reviewChanges());
 	vi.mocked(api.getPromotionReviewDetails).mockResolvedValue({
@@ -68,7 +82,7 @@ it('lists what the review changes, read-only, and reads each card at the commits
 	const { getAllByTestId, queryAllByRole, emitted } = await render();
 
 	// Approve in the inbox sends this head.
-	expect(emitted().state.at(-1)).toEqual([{ status: 'ready', headCommitSha }]);
+	expect(emitted().state.at(-1)).toEqual([{ status: 'ready', headCommitSha, issueCount: 0 }]);
 
 	expect(api.getPromotionReviewDetails).toHaveBeenCalledWith(expect.anything(), 'review-1', {
 		baselineCommitSha,

@@ -6,9 +6,14 @@ import { getProject, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import { promoteSuccessToast, withFolderNotes, type PromotedResult } from '../promotionResult';
+import {
+	notIncludedNote,
+	promoteSuccessToast,
+	stillMissingNote,
+	withFolderNotes,
+} from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
-import type { AppliedResult } from '../promotions.types';
+import type { AppliedResult, PromotedResult } from '../promotions.types';
 
 /** The toasts and events after a promote or an apply. */
 export function usePromotionOutcome() {
@@ -29,6 +34,7 @@ export function usePromotionOutcome() {
 				}),
 				viewMergeRequest: i18n.baseText('promotions.result.viewMergeRequest'),
 				reviewNotRecorded: i18n.baseText('promotions.result.reviewNotRecorded'),
+				notIncluded: notIncludedNote(i18n, result),
 			}),
 		});
 	}
@@ -60,6 +66,7 @@ export function usePromotionOutcome() {
 		const notes = [
 			withFolderNotes(i18n, workflowsChanged ? workflowSummary : '', result.counts),
 			projects.updated > 0 ? i18n.baseText('promotions.applied.projectUpdated') : '',
+			stillMissingNote(i18n, result),
 		].filter(Boolean);
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
@@ -81,19 +88,20 @@ export function usePromotionOutcome() {
 			deleted: String(workflows.deleted),
 			notPublished: String(notPublished),
 		};
+		const summary = withFolderNotes(
+			i18n,
+			i18n.baseText(
+				notPublished
+					? 'settings.promotions.apply.toast.success.messageNotPublished'
+					: 'settings.promotions.apply.toast.success.message',
+				{ interpolate },
+			),
+			result.counts,
+		);
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-			message: withFolderNotes(
-				i18n,
-				i18n.baseText(
-					notPublished
-						? 'settings.promotions.apply.toast.success.messageNotPublished'
-						: 'settings.promotions.apply.toast.success.message',
-					{ interpolate },
-				),
-				result.counts,
-			),
+			message: [summary, stillMissingNote(i18n, result)].filter(Boolean).join(' '),
 			type: notPublished ? 'warning' : 'success',
 		});
 	}

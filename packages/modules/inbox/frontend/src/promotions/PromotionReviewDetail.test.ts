@@ -46,11 +46,14 @@ const onItemChange = vi.fn();
 
 /** What the Changes tab reports. The editor renders it, so the test uses a stub. */
 let shownChanges: PromotionChangesState;
+/** Reports a new state from the mounted Changes tab, as a reload of the changes does. */
+let reportChanges: (state: PromotionChangesState) => void;
 const ChangesStub = defineComponent({
 	props: { reviewId: { type: String, required: true } },
 	emits: ['state'],
 	mounted() {
-		this.$emit('state', shownChanges);
+		reportChanges = (state) => this.$emit('state', state);
+		reportChanges(shownChanges);
 	},
 	template: '<div data-test-id="promotion-changes-stub">{{ reviewId }}</div>',
 });
@@ -390,5 +393,94 @@ describe('close', () => {
 		const { getByTestId } = renderComponent({ props: { item: item(), onItemChange } });
 
 		expect(getByTestId('inbox-promotion-review-close')).toBeDisabled();
+	});
+});
+
+describe('issues tab', () => {
+	const IssuesStub = defineComponent({
+		props: { reviewId: { type: String, required: true } },
+		template: '<div data-test-id="promotion-issues-stub">{{ reviewId }}</div>',
+	});
+
+	beforeEach(() => {
+		componentRegistry.register('promotion-issues', IssuesStub);
+		onTestFinished(() => componentRegistry.unregister('promotion-issues'));
+	});
+
+	it.each([
+		['reports no issue count', { status: 'ready', headCommitSha } as const],
+		['has no issues', { status: 'ready', headCommitSha, issueCount: 0 } as const],
+	])('shows no Issues tab when the review %s', async (_case, state) => {
+		shownChanges = state;
+		const { getByTestId, queryByRole, queryByTestId } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+
+		await waitFor(() => expect(getByTestId('promotion-changes-stub')).toBeVisible());
+
+		expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument();
+		expect(queryByTestId('promotion-issues-stub')).not.toBeInTheDocument();
+	});
+
+	it('shows the Issues tab with its count, and opens the issues of the review', async () => {
+		shownChanges = { status: 'ready', headCommitSha, issueCount: 3 };
+		const { findByRole, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+
+		const tab = await findByRole('tab', { name: /Issues/ });
+		expect(tab).toHaveTextContent(/^Issues\s*3$/);
+		expect(queryByTestId('promotion-issues-stub')).not.toBeInTheDocument();
+
+		await userEvent.click(tab);
+
+		expect(getByTestId('promotion-issues-stub')).toHaveTextContent('rev-1');
+		// The changes stay mounted, so Approve keeps the head that the reviewer saw.
+		expect(getByTestId('promotion-changes-stub')).toBeInTheDocument();
+		expect(getByTestId('promotion-changes-stub')).not.toBeVisible();
+		expect(getByRole('button', { name: 'Approve and merge' })).toBeEnabled();
+	});
+
+	it('goes back to the changes when the user selects another review', async () => {
+		shownChanges = { status: 'ready', headCommitSha, issueCount: 3 };
+		const { findByRole, getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+		await userEvent.click(await findByRole('tab', { name: /Issues/ }));
+		expect(getByTestId('promotion-issues-stub')).toBeInTheDocument();
+
+		await rerender({ item: item({ id: 'rev-2' }), onItemChange });
+
+		// The issues belong to the first review. The other review reports its own count later.
+		expect(queryByTestId('promotion-issues-stub')).not.toBeInTheDocument();
+		expect(getByTestId('promotion-changes-stub')).toBeVisible();
+	});
+
+	it('goes back to the changes when no issue is left while the Issues tab is open', async () => {
+		shownChanges = { status: 'ready', headCommitSha, issueCount: 2 };
+		const { findByRole, getByTestId, queryByRole, queryByTestId } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+		await userEvent.click(await findByRole('tab', { name: /Issues/ }));
+		expect(getByTestId('promotion-issues-stub')).toBeInTheDocument();
+		expect(getByTestId('promotion-changes-stub')).not.toBeVisible();
+
+		reportChanges({ status: 'ready', headCommitSha });
+
+		await waitFor(() => expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument());
+		expect(queryByTestId('promotion-issues-stub')).not.toBeInTheDocument();
+		expect(getByTestId('promotion-changes-stub')).toBeVisible();
+	});
+
+	it('shows no Issues tab when the editor provides no issues view', async () => {
+		componentRegistry.unregister('promotion-issues');
+		shownChanges = { status: 'ready', headCommitSha, issueCount: 3 };
+		const { getByTestId, queryByRole } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+
+		await waitFor(() => expect(getByTestId('promotion-changes-stub')).toBeVisible());
+
+		expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument();
 	});
 });

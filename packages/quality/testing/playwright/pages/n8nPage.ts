@@ -36,6 +36,7 @@ import { NpsSurveyPage } from './NpsSurveyPage';
 import { InstancePolicyPage } from './instance-policy-page';
 import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { PromotionPreviewPage } from './promotion-preview-page';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
@@ -103,6 +104,7 @@ export class n8nPage {
 	readonly npsSurvey: NpsSurveyPage;
 	readonly oauthConsent: OAuthConsentPage;
 	readonly projectSettings: ProjectSettingsPage;
+	readonly promotionPreview: PromotionPreviewPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsMcp: SettingsMcpPage;
 	readonly settingsSkills: SettingsSkillsPage;
@@ -195,6 +197,7 @@ export class n8nPage {
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.oauthConsent = new OAuthConsentPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
+		this.promotionPreview = new PromotionPreviewPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsMcp = new SettingsMcpPage(page);
 		this.settingsSkills = new SettingsSkillsPage(page);

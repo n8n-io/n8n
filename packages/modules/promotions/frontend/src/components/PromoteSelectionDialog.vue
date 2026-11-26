@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PromotionProviderType } from '@n8n/api-types';
+import type { PromotionMissingDependency, PromotionProviderType } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -12,15 +12,25 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef } from 'vue';
 
+import { usePromotionUnresolvedSummary } from '../composables/usePromotionUnresolvedSummary';
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
+import PromotionUnresolvedSummary from './PromotionUnresolvedSummary.vue';
 
-const props = defineProps<{
-	open: boolean;
-	changeCount: number;
-	baseBranchName: string;
-	createBranchOnPromotion: boolean;
-	providerType: PromotionProviderType;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		changeCount: number;
+		baseBranchName: string;
+		createBranchOnPromotion: boolean;
+		providerType: PromotionProviderType;
+		/**
+		 * The dependencies that this Promote leaves out, for the selected workflows. The user confirms
+		 * them with the Promote.
+		 */
+		unresolved?: PromotionMissingDependency[];
+	}>(),
+	{ unresolved: () => [] },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -34,11 +44,22 @@ const commitMessage = defineModel<string>('commitMessage', { default: '' });
 const i18n = useI18n();
 const messageField = useTemplateRef('messageField');
 
-const title = computed(() =>
-	i18n.baseText('promotions.preview.promote.dialog.title', {
+const hasUnresolved = computed(() => props.unresolved.length > 0);
+const { lead, rows } = usePromotionUnresolvedSummary(() => props.unresolved, 'promote');
+
+const counted = (
+	key: 'promotions.preview.promote.dialog.title' | 'promotions.preview.submit.promote',
+) =>
+	i18n.baseText(key, {
 		adjustToNumber: props.changeCount,
 		interpolate: { count: String(props.changeCount) },
-	}),
+	});
+
+// With unresolved dependencies, the button repeats the label of the button that opened the dialog.
+const confirmLabel = computed(() =>
+	hasUnresolved.value
+		? counted('promotions.preview.submit.promote')
+		: i18n.baseText('promotions.preview.promote.dialog.confirm'),
 );
 
 const bodyText = computed(() => {
@@ -68,17 +89,22 @@ function submit() {
 	<N8nDialog
 		:open="open"
 		size="medium"
-		:aria-description="bodyText"
+		:aria-description="hasUnresolved ? `${bodyText} ${lead}` : bodyText"
 		data-test-id="promote-selection-dialog"
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogHeader>
-			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
+			<N8nDialogTitle>{{ counted('promotions.preview.promote.dialog.title') }}</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<form id="promote-selection-form" :class="$style.body" @submit.prevent="submit">
-				<N8nText color="text-base">{{ bodyText }}</N8nText>
+			<form
+				id="promote-selection-form"
+				:class="[$style.body, hasUnresolved && $style.withUnresolved]"
+				@submit.prevent="submit"
+			>
+				<PromotionUnresolvedSummary v-if="hasUnresolved" :lead="lead" :rows="rows" />
+				<N8nText v-else color="text-base">{{ bodyText }}</N8nText>
 				<PromotionCommitMessageField ref="messageField" v-model="commitMessage" />
 			</form>
 		</N8nDialogBody>
@@ -92,7 +118,7 @@ function submit() {
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton type="submit" form="promote-selection-form" data-test-id="promote-confirm-button">
-				{{ i18n.baseText('promotions.preview.promote.dialog.confirm') }}
+				{{ confirmLabel }}
 			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
@@ -103,5 +129,10 @@ function submit() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+}
+
+// The warning and the commit message are two tasks, so they get more space between them.
+.withUnresolved {
+	gap: var(--spacing--lg);
 }
 </style>
