@@ -407,7 +407,8 @@ Use `--json` to get the full preview:
 - `check`: what blocks the Apply. A team project that Apply deletes is a
   `project-deletion` conflict. `movedWorkflows` and `movedFolders` list the
   workflows and folders that the branch and this instance hold in different
-  projects. Apply can't move them between projects, so it refuses them.
+  projects, unless both projects are left out. Apply can't move them between
+  projects, so it refuses them.
 - `revision`: the value to pass to `--expected-preview-revision`.
 
 ## `promotion-environment promote-selection`
@@ -498,9 +499,9 @@ promote it back yet. Check this before you confirm the deletion.
 Workflows and folders move within their project to match the branch, and folders
 take the name on the branch. `counts.workflows.moved` is part of
 `counts.workflows.updated`. `counts.folders.moved` and `counts.folders.renamed` are
-parts of `counts.folders.updated`. A workflow or folder that the branch and this
-instance hold in different projects is refused before any write, and nothing is
-imported.
+parts of `counts.folders.updated`. Unless both projects are left out, a workflow
+or folder that the branch and this instance hold in different projects is
+refused before any write, and nothing is imported.
 
 This command works on an `instance` Apply environment only. The API key needs
 `promotions:apply`.
