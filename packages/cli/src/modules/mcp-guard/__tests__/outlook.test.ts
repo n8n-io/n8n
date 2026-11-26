@@ -256,7 +256,7 @@ describe('Graph ids', () => {
 		const { router, upstream, gym } = setup();
 		const made = 'AAMkGym-made_id=0123456789012345678901234567890123456789==';
 		gym.callTool.mockResolvedValueOnce(result({ id: made }));
-		await router.handle(request('POST', `/v1.0/users/maria2024@contoso.example/messages`, {}));
+		await router.handle(request('POST', '/v1.0/users/maria2024@contoso.example/messages', {}));
 
 		await router.handle(request('GET', `/v1.0/users/maria2024@contoso.example/messages/${made}`));
 
