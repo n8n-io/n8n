@@ -591,16 +591,14 @@ const automaticDisplayMode = computed<IRunDataDisplayMode | undefined>(() => {
 	if (hasParsedAiContent.value) return 'ai';
 	return undefined;
 });
-const savedDisplayModeCanRender = computed(() =>
-	props.displayMode === 'binary'
-		? hasBinaryData.value
-		: props.displayMode === 'ai'
-			? hasParsedAiContent.value
-			: isBuiltInDisplayMode(props.displayMode) || !!getAvailableDisplayMode(props.displayMode),
-);
+function isDisplayModeAvailable(mode: IRunDataDisplayMode): boolean {
+	if (mode === 'binary') return hasBinaryData.value;
+	if (mode === 'ai') return hasParsedAiContent.value;
+	return isBuiltInDisplayMode(mode) || !!getAvailableDisplayMode(mode);
+}
 const activeDisplayMode = computed<IRunDataDisplayMode>(() => {
 	if (!pickedOnThisNode.value && automaticDisplayMode.value) return automaticDisplayMode.value;
-	return savedDisplayModeCanRender.value
+	return isDisplayModeAvailable(props.displayMode)
 		? props.displayMode
 		: PANE_DEFAULT_DISPLAY_MODE[props.paneType];
 });
