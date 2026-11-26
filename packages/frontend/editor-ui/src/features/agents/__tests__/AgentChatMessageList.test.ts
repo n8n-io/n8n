@@ -1213,6 +1213,10 @@ describe('AgentChatMessageList', () => {
 			},
 		});
 
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['shared-thinking-block', 'markdown-chunk']);
 		const blocks = wrapper.findAll('[data-test-id="shared-thinking-block"]');
 		expect(blocks.map((block) => block.attributes('data-active'))).toEqual(['true']);
 	});
