@@ -1,0 +1,30 @@
+packages/cli/src/credentials-helper.ts
+  s_55c9c16466c150::t_91b1510866ad50 671-674
+  s_55c9c16466c150::t_d8e91f39f93d76 788-791
+  s_55c9c16466c150::t_916f23e731fd5a 696,705-706
+  s_55c9c16466c150::t_cf9e13f6951140 760-763
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_55c9c16466c150::t_85087fceb3efde 3661-3662
+  s_55c9c16466c150::t_ec2e3c8f5d175d 3691-3717
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de621ff85f198fef21998121e55b5a514d45d3e9",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/@n8n/agents/src/sdk/__tests__/agent-mcp-validation.test.ts
+  h_8a472ace01776f 104-116
+packages/@n8n/agents/src/sdk/agent.ts
+  h_8a472ace01776f 728-736,1141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22714bc727ec3805db7fd2e8502332dbef461477",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
